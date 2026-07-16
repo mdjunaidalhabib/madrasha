@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, WebsiteStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { PUBLIC_NOTICES_LIMIT, PUBLIC_TEACHERS_LIMIT, PUBLIC_GALLERY_LIMIT, ADMIN_NOTICES_LIMIT, ADMIN_GALLERY_LIMIT } from "./website.constants";
 
@@ -171,7 +171,7 @@ export class WebsiteRepository {
     return prisma.websiteGallery.deleteMany({ where: { id, madrasaId } });
   }
 
-  updateWebsiteStatus(id: number, status: string) {
+  updateWebsiteStatus(id: number, status: WebsiteStatus) {
     return prisma.madrasa.updateMany({ where: { id, deletedAt: null }, data: { websiteStatus: status } });
   }
 }

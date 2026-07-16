@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, ResultPublishStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { ClassStatusRow, OverviewStatusRow } from "./result-panel.types";
 
@@ -27,7 +27,7 @@ export class ResultPanelRepository {
     return prisma.resultMaster.findFirst({ where: { id, madrasaId }, select: { id: true } });
   }
 
-  updateResultMasterStatus(id: number, status: string) {
+  updateResultMasterStatus(id: number, status: ResultPublishStatus) {
     return prisma.resultMaster.update({ where: { id }, data: { status } });
   }
 

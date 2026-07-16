@@ -45,7 +45,7 @@ export class SettingsService {
       address: madrasa.address,
       report_logo: madrasa.reportLogo,
       report_watermark: madrasa.reportWatermark,
-      report_watermark_opacity: madrasa.reportWatermarkOpacity,
+      report_watermark_opacity: Number(madrasa.reportWatermarkOpacity),
     };
   }
 

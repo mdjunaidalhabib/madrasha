@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
@@ -264,7 +264,7 @@ export class SuperAdminService {
         ...(Number(dto.student_limit) ? { studentLimit: Number(dto.student_limit) } : {}),
         ...(Number(dto.user_limit) ? { userLimit: Number(dto.user_limit) } : {}),
         ...(dto.is_active === undefined ? {} : { isActive: Number(dto.is_active) }),
-        ...(dto.website_status ? { websiteStatus: dto.website_status } : {}),
+        ...(dto.website_status ? { websiteStatus: dto.website_status as WebsiteStatus } : {}),
       });
 
       if (dto.plan_id) {

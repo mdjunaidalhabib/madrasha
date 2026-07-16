@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { websiteRepository, WebsiteRepository } from "./website.repository";
 import {
@@ -180,7 +181,7 @@ export class WebsiteService {
     if (!(VALID_WEBSITE_STATUSES as readonly string[]).includes(status)) {
       throw new BadRequestError("Invalid website status");
     }
-    await this.repository.updateWebsiteStatus(id, status);
+    await this.repository.updateWebsiteStatus(id, status as WebsiteStatus);
     return status;
   }
 }
