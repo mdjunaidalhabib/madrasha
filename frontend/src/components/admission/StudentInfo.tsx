@@ -2,6 +2,7 @@ import { AdmissionFormData, AdmissionFormErrors } from "../../features/students/
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
+import { logger } from "../../utils/logger";
 
 interface Props {
   formData: AdmissionFormData;
@@ -97,7 +98,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         const data = extractData(res);
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Division load error:", err);
+        logger.error("Division load error:", err);
         setDivisions([]);
       }
     };
@@ -125,7 +126,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         setClasses(Array.isArray(data) ? data : []);
       } catch (err: any) {
         if (err?.name !== "CanceledError") {
-          console.error("Class load error:", err);
+          logger.error("Class load error:", err);
         }
         setClasses([]);
       } finally {

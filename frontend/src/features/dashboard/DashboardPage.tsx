@@ -111,6 +111,7 @@ export default function DashboardPage() {
         <div className="border-b px-5 py-4">
           <h2 className="text-lg font-bold text-slate-900">সাম্প্রতিক হিসাব</h2>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -133,6 +134,7 @@ export default function DashboardPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

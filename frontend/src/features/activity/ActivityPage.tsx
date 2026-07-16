@@ -27,8 +27,8 @@ export default function ActivityPage() {
       {loading ? (
         <TableSkeleton rows={10} />
       ) : (
-        <div className="bg-white rounded shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr className="text-left text-sm text-gray-600">
                 <th className="px-4 py-3">User</th>

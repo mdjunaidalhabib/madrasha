@@ -74,7 +74,8 @@ export default function SuperAdminMadrasasTrashPage() {
       ) : !items.length ? (
         <p className="text-gray-500">Trash is empty</p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr>
               <th className="text-left p-2">Name</th>
@@ -92,17 +93,20 @@ export default function SuperAdminMadrasasTrashPage() {
                 <td className="p-2 text-gray-500">
                   {m.deleted_at ? new Date(m.deleted_at).toLocaleString() : "-"}
                 </td>
-                <td className="p-2 flex gap-2">
-                  <Button onClick={() => restore(m.id)}>Restore</Button>
+                <td className="p-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button onClick={() => restore(m.id)}>Restore</Button>
 
-                  <Button variant="danger" onClick={() => openDeleteModal(m)}>
-                    Delete Permanently
-                  </Button>
+                    <Button variant="danger" onClick={() => openDeleteModal(m)}>
+                      Delete Permanently
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {/* 🔥 Double Confirm Modal */}

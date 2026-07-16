@@ -31,7 +31,7 @@ const addExam = async () => {
     <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
       <h2 className="text-xl font-semibold text-gray-700">📘 Exams</h2>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <input
           className="border rounded-lg px-3 py-2 w-full"
           value={name}
@@ -39,14 +39,14 @@ const addExam = async () => {
           placeholder="Exam Name"
         />
         <input
-          className="border rounded-lg px-3 py-2 w-32"
+          className="border rounded-lg px-3 py-2 w-full sm:w-32"
           value={year}
           onChange={(e) => setYear(e.target.value)}
           placeholder="Year"
         />
         <button
           onClick={addExam}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg sm:py-0"
         >
           Add
         </button>

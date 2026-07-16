@@ -43,13 +43,13 @@ const ReportFilterBar = ({
           placeholder="ID / নাম / মোবাইল"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-10 w-[240px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
+          className="h-10 w-full sm:w-[240px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
         />
 
         <select
           value={selectedDivision}
           onChange={(e) => onDivisionChange(e.target.value)}
-          className="h-10 w-[150px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
+          className="h-10 w-full sm:w-[150px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
         >
           <option value="">সকল বিভাগ</option>
           {divisions.map((division) => (
@@ -63,7 +63,7 @@ const ReportFilterBar = ({
           value={selectedClass}
           onChange={(e) => onClassChange(e.target.value)}
           disabled={!selectedDivision}
-          className="h-10 w-[165px] rounded-lg border border-slate-200 px-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-400 focus:border-blue-600"
+          className="h-10 w-full sm:w-[165px] rounded-lg border border-slate-200 px-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-400 focus:border-blue-600"
         >
           <option value="">{selectedDivision ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}</option>
           {classes.map((cls) => (

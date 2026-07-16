@@ -7,6 +7,7 @@ import LockScreen from "../components/lock/LockScreen";
 
 import { loadSidebar } from "../services/sidebarApi";
 import { useSidebarStore } from "../store/sidebarStore";
+import { logger } from "../utils/logger";
 
 export default function DashboardLayout() {
   const setItems = useSidebarStore((s) => s.setItems);
@@ -18,7 +19,7 @@ export default function DashboardLayout() {
         const data = await loadSidebar();
         setItems(data);
       } catch (err) {
-        console.error("Sidebar load failed:", err);
+        logger.error("Sidebar load failed:", err);
       }
     };
 

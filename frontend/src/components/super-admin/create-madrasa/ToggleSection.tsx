@@ -59,7 +59,7 @@ export default function ToggleSection<T extends string>({
           <div key={group.title}>
             <h5 className="text-sm font-semibold text-gray-600 mb-2">{group.title}</h5>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {group.items.map((i) => (
                 <label key={i.key} className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -74,7 +74,7 @@ export default function ToggleSection<T extends string>({
           </div>
         ))
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {items.map((i) => (
             <label key={i.key} className="flex items-center gap-2 cursor-pointer">
               <input

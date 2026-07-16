@@ -8,6 +8,7 @@ import TeacherAddressProfile from "../../components/teacherProfile/TeacherAddres
 import ImageUploadProfile from "../../components/teacherProfile/ImageUploadProfile";
 
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { logger } from "../../utils/logger";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -111,7 +112,7 @@ const TeacherProfilePage = () => {
       setIsEditMode(false);
       setEditableField(null);
     } catch (error) {
-      console.error(error);
+      logger.error("Update failed:", error);
 
       alert("❌ Update failed");
     } finally {
@@ -146,13 +147,13 @@ const TeacherProfilePage = () => {
   if (!teacher) return <p className="p-6">No teacher found</p>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
       {/* HEADER */}
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Teacher Profile</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">Teacher Profile</h1>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {!isEditMode ? (
             <button
               onClick={() => setIsEditMode(true)}

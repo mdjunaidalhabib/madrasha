@@ -94,8 +94,8 @@ export default function StudentMarksEditModal({
         }
       `}</style>
 
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-4">
-        <div className="flex justify-between items-start mb-3">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col p-4">
+        <div className="flex justify-between items-start mb-3 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-700">
               ✏️ শুধুমাত্র এর নাম্বার এডিট
@@ -111,6 +111,7 @@ export default function StudentMarksEditModal({
           </button>
         </div>
 
+        <div className="overflow-y-auto">
         <table className="w-full border text-sm">
           <thead className="bg-gray-100">
             <tr>
@@ -153,8 +154,9 @@ export default function StudentMarksEditModal({
             })}
           </tbody>
         </table>
+        </div>
 
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 shrink-0">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block" /> Fail
           </span>
@@ -163,7 +165,7 @@ export default function StudentMarksEditModal({
           </span>
         </div>
 
-        <div className="flex justify-end gap-2 mt-5">
+        <div className="flex justify-end gap-2 mt-5 shrink-0">
           <button
             onClick={onClose}
             disabled={saving}

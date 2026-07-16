@@ -42,7 +42,7 @@ export default function MadrasaGradeList({
       <h2 className="text-xl font-semibold text-gray-800">🕌 Madrasa Grades</h2>
 
       {/* Input Section */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <input
           className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 outline-none"
           placeholder="Grade (e.g. Mumtaz)"
@@ -50,28 +50,30 @@ export default function MadrasaGradeList({
           onChange={(e) => setName(e.target.value)}
         />
 
-        <input
-          className="border rounded-lg px-3 py-2 w-24 focus:ring-2 focus:ring-blue-500 outline-none"
-          placeholder="Min"
-          type="number"
-          value={min}
-          onChange={(e) => setMin(e.target.value)}
-        />
+        <div className="flex gap-3">
+          <input
+            className="border rounded-lg px-3 py-2 w-full sm:w-24 focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Min"
+            type="number"
+            value={min}
+            onChange={(e) => setMin(e.target.value)}
+          />
 
-        <input
-          className="border rounded-lg px-3 py-2 w-24 focus:ring-2 focus:ring-blue-500 outline-none"
-          placeholder="Max"
-          type="number"
-          value={max}
-          onChange={(e) => setMax(e.target.value)}
-        />
+          <input
+            className="border rounded-lg px-3 py-2 w-full sm:w-24 focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Max"
+            type="number"
+            value={max}
+            onChange={(e) => setMax(e.target.value)}
+          />
 
-        <button
-          onClick={add}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg transition"
-        >
-          Add
-        </button>
+          <button
+            onClick={add}
+            className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:py-0 rounded-lg transition"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       {/* List Section */}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Field from "./Field";
 import api from "../../services/api";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
+import { logger } from "../../utils/logger";
 
 /* =============================
    TYPES
@@ -34,7 +35,7 @@ const StudentInfoProfile = ({
         const data = res.data?.data || res.data?.result || res.data || [];
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Division load error:", err);
+        logger.error("Division load error:", err);
         setDivisions([]);
       }
     };
@@ -52,7 +53,7 @@ const StudentInfoProfile = ({
         const data = res.data?.data || res.data?.result || res.data || [];
         setClasses(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Class load error:", err);
+        logger.error("Class load error:", err);
         setClasses([]);
       }
     };

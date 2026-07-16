@@ -41,10 +41,10 @@ export default function Modal({
       onMouseDown={onClose} // overlay click
     >
       <div
-        className={`w-full ${maxWidthClassName} rounded-2xl bg-white shadow-xl`}
+        className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col rounded-2xl bg-white shadow-xl`}
         onMouseDown={(e) => e.stopPropagation()} // prevent overlay close
       >
-        <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
 
           {!hideCloseButton && (
@@ -60,7 +60,7 @@ export default function Modal({
           )}
         </div>
 
-        <div className="px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
       </div>
     </div>
   );

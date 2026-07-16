@@ -7,6 +7,7 @@ import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfi
 import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
+import { logger } from "../../utils/logger";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -36,7 +37,7 @@ const StudentProfilePage = () => {
       setStudent(deepCopy(data));
       setOriginal(deepCopy(data));
     } catch (err) {
-      console.error("FETCH STUDENT ERROR:", err);
+      logger.error("FETCH STUDENT ERROR:", err);
       alert("Failed to load student");
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ const StudentProfilePage = () => {
 
       alert("Updated successfully");
     } catch (error) {
-      console.error("UPDATE ERROR:", error);
+      logger.error("UPDATE ERROR:", error);
       alert("Update failed");
     } finally {
       setSaving(false);
@@ -106,7 +107,7 @@ const StudentProfilePage = () => {
       alert("Deleted");
       navigate(`${adminBase}/students/list`);
     } catch (error) {
-      console.error("DELETE ERROR:", error);
+      logger.error("DELETE ERROR:", error);
       alert("Delete failed");
     }
   };
@@ -115,11 +116,11 @@ const StudentProfilePage = () => {
   if (!student) return <p className="p-6">No student found</p>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Student Profile</h1>
+    <div className="mx-auto max-w-6xl p-4 sm:p-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">Student Profile</h1>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {!isEditMode ? (
             <button
               onClick={() => setIsEditMode(true)}

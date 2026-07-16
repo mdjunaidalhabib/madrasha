@@ -16,8 +16,8 @@ export default function MarksheetPage() {
   if (!data) return <div>Loading...</div>;
 
   return (
-    <div className="p-6 print:p-0">
-      <div className="bg-white shadow p-8 max-w-3xl mx-auto print:shadow-none" id="marksheet">
+    <div className="p-3 sm:p-6 print:p-0">
+      <div className="bg-white shadow p-4 sm:p-8 max-w-3xl mx-auto print:shadow-none" id="marksheet">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">মাদ্রাসা ফলাফল পত্র</h1>
           <p>Student ID: {student_id}</p>

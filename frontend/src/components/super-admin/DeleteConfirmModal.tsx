@@ -7,8 +7,8 @@ export default function DeleteConfirmModal({ stats, onConfirm, onClose }: any) {
   const valid = text === "DELETE";
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow w-[420px] space-y-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded shadow w-full max-w-[420px] space-y-4">
         <h3 className="font-bold text-lg text-red-600">Permanent Delete Warning</h3>
 
         <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">

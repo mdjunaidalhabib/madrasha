@@ -6,6 +6,7 @@ import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ReportColumn, ReportMenuItem, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
+import { logger } from "../../utils/logger";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
@@ -41,7 +42,7 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
       setRows(Array.isArray(data) ? data : []);
       setWarning(res.data?.warning || "");
     } catch (error: any) {
-      console.error("REPORT LOAD ERROR:", error);
+      logger.error("REPORT LOAD ERROR:", error);
       setRows([]);
       setWarning(error?.response?.data?.message || "রিপোর্ট লোড করা যায়নি");
     } finally {

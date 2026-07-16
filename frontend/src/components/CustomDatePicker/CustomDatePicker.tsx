@@ -154,7 +154,7 @@ const CustomDatePicker: React.FC<Props> = ({
             </div>
 
             {openField === "month" && (
-              <div className="absolute z-20 mt-2 w-72 grid grid-cols-3 gap-2 bg-white border rounded-lg shadow p-2">
+              <div className="absolute z-20 mt-2 w-72 max-w-[85vw] right-0 sm:right-auto grid grid-cols-3 gap-2 bg-white border rounded-lg shadow p-2">
                 {months.map((m, i) => (
                   <div
                     key={m}

@@ -195,21 +195,21 @@ export default function TeacherAssignmentPanel() {
 
   /* ================= UI ================= */
   return (
-    <div className="p-6 grid grid-cols-3 gap-6 bg-gray-100 min-h-screen">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto bg-gray-100 min-h-screen">
       {/* LEFT LIST */}
 
-      <div className="col-span-2">
-        <div className="flex justify-between mb-4">
-          <h1 className="text-2xl font-bold">Teacher Assignments</h1>
+      <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Teacher Assignments</h1>
 
-          <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded">
+          <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">
             + New
           </button>
         </div>
 
         {/* GRID VIEW */}
         {assignments.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {assignments.map((a: any, i: number) => (
               <div key={i} className="bg-white p-4 rounded shadow">
                 <div className="flex justify-between">
@@ -244,11 +244,11 @@ export default function TeacherAssignmentPanel() {
       {/* ================= MODAL ================= */}
       {modalOpen && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={closeModal}
         >
           <div
-            className="w-[600px] bg-white rounded-lg p-6 relative"
+            className="w-full max-w-[600px] max-h-[90vh] overflow-y-auto bg-white rounded-lg p-4 sm:p-6 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button onClick={closeModal} className="absolute right-3 top-2 text-xl">

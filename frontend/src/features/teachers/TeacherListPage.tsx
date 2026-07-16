@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { logger } from "../../utils/logger";
 
 type Division = {
   division_id: number | string;
@@ -57,7 +58,7 @@ const TeacherListPage = () => {
       const res = await api.get("/teachers");
       setTeachers(normalizeArray(res));
     } catch (err) {
-      console.error("LOAD TEACHERS ERROR:", err);
+      logger.error("LOAD TEACHERS ERROR:", err);
       setTeachers([]);
       setError("শিক্ষক তালিকা লোড করতে সমস্যা হয়েছে");
     } finally {
@@ -70,7 +71,7 @@ const TeacherListPage = () => {
       const res = await api.get("/madrasa-divisions");
       setDivisions(normalizeArray(res));
     } catch (err) {
-      console.error("DIVISION LOAD ERROR:", err);
+      logger.error("DIVISION LOAD ERROR:", err);
       setDivisions([]);
     }
   };

@@ -38,7 +38,13 @@ app.use("/api", (_req, res, next) => {
 app.use(rateLimit(config.rateLimit));
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "madrasa-backend" });
+  res.json({
+    success: true,
+    message: "QMS Backend is running successfully.",
+    service: "Qawmi Madrasa Management System API",
+    provider: "Hikmah IT",
+    status: "OK",
+  });
 });
 
 app.use("/api", router);

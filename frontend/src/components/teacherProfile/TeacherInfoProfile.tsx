@@ -3,6 +3,7 @@ import Field from "./Field";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import ExperiencePicker from "../../components/ExperiencePicker/ExperiencePicker";
 import api from "../../services/api";
+import { logger } from "../../utils/logger";
 
 const TeacherInfoProfile = ({
   data,
@@ -21,7 +22,7 @@ const TeacherInfoProfile = ({
         const list = res.data?.data || res.data?.result || res.data || [];
         setDivisions(Array.isArray(list) ? list : []);
       } catch (err) {
-        console.error("Division load error:", err);
+        logger.error("Division load error:", err);
         setDivisions([]);
       }
     };

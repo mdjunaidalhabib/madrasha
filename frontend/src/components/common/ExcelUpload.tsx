@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { logger } from "../../utils/logger";
 
 interface ExcelUploadProps<T> {
   onDataUpload: (data: T[]) => void;
@@ -80,7 +81,7 @@ const ExcelUpload = <T,>({
         onDataUpload(cleanedRows);
         e.target.value = "";
       } catch (error) {
-        console.error("EXCEL UPLOAD ERROR:", error);
+        logger.error("EXCEL UPLOAD ERROR:", error);
         alert("Invalid Excel file");
       }
     };

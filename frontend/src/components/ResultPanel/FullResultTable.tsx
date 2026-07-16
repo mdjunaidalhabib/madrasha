@@ -71,7 +71,7 @@ export default function FullResultTable({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-xl p-4 overflow-auto mt-4">
+    <div className="bg-white shadow-md rounded-xl p-4 mt-4">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
         <div>
           <h2 className="text-lg font-semibold">📊 Full Result Table</h2>
@@ -132,14 +132,15 @@ export default function FullResultTable({
         <div className="text-center py-6 text-blue-500">Loading...</div>
       )}
 
-      <table className="w-full border text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[900px] border text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-2 py-2">ID</th>
-            <th className="border px-2 py-2">Name</th>
+            <th className="border px-2 py-2 whitespace-nowrap">ID</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Name</th>
 
             {subjectList.map((b) => (
-              <th key={b.book_id} className="border px-2 py-2">
+              <th key={b.book_id} className="border px-2 py-2 whitespace-nowrap">
                 {b.book_name ||
                   b.book_name_bn ||
                   b.name_bn ||
@@ -147,13 +148,13 @@ export default function FullResultTable({
               </th>
             ))}
 
-            <th className="border px-2 py-2">Total</th>
-            <th className="border px-2 py-2">Avg</th>
-            <th className="border px-2 py-2">General Grade</th>
-            <th className="border px-2 py-2">Madrasa Grade</th>
-            <th className="border px-2 py-2">Status</th>
-            <th className="border px-2 py-2">Rank</th>
-            <th className="border px-2 py-2">Action</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Total</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Avg</th>
+            <th className="border px-2 py-2 whitespace-nowrap">General Grade</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Madrasa Grade</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Status</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Rank</th>
+            <th className="border px-2 py-2 whitespace-nowrap">Action</th>
           </tr>
         </thead>
 
@@ -170,33 +171,33 @@ export default function FullResultTable({
           ) : (
             dataList.map((s) => (
               <tr key={s.student_id} className="hover:bg-gray-50">
-                <td className="border px-2 py-2 text-center">{s.student_id}</td>
-                <td className="border px-2 py-2">{s.name_bn}</td>
+                <td className="border px-2 py-2 text-center whitespace-nowrap">{s.student_id}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{s.name_bn}</td>
 
                 {subjectList.map((b) => (
-                  <td key={b.book_id} className="border px-2 py-2 text-center">
+                  <td key={b.book_id} className="border px-2 py-2 text-center whitespace-nowrap">
                     {getMark(s, b.book_id)}
                   </td>
                 ))}
 
-                <td className="border px-2 py-2 text-blue-600 text-center">
+                <td className="border px-2 py-2 text-blue-600 text-center whitespace-nowrap">
                   {s.total}
                 </td>
-                <td className="border px-2 py-2 text-green-600 text-center">
+                <td className="border px-2 py-2 text-green-600 text-center whitespace-nowrap">
                   {Number(s.average).toFixed(2)}
                 </td>
-                <td className="border px-2 py-2 text-center">
+                <td className="border px-2 py-2 text-center whitespace-nowrap">
                   {s.general_grade || "-"}
                 </td>
-                <td className="border px-2 py-2 text-center">
+                <td className="border px-2 py-2 text-center whitespace-nowrap">
                   {s.madrasa_grade || "-"}
                 </td>
-                <td className="border px-2 py-2 text-center">{s.status}</td>
-                <td className="border px-2 py-2 text-center font-bold">
+                <td className="border px-2 py-2 text-center whitespace-nowrap">{s.status}</td>
+                <td className="border px-2 py-2 text-center font-bold whitespace-nowrap">
                   #{s.rank_no}
                 </td>
 
-                <td className="border px-2 py-2">
+                <td className="border px-2 py-2 whitespace-nowrap">
                   <div className="flex gap-2 justify-center">
                     {onView && (
                       <button
@@ -222,6 +223,7 @@ export default function FullResultTable({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

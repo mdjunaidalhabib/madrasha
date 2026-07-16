@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import ErrorState from "./ErrorState";
+import { logger } from "../../utils/logger";
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean };
@@ -12,9 +13,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    if (import.meta.env.DEV) {
-      console.error("UI ErrorBoundary caught an error", error, info);
-    }
+    logger.error("UI ErrorBoundary caught an error", error, info);
   }
 
   render() {

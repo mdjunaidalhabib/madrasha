@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { logger } from "../../utils/logger";
 
 type Division = {
   division_id: number;
@@ -69,7 +70,7 @@ const StudentListPage = () => {
       const res = await api.get("/students");
       setStudents(normalizeArray(res));
     } catch (err) {
-      console.error("LOAD STUDENTS ERROR:", err);
+      logger.error("LOAD STUDENTS ERROR:", err);
       setStudents([]);
       setError("ছাত্র তালিকা লোড করতে সমস্যা হয়েছে");
     } finally {
@@ -82,7 +83,7 @@ const StudentListPage = () => {
       const res = await api.get("/madrasa-divisions");
       setDivisions(normalizeArray(res));
     } catch (err) {
-      console.error("DIVISION LOAD ERROR:", err);
+      logger.error("DIVISION LOAD ERROR:", err);
       setDivisions([]);
     }
   };
@@ -100,7 +101,7 @@ const StudentListPage = () => {
       const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
       setClasses(normalizeArray(res));
     } catch (err) {
-      console.error("CLASS LOAD ERROR:", err);
+      logger.error("CLASS LOAD ERROR:", err);
       setClasses([]);
     } finally {
       setClassLoading(false);

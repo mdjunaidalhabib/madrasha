@@ -7,6 +7,7 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import ResultFilter from "../../components/ResultPanel/ResultFilter";
 import MarksTable from "../../components/ResultPanel/MarksTable";
 import ResultActions from "../../components/ResultPanel/ResultActions";
+import { logger } from "../../utils/logger";
 
 type MarksState = Record<number, Record<number, number>>;
 
@@ -86,7 +87,7 @@ export default function ResultEntryPage() {
         setDivisions(extractArray(d.data));
         setExams(extractArray(e.data));
       } catch (err) {
-        console.error("Init load error:", err);
+        logger.error("Init load error:", err);
         toast.push("error", "Division / Exam load failed");
       }
     };
@@ -98,7 +99,7 @@ export default function ResultEntryPage() {
         const value = Number(res.data);
         if (!Number.isNaN(value)) setFailMark(value);
       })
-      .catch((err) => console.error("Fail mark load error:", err));
+      .catch((err) => logger.error("Fail mark load error:", err));
   }, []);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ export default function ResultEntryPage() {
         const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
         setClasses(extractArray(res.data));
       } catch (err) {
-        console.error("Class load error:", err);
+        logger.error("Class load error:", err);
         setClasses([]);
       }
     };
@@ -131,7 +132,7 @@ export default function ResultEntryPage() {
         setStudents(extractArray(s.data));
         setBooks(extractArray(b.data));
       } catch (err) {
-        console.error("Students/Books load error:", err);
+        logger.error("Students/Books load error:", err);
         setStudents([]);
         setBooks([]);
       } finally {
@@ -160,7 +161,7 @@ export default function ResultEntryPage() {
       setMarks(formatted);
       setEditMode(data.length > 0);
     } catch (err) {
-      console.error("Load marks error:", err);
+      logger.error("Load marks error:", err);
       setResultMasterId(null);
       setMarks({});
       setEditMode(false);
@@ -227,7 +228,7 @@ export default function ResultEntryPage() {
       lastAutosavedRef.current = snapshot;
       setAutosaveStatus("saved");
     } catch (err) {
-      console.error("Autosave error:", err);
+      logger.error("Autosave error:", err);
       setAutosaveStatus("error");
     } finally {
       autosaveInFlightRef.current = false;
@@ -288,7 +289,7 @@ export default function ResultEntryPage() {
       toast.push("success", "Saved & processed successfully");
       goToPreview();
     } catch (err) {
-      console.error("Save marks error:", err);
+      logger.error("Save marks error:", err);
       toast.push("error", "Save failed");
     } finally {
       setLoading(false);
@@ -301,9 +302,9 @@ export default function ResultEntryPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow">
-        <h1 className="text-2xl font-bold">✍️ নাম্বার এন্ট্রি</h1>
+    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-4 rounded-xl shadow">
+        <h1 className="text-xl sm:text-2xl font-bold">✍️ নাম্বার এন্ট্রি</h1>
 
         <button onClick={goToPreview} className="bg-gray-600 text-white px-5 py-2 rounded">
           👁 প্রিভিউ দেখুন

@@ -4,6 +4,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
+import { logger } from "../../utils/logger";
 
 type Row = { period: string; total_income: number | string; total_expense: number | string };
 
@@ -61,7 +62,7 @@ export default function ReportPage() {
             : [];
         setRows(data);
       } catch (err) {
-        console.error("Accounts report load failed:", err);
+        logger.error("Accounts report load failed:", err);
         setRows([]);
         setError("রিপোর্ট লোড করা যায়নি। Backend/schema check করুন।");
       } finally {
@@ -120,6 +121,7 @@ export default function ReportPage() {
       <div className="print-area relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <ReportWatermark />
         <ReportBrandHeader />
+        <div className="overflow-x-auto">
         <table className="report-content-body w-full min-w-[720px]">
           <thead className="bg-slate-50">
             <tr className="text-left text-sm text-slate-600">
@@ -168,6 +170,7 @@ export default function ReportPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

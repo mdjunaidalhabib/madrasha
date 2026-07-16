@@ -9,6 +9,7 @@ import BulkAdmissionModal, {
   ExcelAdmissionRow,
 } from "../../components/admission/BulkAdmissionModal";
 import api from "../../services/api";
+import { logger } from "../../utils/logger";
 
 export interface AdmissionFormData {
   name: string;
@@ -125,7 +126,7 @@ const AdmissionPage = () => {
 
         setClasses(classResults.flat());
       } catch (err) {
-        console.error("Helper data load error:", err);
+        logger.error("Helper data load error:", err);
         setDivisions([]);
         setClasses([]);
       }

@@ -44,6 +44,7 @@ import SuperAdminPlansPage from "../features/super-admin/subscriptions/SuperAdmi
 import SuperAdminWebsiteControlPage from "../features/super-admin/website-control/SuperAdminWebsiteControlPage";
 
 import PublicWebsitePage from "../features/public/website/PublicWebsitePage";
+import QmsLandingPage from "../features/public/landing/QmsLandingPage";
 import NotFoundPage from "../features/common/NotFoundPage";
 import UnauthorizedPage from "../features/common/UnauthorizedPage";
 
@@ -265,6 +266,9 @@ const madrasaAdminChildren = [
 ];
 
 export const router = createBrowserRouter([
+  // QMS product landing page — shown at the root domain (e.g. https://qms.hikmahit.com)
+  { path: "/", element: <QmsLandingPage /> },
+
   { path: "/super-admin/login", element: <SuperAdminLoginPage /> },
   {
     path: "/super-admin",

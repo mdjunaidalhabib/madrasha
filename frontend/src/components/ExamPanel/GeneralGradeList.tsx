@@ -40,31 +40,33 @@ const add = async () => {
     <div className="bg-white p-5 rounded-2xl shadow-md space-y-4">
       <h2 className="text-lg font-semibold text-gray-700">📊 General Grades</h2>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           className="border rounded-lg px-2 py-1 w-full"
           placeholder="Grade"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <input
-          className="border rounded-lg px-2 py-1 w-20"
-          placeholder="Min"
-          value={min}
-          onChange={(e) => setMin(e.target.value)}
-        />
-        <input
-          className="border rounded-lg px-2 py-1 w-20"
-          placeholder="Max"
-          value={max}
-          onChange={(e) => setMax(e.target.value)}
-        />
-        <button
-          onClick={add}
-          className="bg-blue-600 text-white px-3 rounded-lg"
-        >
-          Add
-        </button>
+        <div className="flex gap-2">
+          <input
+            className="border rounded-lg px-2 py-1 w-full sm:w-20"
+            placeholder="Min"
+            value={min}
+            onChange={(e) => setMin(e.target.value)}
+          />
+          <input
+            className="border rounded-lg px-2 py-1 w-full sm:w-20"
+            placeholder="Max"
+            value={max}
+            onChange={(e) => setMax(e.target.value)}
+          />
+          <button
+            onClick={add}
+            className="shrink-0 bg-blue-600 text-white px-3 py-1 sm:py-0 rounded-lg"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       {grades.map((g) => (

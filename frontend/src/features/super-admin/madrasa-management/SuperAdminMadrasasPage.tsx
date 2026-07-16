@@ -15,6 +15,7 @@ import MadrasasTable from "../../../components/super-admin/MadrasasTable";
 import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/CreateMadrasaModal";
 import { Link } from "react-router-dom";
 import { CreateMadrasaPayload } from "../../../components/super-admin/create-madrasa/types";
+import { logger } from "../../../utils/logger";
 
 export type Madrasa = {
   id: number;
@@ -104,7 +105,7 @@ export default function SuperAdminMadrasasPage() {
         setTotal(0);
       }
     } catch (err) {
-      console.error("Failed to fetch madrasas:", err);
+      logger.error("Failed to fetch madrasas:", err);
     } finally {
       setLoading(false);
     }
@@ -125,7 +126,7 @@ export default function SuperAdminMadrasasPage() {
         const rows = Array.isArray(data) ? data : (data.data ?? []);
         setPlans(rows);
       } catch (err) {
-        console.error("Failed to fetch plans:", err);
+        logger.error("Failed to fetch plans:", err);
       }
     };
 
@@ -145,7 +146,7 @@ export default function SuperAdminMadrasasPage() {
 
       await fetchAll();
     } catch (err) {
-      console.error("Create madrasa failed:", err);
+      logger.error("Create madrasa failed:", err);
     }
   };
 
@@ -165,7 +166,7 @@ export default function SuperAdminMadrasasPage() {
 
       await fetchAll();
     } catch (err) {
-      console.error("Toggle active failed:", err);
+      logger.error("Toggle active failed:", err);
     } finally {
       setBusyId(null);
     }
@@ -182,7 +183,7 @@ export default function SuperAdminMadrasasPage() {
       await assignPlan(m.id, planId);
       await fetchAll();
     } catch (err) {
-      console.error("Assign plan failed:", err);
+      logger.error("Assign plan failed:", err);
     } finally {
       setBusyId(null);
     }
@@ -213,7 +214,7 @@ export default function SuperAdminMadrasasPage() {
       await trashMadrasa(m.id);
       await fetchAll();
     } catch (err) {
-      console.error("Delete madrasa failed:", err);
+      logger.error("Delete madrasa failed:", err);
     } finally {
       setBusyId(null);
     }
@@ -233,7 +234,7 @@ export default function SuperAdminMadrasasPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">All Madrasas</h1>
           <p className="text-sm text-gray-600">Platform-wide madrasa list</p>

@@ -9,6 +9,7 @@ import BulkTeacherUploadModal, {
   ExcelTeacherRow,
 } from "../../components/teachers-admission/BulkTeacherUploadModal";
 import api from "../../services/api";
+import { logger } from "../../utils/logger";
 
 export interface TeacherFormData {
   name_bn: string;
@@ -120,7 +121,7 @@ const TeacherPage: React.FC = () => {
         const data = extractData(res);
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Division load error:", err);
+        logger.error("Division load error:", err);
         setDivisions([]);
       }
     };

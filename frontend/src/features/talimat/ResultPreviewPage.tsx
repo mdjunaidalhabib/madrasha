@@ -7,6 +7,7 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
+import { logger } from "../../utils/logger";
 
 interface Division {
   division_id: number;
@@ -100,7 +101,7 @@ export default function ResultPreviewPage() {
       setClasses(extractArray(res.data?.classes));
       setStatuses(extractArray(res.data?.statuses));
     } catch (err) {
-      console.error("Overview load error:", err);
+      logger.error("Overview load error:", err);
       toast.push("error", "প্রিভিউ লোড করা যায়নি");
     } finally {
       setOverviewLoading(false);
@@ -116,7 +117,7 @@ export default function ResultPreviewPage() {
         const value = Number(res.data);
         if (!Number.isNaN(value)) setFailMark(value);
       })
-      .catch((err) => console.error("Fail mark load error:", err));
+      .catch((err) => logger.error("Fail mark load error:", err));
   }, []);
 
   const loadSummary = async () => {
@@ -152,7 +153,7 @@ export default function ResultPreviewPage() {
         setResultMasterId(null);
       }
     } catch (err) {
-      console.error("Load summary error:", err);
+      logger.error("Load summary error:", err);
       setSummary([]);
       setSummaryBooks([]);
     } finally {
@@ -226,7 +227,7 @@ export default function ResultPreviewPage() {
       setEditingStudent(null);
       toast.push("success", "নাম্বার আপডেট হয়েছে");
     } catch (err) {
-      console.error("Save student marks error:", err);
+      logger.error("Save student marks error:", err);
       toast.push("error", "সেভ করা যায়নি");
     } finally {
       setStudentSaving(false);
@@ -243,7 +244,7 @@ export default function ResultPreviewPage() {
       await loadOverview();
       toast.push("success", "Result published successfully");
     } catch (err) {
-      console.error("Publish error:", err);
+      logger.error("Publish error:", err);
       toast.push("error", "Publish failed");
     } finally {
       setPublishing(false);
@@ -254,9 +255,9 @@ export default function ResultPreviewPage() {
   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow">
-        <h1 className="text-2xl font-bold">🎓 Result Preview</h1>
+    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-4 rounded-xl shadow">
+        <h1 className="text-xl sm:text-2xl font-bold">🎓 Result Preview</h1>
 
         <button onClick={goToEntry} className="bg-blue-600 text-white px-5 py-2 rounded">
           ➕ নাম্বার এন্ট্রি
@@ -265,7 +266,7 @@ export default function ResultPreviewPage() {
 
       {examId && classId ? (
         <>
-          <div className="flex items-center justify-between bg-white p-3 rounded-xl shadow">
+          <div className="flex flex-wrap gap-2 items-center justify-between bg-white p-3 rounded-xl shadow">
             <p className="text-sm text-gray-600">
               📌 {selectedExamName} — {selectedClassName}
             </p>
