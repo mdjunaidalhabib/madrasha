@@ -1,0 +1,313 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import api from "../../services/api";
+import { useToastStore } from "../../store/toastStore";
+import { getTenantAdminBase } from "../../utils/tenantSlug";
+
+import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
+import FullResultTable from "../../components/ResultPanel/FullResultTable";
+import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
+
+interface Division {
+  division_id: number;
+  division_name_bn: string;
+}
+interface Exam {
+  id: number;
+  name: string;
+}
+interface ClassItem {
+  class_id: number;
+  class_name_bn: string;
+  division_id: number;
+}
+interface StatusItem {
+  class_id: number;
+  division_id: number;
+  exam_id: number;
+  result_master_id: number | null;
+  publish_status: "DRAFT" | "PUBLISHED" | null;
+  total_students: number;
+  entered_students: number;
+}
+interface SummaryMark {
+  book_id: number;
+  book_name: string;
+  mark: number;
+}
+interface SummaryItem {
+  result_master_id: number;
+  student_id: number;
+  name_bn: string;
+  total: number;
+  average: number;
+  general_grade?: string;
+  madrasa_grade?: string;
+  status: string;
+  rank_no: number;
+  publish_status?: string;
+  marks?: SummaryMark[];
+}
+interface Book {
+  book_id: number;
+  book_name?: string;
+}
+
+const extractArray = (res: any) => {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.data?.data)) return res.data.data;
+  return [];
+};
+
+// The "Preview" page: a single screen shows every division's every class,
+// crossed with every exam, as a status grid — no more picking a division /
+// exam first just to see what's already entered. Clicking a card loads that
+// class's detailed result below. Actual number entry lives on its own page
+// (ResultEntryPage); this page only links out to it.
+export default function ResultPreviewPage() {
+  const toast = useToastStore();
+  const navigate = useNavigate();
+  const { madrasaSlug = "" } = useParams();
+  const adminBase = getTenantAdminBase(madrasaSlug);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const examId = searchParams.get("examId") || "";
+  const classId = searchParams.get("classId") || "";
+
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [statuses, setStatuses] = useState<StatusItem[]>([]);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+
+  const [summary, setSummary] = useState<SummaryItem[]>([]);
+  const [summaryBooks, setSummaryBooks] = useState<Book[]>([]);
+  const [resultMasterId, setResultMasterId] = useState<number | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const [failMark, setFailMark] = useState(33);
+  const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
+  const [studentSaving, setStudentSaving] = useState(false);
+
+  const loadOverview = async () => {
+    try {
+      setOverviewLoading(true);
+      const res = await api.get("/results/overview");
+      setDivisions(extractArray(res.data?.divisions));
+      setExams(extractArray(res.data?.exams));
+      setClasses(extractArray(res.data?.classes));
+      setStatuses(extractArray(res.data?.statuses));
+    } catch (err) {
+      console.error("Overview load error:", err);
+      toast.push("error", "প্রিভিউ লোড করা যায়নি");
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOverview();
+
+    api
+      .get("/fail-mark")
+      .then((res) => {
+        const value = Number(res.data);
+        if (!Number.isNaN(value)) setFailMark(value);
+      })
+      .catch((err) => console.error("Fail mark load error:", err));
+  }, []);
+
+  const loadSummary = async () => {
+    if (!examId || !classId) return;
+
+    try {
+      setDetailLoading(true);
+
+      const summaryRes = await api.get(
+        `/results/summary?exam_id=${examId}&class_id=${classId}`,
+      );
+      const summaryData = extractArray(summaryRes.data);
+
+      if (summaryData.length > 0) {
+        const masterId = summaryData[0].result_master_id ?? null;
+        setResultMasterId(masterId);
+
+        const fullRes = await api.get(
+          `/results/full-result?result_master_id=${masterId}`,
+        );
+
+        const fullStudents = extractArray(fullRes.data?.students);
+        const fullBooks = extractArray(fullRes.data?.books);
+        const publishStatus = summaryData[0]?.publish_status;
+
+        setSummary(
+          fullStudents.map((student: any) => ({ ...student, publish_status: publishStatus })),
+        );
+        setSummaryBooks(fullBooks);
+      } else {
+        setSummary([]);
+        setSummaryBooks([]);
+        setResultMasterId(null);
+      }
+    } catch (err) {
+      console.error("Load summary error:", err);
+      setSummary([]);
+      setSummaryBooks([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId, classId]);
+
+  const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
+    setSearchParams({ examId: String(selExamId), classId: String(selClassId) });
+  };
+
+  const handleClearSelection = () => {
+    setSearchParams({});
+    setSummary([]);
+    setSummaryBooks([]);
+    setResultMasterId(null);
+  };
+
+  // "নাম্বার এন্ট্রি" always goes to the dedicated entry page. If a class is
+  // already selected here, that class/exam comes along as a preset.
+  const goToEntry = () => {
+    const params = new URLSearchParams();
+    if (examId) params.set("examId", examId);
+    if (classId) {
+      params.set("classId", classId);
+      const cls = classes.find((c) => String(c.class_id) === classId);
+      if (cls) params.set("divisionId", String(cls.division_id));
+    }
+    navigate(`${adminBase}/talimat/results/entry${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  const handleEditStudent = (student_id: number) => {
+    const found = summary.find((s) => s.student_id === student_id);
+    if (!found) return;
+    setEditingStudent(found);
+  };
+
+  const handleSaveStudentMarks = async (values: Record<number, number>) => {
+    if (!editingStudent || !examId || !classId) return;
+
+    const payload = Object.keys(values).map((bid) => ({
+      student_id: editingStudent.student_id,
+      book_id: +bid,
+      mark: Number(values[+bid]),
+      exam_id: +examId,
+      class_id: +classId,
+    }));
+
+    if (payload.length === 0) {
+      return toast.push("error", "অন্তত একটি নাম্বার দিন");
+    }
+
+    setStudentSaving(true);
+
+    try {
+      await api.post("/results/marks", { result_master_id: resultMasterId, data: payload });
+      await api.post("/results/process", {
+        exam_id: +examId,
+        class_id: +classId,
+        result_master_id: resultMasterId,
+      });
+
+      await loadSummary();
+      await loadOverview();
+
+      setEditingStudent(null);
+      toast.push("success", "নাম্বার আপডেট হয়েছে");
+    } catch (err) {
+      console.error("Save student marks error:", err);
+      toast.push("error", "সেভ করা যায়নি");
+    } finally {
+      setStudentSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!resultMasterId) return toast.push("error", "No processed result found");
+
+    try {
+      setPublishing(true);
+      await api.post("/results/publish", { result_master_id: resultMasterId });
+      await loadSummary();
+      await loadOverview();
+      toast.push("success", "Result published successfully");
+    } catch (err) {
+      console.error("Publish error:", err);
+      toast.push("error", "Publish failed");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
+  const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
+
+  return (
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow">
+        <h1 className="text-2xl font-bold">🎓 Result Preview</h1>
+
+        <button onClick={goToEntry} className="bg-blue-600 text-white px-5 py-2 rounded">
+          ➕ নাম্বার এন্ট্রি
+        </button>
+      </div>
+
+      {examId && classId ? (
+        <>
+          <div className="flex items-center justify-between bg-white p-3 rounded-xl shadow">
+            <p className="text-sm text-gray-600">
+              📌 {selectedExamName} — {selectedClassName}
+            </p>
+            <button
+              onClick={handleClearSelection}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              ← সব দেখুন
+            </button>
+          </div>
+
+          <FullResultTable
+            summary={summary}
+            books={summaryBooks}
+            loading={detailLoading}
+            onEdit={goToEntry}
+            onEditStudent={handleEditStudent}
+            onPublish={handlePublish}
+            publishing={publishing}
+          />
+        </>
+      ) : (
+        <OverviewGrid
+          divisions={divisions}
+          exams={exams}
+          classes={classes}
+          statuses={statuses}
+          loading={overviewLoading}
+          onSelect={handleSelectFromGrid}
+        />
+      )}
+
+      {editingStudent && (
+        <StudentMarksEditModal
+          student={editingStudent}
+          books={summaryBooks}
+          failMark={failMark}
+          saving={studentSaving}
+          onClose={() => setEditingStudent(null)}
+          onSave={handleSaveStudentMarks}
+        />
+      )}
+    </div>
+  );
+}

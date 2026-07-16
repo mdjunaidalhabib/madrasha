@@ -1,0 +1,136 @@
+// ============================================================
+// ACADEMIC STRUCTURE
+// Global catalog (Division/Class/Book/Grade) plus the join tables that
+// let each tenant (Madrasa) activate a subset of that catalog.
+// ============================================================
+
+model Division {
+  id        Int      @id @default(autoincrement())
+  keyName   String?  @unique @map("key_name") @db.VarChar(50)
+  name      String?  @db.VarChar(100)
+  nameBn    String?  @map("name_bn") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasaDivisions MadrasaDivision[]
+  classes          Class[]
+  students         Student[]
+  teachers         Teacher[]
+
+  @@map("divisions")
+}
+
+model MadrasaDivision {
+  id         Int      @id @default(autoincrement())
+  madrasaId  Int      @map("madrasa_id")
+  divisionId Int      @map("division_id")
+  isActive   Int?     @default(1) @map("is_active") @db.TinyInt
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, divisionId], map: "uniq_madrasa_division")
+  @@map("madrasa_divisions")
+}
+
+model Class {
+  id         Int      @id @default(autoincrement())
+  divisionId Int?     @map("division_id")
+  name       String?  @db.VarChar(100)
+  nameBn     String?  @map("name_bn") @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  division           Division?           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  books               Book[]
+  madrasaClasses      MadrasaClass[]
+  students            Student[]           @relation("StudentClass")
+  studentsPrevious    Student[]           @relation("StudentPreviousClass")
+  teacherAssignments  TeacherAssignment[]
+  resultsMaster       ResultMaster[]
+  marks               Mark[]
+
+  @@unique([divisionId, name], map: "uniq_division_class")
+  @@map("classes")
+}
+
+model Book {
+  id        Int      @id @default(autoincrement())
+  classId   Int      @map("class_id")
+  name      String?  @db.VarChar(150)
+  nameBn    String?  @map("name_bn") @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  madrasaBooks       MadrasaBook[]
+  teacherAssignments TeacherAssignment[]
+  marks              Mark[]
+
+  @@unique([classId, name], map: "uniq_class_book")
+  @@map("books")
+}
+
+model MadrasaClass {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  classId   Int      @map("class_id")
+  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, classId], map: "uniq_madrasa_class")
+  @@map("madrasa_classes")
+}
+
+model MadrasaBook {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  bookId    Int      @map("book_id")
+  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, bookId], map: "uniq_madrasa_book")
+  @@map("madrasa_books")
+}
+
+model GeneralGrade {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(10)
+  minMark   Int      @map("min_mark")
+  maxMark   Int      @map("max_mark")
+  madrasaId Int      @default(1) @map("madrasa_id")
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, name], map: "uniq_general_grade_madrasa")
+  @@map("general_grades")
+}
+
+model MadrasaGrade {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  minMark   Int      @map("min_mark")
+  maxMark   Int      @map("max_mark")
+  madrasaId Int      @default(1) @map("madrasa_id")
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, name], map: "uniq_madrasa_grade_madrasa")
+  @@map("madrasa_grades")
+}

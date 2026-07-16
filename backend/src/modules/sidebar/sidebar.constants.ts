@@ -1,0 +1,6 @@
+export const SIDEBAR_MUHTAMIM_ROLE = "MUHTAMIM";
+export const SIDEBAR_SUPER_ADMIN_ROLE = "SUPER_ADMIN";
+export const SIDEBAR_TALIMAT_ROLE = "TALIMAT";
+export const SIDEBAR_ACCOUNTANT_ROLE = "ACCOUNTANT";
+export const SIDEBAR_TALIMAT_MODULE_KEY = "talimat";
+export const SIDEBAR_ACCOUNTS_MODULE_KEY = "accounts";

@@ -1,0 +1,102 @@
+// ============================================================
+// RESULTS
+// ============================================================
+
+enum ResultPublishStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ResultRowStatus {
+  PASS
+  FAIL
+}
+
+model ResultMaster {
+  id Int @id @default(autoincrement())
+
+  madrasaId Int  @map("madrasa_id")
+  examId    Int  @map("exam_id")
+  classId   Int  @map("class_id")
+  createdBy Int? @map("created_by")
+
+  status ResultPublishStatus @default(DRAFT)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam    Exam            @relation(fields: [examId], references: [id], onDelete: Restrict)
+  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  summary ResultSummary[]
+
+  @@unique([madrasaId, examId, classId], map: "uniq_session")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([examId, classId], map: "idx_exam_class")
+  @@index([madrasaId, examId, classId], map: "idx_madrasa_exam_class")
+  @@index([status], map: "idx_status")
+  @@map("results_master")
+}
+
+model ResultSummary {
+  id Int @id @default(autoincrement())
+
+  resultMasterId Int @map("result_master_id")
+  studentId      Int @map("student_id")
+
+  total   Float @default(0)
+  average Float @default(0)
+
+  generalGrade String? @map("general_grade") @db.VarChar(20)
+  madrasaGrade String? @map("madrasa_grade") @db.VarChar(50)
+
+  status ResultRowStatus?
+  rankNo Int?             @map("rank_no")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([resultMasterId, studentId], map: "uniq_result")
+  @@index([resultMasterId], map: "idx_result_master")
+  @@index([studentId], map: "idx_student")
+  @@index([rankNo], map: "idx_rank")
+  @@index([resultMasterId, rankNo], map: "idx_result_rank")
+  @@map("results_summary")
+}
+
+model Mark {
+  id Int @id @default(autoincrement())
+
+  resultMasterId Int @map("result_master_id")
+  studentId      Int @map("student_id")
+  examId         Int @map("exam_id")
+  classId        Int @map("class_id")
+  bookId         Int @map("book_id")
+
+  mark Float @default(0)
+
+  madrasaId Int @default(1) @map("madrasa_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Restrict)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  @@unique([resultMasterId, studentId, classId, bookId], map: "uniq_mark")
+  @@index([resultMasterId], map: "idx_master")
+  @@index([studentId], map: "idx_student")
+  @@index([examId], map: "idx_exam")
+  @@index([classId], map: "idx_class")
+  @@index([bookId], map: "idx_book")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([resultMasterId, studentId], map: "idx_master_student")
+  @@index([resultMasterId, bookId], map: "idx_master_book")
+  @@index([madrasaId, examId, classId], map: "idx_madrasa_exam_class")
+  @@map("marks")
+}

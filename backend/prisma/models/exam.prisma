@@ -1,0 +1,21 @@
+// ============================================================
+// EXAMS
+// ============================================================
+
+model Exam {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  year      String    @db.VarChar(20)
+  madrasaId Int       @default(1) @map("madrasa_id")
+  createdBy Int?      @map("created_by")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa       Madrasa        @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  resultsMaster ResultMaster[]
+  marks         Mark[]
+
+  @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
+  @@map("exams")
+}

@@ -1,0 +1,80 @@
+// ============================================================
+// SYSTEM — Platform-level catalog
+// Not tenant-scoped: super admin accounts, subscription plans, and the
+// module/feature/permission catalog that tenants activate from.
+// ============================================================
+
+model SuperAdmin {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(150)
+  email        String    @unique @db.VarChar(200)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("super_admins")
+}
+
+model Plan {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique(map: "uniq_plan_name") @db.VarChar(100)
+  studentLimit Int       @map("student_limit")
+  userLimit    Int       @map("user_limit")
+  durationDays Int?      @default(365) @map("duration_days")
+  price        Decimal?  @default(0) @db.Decimal(10, 2)
+  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  subscriptions MadrasaSubscription[]
+
+  @@map("plans")
+}
+
+model ModuleDef {
+  id        Int      @id @default(autoincrement())
+  keyName   String?  @unique @map("key_name") @db.VarChar(50)
+  name      String?  @db.VarChar(100)
+  nameBn    String?  @map("name_bn") @db.VarChar(100)
+  groupName String?  @map("group_name") @db.VarChar(100)
+  sortOrder Int?     @default(0) @map("sort_order")
+  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  features       ModuleFeature[]
+  madrasaModules MadrasaModule[]
+
+  @@map("modules")
+}
+
+model ModuleFeature {
+  id        Int      @id @default(autoincrement())
+  moduleId  Int?     @map("module_id")
+  keyName   String?  @map("key_name") @db.VarChar(100)
+  name      String?  @db.VarChar(150)
+  nameBn    String?  @map("name_bn") @db.VarChar(150)
+  sortOrder Int?     @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  module ModuleDef? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, keyName], map: "uniq_feature")
+  @@map("module_features")
+}
+
+model Permission {
+  id        Int      @id @default(autoincrement())
+  keyName   String?  @unique @map("key_name") @db.VarChar(100)
+  name      String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}

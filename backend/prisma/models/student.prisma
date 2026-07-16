@@ -1,0 +1,69 @@
+// ============================================================
+// STUDENTS
+// ============================================================
+
+model Student {
+  id        Int @id @default(autoincrement())
+  madrasaId Int @map("madrasa_id")
+
+  divisionId      Int    @map("division_id")
+  classId         Int    @map("class_id")
+  academicYear    String @default("2025") @map("academic_year") @db.VarChar(10)
+  previousClassId Int?   @map("previous_class_id")
+
+  nameBn     String  @map("name_bn") @db.VarChar(200)
+  arabicName String? @map("arabic_name") @db.VarChar(200)
+
+  nid String? @db.VarChar(50)
+
+  /// 1 = Male, 2 = Female
+  gender Int? @db.TinyInt
+
+  dob DateTime? @db.Date
+  age Int?
+
+  fatherName       String? @map("father_name") @db.VarChar(200)
+  fatherArabicName String? @map("father_arabic_name") @db.VarChar(200)
+  fatherNid        String? @map("father_nid") @db.VarChar(50)
+  fatherOccupation String? @map("father_occupation") @db.VarChar(150)
+
+  motherName       String? @map("mother_name") @db.VarChar(200)
+  motherNid        String? @map("mother_nid") @db.VarChar(50)
+  motherOccupation String? @map("mother_occupation") @db.VarChar(150)
+
+  guardianPhone String? @map("guardian_phone") @db.VarChar(20)
+
+  division String? @db.VarChar(100)
+  district String? @db.VarChar(100)
+  thana    String? @db.VarChar(100)
+  village  String? @db.VarChar(150)
+
+  image String? @db.LongText
+
+  roll Int?
+
+  admissionDate DateTime? @default(now()) @map("admission_date")
+  isActive      Int       @default(1) @map("is_active") @db.TinyInt
+  deletedAt     DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa       Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  divisionRef   Division @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+  classRef      Class    @relation("StudentClass", fields: [classId], references: [id], onDelete: Restrict)
+  previousClass Class?   @relation("StudentPreviousClass", fields: [previousClassId], references: [id], onDelete: SetNull)
+
+  resultsSummary ResultSummary[]
+  marks          Mark[]
+
+  @@unique([madrasaId, roll], map: "unique_roll_per_madrasa")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([classId], map: "idx_class")
+  @@index([guardianPhone], map: "idx_phone")
+  @@index([gender], map: "idx_gender")
+  @@index([madrasaId, classId], map: "idx_students_madrasa_class")
+  @@index([madrasaId, isActive], map: "idx_students_madrasa_active")
+  @@index([madrasaId, academicYear], map: "idx_students_madrasa_year")
+  @@map("students")
+}

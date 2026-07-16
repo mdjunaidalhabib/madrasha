@@ -1,0 +1,299 @@
+// ============================================================
+// TENANT — Madrasa account, billing, RBAC, users, settings,
+// and the tenant's public marketing website.
+// ============================================================
+
+enum WebsiteStatus {
+  active
+  limited
+  disabled
+}
+
+enum PlanStatus {
+  trial
+  active
+  expired
+  suspended
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+model Madrasa {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(200)
+  slug         String        @unique @db.VarChar(120)
+  phone        String?       @db.VarChar(20)
+  email        String?       @db.VarChar(120)
+  address      String?       @db.VarChar(255)
+  studentLimit Int?          @default(100) @map("student_limit")
+  userLimit    Int?          @default(5) @map("user_limit")
+  websiteStatus WebsiteStatus @default(active) @map("website_status")
+  customDomain String?       @map("custom_domain") @db.VarChar(190)
+  planStatus   PlanStatus    @default(active) @map("plan_status")
+  isActive     Int?          @default(1) @map("is_active") @db.TinyInt
+  deletedAt    DateTime?     @map("deleted_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  reportLogo             String?  @map("report_logo") @db.LongText
+  reportBanner           String?  @map("report_banner") @db.LongText
+  reportWatermark        String?  @map("report_watermark") @db.LongText
+  reportWatermarkOpacity Decimal  @default(0.08) @map("report_watermark_opacity") @db.Decimal(3, 2)
+
+  sanadTemplate          String? @map("sanad_template") @db.Text
+  testimonialTemplate    String? @map("testimonial_template") @db.Text
+  transferLetterTemplate String? @map("transfer_letter_template") @db.Text
+  admitCardRules         String? @map("admit_card_rules") @db.Text
+
+  subscriptions      MadrasaSubscription[]
+  payments           Payment[]
+  madrasaDivisions   MadrasaDivision[]
+  madrasaClasses     MadrasaClass[]
+  madrasaBooks       MadrasaBook[]
+  madrasaModules     MadrasaModule[]
+  roles              Role[]
+  users              User[]
+  students           Student[]
+  teachers           Teacher[]
+  teacherAssignments TeacherAssignment[]
+  accounts           Account[]
+  exams              Exam[]
+  generalGrades      GeneralGrade[]
+  madrasaGrades      MadrasaGrade[]
+  settings           Setting[]
+  resultsMaster      ResultMaster[]
+  activityLogs       ActivityLog[]
+  websiteSettings    WebsiteSettings?
+  websitePages       WebsitePage[]
+  websiteNotices     WebsiteNotice[]
+  websiteGallery     WebsiteGallery[]
+
+  @@index([isActive, deletedAt], map: "idx_madrasas_active")
+  @@index([planStatus], map: "idx_madrasas_plan_status")
+  @@map("madrasas")
+}
+
+model MadrasaSubscription {
+  id        Int       @id @default(autoincrement())
+  madrasaId Int       @map("madrasa_id")
+  planId    Int       @map("plan_id")
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  isActive  Int?      @default(1) @map("is_active") @db.TinyInt
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([madrasaId, isActive], map: "idx_subscription_madrasa_active")
+  @@map("madrasa_subscriptions")
+}
+
+model Payment {
+  id             Int           @id @default(autoincrement())
+  madrasaId      Int?          @map("madrasa_id")
+  subscriptionId Int?          @map("subscription_id")
+  amount         Decimal?      @db.Decimal(10, 2)
+  paymentMethod  String?       @map("payment_method") @db.VarChar(50)
+  transactionId  String?       @map("transaction_id") @db.VarChar(100)
+  status         PaymentStatus? @default(pending)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  // SetNull (not Cascade): payment/billing history is platform-level audit
+  // data and should survive even if the tenant or subscription is later
+  // removed.
+  madrasa      Madrasa?             @relation(fields: [madrasaId], references: [id], onDelete: SetNull)
+  subscription MadrasaSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([madrasaId], map: "idx_payments_madrasa")
+  @@index([subscriptionId], map: "idx_payments_subscription")
+  @@index([status], map: "idx_payments_status")
+  @@map("payments")
+}
+
+model MadrasaModule {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  moduleId  Int      @map("module_id")
+  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  module  ModuleDef @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, moduleId], map: "uniq_madrasa_module")
+  @@map("madrasa_modules")
+}
+
+model Role {
+  id        Int       @id @default(autoincrement())
+  madrasaId Int?      @map("madrasa_id")
+  keyName   String?   @map("key_name") @db.VarChar(50)
+  nameBn    String?   @map("name_bn") @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa         Madrasa?         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  users           User[]
+
+  // NOTE: this unique constraint did not exist before (the old schema let
+  // duplicate role key_names be created for the same tenant). Since there
+  // is no production data yet, it's added here as a real gap-fix rather
+  // than carried forward. Safe: it's a new constraint, not a field/type
+  // change, so it does not affect existing backend code.
+  @@unique([madrasaId, keyName], map: "uniq_role_madrasa_key")
+  @@index([madrasaId], map: "idx_roles_madrasa")
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       Int @map("role_id")
+  permissionId Int @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  madrasaId    Int       @map("madrasa_id")
+  name         String    @db.VarChar(200)
+  email        String    @db.VarChar(200)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  roleId       Int       @map("role_id")
+  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id])
+
+  @@unique([madrasaId, email], map: "uniq_email_madrasa")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([roleId], map: "idx_role")
+  @@index([madrasaId, isActive], map: "idx_users_madrasa_active")
+  @@map("users")
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  value     String?  @db.VarChar(50)
+  madrasaId Int      @default(1) @map("madrasa_id")
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, name], map: "uniq_setting_madrasa")
+  @@map("settings")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int?     @map("madrasa_id")
+  userId    Int?     @map("user_id")
+  action    String?  @db.VarChar(100)
+  entity    String?  @db.VarChar(100)
+  entityId  Int?     @map("entity_id")
+  details   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // NOTE: no relation on userId on purpose (kept identical to the original
+  // schema) — a log entry must survive even after the acting user is
+  // deleted. The backend already relies on this via a raw SQL join.
+  madrasa Madrasa? @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, createdAt], map: "idx_activity_madrasa_created")
+  @@index([userId], map: "idx_activity_user")
+  @@map("activity_logs")
+}
+
+// ------------------------------------------------------------
+// PUBLIC WEBSITE (per-tenant marketing site / CMS)
+// ------------------------------------------------------------
+
+model WebsiteSettings {
+  id            Int      @id @default(autoincrement())
+  madrasaId     Int      @unique @map("madrasa_id")
+  logoUrl       String?  @map("logo_url") @db.VarChar(255)
+  heroTitle     String?  @map("hero_title") @db.VarChar(190)
+  heroSubtitle  String?  @map("hero_subtitle") @db.Text
+  themeColor    String?  @default("#2563eb") @map("theme_color") @db.VarChar(30)
+  showNotices   Int?     @default(1) @map("show_notices") @db.TinyInt
+  showGallery   Int?     @default(1) @map("show_gallery") @db.TinyInt
+  showTeachers  Int?     @default(1) @map("show_teachers") @db.TinyInt
+  showAdmission Int?     @default(1) @map("show_admission") @db.TinyInt
+  showAbout     Int?     @default(1) @map("show_about") @db.TinyInt
+  showContact   Int?     @default(1) @map("show_contact") @db.TinyInt
+  isPublished   Int?     @default(1) @map("is_published") @db.TinyInt
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@map("website_settings")
+}
+
+model WebsitePage {
+  id          Int      @id @default(autoincrement())
+  madrasaId   Int      @map("madrasa_id")
+  pageKey     String   @map("page_key") @db.VarChar(60)
+  title       String   @db.VarChar(190)
+  content     String?  @db.LongText
+  isPublished Int?     @default(1) @map("is_published") @db.TinyInt
+  sortOrder   Int?     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, pageKey], map: "uniq_website_page")
+  @@map("website_pages")
+}
+
+model WebsiteNotice {
+  id          Int       @id @default(autoincrement())
+  madrasaId   Int       @map("madrasa_id")
+  title       String    @db.VarChar(190)
+  content     String?   @db.Text
+  isPublished Int?      @default(1) @map("is_published") @db.TinyInt
+  publishedAt DateTime? @default(now()) @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, isPublished, publishedAt], map: "idx_website_notices_madrasa")
+  @@map("website_notices")
+}
+
+model WebsiteGallery {
+  id          Int      @id @default(autoincrement())
+  madrasaId   Int      @map("madrasa_id")
+  title       String?  @db.VarChar(190)
+  imageUrl    String   @map("image_url") @db.VarChar(255)
+  isPublished Int?     @default(1) @map("is_published") @db.TinyInt
+  sortOrder   Int?     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, isPublished, sortOrder], map: "idx_website_gallery_madrasa")
+  @@map("website_gallery")
+}

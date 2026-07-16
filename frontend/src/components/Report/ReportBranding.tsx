@@ -1,0 +1,58 @@
+import { useEffect } from "react";
+import { useBrandingStore } from "../../store/brandingStore";
+
+/**
+ * Renders the madrasa's watermark (behind content) automatically.
+ * Place once, inside `.print-area`, as a sibling before the report content.
+ */
+export function ReportWatermark() {
+  const branding = useBrandingStore((s) => s.branding);
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+
+  useEffect(() => {
+    fetchBranding();
+  }, [fetchBranding]);
+
+  if (!branding?.report_watermark) return null;
+
+  const opacity =
+    branding.report_watermark_opacity !== undefined && branding.report_watermark_opacity !== null
+      ? Number(branding.report_watermark_opacity)
+      : 0.08;
+
+  return (
+    <div className="report-watermark" style={{ opacity }} aria-hidden="true">
+      <img src={branding.report_watermark} alt="" />
+    </div>
+  );
+}
+
+/**
+ * Renders the madrasa's logo + name + address header automatically at the
+ * top of every report/print page. Safe to render even when nothing is set
+ * (renders nothing in that case).
+ */
+export function ReportBrandHeader() {
+  const branding = useBrandingStore((s) => s.branding);
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+
+  useEffect(() => {
+    fetchBranding();
+  }, [fetchBranding]);
+
+  if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
+
+  return (
+    <div className="report-brand-header mb-3 flex flex-col items-center gap-1 text-center">
+      {branding.report_logo && (
+        <img src={branding.report_logo} alt="Logo" className="mb-1 h-16 w-16 object-contain md:h-20 md:w-20" />
+      )}
+      {branding.name && (
+        <div className="text-lg font-bold text-slate-900 md:text-xl">{branding.name}</div>
+      )}
+      {branding.address && (
+        <div className="text-sm text-slate-600 md:text-base">{branding.address}</div>
+      )}
+    </div>
+  );
+}

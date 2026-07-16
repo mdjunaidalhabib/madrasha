@@ -1,0 +1,40 @@
+// ============================================================
+// ACCOUNTS — income/expense ledger
+// ============================================================
+
+enum AccountType {
+  income
+  expense
+}
+
+model Account {
+  id            Int          @id @default(autoincrement())
+  madrasaId     Int?         @map("madrasa_id")
+  type          AccountType?
+  amount        Decimal?     @db.Decimal(10, 2)
+  category      String?      @db.VarChar(100)
+  description   String?      @db.VarChar(255)
+  receiptNo     String?      @map("receipt_no") @db.VarChar(80)
+  voucherNo     String?      @map("voucher_no") @db.VarChar(80)
+  fund          String?      @db.VarChar(120)
+  donorName     String?      @map("donor_name") @db.VarChar(200)
+  receiverName  String?      @map("receiver_name") @db.VarChar(200)
+  address       String?      @db.VarChar(255)
+  mobile        String?      @db.VarChar(30)
+  paymentMethod String?      @map("payment_method") @db.VarChar(80)
+  entryDate     DateTime?    @map("entry_date") @db.Date
+  entryTime     DateTime?    @map("entry_time") @db.Time
+  createdBy     Int?         @map("created_by")
+  deletedAt     DateTime?    @map("deleted_at")
+  hardDeletedAt DateTime?    @map("hard_deleted_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa? @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, type], map: "idx_accounts_madrasa_type")
+  @@index([fund], map: "idx_accounts_fund")
+  @@index([entryDate], map: "idx_accounts_entry_date")
+  @@index([madrasaId, deletedAt], map: "idx_accounts_madrasa_deleted")
+  @@map("accounts")
+}

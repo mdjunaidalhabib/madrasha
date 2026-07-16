@@ -1,0 +1,97 @@
+// ============================================================
+// TEACHERS
+// ============================================================
+
+model Teacher {
+  id Int @id @default(autoincrement())
+
+  madrasaId  Int @map("madrasa_id")
+  divisionId Int @map("division_id")
+
+  nameBn String  @map("name_bn") @db.VarChar(200)
+  nameAr String? @map("name_ar") @db.VarChar(200)
+
+  nid    String? @db.VarChar(50)
+  /// 1=male, 2=female
+  gender Int?    @db.TinyInt
+
+  dob DateTime? @db.Date
+  age Int?
+
+  phone String? @db.VarChar(50)
+  email String? @db.VarChar(150)
+
+  designation   String? @db.VarChar(150)
+  department    String? @db.VarChar(150)
+  qualification String? @db.VarChar(200)
+
+  experienceYear  Int? @default(0) @map("experience_year")
+  experienceMonth Int? @default(0) @map("experience_month")
+
+  /// generated column (experience_year*12 + experience_month) — read-only from Prisma
+  experienceTotalMonths Int? @map("experience_total_months")
+
+  joiningDate DateTime? @map("joining_date") @db.Date
+  salary      Decimal?  @db.Decimal(10, 2)
+
+  fatherName       String? @map("father_name") @db.VarChar(200)
+  fatherNameAr     String? @map("father_name_ar") @db.VarChar(200)
+  fatherNid        String? @map("father_nid") @db.VarChar(50)
+  fatherOccupation String? @map("father_occupation") @db.VarChar(150)
+
+  motherName       String? @map("mother_name") @db.VarChar(200)
+  motherNid        String? @map("mother_nid") @db.VarChar(50)
+  motherOccupation String? @map("mother_occupation") @db.VarChar(150)
+
+  parentPhone String? @map("parent_phone") @db.VarChar(50)
+
+  division String? @db.VarChar(100)
+  district String? @db.VarChar(100)
+  thana    String? @db.VarChar(100)
+  village  String? @db.VarChar(150)
+
+  image String? @db.Text
+
+  isActive  Int?      @default(1) @map("is_active") @db.TinyInt
+  deletedAt DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa            Madrasa             @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  divisionRef        Division            @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+  teacherAssignments TeacherAssignment[]
+
+  @@unique([madrasaId, email], map: "uniq_teacher_email")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([divisionId], map: "idx_division_id")
+  @@index([phone], map: "idx_phone")
+  @@index([experienceTotalMonths], map: "idx_experience_total")
+  @@index([joiningDate], map: "idx_joining_date")
+  @@index([madrasaId, isActive], map: "idx_teachers_madrasa_active")
+  @@map("teachers")
+}
+
+model TeacherAssignment {
+  id Int @id @default(autoincrement())
+
+  madrasaId Int @default(1) @map("madrasa_id")
+  teacherId Int @map("teacher_id")
+  classId   Int @map("class_id")
+  bookId    Int @map("book_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  @@unique([madrasaId, teacherId, classId, bookId], map: "unique_assignment")
+  @@index([madrasaId], map: "idx_madrasa")
+  @@index([teacherId], map: "idx_teacher")
+  @@index([classId], map: "idx_class")
+  @@index([bookId], map: "idx_book")
+  @@map("teacher_assignments")
+}
