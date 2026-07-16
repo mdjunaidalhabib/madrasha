@@ -31,10 +31,10 @@ model ResultMaster {
   summary ResultSummary[]
 
   @@unique([madrasaId, examId, classId], map: "uniq_session")
-  @@index([madrasaId], map: "idx_madrasa")
-  @@index([examId, classId], map: "idx_exam_class")
-  @@index([madrasaId, examId, classId], map: "idx_madrasa_exam_class")
-  @@index([status], map: "idx_status")
+  @@index([madrasaId], map: "idx_results_master_madrasa")
+  @@index([examId, classId], map: "idx_results_master_exam_class")
+  @@index([madrasaId, examId, classId], map: "idx_results_master_madrasa_exam_class")
+  @@index([status], map: "idx_results_master_status")
   @@map("results_master")
 }
 
@@ -60,10 +60,10 @@ model ResultSummary {
   student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([resultMasterId, studentId], map: "uniq_result")
-  @@index([resultMasterId], map: "idx_result_master")
-  @@index([studentId], map: "idx_student")
-  @@index([rankNo], map: "idx_rank")
-  @@index([resultMasterId, rankNo], map: "idx_result_rank")
+  @@index([resultMasterId], map: "idx_results_summary_result_master")
+  @@index([studentId], map: "idx_results_summary_student")
+  @@index([rankNo], map: "idx_results_summary_rank")
+  @@index([resultMasterId, rankNo], map: "idx_results_summary_result_rank")
   @@map("results_summary")
 }
 
@@ -89,14 +89,14 @@ model Mark {
   book    Book    @relation(fields: [bookId], references: [id], onDelete: Restrict)
 
   @@unique([resultMasterId, studentId, classId, bookId], map: "uniq_mark")
-  @@index([resultMasterId], map: "idx_master")
-  @@index([studentId], map: "idx_student")
-  @@index([examId], map: "idx_exam")
-  @@index([classId], map: "idx_class")
-  @@index([bookId], map: "idx_book")
-  @@index([madrasaId], map: "idx_madrasa")
-  @@index([resultMasterId, studentId], map: "idx_master_student")
-  @@index([resultMasterId, bookId], map: "idx_master_book")
-  @@index([madrasaId, examId, classId], map: "idx_madrasa_exam_class")
+  @@index([resultMasterId], map: "idx_marks_master")
+  @@index([studentId], map: "idx_marks_student")
+  @@index([examId], map: "idx_marks_exam")
+  @@index([classId], map: "idx_marks_class")
+  @@index([bookId], map: "idx_marks_book")
+  @@index([madrasaId], map: "idx_marks_madrasa")
+  @@index([resultMasterId, studentId], map: "idx_marks_master_student")
+  @@index([resultMasterId, bookId], map: "idx_marks_master_book")
+  @@index([madrasaId, examId, classId], map: "idx_marks_madrasa_exam_class")
   @@map("marks")
 }

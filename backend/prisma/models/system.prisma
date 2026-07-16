@@ -9,7 +9,7 @@ model SuperAdmin {
   name         String    @db.VarChar(150)
   email        String    @unique @db.VarChar(200)
   passwordHash String    @map("password_hash") @db.VarChar(255)
-  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  isActive     Int?      @default(1) @map("is_active")
   deletedAt    DateTime? @map("deleted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -24,7 +24,7 @@ model Plan {
   userLimit    Int       @map("user_limit")
   durationDays Int?      @default(365) @map("duration_days")
   price        Decimal?  @default(0) @db.Decimal(10, 2)
-  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  isActive     Int?      @default(1) @map("is_active")
   deletedAt    DateTime? @map("deleted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -41,7 +41,7 @@ model ModuleDef {
   nameBn    String?  @map("name_bn") @db.VarChar(100)
   groupName String?  @map("group_name") @db.VarChar(100)
   sortOrder Int?     @default(0) @map("sort_order")
-  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  isActive  Int?     @default(1) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

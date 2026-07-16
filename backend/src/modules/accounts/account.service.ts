@@ -127,7 +127,7 @@ export class AccountService {
   }
 
   async getReport(madrasaId: number, type: string, groupBy: string): Promise<ReportRow[]> {
-    const dateColumn = "COALESCE(entry_date, DATE(created_at))";
+    const dateColumn = "COALESCE(entry_date, CAST(created_at AS DATE))";
 
     if (groupBy === "fund") {
       return this.repository.findReportByFund(madrasaId);
@@ -139,10 +139,10 @@ export class AccountService {
 
     const periodExpr =
       type === "daily"
-        ? `DATE(${dateColumn})`
+        ? `CAST(${dateColumn} AS DATE)`
         : type === "yearly"
-          ? `YEAR(${dateColumn})`
-          : `DATE_FORMAT(${dateColumn},'%Y-%m')`;
+          ? `EXTRACT(YEAR FROM ${dateColumn})`
+          : `TO_CHAR(${dateColumn}, 'YYYY-MM')`;
 
     return this.repository.findReportByPeriod(madrasaId, periodExpr);
   }

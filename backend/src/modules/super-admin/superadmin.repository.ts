@@ -113,14 +113,14 @@ export class SuperAdminRepository {
         m.slug,
         p.name AS plan_name,
         s.end_date,
-        DATEDIFF(s.end_date, CURDATE()) AS days_left
+        (s.end_date - CURRENT_DATE) AS days_left
       FROM madrasa_subscriptions s
       JOIN madrasas m ON m.id = s.madrasa_id
       JOIN plans p ON p.id = s.plan_id
       WHERE s.is_active = 1
         AND m.deleted_at IS NULL
         AND s.end_date IS NOT NULL
-        AND s.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+        AND s.end_date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '7 days')
       ORDER BY s.end_date ASC
       LIMIT 30
     `;
@@ -133,14 +133,14 @@ export class SuperAdminRepository {
         m.slug,
         p.name AS plan_name,
         s.end_date,
-        DATEDIFF(CURDATE(), s.end_date) AS days_overdue
+        (CURRENT_DATE - s.end_date) AS days_overdue
       FROM madrasa_subscriptions s
       JOIN madrasas m ON m.id = s.madrasa_id
       JOIN plans p ON p.id = s.plan_id
       WHERE s.is_active = 1
         AND m.deleted_at IS NULL
         AND s.end_date IS NOT NULL
-        AND s.end_date < CURDATE()
+        AND s.end_date < CURRENT_DATE
       ORDER BY s.end_date ASC
       LIMIT 50
     `;

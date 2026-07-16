@@ -20,7 +20,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 5000),
   dbHost: required("DB_HOST", "localhost"),
-  dbUser: required("DB_USER", "root"),
+  dbUser: required("DB_USER", "postgres"),
   dbPass: process.env.DB_PASS || "",
   dbName: required("DB_NAME"),
   // Prisma reads DATABASE_URL directly from process.env (see prisma/schema.prisma),
@@ -28,9 +28,9 @@ export const env = {
   // still works without duplicating credentials.
   databaseUrl:
     process.env.DATABASE_URL ||
-    `mysql://${encodeURIComponent(process.env.DB_USER || "root")}:${encodeURIComponent(
+    `postgresql://${encodeURIComponent(process.env.DB_USER || "postgres")}:${encodeURIComponent(
       process.env.DB_PASS || "",
-    )}@${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 3306}/${process.env.DB_NAME || ""}`,
+    )}@${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || ""}`,
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   rootDomain: process.env.ROOT_DOMAIN || "localhost",

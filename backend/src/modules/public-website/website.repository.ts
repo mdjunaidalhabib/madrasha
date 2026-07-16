@@ -46,7 +46,7 @@ export class WebsiteRepository {
   async findTeachersOptional(madrasaId: number): Promise<any[]> {
     try {
       const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT id, name, designation, subject FROM teachers WHERE madrasa_id=? ORDER BY id DESC LIMIT ?`,
+        `SELECT id, name, designation, subject FROM teachers WHERE madrasa_id=$1 ORDER BY id DESC LIMIT $2`,
         madrasaId,
         PUBLIC_TEACHERS_LIMIT,
       );

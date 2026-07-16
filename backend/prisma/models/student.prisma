@@ -17,7 +17,7 @@ model Student {
   nid String? @db.VarChar(50)
 
   /// 1 = Male, 2 = Female
-  gender Int? @db.TinyInt
+  gender Int?
 
   dob DateTime? @db.Date
   age Int?
@@ -38,12 +38,12 @@ model Student {
   thana    String? @db.VarChar(100)
   village  String? @db.VarChar(150)
 
-  image String? @db.LongText
+  image String?
 
   roll Int?
 
   admissionDate DateTime? @default(now()) @map("admission_date")
-  isActive      Int       @default(1) @map("is_active") @db.TinyInt
+  isActive      Int       @default(1) @map("is_active")
   deletedAt     DateTime? @map("deleted_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -58,10 +58,10 @@ model Student {
   marks          Mark[]
 
   @@unique([madrasaId, roll], map: "unique_roll_per_madrasa")
-  @@index([madrasaId], map: "idx_madrasa")
-  @@index([classId], map: "idx_class")
-  @@index([guardianPhone], map: "idx_phone")
-  @@index([gender], map: "idx_gender")
+  @@index([madrasaId], map: "idx_students_madrasa")
+  @@index([classId], map: "idx_students_class")
+  @@index([guardianPhone], map: "idx_students_phone")
+  @@index([gender], map: "idx_students_gender")
   @@index([madrasaId, classId], map: "idx_students_madrasa_class")
   @@index([madrasaId, isActive], map: "idx_students_madrasa_active")
   @@index([madrasaId, academicYear], map: "idx_students_madrasa_year")

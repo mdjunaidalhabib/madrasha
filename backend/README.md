@@ -1,6 +1,6 @@
 # Madrasa Backend
 
-Production-ready Express + TypeScript + MySQL backend for the multi-tenant Madrasa SaaS platform.
+Production-ready Express + TypeScript + PostgreSQL backend for the multi-tenant Madrasa SaaS platform.
 
 ## Main features
 
@@ -20,7 +20,10 @@ npm install
 npm run dev
 ```
 
-Import `schema.sql` into MySQL before running the app. For an existing database, run `migrations/001_website_updates.sql` once before using website features.
+Set `DATABASE_URL` in `.env` to a PostgreSQL connection string, e.g.
+`postgresql://postgres:password@localhost:5432/madrasha`, then run
+`npx prisma migrate dev` to create the schema (Prisma is the single
+source of truth now — there's no `schema.sql` to import manually).
 
 ## Important environment values
 

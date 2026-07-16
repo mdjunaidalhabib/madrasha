@@ -41,7 +41,7 @@ export class AccountRepository {
       `SELECT ${periodExpr} AS period,
         SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS total_income,
         SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS total_expense
-       FROM accounts WHERE madrasa_id = ? AND deleted_at IS NULL
+       FROM accounts WHERE madrasa_id = $1 AND deleted_at IS NULL
        GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${REPORT_ROW_LIMIT}`,
       madrasaId,
     );

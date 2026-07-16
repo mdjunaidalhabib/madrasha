@@ -27,11 +27,14 @@
 //   admission, employee, attendance, fees, payroll, library,
 //   hostel, transport, inventory, sms, notice, report
 //
-// NOTE ON DATABASE ENGINE: intentionally still MySQL. The backend has
-// MySQL-specific raw SQL (reports/, activity/, public-website/ modules)
-// using `?` positional placeholders and MySQL driver error codes —
-// switching the engine would break those call sites at runtime, and
-// fixing them is outside the scope of this Prisma-only refactor.
+// NOTE ON DATABASE ENGINE: migrated from MySQL to PostgreSQL. Raw SQL in
+// reports/, accounts/, dashboard/, public-website/, super-admin/ modules
+// has been converted: `?` positional placeholders -> `$1, $2, ...`,
+// MySQL-only functions (CURDATE, DATE(), DATEDIFF, DATE_ADD, DATE_FORMAT,
+// YEAR()) -> Postgres equivalents (CURRENT_DATE, CAST(x AS DATE), date
+// subtraction, INTERVAL, TO_CHAR, EXTRACT), and MySQL-only native column
+// types (@db.TinyInt, @db.LongText) removed from the model files since
+// they don't exist under the postgresql connector.
 // ============================================================
 
 generator client {
@@ -39,6 +42,6 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }

@@ -55,7 +55,7 @@ export class ReportsRepository {
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY rm.id DESC, rs.rank_no ASC, s.id ASC
       `,
       [madrasaId],
@@ -81,7 +81,7 @@ export class ReportsRepository {
       LEFT JOIN divisions d ON d.id = r.division_id
       LEFT JOIN books b ON b.id = r.book_id
       LEFT JOIN teachers t ON t.id = r.teacher_id
-      WHERE r.madrasa_id = ?
+      WHERE r.madrasa_id = $1
       ORDER BY r.day, r.start_time
       `,
       [madrasaId],
@@ -108,7 +108,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -130,7 +130,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY c.id ASC, s.name_bn ASC
       `,
       [madrasaId],
@@ -150,7 +150,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY c.id ASC, s.name_bn ASC
       `,
       [madrasaId],
@@ -175,7 +175,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -205,7 +205,7 @@ export class ReportsRepository {
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY rm.id DESC, rs.rank_no ASC
       `,
       [madrasaId],
@@ -231,7 +231,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -262,7 +262,7 @@ export class ReportsRepository {
           WHERE ex2.madrasa_id = s.madrasa_id
           ORDER BY ex2.id DESC LIMIT 1
         )
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -291,7 +291,7 @@ export class ReportsRepository {
         WHERE rs2.student_id = s.id
         ORDER BY rs2.id DESC LIMIT 1
       )
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -314,7 +314,7 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = ?
+      WHERE s.madrasa_id = $1
       ORDER BY s.id DESC
       `,
       [madrasaId],
@@ -339,7 +339,7 @@ export class ReportsRepository {
         t.joining_date
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
-      WHERE t.madrasa_id = ?
+      WHERE t.madrasa_id = $1
       ORDER BY t.id DESC
       `,
       [madrasaId],
@@ -359,7 +359,7 @@ export class ReportsRepository {
         COALESCE(d.name_bn, d.name) AS division_name
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
-      WHERE t.madrasa_id = ?
+      WHERE t.madrasa_id = $1
       ORDER BY t.name_bn ASC
       `,
       [madrasaId],

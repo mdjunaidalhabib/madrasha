@@ -34,14 +34,14 @@ model Madrasa {
   websiteStatus WebsiteStatus @default(active) @map("website_status")
   customDomain String?       @map("custom_domain") @db.VarChar(190)
   planStatus   PlanStatus    @default(active) @map("plan_status")
-  isActive     Int?          @default(1) @map("is_active") @db.TinyInt
+  isActive     Int?          @default(1) @map("is_active")
   deletedAt    DateTime?     @map("deleted_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
 
-  reportLogo             String?  @map("report_logo") @db.LongText
-  reportBanner           String?  @map("report_banner") @db.LongText
-  reportWatermark        String?  @map("report_watermark") @db.LongText
+  reportLogo             String?  @map("report_logo")
+  reportBanner           String?  @map("report_banner")
+  reportWatermark        String?  @map("report_watermark")
   reportWatermarkOpacity Decimal  @default(0.08) @map("report_watermark_opacity") @db.Decimal(3, 2)
 
   sanadTemplate          String? @map("sanad_template") @db.Text
@@ -83,7 +83,7 @@ model MadrasaSubscription {
   planId    Int       @map("plan_id")
   startDate DateTime? @map("start_date") @db.Date
   endDate   DateTime? @map("end_date") @db.Date
-  isActive  Int?      @default(1) @map("is_active") @db.TinyInt
+  isActive  Int?      @default(1) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
@@ -122,7 +122,7 @@ model MadrasaModule {
   id        Int      @id @default(autoincrement())
   madrasaId Int      @map("madrasa_id")
   moduleId  Int      @map("module_id")
-  isActive  Int?     @default(1) @map("is_active") @db.TinyInt
+  isActive  Int?     @default(1) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -173,7 +173,7 @@ model User {
   email        String    @db.VarChar(200)
   passwordHash String    @map("password_hash") @db.VarChar(255)
   roleId       Int       @map("role_id")
-  isActive     Int?      @default(1) @map("is_active") @db.TinyInt
+  isActive     Int?      @default(1) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -182,8 +182,8 @@ model User {
   role    Role    @relation(fields: [roleId], references: [id])
 
   @@unique([madrasaId, email], map: "uniq_email_madrasa")
-  @@index([madrasaId], map: "idx_madrasa")
-  @@index([roleId], map: "idx_role")
+  @@index([madrasaId], map: "idx_users_madrasa")
+  @@index([roleId], map: "idx_users_role")
   @@index([madrasaId, isActive], map: "idx_users_madrasa_active")
   @@map("users")
 }
@@ -234,13 +234,13 @@ model WebsiteSettings {
   heroTitle     String?  @map("hero_title") @db.VarChar(190)
   heroSubtitle  String?  @map("hero_subtitle") @db.Text
   themeColor    String?  @default("#2563eb") @map("theme_color") @db.VarChar(30)
-  showNotices   Int?     @default(1) @map("show_notices") @db.TinyInt
-  showGallery   Int?     @default(1) @map("show_gallery") @db.TinyInt
-  showTeachers  Int?     @default(1) @map("show_teachers") @db.TinyInt
-  showAdmission Int?     @default(1) @map("show_admission") @db.TinyInt
-  showAbout     Int?     @default(1) @map("show_about") @db.TinyInt
-  showContact   Int?     @default(1) @map("show_contact") @db.TinyInt
-  isPublished   Int?     @default(1) @map("is_published") @db.TinyInt
+  showNotices   Int?     @default(1) @map("show_notices")
+  showGallery   Int?     @default(1) @map("show_gallery")
+  showTeachers  Int?     @default(1) @map("show_teachers")
+  showAdmission Int?     @default(1) @map("show_admission")
+  showAbout     Int?     @default(1) @map("show_about")
+  showContact   Int?     @default(1) @map("show_contact")
+  isPublished   Int?     @default(1) @map("is_published")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -254,8 +254,8 @@ model WebsitePage {
   madrasaId   Int      @map("madrasa_id")
   pageKey     String   @map("page_key") @db.VarChar(60)
   title       String   @db.VarChar(190)
-  content     String?  @db.LongText
-  isPublished Int?     @default(1) @map("is_published") @db.TinyInt
+  content     String?
+  isPublished Int?     @default(1) @map("is_published")
   sortOrder   Int?     @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
@@ -271,7 +271,7 @@ model WebsiteNotice {
   madrasaId   Int       @map("madrasa_id")
   title       String    @db.VarChar(190)
   content     String?   @db.Text
-  isPublished Int?      @default(1) @map("is_published") @db.TinyInt
+  isPublished Int?      @default(1) @map("is_published")
   publishedAt DateTime? @default(now()) @map("published_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -287,7 +287,7 @@ model WebsiteGallery {
   madrasaId   Int      @map("madrasa_id")
   title       String?  @db.VarChar(190)
   imageUrl    String   @map("image_url") @db.VarChar(255)
-  isPublished Int?     @default(1) @map("is_published") @db.TinyInt
+  isPublished Int?     @default(1) @map("is_published")
   sortOrder   Int?     @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
