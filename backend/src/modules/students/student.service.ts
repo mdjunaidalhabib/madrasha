@@ -7,14 +7,17 @@ import {
   STUDENT_FIELD_MAP,
 } from "./student.constants";
 import {
+  AdmissionResult,
   BulkAdmissionResult,
   BulkAdmissionRow,
   MissingFieldsError,
+  PreviousStudentLookup,
   StudentListFilters,
   StudentListItem,
   StudentNotFoundError,
   TenantNotResolvedError,
 } from "./student.types";
+import { toStudentApiDto } from "./student.mapper";
 import { StudentAdmissionRequestDto } from "./student.dto";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
@@ -74,10 +77,7 @@ export class StudentService {
 
     const rows = await this.repository.findMany(where);
 
-    return rows.map(({ classRef, ...s }) => ({
-      ...s,
-      current_class: classRef?.nameBn ?? null,
-    })) as StudentListItem[];
+    return rows.map(toStudentApiDto);
   }
 
   async getStudentDetail(id: number, madrasaId: number | undefined) {
@@ -86,11 +86,28 @@ export class StudentService {
     const row = await this.repository.findByIdForTenant(id, madrasaId);
     if (!row) throw new StudentNotFoundError();
 
-    const { classRef, ...s } = row as any;
-    return { ...s, current_class: classRef?.nameBn ?? null };
+    return toStudentApiDto(row);
   }
 
-  async admitStudent(body: StudentAdmissionRequestDto, madrasaId: number | undefined) {
+  async lookupByNid(
+    nid: string,
+    madrasaId: number | undefined,
+  ): Promise<PreviousStudentLookup | null> {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const cleanedNid = clean(nid) as string | null;
+    if (!cleanedNid) return null;
+
+    const row = await this.repository.findByNid(madrasaId, cleanedNid);
+    if (!row) return null;
+
+    return toStudentApiDto(row);
+  }
+
+  async admitStudent(
+    body: StudentAdmissionRequestDto,
+    madrasaId: number | undefined,
+  ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!body || Object.keys(body).length === 0) {
@@ -107,9 +124,28 @@ export class StudentService {
     }
 
     const data = makeStudentData(body, madrasaId);
-    const created = await this.repository.create(data as Prisma.StudentUncheckedCreateInput);
 
-    return created.id;
+    // Returning-student check: a student is uniquely identified within a
+    // madrasa by NID. If one already exists, treat this submission as a
+    // re-admission into a new academic year (session) rather than creating
+    // a duplicate student record - only the session/class/etc. fields are
+    // updated on the existing record.
+    const nid = clean(body.nid) as string | null;
+    const existing = nid ? await this.repository.findByNid(madrasaId, nid) : null;
+
+    if (existing) {
+      const { madrasaId: _omit, ...updateData } = data;
+      await this.repository.updateManyForTenant(existing.id, madrasaId, updateData);
+
+      return {
+        studentId: existing.id,
+        action: "re_admitted",
+        previousAcademicYear: existing.academicYear,
+      };
+    }
+
+    const created = await this.repository.create(data as Prisma.StudentUncheckedCreateInput);
+    return { studentId: created.id, action: "created" };
   }
 
   async admitStudentsBulk(
@@ -155,14 +191,32 @@ export class StudentService {
             await this.repository.updateOnTx(tx, existing.id, updateData);
           }
           updated++;
-          preview.push({ row: index + 1, action: "update", id: existing.id, nid, changes });
+          preview.push({
+            row: index + 1,
+            action: "update",
+            id: existing.id,
+            nid,
+            name: data.nameBn,
+            previousAcademicYear: existing.academicYear ?? null,
+            academicYear: data.academicYear,
+            changes,
+          });
         } else {
           const created = await this.repository.createOnTx(
             tx,
             data as Prisma.StudentUncheckedCreateInput,
           );
           inserted++;
-          preview.push({ row: index + 1, action: "create", id: created.id, nid, changes: [] });
+          preview.push({
+            row: index + 1,
+            action: "create",
+            id: created.id,
+            nid,
+            name: data.nameBn,
+            previousAcademicYear: null,
+            academicYear: data.academicYear,
+            changes: [],
+          });
         }
       }
 

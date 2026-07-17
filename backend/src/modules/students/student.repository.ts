@@ -29,6 +29,20 @@ export class StudentRepository {
     });
   }
 
+  /**
+   * Looks up a student by NID within a tenant, regardless of which
+   * academic year they were last admitted under. Used to detect
+   * returning students at admission time (re-admission / সেশন পরিবর্তন)
+   * so a new session doesn't create a duplicate student record.
+   */
+  findByNid(madrasaId: number, nid: string) {
+    return prisma.student.findFirst({
+      where: { madrasaId, nid },
+      include: { classRef: { select: { nameBn: true } } },
+      orderBy: { id: "desc" },
+    });
+  }
+
   create(data: Prisma.StudentUncheckedCreateInput) {
     return prisma.student.create({ data });
   }
@@ -49,7 +63,7 @@ export class StudentRepository {
   /* ---- transaction-scoped helpers used by the bulk-admission flow ---- */
 
   findByNidOnTx(tx: TransactionClient, madrasaId: number, nid: string) {
-    return tx.student.findFirst({ where: { madrasaId, nid } });
+    return tx.student.findFirst({ where: { madrasaId, nid }, orderBy: { id: "desc" } });
   }
 
   createOnTx(tx: TransactionClient, data: Prisma.StudentUncheckedCreateInput) {

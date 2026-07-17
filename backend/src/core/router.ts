@@ -14,7 +14,6 @@ import sidebarRoutes from "../modules/sidebar/sidebar.routes";
 
 // 👨‍🎓 Student & Admission
 import studentRoutes from "../modules/students/student.routes";
-import admissionRoutes from "../modules/admission/admission.routes";
 
 // 👨‍🎓 teacher Admission
 import teacherRoutes from "../modules/teacher/teacher.routes";
@@ -75,7 +74,6 @@ router.use("/activity", activityRoutes);
 ========================= */
 
 router.use("/students", studentRoutes);
-router.use("/students/admission", admissionRoutes);
 /* =========================
    TEACHER MODULE
 ========================= */

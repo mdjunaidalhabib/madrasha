@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx-js-style";
 import StudentInfo from "../../components/admission/StudentInfo";
 import ParentInfo from "../../components/admission/ParentInfo";
 import AddressInfo from "../../components/admission/AddressInfo";
 import ImageUpload from "../../components/admission/ImageUpload";
 import SubmitButton from "../../components/admission/SubmitButton";
+import PreviousStudentBanner from "../../components/admission/PreviousStudentBanner";
 import BulkAdmissionModal, {
+  BulkAdmissionResultData,
   ExcelAdmissionRow,
 } from "../../components/admission/BulkAdmissionModal";
 import api from "../../services/api";
@@ -38,6 +40,34 @@ export interface AdmissionFormData {
 }
 
 export type AdmissionFormErrors = Partial<Record<keyof AdmissionFormData, string>>;
+
+interface PreviousStudentData {
+  id: number;
+  name_bn: string;
+  arabic_name: string | null;
+  nid: string | null;
+  gender: number | null;
+  dob: string | null;
+  age: number | null;
+  division_id: number | null;
+  class_id: number | null;
+  academic_year: string;
+  previous_class_id: number | null;
+  current_class: string | null;
+  father_name: string | null;
+  father_arabic_name: string | null;
+  father_nid: string | null;
+  father_occupation: string | null;
+  mother_name: string | null;
+  mother_nid: string | null;
+  mother_occupation: string | null;
+  guardian_phone: string | null;
+  division: string | null;
+  district: string | null;
+  thana: string | null;
+  village: string | null;
+  image: string | null;
+}
 
 type DivisionItem = {
   division_id: number;
@@ -91,12 +121,95 @@ const AdmissionPage = () => {
   const [errors, setErrors] = useState<AdmissionFormErrors>({});
   const [excelStudents, setExcelStudents] = useState<ExcelAdmissionRow[]>([]);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkResult, setBulkResult] = useState<BulkAdmissionResultData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
+  const [previousStudent, setPreviousStudent] = useState<PreviousStudentData | null>(null);
+  const [nidLookupLoading, setNidLookupLoading] = useState(false);
+  const lookupAbortRef = useRef<AbortController | null>(null);
+
   const extractData = (res: any) => res?.data?.data || res?.data?.result || res?.data || [];
+
+  // Look up previous admission data by NID as soon as office staff types it
+  // in, so returning students can be detected before submit and re-admitted
+  // into the new session instead of being entered as a duplicate.
+  useEffect(() => {
+    const nid = formData.nid.trim();
+
+    lookupAbortRef.current?.abort();
+
+    if (nid.length < 4) {
+      setPreviousStudent(null);
+      setNidLookupLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    lookupAbortRef.current = controller;
+
+    const timer = setTimeout(async () => {
+      try {
+        setNidLookupLoading(true);
+
+        const res = await api.get(`/students/lookup?nid=${encodeURIComponent(nid)}`, {
+          signal: controller.signal,
+        });
+
+        const found = res?.data?.found;
+        const data = res?.data?.data as PreviousStudentData | null;
+
+        if (found && data) {
+          setPreviousStudent(data);
+
+          setFormData((prev) => ({
+            ...prev,
+            name: data.name_bn || prev.name,
+            arabicName: data.arabic_name || prev.arabicName,
+            gender: data.gender ?? prev.gender,
+            dob: data.dob ? String(data.dob).slice(0, 10) : prev.dob,
+            age: data.age ?? prev.age,
+            academicDivision: data.division_id ? String(data.division_id) : prev.academicDivision,
+            previousClass: data.class_id ? String(data.class_id) : prev.previousClass,
+            fatherName: data.father_name || prev.fatherName,
+            fatherArabicName: data.father_arabic_name || prev.fatherArabicName,
+            fatherNid: data.father_nid || prev.fatherNid,
+            fatherOccupation: data.father_occupation || prev.fatherOccupation,
+            motherName: data.mother_name || prev.motherName,
+            motherNid: data.mother_nid || prev.motherNid,
+            motherOccupation: data.mother_occupation || prev.motherOccupation,
+            parentPhone: data.guardian_phone || prev.parentPhone,
+            division: data.division || prev.division,
+            district: data.district || prev.district,
+            thana: data.thana || prev.thana,
+            village: data.village || prev.village,
+            image: data.image || prev.image,
+          }));
+        } else {
+          setPreviousStudent(null);
+        }
+      } catch (err: any) {
+        if (err?.name !== "CanceledError") {
+          logger.error("NID lookup error:", err);
+        }
+      } finally {
+        setNidLookupLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.nid]);
+
+  const handleDismissPreviousStudent = () => {
+    setPreviousStudent(null);
+    setFormData((prev) => ({ ...prev, nid: "" }));
+  };
 
   useEffect(() => {
     const fetchHelperData = async () => {
@@ -152,6 +265,12 @@ const AdmissionPage = () => {
   const handleBulkModalClose = () => {
     setBulkModalOpen(false);
     setExcelStudents([]);
+    setBulkResult(null);
+  };
+
+  const handleBulkClear = () => {
+    setExcelStudents([]);
+    setBulkResult(null);
   };
 
   const validateForm = () => {
@@ -344,11 +463,12 @@ const AdmissionPage = () => {
         students: makeExcelPayload(),
       });
 
-      alert(
-        `Bulk Admission Successful ✅\nনতুন: ${res.data?.inserted || 0} | আপডেট: ${res.data?.updated || 0}`,
-      );
+      setBulkResult({
+        inserted: res.data?.inserted || 0,
+        updated: res.data?.updated || 0,
+        preview: res.data?.preview || [],
+      });
       setExcelStudents([]);
-      setBulkModalOpen(false);
     } catch (err: any) {
       alert(err?.response?.data?.message || "Bulk Admission Failed ❌");
     } finally {
@@ -391,11 +511,19 @@ const AdmissionPage = () => {
     try {
       setLoading(true);
 
-      await api.post("/students/admission", payload);
+      const res = await api.post("/students/admission", payload);
 
-      alert("Admission Successful ✅");
+      if (res.data?.action === "re_admitted") {
+        alert(
+          `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear})`,
+        );
+      } else {
+        alert("Admission Successful ✅");
+      }
+
       setFormData(initialState);
       setErrors({});
+      setPreviousStudent(null);
     } catch (err: any) {
       alert(err?.response?.data?.message || "Failed ❌");
     } finally {
@@ -418,6 +546,16 @@ const AdmissionPage = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {(nidLookupLoading || previousStudent) && (
+          <PreviousStudentBanner
+            loading={nidLookupLoading}
+            studentName={previousStudent?.name_bn || ""}
+            previousAcademicYear={previousStudent?.academic_year || ""}
+            previousClassName={previousStudent?.current_class || null}
+            onDismiss={handleDismissPreviousStudent}
+          />
+        )}
+
         <ImageUpload formData={formData} setFormData={setFormData} />
 
         <StudentInfo
@@ -435,7 +573,7 @@ const AdmissionPage = () => {
         />
 
         <AddressInfo formData={formData} setFormData={setFormData} />
-        <SubmitButton loading={loading} />
+        <SubmitButton loading={loading} isReAdmission={Boolean(previousStudent)} />
       </form>
 
       <BulkAdmissionModal
@@ -445,9 +583,10 @@ const AdmissionPage = () => {
         requiredColumns={requiredColumns}
         divisions={divisions}
         classes={classes}
+        result={bulkResult}
         onClose={handleBulkModalClose}
         onDataUpload={setExcelStudents}
-        onClear={() => setExcelStudents([])}
+        onClear={handleBulkClear}
         onSubmit={handleExcelSubmit}
         onDownloadTemplate={downloadTemplate}
       />

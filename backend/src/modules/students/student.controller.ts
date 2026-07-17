@@ -66,17 +66,44 @@ export const getStudentById = async (req: Request, res: Response) => {
 };
 
 /* =========================================================
+   LOOKUP STUDENT BY NID (returning-student check for admission)
+========================================================= */
+export const lookupStudentByNid = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const nid = String(req.query.nid || "").trim();
+
+    if (!nid) {
+      return res.json({ success: true, found: false, data: null });
+    }
+
+    const data = await studentService.lookupByNid(nid, madrasaId);
+
+    return res.json({ success: true, found: Boolean(data), data });
+  } catch (error) {
+    return respondWithError(res, error, "LOOKUP STUDENT BY NID ERROR:");
+  }
+};
+
+/* =========================================================
    CREATE SINGLE STUDENT
 ========================================================= */
 export const createStudent = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const studentId = await studentService.admitStudent(req.body || {}, madrasaId);
+    const result = await studentService.admitStudent(req.body || {}, madrasaId);
+
+    const message =
+      result.action === "re_admitted"
+        ? "পূর্বের তথ্য পাওয়া গেছে - শিক্ষার্থী নতুন সেশনে পুনঃভর্তি (আপডেট) হয়েছে"
+        : "Student admitted successfully";
 
     return res.json({
       success: true,
-      message: "Student admitted successfully",
-      studentId,
+      message,
+      studentId: result.studentId,
+      action: result.action,
+      previousAcademicYear: result.previousAcademicYear,
     });
   } catch (error) {
     return respondWithError(res, error, "🔥 CREATE STUDENT ERROR:");
