@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   GraduationCap,
   Users,
@@ -26,6 +26,13 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import ContactFab from "../../../components/common/ContactFab";
+
+// Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
+// the floating contact button and the Contact section below. Kept in one
+// place so both stay in sync.
+const CONTACT_PHONE_DISPLAY = "01624114405";
+const CONTACT_PHONE_INTL = "8801624114405"; // wa.me needs country code, no "+" or leading 0
 
 const NAV_LINKS = [
   { href: "#about", label: "পরিচিতি" },
@@ -52,15 +59,7 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  desc,
-}: {
-  icon: ReactNode;
-  title: string;
-  desc: string;
-}) {
+function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
     <div className="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
       <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">
@@ -120,6 +119,39 @@ function StepItem({
 
 export default function QmsLandingPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Tracks which section is currently in view so the matching nav link can
+  // be highlighted (scrollspy). Defaults to the first nav link's section.
+  const [activeSection, setActiveSection] = useState(NAV_LINKS[0].href.slice(1));
+
+  useEffect(() => {
+    const sectionIds = NAV_LINKS.map((link) => link.href.slice(1));
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Among sections currently intersecting the "active band" near the
+        // top of the viewport, pick the one closest to the top.
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visible.length > 0) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      // Treat a horizontal band just below the sticky header as "active":
+      // a section is counted as current once it reaches that band and
+      // until it scrolls past it.
+      { rootMargin: "-88px 0px -70% 0px", threshold: 0 },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
@@ -142,11 +174,21 @@ export default function QmsLandingPage() {
           </a>
 
           <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
-            {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} className="transition hover:text-emerald-700">
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((link) => {
+              const isActive = activeSection === link.href.slice(1);
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive ? "true" : undefined}
+                  className={`transition hover:text-emerald-700 ${
+                    isActive ? "font-semibold text-emerald-700" : ""
+                  }`}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -175,16 +217,22 @@ export default function QmsLandingPage() {
         {mobileNavOpen && (
           <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden">
             <nav className="flex flex-col gap-1 text-sm font-medium text-slate-600">
-              {NAV_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileNavOpen(false)}
-                  className="rounded-lg px-3 py-2.5 transition hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {NAV_LINKS.map((link) => {
+                const isActive = activeSection === link.href.slice(1);
+                return (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-current={isActive ? "true" : undefined}
+                    className={`rounded-lg px-3 py-2.5 transition hover:bg-emerald-50 hover:text-emerald-700 ${
+                      isActive ? "bg-emerald-50 font-semibold text-emerald-700" : ""
+                    }`}
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
               <a
                 href="#contact"
                 onClick={() => setMobileNavOpen(false)}
@@ -205,8 +253,7 @@ export default function QmsLandingPage() {
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)",
+            backgroundImage: "radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)",
             backgroundSize: "28px 28px",
           }}
         />
@@ -219,22 +266,16 @@ export default function QmsLandingPage() {
           className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"
         />
 
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-28">
+        <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-8 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-28">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-white/10">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Powered by Hikmah IT
-            </div>
-
-            <h1 className="mt-6 text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl">
+            <h1 className="text-2xl font-extrabold leading-[1.25] tracking-tight text-white sm:text-4xl sm:leading-[1.15] lg:text-5xl">
               কওমি মাদ্রাসা পরিচালনার
               <span className="block text-emerald-400">সম্পূর্ণ ডিজিটাল সমাধান</span>
             </h1>
 
             <p className="mt-5 max-w-lg text-base leading-7 text-slate-300">
-              QMS (Qawmi Madrasa Management System) একটি আধুনিক সফটওয়্যার, যা দিয়ে ছাত্র,
-              শিক্ষক, ভর্তি, হাজিরা, পরীক্ষা-ফলাফল ও হিসাব — সবকিছু এক জায়গা থেকে সহজে
-              পরিচালনা করা যায়।
+              QMS (Qawmi Madrasa Management System) একটি আধুনিক সফটওয়্যার, যা দিয়ে ছাত্র, শিক্ষক,
+              ভর্তি, হাজিরা, পরীক্ষা-ফলাফল ও হিসাব — সবকিছু এক জায়গা থেকে সহজে পরিচালনা করা যায়।
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -317,8 +358,8 @@ export default function QmsLandingPage() {
             মাদ্রাসার সকল কার্যক্রম একটি প্ল্যাটফর্মে
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            কওমি মাদ্রাসার দৈনন্দিন প্রশাসনিক ও একাডেমিক কাজগুলো সহজ ও গোছালো করতে QMS তৈরি
-            করা হয়েছে। প্রতিটি মডিউল বাস্তব প্রয়োজন বিবেচনা করে ডিজাইন করা।
+            কওমি মাদ্রাসার দৈনন্দিন প্রশাসনিক ও একাডেমিক কাজগুলো সহজ ও গোছালো করতে QMS তৈরি করা
+            হয়েছে। প্রতিটি মডিউল বাস্তব প্রয়োজন বিবেচনা করে ডিজাইন করা।
           </p>
         </div>
 
@@ -548,14 +589,13 @@ export default function QmsLandingPage() {
               </div>
               <h2 className="mt-4 text-2xl font-extrabold text-white">Hikmah IT</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                আপনার মাদ্রাসার জন্য QMS চালু করতে আজই যোগাযোগ করুন। আমরা আছি প্রতিটি ধাপে
-                পাশে।
+                আপনার মাদ্রাসার জন্য QMS চালু করতে আজই যোগাযোগ করুন। আমরা আছি প্রতিটি ধাপে পাশে।
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-px bg-white/10 sm:grid-cols-3 lg:col-span-3">
               <a
-                href="tel:01624114405"
+                href={`tel:${CONTACT_PHONE_DISPLAY}`}
                 className="flex flex-col gap-3 bg-[#0b1220] p-8 transition hover:bg-white/[0.03]"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
@@ -563,7 +603,7 @@ export default function QmsLandingPage() {
                 </span>
                 <span className="text-xs font-medium text-slate-400">Phone</span>
                 <span className="text-sm font-semibold text-white" dir="ltr">
-                  01624114405
+                  {CONTACT_PHONE_DISPLAY}
                 </span>
               </a>
               <a
@@ -594,19 +634,51 @@ export default function QmsLandingPage() {
 
       {/* ---------------- Footer ---------------- */}
       <footer className="border-t border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white">
-              <GraduationCap size={14} />
-            </span>
-            <span>
-              <span className="font-semibold text-slate-700">QMS</span> — Powered by{" "}
-              <span className="font-semibold text-slate-700">Hikmah IT</span>
-            </span>
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+          <div className="flex flex-col items-center gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-2">
+              <a
+                href="#top"
+                className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white"
+              >
+                <GraduationCap size={14} />
+              </a>
+              <span className="text-sm">
+                <a
+                  href="#top"
+                  className="font-semibold text-slate-700 transition hover:text-emerald-700"
+                >
+                  QMS
+                </a>{" "}
+                — Powered by{" "}
+                <a
+                  href="https://hikmahit.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold transition text-emerald-600 hover:text-emerald-500"
+                >
+                  Hikmah IT
+                </a>
+              </span>
+            </div>
+
+            <p>
+              &copy; {new Date().getFullYear()}{" "}
+              <a
+                href="https://hikmahit.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition text-emerald-600 hover:text-emerald-500"
+              >
+                Hikmah IT
+              </a>
+              . সর্বস্বত্ব সংরক্ষিত।
+            </p>
           </div>
-          <p>&copy; {new Date().getFullYear()} Hikmah IT. সর্বস্বত্ব সংরক্ষিত।</p>
         </div>
       </footer>
+
+      <ContactFab phoneDisplay={CONTACT_PHONE_DISPLAY} phoneIntl={CONTACT_PHONE_INTL} />
     </div>
   );
 }
