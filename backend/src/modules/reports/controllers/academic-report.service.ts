@@ -7,6 +7,10 @@ export class AcademicReportService {
     return this.repository.findAcademicResults(madrasaId);
   }
 
+  getResultNotice(madrasaId: number) {
+    return this.repository.findAcademicResultNotice(madrasaId);
+  }
+
   getRoutines(madrasaId: number) {
     return this.repository.findAcademicRoutines(madrasaId);
   }
@@ -21,6 +25,14 @@ export class AcademicReportService {
 
   getResidentialAttendance(madrasaId: number) {
     return this.repository.findResidentialAttendance(madrasaId);
+  }
+
+  getDailyAttendance(madrasaId: number) {
+    return this.repository.findDailyAttendance(madrasaId);
+  }
+
+  getDigitalAttendance(madrasaId: number) {
+    return this.repository.findDigitalAttendance(madrasaId);
   }
 }
 

@@ -23,6 +23,7 @@ export interface StudentApiDto {
   gender: number | null;
   dob: Date | null;
   age: number | null;
+  roll: number | null;
   division_id: number | null;
   class_id: number | null;
   academic_year: string;

@@ -14,6 +14,18 @@ export const getAcademicResultsReport = async (req: Request, res: Response) => {
   }
 };
 
+export const getAcademicResultNoticeReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { rows, warning } = await academicReportService.getResultNotice(madrasaId);
+    return ok(res, rows, warning);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 export const getAcademicRoutineReport = async (req: Request, res: Response) => {
   const madrasaId = requireTenant(req, res);
   if (!madrasaId) return;
@@ -57,6 +69,30 @@ export const getResidentialAttendanceReport = async (req: Request, res: Response
   try {
     const rows = await academicReportService.getResidentialAttendance(madrasaId);
     return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getDailyAttendanceReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { rows, warning } = await academicReportService.getDailyAttendance(madrasaId);
+    return ok(res, rows, warning);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getDigitalAttendanceReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { rows, warning } = await academicReportService.getDigitalAttendance(madrasaId);
+    return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);
   }

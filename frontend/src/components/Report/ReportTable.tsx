@@ -4,9 +4,10 @@ import { cellValue } from "../../utils/reportUtils";
 type ReportTableProps = {
   report: ReportMenuItem;
   rows: Record<string, any>[];
+  startIndex?: number;
 };
 
-const ReportTable = ({ report, rows }: ReportTableProps) => {
+const ReportTable = ({ report, rows, startIndex = 0 }: ReportTableProps) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse border border-slate-300 text-sm">
@@ -46,7 +47,7 @@ const ReportTable = ({ report, rows }: ReportTableProps) => {
                 className="transition hover:bg-slate-50"
               >
                 <td className="w-20 min-w-20 max-w-20 border border-slate-300 px-3 py-3 text-center font-medium text-slate-700">
-                  {rowIndex + 1}
+                  {startIndex + rowIndex + 1}
                 </td>
 
                 {report.columns.map((column) => (

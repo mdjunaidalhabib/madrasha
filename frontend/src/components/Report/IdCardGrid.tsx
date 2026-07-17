@@ -6,33 +6,55 @@ type IdCardGridProps = {
 
 const IdCardGrid = ({ rows }: IdCardGridProps) => {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="report-id-card-grid grid gap-4">
       {rows.map((row, index) => (
         <div
           key={`id-card-${row.id || index}`}
-          className="print-page-break rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          className="print-page-break overflow-hidden rounded-xl border-2 border-blue-900 bg-white shadow-sm"
         >
-          <div className="mb-3 flex items-start justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">{cellValue(row, "student_name")}</h3>
-              <p className="text-xs text-slate-500">Student ID Card</p>
+          <div className="bg-blue-900 px-4 py-2 text-center text-white">
+            <h3 className="text-base font-bold">শিক্ষার্থী পরিচয়পত্র</h3>
+            <p className="text-[10px] uppercase tracking-widest">Student ID Card</p>
+          </div>
+
+          <div className="flex gap-4 p-4">
+            <div className="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-slate-300 bg-slate-50 text-xs text-slate-400">
+              {row.image ? (
+                <img
+                  src={String(row.image)}
+                  alt={String(row.student_name || "Student")}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                "ছবি"
+              )}
             </div>
 
-            <div className="flex h-20 w-16 items-center justify-center rounded border border-dashed text-xs text-slate-400">
-              ছবি
+            <div className="min-w-0 flex-1">
+              <h4 className="truncate text-lg font-bold text-slate-900">
+                {cellValue(row, "student_name")}
+              </h4>
+              <div className="mt-2 space-y-1 text-xs text-slate-700">
+                <p>
+                  <b>রেজিস্ট্রেশন:</b> {cellValue(row, "id")}
+                </p>
+                <p>
+                  <b>রোল:</b> {cellValue(row, "roll")}
+                </p>
+                <p>
+                  <b>শ্রেণি:</b> {cellValue(row, "class_name")}
+                </p>
+                <p>
+                  <b>বিভাগ:</b> {cellValue(row, "division_name")}
+                </p>
+                <p>
+                  <b>সেশন:</b> {cellValue(row, "academic_year")}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-1 text-sm text-slate-700">
-            <p>
-              <b>আইডি:</b> {cellValue(row, "id")}
-            </p>
-            <p>
-              <b>শ্রেণি:</b> {cellValue(row, "class_name")}
-            </p>
-            <p>
-              <b>বিভাগ:</b> {cellValue(row, "division_name")}
-            </p>
+          <div className="border-t border-slate-200 px-4 py-2 text-xs text-slate-700">
             <p>
               <b>অভিভাবক:</b> {cellValue(row, "father_name")}
             </p>

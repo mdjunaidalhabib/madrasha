@@ -4,85 +4,54 @@ type DigitalAttendancePrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
+  startIndex?: number;
 };
 
 const DigitalAttendancePrint = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
-}: DigitalAttendancePrintProps) => {
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-
-  return (
-    <div className="attendance-a4 mx-auto w-full bg-white text-slate-900">
-      <div className="mb-4 text-center">
-        <h1 className="mb-4 text-xl font-bold">ডিজিটাল হাজিরা খাতা</h1>
-
-        <div className="grid grid-cols-4 gap-1 text-[14px]">
-          <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-            বিভাগ: {selectedDivisionName || "সকল বিভাগ"}
-          </div>
-
-          <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-            শ্রেণি: {selectedClassName || "সকল শ্রেণি"}
-          </div>
-
-          <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-            বছর: ........................
-          </div>
-
-          <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-            মাস: ........................
-          </div>
-        </div>
-      </div>
-
-      <table className="w-full table-fixed border-collapse text-center">
-        <thead>
-          <tr>
-            <th className="h-14 w-6 border border-slate-900 p-0 align-middle">
-              <span className="inline-block whitespace-nowrap -rotate-90 text-[12px] font-normal leading-none">
-                ক্রমিক
-              </span>
-            </th>
-
-            <th className="w-32 border border-slate-900 p-0.5 text-[14px] font-bold">
-              শিক্ষার্থীর নাম
-            </th>
-
-            {days.map((day) => (
-              <th key={day} className="h-14 w-[10px] border border-slate-900 p-0 align-middle">
-                <span className="inline-block whitespace-nowrap -rotate-90 text-[9px] font-bold leading-none">
-                  {day.toLocaleString("bn-BD")}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={`digital-attendance-${row.id || index}`}>
-              <td className="h-7 border border-slate-900 p-0 text-[14px]">
-                {(index + 1).toLocaleString("bn-BD")}
-              </td>
-
-              <td className="h-7 border border-slate-900 px-3 text-left text-[14px] font-semibold">
-                {cellValue(row, "student_name")}
-              </td>
-
-              {days.map((day) => (
-                <td
-                  key={`digital-attendance-${row.id || index}-${day}`}
-                  className="h-7 border border-slate-900 p-0"
-                />
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  startIndex = 0,
+}: DigitalAttendancePrintProps) => (
+  <div className="mx-auto w-full bg-white text-slate-900">
+    <div className="mb-4 text-center">
+      <h1 className="text-xl font-bold">ডিজিটাল হাজিরা রিপোর্ট</h1>
+      <p className="mt-1 text-sm text-slate-600">
+        বিভাগ: {selectedDivisionName || "সকল বিভাগ"} | শ্রেণি: {selectedClassName || "সকল শ্রেণি"}
+      </p>
     </div>
-  );
-};
+
+    <table className="w-full border-collapse text-center text-sm">
+      <thead>
+        <tr className="bg-slate-100">
+          <th className="border border-slate-600 px-2 py-2">ক্রমিক</th>
+          <th className="border border-slate-600 px-2 py-2">রোল</th>
+          <th className="border border-slate-600 px-2 py-2 text-left">শিক্ষার্থী</th>
+          <th className="border border-slate-600 px-2 py-2">শ্রেণি</th>
+          <th className="border border-slate-600 px-2 py-2">তারিখ</th>
+          <th className="border border-slate-600 px-2 py-2">ইন টাইম</th>
+          <th className="border border-slate-600 px-2 py-2">আউট টাইম</th>
+          <th className="border border-slate-600 px-2 py-2">স্ট্যাটাস</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={`digital-${row.id || row.student_id || index}`}>
+            <td className="border border-slate-600 px-2 py-2">{startIndex + index + 1}</td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "roll")}</td>
+            <td className="border border-slate-600 px-2 py-2 text-left font-semibold">
+              {cellValue(row, "student_name")}
+            </td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "class_name")}</td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "date")}</td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "check_in")}</td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "check_out")}</td>
+            <td className="border border-slate-600 px-2 py-2">{cellValue(row, "status")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 export default DigitalAttendancePrint;

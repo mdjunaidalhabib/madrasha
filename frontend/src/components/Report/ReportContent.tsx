@@ -7,6 +7,8 @@ import SanadList from "./SanadList";
 import AdmitCardGrid from "./AdmitCardGrid";
 import TransferLetterList from "./TransferLetterList";
 import IdCardGrid from "./IdCardGrid";
+import MarksheetList from "./MarksheetList";
+import ResultNoticeList from "./ResultNoticeList";
 import ReportTable from "./ReportTable";
 
 type ReportContentProps = {
@@ -15,6 +17,7 @@ type ReportContentProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
+  startIndex?: number;
 };
 
 const ReportContent = ({
@@ -23,6 +26,7 @@ const ReportContent = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
+  startIndex = 0,
 }: ReportContentProps) => {
   if (loading) {
     return (
@@ -40,25 +44,15 @@ const ReportContent = ({
     );
   }
 
-  if (report.printable === "id-card") {
-    return <IdCardGrid rows={rows} />;
+  if (report.printable === "marksheet") return <MarksheetList rows={rows} />;
+  if (report.printable === "result-notice") {
+    return <ResultNoticeList rows={rows} startIndex={startIndex} />;
   }
-
-  if (report.printable === "admit-card") {
-    return <AdmitCardGrid rows={rows} />;
-  }
-
-  if (report.printable === "certificate") {
-    return <SanadList rows={rows} />;
-  }
-
-  if (report.printable === "testimonial") {
-    return <TestimonialList rows={rows} />;
-  }
-
-  if (report.printable === "transfer-letter") {
-    return <TransferLetterList rows={rows} />;
-  }
+  if (report.printable === "id-card") return <IdCardGrid rows={rows} />;
+  if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} />;
+  if (report.printable === "certificate") return <SanadList rows={rows} />;
+  if (report.printable === "testimonial") return <TestimonialList rows={rows} />;
+  if (report.printable === "transfer-letter") return <TransferLetterList rows={rows} />;
 
   if (report.printable === "attendance-register") {
     return (
@@ -66,6 +60,7 @@ const ReportContent = ({
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
+        startIndex={startIndex}
       />
     );
   }
@@ -76,6 +71,7 @@ const ReportContent = ({
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
+        startIndex={startIndex}
       />
     );
   }
@@ -86,6 +82,7 @@ const ReportContent = ({
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
+        startIndex={startIndex}
       />
     );
   }
@@ -93,7 +90,7 @@ const ReportContent = ({
   return (
     <div className="border bg-white">
       <div className="overflow-x-auto">
-        <ReportTable report={report} rows={rows} />
+        <ReportTable report={report} rows={rows} startIndex={startIndex} />
       </div>
     </div>
   );

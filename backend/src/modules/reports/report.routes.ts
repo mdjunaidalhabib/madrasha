@@ -3,8 +3,11 @@ import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import {
   getAcademicAdmissionReport,
+  getAcademicResultNoticeReport,
   getAcademicResultsReport,
   getAcademicRoutineReport,
+  getDailyAttendanceReport,
+  getDigitalAttendanceReport,
   getGuardianPhoneReport,
   getResidentialAttendanceReport,
 } from "./controllers/academic-report.controller";
@@ -27,12 +30,13 @@ router.use(tenantMiddleware);
 router.use(authMiddleware);
 
 router.get("/academic/results", getAcademicResultsReport);
+router.get("/academic/result-notice", getAcademicResultNoticeReport);
 router.get("/academic/routines", getAcademicRoutineReport);
 router.get("/academic/admissions", getAcademicAdmissionReport);
 router.get("/academic/guardian-phones", getGuardianPhoneReport);
 router.get("/academic/residential-attendance", getResidentialAttendanceReport);
-router.get("/academic/daily-attendance", getResidentialAttendanceReport);
-router.get("/academic/digital-attendance", getResidentialAttendanceReport);
+router.get("/academic/daily-attendance", getDailyAttendanceReport);
+router.get("/academic/digital-attendance", getDigitalAttendanceReport);
 router.get("/academic/id-cards", getStudentIdCardsReport);
 
 router.get("/student/marksheets", getStudentMarksheetsReport);

@@ -17,10 +17,13 @@ export default function MarksheetPage() {
 
   return (
     <div className="p-3 sm:p-6 print:p-0">
-      <div className="bg-white shadow p-4 sm:p-8 max-w-3xl mx-auto print:shadow-none" id="marksheet">
+      <div
+        className="bg-white shadow p-4 sm:p-8 max-w-3xl mx-auto print:shadow-none"
+        id="marksheet"
+      >
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">মাদ্রাসা ফলাফল পত্র</h1>
-          <p>Student ID: {student_id}</p>
+          <p>Registration Number: {student_id}</p>
         </div>
 
         <table className="w-full border border-collapse mb-4">
@@ -41,9 +44,15 @@ export default function MarksheetPage() {
         </table>
 
         <div className="mb-6">
-          <p><b>Total:</b> {data.total}</p>
-          <p><b>Average:</b> {Number(data.average).toFixed(2)}</p>
-          <p><b>Grade:</b> {data.grade}</p>
+          <p>
+            <b>Total:</b> {data.total}
+          </p>
+          <p>
+            <b>Average:</b> {Number(data.average).toFixed(2)}
+          </p>
+          <p>
+            <b>Grade:</b> {data.grade}
+          </p>
         </div>
 
         <div className="flex justify-between mt-10">
@@ -59,10 +68,7 @@ export default function MarksheetPage() {
       </div>
 
       <div className="text-center mt-6 print:hidden">
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
+        <button onClick={() => window.print()} className="bg-blue-600 text-white px-4 py-2 rounded">
           Print
         </button>
       </div>

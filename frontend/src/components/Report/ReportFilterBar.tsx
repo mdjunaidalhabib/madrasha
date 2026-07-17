@@ -1,4 +1,7 @@
-import DataExportPrintActions from "../common/DataExportPrintActions";
+import DataExportPrintActions, {
+  Orientation,
+  PaperSize,
+} from "../common/DataExportPrintActions";
 import {
   ClassItem,
   Division,
@@ -19,6 +22,10 @@ type ReportFilterBarProps = {
   onDivisionChange: (value: string) => void;
   onClassChange: (value: string) => void;
   onClear: () => void;
+  paperSize: PaperSize;
+  orientation: Orientation;
+  onPaperSizeChange: (value: PaperSize) => void;
+  onOrientationChange: (value: Orientation) => void;
 };
 
 const ReportFilterBar = ({
@@ -34,6 +41,10 @@ const ReportFilterBar = ({
   onDivisionChange,
   onClassChange,
   onClear,
+  paperSize,
+  orientation,
+  onPaperSizeChange,
+  onOrientationChange,
 }: ReportFilterBarProps) => {
   return (
     <div className="no-print flex flex-wrap items-center justify-between gap-3">
@@ -87,6 +98,10 @@ const ReportFilterBar = ({
         columns={exportColumns}
         data={exportRows}
         fileName={activeReport.key}
+        paperSize={paperSize}
+        orientation={orientation}
+        onPaperSizeChange={onPaperSizeChange}
+        onOrientationChange={onOrientationChange}
       />
     </div>
   );

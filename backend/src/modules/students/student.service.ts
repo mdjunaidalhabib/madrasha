@@ -2,10 +2,7 @@ import { Prisma } from "@prisma/client";
 import { studentRepository, StudentRepository } from "./student.repository";
 import { isValidDate, clean, toNumber, toGenderNumber } from "../../shared/utils/parse.util";
 import { BadRequestError } from "../../shared/errors";
-import {
-  STUDENT_REQUIRED_FIELDS,
-  STUDENT_FIELD_MAP,
-} from "./student.constants";
+import { STUDENT_REQUIRED_FIELDS, STUDENT_FIELD_MAP } from "./student.constants";
 import {
   AdmissionResult,
   BulkAdmissionResult,
@@ -36,6 +33,7 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   gender: toGenderNumber(body.gender),
   dob: body.dob ? new Date(body.dob) : null,
   age: toNumber(body.age),
+  roll: toNumber(body.roll),
 
   divisionId: toNumber(body.division_id),
   classId: toNumber(body.class_id),
@@ -123,6 +121,11 @@ export class StudentService {
       throw new BadRequestError("Invalid DOB");
     }
 
+    const roll = toNumber(body.roll);
+    if (!roll || !Number.isInteger(roll) || roll < 1) {
+      throw new BadRequestError("Roll number must be a positive integer");
+    }
+
     const data = makeStudentData(body, madrasaId);
 
     // Returning-student check: a student is uniquely identified within a
@@ -171,6 +174,11 @@ export class StudentService {
         }
         if (student.dob && !isValidDate(student.dob)) {
           throw new Error(`Row ${index + 1}: Invalid DOB`);
+        }
+
+        const roll = toNumber(student.roll);
+        if (!roll || !Number.isInteger(roll) || roll < 1) {
+          throw new Error(`Row ${index + 1}: Roll number must be a positive integer`);
         }
 
         const nid = clean(student.nid) as string | null;
@@ -231,6 +239,13 @@ export class StudentService {
       throw new BadRequestError("Invalid DOB");
     }
 
+    if (body.roll !== undefined) {
+      const roll = toNumber(body.roll);
+      if (!roll || !Number.isInteger(roll) || roll < 1) {
+        throw new BadRequestError("Roll number must be a positive integer");
+      }
+    }
+
     const data: Record<string, any> = {};
     for (const key of Object.keys(body)) {
       const field = STUDENT_FIELD_MAP[key];
@@ -238,7 +253,13 @@ export class StudentService {
 
       if (key === "gender") {
         data[field] = toGenderNumber(body[key]);
-      } else if (key === "age" || key === "division_id" || key === "class_id" || key === "previous_class_id") {
+      } else if (
+        key === "age" ||
+        key === "roll" ||
+        key === "division_id" ||
+        key === "class_id" ||
+        key === "previous_class_id"
+      ) {
         data[field] = toNumber(body[key]);
       } else if (key === "dob") {
         const v = clean(body[key]);

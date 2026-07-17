@@ -178,6 +178,21 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1">
+            রোল নম্বর <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min="1"
+            name="roll"
+            value={formData.roll || ""}
+            onChange={handleChange}
+            className={inputClass("roll")}
+          />
+          <ErrorText field="roll" />
+        </div>
+
+        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1">লিঙ্গ</label>
           <select
             name="gender"

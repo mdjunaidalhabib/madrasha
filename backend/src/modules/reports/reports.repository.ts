@@ -3,21 +3,26 @@ import { MISSING_TABLE_OR_COLUMN_CODES, REPORT_MISSING_TABLE_WARNING } from "./r
 import { OptionalQueryResult } from "./reports.types";
 
 const isMissingTableOrColumn = (error: any) => {
-  const code = error?.code || error?.meta?.code;
-  return MISSING_TABLE_OR_COLUMN_CODES.includes(code);
+  const codes = [error?.code, error?.meta?.code, error?.meta?.dbCode].filter(Boolean);
+  return codes.some((code) => MISSING_TABLE_OR_COLUMN_CODES.includes(String(code)));
 };
+
+const RESULT_FALLBACK_WARNING =
+  "এখনো ফলাফল প্রকাশ করা হয়নি। শিক্ষার্থী তালিকা দেখানো হচ্ছে; ফলাফল এন্ট্রি ও প্রকাশ হলে পূর্ণ রিপোর্ট দেখা যাবে।";
+const ROUTINE_FALLBACK_WARNING =
+  "ক্লাস রুটিন এখনো সংরক্ষণ করা হয়নি। শিক্ষক-কিতাব বণ্টনের তথ্য দিয়ে প্রাথমিক তালিকা দেখানো হচ্ছে।";
+const ATTENDANCE_FALLBACK_WARNING =
+  "হাজিরার রেকর্ড এখনো সংরক্ষণ করা হয়নি। বর্তমান শিক্ষার্থী তালিকা দিয়ে প্রিন্টযোগ্য হাজিরা খাতা তৈরি করা হয়েছে।";
 
 export class ReportsRepository {
   runQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     return prisma.$queryRawUnsafe<T[]>(sql, ...params);
   }
 
-  // Reports build a lot of dynamic SQL (varying columns/joins per report),
-  // so rather than force each one into the ORM DSL, we keep the SQL
-  // strings but run them through Prisma's connection pool via
-  // $queryRawUnsafe, gracefully degrading to an empty result (with a
-  // warning) if the underlying table/column doesn't exist yet.
-  async runOptionalQuery<T = any>(sql: string, params: any[] = []): Promise<OptionalQueryResult<T>> {
+  async runOptionalQuery<T = any>(
+    sql: string,
+    params: any[] = [],
+  ): Promise<OptionalQueryResult<T>> {
     try {
       const rows = await prisma.$queryRawUnsafe<T[]>(sql, ...params);
       return { rows: Array.isArray(rows) ? rows : [], warning: undefined };
@@ -29,41 +34,143 @@ export class ReportsRepository {
     }
   }
 
-  /* ================= ACADEMIC ================= */
-
-  findAcademicResults(madrasaId: number) {
-    return this.runOptionalQuery(
+  private findActiveStudentRoster(madrasaId: number) {
+    return this.runQuery(
       `
       SELECT
+        s.id,
         s.id AS student_id,
+        s.roll,
         s.division_id,
         s.class_id,
+        s.academic_year,
+        s.name_bn AS student_name,
+        s.father_name,
+        s.mother_name,
+        s.guardian_phone,
+        s.image,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name
+      FROM students s
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      `,
+      [madrasaId],
+    );
+  }
+
+  private async resultRosterFallback(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const roster = await this.findActiveStudentRoster(madrasaId);
+    return {
+      rows: roster.map((row: any) => ({
+        ...row,
+        exam_name: "—",
+        exam_year: row.academic_year || "—",
+        total: null,
+        average: null,
+        general_grade: null,
+        madrasa_grade: null,
+        rank_no: null,
+        status: "ফলাফল প্রকাশ হয়নি",
+        publish_status: "DRAFT",
+      })),
+      warning: RESULT_FALLBACK_WARNING,
+    };
+  }
+
+  /* ================= ACADEMIC ================= */
+
+  async findAcademicResults(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const result = await this.runOptionalQuery(
+      `
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
         rs.total,
         rs.average,
         rs.general_grade,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
-        rm.status AS publish_status
+        rm.status AS publish_status,
+        rm.id AS result_master_id
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY rm.id DESC, rs.rank_no ASC, s.id ASC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST, s.id ASC
       `,
       [madrasaId],
     );
+
+    if (result.rows.length) return result;
+    return this.resultRosterFallback(madrasaId);
   }
 
-  findAcademicRoutines(madrasaId: number) {
-    return this.runOptionalQuery(
+  async findAcademicResultNotice(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const result = await this.runOptionalQuery(
+      `
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn AS student_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        rs.total,
+        rs.average,
+        rs.general_grade,
+        rs.madrasa_grade,
+        rs.status,
+        rs.rank_no,
+        rm.status AS publish_status,
+        rm.id AS result_master_id
+      FROM results_summary rs
+      INNER JOIN students s ON s.id = rs.student_id
+      INNER JOIN results_master rm ON rm.id = rs.result_master_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+        AND rm.status = 'PUBLISHED'
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST
+      `,
+      [madrasaId],
+    );
+
+    if (result.rows.length) return result;
+    return this.resultRosterFallback(madrasaId);
+  }
+
+  async findAcademicRoutines(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const routineResult = await this.runOptionalQuery(
       `
       SELECT
         r.id,
@@ -86,6 +193,39 @@ export class ReportsRepository {
       `,
       [madrasaId],
     );
+
+    if (routineResult.rows.length) return routineResult;
+
+    const assignmentRows = await this.runQuery(
+      `
+      SELECT
+        ta.id,
+        t.division_id,
+        ta.class_id,
+        'নির্ধারিত নয়'::text AS day,
+        '—'::text AS start_time,
+        '—'::text AS end_time,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        COALESCE(b.name_bn, b.name) AS subject_name,
+        t.name_bn AS teacher_name
+      FROM teacher_assignments ta
+      INNER JOIN teachers t ON t.id = ta.teacher_id
+      LEFT JOIN classes c ON c.id = ta.class_id
+      LEFT JOIN divisions d ON d.id = t.division_id
+      LEFT JOIN books b ON b.id = ta.book_id
+      WHERE ta.madrasa_id = $1
+        AND t.deleted_at IS NULL
+        AND COALESCE(t.is_active, 1) = 1
+      ORDER BY d.id ASC, c.id ASC, b.id ASC, t.name_bn ASC
+      `,
+      [madrasaId],
+    );
+
+    return {
+      rows: Array.isArray(assignmentRows) ? assignmentRows : [],
+      warning: ROUTINE_FALLBACK_WARNING,
+    };
   }
 
   findAcademicAdmissions(madrasaId: number) {
@@ -93,8 +233,11 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
+        s.academic_year,
+        s.admission_date,
         s.name_bn AS student_name,
         s.father_name,
         s.mother_name,
@@ -109,7 +252,9 @@ export class ReportsRepository {
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY s.admission_date DESC NULLS LAST, s.id DESC
       `,
       [madrasaId],
     );
@@ -120,6 +265,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
@@ -131,85 +277,137 @@ export class ReportsRepository {
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY c.id ASC, s.name_bn ASC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       [madrasaId],
     );
   }
 
   findResidentialAttendance(madrasaId: number) {
-    return this.runQuery(
+    return this.findActiveStudentRoster(madrasaId);
+  }
+
+  async findDailyAttendance(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const attendance = await this.runOptionalQuery(
       `
       SELECT
-        s.id,
+        a.id,
+        a.student_id,
+        s.roll,
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
         COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name
-      FROM students s
+        COALESCE(d.name_bn, d.name) AS division_name,
+        a.attendance_date AS date,
+        a.status
+      FROM student_attendance a
+      INNER JOIN students s ON s.id = a.student_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = $1
-      ORDER BY c.id ASC, s.name_bn ASC
+      WHERE a.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY a.attendance_date DESC, d.id ASC, c.id ASC, s.roll ASC NULLS LAST
       `,
       [madrasaId],
     );
+
+    if (attendance.rows.length) return attendance;
+    const roster = await this.findActiveStudentRoster(madrasaId);
+    return { rows: roster, warning: ATTENDANCE_FALLBACK_WARNING };
+  }
+
+  async findDigitalAttendance(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const attendance = await this.runOptionalQuery(
+      `
+      SELECT
+        a.id,
+        a.student_id,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.name_bn AS student_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        a.attendance_date AS date,
+        a.check_in,
+        a.check_out,
+        a.status
+      FROM student_attendance a
+      INNER JOIN students s ON s.id = a.student_id
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE a.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY a.attendance_date DESC, a.check_in ASC NULLS LAST, s.roll ASC NULLS LAST
+      `,
+      [madrasaId],
+    );
+
+    if (attendance.rows.length) return attendance;
+    const roster = await this.findActiveStudentRoster(madrasaId);
+    return {
+      rows: roster.map((row: any) => ({
+        ...row,
+        date: null,
+        check_in: null,
+        check_out: null,
+        status: null,
+      })),
+      warning: ATTENDANCE_FALLBACK_WARNING,
+    };
   }
 
   /* ================= STUDENT ================= */
 
   findStudentIdCards(madrasaId: number) {
-    return this.runQuery(
+    return this.findActiveStudentRoster(madrasaId);
+  }
+
+  async findStudentMarksheets(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    const result = await this.runOptionalQuery(
       `
       SELECT
         s.id,
-        s.division_id,
-        s.class_id,
-        s.name_bn AS student_name,
-        s.father_name,
-        s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
-        s.image
-      FROM students s
-      LEFT JOIN classes c ON c.id = s.class_id
-      LEFT JOIN divisions d ON d.id = s.division_id
-      WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
-      `,
-      [madrasaId],
-    );
-  }
-
-  findStudentMarksheets(madrasaId: number) {
-    return this.runOptionalQuery(
-      `
-      SELECT
         s.id AS student_id,
+        s.roll,
         s.division_id,
         s.class_id,
+        s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
         rs.total,
         rs.average,
         rs.general_grade,
         rs.madrasa_grade,
         rs.status,
-        rs.rank_no
+        rs.rank_no,
+        rm.status AS publish_status
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY rm.id DESC, rs.rank_no ASC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST
       `,
       [madrasaId],
     );
+
+    if (result.rows.length) return result;
+    return this.resultRosterFallback(madrasaId);
   }
 
   findStudentCertificates(madrasaId: number) {
@@ -217,8 +415,10 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
+        s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
         s.mother_name,
@@ -232,7 +432,9 @@ export class ReportsRepository {
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
       [madrasaId],
     );
@@ -243,12 +445,13 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
         s.father_name,
-        s.roll,
         s.academic_year,
+        s.image,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
         e.name AS exam_name,
@@ -258,12 +461,17 @@ export class ReportsRepository {
       LEFT JOIN divisions d ON d.id = s.division_id
       LEFT JOIN exams e ON e.madrasa_id = s.madrasa_id
         AND e.id = (
-          SELECT ex2.id FROM exams ex2
+          SELECT ex2.id
+          FROM exams ex2
           WHERE ex2.madrasa_id = s.madrasa_id
-          ORDER BY ex2.id DESC LIMIT 1
+            AND ex2.deleted_at IS NULL
+          ORDER BY ex2.id DESC
+          LIMIT 1
         )
       WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
       [madrasaId],
     );
@@ -274,6 +482,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
@@ -287,12 +496,16 @@ export class ReportsRepository {
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       LEFT JOIN results_summary rs ON rs.id = (
-        SELECT rs2.id FROM results_summary rs2
+        SELECT rs2.id
+        FROM results_summary rs2
         WHERE rs2.student_id = s.id
-        ORDER BY rs2.id DESC LIMIT 1
+        ORDER BY rs2.id DESC
+        LIMIT 1
       )
       WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
       [madrasaId],
     );
@@ -303,19 +516,26 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.roll,
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
         s.father_name,
+        s.mother_name,
         s.guardian_phone,
         s.academic_year,
+        s.village,
+        s.thana,
+        s.district,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
       WHERE s.madrasa_id = $1
-      ORDER BY s.id DESC
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
       [madrasaId],
     );
@@ -335,11 +555,15 @@ export class ReportsRepository {
         t.designation,
         t.department,
         t.qualification,
+        t.experience_year,
+        t.experience_month,
         COALESCE(d.name_bn, d.name) AS division_name,
         t.joining_date
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
       WHERE t.madrasa_id = $1
+        AND t.deleted_at IS NULL
+        AND COALESCE(t.is_active, 1) = 1
       ORDER BY t.id DESC
       `,
       [madrasaId],
@@ -360,6 +584,8 @@ export class ReportsRepository {
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
       WHERE t.madrasa_id = $1
+        AND t.deleted_at IS NULL
+        AND COALESCE(t.is_active, 1) = 1
       ORDER BY t.name_bn ASC
       `,
       [madrasaId],

@@ -4,6 +4,7 @@ type AbashikAttendancePrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
+  startIndex?: number;
 };
 
 const getRowValue = (row: Record<string, any>, keys: string[]) => {
@@ -19,6 +20,7 @@ const AbashikAttendancePrint = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
+  startIndex = 0,
 }: AbashikAttendancePrintProps) => {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -158,7 +160,7 @@ const AbashikAttendancePrint = ({
               {group.students.map((row, index) => (
                 <tr key={`attendance-${groupIndex}-${row.id || index}`}>
                   <td className="h-7 w-6 border border-slate-900 p-0 text-[14px]">
-                    {(index + 1).toLocaleString("bn-BD")}
+                    {(startIndex + index + 1).toLocaleString("bn-BD")}
                   </td>
 
                   <td className="h-7 w-32 border border-slate-900 px-3 text-left text-[14px] font-semibold">

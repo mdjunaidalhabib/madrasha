@@ -7,6 +7,7 @@ export interface ExcelAdmissionRow {
   nid?: string;
   gender?: string | number | null;
   dob?: string;
+  roll?: string | number;
   academic_year?: string | number;
   academic_division?: string | number;
   previous_class?: string | number;
@@ -109,6 +110,7 @@ const BulkAdmissionModal = ({
     "NID",
     "Gender",
     "DOB",
+    "Roll",
     "সেশন",
     "Academic Division",
     "Previous Class",
@@ -153,10 +155,13 @@ const BulkAdmissionModal = ({
             <div>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Bulk Admission সম্পন্ন হয়েছে</h3>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Bulk Admission সম্পন্ন হয়েছে
+                  </h3>
                   <p className="text-sm text-slate-500">
-                    নতুন ভর্তি: <span className="font-semibold text-emerald-700">{result.inserted}</span>{" "}
-                    | সেশন আপডেট (পুনঃভর্তি):{" "}
+                    নতুন ভর্তি:{" "}
+                    <span className="font-semibold text-emerald-700">{result.inserted}</span> | সেশন
+                    আপডেট (পুনঃভর্তি):{" "}
                     <span className="font-semibold text-amber-700">{result.updated}</span>
                   </p>
                 </div>
@@ -324,6 +329,10 @@ const BulkAdmissionModal = ({
                             </td>
 
                             <td className="whitespace-nowrap px-3 py-3">{student.dob || "-"}</td>
+
+                            <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700">
+                              {student.roll || "-"}
+                            </td>
 
                             <td className="whitespace-nowrap px-3 py-3 font-semibold text-amber-700">
                               {student.academic_year || "-"}

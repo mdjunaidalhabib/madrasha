@@ -16,6 +16,7 @@ export class StudentRepository {
         academicYear: true,
         previousClassId: true,
         gender: true,
+        roll: true,
         classRef: { select: { nameBn: true } },
       },
       orderBy: { id: "desc" },

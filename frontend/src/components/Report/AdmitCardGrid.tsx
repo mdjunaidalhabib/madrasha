@@ -18,7 +18,7 @@ const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
   const rulesTemplate = templates?.admit_card_rules || DEFAULT_ADMIT_CARD_RULES;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="report-admit-card-grid grid gap-4">
       {rows.map((row, index) => (
         <div
           key={`admit-card-${row.id || index}`}
@@ -39,7 +39,10 @@ const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
               <b>পিতা:</b> {cellValue(row, "father_name")}
             </p>
             <p>
-              <b>রোল:</b> {cellValue(row, "roll")}
+              <b>রেজিস্ট্রেশন নম্বর:</b> {cellValue(row, "id")}
+            </p>
+            <p>
+              <b>রোল নম্বর:</b> {cellValue(row, "roll")}
             </p>
             <p>
               <b>শ্রেণি:</b> {cellValue(row, "class_name")}

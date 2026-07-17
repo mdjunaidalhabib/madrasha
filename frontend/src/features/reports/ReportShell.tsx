@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import ReportContent from "../../components/Report/ReportContent";
-import { ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
+import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
+import { Orientation, PaperSize } from "../../components/common/DataExportPrintActions";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ReportColumn, ReportMenuItem, ReportShellProps } from "./types";
@@ -10,7 +10,13 @@ import { logger } from "../../utils/logger";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
-const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => {
+const ReportShell = ({
+  pageTitle,
+  pageSubtitle,
+  accentTitle,
+  reports,
+  hideBrandHeader = false,
+}: ReportShellProps) => {
   const [activeKey, setActiveKey] = useState(reports[0]?.key || "");
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -22,6 +28,8 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
+  const [paperSize, setPaperSize] = useState<PaperSize>("a4");
+  const [orientation, setOrientation] = useState<Orientation>("portrait");
 
   const activeReport = useMemo(
     () => reports.find((item) => item.key === activeKey) || reports[0],
@@ -98,17 +106,22 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
     const searchableText = [
       row.id,
       row.student_id,
+      row.roll,
       row.teacher_id,
       row.name,
       row.name_bn,
       row.student_name,
       row.teacher_name,
       row.father_name,
+      row.mother_name,
       row.guardian_phone,
       row.mobile,
       row.phone,
       row.class_name,
       row.division_name,
+      row.exam_name,
+      row.exam_year,
+      row.status,
     ]
       .filter(Boolean)
       .join(" ")
@@ -147,6 +160,14 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
 
   return (
     <div className="min-h-screen bg-[#f6f8fb] p-4 md:p-6">
+      <div className="no-print mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
+          {accentTitle}
+        </div>
+        <h1 className="mt-1 text-2xl font-bold text-slate-900">{pageTitle}</h1>
+        <p className="mt-1 text-sm text-slate-500">{pageSubtitle}</p>
+      </div>
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[240px_1fr]">
         <ReportSidebar reports={reports} activeKey={activeReport.key} onChange={setActiveKey} />
 
@@ -180,6 +201,10 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
               }}
               onClassChange={setSelectedClass}
               onClear={clearFilters}
+              paperSize={paperSize}
+              orientation={orientation}
+              onPaperSizeChange={setPaperSize}
+              onOrientationChange={setOrientation}
             />
 
             {warning && (
@@ -190,19 +215,16 @@ const ReportShell = ({ reports, hideBrandHeader = false }: ReportShellProps) => 
           </div>
 
           <div className="print-preview-wrap">
-            <div className="print-area print-page-preview bg-white">
-              <ReportWatermark />
-              {!hideBrandHeader && <ReportBrandHeader />}
-              <div className="report-content-body">
-                <ReportContent
-                  loading={loading}
-                  report={activeReport}
-                  rows={filteredRows}
-                  selectedDivisionName={selectedDivisionName}
-                  selectedClassName={selectedClassName}
-                />
-              </div>
-            </div>
+            <PaginatedReportPreview
+              loading={loading}
+              report={activeReport}
+              rows={filteredRows}
+              selectedDivisionName={selectedDivisionName}
+              selectedClassName={selectedClassName}
+              hideBrandHeader={hideBrandHeader}
+              paperSize={paperSize}
+              orientation={orientation}
+            />
           </div>
         </main>
       </div>

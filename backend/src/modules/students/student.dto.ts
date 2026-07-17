@@ -5,6 +5,7 @@ export interface StudentAdmissionRequestDto {
   gender?: number | string;
   dob?: string;
   age?: number | string;
+  roll: number | string;
   division_id: number | string;
   class_id: number | string;
   academic_year: string;

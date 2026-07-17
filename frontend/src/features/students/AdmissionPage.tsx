@@ -20,6 +20,7 @@ export interface AdmissionFormData {
   gender: number | null;
   dob: string;
   age: number | null;
+  roll: string;
   academicYear: string;
   academicDivision: string;
   previousClass: string;
@@ -49,6 +50,7 @@ interface PreviousStudentData {
   gender: number | null;
   dob: string | null;
   age: number | null;
+  roll: number | null;
   division_id: number | null;
   class_id: number | null;
   academic_year: string;
@@ -87,6 +89,7 @@ const initialState: AdmissionFormData = {
   gender: null,
   dob: "",
   age: null,
+  roll: "",
   academicYear: String(new Date().getFullYear()),
   academicDivision: "",
   previousClass: "",
@@ -114,7 +117,7 @@ const toGenderNumber = (value: any) => {
   return num === 1 || num === 2 ? num : null;
 };
 
-const requiredColumns = ["name_bn", "academic_division", "current_class", "academic_year"];
+const requiredColumns = ["name_bn", "roll", "academic_division", "current_class", "academic_year"];
 
 const AdmissionPage = () => {
   const [formData, setFormData] = useState<AdmissionFormData>(initialState);
@@ -171,6 +174,7 @@ const AdmissionPage = () => {
             gender: data.gender ?? prev.gender,
             dob: data.dob ? String(data.dob).slice(0, 10) : prev.dob,
             age: data.age ?? prev.age,
+            roll: data.roll ? String(data.roll) : prev.roll,
             academicDivision: data.division_id ? String(data.division_id) : prev.academicDivision,
             previousClass: data.class_id ? String(data.class_id) : prev.previousClass,
             fatherName: data.father_name || prev.fatherName,
@@ -277,6 +281,9 @@ const AdmissionPage = () => {
     const newErrors: AdmissionFormErrors = {};
 
     if (!formData.name.trim()) newErrors.name = "ছাত্রের নাম দিন";
+    if (!formData.roll || !Number.isInteger(Number(formData.roll)) || Number(formData.roll) < 1) {
+      newErrors.roll = "সঠিক রোল নম্বর দিন";
+    }
     if (!formData.academicYear) newErrors.academicYear = "সিক্ষাবর্ষ নির্বাচন করুন";
     if (!formData.academicDivision) newErrors.academicDivision = "বিভাগ নির্বাচন করুন";
     if (!formData.currentClass) newErrors.currentClass = "বর্তমান শ্রেণি নির্বাচন করুন";
@@ -293,6 +300,10 @@ const AdmissionPage = () => {
 
       if (!student.name_bn && !student.name) {
         return `Row ${i + 2}: ছাত্রের নাম নেই`;
+      }
+
+      if (!student.roll || !Number.isInteger(Number(student.roll)) || Number(student.roll) < 1) {
+        return `Row ${i + 2}: roll নেই বা সঠিক নয়`;
       }
 
       if (!student.academic_division) {
@@ -320,6 +331,7 @@ const AdmissionPage = () => {
       arabic_name: student.arabic_name || null,
       nid: student.nid || null,
       age: calculateAge(student.dob),
+      roll: Number(student.roll),
       father_name: student.father_name || null,
       father_arabic_name: student.father_arabic_name || null,
       father_nid: student.father_nid || null,
@@ -341,6 +353,7 @@ const AdmissionPage = () => {
       { key: "nid", required: false },
       { key: "gender", required: false },
       { key: "dob", required: false },
+      { key: "roll", required: true },
       { key: "academic_year", required: true },
       { key: "academic_division", required: true },
       { key: "previous_class", required: false },
@@ -368,6 +381,7 @@ const AdmissionPage = () => {
       "1234567890",
       "1",
       "2015-01-20",
+      "1",
       String(new Date().getFullYear()),
       divisions[0]?.division_id || "1",
       "",
@@ -494,6 +508,7 @@ const AdmissionPage = () => {
       arabic_name: formData.arabicName || null,
       nid: formData.nid || null,
       age: calculateAge(formData.dob),
+      roll: Number(formData.roll),
       father_name: formData.fatherName || null,
       father_arabic_name: formData.fatherArabicName || null,
       father_nid: formData.fatherNid || null,

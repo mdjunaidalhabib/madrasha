@@ -25,6 +25,13 @@ const respondWithError = (res: Response, error: unknown, logTag: string) => {
     return res.status(error.statusCode).json({ success: false, message: error.message });
   }
 
+  if ((error as any)?.code === "P2002") {
+    return res.status(HttpStatus.CONFLICT).json({
+      success: false,
+      message: "এই শ্রেণি ও শিক্ষাবর্ষে রোল নম্বরটি ইতোমধ্যে ব্যবহৃত হয়েছে",
+    });
+  }
+
   logger.error(logTag, error);
   return res
     .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -134,7 +141,11 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
 export const updateStudent = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const affectedRows = await studentService.updateStudent(Number(req.params.id), madrasaId, req.body);
+    const affectedRows = await studentService.updateStudent(
+      Number(req.params.id),
+      madrasaId,
+      req.body,
+    );
 
     return res.json({
       success: true,

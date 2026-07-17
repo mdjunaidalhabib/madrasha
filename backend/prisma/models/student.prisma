@@ -57,7 +57,7 @@ model Student {
   resultsSummary ResultSummary[]
   marks          Mark[]
 
-  @@unique([madrasaId, roll], map: "unique_roll_per_madrasa")
+  @@unique([madrasaId, classId, academicYear, roll], map: "unique_roll_per_class_year")
   @@index([madrasaId], map: "idx_students_madrasa")
   @@index([classId], map: "idx_students_class")
   @@index([guardianPhone], map: "idx_students_phone")

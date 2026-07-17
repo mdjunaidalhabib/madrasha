@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
-type PaperSize = "a4" | "a5";
-type Orientation = "portrait" | "landscape";
+export type PaperSize = "a4" | "a5";
+export type Orientation = "portrait" | "landscape";
 
 type ExportColumn<T> = {
   header: string;
@@ -14,15 +14,35 @@ type Props<T> = {
   columns: ExportColumn<T>[];
   data: T[];
   fileName?: string;
+  paperSize?: PaperSize;
+  orientation?: Orientation;
+  onPaperSizeChange?: (value: PaperSize) => void;
+  onOrientationChange?: (value: Orientation) => void;
 };
 
 const DataExportPrintActions = <T extends Record<string, any>>({
   columns,
   data,
   fileName = "export-data",
+  paperSize: controlledPaperSize,
+  orientation: controlledOrientation,
+  onPaperSizeChange,
+  onOrientationChange,
 }: Props<T>) => {
-  const [paperSize, setPaperSize] = useState<PaperSize>("a4");
-  const [orientation, setOrientation] = useState<Orientation>("portrait");
+  const [internalPaperSize, setInternalPaperSize] = useState<PaperSize>("a4");
+  const [internalOrientation, setInternalOrientation] = useState<Orientation>("portrait");
+  const paperSize = controlledPaperSize ?? internalPaperSize;
+  const orientation = controlledOrientation ?? internalOrientation;
+
+  const updatePaperSize = (value: PaperSize) => {
+    if (onPaperSizeChange) onPaperSizeChange(value);
+    else setInternalPaperSize(value);
+  };
+
+  const updateOrientation = (value: Orientation) => {
+    if (onOrientationChange) onOrientationChange(value);
+    else setInternalOrientation(value);
+  };
 
   const getPageMargin = (size: PaperSize) => {
     return size === "a5" ? "7mm" : "10mm";
@@ -112,7 +132,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     <div className="flex flex-wrap items-center gap-2">
       <select
         value={paperSize}
-        onChange={(e) => setPaperSize(e.target.value as PaperSize)}
+        onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
         className="rounded border border-slate-300 px-3 py-2 text-sm"
       >
         <option value="a4">A4</option>
@@ -121,7 +141,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
 
       <select
         value={orientation}
-        onChange={(e) => setOrientation(e.target.value as Orientation)}
+        onChange={(e) => updateOrientation(e.target.value as Orientation)}
         className="rounded border border-slate-300 px-3 py-2 text-sm"
       >
         <option value="portrait">Portrait</option>

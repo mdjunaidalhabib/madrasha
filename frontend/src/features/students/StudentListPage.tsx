@@ -20,6 +20,7 @@ type Student = {
   name_bn?: string;
   name?: string;
   father_name?: string;
+  roll?: number | string;
   guardian_phone?: string;
   division_id?: number | string;
   class_id?: number | string;
@@ -129,9 +130,13 @@ const StudentListPage = () => {
     return students.filter((student) => {
       const studentId = String(student.id || "").toLowerCase();
       const studentName = String(student.name_bn || student.name || "").toLowerCase();
+      const studentRoll = String(student.roll || "").toLowerCase();
 
       const matchSearch =
-        !searchText || studentId.includes(searchText) || studentName.includes(searchText);
+        !searchText ||
+        studentId.includes(searchText) ||
+        studentRoll.includes(searchText) ||
+        studentName.includes(searchText);
 
       const matchDivision =
         !selectedDivision || String(student.division_id) === String(selectedDivision);
@@ -148,7 +153,8 @@ const StudentListPage = () => {
   const exportStudents = useMemo(() => {
     return filteredStudents.map((student, index) => ({
       serial: index + 1,
-      id: student.id || "",
+      registrationNumber: student.id || "",
+      roll: student.roll || "নেই",
       name: student.name_bn || student.name || "নেই",
       fatherName: student.father_name || "নেই",
       phone: student.guardian_phone || "নেই",
@@ -163,7 +169,8 @@ const StudentListPage = () => {
 
   const exportColumns = [
     { header: "ক্রমিক", key: "serial" },
-    { header: "আইডি", key: "id" },
+    { header: "রেজিস্ট্রেশন নম্বর", key: "registrationNumber" },
+    { header: "রোল নম্বর", key: "roll" },
     { header: "নাম", key: "name" },
     { header: "বাবার নাম", key: "fatherName" },
     { header: "ফোন", key: "phone" },
@@ -195,7 +202,7 @@ const StudentListPage = () => {
             <div className="flex w-full flex-wrap items-center gap-2">
               <input
                 type="text"
-                placeholder="Student ID বা নাম দিয়ে সার্চ করুন"
+                placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[240px]"
@@ -280,7 +287,8 @@ const StudentListPage = () => {
               <table className="w-full min-w-[900px] border-collapse text-center">
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
-                    <th className="border p-2.5">আইডি</th>
+                    <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
+                    <th className="border p-2.5">রোল নম্বর</th>
                     <th className="border p-2.5">নাম</th>
                     <th className="border p-2.5">বাবার নাম</th>
                     <th className="border p-2.5">ফোন</th>
@@ -294,7 +302,7 @@ const StudentListPage = () => {
                 <tbody className="text-sm">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-6 text-center text-gray-500">
+                      <td colSpan={9} className="p-6 text-center text-gray-500">
                         কোন ছাত্র পাওয়া যায়নি
                       </td>
                     </tr>
@@ -302,6 +310,8 @@ const StudentListPage = () => {
                     filteredStudents.map((student) => (
                       <tr key={student.id} className="border-t transition hover:bg-gray-50">
                         <td className="border p-2.5">{student.id}</td>
+
+                        <td className="border p-2.5">{student.roll || "নেই"}</td>
 
                         <td className="border p-2.5">{student.name_bn || student.name || "নেই"}</td>
 

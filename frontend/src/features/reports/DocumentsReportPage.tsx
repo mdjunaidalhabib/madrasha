@@ -8,7 +8,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
+      { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "শ্রেণি", key: "class_name" },
@@ -23,9 +24,9 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
+      { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থী", key: "student_name" },
-      { header: "রোল", key: "roll" },
       { header: "শ্রেণি", key: "class_name" },
       { header: "বিভাগ", key: "division_name" },
       { header: "পরীক্ষা", key: "exam_name" },
@@ -39,7 +40,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/sanads",
     printable: "certificate",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
+      { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "মাতা", key: "mother_name" },
@@ -55,7 +57,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/certificates",
     printable: "testimonial",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
+      { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "মাতা", key: "mother_name" },
@@ -71,7 +74,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/transfer-letters",
     printable: "transfer-letter",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
+      { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "শ্রেণি", key: "class_name" },
@@ -81,15 +85,12 @@ const reports: ReportMenuItem[] = [
   },
 ];
 
-// এই পেজে মাদ্রাসার নাম/ঠিকানা উপরে দেখানো হয় না (hideBrandHeader) —
-// প্রতিটি ডকুমেন্টের নিজস্ব শিরোনাম আছে বলে এখানে আলাদা করে দরকার নেই।
 const DocumentsReportPage = () => (
   <ReportShell
     pageTitle="ডকুমেন্ট সমূহ"
     pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র ও ছাড়পত্র — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
     accentTitle="Documents"
     reports={reports}
-    hideBrandHeader
   />
 );
 

@@ -40,13 +40,13 @@ const docTypes: DocType[] = [
     key: "id-card",
     title: "আইডি কার্ড",
     subtitle: "শিক্ষার্থীর পরিচয়পত্র",
-    dataFields: ["নাম", "আইডি", "শ্রেণি", "বিভাগ", "মোবাইল"],
+    dataFields: ["নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "মোবাইল"],
   },
   {
     key: "admit-card",
     title: "প্রবেশপত্র",
     subtitle: "পরীক্ষার প্রবেশপত্র",
-    dataFields: ["নাম", "রোল", "শ্রেণি", "বিভাগ", "পরীক্ষা", "সেশন"],
+    dataFields: ["নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "পরীক্ষা", "সেশন"],
     templateKey: "admit_card_rules",
     tokens: ADMIT_CARD_RULE_TOKENS,
     fallback: DEFAULT_ADMIT_CARD_RULES,
@@ -73,7 +73,7 @@ const docTypes: DocType[] = [
     key: "transfer",
     title: "ছাড় পত্র",
     subtitle: "মাদ্রাসা ত্যাগ/ছাড়পত্র",
-    dataFields: ["নাম", "পিতা", "আইডি", "শ্রেণি", "বিভাগ", "সেশন"],
+    dataFields: ["নাম", "পিতা", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "সেশন"],
     templateKey: "transfer_letter_template",
     tokens: TRANSFER_LETTER_TOKENS,
     fallback: DEFAULT_TRANSFER_LETTER_TEMPLATE,
@@ -154,7 +154,9 @@ export default function TalimatDocumentsPage() {
       const payload = { [active.templateKey]: values[active.templateKey] };
       await saveDocumentTemplates(payload);
       setTemplates({ ...(templates || {}), ...payload });
-      setMessage("সেভ হয়েছে। এখন থেকে প্রকৃত শিক্ষার্থীর ডকুমেন্ট প্রিন্ট করার সময় এই লেখা দেখাবে।");
+      setMessage(
+        "সেভ হয়েছে। এখন থেকে প্রকৃত শিক্ষার্থীর ডকুমেন্ট প্রিন্ট করার সময় এই লেখা দেখাবে।",
+      );
     } catch {
       setError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
     } finally {
@@ -188,9 +190,10 @@ export default function TalimatDocumentsPage() {
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        নাম, পিতা, শ্রেণি, বিভাগ, সেশন, রোল, পরীক্ষার নাম — এই তথ্যগুলো সবসময় শিক্ষার্থীর প্রকৃত তথ্য থেকে
-        স্বয়ংক্রিয়ভাবে বসবে, এখানে হাতে লিখে পরিবর্তন করা যাবে না। নিচে শুধু চারপাশের লেখা (বাক্য/নিয়ম-কানুন)
-        এডিট করা যাবে, আর সেভ করলে সেটি প্রকৃত প্রিন্টেও দেখাবে।
+        নাম, পিতা, রেজিস্ট্রেশন নম্বর, রোল, শ্রেণি, বিভাগ, সেশন, পরীক্ষার নাম — এই তথ্যগুলো সবসময়
+        শিক্ষার্থীর প্রকৃত তথ্য থেকে স্বয়ংক্রিয়ভাবে বসবে, এখানে হাতে লিখে পরিবর্তন করা যাবে না।
+        নিচে শুধু চারপাশের লেখা (বাক্য/নিয়ম-কানুন) এডিট করা যাবে, আর সেভ করলে সেটি প্রকৃত প্রিন্টেও
+        দেখাবে।
       </div>
 
       {message && (
@@ -203,7 +206,9 @@ export default function TalimatDocumentsPage() {
           <h2 className="text-lg font-bold text-slate-900">{active.title} — টেমপ্লেট এডিট</h2>
 
           <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold text-slate-500">এই ডকুমেন্টে যেসব তথ্য স্বয়ংক্রিয়ভাবে বসে:</p>
+            <p className="mb-1 text-xs font-semibold text-slate-500">
+              এই ডকুমেন্টে যেসব তথ্য স্বয়ংক্রিয়ভাবে বসে:
+            </p>
             <div className="flex flex-wrap gap-2">
               {active.dataFields.map((label) => (
                 <span

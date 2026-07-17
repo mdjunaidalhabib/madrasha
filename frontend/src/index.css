@@ -14,25 +14,43 @@
   padding: 20px;
 }
 
+.print-pages {
+  display: flex;
+  min-width: max-content;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
 .print-page-preview {
-  background: white;
-  margin: 0 auto;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
-  padding: 10mm;
-  box-sizing: border-box;
-  overflow: hidden;
   position: relative;
+  box-sizing: border-box;
+  flex: none;
+  overflow: hidden;
+  background: white;
+  padding: 10mm;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+}
+
+.report-print-page::after {
+  content: "পৃষ্ঠা " attr(data-page-number) " / " attr(data-total-pages);
+  position: absolute;
+  right: 10mm;
+  bottom: 4mm;
+  z-index: 2;
+  font-size: 10px;
+  color: #64748b;
 }
 
 .report-watermark {
   position: absolute;
   inset: 0;
+  z-index: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
   overflow: hidden;
-  z-index: 0;
+  pointer-events: none;
 }
 
 .report-watermark img {
@@ -47,28 +65,27 @@
   z-index: 1;
 }
 
-/* A4 Portrait */
+/* Exact paper sheets in preview */
 html[data-print-size="a4"][data-print-orientation="portrait"] .print-page-preview {
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
 }
 
-/* A4 Landscape */
 html[data-print-size="a4"][data-print-orientation="landscape"] .print-page-preview {
   width: 297mm;
-  min-height: 210mm;
+  height: 210mm;
 }
 
-/* A5 Portrait */
 html[data-print-size="a5"][data-print-orientation="portrait"] .print-page-preview {
   width: 148mm;
-  min-height: 210mm;
+  height: 210mm;
+  padding: 7mm;
 }
 
-/* A5 Landscape */
 html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-preview {
   width: 210mm;
-  min-height: 148mm;
+  height: 148mm;
+  padding: 7mm;
 }
 
 .print-page-preview table {
@@ -79,26 +96,50 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 
 .print-page-preview th,
 .print-page-preview td {
-  word-break: break-word;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .print-page-break {
-  page-break-inside: avoid;
   break-inside: avoid;
+  page-break-inside: avoid;
 }
 
-/* Mobile preview */
+/* Card grids must follow paper width, not browser viewport width. */
+.report-id-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-print-size="a4"][data-print-orientation="landscape"] .report-id-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html[data-print-size="a5"][data-print-orientation="portrait"] .report-id-card-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-print-size="a5"][data-print-orientation="landscape"] .report-id-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-admit-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Mobile preview remains a real paginated preview and can be horizontally scrolled. */
 @media (max-width: 768px) {
   .print-preview-wrap {
     justify-content: flex-start;
     padding: 8px !important;
   }
 
-  .print-page-preview {
-    transform: scale(0.48);
-    transform-origin: top left;
-    margin: 0;
+  .print-pages {
+    align-items: flex-start;
+    gap: 12px;
   }
 }
 
@@ -136,9 +177,9 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   }
 
   .print-area {
-    position: fixed !important;
-    left: 0 !important;
+    position: absolute !important;
     top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -148,19 +189,36 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 
   .print-preview-wrap {
     display: block !important;
-    padding: 0 !important;
     margin: 0 !important;
-    background: white !important;
+    padding: 0 !important;
     overflow: visible !important;
+    background: white !important;
+  }
+
+  .print-pages {
+    display: block !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .print-page-preview {
-    box-shadow: none !important;
-    margin: 0 auto !important;
-    background: white !important;
+    margin: 0 !important;
     box-sizing: border-box !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    background: white !important;
+    box-shadow: none !important;
     transform: none !important;
+  }
+
+  .report-print-page {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .report-print-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
   }
 
   .report-watermark {
@@ -176,22 +234,22 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 
   html[data-print-size="a4"][data-print-orientation="portrait"] .print-page-preview {
     width: 210mm !important;
-    min-height: 297mm !important;
+    height: 297mm !important;
   }
 
   html[data-print-size="a4"][data-print-orientation="landscape"] .print-page-preview {
     width: 297mm !important;
-    min-height: 210mm !important;
+    height: 210mm !important;
   }
 
   html[data-print-size="a5"][data-print-orientation="portrait"] .print-page-preview {
     width: 148mm !important;
-    min-height: 210mm !important;
+    height: 210mm !important;
   }
 
   html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-preview {
     width: 210mm !important;
-    min-height: 148mm !important;
+    height: 148mm !important;
   }
 
   .print-page-preview table {
@@ -202,8 +260,8 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 
   .print-page-preview th,
   .print-page-preview td {
-    word-break: break-word !important;
     overflow-wrap: anywhere !important;
+    word-break: break-word !important;
   }
 
   .no-print {

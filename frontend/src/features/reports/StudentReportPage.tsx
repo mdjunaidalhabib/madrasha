@@ -6,8 +6,10 @@ const reports: ReportMenuItem[] = [
     title: "মার্কশিট",
     subtitle: "শিক্ষার্থীর ফলাফল ও মার্কশিট রিপোর্ট",
     endpoint: "/reports/student/marksheets",
+    printable: "marksheet",
     columns: [
       { header: "শিক্ষার্থী", key: "student_name" },
+      { header: "পরীক্ষা", key: "exam_name" },
       { header: "শ্রেণি", key: "class_name" },
       { header: "মোট", key: "total" },
       { header: "গড়", key: "average" },

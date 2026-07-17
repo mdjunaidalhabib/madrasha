@@ -12,6 +12,8 @@ export type ReportMenuItem = {
   columns: ReportColumn[];
   printable?:
     | "table"
+    | "marksheet"
+    | "result-notice"
     | "id-card"
     | "admit-card"
     | "certificate"

@@ -45,6 +45,8 @@ const Field = ({
         <>
           {/* 🔥 INPUT FIELD */}
           <input
+            type={type}
+            min={type === "number" ? 1 : undefined}
             name={name}
             value={value || ""}
             onChange={onChange}

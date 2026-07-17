@@ -122,6 +122,19 @@ const StudentInfoProfile = ({
           isEditMode={isEditMode}
         />
 
+        <Field label="রেজিস্ট্রেশন নম্বর" name="id" value={student.id || ""} isEditMode={false} />
+
+        <Field
+          label="রোল নম্বর"
+          name="roll"
+          type="number"
+          value={student.roll || ""}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode}
+        />
+
         <Field
           label="ছাত্রের আরবি নাম"
           name="arabic_name"

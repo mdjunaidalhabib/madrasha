@@ -1,4 +1,10 @@
-export const STUDENT_REQUIRED_FIELDS = ["name_bn", "division_id", "class_id", "academic_year"] as const;
+export const STUDENT_REQUIRED_FIELDS = [
+  "name_bn",
+  "roll",
+  "division_id",
+  "class_id",
+  "academic_year",
+] as const;
 
 // snake_case incoming key -> Prisma (camelCase) field name
 export const STUDENT_FIELD_MAP: Record<string, string> = {
@@ -8,6 +14,7 @@ export const STUDENT_FIELD_MAP: Record<string, string> = {
   gender: "gender",
   dob: "dob",
   age: "age",
+  roll: "roll",
   division_id: "divisionId",
   class_id: "classId",
   academic_year: "academicYear",
@@ -27,4 +34,10 @@ export const STUDENT_FIELD_MAP: Record<string, string> = {
   image: "image",
 };
 
-export const STUDENT_NUMERIC_FIELDS = ["age", "division_id", "class_id", "previous_class_id"] as const;
+export const STUDENT_NUMERIC_FIELDS = [
+  "age",
+  "roll",
+  "division_id",
+  "class_id",
+  "previous_class_id",
+] as const;

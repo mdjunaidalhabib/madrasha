@@ -246,7 +246,13 @@ async function main() {
       groupName: "core",
       sortOrder: 6,
     },
-
+    {
+      keyName: "admission",
+      name: "Admission",
+      nameBn: "নতুন ভর্তি",
+      groupName: "core",
+      sortOrder: 7,
+    },
     { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 8 },
     {
       keyName: "activity",
