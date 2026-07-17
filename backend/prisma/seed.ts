@@ -1,10 +1,28 @@
-// Ported from the INSERT statements in `schema new.sql` (divisions, classes,
-// books, modules, module_features, permissions, plans, super_admins).
-// Run with: npx prisma db seed   (or automatically after `migrate dev`/`reset`)
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+async function syncDelete(
+  label: string,
+  existing: { id: number }[],
+  keepIds: number[],
+  del: (id: number) => Promise<unknown>,
+) {
+  const keep = new Set(keepIds);
+  for (const row of existing) {
+    if (keep.has(row.id)) continue;
+    try {
+      await del(row.id);
+      console.log(`   🗑️  Removed ${label} (id=${row.id}) — no longer in seed.ts`);
+    } catch {
+      console.warn(
+        `   ⚠️  Skipped removing ${label} (id=${row.id}) — still referenced by existing data ` +
+          `(e.g. students/teachers/results). Remove that data first if you really want it gone.`,
+      );
+    }
+  }
+}
 
 async function main() {
   /* ============== SUPER ADMIN ==============
@@ -29,9 +47,23 @@ async function main() {
     { name: "Standard", studentLimit: 300, userLimit: 10, durationDays: 365, price: 5000 },
     { name: "Premium", studentLimit: 1000, userLimit: 50, durationDays: 365, price: 12000 },
   ];
+  const planIds: number[] = [];
   for (const plan of plans) {
-    await prisma.plan.upsert({ where: { name: plan.name }, update: {}, create: plan });
+    const row = await prisma.plan.upsert({
+      where: { name: plan.name },
+      update: {
+        studentLimit: plan.studentLimit,
+        userLimit: plan.userLimit,
+        durationDays: plan.durationDays,
+        price: plan.price,
+      },
+      create: plan,
+    });
+    planIds.push(row.id);
   }
+  await syncDelete("plan", await prisma.plan.findMany({ select: { id: true } }), planIds, (id) =>
+    prisma.plan.delete({ where: { id } }),
+  );
 
   /* ============== DIVISIONS ============== */
   const divisions = [
@@ -44,11 +76,17 @@ async function main() {
   for (const d of divisions) {
     const row = await prisma.division.upsert({
       where: { keyName: d.keyName },
-      update: {},
+      update: { name: d.name, nameBn: d.nameBn },
       create: d,
     });
     divisionIds[d.keyName] = row.id;
   }
+  await syncDelete(
+    "division",
+    await prisma.division.findMany({ select: { id: true } }),
+    Object.values(divisionIds),
+    (id) => prisma.division.delete({ where: { id } }),
+  );
 
   /* ============== CLASSES ============== */
   const classesByDivision: Record<string, { name: string; nameBn: string }[]> = {
@@ -82,15 +120,23 @@ async function main() {
 
   const classIds: Record<string, number> = {}; // key: "division/className"
   for (const [divisionKey, classes] of Object.entries(classesByDivision)) {
+    const divisionId = divisionIds[divisionKey];
+    if (!divisionId) continue; // division was removed above / not found
     for (const c of classes) {
       const row = await prisma.class.upsert({
-        where: { divisionId_name: { divisionId: divisionIds[divisionKey], name: c.name } },
-        update: {},
-        create: { ...c, divisionId: divisionIds[divisionKey] },
+        where: { divisionId_name: { divisionId, name: c.name } },
+        update: { nameBn: c.nameBn },
+        create: { ...c, divisionId },
       });
       classIds[`${divisionKey}/${c.name}`] = row.id;
     }
   }
+  await syncDelete(
+    "class",
+    await prisma.class.findMany({ select: { id: true } }),
+    Object.values(classIds),
+    (id) => prisma.class.delete({ where: { id } }),
+  );
 
   /* ============== BOOKS ============== */
   const booksByClass: Record<string, { name: string; nameBn: string }[]> = {
@@ -145,30 +191,83 @@ async function main() {
     ],
   };
 
+  const bookIds: number[] = [];
   for (const [classKey, books] of Object.entries(booksByClass)) {
     const classId = classIds[classKey];
-    if (!classId) continue;
+    if (!classId) continue; // class was removed above / not found
     for (const b of books) {
-      await prisma.book.upsert({
+      const row = await prisma.book.upsert({
         where: { classId_name: { classId, name: b.name } },
-        update: {},
+        update: { nameBn: b.nameBn },
         create: { ...b, classId },
       });
+      bookIds.push(row.id);
     }
   }
+  await syncDelete("book", await prisma.book.findMany({ select: { id: true } }), bookIds, (id) =>
+    prisma.book.delete({ where: { id } }),
+  );
 
   /* ============== MODULES ============== */
   const modules = [
-    { keyName: "dashboard", name: "Dashboard", nameBn: "ড্যাশবোর্ড", groupName: "core", sortOrder: 1 },
+    {
+      keyName: "dashboard",
+      name: "Dashboard",
+      nameBn: "ড্যাশবোর্ড",
+      groupName: "core",
+      sortOrder: 1,
+    },
     { keyName: "ihtemam", name: "ihtemam", nameBn: "ইহতিমাম", groupName: "core", sortOrder: 2 },
-    { keyName: "reports", name: "Reports", nameBn: "রিপোর্ট সমূহ", groupName: "core", sortOrder: 3 },
-    { keyName: "talimat", name: "Talimat", nameBn: "তালিমাত", groupName: "education", sortOrder: 4 },
-    { keyName: "accounts", name: "Accounts", nameBn: "হিসাব বিভাগ", groupName: "core", sortOrder: 5 },
-    { keyName: "students", name: "Students", nameBn: "ছাত্র বিভাগ", groupName: "core", sortOrder: 6 },
-    { keyName: "admission", name: "Admission", nameBn: "নতুন ভর্তি", groupName: "core", sortOrder: 7 },
+    {
+      keyName: "reports",
+      name: "Reports",
+      nameBn: "রিপোর্ট সমূহ",
+      groupName: "core",
+      sortOrder: 3,
+    },
+    {
+      keyName: "talimat",
+      name: "Talimat",
+      nameBn: "তালিমাত",
+      groupName: "education",
+      sortOrder: 4,
+    },
+    {
+      keyName: "accounts",
+      name: "Accounts",
+      nameBn: "হিসাব বিভাগ",
+      groupName: "core",
+      sortOrder: 5,
+    },
+    {
+      keyName: "students",
+      name: "Students",
+      nameBn: "ছাত্র বিভাগ",
+      groupName: "core",
+      sortOrder: 6,
+    },
+    {
+      keyName: "admission",
+      name: "Admission",
+      nameBn: "নতুন ভর্তি",
+      groupName: "core",
+      sortOrder: 7,
+    },
     { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 8 },
-    { keyName: "activity", name: "Activity Log", nameBn: "অ্যাক্টিভিটি লগ", groupName: "core", sortOrder: 9 },
-    { keyName: "website", name: "Website Settings", nameBn: "ওয়েবসাইট সেটিংস", groupName: "core", sortOrder: 10 },
+    {
+      keyName: "activity",
+      name: "Activity Log",
+      nameBn: "অ্যাক্টিভিটি লগ",
+      groupName: "core",
+      sortOrder: 9,
+    },
+    {
+      keyName: "website",
+      name: "Website Settings",
+      nameBn: "ওয়েবসাইট সেটিংস",
+      groupName: "core",
+      sortOrder: 10,
+    },
   ];
   const moduleIds: Record<string, number> = {};
   for (const m of modules) {
@@ -179,22 +278,46 @@ async function main() {
     });
     moduleIds[m.keyName] = row.id;
   }
+  await syncDelete(
+    "module",
+    await prisma.moduleDef.findMany({ select: { id: true } }),
+    Object.values(moduleIds),
+    (id) => prisma.moduleDef.delete({ where: { id } }),
+  );
 
   /* ============== MODULE FEATURES ============== */
-  const featuresByModule: Record<string, { keyName: string; name: string; nameBn: string; sortOrder: number }[]> = {
+  const featuresByModule: Record<
+    string,
+    { keyName: string; name: string; nameBn: string; sortOrder: number }[]
+  > = {
     ihtemam: [
-      { keyName: "teacher_admission", name: "Teacher Admission", nameBn: "নতুন শিক্ষক", sortOrder: 1 },
+      {
+        keyName: "teacher_admission",
+        name: "Teacher Admission",
+        nameBn: "নতুন শিক্ষক",
+        sortOrder: 1,
+      },
       { keyName: "all_teacher", name: "All Teachers", nameBn: "শিক্ষকসমূহ", sortOrder: 2 },
     ],
     reports: [
-      { keyName: "academic_report", name: "Academic Report", nameBn: "একাডেমিক রিপোর্ট", sortOrder: 1 },
+      {
+        keyName: "academic_report",
+        name: "Academic Report",
+        nameBn: "একাডেমিক রিপোর্ট",
+        sortOrder: 1,
+      },
       { keyName: "student_report", name: "Student Report", nameBn: "ছাত্র রিপোর্ট", sortOrder: 2 },
       { keyName: "teacher_report", name: "Teacher Report", nameBn: "শিক্ষক রিপোর্ট", sortOrder: 3 },
       { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট সমূহ", sortOrder: 4 },
     ],
     talimat: [
       { keyName: "class_panel", name: "Class Panel", nameBn: "ক্লাস প্যানেল", sortOrder: 1 },
-      { keyName: "teacher_assignment", name: "Teacher Assignment", nameBn: "কিতাব বন্টন", sortOrder: 2 },
+      {
+        keyName: "teacher_assignment",
+        name: "Teacher Assignment",
+        nameBn: "কিতাব বন্টন",
+        sortOrder: 2,
+      },
       { keyName: "exam_panel", name: "Exam Panel", nameBn: "পরিক্ষা প্যানেল", sortOrder: 3 },
       { keyName: "results", name: "Results", nameBn: "রেজাল্ট", sortOrder: 4 },
       { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট টেমপ্লেট", sortOrder: 5 },
@@ -210,17 +333,25 @@ async function main() {
     ],
   };
 
+  const featureIds: number[] = [];
   for (const [moduleKey, features] of Object.entries(featuresByModule)) {
     const moduleId = moduleIds[moduleKey];
-    if (!moduleId) continue;
+    if (!moduleId) continue; // module was removed above / not found
     for (const f of features) {
-      await prisma.moduleFeature.upsert({
+      const row = await prisma.moduleFeature.upsert({
         where: { moduleId_keyName: { moduleId, keyName: f.keyName } },
         update: { name: f.name, nameBn: f.nameBn, sortOrder: f.sortOrder },
         create: { ...f, moduleId },
       });
+      featureIds.push(row.id);
     }
   }
+  await syncDelete(
+    "module feature",
+    await prisma.moduleFeature.findMany({ select: { id: true } }),
+    featureIds,
+    (id) => prisma.moduleFeature.delete({ where: { id } }),
+  );
 
   /* ============== PERMISSIONS ============== */
   const permissions = [
@@ -233,11 +364,23 @@ async function main() {
     { keyName: "accounts.read", name: "View Accounts" },
     { keyName: "accounts.create", name: "Create Accounts" },
   ];
+  const permissionIds: number[] = [];
   for (const p of permissions) {
-    await prisma.permission.upsert({ where: { keyName: p.keyName }, update: {}, create: p });
+    const row = await prisma.permission.upsert({
+      where: { keyName: p.keyName },
+      update: { name: p.name },
+      create: p,
+    });
+    permissionIds.push(row.id);
   }
+  await syncDelete(
+    "permission",
+    await prisma.permission.findMany({ select: { id: true } }),
+    permissionIds,
+    (id) => prisma.permission.delete({ where: { id } }),
+  );
 
-  console.log("✅ Seed complete.");
+  console.log("✅ Seed complete (added/updated/removed to match seed.ts).");
   console.log("   Super Admin login: admin@madrasa.com / admin123  (change this password!)");
 }
 
