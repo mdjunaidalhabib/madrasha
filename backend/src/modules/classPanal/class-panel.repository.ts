@@ -11,12 +11,15 @@ export class ClassPanelRepository {
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, class: { divisionId } },
-      select: { class: { select: { id: true, nameBn: true, divisionId: true } } },
+      select: { class: { select: { id: true, nameBn: true, divisionId: true, sortOrder: true } } },
+      orderBy: { class: { sortOrder: "asc" } },
     });
   }
 
   createClass(nameBn: string, divisionId: number) {
-    return prisma.class.create({ data: { nameBn, divisionId } });
+    // Custom, madrasha-added classes sort after the seeded master list
+    // (which uses low sortOrder numbers) unless reordered later.
+    return prisma.class.create({ data: { nameBn, divisionId, isActive: true, sortOrder: 9999 } });
   }
 
   linkClassToMadrasa(madrasaId: number, classId: number) {

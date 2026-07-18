@@ -122,24 +122,32 @@ async function main() {
   };
 
   const classIds: Record<string, number> = {}; // key: "division/className"
+  let classSortOrder = 0;
   for (const [divisionKey, classes] of Object.entries(classesByDivision)) {
     const divisionId = divisionIds[divisionKey];
     if (!divisionId) continue; // division was removed above / not found
     for (const c of classes) {
+      classSortOrder += 1;
       const row = await prisma.class.upsert({
         where: { divisionId_name: { divisionId, name: c.name } },
-        update: { nameBn: c.nameBn },
-        create: { ...c, divisionId },
+        update: { nameBn: c.nameBn, isActive: true, sortOrder: classSortOrder },
+        create: { ...c, divisionId, isActive: true, sortOrder: classSortOrder },
       });
       classIds[`${divisionKey}/${c.name}`] = row.id;
     }
   }
-  await syncDelete(
-    "class",
-    await prisma.class.findMany({ select: { id: true } }),
-    Object.values(classIds),
-    (id) => prisma.class.delete({ where: { id } }),
-  );
+  // ⚠️ Classes are never hard-deleted here on purpose. Once a class exists,
+  // madrashas may have assigned it (madrasa_classes) and students may
+  // reference it (students.class_id, onDelete: Restrict). Hard-deleting and
+  // re-creating on the next seed run would silently drop those assignments
+  // and shuffle every class's id. Instead, classes removed from
+  // `classesByDivision` above are just deactivated — their id and any
+  // existing assignments/students stay intact, they just stop being
+  // offered for new assignments.
+  await prisma.class.updateMany({
+    where: { id: { notIn: Object.values(classIds) } },
+    data: { isActive: false },
+  });
 
   /* ============== BOOKS ============== */
   const booksByClass: Record<string, { name: string; nameBn: string }[]> = {

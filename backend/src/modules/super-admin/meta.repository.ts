@@ -16,11 +16,14 @@ export class MetaRepository {
     });
   }
 
-  findClasses(divisionId?: number) {
+  findClasses(divisionId?: number, includeInactive = false) {
     return prisma.class.findMany({
-      where: divisionId ? { divisionId } : undefined,
-      select: { id: true, name: true, nameBn: true, divisionId: true },
-      orderBy: { id: "asc" },
+      where: {
+        ...(divisionId ? { divisionId } : {}),
+        ...(includeInactive ? {} : { isActive: true }),
+      },
+      select: { id: true, name: true, nameBn: true, divisionId: true, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
