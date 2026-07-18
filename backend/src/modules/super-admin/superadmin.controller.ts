@@ -22,6 +22,16 @@ export const listMadrasas = async (req: Request, res: Response) => {
   }
 };
 
+/* ================= MADRASA DETAIL (for edit prefill) ================= */
+export const getMadrasaDetail = async (req: Request, res: Response) => {
+  try {
+    const data = await superAdminService.getMadrasaDetail(Number(req.params.id));
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 /* ================= LIST PLANS ================= */
 export const listPlans = async (_req: Request, res: Response) => {
   try {
@@ -130,6 +140,44 @@ export const getSuperAdminStats = async (_req: Request, res: Response) => {
   try {
     const stats = await superAdminService.getSuperAdminStats();
     res.json(stats);
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+/* ================= MADRASA ROLES (for user setup dropdown) ================= */
+export const listMadrasaRoles = async (req: Request, res: Response) => {
+  try {
+    const rows = await superAdminService.listMadrasaRoles(Number(req.params.id));
+    res.json({ data: rows });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+/* ================= MADRASA USERS (Super Admin setup) ================= */
+export const listMadrasaUsers = async (req: Request, res: Response) => {
+  try {
+    const rows = await superAdminService.listMadrasaUsers(Number(req.params.id));
+    res.json({ data: rows });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const createMadrasaUser = async (req: Request, res: Response) => {
+  try {
+    const result = await superAdminService.createMadrasaUser(Number(req.params.id), req.body);
+    res.status(HttpStatus.CREATED).json({ message: "User created", id: result.id });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteMadrasaUser = async (req: Request, res: Response) => {
+  try {
+    await superAdminService.deleteMadrasaUser(Number(req.params.id), Number(req.params.userId));
+    res.json({ message: "User deleted" });
   } catch (error) {
     respondError(res, error);
   }

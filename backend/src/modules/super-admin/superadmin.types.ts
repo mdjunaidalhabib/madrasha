@@ -1,4 +1,4 @@
-import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/errors";
 
 export class InvalidMadrasaIdError extends BadRequestError {
   constructor() {
@@ -41,6 +41,54 @@ export class SlugConflictError extends ConflictError {
     super(
       "Cannot restore: this slug is already used by another active madrasa. Rename that madrasa's slug first.",
     );
+  }
+}
+
+export class UserLimitReachedError extends BadRequestError {
+  constructor() {
+    super("User limit reached. Upgrade the plan or increase the user limit.");
+  }
+}
+
+export class UserEmailConflictError extends ConflictError {
+  constructor() {
+    super("This email is already used by another user in this madrasa.");
+  }
+}
+
+export class InvalidRoleError extends BadRequestError {
+  constructor() {
+    super("Invalid role_id for this madrasa");
+  }
+}
+
+export class UserNameRequiredError extends BadRequestError {
+  constructor() {
+    super("User name required");
+  }
+}
+
+export class UserEmailRequiredError extends BadRequestError {
+  constructor() {
+    super("User email required");
+  }
+}
+
+export class UserPasswordTooShortError extends BadRequestError {
+  constructor() {
+    super("Password must be at least 6 characters");
+  }
+}
+
+export class UserNotFoundError extends NotFoundError {
+  constructor() {
+    super("User not found");
+  }
+}
+
+export class DefaultUserProtectedError extends ForbiddenError {
+  constructor() {
+    super("This is the madrasa's default (Muhtamim) user and cannot be deleted.");
   }
 }
 

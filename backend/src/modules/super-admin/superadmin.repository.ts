@@ -227,7 +227,11 @@ export class SuperAdminRepository {
   }
 
   seedMadrasaDivisionsOnTx(tx: TransactionClient, rows: Prisma.MadrasaDivisionCreateManyInput[]) {
-    return tx.madrasaDivision.createMany({ data: rows });
+    return tx.madrasaDivision.createMany({ data: rows, skipDuplicates: true });
+  }
+
+  deactivateAllMadrasaDivisionsOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaDivision.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
   }
 
   activateMadrasaDivisionsOnTx(tx: TransactionClient, madrasaId: number, divisionIds: number[]) {
@@ -242,7 +246,11 @@ export class SuperAdminRepository {
   }
 
   seedMadrasaModulesOnTx(tx: TransactionClient, rows: Prisma.MadrasaModuleCreateManyInput[]) {
-    return tx.madrasaModule.createMany({ data: rows });
+    return tx.madrasaModule.createMany({ data: rows, skipDuplicates: true });
+  }
+
+  deactivateAllMadrasaModulesOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaModule.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
   }
 
   activateMadrasaModulesOnTx(tx: TransactionClient, madrasaId: number, moduleIds: number[]) {
@@ -257,7 +265,11 @@ export class SuperAdminRepository {
   }
 
   seedMadrasaClassesOnTx(tx: TransactionClient, rows: Prisma.MadrasaClassCreateManyInput[]) {
-    return tx.madrasaClass.createMany({ data: rows });
+    return tx.madrasaClass.createMany({ data: rows, skipDuplicates: true });
+  }
+
+  deactivateAllMadrasaClassesOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaClass.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
   }
 
   activateMadrasaClassesOnTx(tx: TransactionClient, madrasaId: number, classIds: number[]) {
@@ -272,7 +284,11 @@ export class SuperAdminRepository {
   }
 
   seedMadrasaBooksOnTx(tx: TransactionClient, rows: Prisma.MadrasaBookCreateManyInput[]) {
-    return tx.madrasaBook.createMany({ data: rows });
+    return tx.madrasaBook.createMany({ data: rows, skipDuplicates: true });
+  }
+
+  deactivateAllMadrasaBooksOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaBook.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
   }
 
   activateMadrasaBooksOnTx(tx: TransactionClient, madrasaId: number, bookIds: number[]) {
@@ -282,12 +298,114 @@ export class SuperAdminRepository {
     });
   }
 
+  /* ================= MADRASA DETAIL (for edit prefill) ================= */
+
+  findMadrasaDetail(id: number) {
+    return prisma.madrasa.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        address: true,
+        phone: true,
+        studentLimit: true,
+        userLimit: true,
+        isActive: true,
+        websiteStatus: true,
+        subscriptions: {
+          where: { isActive: 1 },
+          take: 1,
+          select: { planId: true },
+        },
+        madrasaDivisions: {
+          where: { isActive: 1 },
+          select: { divisionId: true },
+        },
+        madrasaModules: {
+          where: { isActive: 1 },
+          select: { moduleId: true },
+        },
+      },
+    });
+  }
+
   createActivityLogOnTx(tx: TransactionClient, data: Prisma.ActivityLogUncheckedCreateInput) {
     return tx.activityLog.create({ data });
   }
 
   updateMadrasaFieldsOnTx(tx: TransactionClient, id: number, data: Prisma.MadrasaUpdateInput) {
     return tx.madrasa.updateMany({ where: { id, deletedAt: null }, data });
+  }
+
+  /* ================= MADRASA USERS (Super Admin setup) ================= */
+
+  findMadrasaRoles(madrasaId: number) {
+    return prisma.role.findMany({
+      where: { madrasaId },
+      select: { id: true, keyName: true, nameBn: true },
+      orderBy: { id: "asc" },
+    });
+  }
+
+  findMadrasaRoleById(madrasaId: number, roleId: number) {
+    return prisma.role.findFirst({ where: { id: roleId, madrasaId } });
+  }
+
+  findMadrasaUsers(madrasaId: number) {
+    return prisma.user.findMany({
+      where: { madrasaId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+        roleId: true,
+        createdAt: true,
+        role: { select: { keyName: true, nameBn: true } },
+      },
+      orderBy: { id: "desc" },
+    });
+  }
+
+  findMadrasaForUserLimit(id: number) {
+    return prisma.madrasa.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, userLimit: true },
+    });
+  }
+
+  countActiveUsersForMadrasa(madrasaId: number) {
+    return prisma.user.count({ where: { madrasaId, isActive: 1 } });
+  }
+
+  findMadrasaUserByEmail(madrasaId: number, email: string) {
+    return prisma.user.findFirst({ where: { madrasaId, email } });
+  }
+
+  findMadrasaUserById(id: number, madrasaId: number) {
+    return prisma.user.findFirst({
+      where: { id, madrasaId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        roleId: true,
+        role: { select: { keyName: true, nameBn: true } },
+      },
+    });
+  }
+
+  createMadrasaUser(data: Prisma.UserUncheckedCreateInput) {
+    return prisma.user.create({ data });
+  }
+
+  deleteMadrasaUser(id: number, madrasaId: number) {
+    return prisma.user.deleteMany({ where: { id, madrasaId } });
+  }
+
+  createActivityLog(data: Prisma.ActivityLogUncheckedCreateInput) {
+    return prisma.activityLog.create({ data });
   }
 
   /* ================= PERMANENT DELETE (tx) ================= */

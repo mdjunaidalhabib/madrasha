@@ -23,8 +23,19 @@ export interface UpdateMadrasaRequestDto {
   is_active?: unknown;
   website_status?: string;
   plan_id?: number | string;
+  divisions?: unknown;
+  modules?: unknown;
+  classes?: unknown;
+  books?: unknown;
 }
 
 export interface AssignPlanRequestDto {
   plan_id: number | string;
+}
+
+export interface CreateMadrasaUserRequestDto {
+  name: string;
+  email: string;
+  password: string;
+  role_id: number | string;
 }

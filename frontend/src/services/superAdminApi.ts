@@ -23,6 +23,11 @@ export async function listMadrasas(params?: { q?: string; page?: number; limit?:
   return res.data;
 }
 
+export async function getMadrasa(id: number) {
+  const res = await api.get(`/super/madrasas/${id}`);
+  return res.data;
+}
+
 /* =========================
    PLANS
 ========================= */
@@ -151,5 +156,49 @@ export async function restoreMadrasa(id: number) {
 
 export async function permanentDeleteMadrasa(id: number) {
   const res = await api.delete(`/super/madrasas/${id}/permanent`);
+  return res.data;
+}
+
+/* =========================
+   MADRASA USERS (Super Admin setup)
+========================= */
+
+export type MadrasaUserItem = {
+  id: number;
+  name: string;
+  email: string;
+  is_active: number;
+  role_id: number;
+  role_key: string | null;
+  role_name: string | null;
+  created_at?: string;
+};
+
+export type MadrasaRoleItem = {
+  id: number;
+  key: string | null;
+  name: string | null;
+};
+
+export async function listMadrasaRoles(madrasaId: number) {
+  const res = await api.get(`/super/madrasas/${madrasaId}/roles`);
+  return res.data;
+}
+
+export async function listMadrasaUsers(madrasaId: number) {
+  const res = await api.get(`/super/madrasas/${madrasaId}/users`);
+  return res.data;
+}
+
+export async function createMadrasaUser(
+  madrasaId: number,
+  payload: { name: string; email: string; password: string; role_id: number },
+) {
+  const res = await api.post(`/super/madrasas/${madrasaId}/users`, payload);
+  return res.data;
+}
+
+export async function deleteMadrasaUser(madrasaId: number, userId: number) {
+  const res = await api.delete(`/super/madrasas/${madrasaId}/users/${userId}`);
   return res.data;
 }

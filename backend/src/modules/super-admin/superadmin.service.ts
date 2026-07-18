@@ -11,14 +11,25 @@ import {
   WEBSITE_STATUSES,
 } from "./superadmin.constants";
 import {
+  DefaultUserProtectedError,
   InvalidMadrasaIdError,
   InvalidPlanError,
+  InvalidRoleError,
   InvalidWebsiteStatusError,
   MadrasaNotFoundError,
   PlanIdRequiredError,
   SlugConflictError,
   TrashedMadrasaOperationError,
+  UserEmailConflictError,
+  UserEmailRequiredError,
+  UserLimitReachedError,
+  UserNameRequiredError,
+  UserNotFoundError,
+  UserPasswordTooShortError,
 } from "./superadmin.types";
+
+/** The role that always represents a madrasa's default/owner account (created on madrasa setup). */
+const DEFAULT_PROTECTED_ROLE_KEY = "MUHTAMIM";
 import { AssignPlanRequestDto, CreateMadrasaRequestDto, UpdateMadrasaRequestDto } from "./superadmin.dto";
 
 function slugify(text: string) {
@@ -203,7 +214,17 @@ export class SuperAdminService {
     moduleIds: number[],
     classIds: number[],
     bookIds: number[],
+    options: { resetFirst?: boolean } = {},
   ) {
+    if (options.resetFirst) {
+      // Editing an existing madrasa: clear previous selections first so
+      // deselected divisions/modules/classes/books actually turn off.
+      await this.repository.deactivateAllMadrasaDivisionsOnTx(tx, madrasaId);
+      await this.repository.deactivateAllMadrasaModulesOnTx(tx, madrasaId);
+      await this.repository.deactivateAllMadrasaClassesOnTx(tx, madrasaId);
+      await this.repository.deactivateAllMadrasaBooksOnTx(tx, madrasaId);
+    }
+
     /* ========================= DIVISIONS ========================= */
     const allDivisions = await this.repository.findAllDivisionIdsOnTx(tx);
     if (allDivisions.length) {
@@ -255,6 +276,13 @@ export class SuperAdminService {
       throw new InvalidWebsiteStatusError();
     }
 
+    // Only touch divisions/modules/classes/books when the client actually
+    // sent them (edit form) — undefined means "not part of this update".
+    const divisionIds = dto.divisions !== undefined ? cleanNumberArray(dto.divisions) : null;
+    const moduleIds = dto.modules !== undefined ? cleanNumberArray(dto.modules) : null;
+    const classIds = dto.classes !== undefined ? cleanNumberArray(dto.classes) : null;
+    const bookIds = dto.books !== undefined ? cleanNumberArray(dto.books) : null;
+
     await this.repository.runTransaction(async (tx) => {
       await this.repository.updateMadrasaFieldsOnTx(tx, id, {
         ...(dto.name ? { name: dto.name } : {}),
@@ -281,6 +309,18 @@ export class SuperAdminService {
         await this.repository.updateMadrasaLimitsOnTx(tx, id, plan.studentLimit, plan.userLimit);
       }
 
+      if (divisionIds !== null || moduleIds !== null || classIds !== null || bookIds !== null) {
+        await this.seedAndActivate(
+          tx,
+          id,
+          divisionIds ?? [],
+          moduleIds ?? [],
+          classIds ?? [],
+          bookIds ?? [],
+          { resetFirst: true },
+        );
+      }
+
       await this.repository.createActivityLogOnTx(tx, {
         madrasaId: id,
         action: MADRASA_ACTIVITY.UPDATED,
@@ -294,6 +334,28 @@ export class SuperAdminService {
         }),
       });
     });
+  }
+
+  async getMadrasaDetail(id: number) {
+    if (!id) throw new InvalidMadrasaIdError();
+
+    const madrasa = await this.repository.findMadrasaDetail(id);
+    if (!madrasa) throw new MadrasaNotFoundError();
+
+    return {
+      id: madrasa.id,
+      name: madrasa.name,
+      slug: madrasa.slug,
+      address: madrasa.address,
+      phone: madrasa.phone,
+      student_limit: madrasa.studentLimit,
+      user_limit: madrasa.userLimit,
+      is_active: madrasa.isActive,
+      website_status: madrasa.websiteStatus,
+      plan_id: madrasa.subscriptions[0]?.planId ?? null,
+      divisions: madrasa.madrasaDivisions.map((d) => d.divisionId),
+      modules: madrasa.madrasaModules.map((m) => m.moduleId),
+    };
   }
 
   async activateMadrasa(id: number) {
@@ -349,6 +411,106 @@ export class SuperAdminService {
     if (conflict) throw new SlugConflictError();
 
     await this.repository.restoreMadrasa(id);
+  }
+
+  /* ================= MADRASA USERS (Super Admin setup) ================= */
+
+  async listMadrasaRoles(madrasaId: number) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+    const roles = await this.repository.findMadrasaRoles(madrasaId);
+    return roles.map((r) => ({ id: r.id, key: r.keyName, name: r.nameBn }));
+  }
+
+  async listMadrasaUsers(madrasaId: number) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+    const users = await this.repository.findMadrasaUsers(madrasaId);
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      is_active: u.isActive,
+      role_id: u.roleId,
+      role_key: u.role?.keyName ?? null,
+      role_name: u.role?.nameBn ?? null,
+      created_at: u.createdAt,
+    }));
+  }
+
+  async createMadrasaUser(
+    madrasaId: number,
+    dto: { name?: string; email?: string; password?: string; role_id?: number | string },
+  ) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+
+    const madrasa = await this.repository.findMadrasaForUserLimit(madrasaId);
+    if (!madrasa) throw new MadrasaNotFoundError();
+
+    const name = (dto.name || "").trim();
+    const email = (dto.email || "").trim();
+    const password = dto.password || "";
+    const roleId = Number(dto.role_id);
+
+    if (!name) throw new UserNameRequiredError();
+    if (!email) throw new UserEmailRequiredError();
+    if (password.length < 6) throw new UserPasswordTooShortError();
+    if (!roleId) throw new InvalidRoleError();
+
+    const role = await this.repository.findMadrasaRoleById(madrasaId, roleId);
+    if (!role) throw new InvalidRoleError();
+
+    const activeCount = await this.repository.countActiveUsersForMadrasa(madrasaId);
+    if (activeCount >= (madrasa.userLimit ?? 0)) {
+      throw new UserLimitReachedError();
+    }
+
+    const existing = await this.repository.findMadrasaUserByEmail(madrasaId, email);
+    if (existing) throw new UserEmailConflictError();
+
+    const passwordHash = await hashPassword(password);
+
+    const created = await this.repository.createMadrasaUser({
+      madrasaId,
+      name,
+      email,
+      passwordHash,
+      roleId,
+      isActive: 1,
+    });
+
+    await this.repository.createActivityLog({
+      madrasaId,
+      action: "SUPER_ADMIN_USER_CREATED",
+      entity: "user",
+      entityId: created.id,
+      details: JSON.stringify({ name, email, role_id: roleId }),
+    });
+
+    return { id: created.id };
+  }
+
+  async deleteMadrasaUser(madrasaId: number, userId: number) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+    if (!userId) throw new BadRequestError("Invalid user id");
+
+    const user = await this.repository.findMadrasaUserById(userId, madrasaId);
+    if (!user) throw new UserNotFoundError();
+
+    // Every madrasa's default/owner (Muhtamim) account must always exist and
+    // can never be removed via this endpoint, no matter what the client sends.
+    if (user.role?.keyName === DEFAULT_PROTECTED_ROLE_KEY) {
+      throw new DefaultUserProtectedError();
+    }
+
+    const result = await this.repository.deleteMadrasaUser(userId, madrasaId);
+    if (!result.count) throw new UserNotFoundError();
+
+    await this.repository.createActivityLog({
+      madrasaId,
+      action: "SUPER_ADMIN_USER_DELETED",
+      entity: "user",
+      entityId: userId,
+      details: JSON.stringify({ user_id: userId }),
+    });
   }
 
   async getMadrasaDeleteStats(id: number) {

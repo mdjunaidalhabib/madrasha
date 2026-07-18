@@ -317,11 +317,11 @@ export default function SuperAdminPlansPage() {
           <p className="text-sm text-gray-600">Super Admin এখান থেকে pricing/limits manage করবে।</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setTab("plans")}
             className={[
-              "rounded-xl px-4 py-2 text-sm font-medium",
+              "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "plans"
                 ? "bg-black text-white"
                 : "border bg-white text-gray-700 hover:bg-gray-50",
@@ -333,7 +333,7 @@ export default function SuperAdminPlansPage() {
           <button
             onClick={() => setTab("trash")}
             className={[
-              "rounded-xl px-4 py-2 text-sm font-medium",
+              "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "trash"
                 ? "bg-black text-white"
                 : "border bg-white text-gray-700 hover:bg-gray-50",
@@ -345,7 +345,7 @@ export default function SuperAdminPlansPage() {
           {tab === "plans" && (
             <button
               onClick={openCreate}
-              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90"
+              className="flex-1 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 sm:flex-none"
             >
               + New Plan
             </button>
@@ -415,8 +415,124 @@ export default function SuperAdminPlansPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="mt-5 overflow-hidden rounded-2xl border bg-white">
+      {/* Mobile card list (hidden on md+) */}
+      <div className="mt-5 space-y-3 md:hidden">
+        {loading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-2xl border bg-white p-4">
+              <div className="h-3 w-2/3 rounded bg-gray-100" />
+              <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
+            </div>
+          ))}
+
+        {!loading && tab === "plans" && rows.length === 0 && (
+          <div className="rounded-2xl border bg-white p-6 text-center">
+            <div className="text-sm font-medium text-gray-800">কোনো Plan পাওয়া যায়নি</div>
+            <div className="text-xs text-gray-500">নতুন Plan যোগ করতে “New Plan” চাপুন</div>
+          </div>
+        )}
+
+        {!loading &&
+          tab === "plans" &&
+          rows.map((p) => (
+            <div key={p.id} className="rounded-2xl border bg-white p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-medium text-gray-900">
+                    #{p.id} — {p.name}
+                  </div>
+                  <div className="text-xs text-gray-500">Duration: {p.duration_days} days</div>
+                </div>
+                <Badge active={!!p.is_active} />
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
+                <div>
+                  <div className="text-xs text-gray-500">Students</div>
+                  {p.student_limit}
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Users</div>
+                  {p.user_limit}
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <IconButton title="Edit" onClick={() => openEdit(p)}>
+                  ✏️ Edit
+                </IconButton>
+                <IconButton title="Toggle" onClick={() => onToggle(p.id)}>
+                  🔁 Toggle
+                </IconButton>
+                <IconButton
+                  title="Move to Trash"
+                  variant="danger"
+                  onClick={() => openConfirm("trash", p)}
+                >
+                  🗑 Trash
+                </IconButton>
+              </div>
+            </div>
+          ))}
+
+        {!loading && tab === "trash" && trashRows.length === 0 && (
+          <div className="rounded-2xl border bg-white p-6 text-center">
+            <div className="text-sm font-medium text-gray-800">Trash খালি</div>
+            <div className="text-xs text-gray-500">কোনো Plan trash এ নেই</div>
+          </div>
+        )}
+
+        {!loading &&
+          tab === "trash" &&
+          trashRows.map((p) => (
+            <div key={p.id} className="rounded-2xl border bg-white p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-medium text-gray-900">
+                    #{p.id} — {p.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Deleted: {p.deleted_at ? new Date(p.deleted_at).toLocaleString() : "-"}
+                  </div>
+                </div>
+                <Badge active={!!p.is_active} />
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
+                <div>
+                  <div className="text-xs text-gray-500">Students</div>
+                  {p.student_limit}
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Users</div>
+                  {p.user_limit}
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <IconButton title="Restore" variant="warn" onClick={() => openConfirm("restore", p)}>
+                  ♻️ Restore
+                </IconButton>
+                <IconButton
+                  title="Permanent Delete"
+                  variant="danger"
+                  onClick={() => openConfirm("permanent", p)}
+                >
+                  ❌ Permanent
+                </IconButton>
+              </div>
+            </div>
+          ))}
+      </div>
+
+      {/* Desktop table (hidden below md) */}
+      <div className="mt-5 hidden overflow-hidden rounded-2xl border bg-white md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs text-gray-600">

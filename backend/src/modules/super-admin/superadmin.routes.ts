@@ -18,6 +18,11 @@ import {
   assignPlanToMadrasa,
   getMadrasaDeleteStats,
   getSuperAdminStats,
+  getMadrasaDetail,
+  listMadrasaRoles,
+  listMadrasaUsers,
+  createMadrasaUser,
+  deleteMadrasaUser,
 } from "./superadmin.controller";
 
 /* =========================
@@ -54,6 +59,9 @@ router.delete("/madrasas/:id", superAdminMiddleware, trashMadrasa);
 router.get("/madrasas/trash", superAdminMiddleware, listTrash);
 router.post("/madrasas/:id/restore", superAdminMiddleware, restoreMadrasa);
 
+// NOTE: kept after "/madrasas/trash" so "trash" doesn't get matched as :id
+router.get("/madrasas/:id", superAdminMiddleware, getMadrasaDetail);
+
 router.delete("/madrasas/:id/permanent", superAdminMiddleware, permanentDeleteMadrasa);
 
 /* =====================================================
@@ -67,6 +75,15 @@ router.get("/madrasas/:id/delete-stats", superAdminMiddleware, getMadrasaDeleteS
 ===================================================== */
 
 router.post("/madrasas/:id/assign-plan", superAdminMiddleware, assignPlanToMadrasa);
+
+/* =====================================================
+   MADRASA USERS (Super Admin setup)
+===================================================== */
+
+router.get("/madrasas/:id/roles", superAdminMiddleware, listMadrasaRoles);
+router.get("/madrasas/:id/users", superAdminMiddleware, listMadrasaUsers);
+router.post("/madrasas/:id/users", superAdminMiddleware, createMadrasaUser);
+router.delete("/madrasas/:id/users/:userId", superAdminMiddleware, deleteMadrasaUser);
 
 /* =====================================================
    PLANS (TRASH SYSTEM)

@@ -84,30 +84,30 @@ export default function SuperAdminDashboardPage() {
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <div className="bg-white rounded shadow p-6 border-l-4 border-purple-500">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+        <div className="bg-white rounded shadow p-4 sm:p-6 border-l-4 border-purple-500">
           <p className="text-sm text-gray-500">Total Madrasas</p>
-          <h2 className="text-3xl font-bold text-purple-600">{stats?.totalMadrasas ?? 0}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-purple-600">{stats?.totalMadrasas ?? 0}</h2>
         </div>
 
-        <div className="bg-white rounded shadow p-6 border-l-4 border-green-500">
+        <div className="bg-white rounded shadow p-4 sm:p-6 border-l-4 border-green-500">
           <p className="text-sm text-gray-500">Active</p>
-          <h2 className="text-3xl font-bold text-green-600">{stats?.activeMadrasas ?? 0}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-green-600">{stats?.activeMadrasas ?? 0}</h2>
         </div>
 
-        <div className="bg-white rounded shadow p-6 border-l-4 border-yellow-500">
+        <div className="bg-white rounded shadow p-4 sm:p-6 border-l-4 border-yellow-500">
           <p className="text-sm text-gray-500">Inactive</p>
-          <h2 className="text-3xl font-bold text-yellow-700">{stats?.inactiveMadrasas ?? 0}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-700">{stats?.inactiveMadrasas ?? 0}</h2>
         </div>
 
-        <div className="bg-white rounded shadow p-6 border-l-4 border-red-500">
+        <div className="bg-white rounded shadow p-4 sm:p-6 border-l-4 border-red-500">
           <p className="text-sm text-gray-500">Trashed</p>
-          <h2 className="text-3xl font-bold text-red-600">{stats?.trashedMadrasas ?? 0}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-red-600">{stats?.trashedMadrasas ?? 0}</h2>
         </div>
 
-        <div className="bg-white rounded shadow p-6 border-l-4 border-blue-500">
+        <div className="bg-white rounded shadow p-4 sm:p-6 border-l-4 border-blue-500">
           <p className="text-sm text-gray-500">Total Students</p>
-          <h2 className="text-3xl font-bold text-blue-600">{stats?.totalStudents ?? 0}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-blue-600">{stats?.totalStudents ?? 0}</h2>
         </div>
       </div>
 
@@ -120,7 +120,10 @@ export default function SuperAdminDashboardPage() {
         ) : (
           <div className="space-y-3">
             {stats.expiringPlans.map((x, i) => (
-              <div key={i} className="flex items-center justify-between border rounded p-3">
+              <div
+                key={i}
+                className="flex flex-col gap-2 border rounded p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div>
                   <div className="font-medium">{x.madrasa_name}</div>
                   <div className="text-xs text-gray-500">
@@ -153,7 +156,7 @@ export default function SuperAdminDashboardPage() {
             {stats.expiredPlans.map((x, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between border rounded p-3 bg-red-50"
+                className="flex flex-col gap-2 border rounded p-3 bg-red-50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <div className="font-medium">{x.madrasa_name}</div>

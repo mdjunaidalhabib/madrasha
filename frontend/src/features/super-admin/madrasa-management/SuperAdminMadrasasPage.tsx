@@ -4,6 +4,7 @@ import {
   activateMadrasa,
   assignPlan,
   createMadrasa,
+  getMadrasa,
   listMadrasas,
   listPlans,
   suspendMadrasa,
@@ -13,8 +14,12 @@ import {
 import SearchPaginationBar from "../../../components/super-admin/SearchPaginationBar";
 import MadrasasTable from "../../../components/super-admin/MadrasasTable";
 import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/CreateMadrasaModal";
+import DivisionsSection from "../../../components/super-admin/create-madrasa/DivisionsSection";
+import ToggleSection from "../../../components/super-admin/create-madrasa/ToggleSection";
+import MadrasaUsersSection from "../../../components/super-admin/create-madrasa/MadrasaUsersSection";
 import { Link } from "react-router-dom";
 import { CreateMadrasaPayload } from "../../../components/super-admin/create-madrasa/types";
+import api from "../../../services/adminApi";
 import { logger } from "../../../utils/logger";
 import { useConfirmStore } from "../../../store/confirmStore";
 
@@ -190,7 +195,7 @@ export default function SuperAdminMadrasasPage() {
     }
   };
 
-  const onEditSave = async (payload: Partial<Madrasa>) => {
+  const onEditSave = async (payload: Partial<Madrasa> & Record<string, unknown>) => {
     if (!editing) return;
     setBusyId(editing.id);
     try {
@@ -247,12 +252,16 @@ export default function SuperAdminMadrasasPage() {
           <p className="text-sm text-gray-600">Platform-wide madrasa list</p>
         </div>
 
-        <div className="flex gap-2">
-          <Link to="/admin/madrasas/trash">
-            <Button variant="secondary">Trash</Button>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <Link to="/admin/madrasas/trash" className="flex-1 sm:flex-none">
+            <Button variant="secondary" className="w-full sm:w-auto">
+              Trash
+            </Button>
           </Link>
 
-          <Button onClick={() => setOpenCreate(true)}>+ Create Madrasa</Button>
+          <Button className="flex-1 sm:flex-none" onClick={() => setOpenCreate(true)}>
+            + Create Madrasa
+          </Button>
         </div>
       </div>
 
@@ -321,7 +330,7 @@ function EditMadrasaModal({
   plans: Plan[];
   busy: boolean;
   onClose: () => void;
-  onSubmit: (payload: Partial<Madrasa>) => Promise<void>;
+  onSubmit: (payload: Partial<Madrasa> & Record<string, unknown>) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     name: madrasa.name || "",
@@ -338,9 +347,98 @@ function EditMadrasaModal({
   const update = (key: keyof typeof form, value: string | number) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  /* =========================
+  System Setup (same fields as Create Madrasa)
+  ========================= */
+  type Item = { key: string; label: string };
+
+  const [divisionItems, setDivisionItems] = useState<Item[]>([]);
+  const [moduleItems, setModuleItems] = useState<Item[]>([]);
+  const [allClasses, setAllClasses] = useState<any[]>([]);
+  const [allBooks, setAllBooks] = useState<any[]>([]);
+
+  const [divisions, setDivisions] = useState<string[]>([]);
+  const [modules, setModules] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [books, setBooks] = useState<string[]>([]);
+
+  const [loadingSetup, setLoadingSetup] = useState(true);
+
+  // Load master data + this madrasa's currently active divisions/modules
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoadingSetup(true);
+      try {
+        const [divRes, modRes, classRes, bookRes, detailRes] = await Promise.all([
+          api.get("/super/divisions"),
+          api.get("/super/modules"),
+          api.get("/super/classes"),
+          api.get("/super/books"),
+          getMadrasa(madrasa.id),
+        ]);
+
+        if (cancelled) return;
+
+        const divData = (divRes.data?.data || []).map((r: any) => ({
+          key: String(r.id),
+          label: r.label || r.name,
+        }));
+        const modData = (modRes.data?.data || []).map((r: any) => ({
+          key: String(r.id),
+          label: r.label || r.name,
+        }));
+
+        setDivisionItems(divData);
+        setModuleItems(modData);
+        setAllClasses(classRes.data?.data || []);
+        setAllBooks(bookRes.data?.data || []);
+
+        const detail = detailRes?.data || {};
+        setDivisions((detail.divisions || []).map((id: number) => String(id)));
+        setModules((detail.modules || []).map((id: number) => String(id)));
+      } catch (err) {
+        logger.error("Failed to load madrasa setup data:", err);
+      } finally {
+        if (!cancelled) setLoadingSetup(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [madrasa.id]);
+
+  // Classes are hidden from the UI (same as Create) — auto-select ALL
+  // classes under the selected divisions.
+  useEffect(() => {
+    if (!divisions.length) {
+      setClasses([]);
+      return;
+    }
+    const validKeys = allClasses
+      .filter((c) => divisions.includes(String(c.division_id)))
+      .map((c) => String(c.id));
+    setClasses(validKeys);
+  }, [divisions, allClasses]);
+
+  // Books are hidden too — auto-select ALL books under the auto-selected classes.
+  useEffect(() => {
+    if (!classes.length) {
+      setBooks([]);
+      return;
+    }
+    const validKeys = allBooks
+      .filter((b) => classes.includes(String(b.class_id)))
+      .map((b) => String(b.id));
+    setBooks(validKeys);
+  }, [classes, allBooks]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-slate-900">Edit Madrasa</h2>
           <p className="text-sm text-slate-500">
@@ -437,15 +535,43 @@ function EditMadrasaModal({
             />
           </div>
         </div>
+
+        {/* System Setup — same as Create Madrasa (Classes/Books stay hidden and auto-derive) */}
+        <div className="mt-6 space-y-4">
+          {loadingSetup ? (
+            <p className="text-sm text-gray-500">Loading divisions & modules...</p>
+          ) : (
+            <>
+              <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />
+
+              <ToggleSection
+                title="Modules"
+                items={moduleItems}
+                selected={modules}
+                setSelected={setModules}
+              />
+
+              <MadrasaUsersSection madrasaId={madrasa.id} />
+            </>
+          )}
+        </div>
+
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button
             onClick={() =>
-              onSubmit({ ...form, plan_id: form.plan_id ? Number(form.plan_id) : undefined } as any)
+              onSubmit({
+                ...form,
+                plan_id: form.plan_id ? Number(form.plan_id) : undefined,
+                divisions: divisions.map(Number),
+                modules: modules.map(Number),
+                classes: classes.map(Number),
+                books: books.map(Number),
+              } as any)
             }
-            disabled={busy}
+            disabled={busy || loadingSetup}
           >
             {busy ? "Saving..." : "Save changes"}
           </Button>

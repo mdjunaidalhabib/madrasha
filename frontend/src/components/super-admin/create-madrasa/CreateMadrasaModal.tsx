@@ -8,8 +8,6 @@ import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdmi
 import api from "../../../services/adminApi";
 
 import DivisionsSection from "./DivisionsSection";
-import ClassesSection from "./ClassesSection";
-import BooksSection from "./BooksSection";
 import ToggleSection from "./ToggleSection";
 
 type Props = {
@@ -156,8 +154,8 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
     const validKeys = grouped.flatMap((g) => g.items.map((i) => i.key));
 
-    // ✅ keep only valid selected classes
-    setClasses((prev) => prev.filter((c) => validKeys.includes(c)));
+    // ✅ Classes UI is hidden — auto-select ALL classes under the selected divisions
+    setClasses(validKeys);
   }, [divisions, allClasses, divisionItems]);
 
   /* =========================
@@ -190,8 +188,8 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
     const validKeys = grouped.flatMap((g) => g.items.map((i) => i.key));
 
-    // ✅ keep only valid selected books
-    setBooks((prev) => prev.filter((b) => validKeys.includes(b)));
+    // ✅ Books UI is hidden — auto-select ALL books under the auto-selected classes
+    setBooks(validKeys);
   }, [classes, allBooks, allClasses]);
 
   /* =========================
@@ -298,13 +296,9 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
         <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />
 
-        {groupedClasses.length > 0 && (
-          <ClassesSection groups={groupedClasses} classes={classes} setClasses={setClasses} />
-        )}
+        {/* Classes section intentionally hidden: classes are auto-created based on selected divisions */}
 
-        {groupedBooks.length > 0 && (
-          <BooksSection groups={groupedBooks} books={books} setBooks={setBooks} />
-        )}
+        {/* Books section intentionally hidden: books are auto-created based on the auto-selected classes */}
 
         <ToggleSection
           title="Modules"
