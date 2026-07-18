@@ -47,6 +47,7 @@ export interface BulkAdmissionResultRow {
   name: string;
   previousAcademicYear: string | null;
   academicYear: string;
+  roll: number;
   changes: Array<{ field: string; old: unknown; new: unknown }>;
 }
 
@@ -195,6 +196,9 @@ const BulkAdmissionModal = ({
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
                           সেশন
                         </th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                          রোল
+                        </th>
                       </tr>
                     </thead>
 
@@ -228,6 +232,9 @@ const BulkAdmissionModal = ({
                             ) : (
                               <span className="font-semibold">{row.academicYear}</span>
                             )}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700">
+                            {row.roll}
                           </td>
                         </tr>
                       ))}
@@ -331,7 +338,9 @@ const BulkAdmissionModal = ({
                             <td className="whitespace-nowrap px-3 py-3">{student.dob || "-"}</td>
 
                             <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700">
-                              {student.roll || "-"}
+                              <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                                অটো
+                              </span>
                             </td>
 
                             <td className="whitespace-nowrap px-3 py-3 font-semibold text-amber-700">

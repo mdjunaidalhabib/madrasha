@@ -132,6 +132,20 @@ export const publishResult = async (req: Request, res: Response) => {
   }
 };
 
+/* ================= APPLY ROLL BY RANK ================= */
+export const applyRollByRank = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const result = await resultPanelService.applyRollByRank(
+      madrasa_id,
+      toNumber(req.body?.result_master_id),
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    respondError(res, error, "applyRollByRank error:", "Failed to reassign roll by rank");
+  }
+};
+
 /* ================= DELETE RESULT ================= */
 export const deleteResult = async (req: Request, res: Response) => {
   try {

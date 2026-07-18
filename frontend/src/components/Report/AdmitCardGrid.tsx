@@ -39,7 +39,7 @@ const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
               <b>পিতা:</b> {cellValue(row, "father_name")}
             </p>
             <p>
-              <b>রেজিস্ট্রেশন নম্বর:</b> {cellValue(row, "id")}
+              <b>রেজিস্ট্রেশন নম্বর:</b> {cellValue(row, "registration_no")}
             </p>
             <p>
               <b>রোল নম্বর:</b> {cellValue(row, "roll")}

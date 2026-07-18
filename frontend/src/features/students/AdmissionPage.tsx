@@ -12,6 +12,7 @@ import BulkAdmissionModal, {
 } from "../../components/admission/BulkAdmissionModal";
 import api from "../../services/api";
 import { logger } from "../../utils/logger";
+import { useAuthStore } from "../../store/authStore";
 
 export interface AdmissionFormData {
   name: string;
@@ -21,6 +22,7 @@ export interface AdmissionFormData {
   dob: string;
   age: number | null;
   roll: string;
+  manualRollOverride: boolean;
   academicYear: string;
   academicDivision: string;
   previousClass: string;
@@ -90,6 +92,7 @@ const initialState: AdmissionFormData = {
   dob: "",
   age: null,
   roll: "",
+  manualRollOverride: false,
   academicYear: String(new Date().getFullYear()),
   academicDivision: "",
   previousClass: "",
@@ -117,7 +120,7 @@ const toGenderNumber = (value: any) => {
   return num === 1 || num === 2 ? num : null;
 };
 
-const requiredColumns = ["name_bn", "roll", "academic_division", "current_class", "academic_year"];
+const requiredColumns = ["name_bn", "academic_division", "current_class", "academic_year"];
 
 const AdmissionPage = () => {
   const [formData, setFormData] = useState<AdmissionFormData>(initialState);
@@ -126,6 +129,11 @@ const AdmissionPage = () => {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkAdmissionResultData | null>(null);
   const [loading, setLoading] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const roleKey = String(user?.role || user?.role_key || "")
+    .trim()
+    .toUpperCase();
+  const canOverrideRoll = roleKey === "MUHTAMIM" || roleKey === "SUPER_ADMIN";
 
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -174,7 +182,6 @@ const AdmissionPage = () => {
             gender: data.gender ?? prev.gender,
             dob: data.dob ? String(data.dob).slice(0, 10) : prev.dob,
             age: data.age ?? prev.age,
-            roll: data.roll ? String(data.roll) : prev.roll,
             academicDivision: data.division_id ? String(data.division_id) : prev.academicDivision,
             previousClass: data.class_id ? String(data.class_id) : prev.previousClass,
             fatherName: data.father_name || prev.fatherName,
@@ -209,6 +216,45 @@ const AdmissionPage = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.nid]);
+
+  // Show the next roll as a preview, but let the backend assign the final
+  // value transaction-safely at submit time. Changing class/session always
+  // refreshes the suggestion unless the Muhatamim enabled manual override.
+  useEffect(() => {
+    const classId = formData.currentClass;
+    const year = formData.academicYear;
+
+    if (formData.manualRollOverride) return;
+
+    if (!classId || !year) {
+      setFormData((prev) => ({ ...prev, roll: "" }));
+      return;
+    }
+
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get("/students/next-roll", {
+          params: { class_id: classId, academic_year: year },
+        });
+        const suggested = res?.data?.data;
+
+        if (!cancelled && suggested) {
+          setFormData((prev) =>
+            prev.manualRollOverride ? prev : { ...prev, roll: String(suggested) },
+          );
+        }
+      } catch (err) {
+        logger.error("Next roll suggestion error:", err);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [formData.currentClass, formData.academicYear, formData.manualRollOverride]);
 
   const handleDismissPreviousStudent = () => {
     setPreviousStudent(null);
@@ -281,7 +327,10 @@ const AdmissionPage = () => {
     const newErrors: AdmissionFormErrors = {};
 
     if (!formData.name.trim()) newErrors.name = "ছাত্রের নাম দিন";
-    if (!formData.roll || !Number.isInteger(Number(formData.roll)) || Number(formData.roll) < 1) {
+    if (
+      formData.manualRollOverride &&
+      (!Number.isInteger(Number(formData.roll)) || Number(formData.roll) < 1)
+    ) {
       newErrors.roll = "সঠিক রোল নম্বর দিন";
     }
     if (!formData.academicYear) newErrors.academicYear = "সিক্ষাবর্ষ নির্বাচন করুন";
@@ -300,10 +349,6 @@ const AdmissionPage = () => {
 
       if (!student.name_bn && !student.name) {
         return `Row ${i + 2}: ছাত্রের নাম নেই`;
-      }
-
-      if (!student.roll || !Number.isInteger(Number(student.roll)) || Number(student.roll) < 1) {
-        return `Row ${i + 2}: roll নেই বা সঠিক নয়`;
       }
 
       if (!student.academic_division) {
@@ -331,7 +376,6 @@ const AdmissionPage = () => {
       arabic_name: student.arabic_name || null,
       nid: student.nid || null,
       age: calculateAge(student.dob),
-      roll: Number(student.roll),
       father_name: student.father_name || null,
       father_arabic_name: student.father_arabic_name || null,
       father_nid: student.father_nid || null,
@@ -353,7 +397,6 @@ const AdmissionPage = () => {
       { key: "nid", required: false },
       { key: "gender", required: false },
       { key: "dob", required: false },
-      { key: "roll", required: true },
       { key: "academic_year", required: true },
       { key: "academic_division", required: true },
       { key: "previous_class", required: false },
@@ -381,7 +424,6 @@ const AdmissionPage = () => {
       "1234567890",
       "1",
       "2015-01-20",
-      "1",
       String(new Date().getFullYear()),
       divisions[0]?.division_id || "1",
       "",
@@ -508,7 +550,8 @@ const AdmissionPage = () => {
       arabic_name: formData.arabicName || null,
       nid: formData.nid || null,
       age: calculateAge(formData.dob),
-      roll: Number(formData.roll),
+      roll: formData.manualRollOverride ? Number(formData.roll) : undefined,
+      manual_roll_override: formData.manualRollOverride,
       father_name: formData.fatherName || null,
       father_arabic_name: formData.fatherArabicName || null,
       father_nid: formData.fatherNid || null,
@@ -530,10 +573,10 @@ const AdmissionPage = () => {
 
       if (res.data?.action === "re_admitted") {
         alert(
-          `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear})`,
+          `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear})\nরোল: ${res.data?.roll || "-"}`,
         );
       } else {
-        alert("Admission Successful ✅");
+        alert(`Admission Successful ✅\nরোল: ${res.data?.roll || "-"}`);
       }
 
       setFormData(initialState);
@@ -578,6 +621,7 @@ const AdmissionPage = () => {
           setFormData={setFormData}
           errors={errors}
           setErrors={setErrors}
+          canOverrideRoll={canOverrideRoll}
         />
 
         <ParentInfo

@@ -7,6 +7,7 @@ export type AuthUser = {
   name: string;
   email?: string;
   role?: string;
+  role_key?: string;
 };
 
 export type AuthPayload = {
@@ -36,7 +37,10 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (data) => {
         set({
           token: data.token,
-          user: data.user,
+          user: {
+            ...data.user,
+            role: data.user.role || data.user.role_key,
+          },
           permissions: data.permissions || [],
           modules: data.modules || [],
         });

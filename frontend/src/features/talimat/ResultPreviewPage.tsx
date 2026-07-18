@@ -87,6 +87,7 @@ export default function ResultPreviewPage() {
   const [resultMasterId, setResultMasterId] = useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [applyingRoll, setApplyingRoll] = useState(false);
 
   const [failMark, setFailMark] = useState(33);
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
@@ -251,6 +252,29 @@ export default function ResultPreviewPage() {
     }
   };
 
+  const handleApplyRollByRank = async () => {
+    if (!resultMasterId) return toast.push("error", "No processed result found");
+
+    const confirmed = window.confirm(
+      "এই ফলাফলের মেধাক্রম অনুযায়ী পুরো ক্লাসের রোল নম্বর নতুন করে বসানো হবে (রোল ১ = সর্বোচ্চ নম্বরপ্রাপ্ত)। " +
+        "পুরনো পরীক্ষার মার্কশিটে কোনো প্রভাব পড়বে না। এগিয়ে যেতে চান?",
+    );
+    if (!confirmed) return;
+
+    try {
+      setApplyingRoll(true);
+      await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
+      await loadSummary();
+      await loadOverview();
+      toast.push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
+    } catch (err) {
+      logger.error("Apply roll by rank error:", err);
+      toast.push("error", "রোল আপডেট করা যায়নি");
+    } finally {
+      setApplyingRoll(false);
+    }
+  };
+
   const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
 
@@ -286,6 +310,8 @@ export default function ResultPreviewPage() {
             onEditStudent={handleEditStudent}
             onPublish={handlePublish}
             publishing={publishing}
+            onApplyRollByRank={handleApplyRollByRank}
+            applyingRoll={applyingRoll}
           />
         </>
       ) : (

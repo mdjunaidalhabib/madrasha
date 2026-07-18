@@ -7,6 +7,7 @@ import {
   createStudent,
   createStudentsBulk,
   lookupStudentByNid,
+  getNextRoll,
 } from "./student.controller";
 
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
@@ -30,6 +31,10 @@ router.post("/admission/bulk", tenantMiddleware, authMiddleware, createStudentsB
 // registered before the "/:id" route below, otherwise "lookup" would be
 // parsed as an :id value.
 router.get("/lookup", tenantMiddleware, authMiddleware, lookupStudentByNid);
+
+// NEXT ROLL SUGGESTION for a class+academic year - same ordering rule as
+// "/lookup" above, must come before "/:id".
+router.get("/next-roll", tenantMiddleware, authMiddleware, getNextRoll);
 
 // GET ALL
 router.get("/", tenantMiddleware, authMiddleware, getStudents);

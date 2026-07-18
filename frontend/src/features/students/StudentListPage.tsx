@@ -17,6 +17,7 @@ type ClassItem = {
 
 type Student = {
   id: number | string;
+  registration_no?: number | string | null;
   name_bn?: string;
   name?: string;
   father_name?: string;
@@ -129,12 +130,14 @@ const StudentListPage = () => {
 
     return students.filter((student) => {
       const studentId = String(student.id || "").toLowerCase();
+      const registrationNo = String(student.registration_no || "").toLowerCase();
       const studentName = String(student.name_bn || student.name || "").toLowerCase();
       const studentRoll = String(student.roll || "").toLowerCase();
 
       const matchSearch =
         !searchText ||
         studentId.includes(searchText) ||
+        registrationNo.includes(searchText) ||
         studentRoll.includes(searchText) ||
         studentName.includes(searchText);
 
@@ -153,7 +156,7 @@ const StudentListPage = () => {
   const exportStudents = useMemo(() => {
     return filteredStudents.map((student, index) => ({
       serial: index + 1,
-      registrationNumber: student.id || "",
+      registrationNumber: student.registration_no || "নেই",
       roll: student.roll || "নেই",
       name: student.name_bn || student.name || "নেই",
       fatherName: student.father_name || "নেই",

@@ -53,6 +53,13 @@ model ResultSummary {
   status ResultRowStatus?
   rankNo Int?             @map("rank_no")
 
+  /// Snapshot of the student's roll number at the moment this result was
+  /// processed. `students.roll` gets overwritten every academic year on
+  /// promotion, so without this snapshot, marksheets/notices for past exams
+  /// would silently start showing the student's *current* roll instead of
+  /// the roll they actually had during that exam.
+  roll Int?
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

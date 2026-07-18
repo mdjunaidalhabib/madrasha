@@ -8,6 +8,7 @@ import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfi
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 import { logger } from "../../utils/logger";
+import { useAuthStore } from "../../store/authStore";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -15,6 +16,11 @@ const StudentProfilePage = () => {
   const { id, madrasaSlug = "" } = useParams();
   const navigate = useNavigate();
   const adminBase = getTenantAdminBase(madrasaSlug);
+  const user = useAuthStore((state) => state.user);
+  const roleKey = String(user?.role || user?.role_key || "")
+    .trim()
+    .toUpperCase();
+  const canOverrideRoll = roleKey === "MUHTAMIM" || roleKey === "SUPER_ADMIN";
 
   const [student, setStudent] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
@@ -77,6 +83,14 @@ const StudentProfilePage = () => {
     if (!isChanged()) return;
 
     const changed = getChangedData();
+
+    if (Object.prototype.hasOwnProperty.call(changed, "roll")) {
+      if (canOverrideRoll) {
+        changed.manual_roll_override = true;
+      } else {
+        delete changed.roll;
+      }
+    }
 
     try {
       setSaving(true);
@@ -168,6 +182,7 @@ const StudentProfilePage = () => {
         editableField={editableField}
         setEditableField={setEditableField}
         isEditMode={isEditMode}
+        canOverrideRoll={canOverrideRoll}
       />
 
       <ParentInfoProfile

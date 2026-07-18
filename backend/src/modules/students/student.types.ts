@@ -17,6 +17,7 @@ export interface StudentListFilters {
  */
 export interface StudentApiDto {
   id: number;
+  registration_no: number | null;
   name_bn: string;
   arabic_name: string | null;
   nid: string | null;
@@ -53,6 +54,7 @@ export interface AdmissionResult {
   studentId: number;
   action: "created" | "re_admitted";
   previousAcademicYear?: string;
+  roll: number;
 }
 
 /** Shape returned to the frontend when it looks up a student by NID before
@@ -68,6 +70,7 @@ export interface BulkAdmissionRow {
   name: string;
   previousAcademicYear: string | null;
   academicYear: string;
+  roll: number;
   changes: Array<{ field: string; old: unknown; new: unknown }>;
 }
 

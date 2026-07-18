@@ -12,7 +12,10 @@ import {
   ACCOUNTANT_BASELINE_PERMISSIONS,
 } from "./auth.constants";
 
-const normalizeRoleKey = (value?: string | null) => String(value || "").trim().toUpperCase();
+const normalizeRoleKey = (value?: string | null) =>
+  String(value || "")
+    .trim()
+    .toUpperCase();
 
 export class AuthService {
   constructor(private readonly repository: AuthRepository = authRepository) {}
@@ -38,6 +41,7 @@ export class AuthService {
       id: user.id,
       madrasa_id: user.madrasaId,
       role_id: user.roleId,
+      role: roleKey,
     });
 
     return {
@@ -90,9 +94,7 @@ export class AuthService {
 
   private async resolveEnabledModules(madrasaId: number): Promise<string[]> {
     const madrasaModules = await this.repository.findActiveMadrasaModuleKeys(madrasaId);
-    return madrasaModules
-      .map((mm) => mm.module.keyName)
-      .filter((k): k is string => Boolean(k));
+    return madrasaModules.map((mm) => mm.module.keyName).filter((k): k is string => Boolean(k));
   }
 }
 

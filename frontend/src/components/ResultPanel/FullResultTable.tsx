@@ -32,11 +32,13 @@ interface Props {
   books: Book[];
   loading?: boolean;
   publishing?: boolean;
+  applyingRoll?: boolean;
   onView?: (student_id: number) => void;
   onEdit?: () => void;
   onEditStudent?: (student_id: number) => void;
   onDelete?: (result_master_id: number) => void;
   onPublish?: () => void;
+  onApplyRollByRank?: () => void;
 }
 
 export default function FullResultTable({
@@ -44,11 +46,13 @@ export default function FullResultTable({
   books,
   loading = false,
   publishing = false,
+  applyingRoll = false,
   onView,
   onEdit,
   onEditStudent,
   onDelete,
   onPublish,
+  onApplyRollByRank,
 }: Props) {
   const dataList = Array.isArray(summary) ? summary : [];
   const subjectList = Array.isArray(books) ? books : [];
@@ -113,6 +117,17 @@ export default function FullResultTable({
               className="bg-red-600 text-white px-4 py-2 rounded"
             >
               Delete
+            </button>
+          )}
+
+          {onApplyRollByRank && dataList.length > 0 && (
+            <button
+              onClick={onApplyRollByRank}
+              disabled={applyingRoll}
+              title="ফলাফলের মেধাক্রম অনুযায়ী প্রত্যেক ছাত্রের রোল নম্বর নতুন করে বসাবে"
+              className="bg-purple-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+            >
+              {applyingRoll ? "রোল আপডেট হচ্ছে..." : "🏆 মেধাক্রম অনুযায়ী রোল দিন"}
             </button>
           )}
 

@@ -5,7 +5,8 @@ export interface StudentAdmissionRequestDto {
   gender?: number | string;
   dob?: string;
   age?: number | string;
-  roll: number | string;
+  roll?: number | string;
+  manual_roll_override?: boolean | string;
   division_id: number | string;
   class_id: number | string;
   academic_year: string;

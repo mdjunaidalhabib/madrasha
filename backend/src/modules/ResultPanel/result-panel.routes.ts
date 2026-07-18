@@ -8,6 +8,7 @@ import {
   processResult,
   getSummary,
   publishResult,
+  applyRollByRank,
   deleteResult,
   getFullResultView,
   getClassStatus,
@@ -39,6 +40,9 @@ router.get("/overview", getResultOverview);
 
 /* ================= PUBLISH ================= */
 router.post("/publish", publishResult);
+
+/* ================= APPLY ROLL BY RANK (merit-based roll reassignment) ================= */
+router.post("/apply-roll-by-rank", applyRollByRank);
 
 /* ================= DELETE ================= */
 router.delete("/:id", deleteResult);

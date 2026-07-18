@@ -19,6 +19,7 @@ export const toStudentApiDto = (row: Record<string, any>): StudentApiDto => {
 
   return {
     id: s.id,
+    registration_no: s.registrationNo ?? null,
     name_bn: s.nameBn,
     arabic_name: s.arabicName ?? null,
     nid: s.nid ?? null,

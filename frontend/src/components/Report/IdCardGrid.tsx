@@ -36,7 +36,7 @@ const IdCardGrid = ({ rows }: IdCardGridProps) => {
               </h4>
               <div className="mt-2 space-y-1 text-xs text-slate-700">
                 <p>
-                  <b>রেজিস্ট্রেশন:</b> {cellValue(row, "id")}
+                  <b>রেজিস্ট্রেশন:</b> {cellValue(row, "registration_no")}
                 </p>
                 <p>
                   <b>রোল:</b> {cellValue(row, "roll")}

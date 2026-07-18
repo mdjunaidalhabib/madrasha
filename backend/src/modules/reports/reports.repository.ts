@@ -39,6 +39,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.id AS student_id,
         s.roll,
         s.division_id,
@@ -89,8 +90,9 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.id AS student_id,
-        s.roll,
+        COALESCE(rs.roll, s.roll) AS roll,
         s.division_id,
         s.class_id,
         s.academic_year,
@@ -118,7 +120,7 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
-      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST, s.id ASC
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC
       `,
       [madrasaId],
     );
@@ -132,8 +134,9 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.id AS student_id,
-        s.roll,
+        COALESCE(rs.roll, s.roll) AS roll,
         s.division_id,
         s.class_id,
         s.academic_year,
@@ -160,7 +163,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         AND rm.status = 'PUBLISHED'
-      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
       [madrasaId],
     );
@@ -233,6 +236,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,
@@ -265,6 +269,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,
@@ -373,8 +378,9 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.id AS student_id,
-        s.roll,
+        COALESCE(rs.roll, s.roll) AS roll,
         s.division_id,
         s.class_id,
         s.academic_year,
@@ -401,7 +407,7 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
-      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, s.roll ASC NULLS LAST
+      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
       [madrasaId],
     );
@@ -415,6 +421,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,
@@ -445,6 +452,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,
@@ -482,6 +490,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,
@@ -516,6 +525,7 @@ export class ReportsRepository {
       `
       SELECT
         s.id,
+        s.registration_no,
         s.roll,
         s.division_id,
         s.class_id,

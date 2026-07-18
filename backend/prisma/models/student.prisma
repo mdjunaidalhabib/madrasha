@@ -42,6 +42,13 @@ model Student {
 
   roll Int?
 
+  /// Permanent, per-madrasa admission/registration number. Assigned once at
+  /// first admission (never changes on re-admission/promotion), unlike
+  /// `roll` which changes every academic year. Distinct from `id`, which is
+  /// an internal, tenant-agnostic primary key and should never be shown to
+  /// users as a registration number.
+  registrationNo Int? @map("registration_no")
+
   admissionDate DateTime? @default(now()) @map("admission_date")
   isActive      Int       @default(1) @map("is_active")
   deletedAt     DateTime? @map("deleted_at")
@@ -58,6 +65,7 @@ model Student {
   marks          Mark[]
 
   @@unique([madrasaId, classId, academicYear, roll], map: "unique_roll_per_class_year")
+  @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
   @@index([madrasaId], map: "idx_students_madrasa")
   @@index([classId], map: "idx_students_class")
   @@index([guardianPhone], map: "idx_students_phone")

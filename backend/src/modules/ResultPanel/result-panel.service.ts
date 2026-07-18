@@ -177,6 +177,10 @@ export class ResultPanelService {
 
     const sorted = [...marks].sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
 
+    const studentIds = sorted.map((r) => Number(r.studentId));
+    const students = await this.repository.findRollsByStudentIds(studentIds);
+    const rollByStudentId = new Map(students.map((s) => [s.id, s.roll ?? null]));
+
     const finalResultMasterId = result_master_id;
     const summaryData = sorted.map((r, i) => {
       const total = Number(r._sum.mark || 0);
@@ -196,6 +200,7 @@ export class ResultPanelService {
         madrasaGrade: madrasa_grade,
         status,
         rankNo: i + 1,
+        roll: rollByStudentId.get(Number(r.studentId)) ?? null,
       };
     });
 
@@ -267,6 +272,49 @@ export class ResultPanelService {
     await this.repository.updateResultMasterStatus(resultMasterId, RESULT_STATUS.PUBLISHED);
 
     return { message: "Result published successfully" };
+  }
+
+  /**
+   * Reassigns classroom roll numbers for a class based on this result's
+   * merit order (rank 1 -> roll 1, rank 2 -> roll 2, ...). Students without
+   * a mark entry for this exam (absent, etc.) are placed after the ranked
+   * students, keeping their existing relative roll order, so nobody loses
+   * their roll and no two students end up sharing one.
+   *
+   * This only updates the student's *current* roll (used going forward -
+   * next exam, ID cards, class lists). It does NOT touch the roll already
+   * snapshotted on this or any other result's ResultSummary rows, so
+   * previously processed/published marksheets keep showing the roll each
+   * student had at the time, unaffected by this reassignment.
+   */
+  async applyRollByRank(madrasaId: number, resultMasterId: number) {
+    if (!resultMasterId) {
+      throw new BadRequestError("result_master_id is required");
+    }
+
+    const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
+    if (!master) throw new NotFoundError("Result session not found");
+
+    const ranked = await this.repository.findRankedStudentsForResult(resultMasterId);
+    if (!ranked.length) {
+      throw new BadRequestError("Process result before reassigning roll by rank");
+    }
+
+    const roster = await this.repository.findActiveStudentsInClass(madrasaId, master.classId);
+
+    const rankedIds = new Set(ranked.map((r) => r.studentId));
+    const unranked = roster.filter((s) => !rankedIds.has(s.id));
+
+    const orderedIds = [...ranked.map((r) => r.studentId), ...unranked.map((s) => s.id)];
+
+    const assignments = orderedIds.map((studentId, index) => ({
+      studentId,
+      roll: index + 1,
+    }));
+
+    await this.repository.reassignRollsInTransaction(assignments);
+
+    return { message: "Roll reassigned by result rank", updated: assignments.length };
   }
 
   async deleteResult(madrasaId: number, id: number) {

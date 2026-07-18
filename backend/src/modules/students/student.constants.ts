@@ -1,6 +1,5 @@
 export const STUDENT_REQUIRED_FIELDS = [
   "name_bn",
-  "roll",
   "division_id",
   "class_id",
   "academic_year",

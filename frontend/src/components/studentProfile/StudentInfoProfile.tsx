@@ -24,6 +24,7 @@ const StudentInfoProfile = ({
   editableField,
   setEditableField,
   isEditMode,
+  canOverrideRoll,
 }: any) => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -122,17 +123,22 @@ const StudentInfoProfile = ({
           isEditMode={isEditMode}
         />
 
-        <Field label="রেজিস্ট্রেশন নম্বর" name="id" value={student.id || ""} isEditMode={false} />
+        <Field
+          label="রেজিস্ট্রেশন নম্বর"
+          name="registration_no"
+          value={student.registration_no || ""}
+          isEditMode={false}
+        />
 
         <Field
-          label="রোল নম্বর"
+          label={canOverrideRoll ? "রোল নম্বর (ম্যানুয়াল ওভাররাইড)" : "রোল নম্বর (স্বয়ংক্রিয়)"}
           name="roll"
           type="number"
           value={student.roll || ""}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
-          isEditMode={isEditMode}
+          isEditMode={isEditMode && canOverrideRoll}
         />
 
         <Field

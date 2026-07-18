@@ -24,7 +24,7 @@ const MarksheetList = ({ rows }: MarksheetListProps) => (
             <b>শিক্ষার্থী:</b> {cellValue(row, "student_name")}
           </p>
           <p>
-            <b>রেজিস্ট্রেশন:</b> {cellValue(row, "student_id")}
+            <b>রেজিস্ট্রেশন:</b> {cellValue(row, "registration_no")}
           </p>
           <p>
             <b>রোল:</b> {cellValue(row, "roll")}

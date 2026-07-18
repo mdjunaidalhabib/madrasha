@@ -24,7 +24,10 @@ export class ResultPanelRepository {
   }
 
   findResultMasterById(id: number, madrasaId: number) {
-    return prisma.resultMaster.findFirst({ where: { id, madrasaId }, select: { id: true } });
+    return prisma.resultMaster.findFirst({
+      where: { id, madrasaId },
+      select: { id: true, classId: true },
+    });
   }
 
   updateResultMasterStatus(id: number, status: ResultPublishStatus) {
@@ -65,6 +68,55 @@ export class ResultPanelRepository {
       _sum: { mark: true },
       _count: { _all: true },
     });
+  }
+
+  /** Current roll for a set of students, used to snapshot each student's
+   * roll onto ResultSummary at the moment a result is processed - so later
+   * promotions (which overwrite students.roll) don't retroactively change
+   * the roll shown on already-processed marksheets/notices. */
+  findRollsByStudentIds(studentIds: number[]) {
+    return prisma.student.findMany({
+      where: { id: { in: studentIds } },
+      select: { id: true, roll: true },
+    });
+  }
+
+  /** Ranked (rankNo asc = best first) student list for a processed result,
+   * used as the merit order when reassigning classroom roll numbers. */
+  findRankedStudentsForResult(resultMasterId: number) {
+    return prisma.resultSummary.findMany({
+      where: { resultMasterId },
+      select: { studentId: true, rankNo: true },
+      orderBy: [{ rankNo: "asc" }],
+    });
+  }
+
+  /** Every active student currently in a class, used so roll reassignment
+   * covers students without a result entry too (placed after ranked
+   * students, in their existing roll order) instead of leaving gaps or
+   * collisions. */
+  findActiveStudentsInClass(madrasaId: number, classId: number) {
+    return prisma.student.findMany({
+      where: { madrasaId, classId, deletedAt: null, isActive: 1 },
+      select: { id: true, roll: true, academicYear: true },
+      orderBy: [{ roll: "asc" }, { id: "asc" }],
+    });
+  }
+
+  /** Reassigns roll numbers in a single transaction using a two-phase
+   * update - first to unique negative placeholders, then to the final
+   * values - so the (madrasaId, classId, academicYear, roll) unique
+   * constraint is never transiently violated by two students swapping
+   * numbers. */
+  reassignRollsInTransaction(assignments: { studentId: number; roll: number }[]) {
+    return prisma.$transaction([
+      ...assignments.map(({ studentId }) =>
+        prisma.student.update({ where: { id: studentId }, data: { roll: -studentId } }),
+      ),
+      ...assignments.map(({ studentId, roll }) =>
+        prisma.student.update({ where: { id: studentId }, data: { roll } }),
+      ),
+    ]);
   }
 
   saveResultSummaryInTransaction(resultMasterId: number, summaryData: Prisma.ResultSummaryCreateManyInput[]) {
