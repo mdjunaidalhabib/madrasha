@@ -49,7 +49,7 @@ const extractArray = (res: any) => {
 // params) or directly, in which case the teacher picks division/exam/class
 // here. "প্রিভিউ দেখুন" always sends them back to the Preview page.
 export default function ResultEntryPage() {
-  const toast = useToastStore();
+  const push = useToastStore((state) => state.push);
   const navigate = useNavigate();
   const { madrasaSlug = "" } = useParams();
   const adminBase = getTenantAdminBase(madrasaSlug);
@@ -89,7 +89,7 @@ export default function ResultEntryPage() {
         setExams(extractArray(e.data));
       } catch (err) {
         logger.error("Init load error:", err);
-        toast.push("error", "Division / Exam load failed");
+        push("error", "Division / Exam load failed");
       }
     };
     init();
@@ -101,7 +101,7 @@ export default function ResultEntryPage() {
         if (!Number.isNaN(value)) setFailMark(value);
       })
       .catch((err) => logger.error("Fail mark load error:", err));
-  }, []);
+  }, [push]);
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -262,10 +262,10 @@ export default function ResultEntryPage() {
     const payload = buildMarksPayload();
 
     if (!examId || !classId) {
-      return toast.push("error", "Exam এবং Class select করুন");
+      return push("error", "Exam এবং Class select করুন");
     }
     if (payload.length === 0) {
-      return toast.push("error", "No marks entered!");
+      return push("error", "No marks entered!");
     }
 
     setLoading(true);
@@ -287,11 +287,11 @@ export default function ResultEntryPage() {
         result_master_id: masterId,
       });
 
-      toast.push("success", "Saved & processed successfully");
+      push("success", "Saved & processed successfully");
       goToPreview();
     } catch (err) {
       logger.error("Save marks error:", err);
-      toast.push("error", "Save failed");
+      push("error", "Save failed");
     } finally {
       setLoading(false);
     }

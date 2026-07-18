@@ -4,7 +4,7 @@ import PaginatedReportPreview from "../../components/Report/PaginatedReportPrevi
 import { Orientation, PaperSize } from "../../components/common/DataExportPrintActions";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
-import { ClassItem, Division, ReportColumn, ReportMenuItem, ReportShellProps } from "./types";
+import { ClassItem, Division, ReportColumn, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
 import { logger } from "../../utils/logger";
 

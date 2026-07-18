@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
@@ -50,7 +50,7 @@ const TeacherListPage = () => {
     return Array.isArray(data) ? data : [];
   };
 
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -64,9 +64,9 @@ const TeacherListPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadDivisions = async () => {
+  const loadDivisions = useCallback(async () => {
     try {
       const res = await api.get("/madrasa-divisions");
       setDivisions(normalizeArray(res));
@@ -74,12 +74,12 @@ const TeacherListPage = () => {
       logger.error("DIVISION LOAD ERROR:", err);
       setDivisions([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadTeachers();
     loadDivisions();
-  }, []);
+  }, [loadTeachers, loadDivisions]);
 
   const getGenderName = (gender?: number | string) => {
     if (Number(gender) === 1 || gender === "male") return "পুরুষ";
@@ -90,11 +90,14 @@ const TeacherListPage = () => {
   const getAcademicDivisionId = (teacher: Teacher) =>
     teacher.academic_division || teacher.division_id || teacher.department || "";
 
-  const getDivisionName = (divisionId?: number | string) => {
-    const division = divisions.find((item) => String(item.division_id) === String(divisionId));
+  const getDivisionName = useCallback(
+    (divisionId?: number | string) => {
+      const division = divisions.find((item) => String(item.division_id) === String(divisionId));
 
-    return division?.division_name_bn || divisionId || "নেই";
-  };
+      return division?.division_name_bn || divisionId || "নেই";
+    },
+    [divisions],
+  );
 
   const filteredTeachers = useMemo(() => {
     const searchText = search.trim().toLowerCase();
@@ -134,7 +137,7 @@ const TeacherListPage = () => {
       qualification: teacher.qualification || "নেই",
       salary: teacher.salary || "নেই",
     }));
-  }, [filteredTeachers, divisions]);
+  }, [filteredTeachers, getDivisionName]);
 
   const exportColumns = [
     { header: "ক্রমিক", key: "serial" },

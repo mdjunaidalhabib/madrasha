@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Button from "../../ui/Button";
 import BasicInfoSection from "./BasicInfoSection";
 import PlanSection from "./PlanSection";
@@ -197,20 +197,23 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   /* =========================
   Plan Logic
   ========================= */
-  const handlePlanChange = (id: string) => {
-    setPlanId(id);
-    const plan = plans.find((p) => String(p.id) === id);
-    if (!plan) return;
+  const handlePlanChange = useCallback(
+    (id: string) => {
+      setPlanId(id);
+      const plan = plans.find((p) => String(p.id) === id);
+      if (!plan) return;
 
-    setStudentLimit(plan.student_limit);
-    setUserLimit(plan.user_limit);
-  };
+      setStudentLimit(plan.student_limit);
+      setUserLimit(plan.user_limit);
+    },
+    [plans]
+  );
 
   useEffect(() => {
     if (plans.length && !planId) {
       handlePlanChange(String(plans[0].id));
     }
-  }, [plans]);
+  }, [plans, planId, handlePlanChange]);
 
   /* =========================
   Validation

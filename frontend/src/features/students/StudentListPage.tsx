@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 
@@ -63,7 +64,7 @@ const StudentListPage = () => {
     return Array.isArray(data) ? data : [];
   };
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -77,9 +78,9 @@ const StudentListPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadDivisions = async () => {
+  const loadDivisions = useCallback(async () => {
     try {
       const res = await api.get("/madrasa-divisions");
       setDivisions(normalizeArray(res));
@@ -87,7 +88,7 @@ const StudentListPage = () => {
       logger.error("DIVISION LOAD ERROR:", err);
       setDivisions([]);
     }
-  };
+  }, []);
 
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
@@ -112,17 +113,23 @@ const StudentListPage = () => {
   useEffect(() => {
     loadStudents();
     loadDivisions();
-  }, []);
+  }, [loadStudents, loadDivisions]);
 
-  const getDivisionName = (divisionId?: number | string) => {
-    const division = divisions.find((item) => String(item.division_id) === String(divisionId));
-    return division?.division_name_bn || "নেই";
-  };
+  const getDivisionName = useCallback(
+    (divisionId?: number | string) => {
+      const division = divisions.find((item) => String(item.division_id) === String(divisionId));
+      return division?.division_name_bn || "নেই";
+    },
+    [divisions],
+  );
 
-  const getClassName = (classId?: number | string, fallback?: string) => {
-    const classItem = classes.find((item) => String(item.class_id) === String(classId));
-    return classItem?.class_name_bn || fallback || "নেই";
-  };
+  const getClassName = useCallback(
+    (classId?: number | string, fallback?: string) => {
+      const classItem = classes.find((item) => String(item.class_id) === String(classId));
+      return classItem?.class_name_bn || fallback || "নেই";
+    },
+    [classes],
+  );
 
   const filteredStudents = useMemo(() => {
     const searchText = search.trim().toLowerCase();
@@ -167,7 +174,7 @@ const StudentListPage = () => {
         student.current_class || student.class_name || student.class,
       ),
     }));
-  }, [filteredStudents, divisions, classes]);
+  }, [filteredStudents, getDivisionName, getClassName]);
 
   const exportColumns = [
     { header: "ক্রমিক", key: "serial" },
@@ -264,6 +271,15 @@ const StudentListPage = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="flex shrink-0 justify-start lg:justify-end">
+              <DataExportPrintActions
+                title="ছাত্র তালিকা"
+                fileName="student-list"
+                columns={exportColumns}
+                data={exportStudents}
+              />
             </div>
           </div>
         </div>

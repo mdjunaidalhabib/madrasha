@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
@@ -68,7 +68,7 @@ const extractArray = (res: any) => {
 // class's detailed result below. Actual number entry lives on its own page
 // (ResultEntryPage); this page only links out to it.
 export default function ResultPreviewPage() {
-  const toast = useToastStore();
+  const push = useToastStore((state) => state.push);
   const navigate = useNavigate();
   const { madrasaSlug = "" } = useParams();
   const adminBase = getTenantAdminBase(madrasaSlug);
@@ -94,7 +94,7 @@ export default function ResultPreviewPage() {
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
   const [studentSaving, setStudentSaving] = useState(false);
 
-  const loadOverview = async () => {
+  const loadOverview = useCallback(async () => {
     try {
       setOverviewLoading(true);
       const res = await api.get("/results/overview");
@@ -104,11 +104,11 @@ export default function ResultPreviewPage() {
       setStatuses(extractArray(res.data?.statuses));
     } catch (err) {
       logger.error("Overview load error:", err);
-      toast.push("error", "প্রিভিউ লোড করা যায়নি");
+      push("error", "প্রিভিউ লোড করা যায়নি");
     } finally {
       setOverviewLoading(false);
     }
-  };
+  }, [push]);
 
   useEffect(() => {
     loadOverview();
@@ -120,7 +120,7 @@ export default function ResultPreviewPage() {
         if (!Number.isNaN(value)) setFailMark(value);
       })
       .catch((err) => logger.error("Fail mark load error:", err));
-  }, []);
+  }, [loadOverview]);
 
   const loadSummary = async () => {
     if (!examId || !classId) return;
@@ -210,7 +210,7 @@ export default function ResultPreviewPage() {
     }));
 
     if (payload.length === 0) {
-      return toast.push("error", "অন্তত একটি নাম্বার দিন");
+      return push("error", "অন্তত একটি নাম্বার দিন");
     }
 
     setStudentSaving(true);
@@ -227,34 +227,34 @@ export default function ResultPreviewPage() {
       await loadOverview();
 
       setEditingStudent(null);
-      toast.push("success", "নাম্বার আপডেট হয়েছে");
+      push("success", "নাম্বার আপডেট হয়েছে");
     } catch (err) {
       logger.error("Save student marks error:", err);
-      toast.push("error", "সেভ করা যায়নি");
+      push("error", "সেভ করা যায়নি");
     } finally {
       setStudentSaving(false);
     }
   };
 
   const handlePublish = async () => {
-    if (!resultMasterId) return toast.push("error", "No processed result found");
+    if (!resultMasterId) return push("error", "No processed result found");
 
     try {
       setPublishing(true);
       await api.post("/results/publish", { result_master_id: resultMasterId });
       await loadSummary();
       await loadOverview();
-      toast.push("success", "Result published successfully");
+      push("success", "Result published successfully");
     } catch (err) {
       logger.error("Publish error:", err);
-      toast.push("error", "Publish failed");
+      push("error", "Publish failed");
     } finally {
       setPublishing(false);
     }
   };
 
   const handleApplyRollByRank = () => {
-    if (!resultMasterId) return toast.push("error", "No processed result found");
+    if (!resultMasterId) return push("error", "No processed result found");
 
     useConfirmStore.getState().show({
       title: "রোল আপডেট নিশ্চিত করুন",
@@ -268,10 +268,10 @@ export default function ResultPreviewPage() {
           await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
           await loadSummary();
           await loadOverview();
-          toast.push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
+          push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
         } catch (err) {
           logger.error("Apply roll by rank error:", err);
-          toast.push("error", "রোল আপডেট করা যায়নি");
+          push("error", "রোল আপডেট করা যায়নি");
         } finally {
           setApplyingRoll(false);
         }

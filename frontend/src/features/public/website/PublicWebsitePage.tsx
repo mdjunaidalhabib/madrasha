@@ -29,18 +29,18 @@ export default function PublicWebsitePage() {
 
   const madrasa = data?.madrasa;
   const settings = data?.settings || {};
-  const pages = data?.pages || [];
   const notices = data?.notices || [];
   const teachers = data?.teachers || [];
   const gallery = data?.gallery || [];
 
   const pageMap = useMemo(() => {
+    const pages = data?.pages || [];
     const map: Record<string, any> = {};
     pages.forEach((page: any) => {
       map[page.page_key] = page;
     });
     return map;
-  }, [pages]);
+  }, [data]);
 
   if (loading)
     return <div className="min-h-screen bg-gray-50 p-8 text-center">Loading website...</div>;

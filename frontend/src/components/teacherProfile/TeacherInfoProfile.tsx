@@ -52,7 +52,7 @@ const TeacherInfoProfile = ({
         age,
       }));
     }
-  }, [data?.dob]);
+  }, [data?.dob, data?.age, setFormData]);
 
   /* =============================
      EXPERIENCE FORMAT (VIEW)

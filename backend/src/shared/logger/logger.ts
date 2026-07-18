@@ -26,6 +26,7 @@ function write(level: LogLevel, message: string, meta?: unknown) {
 
   if (level === "error") return console.error(line);
   if (level === "warn") return console.warn(line);
+  // eslint-disable-next-line no-console -- this is the logger's own sanctioned console wrapper
   return console.log(line);
 }
 

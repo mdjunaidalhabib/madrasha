@@ -20,7 +20,7 @@ export default function MadrasasTable({
   busyId: number | null;
   onPlanChange: (m: Madrasa, planId: number) => Promise<void>;
   onToggleActive: (m: Madrasa) => Promise<void>;
-  onDelete: (m: Madrasa) => Promise<void>;
+  onDelete: (m: Madrasa) => void;
   onEdit: (m: Madrasa) => void;
 }) {
   return (

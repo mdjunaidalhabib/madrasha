@@ -49,6 +49,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="পিতার নাম লিখুন"
             className={inputClass("fatherName")}
           />
+          <ErrorText field="fatherName" />
         </div>
 
         <div className="flex flex-col">
@@ -60,6 +61,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="পিতার আরবি নাম"
             className={inputClass("fatherArabicName")}
           />
+          <ErrorText field="fatherArabicName" />
         </div>
 
         <div className="flex flex-col">
@@ -71,6 +73,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="পিতার NID নম্বর"
             className={inputClass("fatherNid")}
           />
+          <ErrorText field="fatherNid" />
         </div>
 
         <div className="flex flex-col">
@@ -82,6 +85,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="পিতার পেশা"
             className={inputClass("fatherOccupation")}
           />
+          <ErrorText field="fatherOccupation" />
         </div>
 
         <div className="flex flex-col">
@@ -93,6 +97,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="মাতার নাম লিখুন"
             className={inputClass("motherName")}
           />
+          <ErrorText field="motherName" />
         </div>
 
         <div className="flex flex-col">
@@ -104,6 +109,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="মাতার NID নম্বর"
             className={inputClass("motherNid")}
           />
+          <ErrorText field="motherNid" />
         </div>
 
         <div className="flex flex-col">
@@ -115,6 +121,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="মাতার পেশা"
             className={inputClass("motherOccupation")}
           />
+          <ErrorText field="motherOccupation" />
         </div>
 
         <div className="flex flex-col">
@@ -126,6 +133,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
             placeholder="মোবাইল নম্বর"
             className={inputClass("parentPhone")}
           />
+          <ErrorText field="parentPhone" />
         </div>
       </div>
     </div>

@@ -80,7 +80,7 @@ export class ResultPanelService {
 
   async saveMarks(madrasaId: number, body: SaveMarksRequestDto) {
     const { data } = body;
-    let result_master_id = body.result_master_id;
+    const result_master_id = body.result_master_id;
 
     if (!Array.isArray(data) || data.length === 0) {
       throw new BadRequestError("Marks data is required");

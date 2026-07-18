@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
 import { useConfirmStore } from "../../store/confirmStore";
 
@@ -26,24 +26,19 @@ export default function ClassPanel() {
 
   /* ================= LOAD ================= */
 
-  useEffect(() => {
-    loadDivisions();
-  }, []);
-
-  const loadDivisions = async () => {
+  const loadDivisions = useCallback(async () => {
     const res = await api.get("/madrasa-divisions");
     const data = res.data || [];
 
     setDivisions(data);
     if (data.length) setDivisionId(String(data[0].division_id));
-  };
+  }, []);
 
   useEffect(() => {
-    if (!divisionId) return;
-    loadClasses();
-  }, [divisionId]);
+    loadDivisions();
+  }, [loadDivisions]);
 
-  const loadClasses = async () => {
+  const loadClasses = useCallback(async () => {
     const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
     const data = res.data || [];
 
@@ -54,17 +49,22 @@ export default function ClassPanel() {
       setClassId("");
       setBooks([]);
     }
-  };
+  }, [divisionId]);
+
+  useEffect(() => {
+    if (!divisionId) return;
+    loadClasses();
+  }, [divisionId, loadClasses]);
+
+  const loadBooks = useCallback(async () => {
+    const res = await api.get(`/madrasa-books?class_id=${classId}`);
+    setBooks(res.data || []);
+  }, [classId]);
 
   useEffect(() => {
     if (!classId) return;
     loadBooks();
-  }, [classId]);
-
-  const loadBooks = async () => {
-    const res = await api.get(`/madrasa-books?class_id=${classId}`);
-    setBooks(res.data || []);
-  };
+  }, [classId, loadBooks]);
 
   /* ================= CLASS ================= */
 
