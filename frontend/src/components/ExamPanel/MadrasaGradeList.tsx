@@ -2,11 +2,25 @@ import { useState } from "react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 
+type GradeItem = {
+  id: string | number;
+  name: string;
+  minMark?: number;
+  maxMark?: number;
+  min_mark?: number;
+  max_mark?: number;
+};
+
+const getGradeRange = (grade: GradeItem) => ({
+  min: grade.minMark ?? grade.min_mark,
+  max: grade.maxMark ?? grade.max_mark,
+});
+
 export default function MadrasaGradeList({
   grades,
   reload,
 }: {
-  grades: any[];
+  grades: GradeItem[];
   reload: () => void;
 }) {
   const [name, setName] = useState("");
@@ -83,23 +97,27 @@ export default function MadrasaGradeList({
           <p className="text-gray-400 text-sm">No grades added yet</p>
         )}
 
-        {grades.map((g) => (
-          <div
-            key={g.id}
-            className="flex justify-between items-center bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-          >
-            <span className="text-gray-700 font-medium">
-              {g.name} ({g.min_mark} - {g.max_mark})
-            </span>
+        {grades.map((g) => {
+          const { min: minMark, max: maxMark } = getGradeRange(g);
 
-            <button
-              onClick={() => del(g.id)}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition"
+          return (
+            <div
+              key={g.id}
+              className="flex justify-between items-center bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
             >
-              Delete
-            </button>
-          </div>
-        ))}
+              <span className="text-gray-700 font-medium">
+                {g.name} ({minMark ?? "-"} - {maxMark ?? "-"})
+              </span>
+
+              <button
+                onClick={() => del(g.id)}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition"
+              >
+                Delete
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -23,13 +23,16 @@ npm run dev
 Set `DATABASE_URL` in `.env` to a PostgreSQL connection string, e.g.
 `postgresql://postgres:password@localhost:5432/madrasha`, then run
 `npx prisma migrate dev` to create the schema (Prisma is the single
-source of truth now — there's no `schema.sql` to import manually).
+source of truth now — there's no `schema.sql` to import manually). Then run
+`npx prisma db seed`; this syncs platform catalogs and reusable new-madrasa
+templates, but it does not create a demo madrasa.
 
 ## Important environment values
 
 - `JWT_SECRET`: long random secret
 - `CORS_ORIGIN`: frontend URL, for example `http://localhost:5173`
 - `ROOT_DOMAIN`: base domain for tenant subdomains in production
+- `SUPER_ADMIN_NAME`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`: account synced by `prisma seed`
 
 ## API groups
 

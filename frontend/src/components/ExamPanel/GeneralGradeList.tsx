@@ -2,11 +2,25 @@ import { useState } from "react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 
+type GradeItem = {
+  id: string | number;
+  name: string;
+  minMark?: number;
+  maxMark?: number;
+  min_mark?: number;
+  max_mark?: number;
+};
+
+const getGradeRange = (grade: GradeItem) => ({
+  min: grade.minMark ?? grade.min_mark,
+  max: grade.maxMark ?? grade.max_mark,
+});
+
 export default function GeneralGradeList({
   grades,
   reload,
 }: {
-  grades: any[];
+  grades: GradeItem[];
   reload: () => void;
 }) {
   const [name, setName] = useState("");
@@ -70,22 +84,26 @@ const add = async () => {
         </div>
       </div>
 
-      {grades.map((g) => (
-        <div
-          key={g.id}
-          className="flex justify-between bg-gray-50 p-2 rounded-lg"
-        >
-          <span>
-            {g.name} ({g.min_mark}-{g.max_mark})
-          </span>
-          <button
-            onClick={() => del(g.id)}
-            className="bg-red-500 text-white px-2 rounded"
+      {grades.map((g) => {
+        const { min: minMark, max: maxMark } = getGradeRange(g);
+
+        return (
+          <div
+            key={g.id}
+            className="flex justify-between bg-gray-50 p-2 rounded-lg"
           >
-            X
-          </button>
-        </div>
-      ))}
+            <span>
+              {g.name} ({minMark ?? "-"} - {maxMark ?? "-"})
+            </span>
+            <button
+              onClick={() => del(g.id)}
+              className="bg-red-500 text-white px-2 rounded"
+            >
+              X
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

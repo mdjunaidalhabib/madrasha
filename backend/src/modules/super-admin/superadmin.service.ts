@@ -4,7 +4,6 @@ import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
 import {
-  DEFAULT_EXAM_NAMES,
   DEFAULT_MADRASA_ROLES,
   DEFAULT_STUDENT_LIMIT,
   DEFAULT_USER_LIMIT,
@@ -180,13 +179,35 @@ export class SuperAdminService {
 
       await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
 
-      /* ========================= DEFAULT EXAMS ========================= */
+      /* ================= SEEDED PROVISIONING TEMPLATES =================
+         prisma seed stores reusable defaults only; it never creates a
+         madrasa. Every new madrasa receives a snapshot of the active
+         templates, so later seed changes affect future madrasas only. */
+      const defaultExams = await this.repository.findDefaultExamsOnTx(tx);
+      const defaultGeneralGrades = await this.repository.findDefaultGeneralGradesOnTx(tx);
+      const defaultMadrasaGrades = await this.repository.findDefaultMadrasaGradesOnTx(tx);
+      const defaultSettings = await this.repository.findDefaultSettingsOnTx(tx);
+
+      const templatesReady =
+        defaultExams.length > 0 &&
+        defaultGeneralGrades.length > 0 &&
+        defaultMadrasaGrades.length > 0 &&
+        defaultSettings.some((setting) => setting.name === "fail_mark");
+      if (!templatesReady) {
+        throw new BadRequestError(
+          "New-madrasa templates are missing. Run npx prisma db seed before creating a madrasa.",
+        );
+      }
+
       await this.repository.createDefaultExamsOnTx(
         tx,
         madrasaId,
-        DEFAULT_EXAM_NAMES,
+        defaultExams.map((exam) => exam.name),
         String(new Date().getFullYear()),
       );
+      await this.repository.createDefaultGeneralGradesOnTx(tx, madrasaId, defaultGeneralGrades);
+      await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
+      await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {

@@ -298,9 +298,78 @@ export class SuperAdminRepository {
     });
   }
 
+  findDefaultExamsOnTx(tx: TransactionClient) {
+    return tx.defaultExam.findMany({
+      where: { isActive: true },
+      select: { name: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findDefaultGeneralGradesOnTx(tx: TransactionClient) {
+    return tx.defaultGeneralGrade.findMany({
+      where: { isActive: true },
+      select: { name: true, minMark: true, maxMark: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findDefaultMadrasaGradesOnTx(tx: TransactionClient) {
+    return tx.defaultMadrasaGrade.findMany({
+      where: { isActive: true },
+      select: { name: true, minMark: true, maxMark: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findDefaultSettingsOnTx(tx: TransactionClient) {
+    return tx.defaultSetting.findMany({
+      where: { isActive: true },
+      select: { name: true, value: true },
+      orderBy: { id: "asc" },
+    });
+  }
+
   createDefaultExamsOnTx(tx: TransactionClient, madrasaId: number, names: string[], year: string) {
     return tx.exam.createMany({
       data: names.map((name) => ({ madrasaId, name, year })),
+      skipDuplicates: true,
+    });
+  }
+
+  createDefaultGeneralGradesOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    grades: { name: string; minMark: number; maxMark: number }[],
+  ) {
+    return tx.generalGrade.createMany({
+      data: grades.map((g) => ({ madrasaId, name: g.name, minMark: g.minMark, maxMark: g.maxMark })),
+      skipDuplicates: true,
+    });
+  }
+
+  createDefaultMadrasaGradesOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    grades: { name: string; minMark: number; maxMark: number }[],
+  ) {
+    return tx.madrasaGrade.createMany({
+      data: grades.map((g) => ({ madrasaId, name: g.name, minMark: g.minMark, maxMark: g.maxMark })),
+      skipDuplicates: true,
+    });
+  }
+
+  createDefaultSettingsOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    settings: { name: string; value: string | null }[],
+  ) {
+    return tx.setting.createMany({
+      data: settings.map((setting) => ({
+        madrasaId,
+        name: setting.name,
+        value: setting.value,
+      })),
       skipDuplicates: true,
     });
   }

@@ -1,7 +1,48 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const defaultExams = [
+  { keyName: "first_term", name: "প্রথম সাময়িক পরীক্ষা", sortOrder: 1 },
+  { keyName: "second_term", name: "দ্বিতীয় সাময়িক পরীক্ষা", sortOrder: 2 },
+  { keyName: "annual", name: "বার্ষিক পরীক্ষা", sortOrder: 3 },
+];
+
+const defaultGeneralGrades = [
+  { keyName: "a_plus", name: "A+", minMark: 80, maxMark: 100, sortOrder: 1 },
+  { keyName: "a", name: "A", minMark: 70, maxMark: 79, sortOrder: 2 },
+  { keyName: "a_minus", name: "A-", minMark: 60, maxMark: 69, sortOrder: 3 },
+  { keyName: "b", name: "B", minMark: 50, maxMark: 59, sortOrder: 4 },
+  { keyName: "c", name: "C", minMark: 40, maxMark: 49, sortOrder: 5 },
+  { keyName: "d", name: "D", minMark: 35, maxMark: 39, sortOrder: 6 },
+  { keyName: "f", name: "F", minMark: 0, maxMark: 34, sortOrder: 7 },
+];
+
+const defaultMadrasaGrades = [
+  { keyName: "mumtaz", name: "মুমতায", minMark: 80, maxMark: 100, sortOrder: 1 },
+  {
+    keyName: "jayyid_jiddan",
+    name: "জাইয়িদ জিদ্দান",
+    minMark: 65,
+    maxMark: 79,
+    sortOrder: 2,
+  },
+  { keyName: "jayyid", name: "জাইয়িদ", minMark: 50, maxMark: 64, sortOrder: 3 },
+  { keyName: "maqbul", name: "মাকবুল", minMark: 35, maxMark: 49, sortOrder: 4 },
+  { keyName: "rasib", name: "রাসিব", minMark: 0, maxMark: 34, sortOrder: 5 },
+];
+
+const defaultSettings = [{ name: "fail_mark", value: "35" }];
+
+function requiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required for prisma seed`);
+  }
+  return value;
+}
 
 async function syncDelete(
   label: string,
@@ -26,20 +67,112 @@ async function syncDelete(
 
 async function main() {
   /* ============== SUPER ADMIN ==============
-     Default login: admin@madrasa.com / admin123
-     ⚠️ Change this password after your first login! */
-  const passwordHash = await bcrypt.hash("admin123", 10);
+     Credentials are intentionally read from .env, never from seed defaults. */
+  const superAdminName = requiredEnv("SUPER_ADMIN_NAME");
+  const superAdminEmail = requiredEnv("SUPER_ADMIN_EMAIL").toLowerCase();
+  const superAdminPassword = requiredEnv("SUPER_ADMIN_PASSWORD");
+
+  if (superAdminPassword.length < 8) {
+    throw new Error("SUPER_ADMIN_PASSWORD must be at least 8 characters");
+  }
+
+  const passwordHash = await bcrypt.hash(superAdminPassword, 10);
 
   await prisma.superAdmin.upsert({
-    where: { email: "admin@madrasa.com" },
-    update: {},
+    where: { email: superAdminEmail },
+    update: {
+      name: superAdminName,
+      passwordHash,
+      isActive: 1,
+      deletedAt: null,
+    },
     create: {
-      name: "Platform Owner",
-      email: "admin@madrasa.com",
+      name: superAdminName,
+      email: superAdminEmail,
       passwordHash,
       isActive: 1,
     },
   });
+
+  /* ============== NEW-MADRASA DEFAULT TEMPLATES ==============
+     These are platform-level templates only. prisma seed does NOT create a
+     madrasa. Active rows are copied when Super Admin creates a madrasa, so
+     changing these values and re-running seed affects future madrasas only. */
+  const defaultExamIds: number[] = [];
+  for (const exam of defaultExams) {
+    const row = await prisma.defaultExam.upsert({
+      where: { keyName: exam.keyName },
+      update: { name: exam.name, sortOrder: exam.sortOrder, isActive: true },
+      create: { ...exam, isActive: true },
+    });
+    defaultExamIds.push(row.id);
+  }
+  await syncDelete(
+    "default exam template",
+    await prisma.defaultExam.findMany({ select: { id: true } }),
+    defaultExamIds,
+    (id) => prisma.defaultExam.delete({ where: { id } }),
+  );
+
+  const defaultGeneralGradeIds: number[] = [];
+  for (const grade of defaultGeneralGrades) {
+    const row = await prisma.defaultGeneralGrade.upsert({
+      where: { keyName: grade.keyName },
+      update: {
+        name: grade.name,
+        minMark: grade.minMark,
+        maxMark: grade.maxMark,
+        sortOrder: grade.sortOrder,
+        isActive: true,
+      },
+      create: { ...grade, isActive: true },
+    });
+    defaultGeneralGradeIds.push(row.id);
+  }
+  await syncDelete(
+    "default general grade template",
+    await prisma.defaultGeneralGrade.findMany({ select: { id: true } }),
+    defaultGeneralGradeIds,
+    (id) => prisma.defaultGeneralGrade.delete({ where: { id } }),
+  );
+
+  const defaultMadrasaGradeIds: number[] = [];
+  for (const grade of defaultMadrasaGrades) {
+    const row = await prisma.defaultMadrasaGrade.upsert({
+      where: { keyName: grade.keyName },
+      update: {
+        name: grade.name,
+        minMark: grade.minMark,
+        maxMark: grade.maxMark,
+        sortOrder: grade.sortOrder,
+        isActive: true,
+      },
+      create: { ...grade, isActive: true },
+    });
+    defaultMadrasaGradeIds.push(row.id);
+  }
+  await syncDelete(
+    "default madrasa grade template",
+    await prisma.defaultMadrasaGrade.findMany({ select: { id: true } }),
+    defaultMadrasaGradeIds,
+    (id) => prisma.defaultMadrasaGrade.delete({ where: { id } }),
+  );
+
+  const defaultSettingIds: number[] = [];
+  for (const setting of defaultSettings) {
+    const row = await prisma.defaultSetting.upsert({
+      where: { name: setting.name },
+      update: { value: setting.value, isActive: true },
+      create: { ...setting, isActive: true },
+    });
+    defaultSettingIds.push(row.id);
+  }
+  await syncDelete(
+    "default setting template",
+    await prisma.defaultSetting.findMany({ select: { id: true } }),
+    defaultSettingIds,
+    (id) => prisma.defaultSetting.delete({ where: { id } }),
+  );
 
   /* ============== PLANS ============== */
   const plans = [
@@ -503,8 +636,8 @@ async function main() {
     (id) => prisma.permission.delete({ where: { id } }),
   );
 
-  console.log("✅ Seed complete (added/updated/removed to match seed.ts).");
-  console.log("   Super Admin login: admin@madrasa.com / admin123  (change this password!)");
+  console.log("✅ Seed complete (catalog and new-madrasa templates synced with seed.ts).");
+  console.log(`   Super Admin account synced from env: ${superAdminEmail}`);
 }
 
 main()
