@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useToastStore } from "../../store/toastStore";
 
 interface Props {
   data: any;
@@ -23,12 +24,12 @@ const ImageUploadProfile: React.FC<Props> = ({
 
     // ❌ optional validation
     if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file");
+      useToastStore.getState().show("Please upload an image file", "error");
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Image must be under 2MB");
+      useToastStore.getState().show("Image must be under 2MB", "error");
       return;
     }
 

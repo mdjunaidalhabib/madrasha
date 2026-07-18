@@ -4,8 +4,6 @@ import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { studentService } from "./student.service";
 import { MissingFieldsError } from "./student.types";
-import { prisma } from "../../shared/database/prisma";
-import { isMuhtamimRole, isSuperAdminRole, normalizeAppRole } from "../../shared/permissions";
 
 /**
  * Translates a thrown error into the exact `{ success: false, message, ... }`
@@ -13,27 +11,6 @@ import { isMuhtamimRole, isSuperAdminRole, normalizeAppRole } from "../../shared
  * (MissingFieldsError) whose response has extra top-level fields beyond
  * `message`, then falls back to `ApiError.statusCode`, then a generic 500.
  */
-
-const manualRollOverrideRequested = (value: unknown) =>
-  value === true ||
-  String(value || "")
-    .trim()
-    .toLowerCase() === "true";
-
-const canOverrideStudentRoll = async (req: Request): Promise<boolean> => {
-  const directRole = normalizeAppRole(req.user?.role || req.user?.role_name || "");
-  if (directRole) return isMuhtamimRole(directRole) || isSuperAdminRole(directRole);
-
-  const roleId = req.user?.role_id;
-  if (!roleId) return false;
-
-  const role = await prisma.role.findUnique({
-    where: { id: roleId },
-    select: { keyName: true, nameBn: true },
-  });
-  const roleKey = normalizeAppRole(role?.keyName || role?.nameBn || "");
-  return isMuhtamimRole(roleKey) || isSuperAdminRole(roleKey);
-};
 
 const respondWithError = (res: Response, error: unknown, logTag: string) => {
   if (error instanceof MissingFieldsError) {
@@ -139,13 +116,7 @@ export const getNextRoll = async (req: Request, res: Response) => {
 export const createStudent = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const manualOverride = manualRollOverrideRequested(req.body?.manual_roll_override);
-    const allowManualOverride = manualOverride ? await canOverrideStudentRoll(req) : false;
-    const result = await studentService.admitStudent(
-      req.body || {},
-      madrasaId,
-      allowManualOverride,
-    );
+    const result = await studentService.admitStudent(req.body || {}, madrasaId);
 
     const message =
       result.action === "re_admitted"
@@ -159,6 +130,7 @@ export const createStudent = async (req: Request, res: Response) => {
       action: result.action,
       previousAcademicYear: result.previousAcademicYear,
       roll: result.roll,
+      registrationNo: result.registrationNo,
     });
   } catch (error) {
     return respondWithError(res, error, "🔥 CREATE STUDENT ERROR:");
@@ -172,11 +144,7 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
     const students = Array.isArray(req.body?.students) ? req.body.students : [];
-    const manualOverride = students.some((student: any) =>
-      manualRollOverrideRequested(student?.manual_roll_override),
-    );
-    const allowManualOverride = manualOverride ? await canOverrideStudentRoll(req) : false;
-    const result = await studentService.admitStudentsBulk(students, madrasaId, allowManualOverride);
+    const result = await studentService.admitStudentsBulk(students, madrasaId);
 
     return res.json({
       success: true,
@@ -194,13 +162,10 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
 export const updateStudent = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const manualOverride = manualRollOverrideRequested(req.body?.manual_roll_override);
-    const allowManualOverride = manualOverride ? await canOverrideStudentRoll(req) : false;
     const affectedRows = await studentService.updateStudent(
       Number(req.params.id),
       madrasaId,
       req.body,
-      allowManualOverride,
     );
 
     return res.json({

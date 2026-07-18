@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
-import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 
@@ -74,7 +73,7 @@ const StudentListPage = () => {
     } catch (err) {
       logger.error("LOAD STUDENTS ERROR:", err);
       setStudents([]);
-      setError("ছাত্র তালিকা লোড করতে সমস্যা হয়েছে");
+      setError("ছাত্র তালিকা লোড করতে সমস্যা হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -177,47 +176,49 @@ const StudentListPage = () => {
     { header: "নাম", key: "name" },
     { header: "বাবার নাম", key: "fatherName" },
     { header: "ফোন", key: "phone" },
-    { header: "সিক্ষাবর্ষ", key: "academicYear" },
+    { header: "শিক্ষাবর্ষ", key: "academicYear" },
     { header: "বিভাগ", key: "division" },
     { header: "বর্তমান শ্রেণি", key: "currentClass" },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
+        {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">ছাত্র তালিকা</h1>
+            <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ছাত্র তালিকা</h1>
             <p className="mt-1 text-sm text-gray-500">মোট ছাত্র: {filteredStudents.length} জন</p>
           </div>
 
           <button
             type="button"
             onClick={() => navigate(`${adminBase}/students/new_admission`)}
-            className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+            className="h-10 w-full rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 md:w-auto"
           >
             + নতুন ছাত্র ভর্তি
           </button>
         </div>
 
-        <div className="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        {/* Filters */}
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex w-full flex-wrap items-center gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
               <input
                 type="text"
-                placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
+                placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[240px]"
+                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[240px]"
               />
 
-              {/* সিক্ষাবর্ষ ফিল্টার */}
+              {/* শিক্ষাবর্ষ ফিল্টার */}
               <select
                 value={selectedAcademicYear}
                 onChange={(event) => setSelectedAcademicYear(event.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[130px]"
               >
-                <option value="">সব সিক্ষাবর্ষ</option>
+                <option value="">সব শিক্ষাবর্ষ</option>
                 {ACADEMIC_YEARS.map((year) => (
                   <option key={year} value={year}>
                     {year}
@@ -247,7 +248,7 @@ const StudentListPage = () => {
                 value={selectedClass}
                 onChange={(event) => setSelectedClass(event.target.value)}
                 disabled={!selectedDivision || classLoading}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 sm:w-[180px]"
+                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 sm:col-auto sm:w-[180px]"
               >
                 <option value="">
                   {classLoading
@@ -264,15 +265,6 @@ const StudentListPage = () => {
                 ))}
               </select>
             </div>
-
-            <div className="flex shrink-0 justify-start lg:justify-end">
-              <DataExportPrintActions
-                title="ছাত্র তালিকা"
-                fileName="student-list"
-                columns={exportColumns}
-                data={exportStudents}
-              />
-            </div>
           </div>
         </div>
 
@@ -282,35 +274,95 @@ const StudentListPage = () => {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          {loading ? (
-            <div className="p-6 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse text-center">
-                <thead className="bg-blue-800 text-sm text-white">
-                  <tr>
-                    <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
-                    <th className="border p-2.5">রোল নম্বর</th>
-                    <th className="border p-2.5">নাম</th>
-                    <th className="border p-2.5">বাবার নাম</th>
-                    <th className="border p-2.5">ফোন</th>
-                    <th className="border p-2.5">সিক্ষাবর্ষ</th>
-                    <th className="border p-2.5">বিভাগ</th>
-                    <th className="border p-2.5">বর্তমান শ্রেণি</th>
-                    <th className="border p-2.5">একশন</th>
-                  </tr>
-                </thead>
+        {/* Loading state */}
+        {loading ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+            লোড হচ্ছে...
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+            কোন ছাত্র পাওয়া যায়নি
+          </div>
+        ) : (
+          <>
+            {/* Mobile / tablet: card list (below md) */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
+              {filteredStudents.map((student) => (
+                <div
+                  key={student.id}
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="mb-3 flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+                    <div>
+                      <p className="text-base font-semibold text-gray-800">
+                        {student.name_bn || student.name || "নেই"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">রেজিস্ট্রেশন: {student.id}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                      রোল {student.roll || "নেই"}
+                    </span>
+                  </div>
 
-                <tbody className="text-sm">
-                  {filteredStudents.length === 0 ? (
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-gray-400">বাবার নাম</dt>
+                      <dd className="text-gray-700">{student.father_name || "নেই"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">ফোন</dt>
+                      <dd className="text-gray-700">{student.guardian_phone || "নেই"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">শিক্ষাবর্ষ</dt>
+                      <dd className="text-gray-700">{student.academic_year || "নেই"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">বিভাগ</dt>
+                      <dd className="text-gray-700">{getDivisionName(student.division_id)}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-xs text-gray-400">বর্তমান শ্রেণি</dt>
+                      <dd className="text-gray-700">
+                        {getClassName(
+                          student.class_id,
+                          student.current_class || student.class_name || student.class,
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${adminBase}/students/${student.id}`)}
+                    className="mt-4 w-full rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                  >
+                    দেখুন
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop / large tablet: table (md and up) */}
+            <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-center">
+                  <thead className="bg-blue-800 text-sm text-white">
                     <tr>
-                      <td colSpan={9} className="p-6 text-center text-gray-500">
-                        কোন ছাত্র পাওয়া যায়নি
-                      </td>
+                      <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
+                      <th className="border p-2.5">রোল নম্বর</th>
+                      <th className="border p-2.5">নাম</th>
+                      <th className="border p-2.5">বাবার নাম</th>
+                      <th className="border p-2.5">ফোন</th>
+                      <th className="border p-2.5">শিক্ষাবর্ষ</th>
+                      <th className="border p-2.5">বিভাগ</th>
+                      <th className="border p-2.5">বর্তমান শ্রেণি</th>
+                      <th className="border p-2.5">একশন</th>
                     </tr>
-                  ) : (
-                    filteredStudents.map((student) => (
+                  </thead>
+
+                  <tbody className="text-sm">
+                    {filteredStudents.map((student) => (
                       <tr key={student.id} className="border-t transition hover:bg-gray-50">
                         <td className="border p-2.5">{student.id}</td>
 
@@ -343,13 +395,13 @@ const StudentListPage = () => {
                           </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

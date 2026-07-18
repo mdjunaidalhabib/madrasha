@@ -46,7 +46,7 @@ export default function SuperAdminMadrasasTrashPage() {
       setStats(res.data);
       setSelected(m);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to load delete stats");
+      toast.push("error", err?.response?.data?.message || "Failed to load delete stats");
     }
   };
 
@@ -61,7 +61,7 @@ export default function SuperAdminMadrasasTrashPage() {
     } catch (err: any) {
       // Don't silently close the modal on failure — the row must stay in
       // trash so the admin knows the slug is NOT actually free yet.
-      alert(err?.response?.data?.message || "Permanent delete failed. Slug is still in use.");
+      toast.push("error", err?.response?.data?.message || "Permanent delete failed. Slug is still in use.");
     }
   };
 

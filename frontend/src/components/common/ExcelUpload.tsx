@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { logger } from "../../utils/logger";
+import { useToastStore } from "../../store/toastStore";
 
 interface ExcelUploadProps<T> {
   onDataUpload: (data: T[]) => void;
@@ -24,7 +25,7 @@ const ExcelUpload = <T,>({
       file.name.endsWith(".xlsx") || file.name.endsWith(".xls") || file.name.endsWith(".csv");
 
     if (!isValidFile) {
-      alert("Only .xlsx, .xls, or .csv file allowed");
+      useToastStore.getState().show("Only .xlsx, .xls, or .csv file allowed", "error");
       e.target.value = "";
       return;
     }
@@ -34,13 +35,13 @@ const ExcelUpload = <T,>({
     reader.onload = (event) => {
       try {
         const result = event.target?.result;
-        if (!result) return alert("File read failed");
+        if (!result) return useToastStore.getState().show("File read failed", "error");
 
         const data = new Uint8Array(result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
 
         const sheetName = workbook.SheetNames[0];
-        if (!sheetName) return alert("Excel sheet not found");
+        if (!sheetName) return useToastStore.getState().show("Excel sheet not found", "error");
 
         const sheet = workbook.Sheets[sheetName];
 
@@ -50,14 +51,14 @@ const ExcelUpload = <T,>({
           raw: false,
         });
 
-        if (!allRows.length) return alert("Excel file is empty");
+        if (!allRows.length) return useToastStore.getState().show("Excel file is empty", "error");
 
         const headerRowIndex = allRows.findIndex((row) =>
           row.some((cell) => requiredColumns.includes(cleanHeaderKey(String(cell)))),
         );
 
         if (headerRowIndex === -1) {
-          alert("Required columns not found in Excel template");
+          useToastStore.getState().show("Required columns not found in Excel template", "error");
           return;
         }
 
@@ -76,17 +77,17 @@ const ExcelUpload = <T,>({
             return item;
           }) as T[];
 
-        if (!cleanedRows.length) return alert("No student data found");
+        if (!cleanedRows.length) return useToastStore.getState().show("No student data found", "error");
 
         onDataUpload(cleanedRows);
         e.target.value = "";
       } catch (error) {
         logger.error("EXCEL UPLOAD ERROR:", error);
-        alert("Invalid Excel file");
+        useToastStore.getState().show("Invalid Excel file", "error");
       }
     };
 
-    reader.onerror = () => alert("Failed to read file");
+    reader.onerror = () => useToastStore.getState().show("Failed to read file", "error");
 
     reader.readAsArrayBuffer(file);
   };

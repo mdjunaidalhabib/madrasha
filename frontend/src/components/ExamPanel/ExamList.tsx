@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../../services/api";
+import { useToastStore } from "../../store/toastStore";
 
 interface ExamListProps {
   exams: Array<{ id: string | number; name: string; year: string }>;
@@ -11,7 +12,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   const [year, setYear] = useState("");
 
 const addExam = async () => {
-  if (!name || !year) return alert("Required");
+  if (!name || !year) return useToastStore.getState().show("Required", "error");
 
   try {
     await api.post("/exams", { name, year });
@@ -19,7 +20,7 @@ const addExam = async () => {
     setYear("");
     reload();
   } catch {
-    alert("Failed");
+    useToastStore.getState().show("Failed", "error");
   }
 };
   const deleteExam = async (id: string | number) => {

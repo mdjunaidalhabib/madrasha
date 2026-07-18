@@ -12,7 +12,7 @@ import BulkAdmissionModal, {
 } from "../../components/admission/BulkAdmissionModal";
 import api from "../../services/api";
 import { logger } from "../../utils/logger";
-import { useAuthStore } from "../../store/authStore";
+import { useToastStore } from "../../store/toastStore";
 
 export interface AdmissionFormData {
   name: string;
@@ -22,7 +22,6 @@ export interface AdmissionFormData {
   dob: string;
   age: number | null;
   roll: string;
-  manualRollOverride: boolean;
   academicYear: string;
   academicDivision: string;
   previousClass: string;
@@ -92,7 +91,6 @@ const initialState: AdmissionFormData = {
   dob: "",
   age: null,
   roll: "",
-  manualRollOverride: false,
   academicYear: String(new Date().getFullYear()),
   academicDivision: "",
   previousClass: "",
@@ -129,11 +127,6 @@ const AdmissionPage = () => {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkAdmissionResultData | null>(null);
   const [loading, setLoading] = useState(false);
-  const user = useAuthStore((state) => state.user);
-  const roleKey = String(user?.role || user?.role_key || "")
-    .trim()
-    .toUpperCase();
-  const canOverrideRoll = roleKey === "MUHTAMIM" || roleKey === "SUPER_ADMIN";
 
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -218,13 +211,11 @@ const AdmissionPage = () => {
   }, [formData.nid]);
 
   // Show the next roll as a preview, but let the backend assign the final
-  // value transaction-safely at submit time. Changing class/session always
-  // refreshes the suggestion unless the Muhatamim enabled manual override.
+  // value transaction-safely at submit time. This field is display-only;
+  // users cannot submit or override a roll number manually.
   useEffect(() => {
     const classId = formData.currentClass;
     const year = formData.academicYear;
-
-    if (formData.manualRollOverride) return;
 
     if (!classId || !year) {
       setFormData((prev) => ({ ...prev, roll: "" }));
@@ -241,9 +232,7 @@ const AdmissionPage = () => {
         const suggested = res?.data?.data;
 
         if (!cancelled && suggested) {
-          setFormData((prev) =>
-            prev.manualRollOverride ? prev : { ...prev, roll: String(suggested) },
-          );
+          setFormData((prev) => ({ ...prev, roll: String(suggested) }));
         }
       } catch (err) {
         logger.error("Next roll suggestion error:", err);
@@ -254,7 +243,7 @@ const AdmissionPage = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [formData.currentClass, formData.academicYear, formData.manualRollOverride]);
+  }, [formData.currentClass, formData.academicYear]);
 
   const handleDismissPreviousStudent = () => {
     setPreviousStudent(null);
@@ -327,13 +316,7 @@ const AdmissionPage = () => {
     const newErrors: AdmissionFormErrors = {};
 
     if (!formData.name.trim()) newErrors.name = "ছাত্রের নাম দিন";
-    if (
-      formData.manualRollOverride &&
-      (!Number.isInteger(Number(formData.roll)) || Number(formData.roll) < 1)
-    ) {
-      newErrors.roll = "সঠিক রোল নম্বর দিন";
-    }
-    if (!formData.academicYear) newErrors.academicYear = "সিক্ষাবর্ষ নির্বাচন করুন";
+    if (!formData.academicYear) newErrors.academicYear = "শিক্ষাবর্ষ নির্বাচন করুন";
     if (!formData.academicDivision) newErrors.academicDivision = "বিভাগ নির্বাচন করুন";
     if (!formData.currentClass) newErrors.currentClass = "বর্তমান শ্রেণি নির্বাচন করুন";
 
@@ -510,7 +493,7 @@ const AdmissionPage = () => {
 
   const handleExcelSubmit = async () => {
     const error = validateExcelStudents();
-    if (error) return alert(error);
+    if (error) return useToastStore.getState().show(error, "error");
 
     try {
       setLoading(true);
@@ -526,7 +509,9 @@ const AdmissionPage = () => {
       });
       setExcelStudents([]);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Bulk Admission Failed ❌");
+      useToastStore
+        .getState()
+        .show(err?.response?.data?.message || "Bulk Admission Failed ❌", "error");
     } finally {
       setLoading(false);
     }
@@ -550,8 +535,6 @@ const AdmissionPage = () => {
       arabic_name: formData.arabicName || null,
       nid: formData.nid || null,
       age: calculateAge(formData.dob),
-      roll: formData.manualRollOverride ? Number(formData.roll) : undefined,
-      manual_roll_override: formData.manualRollOverride,
       father_name: formData.fatherName || null,
       father_arabic_name: formData.fatherArabicName || null,
       father_nid: formData.fatherNid || null,
@@ -572,38 +555,47 @@ const AdmissionPage = () => {
       const res = await api.post("/students/admission", payload);
 
       if (res.data?.action === "re_admitted") {
-        alert(
-          `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear})\nরোল: ${res.data?.roll || "-"}`,
-        );
+        useToastStore
+          .getState()
+          .show(
+            `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear}) | রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"}`,
+            "success",
+          );
       } else {
-        alert(`Admission Successful ✅\nরোল: ${res.data?.roll || "-"}`);
+        useToastStore
+          .getState()
+          .show(
+            `Admission Successful ✅ রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"}`,
+            "success",
+          );
       }
 
       setFormData(initialState);
       setErrors({});
       setPreviousStudent(null);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed ❌");
+      useToastStore.getState().show(err?.response?.data?.message || "Failed ❌", "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="relative mb-6">
-        <h1 className="text-3xl font-bold text-center">Student Registration</h1>
-
+    <div className="max-w-6xl mx-auto p-3 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center relative gap-2 sm:gap-3 mb-6">
         <button
           type="button"
           onClick={() => setBulkModalOpen(true)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+          className="self-end sm:self-auto sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap"
         >
           Bulk Upload
         </button>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-center break-words">
+          Student Registration
+        </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {(nidLookupLoading || previousStudent) && (
           <PreviousStudentBanner
             loading={nidLookupLoading}
@@ -621,7 +613,6 @@ const AdmissionPage = () => {
           setFormData={setFormData}
           errors={errors}
           setErrors={setErrors}
-          canOverrideRoll={canOverrideRoll}
         />
 
         <ParentInfo

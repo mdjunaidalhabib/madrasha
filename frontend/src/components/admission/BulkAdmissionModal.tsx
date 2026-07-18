@@ -7,7 +7,6 @@ export interface ExcelAdmissionRow {
   nid?: string;
   gender?: string | number | null;
   dob?: string;
-  roll?: string | number;
   academic_year?: string | number;
   academic_division?: string | number;
   previous_class?: string | number;
@@ -48,6 +47,7 @@ export interface BulkAdmissionResultRow {
   previousAcademicYear: string | null;
   academicYear: string;
   roll: number;
+  registrationNo: number;
   changes: Array<{ field: string; old: unknown; new: unknown }>;
 }
 
@@ -188,6 +188,9 @@ const BulkAdmissionModal = ({
                           Name
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                          রেজিস্ট্রেশন
+                        </th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
                           NID
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
@@ -208,6 +211,9 @@ const BulkAdmissionModal = ({
                           <td className="whitespace-nowrap px-3 py-3">{row.row}</td>
                           <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">
                             {row.name || "-"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700">
+                            {row.registrationNo || "-"}
                           </td>
                           <td className="whitespace-nowrap px-3 py-3">{row.nid || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">

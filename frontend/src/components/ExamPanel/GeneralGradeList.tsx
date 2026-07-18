@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../../services/api";
+import { useToastStore } from "../../store/toastStore";
 
 export default function GeneralGradeList({
   grades,
@@ -13,7 +14,7 @@ export default function GeneralGradeList({
   const [max, setMax] = useState("");
 
 const add = async () => {
-  if (!name || !min || !max) return alert("All fields required");
+  if (!name || !min || !max) return useToastStore.getState().show("All fields required", "error");
 
   try {
     await api.post("/general-grades", {
@@ -27,7 +28,7 @@ const add = async () => {
     setMax("");
     reload();
   } catch {
-    alert("Failed");
+    useToastStore.getState().show("Failed", "error");
   }
 };
 

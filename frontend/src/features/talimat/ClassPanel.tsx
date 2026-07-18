@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { useConfirmStore } from "../../store/confirmStore";
 
 export default function ClassPanel() {
   const [divisions, setDivisions] = useState<any[]>([]);
@@ -79,10 +80,17 @@ export default function ClassPanel() {
     loadClasses();
   };
 
-  const removeClass = async (id: number) => {
-    if (!confirm("Delete class?")) return;
-    await api.delete(`/madrasa-classes/${id}`);
-    loadClasses();
+  const removeClass = (id: number) => {
+    useConfirmStore.getState().show({
+      title: "Delete Class",
+      message: "Delete class?",
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/madrasa-classes/${id}`);
+        loadClasses();
+      },
+    });
   };
 
   const saveClassEdit = async () => {
@@ -110,10 +118,17 @@ export default function ClassPanel() {
     loadBooks();
   };
 
-  const removeBook = async (id: number) => {
-    if (!confirm("Delete book?")) return;
-    await api.delete(`/madrasa-books/${id}`);
-    loadBooks();
+  const removeBook = (id: number) => {
+    useConfirmStore.getState().show({
+      title: "Delete Book",
+      message: "Delete book?",
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/madrasa-books/${id}`);
+        loadBooks();
+      },
+    });
   };
 
   const saveEdit = async () => {

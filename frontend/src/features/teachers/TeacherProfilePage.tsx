@@ -9,6 +9,8 @@ import ImageUploadProfile from "../../components/teacherProfile/ImageUploadProfi
 
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
+import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -48,7 +50,7 @@ const TeacherProfilePage = () => {
         setTeacher(deepCopy(data));
         setOriginal(deepCopy(data));
       })
-      .catch(() => alert("❌ Failed to load teacher"))
+      .catch(() => useToastStore.getState().show("❌ Failed to load teacher", "error"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -99,7 +101,7 @@ const TeacherProfilePage = () => {
 
       await api.put(`/teachers/${id}`, changed);
 
-      alert("✅ Teacher Updated Successfully");
+      useToastStore.getState().show("✅ Teacher Updated Successfully", "success");
 
       const newData = {
         ...original,
@@ -114,7 +116,7 @@ const TeacherProfilePage = () => {
     } catch (error) {
       logger.error("Update failed:", error);
 
-      alert("❌ Update failed");
+      useToastStore.getState().show("❌ Update failed", "error");
     } finally {
       setSaving(false);
     }
@@ -124,18 +126,24 @@ const TeacherProfilePage = () => {
      DELETE
   ============================= */
 
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure to delete this teacher?")) return;
+  const handleDelete = () => {
+    useConfirmStore.getState().show({
+      title: "Delete Teacher",
+      message: "Are you sure to delete this teacher?",
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/teachers/${id}`);
 
-    try {
-      await api.delete(`/teachers/${id}`);
+          useToastStore.getState().show("🗑️ Teacher Deleted", "success");
 
-      alert("🗑️ Teacher Deleted");
-
-      navigate(`${adminBase}/ihtemam/all_teacher`);
-    } catch {
-      alert("❌ Delete failed");
-    }
+          navigate(`${adminBase}/ihtemam/all_teacher`);
+        } catch {
+          useToastStore.getState().show("❌ Delete failed", "error");
+        }
+      },
+    });
   };
 
   /* =============================

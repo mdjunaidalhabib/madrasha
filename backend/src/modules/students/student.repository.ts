@@ -93,17 +93,44 @@ export class StudentRepository {
   }
 
   /**
-   * PostgreSQL transaction-scoped advisory locks make MAX(roll)+1 safe when
-   * two admissions are submitted at the same time. Class IDs are globally
-   * unique in this schema, while madrasaId keeps tenant scopes isolated.
+   * Acquires a transaction-scoped, namespaced PostgreSQL advisory lock.
+   * Text keys keep identity, record, roll and registration locks in separate
+   * domains and avoid accidental collisions with numeric IDs.
    */
-  async lockRollScopeOnTx(tx: TransactionClient, madrasaId: number, classId: number) {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${madrasaId}::int, ${classId}::int)`;
+  private async lockKeyOnTx(tx: TransactionClient, key: string) {
+    // pg_advisory_xact_lock() returns `void`. $queryRaw tries to deserialize
+    // the returned column and fails on the unsupported `void` type ("Failed
+    // to deserialize column of type 'void'"). We only need the side effect
+    // (acquiring the lock), not a result row, so $executeRaw must be used
+    // here instead of $queryRaw.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+
+  /** Prevents two concurrent admission requests for the same NID from both
+   * creating or re-admitting the same student independently. */
+  lockStudentIdentityOnTx(tx: TransactionClient, madrasaId: number, nid: string) {
+    return this.lockKeyOnTx(tx, `student-identity:${madrasaId}:${nid}`);
+  }
+
+  /** Serialises changes to one student record across admission and profile
+   * update flows. */
+  lockStudentRecordOnTx(tx: TransactionClient, madrasaId: number, studentId: number) {
+    return this.lockKeyOnTx(tx, `student-record:${madrasaId}:${studentId}`);
+  }
+
+  /** Makes MAX(roll)+1 safe within one madrasa + class + academic year. */
+  lockRollScopeOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    classId: number,
+    academicYear: string,
+  ) {
+    return this.lockKeyOnTx(tx, `student-roll:${madrasaId}:${classId}:${academicYear}`);
   }
 
   /** Serialises permanent registration-number allocation per madrasa. */
-  async lockRegistrationScopeOnTx(tx: TransactionClient, madrasaId: number) {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${madrasaId}::int, 0::int)`;
+  lockRegistrationScopeOnTx(tx: TransactionClient, madrasaId: number) {
+    return this.lockKeyOnTx(tx, `student-registration:${madrasaId}`);
   }
 
   createOnTx(tx: TransactionClient, data: Prisma.StudentUncheckedCreateInput) {

@@ -40,14 +40,14 @@ model Student {
 
   image String?
 
-  roll Int?
+  roll Int
 
   /// Permanent, per-madrasa admission/registration number. Assigned once at
   /// first admission (never changes on re-admission/promotion), unlike
   /// `roll` which changes every academic year. Distinct from `id`, which is
   /// an internal, tenant-agnostic primary key and should never be shown to
   /// users as a registration number.
-  registrationNo Int? @map("registration_no")
+  registrationNo Int @map("registration_no")
 
   admissionDate DateTime? @default(now()) @map("admission_date")
   isActive      Int       @default(1) @map("is_active")

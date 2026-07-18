@@ -1,5 +1,7 @@
 "use client";
 
+import { useConfirmStore } from "../../store/confirmStore";
+
 interface SummaryMark {
   book_id: number;
   book_name: string;
@@ -64,9 +66,13 @@ export default function FullResultTable({
     const resultMasterId = dataList[0]?.result_master_id;
     if (!resultMasterId || !onDelete) return;
 
-    if (confirm("Are you sure?")) {
-      onDelete(resultMasterId);
-    }
+    useConfirmStore.getState().show({
+      title: "Delete Result",
+      message: "Are you sure?",
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: () => onDelete(resultMasterId),
+    });
   };
 
   const getMark = (student: Summary, bookId: number) => {

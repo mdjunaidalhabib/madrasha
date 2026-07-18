@@ -55,6 +55,7 @@ export interface AdmissionResult {
   action: "created" | "re_admitted";
   previousAcademicYear?: string;
   roll: number;
+  registrationNo: number;
 }
 
 /** Shape returned to the frontend when it looks up a student by NID before
@@ -71,6 +72,7 @@ export interface BulkAdmissionRow {
   previousAcademicYear: string | null;
   academicYear: string;
   roll: number;
+  registrationNo: number;
   changes: Array<{ field: string; old: unknown; new: unknown }>;
 }
 

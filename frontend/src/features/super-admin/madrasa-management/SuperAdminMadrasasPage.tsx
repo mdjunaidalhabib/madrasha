@@ -16,6 +16,7 @@ import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/C
 import { Link } from "react-router-dom";
 import { CreateMadrasaPayload } from "../../../components/super-admin/create-madrasa/types";
 import { logger } from "../../../utils/logger";
+import { useConfirmStore } from "../../../store/confirmStore";
 
 export type Madrasa = {
   id: number;
@@ -205,19 +206,25 @@ export default function SuperAdminMadrasasPage() {
      MOVE TO TRASH
   ============================== */
 
-  const onDelete = async (m: Madrasa) => {
-    if (!window.confirm(`Move "${m.name}" to Trash?`)) return;
+  const onDelete = (m: Madrasa) => {
+    useConfirmStore.getState().show({
+      title: "Move to Trash",
+      message: `Move "${m.name}" to Trash?`,
+      confirmText: "Move to Trash",
+      danger: true,
+      onConfirm: async () => {
+        setBusyId(m.id);
 
-    setBusyId(m.id);
-
-    try {
-      await trashMadrasa(m.id);
-      await fetchAll();
-    } catch (err) {
-      logger.error("Delete madrasa failed:", err);
-    } finally {
-      setBusyId(null);
-    }
+        try {
+          await trashMadrasa(m.id);
+          await fetchAll();
+        } catch (err) {
+          logger.error("Delete madrasa failed:", err);
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   };
 
   /* ==============================

@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { studentRepository, StudentRepository } from "./student.repository";
 import { isValidDate, clean, toNumber, toGenderNumber } from "../../shared/utils/parse.util";
-import { BadRequestError, ForbiddenError } from "../../shared/errors";
+import { BadRequestError } from "../../shared/errors";
 import { STUDENT_REQUIRED_FIELDS, STUDENT_FIELD_MAP } from "./student.constants";
 import {
   AdmissionResult,
@@ -25,28 +25,22 @@ const validateRequiredFields = (body: Record<string, unknown>): string[] => {
   });
 };
 
-const isManualRollOverrideRequested = (value: unknown): boolean =>
-  value === true ||
-  String(value || "")
-    .trim()
-    .toLowerCase() === "true";
+const assertRollIsServerManaged = (body: Record<string, any>, rowLabel?: string) => {
+  const suppliedRoll = body.roll;
+  const hasRollValue =
+    suppliedRoll !== undefined && suppliedRoll !== null && String(suppliedRoll).trim() !== "";
+  const manualOverrideRequested =
+    body.manual_roll_override === true ||
+    String(body.manual_roll_override || "")
+      .trim()
+      .toLowerCase() === "true";
 
-const validateManualRollOverride = (
-  body: Record<string, any>,
-  allowManualRollOverride: boolean,
-): number | null => {
-  if (!isManualRollOverrideRequested(body.manual_roll_override)) return null;
-
-  if (!allowManualRollOverride) {
-    throw new ForbiddenError("শুধু মুহতামিম ম্যানুয়ালি রোল পরিবর্তন করতে পারবেন");
+  if (hasRollValue || manualOverrideRequested) {
+    const prefix = rowLabel ? `${rowLabel}: ` : "";
+    throw new BadRequestError(
+      `${prefix}রোল নম্বর ম্যানুয়ালি দেওয়া যাবে না। শ্রেণি ও শিক্ষাবর্ষ অনুযায়ী সিস্টেম স্বয়ংক্রিয়ভাবে রোল তৈরি করবে`,
+    );
   }
-
-  const roll = toNumber(body.roll);
-  if (!roll || !Number.isInteger(roll) || roll < 1) {
-    throw new BadRequestError("Roll number must be a positive integer");
-  }
-
-  return roll;
 };
 
 const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
@@ -57,8 +51,8 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   gender: toGenderNumber(body.gender),
   dob: body.dob ? new Date(body.dob) : null,
   age: toNumber(body.age),
-  // Roll is assigned explicitly below. Unflagged client values are ignored so
-  // automatic assignment remains the authoritative default.
+  // Roll is assigned explicitly below by the server. Client-provided roll values
+  // are rejected before this function is called.
   roll: null as number | null,
 
   divisionId: toNumber(body.division_id),
@@ -131,7 +125,6 @@ export class StudentService {
   async admitStudent(
     body: StudentAdmissionRequestDto,
     madrasaId: number | undefined,
-    allowManualRollOverride = false,
   ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -148,7 +141,7 @@ export class StudentService {
       throw new BadRequestError("Invalid DOB");
     }
 
-    const manualRoll = validateManualRollOverride(body, allowManualRollOverride);
+    assertRollIsServerManaged(body);
     const classId = toNumber(body.class_id);
     const academicYear = String(body.academic_year || new Date().getFullYear());
 
@@ -156,13 +149,20 @@ export class StudentService {
 
     return this.repository.runTransaction(async (tx) => {
       const nid = clean(body.nid) as string | null;
-      const existing = nid ? await this.repository.findByNidOnTx(tx, madrasaId, nid) : null;
+
+      if (nid) {
+        await this.repository.lockStudentIdentityOnTx(tx, madrasaId, nid);
+      }
+
+      let existing = nid ? await this.repository.findByNidOnTx(tx, madrasaId, nid) : null;
+      if (existing) {
+        await this.repository.lockStudentRecordOnTx(tx, madrasaId, existing.id);
+        existing = await this.repository.findByIdForTenantOnTx(tx, existing.id, madrasaId);
+      }
 
       const data = makeStudentData(body, madrasaId);
 
-      if (manualRoll !== null) {
-        data.roll = manualRoll;
-      } else if (
+      if (
         existing &&
         existing.classId === classId &&
         existing.academicYear === academicYear &&
@@ -172,7 +172,7 @@ export class StudentService {
         // the student's existing roll.
         data.roll = existing.roll;
       } else {
-        await this.repository.lockRollScopeOnTx(tx, madrasaId, classId);
+        await this.repository.lockRollScopeOnTx(tx, madrasaId, classId, academicYear);
         data.roll =
           (await this.repository.getMaxRollOnTx(tx, madrasaId, classId, academicYear)) + 1;
       }
@@ -187,6 +187,7 @@ export class StudentService {
           action: "re_admitted" as const,
           previousAcademicYear: existing.academicYear,
           roll: data.roll!,
+          registrationNo: existing.registrationNo!,
         };
       }
 
@@ -198,14 +199,18 @@ export class StudentService {
         registrationNo: nextRegistrationNo,
       } as Prisma.StudentUncheckedCreateInput);
 
-      return { studentId: created.id, action: "created" as const, roll: data.roll! };
+      return {
+        studentId: created.id,
+        action: "created" as const,
+        roll: data.roll!,
+        registrationNo: created.registrationNo!,
+      };
     });
   }
 
   async admitStudentsBulk(
     students: StudentAdmissionRequestDto[],
     madrasaId: number | undefined,
-    allowManualRollOverride = false,
   ): Promise<BulkAdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -224,6 +229,8 @@ export class StudentService {
         throw new BadRequestError(`Row ${index + 1}: Invalid DOB`);
       }
 
+      assertRollIsServerManaged(student, `Row ${index + 1}`);
+
       const classId = toNumber(student.class_id);
       if (!classId) throw new BadRequestError(`Row ${index + 1}: class_id is required`);
 
@@ -231,16 +238,57 @@ export class StudentService {
         student,
         classId,
         academicYear: String(student.academic_year || new Date().getFullYear()),
-        manualRoll: validateManualRollOverride(student, allowManualRollOverride),
       };
     });
 
     return this.repository.runTransaction(async (tx) => {
-      // Always acquire class locks in a stable order, then the registration
-      // lock. This avoids duplicate auto numbers and prevents deadlocks.
-      const classIds = [...new Set(prepared.map((row) => row.classId))].sort((a, b) => a - b);
-      for (const classId of classIds) {
-        await this.repository.lockRollScopeOnTx(tx, madrasaId, classId);
+      // Use one consistent lock order across all student write flows:
+      // identity -> student record -> roll scope -> registration scope.
+      // Stable sorting prevents deadlocks between concurrent bulk requests.
+      const uniqueNids = [
+        ...new Set(
+          prepared
+            .map((row) => clean(row.student.nid) as string | null)
+            .filter((nid): nid is string => Boolean(nid)),
+        ),
+      ].sort();
+
+      for (const nid of uniqueNids) {
+        await this.repository.lockStudentIdentityOnTx(tx, madrasaId, nid);
+      }
+
+      const existingByNid = new Map<string, any>();
+      for (const nid of uniqueNids) {
+        existingByNid.set(nid, await this.repository.findByNidOnTx(tx, madrasaId, nid));
+      }
+
+      const existingIds = [
+        ...new Set(
+          [...existingByNid.values()].filter(Boolean).map((student) => Number(student.id)),
+        ),
+      ].sort((a, b) => a - b);
+
+      for (const studentId of existingIds) {
+        await this.repository.lockStudentRecordOnTx(tx, madrasaId, studentId);
+      }
+
+      // Refresh after record locks in case a profile update completed between
+      // the initial identity lookup and acquiring the record lock.
+      for (const nid of uniqueNids) {
+        existingByNid.set(nid, await this.repository.findByNidOnTx(tx, madrasaId, nid));
+      }
+
+      const rollScopes = [
+        ...new Map(
+          prepared.map((row) => [
+            `${row.classId}:${row.academicYear}`,
+            { classId: row.classId, academicYear: row.academicYear },
+          ]),
+        ).values(),
+      ].sort((a, b) => a.classId - b.classId || a.academicYear.localeCompare(b.academicYear));
+
+      for (const scope of rollScopes) {
+        await this.repository.lockRollScopeOnTx(tx, madrasaId, scope.classId, scope.academicYear);
       }
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
 
@@ -251,14 +299,12 @@ export class StudentService {
       const rollCounters = new Map<string, number>();
 
       for (let index = 0; index < prepared.length; index++) {
-        const { student, classId, academicYear, manualRoll } = prepared[index];
+        const { student, classId, academicYear } = prepared[index];
         const nid = clean(student.nid) as string | null;
-        const existing = nid ? await this.repository.findByNidOnTx(tx, madrasaId, nid) : null;
+        const existing = nid ? existingByNid.get(nid) || null : null;
         const data = makeStudentData(student, madrasaId);
 
-        if (manualRoll !== null) {
-          data.roll = manualRoll;
-        } else if (
+        if (
           existing &&
           existing.classId === classId &&
           existing.academicYear === academicYear &&
@@ -298,8 +344,13 @@ export class StudentService {
             previousAcademicYear: existing.academicYear ?? null,
             academicYear: data.academicYear,
             roll: data.roll!,
+            registrationNo: existing.registrationNo!,
             changes,
           });
+
+          if (nid) {
+            existingByNid.set(nid, { ...existing, ...updateData });
+          }
         } else {
           nextRegistrationNo += 1;
           const created = await this.repository.createOnTx(tx, {
@@ -316,8 +367,13 @@ export class StudentService {
             previousAcademicYear: null,
             academicYear: data.academicYear,
             roll: data.roll!,
+            registrationNo: created.registrationNo!,
             changes: [],
           });
+
+          if (nid) {
+            existingByNid.set(nid, created);
+          }
         }
       }
 
@@ -325,27 +381,23 @@ export class StudentService {
     });
   }
 
-  async updateStudent(
-    id: number,
-    madrasaId: number | undefined,
-    body: Record<string, any>,
-    allowManualRollOverride = false,
-  ) {
+  async updateStudent(id: number, madrasaId: number | undefined, body: Record<string, any>) {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (body.dob && !isValidDate(body.dob)) {
       throw new BadRequestError("Invalid DOB");
     }
 
-    const manualRoll = validateManualRollOverride(body, allowManualRollOverride);
+    assertRollIsServerManaged(body);
 
     return this.repository.runTransaction(async (tx) => {
+      await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
       const existing = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
       if (!existing) throw new StudentNotFoundError();
 
       const data: Record<string, any> = {};
       for (const key of Object.keys(body)) {
-        // Roll is handled only through the explicit override flag below.
+        // Roll is immutable from the client and is assigned only when its scope changes.
         if (key === "roll" || key === "manual_roll_override") continue;
 
         const field = STUDENT_FIELD_MAP[key];
@@ -373,10 +425,8 @@ export class StudentService {
       const scopeChanged =
         targetClassId !== existing.classId || targetAcademicYear !== existing.academicYear;
 
-      if (manualRoll !== null) {
-        data.roll = manualRoll;
-      } else if (scopeChanged) {
-        await this.repository.lockRollScopeOnTx(tx, madrasaId, targetClassId);
+      if (scopeChanged) {
+        await this.repository.lockRollScopeOnTx(tx, madrasaId, targetClassId, targetAcademicYear);
         data.roll =
           (await this.repository.getMaxRollOnTx(tx, madrasaId, targetClassId, targetAcademicYear)) +
           1;

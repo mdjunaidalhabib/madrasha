@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
@@ -252,27 +253,30 @@ export default function ResultPreviewPage() {
     }
   };
 
-  const handleApplyRollByRank = async () => {
+  const handleApplyRollByRank = () => {
     if (!resultMasterId) return toast.push("error", "No processed result found");
 
-    const confirmed = window.confirm(
-      "এই ফলাফলের মেধাক্রম অনুযায়ী পুরো ক্লাসের রোল নম্বর নতুন করে বসানো হবে (রোল ১ = সর্বোচ্চ নম্বরপ্রাপ্ত)। " +
+    useConfirmStore.getState().show({
+      title: "রোল আপডেট নিশ্চিত করুন",
+      message:
+        "এই ফলাফলের মেধাক্রম অনুযায়ী পুরো ক্লাসের রোল নম্বর নতুন করে বসানো হবে (রোল ১ = সর্বোচ্চ নম্বরপ্রাপ্ত)। " +
         "পুরনো পরীক্ষার মার্কশিটে কোনো প্রভাব পড়বে না। এগিয়ে যেতে চান?",
-    );
-    if (!confirmed) return;
-
-    try {
-      setApplyingRoll(true);
-      await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
-      await loadSummary();
-      await loadOverview();
-      toast.push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
-    } catch (err) {
-      logger.error("Apply roll by rank error:", err);
-      toast.push("error", "রোল আপডেট করা যায়নি");
-    } finally {
-      setApplyingRoll(false);
-    }
+      confirmText: "এগিয়ে যান",
+      onConfirm: async () => {
+        try {
+          setApplyingRoll(true);
+          await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
+          await loadSummary();
+          await loadOverview();
+          toast.push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
+        } catch (err) {
+          logger.error("Apply roll by rank error:", err);
+          toast.push("error", "রোল আপডেট করা যায়নি");
+        } finally {
+          setApplyingRoll(false);
+        }
+      },
+    });
   };
 
   const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;

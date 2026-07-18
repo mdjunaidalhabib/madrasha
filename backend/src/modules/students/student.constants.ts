@@ -13,7 +13,6 @@ export const STUDENT_FIELD_MAP: Record<string, string> = {
   gender: "gender",
   dob: "dob",
   age: "age",
-  roll: "roll",
   division_id: "divisionId",
   class_id: "classId",
   academic_year: "academicYear",
@@ -35,7 +34,6 @@ export const STUDENT_FIELD_MAP: Record<string, string> = {
 
 export const STUDENT_NUMERIC_FIELDS = [
   "age",
-  "roll",
   "division_id",
   "class_id",
   "previous_class_id",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { useToastStore } from "../../store/toastStore";
 
 export default function FailMarkSetting({
   value,
@@ -15,14 +16,14 @@ export default function FailMarkSetting({
   }, [value]);
 
   const update = async () => {
-    if (!fail) return alert("Enter fail mark");
+    if (!fail) return useToastStore.getState().show("Enter fail mark", "error");
 
     try {
       await api.post("/fail-mark", { value: Number(fail) });
-      alert("Updated!");
+      useToastStore.getState().show("Updated!", "success");
       reload();
     } catch {
-      alert("Failed to update");
+      useToastStore.getState().show("Failed to update", "error");
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
@@ -8,7 +8,8 @@ import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfi
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 import { logger } from "../../utils/logger";
-import { useAuthStore } from "../../store/authStore";
+import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -16,11 +17,6 @@ const StudentProfilePage = () => {
   const { id, madrasaSlug = "" } = useParams();
   const navigate = useNavigate();
   const adminBase = getTenantAdminBase(madrasaSlug);
-  const user = useAuthStore((state) => state.user);
-  const roleKey = String(user?.role || user?.role_key || "")
-    .trim()
-    .toUpperCase();
-  const canOverrideRoll = roleKey === "MUHTAMIM" || roleKey === "SUPER_ADMIN";
 
   const [student, setStudent] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
@@ -31,7 +27,7 @@ const StudentProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const fetchStudent = async () => {
+  const fetchStudent = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -44,15 +40,15 @@ const StudentProfilePage = () => {
       setOriginal(deepCopy(data));
     } catch (err) {
       logger.error("FETCH STUDENT ERROR:", err);
-      alert("Failed to load student");
+      useToastStore.getState().show("Failed to load student", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchStudent();
-  }, [id]);
+  }, [fetchStudent]);
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -84,13 +80,9 @@ const StudentProfilePage = () => {
 
     const changed = getChangedData();
 
-    if (Object.prototype.hasOwnProperty.call(changed, "roll")) {
-      if (canOverrideRoll) {
-        changed.manual_roll_override = true;
-      } else {
-        delete changed.roll;
-      }
-    }
+    // Roll and registration numbers are immutable, server-managed identifiers.
+    delete changed.roll;
+    delete changed.registration_no;
 
     try {
       setSaving(true);
@@ -102,28 +94,32 @@ const StudentProfilePage = () => {
       setIsEditMode(false);
       setEditableField(null);
 
-      alert("Updated successfully");
+      useToastStore.getState().show("Updated successfully", "success");
     } catch (error) {
       logger.error("UPDATE ERROR:", error);
-      alert("Update failed");
+      useToastStore.getState().show("Update failed", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    const confirmDelete = window.confirm("Are you sure to delete this student?");
-
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/students/${id}`);
-      alert("Deleted");
-      navigate(`${adminBase}/students/list`);
-    } catch (error) {
-      logger.error("DELETE ERROR:", error);
-      alert("Delete failed");
-    }
+  const handleDelete = () => {
+    useConfirmStore.getState().show({
+      title: "Delete Student",
+      message: "Are you sure to delete this student?",
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/students/${id}`);
+          useToastStore.getState().show("Deleted", "success");
+          navigate(`${adminBase}/students/list`);
+        } catch (error) {
+          logger.error("DELETE ERROR:", error);
+          useToastStore.getState().show("Delete failed", "error");
+        }
+      },
+    });
   };
 
   if (loading) return <p className="p-6">Loading...</p>;
@@ -182,7 +178,6 @@ const StudentProfilePage = () => {
         editableField={editableField}
         setEditableField={setEditableField}
         isEditMode={isEditMode}
-        canOverrideRoll={canOverrideRoll}
       />
 
       <ParentInfoProfile

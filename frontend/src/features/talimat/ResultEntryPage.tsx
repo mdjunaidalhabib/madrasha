@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 import ResultFilter from "../../components/ResultPanel/ResultFilter";
@@ -297,8 +298,13 @@ export default function ResultEntryPage() {
   };
 
   const handleReset = () => {
-    if (!confirm("সব entered marks reset করতে চান?")) return;
-    setMarks({});
+    useConfirmStore.getState().show({
+      title: "Reset Marks",
+      message: "সব entered marks reset করতে চান?",
+      confirmText: "Reset",
+      danger: true,
+      onConfirm: () => setMarks({}),
+    });
   };
 
   return (

@@ -10,6 +10,7 @@ import BulkTeacherUploadModal, {
 } from "../../components/teachers-admission/BulkTeacherUploadModal";
 import api from "../../services/api";
 import { logger } from "../../utils/logger";
+import { useToastStore } from "../../store/toastStore";
 
 export interface TeacherFormData {
   name_bn: string;
@@ -353,18 +354,19 @@ const TeacherPage: React.FC = () => {
 
   const handleExcelSubmit = async () => {
     const error = validateExcelTeachers();
-    if (error) return alert(error);
+    if (error) return useToastStore.getState().show(error, "error");
 
     try {
       setLoading(true);
       const res = await api.post("/teachers/bulk", { teachers: makeExcelPayload() });
-      alert(
-        `Bulk Teacher Upload Successful ✅\nনতুন: ${res.data?.inserted || 0} | আপডেট: ${res.data?.updated || 0}`,
+      useToastStore.getState().show(
+        `Bulk Teacher Upload Successful ✅ নতুন: ${res.data?.inserted || 0} | আপডেট: ${res.data?.updated || 0}`,
+        "success",
       );
       setExcelTeachers([]);
       setBulkModalOpen(false);
     } catch (error: any) {
-      alert(error?.response?.data?.message || "Bulk Teacher Upload Failed ❌");
+      useToastStore.getState().show(error?.response?.data?.message || "Bulk Teacher Upload Failed ❌", "error");
     } finally {
       setLoading(false);
     }
@@ -378,11 +380,11 @@ const TeacherPage: React.FC = () => {
     try {
       setLoading(true);
       await api.post("/teachers", makePayload(formData));
-      alert("Teacher Added Successfully ✅");
+      useToastStore.getState().show("Teacher Added Successfully ✅", "success");
       setFormData(initialState);
       setErrors({});
     } catch (error: any) {
-      alert(error?.response?.data?.message || "Failed to add teacher ❌");
+      useToastStore.getState().show(error?.response?.data?.message || "Failed to add teacher ❌", "error");
     } finally {
       setLoading(false);
     }

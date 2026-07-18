@@ -9,7 +9,6 @@ interface Props {
   setFormData: React.Dispatch<React.SetStateAction<AdmissionFormData>>;
   errors: AdmissionFormErrors;
   setErrors: React.Dispatch<React.SetStateAction<AdmissionFormErrors>>;
-  canOverrideRoll: boolean;
 }
 
 interface Division {
@@ -22,15 +21,10 @@ interface ClassItem {
   class_name_bn: string;
 }
 
-const ACADEMIC_YEARS = ["2022", "2023", "2024", "2025", "2026", "2027"];
+const CURRENT_YEAR = new Date().getFullYear();
+const ACADEMIC_YEARS = Array.from({ length: 8 }, (_, index) => String(CURRENT_YEAR - 4 + index));
 
-const StudentInfo: React.FC<Props> = ({
-  formData,
-  setFormData,
-  errors,
-  setErrors,
-  canOverrideRoll,
-}) => {
+const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors }) => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
@@ -88,7 +82,6 @@ const StudentInfo: React.FC<Props> = ({
       }
 
       if (name === "academicDivision" || name === "currentClass" || name === "academicYear") {
-        updated.manualRollOverride = false;
         updated.roll = "";
       }
 
@@ -192,59 +185,19 @@ const StudentInfo: React.FC<Props> = ({
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
             <label className="text-sm font-medium text-gray-600">রোল নম্বর</label>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                formData.manualRollOverride
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-emerald-100 text-emerald-700"
-              }`}
-            >
-              {formData.manualRollOverride ? "ম্যানুয়াল" : "অটো"}
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              স্বয়ংক্রিয়
             </span>
           </div>
 
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="1"
-              name="roll"
-              placeholder="শ্রেণি নির্বাচন করলে অটো হবে"
-              value={formData.roll || ""}
-              onChange={handleChange}
-              readOnly={!formData.manualRollOverride}
-              className={`${inputClass("roll")} min-w-0 flex-1 ${
-                formData.manualRollOverride ? "bg-white" : "cursor-not-allowed bg-gray-100"
-              }`}
-            />
-
-            {canOverrideRoll && (
-              <button
-                type="button"
-                onClick={() =>
-                  setFormData((prev) => {
-                    const enableManual = !prev.manualRollOverride;
-                    return {
-                      ...prev,
-                      manualRollOverride: enableManual,
-                      roll: enableManual ? prev.roll : "",
-                    };
-                  })
-                }
-                className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  formData.manualRollOverride
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-amber-300 bg-amber-50 text-amber-700"
-                }`}
-              >
-                {formData.manualRollOverride ? "অটো করুন" : "পরিবর্তন"}
-              </button>
-            )}
-          </div>
-
-          <p className="mt-1 text-xs text-gray-400">
-            শ্রেণি ও শিক্ষাবর্ষ অনুযায়ী চূড়ান্ত রোল সার্ভার নিজে নির্ধারণ করবে।
-          </p>
-          <ErrorText field="roll" />
+          <input
+            type="text"
+            value={formData.roll || ""}
+            placeholder="শ্রেণি নির্বাচন করলে সম্ভাব্য রোল দেখা যাবে"
+            readOnly
+            aria-readonly="true"
+            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700`}
+          />
         </div>
 
         <div className="flex flex-col">
@@ -287,10 +240,10 @@ const StudentInfo: React.FC<Props> = ({
           />
         </div>
 
-        {/* সিক্ষাবর্ষ */}
+        {/* শিক্ষাবর্ষ */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1">
-            সিক্ষাবর্ষ <span className="text-red-500">*</span>
+            শিক্ষাবর্ষ <span className="text-red-500">*</span>
           </label>
           <select
             name="academicYear"

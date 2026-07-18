@@ -24,7 +24,6 @@ const StudentInfoProfile = ({
   editableField,
   setEditableField,
   isEditMode,
-  canOverrideRoll,
 }: any) => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -75,22 +74,42 @@ const StudentInfoProfile = ({
       age--;
     }
 
-    setStudent((prev: any) => ({
-      ...prev,
-      age,
-    }));
-  }, [student.dob]);
+    setStudent((prev: any) => (prev.age === age ? prev : { ...prev, age }));
+  }, [setStudent, student.dob]);
 
   useEffect(() => {
     if (!student) return;
 
-    setStudent((prev: any) => ({
-      ...prev,
-      division_id: prev.division_id || prev.academicDivision,
-      class_id: prev.class_id || prev.currentClass,
-      previous_class_id: prev.previous_class_id || prev.previousClass,
-    }));
-  }, []);
+    setStudent((prev: any) => {
+      const divisionId = prev.division_id || prev.academicDivision;
+      const classId = prev.class_id || prev.currentClass;
+      const previousClassId = prev.previous_class_id || prev.previousClass;
+
+      if (
+        prev.division_id === divisionId &&
+        prev.class_id === classId &&
+        prev.previous_class_id === previousClassId
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        division_id: divisionId,
+        class_id: classId,
+        previous_class_id: previousClassId,
+      };
+    });
+  }, [
+    setStudent,
+    student,
+    student?.academicDivision,
+    student?.class_id,
+    student?.currentClass,
+    student?.division_id,
+    student?.previousClass,
+    student?.previous_class_id,
+  ]);
 
   const getGenderName = (gender: any) => {
     if (gender == 1) return "পুরুষ";
@@ -131,14 +150,10 @@ const StudentInfoProfile = ({
         />
 
         <Field
-          label={canOverrideRoll ? "রোল নম্বর (ম্যানুয়াল ওভাররাইড)" : "রোল নম্বর (স্বয়ংক্রিয়)"}
+          label="রোল নম্বর (স্বয়ংক্রিয়)"
           name="roll"
-          type="number"
           value={student.roll || ""}
-          onChange={handleChange}
-          editableField={editableField}
-          setEditableField={setEditableField}
-          isEditMode={isEditMode && canOverrideRoll}
+          isEditMode={false}
         />
 
         <Field

@@ -4,6 +4,7 @@ import adminApi from "../../../services/adminApi";
 import { useAdminAuthStore } from "../../../store/adminAuthStore";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import { useToastStore } from "../../../store/toastStore";
 
 export default function SuperAdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +22,7 @@ export default function SuperAdminLoginPage() {
       });
 
       if (!res.data?.token) {
-        alert("Token missing from login response");
+        useToastStore.getState().show("Token missing from login response", "error");
         return;
       }
 
@@ -34,7 +35,7 @@ export default function SuperAdminLoginPage() {
 
       navigate("/super-admin/dashboard");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Login failed");
+      useToastStore.getState().show(err.response?.data?.message || "Login failed", "error");
     }
   };
   return (

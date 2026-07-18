@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useToastStore } from "../../store/toastStore";
 
 type Props = {
   label: string;
@@ -26,12 +27,12 @@ export default function BrandImageBox({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("দয়া করে একটি ছবি ফাইল নির্বাচন করুন");
+      useToastStore.getState().show("দয়া করে একটি ছবি ফাইল নির্বাচন করুন", "error");
       return;
     }
 
     if (file.size > MAX_SIZE) {
-      alert("ছবির সাইজ ২MB এর কম হতে হবে");
+      useToastStore.getState().show("ছবির সাইজ ২MB এর কম হতে হবে", "error");
       return;
     }
 
