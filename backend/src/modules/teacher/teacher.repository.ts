@@ -40,6 +40,30 @@ export class TeacherRepository {
     return tx.teacher.create({ data });
   }
 
+  /**
+   * Acquires a transaction-scoped, namespaced PostgreSQL advisory lock.
+   * Mirrors the student repository's lock helper so concurrent teacher
+   * creations can't race each other onto the same registration number.
+   */
+  private async lockKeyOnTx(tx: TransactionClient, key: string) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+
+  /** Serialises permanent registration-number allocation per madrasa. */
+  lockRegistrationScopeOnTx(tx: TransactionClient, madrasaId: number) {
+    return this.lockKeyOnTx(tx, `teacher-registration:${madrasaId}`);
+  }
+
+  /** Highest registration number currently assigned within a madrasa, used
+   * to compute the next one for a brand-new teacher. */
+  async getMaxRegistrationNoOnTx(tx: TransactionClient, madrasaId: number): Promise<number> {
+    const result = await tx.teacher.aggregate({
+      where: { madrasaId },
+      _max: { registrationNo: true },
+    });
+    return result._max.registrationNo ?? 0;
+  }
+
   updateOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {
     return tx.teacher.update({ where: { id }, data });
   }

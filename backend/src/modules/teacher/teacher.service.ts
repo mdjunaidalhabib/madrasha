@@ -9,6 +9,7 @@ import {
 } from "./teacher.constants";
 import { BulkTeacherResult, TeacherNotFoundError } from "./teacher.types";
 import { TeacherPayloadDto } from "./teacher.dto";
+import { toTeacherApiDto } from "./teacher.mapper";
 
 const toSnakeCase = (obj: Record<string, unknown> = {}) => {
   const newObj: Record<string, unknown> = {};
@@ -125,10 +126,7 @@ export class TeacherService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     const rows = await this.repository.findMany(madrasaId);
-    return rows.map(({ divisionRef, ...t }) => ({
-      ...t,
-      academic_division_name: divisionRef?.nameBn ?? null,
-    }));
+    return rows.map(toTeacherApiDto);
   }
 
   async getTeacherDetail(id: number, madrasaId: number | undefined) {
@@ -137,8 +135,7 @@ export class TeacherService {
     const row = await this.repository.findFirstForTenant(id, madrasaId);
     if (!row) throw new TeacherNotFoundError();
 
-    const { divisionRef, ...t } = row as any;
-    return { ...t, academic_division_name: divisionRef?.nameBn ?? null };
+    return toTeacherApiDto(row as Record<string, any>);
   }
 
   async createTeacher(rawBody: TeacherPayloadDto, madrasaId: number | undefined) {
@@ -149,7 +146,16 @@ export class TeacherService {
     if (validationError) throw new BadRequestError(validationError);
 
     const data = normalizeTeacherPayload(body, madrasaId);
-    const created = await this.repository.create(data as Prisma.TeacherUncheckedCreateInput);
+
+    const created = await this.repository.runTransaction(async (tx) => {
+      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+      const nextRegistrationNo = (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
+
+      return this.repository.createOnTx(tx, {
+        ...data,
+        registrationNo: nextRegistrationNo,
+      } as Prisma.TeacherUncheckedCreateInput);
+    });
 
     return created.id;
   }
@@ -168,6 +174,9 @@ export class TeacherService {
       let inserted = 0;
       let updated = 0;
       const preview: BulkTeacherResult["preview"] = [];
+
+      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+      let nextRegistrationNo = await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId);
 
       for (let i = 0; i < teachers.length; i++) {
         const body = toSnakeCase(teachers[i] as Record<string, unknown>) as Record<string, any>;
@@ -195,10 +204,11 @@ export class TeacherService {
           updated++;
           preview.push({ row: i + 2, action: "update", id: existing.id, nid, changes });
         } else {
-          const created = await this.repository.createOnTx(
-            tx,
-            data as Prisma.TeacherUncheckedCreateInput,
-          );
+          nextRegistrationNo += 1;
+          const created = await this.repository.createOnTx(tx, {
+            ...data,
+            registrationNo: nextRegistrationNo,
+          } as Prisma.TeacherUncheckedCreateInput);
           inserted++;
           preview.push({ row: i + 2, action: "create", id: created.id, nid, changes: [] });
         }

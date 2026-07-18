@@ -298,6 +298,13 @@ export class SuperAdminRepository {
     });
   }
 
+  createDefaultExamsOnTx(tx: TransactionClient, madrasaId: number, names: string[], year: string) {
+    return tx.exam.createMany({
+      data: names.map((name) => ({ madrasaId, name, year })),
+      skipDuplicates: true,
+    });
+  }
+
   /* ================= MADRASA DETAIL (for edit prefill) ================= */
 
   findMadrasaDetail(id: number) {

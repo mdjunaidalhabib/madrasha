@@ -12,6 +12,7 @@ type Division = {
 
 type Teacher = {
   id: number | string;
+  registration_no?: number | string;
   name_bn?: string;
   name?: string;
   phone?: string;
@@ -103,14 +104,14 @@ const TeacherListPage = () => {
     const searchText = search.trim().toLowerCase();
 
     return teachers.filter((teacher) => {
-      const teacherId = String(teacher.id || "").toLowerCase();
+      const registrationNo = String(teacher.registration_no || "").toLowerCase();
       const name = String(teacher.name_bn || teacher.name || "").toLowerCase();
       const phone = String(teacher.phone || "").toLowerCase();
       const designation = String(teacher.designation || "").toLowerCase();
 
       const matchSearch =
         !searchText ||
-        teacherId.includes(searchText) ||
+        registrationNo.includes(searchText) ||
         name.includes(searchText) ||
         phone.includes(searchText) ||
         designation.includes(searchText);
@@ -128,7 +129,7 @@ const TeacherListPage = () => {
   const exportTeachers = useMemo(() => {
     return filteredTeachers.map((teacher, index) => ({
       serial: index + 1,
-      id: teacher.id || "",
+      id: teacher.registration_no || "",
       name: teacher.name_bn || teacher.name || "নেই",
       phone: teacher.phone || "নেই",
       gender: getGenderName(teacher.gender),
@@ -141,7 +142,7 @@ const TeacherListPage = () => {
 
   const exportColumns = [
     { header: "ক্রমিক", key: "serial" },
-    { header: "আইডি", key: "id" },
+    { header: "রেজিস্ট্রেশন নং", key: "id" },
     { header: "নাম", key: "name" },
     { header: "মোবাইল", key: "phone" },
     { header: "লিঙ্গ", key: "gender" },
@@ -230,7 +231,7 @@ const TeacherListPage = () => {
               <table className="w-full min-w-[950px] border-collapse text-center">
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
-                    <th className="border p-2.5">আইডি</th>
+                    <th className="border p-2.5">রেজিস্ট্রেশন নং</th>
                     <th className="border p-2.5">নাম</th>
                     <th className="border p-2.5">মোবাইল</th>
                     <th className="border p-2.5">লিঙ্গ</th>
@@ -251,7 +252,7 @@ const TeacherListPage = () => {
                   ) : (
                     filteredTeachers.map((teacher) => (
                       <tr key={teacher.id} className="border-t transition hover:bg-gray-50">
-                        <td className="border p-2.5">{teacher.id}</td>
+                        <td className="border p-2.5">{teacher.registration_no ?? "নেই"}</td>
 
                         <td className="border p-2.5">{teacher.name_bn || teacher.name || "নেই"}</td>
 

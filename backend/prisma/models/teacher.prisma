@@ -8,6 +8,10 @@ model Teacher {
   madrasaId  Int @map("madrasa_id")
   divisionId Int @map("division_id")
 
+  /// Permanent, per-madrasa, system-assigned registration number. Not the
+  /// internal `id` — see teacher.mapper.ts for why the two are kept distinct.
+  registrationNo Int @map("registration_no")
+
   nameBn String  @map("name_bn") @db.VarChar(200)
   nameAr String? @map("name_ar") @db.VarChar(200)
 
@@ -63,6 +67,7 @@ model Teacher {
   teacherAssignments TeacherAssignment[]
 
   @@unique([madrasaId, email], map: "uniq_teacher_email")
+  @@unique([madrasaId, registrationNo], map: "uniq_teacher_registration_no")
   @@index([madrasaId], map: "idx_teachers_madrasa")
   @@index([divisionId], map: "idx_teachers_division_id")
   @@index([phone], map: "idx_teachers_phone")

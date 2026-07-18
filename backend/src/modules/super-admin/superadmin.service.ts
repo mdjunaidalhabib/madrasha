@@ -4,6 +4,7 @@ import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
 import {
+  DEFAULT_EXAM_NAMES,
   DEFAULT_MADRASA_ROLES,
   DEFAULT_STUDENT_LIMIT,
   DEFAULT_USER_LIMIT,
@@ -178,6 +179,14 @@ export class SuperAdminService {
       }
 
       await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
+
+      /* ========================= DEFAULT EXAMS ========================= */
+      await this.repository.createDefaultExamsOnTx(
+        tx,
+        madrasaId,
+        DEFAULT_EXAM_NAMES,
+        String(new Date().getFullYear()),
+      );
 
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {

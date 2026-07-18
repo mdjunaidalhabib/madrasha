@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import Button from "../../ui/Button";
 import {
   createMadrasaUser,
@@ -35,6 +36,10 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
   const [forms, setForms] = useState<Record<number, FormState>>({});
   const [savingRoleId, setSavingRoleId] = useState<number | null>(null);
   const [busyUserId, setBusyUserId] = useState<number | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+
+  const toggleVisible = (roleId: number) =>
+    setVisiblePasswords((prev) => ({ ...prev, [roleId]: !prev[roleId] }));
 
   const load = async () => {
     setLoading(true);
@@ -210,14 +215,26 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                     className="w-full rounded border px-3 py-2"
                   />
 
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    autoComplete="new-password"
-                    value={form.password}
-                    onChange={(e) => updateForm(role.id, "password", e.target.value)}
-                    className="w-full rounded border px-3 py-2"
-                  />
+                  <div className="relative">
+                    <input
+                      type={visiblePasswords[role.id] ? "text" : "password"}
+                      placeholder="Password"
+                      autoComplete="new-password"
+                      value={form.password}
+                      onChange={(e) => updateForm(role.id, "password", e.target.value)}
+                      className="w-full rounded border px-3 py-2 pr-10"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => toggleVisible(role.id)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                      aria-label={visiblePasswords[role.id] ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {visiblePasswords[role.id] ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
 
                   <Button
                     onClick={() => onAddUser(role)}
