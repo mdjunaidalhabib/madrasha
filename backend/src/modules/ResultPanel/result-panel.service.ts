@@ -123,7 +123,7 @@ export class ResultPanelService {
           mark: toNumber(m.mark),
           madrasaId,
         },
-      })) as any,
+      })),
     );
 
     return { message: "Marks saved successfully", result_master_id: resultMasterId };
@@ -145,7 +145,18 @@ export class ResultPanelService {
     }
 
     const rows = await this.repository.findMarks(madrasaId, examId, classId, result_master_id);
-    return { result_master_id, data: rows };
+
+    // Prisma returns model fields in camelCase, while the ResultPanel API and
+    // marks-entry UI use snake_case. Returning raw rows made edit mode look
+    // empty even though the saved marks existed in the database.
+    const data = rows.map((row) => ({
+      student_id: row.studentId,
+      book_id: row.bookId,
+      mark: Number(row.mark),
+      result_master_id: row.resultMasterId,
+    }));
+
+    return { result_master_id, data };
   }
 
   async processResult(madrasaId: number, body: ProcessResultRequestDto) {
@@ -213,7 +224,17 @@ export class ResultPanelService {
     if (!examId || !divisionId) {
       throw new BadRequestError("exam_id and division_id are required");
     }
-    return this.repository.findClassStatus(madrasaId, examId, divisionId);
+
+    const rows = await this.repository.findClassStatus(madrasaId, examId, divisionId);
+
+    // PostgreSQL COUNT(*) is returned as bigint by Prisma raw queries.
+    // Express cannot JSON.stringify bigint values, so normalize the counts
+    // before they reach res.json().
+    return rows.map((row) => ({
+      ...row,
+      total_students: Number(row.total_students),
+      entered_students: Number(row.entered_students),
+    }));
   }
 
   async getResultOverview(madrasaId: number) {
@@ -232,7 +253,12 @@ export class ResultPanelService {
       division_id: r.class.divisionId,
     }));
 
-    const statuses = await this.repository.findOverviewStatuses(madrasaId);
+    const statusRows = await this.repository.findOverviewStatuses(madrasaId);
+    const statuses = statusRows.map((row) => ({
+      ...row,
+      total_students: Number(row.total_students),
+      entered_students: Number(row.entered_students),
+    }));
 
     return { divisions, exams: examRows, classes, statuses };
   }

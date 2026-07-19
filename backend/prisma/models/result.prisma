@@ -95,7 +95,7 @@ model Mark {
   class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
   book    Book    @relation(fields: [bookId], references: [id], onDelete: Restrict)
 
-  @@unique([resultMasterId, studentId, classId, bookId], map: "uniq_mark")
+  @@unique([resultMasterId, studentId, classId, bookId], name: "uniq_mark", map: "uniq_mark")
   @@index([resultMasterId], map: "idx_marks_master")
   @@index([studentId], map: "idx_marks_student")
   @@index([examId], map: "idx_marks_exam")

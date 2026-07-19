@@ -59,12 +59,12 @@ export default function MarksTable({
     switch (e.key) {
       case "Enter": {
         e.preventDefault();
-        // Move to the next subject in the same row; wrap to the first
-        // subject of the next student row when at the last column.
-        if (col + 1 < colCount) {
-          focusCell(row, col + 1);
-        } else {
-          focusCell(row + 1, 0);
+        // Move downward through the same subject first. After the last
+        // student, continue from the first student of the next subject.
+        if (row + 1 < rowCount) {
+          focusCell(row + 1, col);
+        } else if (col + 1 < colCount) {
+          focusCell(0, col + 1);
         }
         onCommit?.();
         break;
@@ -160,7 +160,7 @@ export default function MarksTable({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-xl p-4 overflow-auto">
+    <div className="bg-white shadow-md rounded-xl p-3 sm:p-4">
       {/* Hide native number input spin buttons (Chrome/Safari + Firefox) */}
       <style>{`
         input.no-spinner::-webkit-outer-spin-button,
@@ -173,10 +173,10 @@ export default function MarksTable({
         }
       `}</style>
 
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-700">📊 Marks Entry</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-700">📊 Marks Entry</h2>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {autosaveStatus !== "idle" && (
             <span
               className={`text-xs font-medium flex items-center gap-1 ${
@@ -195,7 +195,7 @@ export default function MarksTable({
 
           {total > 0 && (
             <div className="flex items-center gap-2">
-              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-20 sm:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 transition-all"
                   style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }}
@@ -210,89 +210,98 @@ export default function MarksTable({
       </div>
 
       {books.length > 0 && students.length > 0 && (
-        <p className="text-xs text-gray-400 mb-2">
+        <p className="hidden sm:block text-xs text-gray-400 mb-2">
           ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50">Enter</kbd> চাপুন
-          পরের ঘরে যেতে — Arrow keys দিয়েও ঘরে ঘরে যাওয়া যাবে
+          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — Arrow keys দিয়েও ঘরে ঘরে যাওয়া যাবে
         </p>
       )}
 
-      <table className="w-full border text-sm">
-        {/* HEADER */}
-        <thead className="bg-gray-100 sticky top-0 z-10">
-          <tr>
-            <th className="border px-3 py-2 text-left">Student</th>
-
-            {books.length > 0 ? (
-              books.map((b) => (
-                <th key={b.book_id} className="border px-3 py-2">
-                  <div className="flex flex-col items-center">
-                    <span>{b.book_name_bn || b.name_bn || `Book ${b.book_id}`}</span>
-                    <span className="text-xs text-gray-400">/ {b.full_marks ?? 100}</span>
-                  </div>
-                </th>
-              ))
-            ) : (
-              <th className="border px-3 py-2 text-gray-400">Subjects will appear here</th>
-            )}
-          </tr>
-        </thead>
-
-        {/* BODY */}
-        <tbody>
-          {students.length === 0 || books.length === 0 ? (
+      {/* Horizontally-scrollable on small screens, with the student-name
+          column pinned via sticky positioning so it stays visible while
+          scrolling through subjects — this is the main mobile ergonomics
+          win for a table that's inherently wide (one column per subject). */}
+      <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+        <table className="w-full border text-xs sm:text-sm">
+          {/* HEADER */}
+          <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <td
-                colSpan={books.length > 0 ? books.length + 1 : 2}
-                className="text-center py-10 text-gray-400"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-2xl">📊</span>
-                  <p className="font-medium">Division, Exam এবং Class select করুন</p>
-                  <p className="text-sm text-gray-400">তারপর এখানে marks entry table দেখাবে</p>
-                </div>
-              </td>
+              <th className="border px-2 sm:px-3 py-2 text-left sticky left-0 z-20 bg-gray-100 min-w-[96px]">
+                Student
+              </th>
+
+              {books.length > 0 ? (
+                books.map((b) => (
+                  <th key={b.book_id} className="border px-2 sm:px-3 py-2 whitespace-nowrap">
+                    <div className="flex flex-col items-center">
+                      <span>{b.book_name_bn || b.name_bn || `Book ${b.book_id}`}</span>
+                      <span className="text-xs text-gray-400">/ {b.full_marks ?? 100}</span>
+                    </div>
+                  </th>
+                ))
+              ) : (
+                <th className="border px-3 py-2 text-gray-400">Subjects will appear here</th>
+              )}
             </tr>
-          ) : (
-            students.map((s, rowIndex) => (
-              <tr key={s.id} className="hover:bg-gray-50 transition">
-                <td className="border px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
-                  {s.name_bn}
+          </thead>
+
+          {/* BODY */}
+          <tbody>
+            {students.length === 0 || books.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={books.length > 0 ? books.length + 1 : 2}
+                  className="text-center py-10 text-gray-400"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-2xl">📊</span>
+                    <p className="font-medium">Division, Exam এবং Class select করুন</p>
+                    <p className="text-sm text-gray-400">তারপর এখানে marks entry table দেখাবে</p>
+                  </div>
                 </td>
-
-                {books.map((b, colIndex) => {
-                  const value = marks?.[s.id]?.[b.book_id];
-                  const max = b.full_marks ?? 100;
-
-                  return (
-                    <td key={b.book_id} className="border px-2 py-1">
-                      <input
-                        ref={(el) => {
-                          inputRefs.current[cellKey(rowIndex, colIndex)] = el;
-                        }}
-                        type="number"
-                        min={0}
-                        max={max}
-                        placeholder="0"
-                        disabled={disabled}
-                        className={`no-spinner w-20 border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
-                          disabled
-                            ? "bg-gray-100 cursor-not-allowed text-gray-400"
-                            : getCellStyle(value, max)
-                        }`}
-                        value={value ?? ""}
-                        onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
-                        onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
-                        onFocus={(e) => e.target.select()}
-                        onBlur={() => onCommit?.()}
-                      />
-                    </td>
-                  );
-                })}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              students.map((s, rowIndex) => (
+                <tr key={s.id} className="hover:bg-gray-50 transition">
+                  <td className="border px-2 sm:px-3 py-2 font-medium text-gray-700 whitespace-nowrap sticky left-0 z-10 bg-white">
+                    {s.name_bn}
+                  </td>
+
+                  {books.map((b, colIndex) => {
+                    const value = marks?.[s.id]?.[b.book_id];
+                    const max = b.full_marks ?? 100;
+
+                    return (
+                      <td key={b.book_id} className="border px-1 sm:px-2 py-1 text-center">
+                        <input
+                          ref={(el) => {
+                            inputRefs.current[cellKey(rowIndex, colIndex)] = el;
+                          }}
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={max}
+                          placeholder="0"
+                          disabled={disabled}
+                          className={`no-spinner w-14 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
+                            disabled
+                              ? "bg-gray-100 cursor-not-allowed text-gray-400"
+                              : getCellStyle(value, max)
+                          }`}
+                          value={value ?? ""}
+                          onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
+                          onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                          onFocus={(e) => e.target.select()}
+                          onBlur={() => onCommit?.()}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {books.length > 0 && students.length > 0 && (
         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">

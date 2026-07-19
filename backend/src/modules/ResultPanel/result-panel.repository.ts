@@ -38,6 +38,11 @@ export class ResultPanelRepository {
     return prisma.$transaction(rows.map((row) => prisma.mark.upsert(row)));
   }
 
+  // NOTE: signature is intentionally `Prisma.MarkUpsertArgs[]`, not `any[]`,
+  // so a mismatched `where` key (e.g. a wrong compound-unique name) is
+  // caught at compile time instead of only surfacing as a runtime
+  // "Save failed" toast.
+
   findMarks(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
     return prisma.mark.findMany({
       where: { madrasaId, examId, classId, resultMasterId },

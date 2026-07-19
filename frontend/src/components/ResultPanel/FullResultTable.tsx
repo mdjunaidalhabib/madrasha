@@ -81,10 +81,10 @@ export default function FullResultTable({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-xl p-4 mt-4">
+    <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
         <div>
-          <h2 className="text-lg font-semibold">📊 Full Result Table</h2>
+          <h2 className="text-base sm:text-lg font-semibold">📊 Full Result Table</h2>
           {dataList.length > 0 && (
             <p className="text-sm text-gray-500 mt-1">
               Status:{" "}
@@ -99,10 +99,10 @@ export default function FullResultTable({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => window.print()}
-            className="bg-gray-700 text-white px-4 py-2 rounded"
+            className="flex-1 sm:flex-none bg-gray-700 text-white px-3 sm:px-4 py-2 rounded text-sm"
           >
             🖨 Print
           </button>
@@ -111,16 +111,16 @@ export default function FullResultTable({
             <button
               onClick={onEdit}
               title="পুরো ক্লাসের নাম্বার একসাথে এডিট করুন"
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="flex-1 sm:flex-none bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
-              ✏️ Edit Marks (সম্পূর্ণ ক্লাস)
+              ✏️ Edit Marks
             </button>
           )}
 
           {onDelete && (
             <button
               onClick={handleDelete}
-              className="bg-red-600 text-white px-4 py-2 rounded"
+              className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
               Delete
             </button>
@@ -131,9 +131,9 @@ export default function FullResultTable({
               onClick={onApplyRollByRank}
               disabled={applyingRoll}
               title="ফলাফলের মেধাক্রম অনুযায়ী প্রত্যেক ছাত্রের রোল নম্বর নতুন করে বসাবে"
-              className="bg-purple-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+              className="flex-1 sm:flex-none bg-purple-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              {applyingRoll ? "রোল আপডেট হচ্ছে..." : "🏆 মেধাক্রম অনুযায়ী রোল দিন"}
+              {applyingRoll ? "রোল আপডেট হচ্ছে..." : "🏆 মেধাক্রম অনুযায়ী রোল"}
             </button>
           )}
 
@@ -141,7 +141,7 @@ export default function FullResultTable({
             <button
               onClick={onPublish}
               disabled={publishing}
-              className="bg-green-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+              className="flex-1 sm:flex-none bg-green-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
               {publishing ? "Publishing..." : "Publish"}
             </button>
@@ -153,12 +153,12 @@ export default function FullResultTable({
         <div className="text-center py-6 text-blue-500">Loading...</div>
       )}
 
-      <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] border text-sm">
+      <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+      <table className="w-full min-w-[900px] border text-xs sm:text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-2 py-2 whitespace-nowrap">ID</th>
-            <th className="border px-2 py-2 whitespace-nowrap">Name</th>
+            <th className="border px-2 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-100">ID</th>
+            <th className="border px-2 py-2 whitespace-nowrap sticky left-[42px] z-10 bg-gray-100">Name</th>
 
             {subjectList.map((b) => (
               <th key={b.book_id} className="border px-2 py-2 whitespace-nowrap">
@@ -192,8 +192,8 @@ export default function FullResultTable({
           ) : (
             dataList.map((s) => (
               <tr key={s.student_id} className="hover:bg-gray-50">
-                <td className="border px-2 py-2 text-center whitespace-nowrap">{s.student_id}</td>
-                <td className="border px-2 py-2 whitespace-nowrap">{s.name_bn}</td>
+                <td className="border px-2 py-2 text-center whitespace-nowrap sticky left-0 z-10 bg-white">{s.student_id}</td>
+                <td className="border px-2 py-2 whitespace-nowrap sticky left-[42px] z-10 bg-white">{s.name_bn}</td>
 
                 {subjectList.map((b) => (
                   <td key={b.book_id} className="border px-2 py-2 text-center whitespace-nowrap">

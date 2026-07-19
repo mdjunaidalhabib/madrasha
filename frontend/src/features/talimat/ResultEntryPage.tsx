@@ -64,11 +64,12 @@ export default function ResultEntryPage() {
   const [divisionId, setDivisionId] = useState(searchParams.get("divisionId") || "");
   const [examId, setExamId] = useState(searchParams.get("examId") || "");
   const [classId, setClassId] = useState(searchParams.get("classId") || "");
+  const requestedResultMasterId = Number(searchParams.get("resultMasterId")) || null;
 
   const [marks, setMarks] = useState<MarksState>({});
   const [failMark, setFailMark] = useState(33);
   const [loading, setLoading] = useState(false);
-  const [resultMasterId, setResultMasterId] = useState<number | null>(null);
+  const [resultMasterId, setResultMasterId] = useState<number | null>(requestedResultMasterId);
   const [editMode, setEditMode] = useState(false);
 
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">(
@@ -148,19 +149,35 @@ export default function ResultEntryPage() {
 
     try {
       setLoading(true);
-      const res = await api.get(`/results/marks?exam_id=${examId}&class_id=${classId}`);
+      const query = new URLSearchParams({ exam_id: examId, class_id: classId });
+      const isInitialEditSelection =
+        examId === (searchParams.get("examId") || "") &&
+        classId === (searchParams.get("classId") || "");
+      const sessionIdForRequest = isInitialEditSelection ? requestedResultMasterId : null;
+      if (sessionIdForRequest) query.set("result_master_id", String(sessionIdForRequest));
+
+      const res = await api.get(`/results/marks?${query.toString()}`);
       const data = Array.isArray(res.data?.data) ? res.data.data : [];
-      const masterId = res.data?.result_master_id ?? null;
+      const masterId = Number(res.data?.result_master_id) || null;
 
       const formatted: MarksState = {};
       data.forEach((r: any) => {
-        if (!formatted[r.student_id]) formatted[r.student_id] = {};
-        formatted[r.student_id][r.book_id] = Number(r.mark);
+        // Accept both formats so frontend/backend can be deployed separately.
+        const studentId = Number(r.student_id ?? r.studentId);
+        const bookId = Number(r.book_id ?? r.bookId);
+        const mark = Number(r.mark);
+
+        if (!Number.isFinite(studentId) || !Number.isFinite(bookId) || !Number.isFinite(mark)) {
+          return;
+        }
+
+        if (!formatted[studentId]) formatted[studentId] = {};
+        formatted[studentId][bookId] = mark;
       });
 
       setResultMasterId(masterId);
       setMarks(formatted);
-      setEditMode(data.length > 0);
+      setEditMode(Object.keys(formatted).length > 0);
     } catch (err) {
       logger.error("Load marks error:", err);
       setResultMasterId(null);
@@ -172,6 +189,10 @@ export default function ResultEntryPage() {
   };
 
   useEffect(() => {
+    const isInitialEditSelection =
+      examId === (searchParams.get("examId") || "") &&
+      classId === (searchParams.get("classId") || "");
+    setResultMasterId(isInitialEditSelection ? requestedResultMasterId : null);
     loadExistingMarks();
     setAutosaveStatus("idle");
     lastAutosavedRef.current = "";
@@ -309,10 +330,13 @@ export default function ResultEntryPage() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-4 rounded-xl shadow">
-        <h1 className="text-xl sm:text-2xl font-bold">✍️ নাম্বার এন্ট্রি</h1>
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-3 sm:p-4 rounded-xl shadow">
+        <h1 className="text-lg sm:text-2xl font-bold">✍️ নাম্বার এন্ট্রি</h1>
 
-        <button onClick={goToPreview} className="bg-gray-600 text-white px-5 py-2 rounded">
+        <button
+          onClick={goToPreview}
+          className="w-full sm:w-auto bg-gray-600 text-white px-5 py-2 rounded"
+        >
           👁 প্রিভিউ দেখুন
         </button>
       </div>

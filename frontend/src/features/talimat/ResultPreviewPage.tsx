@@ -189,6 +189,7 @@ export default function ResultPreviewPage() {
       const cls = classes.find((c) => String(c.class_id) === classId);
       if (cls) params.set("divisionId", String(cls.division_id));
     }
+    if (resultMasterId) params.set("resultMasterId", String(resultMasterId));
     navigate(`${adminBase}/talimat/results/entry${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
@@ -284,10 +285,13 @@ export default function ResultPreviewPage() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-4 rounded-xl shadow">
-        <h1 className="text-xl sm:text-2xl font-bold">🎓 Result Preview</h1>
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-3 sm:p-4 rounded-xl shadow">
+        <h1 className="text-lg sm:text-2xl font-bold">🎓 Result Preview</h1>
 
-        <button onClick={goToEntry} className="bg-blue-600 text-white px-5 py-2 rounded">
+        <button
+          onClick={goToEntry}
+          className="w-full sm:w-auto bg-blue-600 text-white px-5 py-2 rounded"
+        >
           ➕ নাম্বার এন্ট্রি
         </button>
       </div>
@@ -295,12 +299,12 @@ export default function ResultPreviewPage() {
       {examId && classId ? (
         <>
           <div className="flex flex-wrap gap-2 items-center justify-between bg-white p-3 rounded-xl shadow">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 break-words">
               📌 {selectedExamName} — {selectedClassName}
             </p>
             <button
               onClick={handleClearSelection}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-blue-600 hover:underline shrink-0"
             >
               ← সব দেখুন
             </button>
