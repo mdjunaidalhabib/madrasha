@@ -8,6 +8,8 @@ import {
   getAcademicRoutineReport,
   getDailyAttendanceReport,
   getDigitalAttendanceReport,
+  getExamNumberSheetReport,
+  getExamSignatureSheetReport,
   getGuardianPhoneReport,
   getResidentialAttendanceReport,
 } from "./controllers/academic-report.controller";
@@ -34,6 +36,8 @@ router.get("/academic/result-notice", getAcademicResultNoticeReport);
 router.get("/academic/routines", getAcademicRoutineReport);
 router.get("/academic/admissions", getAcademicAdmissionReport);
 router.get("/academic/guardian-phones", getGuardianPhoneReport);
+router.get("/academic/exam-signature-sheet", getExamSignatureSheetReport);
+router.get("/academic/exam-number-sheet", getExamNumberSheetReport);
 router.get("/academic/residential-attendance", getResidentialAttendanceReport);
 router.get("/academic/daily-attendance", getDailyAttendanceReport);
 router.get("/academic/digital-attendance", getDigitalAttendanceReport);

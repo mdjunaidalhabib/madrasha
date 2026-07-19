@@ -273,6 +273,7 @@ export class ReportsRepository {
         s.roll,
         s.division_id,
         s.class_id,
+        s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
@@ -287,6 +288,141 @@ export class ReportsRepository {
       ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       [madrasaId],
+    );
+  }
+
+  findExamSignatureSheet(madrasaId: number, examId?: number) {
+    return this.runQuery(
+      `
+      WITH selected_exam AS (
+        SELECT e.id, e.name, e.year
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
+        LIMIT 1
+      )
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn AS student_name,
+        s.father_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.id AS exam_id,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM students s
+      CROSS JOIN selected_exam e
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      `,
+      [madrasaId, examId || null],
+    );
+  }
+
+  findExamNumberSheet(madrasaId: number, examId?: number) {
+    return this.runQuery(
+      `
+      WITH selected_exam AS (
+        SELECT e.id, e.name, e.year
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
+        LIMIT 1
+      )
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.registration_no,
+        COALESCE(rs.roll, s.roll) AS roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn AS student_name,
+        s.father_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.id AS exam_id,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        rs.total,
+        rs.average,
+        rs.general_grade,
+        rs.madrasa_grade,
+        rs.status,
+        COALESCE(
+          jsonb_agg(
+            jsonb_build_object(
+              'book_id', b.id,
+              'subject_name', COALESCE(b.name_bn, b.name),
+              'mark', m.mark
+            )
+            ORDER BY b.id
+          ) FILTER (WHERE b.id IS NOT NULL),
+          '[]'::jsonb
+        ) AS subjects
+      FROM students s
+      CROSS JOIN selected_exam e
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      LEFT JOIN madrasa_books mb
+        ON mb.madrasa_id = s.madrasa_id
+        AND COALESCE(mb.is_active, 1) = 1
+      LEFT JOIN books b
+        ON b.id = mb.book_id
+        AND b.class_id = s.class_id
+      LEFT JOIN results_master rm
+        ON rm.madrasa_id = s.madrasa_id
+        AND rm.exam_id = e.id
+        AND rm.class_id = s.class_id
+      LEFT JOIN results_summary rs
+        ON rs.result_master_id = rm.id
+        AND rs.student_id = s.id
+      LEFT JOIN marks m
+        ON m.result_master_id = rm.id
+        AND m.student_id = s.id
+        AND m.book_id = b.id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      GROUP BY
+        s.id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn,
+        s.father_name,
+        c.name_bn,
+        c.name,
+        d.name_bn,
+        d.name,
+        e.id,
+        e.name,
+        e.year,
+        rs.roll,
+        rs.total,
+        rs.average,
+        rs.general_grade,
+        rs.madrasa_grade,
+        rs.status
+      ORDER BY s.division_id ASC, s.class_id ASC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
+      `,
+      [madrasaId, examId || null],
     );
   }
 
@@ -558,6 +694,7 @@ export class ReportsRepository {
       `
       SELECT
         t.id,
+        t.registration_no,
         t.division_id,
         t.name_bn AS teacher_name,
         t.phone,
@@ -585,6 +722,7 @@ export class ReportsRepository {
       `
       SELECT
         t.id,
+        t.registration_no,
         t.division_id,
         t.name_bn AS teacher_name,
         t.phone,

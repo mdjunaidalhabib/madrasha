@@ -8,8 +8,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
       { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "শ্রেণি", key: "class_name" },
@@ -24,8 +24,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
       { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "শ্রেণি", key: "class_name" },
       { header: "বিভাগ", key: "division_name" },
@@ -40,8 +40,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/sanads",
     printable: "certificate",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
       { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "মাতা", key: "mother_name" },
@@ -57,8 +57,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/certificates",
     printable: "testimonial",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
       { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "মাতা", key: "mother_name" },
@@ -74,8 +74,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/transfer-letters",
     printable: "transfer-letter",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id" },
       { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পিতা", key: "father_name" },
       { header: "শ্রেণি", key: "class_name" },

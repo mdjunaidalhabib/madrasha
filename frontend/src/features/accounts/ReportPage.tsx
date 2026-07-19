@@ -24,11 +24,10 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const exportRows = rows.map((row, index) => {
+  const exportRows = rows.map((row) => {
     const income = Number(row.total_income || 0);
     const expense = Number(row.total_expense || 0);
     return {
-      serial: index + 1,
       period: row.period || "নির্ধারিত নয়",
       total_income: income,
       total_expense: expense,
@@ -78,7 +77,6 @@ export default function ReportPage() {
         <DataExportPrintActions
           title="আয়-ব্যয় রিপোর্ট"
           columns={[
-            { header: "ক্রমিক", key: "serial" },
             { header: "বিবরণ", key: "period" },
             { header: "আয়", key: "total_income" },
             { header: "ব্যয়", key: "total_expense" },

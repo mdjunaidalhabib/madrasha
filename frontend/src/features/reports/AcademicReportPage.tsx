@@ -12,8 +12,8 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড, মেধাক্রম",
     endpoint: "/reports/academic/results",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "student_id", className: idCol },
       { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "মোট", key: "total", className: smallCol },
@@ -32,8 +32,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/result-notice",
     printable: "result-notice",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "student_id", className: idCol },
       { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "মোট", key: "total", className: smallCol },
@@ -61,9 +61,11 @@ const reports: ReportMenuItem[] = [
     title: "ভর্তি তালিকা",
     subtitle: "ভর্তিকৃত শিক্ষার্থীর পূর্ণ তালিকা",
     endpoint: "/reports/academic/admissions",
+    printable: "admission-register",
+    defaultOrientation: "landscape",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id", className: idCol },
       { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
       { header: "পিতা", key: "father_name", className: "min-w-44" },
       { header: "মাতা", key: "mother_name", className: "min-w-44" },
@@ -78,12 +80,14 @@ const reports: ReportMenuItem[] = [
     title: "অভিভাবক মোবাইল নাম্বার",
     subtitle: "অভিভাবকদের যোগাযোগ তালিকা",
     endpoint: "/reports/academic/guardian-phones",
+    printable: "guardian-phone-register",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id", className: idCol },
       { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
       { header: "পিতা", key: "father_name", className: "min-w-44" },
       { header: "মোবাইল", key: "guardian_phone", className: midCol },
+      { header: "শিক্ষাবর্ষ", key: "academic_year", className: smallCol },
     ],
   },
   {
@@ -93,7 +97,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/residential-attendance",
     printable: "attendance-register",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id", className: idCol },
+      { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-72" },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
     ],
@@ -133,8 +138,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/id-cards",
     printable: "id-card",
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "id", className: idCol },
       { header: "রোল নম্বর", key: "roll", className: smallCol },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
       { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
       { header: "পিতা", key: "father_name", className: "min-w-44" },
       { header: "শ্রেণি", key: "class_name", className: smallCol },

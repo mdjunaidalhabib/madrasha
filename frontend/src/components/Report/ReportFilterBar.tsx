@@ -1,10 +1,8 @@
-import DataExportPrintActions, {
-  Orientation,
-  PaperSize,
-} from "../common/DataExportPrintActions";
+import DataExportPrintActions, { Orientation, PaperSize } from "../common/DataExportPrintActions";
 import {
   ClassItem,
   Division,
+  ExamItem,
   ReportColumn,
   ReportMenuItem,
 } from "../../../src/features/reports/types";
@@ -13,14 +11,17 @@ type ReportFilterBarProps = {
   search: string;
   selectedDivision: string;
   selectedClass: string;
+  selectedExam: string;
   divisions: Division[];
   classes: ClassItem[];
+  exams: ExamItem[];
   activeReport: ReportMenuItem;
   exportColumns: ReportColumn[];
   exportRows: Record<string, any>[];
   onSearchChange: (value: string) => void;
   onDivisionChange: (value: string) => void;
   onClassChange: (value: string) => void;
+  onExamChange: (value: string) => void;
   onClear: () => void;
   paperSize: PaperSize;
   orientation: Orientation;
@@ -32,14 +33,17 @@ const ReportFilterBar = ({
   search,
   selectedDivision,
   selectedClass,
+  selectedExam,
   divisions,
   classes,
+  exams,
   activeReport,
   exportColumns,
   exportRows,
   onSearchChange,
   onDivisionChange,
   onClassChange,
+  onExamChange,
   onClear,
   paperSize,
   orientation,
@@ -54,13 +58,29 @@ const ReportFilterBar = ({
           placeholder="ID / নাম / মোবাইল"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-10 w-full sm:w-[240px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[240px]"
         />
+
+        {activeReport.requiresExam && (
+          <select
+            value={selectedExam}
+            onChange={(e) => onExamChange(e.target.value)}
+            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[190px]"
+          >
+            <option value="">পরীক্ষা নির্বাচন করুন</option>
+            {exams.map((exam) => (
+              <option key={exam.id} value={exam.id}>
+                {exam.name}
+                {exam.year ? ` (${exam.year})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
 
         <select
           value={selectedDivision}
           onChange={(e) => onDivisionChange(e.target.value)}
-          className="h-10 w-full sm:w-[150px] rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[150px]"
         >
           <option value="">সকল বিভাগ</option>
           {divisions.map((division) => (
@@ -74,7 +94,7 @@ const ReportFilterBar = ({
           value={selectedClass}
           onChange={(e) => onClassChange(e.target.value)}
           disabled={!selectedDivision}
-          className="h-10 w-full sm:w-[165px] rounded-lg border border-slate-200 px-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-400 focus:border-blue-600"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400 sm:w-[165px]"
         >
           <option value="">{selectedDivision ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}</option>
           {classes.map((cls) => (

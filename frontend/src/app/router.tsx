@@ -26,6 +26,7 @@ const TeacherProfilePage = lazy(() => import("../features/teachers/TeacherProfil
 
 const AcademicReportPage = lazy(() => import("../features/reports/AcademicReportPage"));
 const StudentReportPage = lazy(() => import("../features/reports/StudentReportPage"));
+const ExamReportPage = lazy(() => import("../features/reports/ExamReportPage"));
 const TeacherReportPage = lazy(() => import("../features/reports/TeacherReportPage"));
 const DocumentsReportPage = lazy(() => import("../features/reports/DocumentsReportPage"));
 
@@ -114,6 +115,12 @@ const madrasaAdminChildren = [
     path: "reports/student_report",
     element: (
       <ModuleGuard module="reports">{withSuspense(<StudentReportPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "reports/exam_report",
+    element: (
+      <ModuleGuard module="reports">{withSuspense(<ExamReportPage />)}</ModuleGuard>
     ),
   },
   {

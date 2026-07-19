@@ -98,6 +98,11 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 .print-page-preview td {
   overflow-wrap: anywhere;
   word-break: break-word;
+  border-color: #000 !important;
+}
+
+.print-page-preview table {
+  border-color: #000 !important;
 }
 
 .print-page-break {

@@ -40,11 +40,7 @@ const chunkRows = (
   return pages;
 };
 
-const getCapacity = (
-  report: ReportMenuItem,
-  paperSize: PaperSize,
-  orientation: Orientation,
-) => {
+const getCapacity = (report: ReportMenuItem, paperSize: PaperSize, orientation: Orientation) => {
   const mode = `${paperSize}-${orientation}`;
   const printable = report.printable || "table";
 
@@ -53,32 +49,44 @@ const getCapacity = (
   }
 
   if (printable === "id-card") {
-    return { "a4-portrait": 6, "a4-landscape": 6, "a5-portrait": 2, "a5-landscape": 4 }[
-      mode
-    ] || 6;
+    return { "a4-portrait": 6, "a4-landscape": 6, "a5-portrait": 2, "a5-landscape": 4 }[mode] || 6;
   }
 
   if (printable === "admit-card") {
-    return { "a4-portrait": 4, "a4-landscape": 2, "a5-portrait": 1, "a5-landscape": 2 }[
-      mode
-    ] || 4;
+    return { "a4-portrait": 4, "a4-landscape": 2, "a5-portrait": 1, "a5-landscape": 2 }[mode] || 4;
   }
 
   if (["attendance-register", "daily-attendance-register"].includes(printable)) {
-    return { "a4-portrait": 24, "a4-landscape": 13, "a5-portrait": 13, "a5-landscape": 7 }[
-      mode
-    ] || 24;
+    return (
+      { "a4-portrait": 24, "a4-landscape": 13, "a5-portrait": 13, "a5-landscape": 7 }[mode] || 24
+    );
+  }
+
+  if (["admission-register", "guardian-phone-register"].includes(printable)) {
+    return (
+      { "a4-portrait": 18, "a4-landscape": 12, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
+    );
+  }
+
+  if (printable === "exam-signature-sheet") {
+    return (
+      { "a4-portrait": 19, "a4-landscape": 12, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 19
+    );
+  }
+
+  if (printable === "exam-number-sheet") {
+    return (
+      { "a4-portrait": 18, "a4-landscape": 14, "a5-portrait": 8, "a5-landscape": 7 }[mode] || 14
+    );
   }
 
   if (["result-notice", "digital-attendance"].includes(printable)) {
-    return { "a4-portrait": 18, "a4-landscape": 11, "a5-portrait": 9, "a5-landscape": 6 }[
-      mode
-    ] || 18;
+    return (
+      { "a4-portrait": 18, "a4-landscape": 11, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
+    );
   }
 
-  return { "a4-portrait": 15, "a4-landscape": 9, "a5-portrait": 8, "a5-landscape": 5 }[
-    mode
-  ] || 15;
+  return { "a4-portrait": 15, "a4-landscape": 9, "a5-portrait": 8, "a5-landscape": 5 }[mode] || 15;
 };
 
 const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any>[]) => {
@@ -99,7 +107,11 @@ const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any
 
   if (
     report.printable === "attendance-register" ||
-    report.printable === "daily-attendance-register"
+    report.printable === "daily-attendance-register" ||
+    report.printable === "admission-register" ||
+    report.printable === "guardian-phone-register" ||
+    report.printable === "exam-signature-sheet" ||
+    report.printable === "exam-number-sheet"
   ) {
     return Object.values(
       rows.reduce<Record<string, Record<string, any>[]>>((acc, row) => {
@@ -107,7 +119,13 @@ const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any
           cellValue(row, "division_name") || cellValue(row, "division_name_bn") || "সকল বিভাগ";
         const className =
           cellValue(row, "class_name") || cellValue(row, "class_name_bn") || "সকল শ্রেণি";
-        const key = `${division}|${className}`;
+        const academicYear =
+          cellValue(row, "academic_year") || cellValue(row, "exam_year") || "সকল শিক্ষাবর্ষ";
+        const examName =
+          report.printable === "exam-signature-sheet" || report.printable === "exam-number-sheet"
+            ? cellValue(row, "exam_name") || "পরীক্ষা"
+            : "";
+        const key = `${division}|${className}|${academicYear}|${examName}`;
         if (!acc[key]) acc[key] = [];
         acc[key].push(row);
         return acc;
@@ -149,9 +167,7 @@ const PaginatedReportPreview = ({
       globalStartIndex += group.length;
     });
 
-    return output.length
-      ? output
-      : [{ key: `${report.key}-empty`, rows: [], startIndex: 0 }];
+    return output.length ? output : [{ key: `${report.key}-empty`, rows: [], startIndex: 0 }];
   }, [loading, orientation, paperSize, report, rows]);
 
   return (

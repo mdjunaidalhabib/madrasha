@@ -43,6 +43,7 @@ const FEATURE_PATHS: Record<string, string> = {
   acadamic_report: "academic-report",
   academic_report: "academic-report",
   student_report: "student_report",
+  exam_report: "exam_report",
   teacher_report: "teacher_report",
 };
 function modulePath(key: string) {

@@ -10,6 +10,9 @@ export type ReportMenuItem = {
   subtitle: string;
   endpoint: string;
   columns: ReportColumn[];
+  groupTitle?: string;
+  requiresExam?: boolean;
+  defaultOrientation?: "portrait" | "landscape";
   printable?:
     | "table"
     | "marksheet"
@@ -21,7 +24,11 @@ export type ReportMenuItem = {
     | "transfer-letter"
     | "attendance-register"
     | "daily-attendance-register"
-    | "digital-attendance";
+    | "digital-attendance"
+    | "admission-register"
+    | "guardian-phone-register"
+    | "exam-signature-sheet"
+    | "exam-number-sheet";
 };
 
 export type Division = {
@@ -32,6 +39,12 @@ export type Division = {
 export type ClassItem = {
   class_id: number;
   class_name_bn: string;
+};
+
+export type ExamItem = {
+  id: number;
+  name: string;
+  year?: string;
 };
 
 export type ReportShellProps = {

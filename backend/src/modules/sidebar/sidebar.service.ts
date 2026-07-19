@@ -47,6 +47,21 @@ export class SidebarService {
           disabled,
         }));
 
+      // Keep the newly introduced exam report visible in existing installations
+      // even before the database seed is run again. Once seeded, the real row
+      // is used and this fallback is skipped.
+      if (mod.keyName === "reports" && !children.some((child) => child.key === "exam_report")) {
+        children.push({
+          id: -1003,
+          key: "exam_report",
+          label: "পরীক্ষা রিপোর্ট",
+          sort_order: 2.5,
+          disabled,
+        });
+      }
+
+      children.sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+
       return {
         id: mod.id,
         key: mod.keyName,

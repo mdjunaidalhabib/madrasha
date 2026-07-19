@@ -23,6 +23,14 @@ export class AcademicReportService {
     return this.repository.findGuardianPhones(madrasaId);
   }
 
+  getExamSignatureSheet(madrasaId: number, examId?: number) {
+    return this.repository.findExamSignatureSheet(madrasaId, examId);
+  }
+
+  getExamNumberSheet(madrasaId: number, examId?: number) {
+    return this.repository.findExamNumberSheet(madrasaId, examId);
+  }
+
   getResidentialAttendance(madrasaId: number) {
     return this.repository.findResidentialAttendance(madrasaId);
   }

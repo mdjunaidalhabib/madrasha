@@ -4,7 +4,7 @@ import PaginatedReportPreview from "../../components/Report/PaginatedReportPrevi
 import { Orientation, PaperSize } from "../../components/common/DataExportPrintActions";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
-import { ClassItem, Division, ReportColumn, ReportShellProps } from "./types";
+import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
 import { logger } from "../../utils/logger";
 
@@ -21,6 +21,7 @@ const ReportShell = ({
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [exams, setExams] = useState<ExamItem[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [warning, setWarning] = useState("");
@@ -28,6 +29,7 @@ const ReportShell = ({
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedExam, setSelectedExam] = useState("");
   const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
 
@@ -43,7 +45,14 @@ const ReportShell = ({
       setLoading(true);
       setWarning("");
 
-      const res = await api.get(activeReport.endpoint);
+      if (activeReport.requiresExam && !selectedExam) {
+        setRows([]);
+        setWarning("পরীক্ষা নির্বাচন করুন");
+        return;
+      }
+
+      const query = activeReport.requiresExam ? `?exam_id=${selectedExam}` : "";
+      const res = await api.get(`${activeReport.endpoint}${query}`);
       const data =
         res.data?.data || res.data?.students || res.data?.teachers || res.data?.result || [];
 
@@ -68,6 +77,18 @@ const ReportShell = ({
     }
   };
 
+  const loadExams = async () => {
+    try {
+      const res = await api.get("/exams");
+      const data = res.data?.data || res.data?.result || res.data || [];
+      const examRows = Array.isArray(data) ? data : [];
+      setExams(examRows);
+      if (!selectedExam && examRows.length) setSelectedExam(String(examRows[0].id));
+    } catch {
+      setExams([]);
+    }
+  };
+
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
 
@@ -87,16 +108,22 @@ const ReportShell = ({
 
   useEffect(() => {
     loadDivisions();
+    loadExams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    loadReport();
     setSearch("");
     setSelectedDivision("");
     setSelectedClass("");
     setClasses([]);
+    setOrientation(activeReport.defaultOrientation || "portrait");
+  }, [activeKey, activeReport.defaultOrientation]);
+
+  useEffect(() => {
+    loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey]);
+  }, [activeKey, selectedExam]);
 
   const filteredRows = rows.filter((row) => {
     const keyword = search.trim().toLowerCase();
@@ -141,15 +168,9 @@ const ReportShell = ({
   const selectedClassName =
     classes.find((cls) => String(cls.class_id) === String(selectedClass))?.class_name_bn || "";
 
-  const exportRows = filteredRows.map((row, index) => ({
-    serial: index + 1,
-    ...row,
-  }));
+  const exportRows = filteredRows;
 
-  const exportColumns: ReportColumn[] = [
-    { header: "ক্রমিক", key: "serial" },
-    ...activeReport.columns,
-  ];
+  const exportColumns: ReportColumn[] = activeReport.columns;
 
   const clearFilters = () => {
     setSearch("");
@@ -189,8 +210,10 @@ const ReportShell = ({
               search={search}
               selectedDivision={selectedDivision}
               selectedClass={selectedClass}
+              selectedExam={selectedExam}
               divisions={divisions}
               classes={classes}
+              exams={exams}
               activeReport={activeReport}
               exportColumns={exportColumns}
               exportRows={exportRows}
@@ -200,6 +223,7 @@ const ReportShell = ({
                 loadClassesByDivision(value);
               }}
               onClassChange={setSelectedClass}
+              onExamChange={setSelectedExam}
               onClear={clearFilters}
               paperSize={paperSize}
               orientation={orientation}

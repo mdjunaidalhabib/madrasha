@@ -136,10 +136,12 @@ const AbashikAttendancePrint = ({
             {groupIndex === 0 && (
               <thead>
                 <tr>
-                  <th className="h-14 w-6 border border-slate-900 p-0 align-middle">
-                    <span className="inline-block whitespace-nowrap -rotate-90 text-[12px] font-normal leading-none">
-                      ক্রমিক
-                    </span>
+                  <th className="w-12 border border-slate-900 p-0.5 text-[12px] font-bold">
+                    রোল
+                  </th>
+
+                  <th className="w-16 border border-slate-900 p-0.5 text-[11px] font-bold">
+                    রেজিঃ নম্বর
                   </th>
 
                   <th className="w-32 border border-slate-900 p-0.5 text-[14px] font-bold">
@@ -159,11 +161,15 @@ const AbashikAttendancePrint = ({
             <tbody>
               {group.students.map((row, index) => (
                 <tr key={`attendance-${groupIndex}-${row.id || index}`}>
-                  <td className="h-7 w-6 border border-slate-900 p-0 text-[14px]">
-                    {(startIndex + index + 1).toLocaleString("bn-BD")}
+                  <td className="h-7 w-12 border border-slate-900 p-0 text-[13px]">
+                    {cellValue(row, "roll")}
                   </td>
 
-                  <td className="h-7 w-32 border border-slate-900 px-3 text-left text-[14px] font-semibold">
+                  <td className="h-7 w-16 border border-slate-900 p-0 text-[12px]">
+                    {cellValue(row, "registration_no")}
+                  </td>
+
+                  <td className="h-7 w-32 border border-slate-900 px-3 text-[14px] font-semibold">
                     {cellValue(row, "student_name")}
                   </td>
 

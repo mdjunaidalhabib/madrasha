@@ -10,6 +10,9 @@ import IdCardGrid from "./IdCardGrid";
 import MarksheetList from "./MarksheetList";
 import ResultNoticeList from "./ResultNoticeList";
 import ReportTable from "./ReportTable";
+import RegisterListPrint from "./RegisterListPrint";
+import ExamSignatureSheet from "./ExamSignatureSheet";
+import ExamNumberSheet from "./ExamNumberSheet";
 
 type ReportContentProps = {
   loading: boolean;
@@ -79,6 +82,52 @@ const ReportContent = ({
   if (report.printable === "digital-attendance") {
     return (
       <DigitalAttendancePrint
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "admission-register") {
+    return (
+      <RegisterListPrint
+        rows={rows}
+        variant="admission"
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "guardian-phone-register") {
+    return (
+      <RegisterListPrint
+        rows={rows}
+        variant="guardian-phone"
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "exam-signature-sheet") {
+    return (
+      <ExamSignatureSheet
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "exam-number-sheet") {
+    return (
+      <ExamNumberSheet
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}

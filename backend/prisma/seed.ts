@@ -564,7 +564,8 @@ async function main() {
       },
       { keyName: "student_report", name: "Student Report", nameBn: "ছাত্র রিপোর্ট", sortOrder: 2 },
       { keyName: "teacher_report", name: "Teacher Report", nameBn: "শিক্ষক রিপোর্ট", sortOrder: 3 },
-      { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট সমূহ", sortOrder: 4 },
+      { keyName: "exam_report", name: "Exam Report", nameBn: "পরীক্ষা রিপোর্ট", sortOrder: 4 },
+      { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট সমূহ", sortOrder: 5 },
     ],
     talimat: [
       { keyName: "class_panel", name: "Class Panel", nameBn: "ক্লাস প্যানেল", sortOrder: 1 },

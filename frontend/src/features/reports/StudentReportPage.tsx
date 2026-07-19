@@ -8,6 +8,8 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/marksheets",
     printable: "marksheet",
     columns: [
+      { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষার্থী", key: "student_name" },
       { header: "পরীক্ষা", key: "exam_name" },
       { header: "শ্রেণি", key: "class_name" },

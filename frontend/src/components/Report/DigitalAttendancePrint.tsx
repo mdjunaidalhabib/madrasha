@@ -24,9 +24,9 @@ const DigitalAttendancePrint = ({
     <table className="w-full border-collapse text-center text-sm">
       <thead>
         <tr className="bg-slate-100">
-          <th className="border border-slate-600 px-2 py-2">ক্রমিক</th>
           <th className="border border-slate-600 px-2 py-2">রোল</th>
-          <th className="border border-slate-600 px-2 py-2 text-left">শিক্ষার্থী</th>
+          <th className="border border-slate-600 px-2 py-2">রেজিস্ট্রেশন নম্বর</th>
+          <th className="border border-slate-600 px-2 py-2">শিক্ষার্থী</th>
           <th className="border border-slate-600 px-2 py-2">শ্রেণি</th>
           <th className="border border-slate-600 px-2 py-2">তারিখ</th>
           <th className="border border-slate-600 px-2 py-2">ইন টাইম</th>
@@ -37,9 +37,11 @@ const DigitalAttendancePrint = ({
       <tbody>
         {rows.map((row, index) => (
           <tr key={`digital-${row.id || row.student_id || index}`}>
-            <td className="border border-slate-600 px-2 py-2">{startIndex + index + 1}</td>
             <td className="border border-slate-600 px-2 py-2">{cellValue(row, "roll")}</td>
-            <td className="border border-slate-600 px-2 py-2 text-left font-semibold">
+            <td className="border border-slate-600 px-2 py-2">
+              {cellValue(row, "registration_no")}
+            </td>
+            <td className="border border-slate-600 px-2 py-2 font-semibold">
               {cellValue(row, "student_name")}
             </td>
             <td className="border border-slate-600 px-2 py-2">{cellValue(row, "class_name")}</td>

@@ -97,3 +97,35 @@ export const getDigitalAttendanceReport = async (req: Request, res: Response) =>
     return fail(res, error);
   }
 };
+
+const getOptionalExamId = (req: Request) => {
+  const examId = Number(req.query.exam_id);
+  return Number.isInteger(examId) && examId > 0 ? examId : undefined;
+};
+
+export const getExamSignatureSheetReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getExamSignatureSheet(
+      madrasaId,
+      getOptionalExamId(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getExamNumberSheetReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getExamNumberSheet(madrasaId, getOptionalExamId(req));
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};

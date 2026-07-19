@@ -7,7 +7,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "সকল শিক্ষকের পূর্ণ তালিকা",
     endpoint: "/reports/teacher/list",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষক", key: "teacher_name" },
       { header: "পদবি", key: "designation" },
       { header: "বিভাগ", key: "division_name" },
@@ -24,7 +24,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষক ও অভিভাবক/জরুরি যোগাযোগ নাম্বার",
     endpoint: "/reports/teacher/phones",
     columns: [
-      { header: "আইডি", key: "id" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষক", key: "teacher_name" },
       { header: "পদবি", key: "designation" },
       { header: "বিভাগ", key: "division_name" },

@@ -160,8 +160,7 @@ const StudentListPage = () => {
   }, [students, search, selectedDivision, selectedClass, selectedAcademicYear]);
 
   const exportStudents = useMemo(() => {
-    return filteredStudents.map((student, index) => ({
-      serial: index + 1,
+    return filteredStudents.map((student) => ({
       registrationNumber: student.registration_no || "নেই",
       roll: student.roll || "নেই",
       name: student.name_bn || student.name || "নেই",
@@ -177,9 +176,8 @@ const StudentListPage = () => {
   }, [filteredStudents, getDivisionName, getClassName]);
 
   const exportColumns = [
-    { header: "ক্রমিক", key: "serial" },
-    { header: "রেজিস্ট্রেশন নম্বর", key: "registrationNumber" },
     { header: "রোল নম্বর", key: "roll" },
+    { header: "রেজিস্ট্রেশন নম্বর", key: "registrationNumber" },
     { header: "নাম", key: "name" },
     { header: "বাবার নাম", key: "fatherName" },
     { header: "ফোন", key: "phone" },
@@ -313,7 +311,9 @@ const StudentListPage = () => {
                       <p className="text-base font-semibold text-gray-800">
                         {student.name_bn || student.name || "নেই"}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">রেজিস্ট্রেশন: {student.id}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        রেজিস্ট্রেশন: {student.registration_no || "নেই"}
+                      </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
                       রোল {student.roll || "নেই"}
@@ -365,8 +365,8 @@ const StudentListPage = () => {
                 <table className="w-full min-w-[900px] border-collapse text-center">
                   <thead className="bg-blue-800 text-sm text-white">
                     <tr>
-                      <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
                       <th className="border p-2.5">রোল নম্বর</th>
+                      <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
                       <th className="border p-2.5">নাম</th>
                       <th className="border p-2.5">বাবার নাম</th>
                       <th className="border p-2.5">ফোন</th>
@@ -380,9 +380,9 @@ const StudentListPage = () => {
                   <tbody className="text-sm">
                     {filteredStudents.map((student) => (
                       <tr key={student.id} className="border-t transition hover:bg-gray-50">
-                        <td className="border p-2.5">{student.id}</td>
-
                         <td className="border p-2.5">{student.roll || "নেই"}</td>
+
+                        <td className="border p-2.5">{student.registration_no || "নেই"}</td>
 
                         <td className="border p-2.5">{student.name_bn || student.name || "নেই"}</td>
 

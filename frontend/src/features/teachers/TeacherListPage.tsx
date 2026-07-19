@@ -127,8 +127,7 @@ const TeacherListPage = () => {
   }, [teachers, search, selectedGender, selectedAcademicDivision]);
 
   const exportTeachers = useMemo(() => {
-    return filteredTeachers.map((teacher, index) => ({
-      serial: index + 1,
+    return filteredTeachers.map((teacher) => ({
       id: teacher.registration_no || "",
       name: teacher.name_bn || teacher.name || "নেই",
       phone: teacher.phone || "নেই",
@@ -141,7 +140,6 @@ const TeacherListPage = () => {
   }, [filteredTeachers, getDivisionName]);
 
   const exportColumns = [
-    { header: "ক্রমিক", key: "serial" },
     { header: "রেজিস্ট্রেশন নং", key: "id" },
     { header: "নাম", key: "name" },
     { header: "মোবাইল", key: "phone" },

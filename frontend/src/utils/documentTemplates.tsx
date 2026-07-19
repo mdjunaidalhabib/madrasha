@@ -34,8 +34,8 @@ export const TESTIMONIAL_TOKENS: TemplateToken[] = [
 export const TRANSFER_LETTER_TOKENS: TemplateToken[] = [
   { key: "student_name", label: "শিক্ষার্থীর নাম" },
   { key: "father_name", label: "পিতার নাম" },
-  { key: "id", label: "রেজিস্ট্রেশন নম্বর" },
   { key: "roll", label: "রোল নম্বর" },
+  { key: "registration_no", label: "রেজিস্ট্রেশন নম্বর" },
   { key: "division_name", label: "বিভাগ" },
   { key: "class_name", label: "শ্রেণি" },
   { key: "academic_year", label: "শিক্ষাবর্ষ/সেশন" },
@@ -53,7 +53,7 @@ export const DEFAULT_TESTIMONIAL_TEMPLATE =
   "এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, {{student_name}}, পিতা: {{father_name}}, অত্র প্রতিষ্ঠানের {{class_name}} শ্রেণির একজন শিক্ষার্থী।\n\nতার আচরণ ও নৈতিক চরিত্র আমাদের জানা মতে সন্তোষজনক।";
 
 export const DEFAULT_TRANSFER_LETTER_TEMPLATE =
-  "এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, {{student_name}}, পিতা: {{father_name}}, রেজিস্ট্রেশন নম্বর: {{id}}, রোল নম্বর: {{roll}}, অত্র প্রতিষ্ঠানের {{class_name}} শ্রেণির একজন শিক্ষার্থী ছিল এবং {{academic_year}} শিক্ষাবর্ষ পর্যন্ত অত্র প্রতিষ্ঠানে অধ্যয়ন করেছে।\n\nতাকে এই মর্মে ছাড়পত্র প্রদান করা হলো। প্রতিষ্ঠানের কোনো পাওনা তার নিকট নেই।";
+  "এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, {{student_name}}, পিতা: {{father_name}}, রোল নম্বর: {{roll}}, রেজিস্ট্রেশন নম্বর: {{registration_no}}, অত্র প্রতিষ্ঠানের {{class_name}} শ্রেণির একজন শিক্ষার্থী ছিল এবং {{academic_year}} শিক্ষাবর্ষ পর্যন্ত অত্র প্রতিষ্ঠানে অধ্যয়ন করেছে।\n\nতাকে এই মর্মে ছাড়পত্র প্রদান করা হলো। প্রতিষ্ঠানের কোনো পাওনা তার নিকট নেই।";
 
 export const DEFAULT_ADMIT_CARD_RULES =
   "১. পরীক্ষার হলে অবশ্যই প্রবেশপত্র সাথে আনতে হবে।\n২. নির্ধারিত সময়ের ১৫ মিনিট পূর্বে কেন্দ্রে উপস্থিত হতে হবে।\n৩. পরীক্ষার হলে মোবাইল ফোন বা কোনো ইলেকট্রনিক ডিভাইস আনা সম্পূর্ণ নিষিদ্ধ।\n৪. নকল বা অসদুপায় অবলম্বন করলে পরীক্ষা বাতিল বলে গণ্য হবে।";
