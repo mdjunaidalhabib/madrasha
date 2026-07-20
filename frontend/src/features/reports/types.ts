@@ -25,8 +25,12 @@ export type ReportMenuItem = {
     | "attendance-register"
     | "daily-attendance-register"
     | "digital-attendance"
-    | "admission-register"
-    | "guardian-phone-register"
+    | "academic-result"
+    | "class-routine"
+    | "student-admission-list"
+    | "guardian-phone-list"
+    | "teacher-list"
+    | "teacher-phone-list"
     | "exam-signature-sheet"
     | "exam-number-sheet";
 };

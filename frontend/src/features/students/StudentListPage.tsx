@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
@@ -69,7 +69,7 @@ const StudentListPage = () => {
       setLoading(true);
       setError("");
 
-      const res = await api.get("/students");
+      const res = await cachedGet("/students");
       setStudents(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD STUDENTS ERROR:", err);
@@ -82,7 +82,7 @@ const StudentListPage = () => {
 
   const loadDivisions = useCallback(async () => {
     try {
-      const res = await api.get("/madrasa-divisions");
+      const res = await cachedGet("/madrasa-divisions");
       setDivisions(normalizeArray(res));
     } catch (err) {
       logger.error("DIVISION LOAD ERROR:", err);
@@ -100,7 +100,7 @@ const StudentListPage = () => {
 
     try {
       setClassLoading(true);
-      const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
+      const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
       setClasses(normalizeArray(res));
     } catch (err) {
       logger.error("CLASS LOAD ERROR:", err);

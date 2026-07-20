@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
@@ -83,8 +83,8 @@ export default function ResultEntryPage() {
     const init = async () => {
       try {
         const [d, e] = await Promise.all([
-          api.get("/madrasa-divisions"),
-          api.get("/exams"),
+          cachedGet("/madrasa-divisions"),
+          cachedGet("/exams"),
         ]);
         setDivisions(extractArray(d.data));
         setExams(extractArray(e.data));
@@ -111,7 +111,7 @@ export default function ResultEntryPage() {
         return;
       }
       try {
-        const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
+        const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
         setClasses(extractArray(res.data));
       } catch (err) {
         logger.error("Class load error:", err);
@@ -128,8 +128,8 @@ export default function ResultEntryPage() {
       try {
         setLoading(true);
         const [s, b] = await Promise.all([
-          api.get(`/students?class_id=${classId}`),
-          api.get(`/madrasa-books?class_id=${classId}`),
+          cachedGet(`/students?class_id=${classId}`),
+          cachedGet(`/madrasa-books?class_id=${classId}`),
         ]);
         setStudents(extractArray(s.data));
         setBooks(extractArray(b.data));
@@ -156,7 +156,7 @@ export default function ResultEntryPage() {
       const sessionIdForRequest = isInitialEditSelection ? requestedResultMasterId : null;
       if (sessionIdForRequest) query.set("result_master_id", String(sessionIdForRequest));
 
-      const res = await api.get(`/results/marks?${query.toString()}`);
+      const res = await cachedGet(`/results/marks?${query.toString()}`);
       const data = Array.isArray(res.data?.data) ? res.data.data : [];
       const masterId = Number(res.data?.result_master_id) || null;
 

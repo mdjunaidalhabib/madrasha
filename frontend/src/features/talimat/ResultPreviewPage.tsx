@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
@@ -97,7 +97,7 @@ export default function ResultPreviewPage() {
   const loadOverview = useCallback(async () => {
     try {
       setOverviewLoading(true);
-      const res = await api.get("/results/overview");
+      const res = await cachedGet("/results/overview");
       setDivisions(extractArray(res.data?.divisions));
       setExams(extractArray(res.data?.exams));
       setClasses(extractArray(res.data?.classes));
@@ -128,7 +128,7 @@ export default function ResultPreviewPage() {
     try {
       setDetailLoading(true);
 
-      const summaryRes = await api.get(
+      const summaryRes = await cachedGet(
         `/results/summary?exam_id=${examId}&class_id=${classId}`,
       );
       const summaryData = extractArray(summaryRes.data);
@@ -137,7 +137,7 @@ export default function ResultPreviewPage() {
         const masterId = summaryData[0].result_master_id ?? null;
         setResultMasterId(masterId);
 
-        const fullRes = await api.get(
+        const fullRes = await cachedGet(
           `/results/full-result?result_master_id=${masterId}`,
         );
 

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import * as XLSX from "xlsx-js-style";
 import TeacherImageUpload from "../../components/teachers-admission/TeacherImageUpload";
 import TeacherInfo from "../../components/teachers-admission/TeacherInfo";
 import TeacherParentInfo from "../../components/teachers-admission/TeacherParentInfo";
@@ -8,7 +7,7 @@ import SubmitButton from "../../components/teachers-admission/SubmitButton";
 import BulkTeacherUploadModal, {
   ExcelTeacherRow,
 } from "../../components/teachers-admission/BulkTeacherUploadModal";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
 
@@ -118,7 +117,7 @@ const TeacherPage: React.FC = () => {
   useEffect(() => {
     const fetchDivisions = async () => {
       try {
-        const res = await api.get("/madrasa-divisions");
+        const res = await cachedGet("/madrasa-divisions");
         const data = extractData(res);
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -223,7 +222,8 @@ const TeacherPage: React.FC = () => {
       image: teacher.image || null,
     }));
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import("xlsx-js-style");
     const columns = [
       { key: "name_bn", required: true },
       { key: "name_ar", required: false },

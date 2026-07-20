@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Field from "./Field";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import ExperiencePicker from "../../components/ExperiencePicker/ExperiencePicker";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { logger } from "../../utils/logger";
 
 const TeacherInfoProfile = ({
@@ -18,7 +18,7 @@ const TeacherInfoProfile = ({
   useEffect(() => {
     const fetchDivisions = async () => {
       try {
-        const res = await api.get("/madrasa-divisions");
+        const res = await cachedGet("/madrasa-divisions");
         const list = res.data?.data || res.data?.result || res.data || [];
         setDivisions(Array.isArray(list) ? list : []);
       } catch (err) {

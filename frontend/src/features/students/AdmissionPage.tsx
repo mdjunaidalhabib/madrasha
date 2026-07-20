@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import * as XLSX from "xlsx-js-style";
 import StudentInfo from "../../components/admission/StudentInfo";
 import ParentInfo from "../../components/admission/ParentInfo";
 import AddressInfo from "../../components/admission/AddressInfo";
@@ -10,7 +9,7 @@ import BulkAdmissionModal, {
   BulkAdmissionResultData,
   ExcelAdmissionRow,
 } from "../../components/admission/BulkAdmissionModal";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
 
@@ -158,7 +157,7 @@ const AdmissionPage = () => {
       try {
         setNidLookupLoading(true);
 
-        const res = await api.get(`/students/lookup?nid=${encodeURIComponent(nid)}`, {
+        const res = await cachedGet(`/students/lookup?nid=${encodeURIComponent(nid)}`, {
           signal: controller.signal,
         });
 
@@ -226,7 +225,7 @@ const AdmissionPage = () => {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await api.get("/students/next-roll", {
+        const res = await cachedGet("/students/next-roll", {
           params: { class_id: classId, academic_year: year },
         });
         const suggested = res?.data?.data;
@@ -253,7 +252,7 @@ const AdmissionPage = () => {
   useEffect(() => {
     const fetchHelperData = async () => {
       try {
-        const divRes = await api.get("/madrasa-divisions");
+        const divRes = await cachedGet("/madrasa-divisions");
         const divData = extractData(divRes);
         const safeDivisions: DivisionItem[] = Array.isArray(divData) ? divData : [];
 
@@ -262,7 +261,7 @@ const AdmissionPage = () => {
         const classResults = await Promise.all(
           safeDivisions.map(async (division) => {
             try {
-              const res = await api.get(`/madrasa-classes?division_id=${division.division_id}`);
+              const res = await cachedGet(`/madrasa-classes?division_id=${division.division_id}`);
               const data = extractData(res);
               const list = Array.isArray(data) ? data : [];
 
@@ -373,7 +372,8 @@ const AdmissionPage = () => {
       image: student.image || null,
     }));
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import("xlsx-js-style");
     const columns = [
       { key: "name_bn", required: true },
       { key: "arabic_name", required: false },

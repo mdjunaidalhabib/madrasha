@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Field from "./Field";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import { logger } from "../../utils/logger";
 
@@ -31,7 +31,7 @@ const StudentInfoProfile = ({
   useEffect(() => {
     const fetchDivisions = async () => {
       try {
-        const res = await api.get("/madrasa-divisions");
+        const res = await cachedGet("/madrasa-divisions");
         const data = res.data?.data || res.data?.result || res.data || [];
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -49,7 +49,7 @@ const StudentInfoProfile = ({
 
     const fetchClasses = async () => {
       try {
-        const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
+        const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
         const data = res.data?.data || res.data?.result || res.data || [];
         setClasses(Array.isArray(data) ? data : []);
       } catch (err) {

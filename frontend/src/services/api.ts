@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { useAuthStore } from "../store/authStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -8,6 +8,78 @@ import { getTenantSlugFromPath, getTenantAdminBase } from "../utils/tenantSlug";
 const baseURL = API_BASE_URL;
 
 const api = axios.create({ baseURL });
+
+const GET_CACHE_TTL_MS = 20_000;
+const GET_CACHE_MAX_ENTRIES = 80;
+
+type GetCacheEntry = {
+  expiresAt: number;
+  response: AxiosResponse<any>;
+};
+
+const getCache = new Map<string, GetCacheEntry>();
+const inFlightGets = new Map<string, Promise<AxiosResponse<any>>>();
+let cacheGeneration = 0;
+
+function stableParams(params: unknown) {
+  if (!params || typeof params !== "object") return String(params || "");
+  const entries = Object.entries(params as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  return JSON.stringify(entries);
+}
+
+function getCacheKey(url: string, config?: AxiosRequestConfig) {
+  const token = useAuthStore.getState().token || "guest";
+  const tenantSlug = getTenantSlugFromPath() || "public";
+  return `${tenantSlug}|${token}|${url}|${stableParams(config?.params)}`;
+}
+
+export function clearGetCache() {
+  cacheGeneration += 1;
+  getCache.clear();
+  inFlightGets.clear();
+}
+
+/**
+ * Short-lived GET cache with in-flight request de-duplication.
+ * Re-visiting a page or mounting multiple components that request the same
+ * reference data no longer creates duplicate network waits. Requests using
+ * AbortController intentionally bypass the shared cache.
+ */
+export async function cachedGet<T = any>(
+  url: string,
+  config?: AxiosRequestConfig,
+  ttlMs: number = GET_CACHE_TTL_MS,
+): Promise<AxiosResponse<T>> {
+  if (config?.signal || ttlMs <= 0) return api.get<T>(url, config);
+
+  const key = getCacheKey(url, config);
+  const now = Date.now();
+  const cached = getCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.response as AxiosResponse<T>;
+  if (cached) getCache.delete(key);
+
+  const pending = inFlightGets.get(key);
+  if (pending) return pending as Promise<AxiosResponse<T>>;
+
+  const requestGeneration = cacheGeneration;
+  const request = api
+    .get<T>(url, config)
+    .then((response) => {
+      if (requestGeneration !== cacheGeneration) return response;
+      if (getCache.size >= GET_CACHE_MAX_ENTRIES) {
+        const oldestKey = getCache.keys().next().value as string | undefined;
+        if (oldestKey) getCache.delete(oldestKey);
+      }
+      getCache.set(key, { expiresAt: Date.now() + ttlMs, response });
+      return response;
+    })
+    .finally(() => inFlightGets.delete(key));
+
+  inFlightGets.set(key, request as Promise<AxiosResponse<any>>);
+  return request;
+}
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -25,7 +97,11 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    const method = String(res.config.method || "get").toLowerCase();
+    if (method !== "get") clearGetCache();
+    return res;
+  },
   (err) => {
     const status = err?.response?.status;
 
@@ -44,6 +120,7 @@ api.interceptors.response.use(
     // the app and should NOT log the user out.
     if (status === 401 || status === 410 || status === 423) {
       const wasLoggedIn = !!useAuthStore.getState().token;
+      clearGetCache();
       useAuthStore.getState().logout();
 
       // Zustand's `persist` middleware writes to localStorage asynchronously.

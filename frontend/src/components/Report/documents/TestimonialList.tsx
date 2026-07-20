@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useDocumentTemplateStore } from "../../store/documentTemplateStore";
-import { DEFAULT_TESTIMONIAL_TEMPLATE, renderTemplateText } from "../../utils/documentTemplates";
+import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+import { DEFAULT_TESTIMONIAL_TEMPLATE, renderTemplateText } from "../../../utils/documentTemplates";
 
 type TestimonialListProps = {
   rows: Record<string, any>[];

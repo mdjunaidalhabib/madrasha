@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
 
@@ -32,8 +31,9 @@ const ExcelUpload = <T,>({
 
     const reader = new FileReader();
 
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
+        const XLSX = await import("xlsx");
         const result = event.target?.result;
         if (!result) return useToastStore.getState().show("File read failed", "error");
 

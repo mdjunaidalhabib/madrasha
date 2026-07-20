@@ -1,10 +1,14 @@
-import { cellValue } from "../../utils/reportUtils";
+import { cellValue } from "../../../utils/reportUtils";
+import { ReportColumn } from "../../../features/reports/types";
 
 type ExamNumberSheetProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  /** Column config from the report's menu definition (ExamReportPage.tsx),
+   * so a header rename there is reflected in this print preview too. */
+  columns?: ReportColumn[];
 };
 
 type SubjectMark = {
@@ -40,7 +44,11 @@ const ExamNumberSheet = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  columns = [],
 }: ExamNumberSheetProps) => {
+  const headerMap = new Map(columns.map((c) => [c.key, c.header]));
+  const label = (key: string, fallback: string) => headerMap.get(key) || fallback;
+
   const firstRow = rows[0] || {};
   const examName = value(firstRow, ["exam_name"], "........................");
   const examYear = value(firstRow, ["exam_year", "academic_year"], "........................");
@@ -80,18 +88,18 @@ const ExamNumberSheet = ({
       <table className="w-full table-fixed border-collapse border border-black text-center text-[9px]">
         <thead>
           <tr>
-            <th className="w-9 border border-black px-0.5 py-2">ক্রমিক</th>
-            <th className="w-10 border border-black px-0.5 py-2">রোল</th>
-            <th className="w-16 border border-black px-0.5 py-2">রেজিঃ</th>
-            <th className="w-28 border border-black px-1 py-2">শিক্ষার্থীর নাম</th>
-            {subjects.map(([key, label]) => (
+            <th className="w-9 border border-black px-0.5 py-2">{label("sl", "ক্রমিক")}</th>
+            <th className="w-10 border border-black px-0.5 py-2">{label("roll", "রোল")}</th>
+            <th className="w-16 border border-black px-0.5 py-2">{label("registration_no", "রেজিঃ")}</th>
+            <th className="w-28 border border-black px-1 py-2">{label("student_name", "শিক্ষার্থীর নাম")}</th>
+            {subjects.map(([key, subjectLabel]) => (
               <th key={key} className="border border-black px-0.5 py-2 leading-tight">
-                {label}
+                {subjectLabel}
               </th>
             ))}
-            <th className="w-12 border border-black px-0.5 py-2">মোট</th>
-            <th className="w-12 border border-black px-0.5 py-2">গড়</th>
-            <th className="w-16 border border-black px-0.5 py-2">মন্তব্য</th>
+            <th className="w-12 border border-black px-0.5 py-2">{label("total", "মোট")}</th>
+            <th className="w-12 border border-black px-0.5 py-2">{label("average", "গড়")}</th>
+            <th className="w-16 border border-black px-0.5 py-2">{label("remarks", "মন্তব্য")}</th>
           </tr>
         </thead>
         <tbody>

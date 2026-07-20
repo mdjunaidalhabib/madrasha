@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfile";
@@ -33,7 +33,7 @@ const StudentProfilePage = () => {
     try {
       setLoading(true);
 
-      const res = await api.get(`/students/${id}`);
+      const res = await cachedGet(`/students/${id}`);
       const data = res.data.data;
 
       setStudent(deepCopy(data));

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { cellValue } from "../../utils/reportUtils";
-import { useDocumentTemplateStore } from "../../store/documentTemplateStore";
-import { DEFAULT_ADMIT_CARD_RULES, renderTemplateText } from "../../utils/documentTemplates";
+import { cellValue } from "../../../utils/reportUtils";
+import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+import { DEFAULT_ADMIT_CARD_RULES, renderTemplateText } from "../../../utils/documentTemplates";
 
 type AdmitCardGridProps = {
   rows: Record<string, any>[];

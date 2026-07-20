@@ -9,11 +9,7 @@ import {
   MARK_STATUS,
 } from "./result-panel.constants";
 import { GradeRow } from "./result-panel.types";
-import {
-  MarkRowDto,
-  ProcessResultRequestDto,
-  SaveMarksRequestDto,
-} from "./result-panel.dto";
+import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
 
 const toNumber = (value: any, fallback = 0) => {
   const n = Number(value);
@@ -29,31 +25,93 @@ const getGradeFast = (avg: number, gradeList: GradeRow[], fallback: string) => {
   return fallback;
 };
 
-/**
- * NOTE (pre-existing behavior, preserved as-is): grade/fail-mark lookups
- * are cached in module-level variables rather than passed through the
- * call chain, exactly like the original controller. In a multi-tenant
- * process this means two concurrent `processResult` calls for different
- * madrasas could race and briefly read each other's cached grade list.
- * Not fixed here since it's a behavior change outside this refactor's
- * scope - flagged in the migration report as technical debt.
- */
-let generalGradeCache: GradeRow[] = [];
-let madrasaGradeCache: GradeRow[] = [];
-let failMarkCache = DEFAULT_FAIL_MARK;
+interface ResultCalculationConfig {
+  generalGrades: GradeRow[];
+  madrasaGrades: GradeRow[];
+  failMark: number;
+}
 
 export class ResultPanelService {
   constructor(private readonly repository: ResultPanelRepository = resultPanelRepository) {}
 
-  private async loadSettings(madrasaId: number) {
-    const rows = await this.repository.findSettings(madrasaId);
-    const fail = rows.find((r) => r.name === FAIL_MARK_SETTING_NAME);
-    failMarkCache = fail ? Number(fail.value) : DEFAULT_FAIL_MARK;
+  private async loadCalculationConfig(madrasaId: number): Promise<ResultCalculationConfig> {
+    const [settings, generalGrades, madrasaGrades] = await Promise.all([
+      this.repository.findSettings(madrasaId),
+      this.repository.findGeneralGrades(madrasaId),
+      this.repository.findMadrasaGrades(madrasaId),
+    ]);
+
+    const fail = settings.find((row) => row.name === FAIL_MARK_SETTING_NAME);
+
+    return {
+      generalGrades,
+      madrasaGrades,
+      failMark: fail ? Number(fail.value) : DEFAULT_FAIL_MARK,
+    };
   }
 
-  private async loadGrades(madrasaId: number) {
-    generalGradeCache = await this.repository.findGeneralGrades(madrasaId);
-    madrasaGradeCache = await this.repository.findMadrasaGrades(madrasaId);
+  private async rebuildResultSummary(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+    config: ResultCalculationConfig,
+  ) {
+    const marks = await this.repository.groupMarksByStudent(
+      madrasaId,
+      examId,
+      classId,
+      resultMasterId,
+    );
+
+    if (!marks.length) {
+      await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
+      return false;
+    }
+
+    const sorted = [...marks].sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
+
+    const studentIds = sorted.map((row) => Number(row.studentId));
+    const students = await this.repository.findRollsByStudentIds(studentIds);
+    const rollByStudentId = new Map(students.map((student) => [student.id, student.roll ?? null]));
+
+    const summaryData = sorted.map((row, index) => {
+      const total = Number(row._sum.mark || 0);
+      const subjectCount = row._count._all || 0;
+      const rawAverage = subjectCount > 0 ? total / subjectCount : 0;
+      // Keep exactly 2 decimal places so the stored value matches what's shown everywhere.
+      const average = Math.round(rawAverage * 100) / 100;
+
+      return {
+        resultMasterId,
+        studentId: Number(row.studentId),
+        total,
+        average,
+        generalGrade: getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK),
+        madrasaGrade: getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK),
+        status: average >= config.failMark ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
+        rankNo: index + 1,
+        roll: rollByStudentId.get(Number(row.studentId)) ?? null,
+      };
+    });
+
+    await this.repository.saveResultSummaryInTransaction(resultMasterId, summaryData);
+    return true;
+  }
+
+  async reprocessClassResults(madrasaId: number, classId: number) {
+    if (!classId) return { updated: 0 };
+
+    const masters = await this.repository.findResultMastersByClass(madrasaId, classId);
+    if (!masters.length) return { updated: 0 };
+
+    const config = await this.loadCalculationConfig(madrasaId);
+
+    for (const master of masters) {
+      await this.rebuildResultSummary(madrasaId, master.examId, master.classId, master.id, config);
+    }
+
+    return { updated: masters.length };
   }
 
   private async getOrCreateSessionId(madrasaId: number, examId: number, classId: number) {
@@ -71,7 +129,11 @@ export class ResultPanelService {
 
     const existing = await this.repository.findResultMaster(madrasaId, examId, classId);
     if (existing) {
-      return { message: "Session already exists", result_master_id: existing.id, status: existing.status };
+      return {
+        message: "Session already exists",
+        result_master_id: existing.id,
+        status: existing.status,
+      };
     }
 
     const created = await this.repository.createResultMaster(madrasaId, examId, classId);
@@ -174,48 +236,18 @@ export class ResultPanelService {
       result_master_id = master.id;
     }
 
-    await this.loadGrades(madrasaId);
-    await this.loadSettings(madrasaId);
+    const config = await this.loadCalculationConfig(madrasaId);
+    const processed = await this.rebuildResultSummary(
+      madrasaId,
+      exam_id,
+      class_id,
+      result_master_id,
+      config,
+    );
 
-    // COUNT(DISTINCT book_id) in the original === count of matching rows,
-    // since (result_master_id, student_id, class_id, book_id) is unique -
-    // so a plain grouped row count is equivalent here.
-    const marks = await this.repository.groupMarksByStudent(madrasaId, exam_id, class_id, result_master_id);
-
-    if (!marks.length) {
+    if (!processed) {
       throw new BadRequestError("No marks found to process");
     }
-
-    const sorted = [...marks].sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
-
-    const studentIds = sorted.map((r) => Number(r.studentId));
-    const students = await this.repository.findRollsByStudentIds(studentIds);
-    const rollByStudentId = new Map(students.map((s) => [s.id, s.roll ?? null]));
-
-    const finalResultMasterId = result_master_id;
-    const summaryData = sorted.map((r, i) => {
-      const total = Number(r._sum.mark || 0);
-      const cnt = r._count._all || 0;
-      const avg = cnt > 0 ? total / cnt : 0;
-
-      const general_grade = getGradeFast(avg, generalGradeCache, DEFAULT_GENERAL_GRADE_FALLBACK);
-      const madrasa_grade = getGradeFast(avg, madrasaGradeCache, DEFAULT_MADRASA_GRADE_FALLBACK);
-      const status = avg >= failMarkCache ? MARK_STATUS.PASS : MARK_STATUS.FAIL;
-
-      return {
-        resultMasterId: finalResultMasterId,
-        studentId: Number(r.studentId),
-        total,
-        average: avg,
-        generalGrade: general_grade,
-        madrasaGrade: madrasa_grade,
-        status,
-        rankNo: i + 1,
-        roll: rollByStudentId.get(Number(r.studentId)) ?? null,
-      };
-    });
-
-    await this.repository.saveResultSummaryInTransaction(result_master_id, summaryData);
 
     return { message: "Result processed successfully", result_master_id };
   }
@@ -354,7 +386,12 @@ export class ResultPanelService {
     return { message: "Result deleted successfully" };
   }
 
-  async getFullResultView(madrasaId: number, examId: number, classId: number, resultMasterIdInput: number) {
+  async getFullResultView(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterIdInput: number,
+  ) {
     let result_master_id = resultMasterIdInput;
 
     if (!result_master_id) {
@@ -368,9 +405,41 @@ export class ResultPanelService {
       result_master_id = master.id;
     }
 
+    // The frontend's Preview page calls this endpoint with only
+    // `result_master_id` (no exam_id/class_id), so `classId` here is often
+    // 0. Resolve the real class from the result master so we can pull the
+    // *full* subject list for the class below — not just the subjects that
+    // happen to already have a mark saved.
+    let resolvedClassId = classId;
+    if (!resolvedClassId) {
+      const master = await this.repository.findResultMasterById(result_master_id, madrasaId);
+      resolvedClassId = master?.classId || 0;
+    }
+
     const summaries = await this.repository.findFullResultSummaries(madrasaId, result_master_id);
 
     const booksMap = new Map<number, { book_id: number; book_name: string }>();
+
+    // Seed with every subject currently assigned to the class, even ones
+    // with zero marks entered so far. Previously this map was built only
+    // from marks already saved in `summaries`, which meant a newly added
+    // (or renamed) subject with no marks yet simply never appeared in the
+    // "edit a single student" modal, so a teacher couldn't enter marks for
+    // it from there.
+    if (resolvedClassId) {
+      const classSubjects = await this.repository.findActiveSubjectsForClass(
+        madrasaId,
+        resolvedClassId,
+      );
+      classSubjects.forEach(({ book }) => {
+        if (!book) return;
+        booksMap.set(book.id, {
+          book_id: book.id,
+          book_name: book.nameBn || book.name || `Book ${book.id}`,
+        });
+      });
+    }
+
     const students = summaries.map((row) => {
       const marks = row.student.marks.map((m) => {
         const bookName = m.book.nameBn || m.book.name || `Book ${m.bookId}`;

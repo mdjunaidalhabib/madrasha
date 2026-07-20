@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { cachedGet } from "./api";
 
 export type DocumentTemplatePayload = {
   sanad_template?: string | null;
@@ -12,7 +12,7 @@ export type DocumentTemplateResponse = DocumentTemplatePayload & {
 };
 
 export async function getDocumentTemplates(): Promise<DocumentTemplateResponse> {
-  const res = await api.get("/settings/document-templates");
+  const res = await cachedGet("/settings/document-templates");
   return res.data?.data || {};
 }
 

@@ -19,7 +19,7 @@ import ToggleSection from "../../../components/super-admin/create-madrasa/Toggle
 import MadrasaUsersSection from "../../../components/super-admin/create-madrasa/MadrasaUsersSection";
 import { Link } from "react-router-dom";
 import { CreateMadrasaPayload } from "../../../components/super-admin/create-madrasa/types";
-import api from "../../../services/adminApi";
+import api, { cachedGet } from "../../../services/adminApi";
 import { logger } from "../../../utils/logger";
 import { useConfirmStore } from "../../../store/confirmStore";
 
@@ -372,10 +372,10 @@ function EditMadrasaModal({
       setLoadingSetup(true);
       try {
         const [divRes, modRes, classRes, bookRes, detailRes] = await Promise.all([
-          api.get("/super/divisions"),
-          api.get("/super/modules"),
-          api.get("/super/classes"),
-          api.get("/super/books"),
+          cachedGet("/super/divisions"),
+          cachedGet("/super/modules"),
+          cachedGet("/super/classes"),
+          cachedGet("/super/books"),
           getMadrasa(madrasa.id),
         ]);
 

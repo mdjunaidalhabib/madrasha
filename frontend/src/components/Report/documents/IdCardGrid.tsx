@@ -1,4 +1,4 @@
-import { cellValue } from "../../utils/reportUtils";
+import { cellValue } from "../../../utils/reportUtils";
 
 type IdCardGridProps = {
   rows: Record<string, any>[];

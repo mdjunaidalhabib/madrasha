@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
 
 export type PaperSize = "a4" | "a5";
 export type Orientation = "portrait" | "landscape";
@@ -102,7 +101,8 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
+    const XLSX = await import("xlsx");
     const exportData = data.map((item) => {
       const row: Record<string, any> = {};
 

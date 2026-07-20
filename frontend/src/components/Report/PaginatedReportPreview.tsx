@@ -62,7 +62,7 @@ const getCapacity = (report: ReportMenuItem, paperSize: PaperSize, orientation: 
     );
   }
 
-  if (["admission-register", "guardian-phone-register"].includes(printable)) {
+  if (["student-admission-list", "guardian-phone-list"].includes(printable)) {
     return (
       { "a4-portrait": 18, "a4-landscape": 12, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
     );
@@ -80,7 +80,21 @@ const getCapacity = (report: ReportMenuItem, paperSize: PaperSize, orientation: 
     );
   }
 
-  if (["result-notice", "digital-attendance"].includes(printable)) {
+  if (printable === "academic-result") {
+    return (
+      { "a4-portrait": 15, "a4-landscape": 10, "a5-portrait": 7, "a5-landscape": 5 }[mode] || 15
+    );
+  }
+
+  if (
+    [
+      "result-notice",
+      "digital-attendance",
+      "class-routine",
+      "teacher-list",
+      "teacher-phone-list",
+    ].includes(printable)
+  ) {
     return (
       { "a4-portrait": 18, "a4-landscape": 11, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
     );
@@ -108,8 +122,10 @@ const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any
   if (
     report.printable === "attendance-register" ||
     report.printable === "daily-attendance-register" ||
-    report.printable === "admission-register" ||
-    report.printable === "guardian-phone-register" ||
+    report.printable === "student-admission-list" ||
+    report.printable === "guardian-phone-list" ||
+    report.printable === "academic-result" ||
+    report.printable === "class-routine" ||
     report.printable === "exam-signature-sheet" ||
     report.printable === "exam-number-sheet"
   ) {
@@ -122,7 +138,9 @@ const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any
         const academicYear =
           cellValue(row, "academic_year") || cellValue(row, "exam_year") || "সকল শিক্ষাবর্ষ";
         const examName =
-          report.printable === "exam-signature-sheet" || report.printable === "exam-number-sheet"
+          report.printable === "exam-signature-sheet" ||
+          report.printable === "exam-number-sheet" ||
+          report.printable === "academic-result"
             ? cellValue(row, "exam_name") || "পরীক্ষা"
             : "";
         const key = `${division}|${className}|${academicYear}|${examName}`;

@@ -1,4 +1,5 @@
-import { BadRequestError } from "../../shared/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { resultPanelService, ResultPanelService } from "../ResultPanel/result-panel.service";
 import { classPanelRepository, ClassPanelRepository } from "./class-panel.repository";
 import { TenantNotFoundInPanelError } from "./class-panel.types";
 import {
@@ -9,7 +10,10 @@ import {
 } from "./class-panel.dto";
 
 export class ClassPanelService {
-  constructor(private readonly repository: ClassPanelRepository = classPanelRepository) {}
+  constructor(
+    private readonly repository: ClassPanelRepository = classPanelRepository,
+    private readonly results: ResultPanelService = resultPanelService,
+  ) {}
 
   async listDivisions(madrasaId: number | undefined) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
@@ -68,18 +72,57 @@ export class ClassPanelService {
       throw new BadRequestError("class_id and name_bn required");
     }
 
-    const created = await this.repository.createSubject(dto.name_bn, Number(dto.class_id));
-    await this.repository.linkSubjectToMadrasa(madrasaId, created.id);
+    const classId = Number(dto.class_id);
+    const linkedClass = await this.repository.findActiveClassForMadrasa(madrasaId, classId);
+    if (!linkedClass) throw new NotFoundError("Class not found in this madrasa");
+
+    await this.repository.createAndLinkSubject(madrasaId, dto.name_bn, classId);
+    await this.results.reprocessClassResults(madrasaId, classId);
   }
 
-  async updateSubject(id: number, dto: UpdateSubjectRequestDto) {
-    if (!dto.name_bn) throw new BadRequestError("name_bn required");
-    await this.repository.updateSubject(id, dto.name_bn);
-  }
-
-  async deleteSubject(madrasaId: number | undefined, id: number) {
+  async updateSubject(madrasaId: number | undefined, id: number, dto: UpdateSubjectRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    await this.repository.deactivateMadrasaSubject(madrasaId, id);
+    if (!dto.name_bn) throw new BadRequestError("name_bn required");
+
+    const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
+    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+
+    const updated = await this.repository.updateSubjectForMadrasa(madrasaId, id, dto.name_bn);
+    if (!updated) throw new NotFoundError("Subject not found");
+  }
+
+  async getSubjectDeleteInfo(madrasaId: number | undefined, id: number) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
+    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+
+    const markCount = await this.repository.countSubjectMarks(madrasaId, id);
+
+    return {
+      book_id: linkedSubject.book.id,
+      book_name_bn: linkedSubject.book.nameBn,
+      has_marks: markCount > 0,
+      mark_count: markCount,
+    };
+  }
+
+  async deleteSubject(madrasaId: number | undefined, id: number, confirmMarkDeletion = false) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
+    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+
+    const markCount = await this.repository.countSubjectMarks(madrasaId, id);
+    if (markCount > 0 && !confirmMarkDeletion) {
+      throw new ConflictError(
+        "This subject has saved marks. Confirm mark deletion before deleting the subject.",
+        { requires_confirmation: true, mark_count: markCount },
+      );
+    }
+
+    await this.repository.deactivateSubjectAndRemoveMarks(madrasaId, id);
+    await this.results.reprocessClassResults(madrasaId, linkedSubject.book.classId);
   }
 }
 

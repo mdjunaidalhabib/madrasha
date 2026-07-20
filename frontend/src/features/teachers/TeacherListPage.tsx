@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
@@ -56,7 +56,7 @@ const TeacherListPage = () => {
       setLoading(true);
       setError("");
 
-      const res = await api.get("/teachers");
+      const res = await cachedGet("/teachers");
       setTeachers(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD TEACHERS ERROR:", err);
@@ -69,7 +69,7 @@ const TeacherListPage = () => {
 
   const loadDivisions = useCallback(async () => {
     try {
-      const res = await api.get("/madrasa-divisions");
+      const res = await cachedGet("/madrasa-divisions");
       setDivisions(normalizeArray(res));
     } catch (err) {
       logger.error("DIVISION LOAD ERROR:", err);

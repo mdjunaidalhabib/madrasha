@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 
 import ExamList from "../../components/ExamPanel/ExamList";
 import GeneralGradeList from "../../components/ExamPanel/GeneralGradeList";
@@ -14,10 +14,10 @@ export default function ExamPanel() {
 
   const loadAll = async () => {
     const [e, g, m, f] = await Promise.all([
-      api.get("/exams"),
-      api.get("/general-grades"),
-      api.get("/madrasa-grades"),
-      api.get("/fail-mark"),
+      cachedGet("/exams"),
+      cachedGet("/general-grades"),
+      cachedGet("/madrasa-grades"),
+      cachedGet("/fail-mark"),
     ]);
 
     setExams(e.data);

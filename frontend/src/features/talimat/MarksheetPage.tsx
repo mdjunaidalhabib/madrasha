@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 
 export default function MarksheetPage() {
   const { student_id } = useParams();
@@ -8,7 +8,7 @@ export default function MarksheetPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await api.get(`/talimat/marksheet/${student_id}`);
+      const res = await cachedGet(`/talimat/marksheet/${student_id}`);
       setData(res.data);
     })();
   }, [student_id]);

@@ -3,6 +3,7 @@ import { useSidebarStore } from "../../store/sidebarStore";
 import { useUIStore } from "../../store/uiStore";
 import Button from "../ui/Button";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { prefetchAdminRoute } from "../../app/routePrefetch";
 
 import {
   LayoutDashboard,
@@ -114,6 +115,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 key={module.key}
                 to={`${adminBase}/${modulePath(module.key)}`}
                 onClick={handleClick}
+                onMouseEnter={() => prefetchAdminRoute(modulePath(module.key))}
+                onFocus={() => prefetchAdminRoute(modulePath(module.key))}
                 className={({ isActive }) => navItemClass(isActive)}
               >
                 <Icon size={18} />
@@ -144,6 +147,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                         key={child.key}
                         to={`${adminBase}/${childPath(module.key, child.key)}`}
                         onClick={handleClick}
+                        onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
+                        onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
                         className={({ isActive }) => childItemClass(isActive)}
                       >
                         {child.label}

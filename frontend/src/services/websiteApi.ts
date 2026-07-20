@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { cachedGet } from "./api";
 import adminApi from "./adminApi";
 
 export type WebsiteSettingsPayload = {
@@ -44,12 +44,12 @@ export type WebsiteGalleryPayload = {
 };
 
 export async function getPublicWebsite(slug: string) {
-  const res = await api.get(`/website/public/${slug}`);
+  const res = await cachedGet(`/website/public/${slug}`);
   return res.data.data;
 }
 
 export async function getWebsiteSettings(madrasaId?: number) {
-  const res = await api.get("/website/admin/settings", {
+  const res = await cachedGet("/website/admin/settings", {
     params: madrasaId ? { madrasa_id: madrasaId } : undefined,
   });
   return res.data.data;

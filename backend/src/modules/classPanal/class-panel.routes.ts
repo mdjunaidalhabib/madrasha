@@ -8,6 +8,7 @@ import {
   getSubjects,
   addSubject,
   updateSubject,
+  getSubjectDeleteInfo,
   deleteSubject,
 } from "./class-panel.controller";
 
@@ -19,12 +20,7 @@ const router = Router();
 /* =========================
    DIVISIONS
 ========================= */
-router.get(
-  "/madrasa-divisions",
-  tenantMiddleware,
-  authMiddleware,
-  getDivisions,
-);
+router.get("/madrasa-divisions", tenantMiddleware, authMiddleware, getDivisions);
 
 /* =========================
    CLASSES
@@ -33,19 +29,9 @@ router.get("/madrasa-classes", tenantMiddleware, authMiddleware, getClasses);
 
 router.post("/madrasa-classes", tenantMiddleware, authMiddleware, addClass);
 
-router.put(
-  "/madrasa-classes/:id",
-  tenantMiddleware,
-  authMiddleware,
-  updateClass,
-);
+router.put("/madrasa-classes/:id", tenantMiddleware, authMiddleware, updateClass);
 
-router.delete(
-  "/madrasa-classes/:id",
-  tenantMiddleware,
-  authMiddleware,
-  deleteClass,
-);
+router.delete("/madrasa-classes/:id", tenantMiddleware, authMiddleware, deleteClass);
 
 /* =========================
    BOOKS
@@ -54,18 +40,15 @@ router.get("/madrasa-books", tenantMiddleware, authMiddleware, getSubjects);
 
 router.post("/madrasa-books", tenantMiddleware, authMiddleware, addSubject);
 
-router.put(
-  "/madrasa-books/:id",
+router.put("/madrasa-books/:id", tenantMiddleware, authMiddleware, updateSubject);
+
+router.get(
+  "/madrasa-books/:id/delete-info",
   tenantMiddleware,
   authMiddleware,
-  updateSubject,
+  getSubjectDeleteInfo,
 );
 
-router.delete(
-  "/madrasa-books/:id",
-  tenantMiddleware,
-  authMiddleware,
-  deleteSubject,
-);
+router.delete("/madrasa-books/:id", tenantMiddleware, authMiddleware, deleteSubject);
 
 export default router;

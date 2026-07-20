@@ -1,4 +1,4 @@
-import api from "./adminApi";
+import api, { cachedGet } from "./adminApi";
 
 export type MadrasaListItem = {
   id: number;
@@ -19,12 +19,12 @@ export type MadrasaListItem = {
 ========================= */
 
 export async function listMadrasas(params?: { q?: string; page?: number; limit?: number }) {
-  const res = await api.get("/super/madrasas", { params });
+  const res = await cachedGet("/super/madrasas", { params });
   return res.data;
 }
 
 export async function getMadrasa(id: number) {
-  const res = await api.get(`/super/madrasas/${id}`);
+  const res = await cachedGet(`/super/madrasas/${id}`);
   return res.data;
 }
 
@@ -33,19 +33,19 @@ export async function getMadrasa(id: number) {
 ========================= */
 
 export async function listPlans() {
-  const res = await api.get("/super/plans", {
+  const res = await cachedGet("/super/plans", {
     params: { active: "1" },
   });
   return res.data;
 }
 
 export async function listPlansAdmin(params?: { q?: string; active?: "all" | "1" | "0" }) {
-  const res = await api.get("/super/plans", { params });
+  const res = await cachedGet("/super/plans", { params });
   return res.data;
 }
 
 export async function listTrashPlans() {
-  const res = await api.get("/super/plans/trash");
+  const res = await cachedGet("/super/plans/trash");
   return res.data;
 }
 
@@ -145,7 +145,7 @@ export async function trashMadrasa(id: number) {
 }
 
 export async function listTrashMadrasas() {
-  const res = await api.get(`/super/madrasas/trash`);
+  const res = await cachedGet(`/super/madrasas/trash`);
   return res.data;
 }
 
@@ -181,12 +181,12 @@ export type MadrasaRoleItem = {
 };
 
 export async function listMadrasaRoles(madrasaId: number) {
-  const res = await api.get(`/super/madrasas/${madrasaId}/roles`);
+  const res = await cachedGet(`/super/madrasas/${madrasaId}/roles`);
   return res.data;
 }
 
 export async function listMadrasaUsers(madrasaId: number) {
-  const res = await api.get(`/super/madrasas/${madrasaId}/users`);
+  const res = await cachedGet(`/super/madrasas/${madrasaId}/users`);
   return res.data;
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
@@ -13,7 +13,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await api.get("/dashboard");
+      const res = await cachedGet("/dashboard");
       setData(res.data);
     })();
   }, []);

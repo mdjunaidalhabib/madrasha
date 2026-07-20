@@ -1,6 +1,6 @@
 import { AdmissionFormData, AdmissionFormErrors } from "../../features/students/AdmissionPage";
 import { useEffect, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import { logger } from "../../utils/logger";
 
@@ -99,7 +99,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
   useEffect(() => {
     const fetchDivisions = async () => {
       try {
-        const res = await api.get("/madrasa-divisions");
+        const res = await cachedGet("/madrasa-divisions");
         const data = extractData(res);
         setDivisions(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -123,7 +123,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
       try {
         setLoadingClasses(true);
 
-        const res = await api.get(`/madrasa-classes?division_id=${formData.academicDivision}`, {
+        const res = await cachedGet(`/madrasa-classes?division_id=${formData.academicDivision}`, {
           signal: controller.signal,
         });
 

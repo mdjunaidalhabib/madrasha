@@ -1,18 +1,23 @@
 import { ReportMenuItem } from "../../../src/features/reports/types";
-import AbashikAttendancePrint from "./abashikAttendancePrint";
-import DailyAttendancePrint from "./DailyAttendancePrint";
-import DigitalAttendancePrint from "./DigitalAttendancePrint";
-import TestimonialList from "./TestimonialList";
-import SanadList from "./SanadList";
-import AdmitCardGrid from "./AdmitCardGrid";
-import TransferLetterList from "./TransferLetterList";
-import IdCardGrid from "./IdCardGrid";
-import MarksheetList from "./MarksheetList";
-import ResultNoticeList from "./ResultNoticeList";
+import AcademicResultPrint from "./academic/AcademicResultPrint";
+import ClassRoutinePrint from "./academic/ClassRoutinePrint";
+import DailyAttendancePrint from "./academic/DailyAttendancePrint";
+import DigitalAttendancePrint from "./academic/DigitalAttendancePrint";
+import ResidentialAttendancePrint from "./academic/ResidentialAttendancePrint";
+import ResultNoticeList from "./academic/ResultNoticeList";
+import AdmitCardGrid from "./documents/AdmitCardGrid";
+import IdCardGrid from "./documents/IdCardGrid";
+import SanadList from "./documents/SanadList";
+import TestimonialList from "./documents/TestimonialList";
+import TransferLetterList from "./documents/TransferLetterList";
+import ExamNumberSheet from "./exam/ExamNumberSheet";
+import ExamSignatureSheet from "./exam/ExamSignatureSheet";
+import GuardianPhoneListPrint from "./student/GuardianPhoneListPrint";
+import MarksheetList from "./student/MarksheetList";
+import StudentAdmissionListPrint from "./student/StudentAdmissionListPrint";
+import TeacherListPrint from "./teacher/TeacherListPrint";
+import TeacherPhoneListPrint from "./teacher/TeacherPhoneListPrint";
 import ReportTable from "./ReportTable";
-import RegisterListPrint from "./RegisterListPrint";
-import ExamSignatureSheet from "./ExamSignatureSheet";
-import ExamNumberSheet from "./ExamNumberSheet";
 
 type ReportContentProps = {
   loading: boolean;
@@ -49,7 +54,7 @@ const ReportContent = ({
 
   if (report.printable === "marksheet") return <MarksheetList rows={rows} />;
   if (report.printable === "result-notice") {
-    return <ResultNoticeList rows={rows} startIndex={startIndex} />;
+    return <ResultNoticeList rows={rows} startIndex={startIndex} columns={report.columns} />;
   }
   if (report.printable === "id-card") return <IdCardGrid rows={rows} />;
   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} />;
@@ -59,7 +64,7 @@ const ReportContent = ({
 
   if (report.printable === "attendance-register") {
     return (
-      <AbashikAttendancePrint
+      <ResidentialAttendancePrint
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -90,11 +95,22 @@ const ReportContent = ({
     );
   }
 
-  if (report.printable === "admission-register") {
+  if (report.printable === "academic-result") {
     return (
-      <RegisterListPrint
+      <AcademicResultPrint
         rows={rows}
-        variant="admission"
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+        columns={report.columns}
+      />
+    );
+  }
+
+  if (report.printable === "class-routine") {
+    return (
+      <ClassRoutinePrint
+        rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
@@ -102,13 +118,43 @@ const ReportContent = ({
     );
   }
 
-  if (report.printable === "guardian-phone-register") {
+  if (report.printable === "student-admission-list") {
     return (
-      <RegisterListPrint
+      <StudentAdmissionListPrint
         rows={rows}
-        variant="guardian-phone"
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "guardian-phone-list") {
+    return (
+      <GuardianPhoneListPrint
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "teacher-list") {
+    return (
+      <TeacherListPrint
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        startIndex={startIndex}
+      />
+    );
+  }
+
+  if (report.printable === "teacher-phone-list") {
+    return (
+      <TeacherPhoneListPrint
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
         startIndex={startIndex}
       />
     );
@@ -132,6 +178,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        columns={report.columns}
       />
     );
   }

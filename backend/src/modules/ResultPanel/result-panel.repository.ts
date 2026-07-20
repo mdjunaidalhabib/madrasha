@@ -45,7 +45,17 @@ export class ResultPanelRepository {
 
   findMarks(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
     return prisma.mark.findMany({
-      where: { madrasaId, examId, classId, resultMasterId },
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        book: {
+          madrasaBooks: {
+            some: { madrasaId, isActive: 1 },
+          },
+        },
+      },
       select: { studentId: true, bookId: true, mark: true, resultMasterId: true },
       orderBy: [{ studentId: "asc" }, { bookId: "asc" }],
     });
@@ -69,9 +79,27 @@ export class ResultPanelRepository {
   groupMarksByStudent(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
     return prisma.mark.groupBy({
       by: ["studentId"],
-      where: { madrasaId, examId, classId, resultMasterId },
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        book: {
+          madrasaBooks: {
+            some: { madrasaId, isActive: 1 },
+          },
+        },
+      },
       _sum: { mark: true },
       _count: { _all: true },
+    });
+  }
+
+  findResultMastersByClass(madrasaId: number, classId: number) {
+    return prisma.resultMaster.findMany({
+      where: { madrasaId, classId },
+      select: { id: true, examId: true, classId: true },
+      orderBy: { id: "asc" },
     });
   }
 
@@ -124,10 +152,20 @@ export class ResultPanelRepository {
     ]);
   }
 
-  saveResultSummaryInTransaction(resultMasterId: number, summaryData: Prisma.ResultSummaryCreateManyInput[]) {
+  saveResultSummaryInTransaction(
+    resultMasterId: number,
+    summaryData: Prisma.ResultSummaryCreateManyInput[],
+  ) {
     return prisma.$transaction([
       prisma.resultSummary.deleteMany({ where: { resultMasterId } }),
       prisma.resultSummary.createMany({ data: summaryData }),
+      prisma.resultMaster.update({ where: { id: resultMasterId }, data: { status: "DRAFT" } }),
+    ]);
+  }
+
+  clearResultSummaryAndMarkDraft(resultMasterId: number) {
+    return prisma.$transaction([
+      prisma.resultSummary.deleteMany({ where: { resultMasterId } }),
       prisma.resultMaster.update({ where: { id: resultMasterId }, data: { status: "DRAFT" } }),
     ]);
   }
@@ -232,6 +270,23 @@ export class ResultPanelRepository {
     ]);
   }
 
+  /** Every active subject assigned to a class, regardless of whether any
+   * student has a mark recorded for it yet. Used to build the full subject
+   * list for the "edit a single student's marks" modal — deriving the
+   * subject list only from already-saved marks (as getFullResultView used
+   * to do) hid any subject with zero entries so far, which made a newly
+   * added/renamed subject impossible to enter marks for from that modal. */
+  findActiveSubjectsForClass(
+    madrasaId: number,
+    classId: number,
+  ): Promise<{ book: { id: number; nameBn: string | null; name: string | null } | null }[]> {
+    return prisma.madrasaBook.findMany({
+      where: { madrasaId, isActive: 1, book: { classId } },
+      select: { book: { select: { id: true, nameBn: true, name: true } } },
+      orderBy: { book: { id: "asc" } },
+    });
+  }
+
   findFullResultSummaries(madrasaId: number, resultMasterId: number) {
     return prisma.resultSummary.findMany({
       where: { resultMasterId, resultMaster: { madrasaId } },
@@ -249,7 +304,14 @@ export class ResultPanelRepository {
             id: true,
             nameBn: true,
             marks: {
-              where: { resultMasterId },
+              where: {
+                resultMasterId,
+                book: {
+                  madrasaBooks: {
+                    some: { madrasaId, isActive: 1 },
+                  },
+                },
+              },
               select: { bookId: true, mark: true, book: { select: { nameBn: true, name: true } } },
               orderBy: { bookId: "asc" },
             },

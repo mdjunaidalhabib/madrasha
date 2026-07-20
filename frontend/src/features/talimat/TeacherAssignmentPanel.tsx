@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 
 import DivisionTabs from "../../components/ClassPanel/DivisionTabs";
 import BookList from "../../components/ClassPanel/BookList";
@@ -36,9 +36,9 @@ export default function TeacherAssignmentPanel() {
   useEffect(() => {
     const load = async () => {
       const [t, d, a] = await Promise.all([
-        api.get("/teachers"),
-        api.get("/madrasa-divisions"),
-        api.get("/teacher-assignments/all"),
+        cachedGet("/teachers"),
+        cachedGet("/madrasa-divisions"),
+        cachedGet("/teacher-assignments/all"),
       ]);
 
       setTeachers(t.data?.data || []);
@@ -172,7 +172,7 @@ export default function TeacherAssignmentPanel() {
         await api.post("/teacher-assignments", payload);
       }
 
-      const res = await api.get("/teacher-assignments/all");
+      const res = await cachedGet("/teacher-assignments/all");
       setAssignments(res.data?.data || res.data || []);
 
       setModalOpen(false);
@@ -189,7 +189,7 @@ export default function TeacherAssignmentPanel() {
       class_id: a.class_id,
     });
 
-    const res = await api.get("/teacher-assignments/all");
+    const res = await cachedGet("/teacher-assignments/all");
     setAssignments(res.data?.data || res.data || []);
   };
 

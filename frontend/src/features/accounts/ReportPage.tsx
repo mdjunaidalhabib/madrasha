@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
@@ -53,7 +53,7 @@ export default function ReportPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await api.get(`/accounts/report?type=${active.type}&groupBy=${active.groupBy}`);
+        const res = await cachedGet(`/accounts/report?type=${active.type}&groupBy=${active.groupBy}`);
         const data = Array.isArray(res.data)
           ? res.data
           : Array.isArray(res.data?.data)

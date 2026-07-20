@@ -6,6 +6,8 @@ const reports: ReportMenuItem[] = [
     title: "শিক্ষক লিস্ট",
     subtitle: "সকল শিক্ষকের পূর্ণ তালিকা",
     endpoint: "/reports/teacher/list",
+    printable: "teacher-list",
+    defaultOrientation: "landscape",
     columns: [
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষক", key: "teacher_name" },
@@ -23,6 +25,7 @@ const reports: ReportMenuItem[] = [
     title: "শিক্ষকদের মোবাইল নাম্বার",
     subtitle: "শিক্ষক ও অভিভাবক/জরুরি যোগাযোগ নাম্বার",
     endpoint: "/reports/teacher/phones",
+    printable: "teacher-phone-list",
     columns: [
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষক", key: "teacher_name" },

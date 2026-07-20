@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import TableSkeleton from "../../components/ui/TableSkeleton";
 
@@ -10,7 +10,7 @@ export default function ActivityPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/activity");
+      const res = await cachedGet("/activity");
       setRows(res.data);
     } finally {
       setLoading(false);

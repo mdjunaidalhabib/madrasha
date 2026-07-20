@@ -30,7 +30,13 @@ export class SidebarService {
     const roleKey = await this.resolveRoleKey(roleId);
 
     const madrasaModules = await this.repository.findActiveMadrasaModules(madrasaId);
-    const modules = madrasaModules.map((mm) => mm.module);
+    // The old standalone `admission` module duplicated the "নতুন ভর্তি"
+    // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.
+    // Filter it here so existing databases stop showing it immediately, even
+    // before the seed is run again.
+    const modules = madrasaModules
+      .map((mm) => mm.module)
+      .filter((module) => module.keyName !== "admission");
 
     const moduleIds = modules.map((m) => m.id);
     const features = await this.repository.findFeaturesByModuleIds(moduleIds);

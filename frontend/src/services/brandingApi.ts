@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { cachedGet } from "./api";
 
 export type BrandingPayload = {
   name?: string | null;
@@ -9,7 +9,7 @@ export type BrandingPayload = {
 };
 
 export async function getBranding(): Promise<BrandingPayload> {
-  const res = await api.get("/settings/branding");
+  const res = await cachedGet("/settings/branding");
   return res.data?.data || {};
 }
 

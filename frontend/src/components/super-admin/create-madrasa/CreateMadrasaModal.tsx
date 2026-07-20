@@ -5,7 +5,7 @@ import PlanSection from "./PlanSection";
 import DefaultUsersSection from "./DefaultUsersSection";
 import { CreateMadrasaPayload } from "./types";
 import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdminMadrasasPage";
-import api from "../../../services/adminApi";
+import api, { cachedGet } from "../../../services/adminApi";
 
 import DivisionsSection from "./DivisionsSection";
 import ToggleSection from "./ToggleSection";
@@ -91,10 +91,10 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   useEffect(() => {
     const fetchData = async () => {
       const [divRes, modRes, classRes, bookRes] = await Promise.all([
-        api.get("/super/divisions"),
-        api.get("/super/modules"),
-        api.get("/super/classes"),
-        api.get("/super/books"),
+        cachedGet("/super/divisions"),
+        cachedGet("/super/modules"),
+        cachedGet("/super/classes"),
+        cachedGet("/super/books"),
       ]);
 
       const divData = (divRes.data?.data || []).map((r: any) => ({

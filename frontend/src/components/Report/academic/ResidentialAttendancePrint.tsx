@@ -1,6 +1,6 @@
-import { cellValue } from "../../utils/reportUtils";
+import { cellValue } from "../../../utils/reportUtils";
 
-type AbashikAttendancePrintProps = {
+type ResidentialAttendancePrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
@@ -16,12 +16,12 @@ const getRowValue = (row: Record<string, any>, keys: string[]) => {
   return "";
 };
 
-const AbashikAttendancePrint = ({
+const ResidentialAttendancePrint = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
-}: AbashikAttendancePrintProps) => {
+}: ResidentialAttendancePrintProps) => {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
   const isAllDivision =
@@ -189,4 +189,4 @@ const AbashikAttendancePrint = ({
   );
 };
 
-export default AbashikAttendancePrint;
+export default ResidentialAttendancePrint;

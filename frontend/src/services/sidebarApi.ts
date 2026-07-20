@@ -1,6 +1,6 @@
-import api from "./api";
+import api, { cachedGet } from "./api";
 
 export async function loadSidebar() {
-  const res = await api.get("/sidebar");
+  const res = await cachedGet("/sidebar");
   return res.data;
 }

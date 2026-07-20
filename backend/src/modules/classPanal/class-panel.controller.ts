@@ -6,7 +6,10 @@ import { classPanelService } from "./class-panel.service";
 
 const respondError = (res: Response, error: unknown, logTag: string, fallbackMessage: string) => {
   if (error instanceof ApiError) {
-    return res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({
+      message: error.message,
+      ...(error.details !== undefined ? { details: error.details } : {}),
+    });
   }
   logger.error(logTag, error);
   return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: fallbackMessage });
@@ -29,7 +32,10 @@ export const getDivisions = async (req: Request, res: Response) => {
 ========================================================= */
 export const getClasses = async (req: Request, res: Response) => {
   try {
-    const data = await classPanelService.listClasses(req.tenant?.madrasa_id, Number(req.query.division_id));
+    const data = await classPanelService.listClasses(
+      req.tenant?.madrasa_id,
+      Number(req.query.division_id),
+    );
     res.json(data);
   } catch (error) {
     respondError(res, error, "❌ Class fetch error:", "Failed to load classes");
@@ -68,7 +74,10 @@ export const deleteClass = async (req: Request, res: Response) => {
 ========================================================= */
 export const getSubjects = async (req: Request, res: Response) => {
   try {
-    const data = await classPanelService.listSubjects(req.tenant?.madrasa_id, Number(req.query.class_id));
+    const data = await classPanelService.listSubjects(
+      req.tenant?.madrasa_id,
+      Number(req.query.class_id),
+    );
     res.json(data);
   } catch (error) {
     respondError(res, error, "❌ Book fetch error:", "Failed to load books");
@@ -78,26 +87,42 @@ export const getSubjects = async (req: Request, res: Response) => {
 export const addSubject = async (req: Request, res: Response) => {
   try {
     await classPanelService.addSubject(req.tenant?.madrasa_id, req.body);
-    res.json({ message: "Book added successfully" });
+    res.json({ message: "Subject added and affected results refreshed" });
   } catch (error) {
-    respondError(res, error, "❌ Add book error:", "Failed to add book");
+    respondError(res, error, "❌ Add subject error:", "Failed to add subject");
   }
 };
 
 export const updateSubject = async (req: Request, res: Response) => {
   try {
-    await classPanelService.updateSubject(Number(req.params.id), req.body);
-    res.json({ message: "Book updated successfully" });
+    await classPanelService.updateSubject(req.tenant?.madrasa_id, Number(req.params.id), req.body);
+    res.json({ message: "Subject name updated successfully" });
   } catch (error) {
-    respondError(res, error, "❌ Update book error:", "Failed to update book");
+    respondError(res, error, "❌ Update subject error:", "Failed to update subject");
+  }
+};
+
+export const getSubjectDeleteInfo = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.getSubjectDeleteInfo(
+      req.tenant?.madrasa_id,
+      Number(req.params.id),
+    );
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Subject delete info error:", "Failed to check subject marks");
   }
 };
 
 export const deleteSubject = async (req: Request, res: Response) => {
   try {
-    await classPanelService.deleteSubject(req.tenant?.madrasa_id, Number(req.params.id));
-    res.json({ message: "Book removed from madrasa" });
+    await classPanelService.deleteSubject(
+      req.tenant?.madrasa_id,
+      Number(req.params.id),
+      req.query.confirm_marks === "true",
+    );
+    res.json({ message: "Subject removed and affected results recalculated" });
   } catch (error) {
-    respondError(res, error, "❌ Delete book error:", "Failed to delete book");
+    respondError(res, error, "❌ Delete subject error:", "Failed to delete subject");
   }
 };

@@ -502,27 +502,20 @@ async function main() {
       groupName: "core",
       sortOrder: 6,
     },
-    {
-      keyName: "admission",
-      name: "Admission",
-      nameBn: "নতুন ভর্তি",
-      groupName: "core",
-      sortOrder: 7,
-    },
-    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 8 },
+    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 7 },
     {
       keyName: "activity",
       name: "Activity Log",
       nameBn: "অ্যাক্টিভিটি লগ",
       groupName: "core",
-      sortOrder: 9,
+      sortOrder: 8,
     },
     {
       keyName: "website",
       name: "Website Settings",
       nameBn: "ওয়েবসাইট সেটিংস",
       groupName: "core",
-      sortOrder: 10,
+      sortOrder: 9,
     },
   ];
   const moduleIds: Record<string, number> = {};

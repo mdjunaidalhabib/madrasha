@@ -1,11 +1,18 @@
-import { cellValue } from "../../utils/reportUtils";
+import { cellValue } from "../../../utils/reportUtils";
+import { ReportColumn } from "../../../features/reports/types";
 
 type ResultNoticeListProps = {
   rows: Record<string, any>[];
   startIndex?: number;
+  /** Column config from the report's menu definition (AcademicReportPage.tsx),
+   * so a header rename there is reflected in this print preview too. */
+  columns?: ReportColumn[];
 };
 
-const ResultNoticeList = ({ rows, startIndex = 0 }: ResultNoticeListProps) => {
+const ResultNoticeList = ({ rows, startIndex = 0, columns = [] }: ResultNoticeListProps) => {
+  const headerMap = new Map(columns.map((c) => [c.key, c.header]));
+  const label = (key: string, fallback: string) => headerMap.get(key) || fallback;
+
   const groups = Object.values(
     rows.reduce<Record<string, { title: string; rows: Record<string, any>[] }>>((acc, row) => {
       const title = `${cellValue(row, "exam_name")} | ${cellValue(row, "class_name")} | ${cellValue(row, "exam_year")}`;
@@ -27,14 +34,14 @@ const ResultNoticeList = ({ rows, startIndex = 0 }: ResultNoticeListProps) => {
           <table className="w-full border-collapse text-center text-sm">
             <thead>
               <tr className="bg-slate-100">
-                <th className="border border-slate-500 px-2 py-2">রোল</th>
-                <th className="border border-slate-500 px-2 py-2">রেজিস্ট্রেশন নম্বর</th>
-                <th className="border border-slate-500 px-2 py-2">শিক্ষার্থী</th>
-                <th className="border border-slate-500 px-2 py-2">মোট</th>
-                <th className="border border-slate-500 px-2 py-2">গড়</th>
-                <th className="border border-slate-500 px-2 py-2">গ্রেড</th>
-                <th className="border border-slate-500 px-2 py-2">মেধাক্রম</th>
-                <th className="border border-slate-500 px-2 py-2">স্ট্যাটাস</th>
+                <th className="border border-slate-500 px-2 py-2">{label("roll", "রোল")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("registration_no", "রেজিস্ট্রেশন নম্বর")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("student_name", "শিক্ষার্থী")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("total", "মোট")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("average", "গড়")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("general_grade", "গ্রেড")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("rank_no", "মেধাক্রম")}</th>
+                <th className="border border-slate-500 px-2 py-2">{label("status", "স্ট্যাটাস")}</th>
               </tr>
             </thead>
             <tbody>

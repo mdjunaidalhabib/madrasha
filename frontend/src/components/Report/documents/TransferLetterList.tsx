@@ -1,12 +1,12 @@
 import { useEffect } from "react";
-import { useDocumentTemplateStore } from "../../store/documentTemplateStore";
-import { DEFAULT_SANAD_TEMPLATE, renderTemplateText } from "../../utils/documentTemplates";
+import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+import { DEFAULT_TRANSFER_LETTER_TEMPLATE, renderTemplateText } from "../../../utils/documentTemplates";
 
-type SanadListProps = {
+type TransferLetterListProps = {
   rows: Record<string, any>[];
 };
 
-const SanadList = ({ rows }: SanadListProps) => {
+const TransferLetterList = ({ rows }: TransferLetterListProps) => {
   const templates = useDocumentTemplateStore((s) => s.templates);
   const fetchTemplates = useDocumentTemplateStore((s) => s.fetchTemplates);
 
@@ -14,18 +14,18 @@ const SanadList = ({ rows }: SanadListProps) => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const template = templates?.sanad_template || DEFAULT_SANAD_TEMPLATE;
+  const template = templates?.transfer_letter_template || DEFAULT_TRANSFER_LETTER_TEMPLATE;
 
   return (
     <div className="space-y-4">
       {rows.map((row, index) => (
         <div
-          key={`sanad-${row.id || index}`}
+          key={`transfer-letter-${row.id || index}`}
           className="print-page-break rounded-xl border-2 border-slate-800 bg-white p-8"
         >
           <div className="text-center">
             <p className="text-sm text-slate-500">بسم الله الرحمن الرحيم</p>
-            <h3 className="mt-2 text-2xl font-bold">সনদ পত্র</h3>
+            <h3 className="mt-2 text-2xl font-bold">ছাড়পত্র</h3>
           </div>
 
           <p className="mt-8 whitespace-pre-line text-lg leading-9 text-slate-800">
@@ -42,4 +42,4 @@ const SanadList = ({ rows }: SanadListProps) => {
   );
 };
 
-export default SanadList;
+export default TransferLetterList;

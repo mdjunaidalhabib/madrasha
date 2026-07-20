@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { useConfirmStore } from "../../store/confirmStore";
 
 export default function ClassPanel() {
@@ -27,7 +27,7 @@ export default function ClassPanel() {
   /* ================= LOAD ================= */
 
   const loadDivisions = useCallback(async () => {
-    const res = await api.get("/madrasa-divisions");
+    const res = await cachedGet("/madrasa-divisions");
     const data = res.data || [];
 
     setDivisions(data);
@@ -39,7 +39,7 @@ export default function ClassPanel() {
   }, [loadDivisions]);
 
   const loadClasses = useCallback(async () => {
-    const res = await api.get(`/madrasa-classes?division_id=${divisionId}`);
+    const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
     const data = res.data || [];
 
     setClasses(data);
@@ -57,7 +57,7 @@ export default function ClassPanel() {
   }, [divisionId, loadClasses]);
 
   const loadBooks = useCallback(async () => {
-    const res = await api.get(`/madrasa-books?class_id=${classId}`);
+    const res = await cachedGet(`/madrasa-books?class_id=${classId}`);
     setBooks(res.data || []);
   }, [classId]);
 
@@ -118,15 +118,23 @@ export default function ClassPanel() {
     loadBooks();
   };
 
-  const removeBook = (id: number) => {
+  const removeBook = async (book: any) => {
+    const response = await api.get(`/madrasa-books/${book.book_id}/delete-info`);
+    const deleteInfo = response.data || {};
+    const hasMarks = Boolean(deleteInfo.has_marks);
+    const markCount = Number(deleteInfo.mark_count || 0);
+
     useConfirmStore.getState().show({
-      title: "Delete Book",
-      message: "Delete book?",
-      confirmText: "Delete",
+      title: hasMarks ? "সাবজেক্ট ও নম্বর ডিলিট করুন" : "সাবজেক্ট ডিলিট করুন",
+      message: hasMarks
+        ? `“${book.book_name_bn}” সাবজেক্টে ${markCount}টি নম্বর এন্ট্রি আছে। সাবজেক্টটি ডিলিট করলে এর সব নম্বরও স্থায়ীভাবে ডিলিট হয়ে যাবে। আপনি কি নিশ্চিত?`
+        : `“${book.book_name_bn}” সাবজেক্টটি ডিলিট করতে চান?`,
+      confirmText: "ডিলিট করুন",
       danger: true,
       onConfirm: async () => {
-        await api.delete(`/madrasa-books/${id}`);
-        loadBooks();
+        const confirmQuery = hasMarks ? "?confirm_marks=true" : "";
+        await api.delete(`/madrasa-books/${book.book_id}${confirmQuery}`);
+        await loadBooks();
       },
     });
   };
@@ -176,9 +184,7 @@ export default function ClassPanel() {
               key={d.division_id}
               onClick={() => setDivisionId(String(d.division_id))}
               className={`px-3 py-2 border rounded ${
-                divisionId === String(d.division_id)
-                  ? "bg-blue-500 text-white"
-                  : "bg-white"
+                divisionId === String(d.division_id) ? "bg-blue-500 text-white" : "bg-white"
               }`}
             >
               {d.division_name_bn}
@@ -207,9 +213,7 @@ export default function ClassPanel() {
                 <button
                   onClick={() => setClassId(String(c.class_id))}
                   className={`px-3 py-2 border rounded ${
-                    classId === String(c.class_id)
-                      ? "bg-green-500 text-white"
-                      : "bg-white"
+                    classId === String(c.class_id) ? "bg-green-500 text-white" : "bg-white"
                   }`}
                 >
                   {c.class_name_bn}
@@ -256,10 +260,7 @@ export default function ClassPanel() {
         <h2 className="mb-2 font-medium">Books</h2>
 
         {books.map((b) => (
-          <div
-            key={b.book_id}
-            className="flex justify-between border px-3 py-2 rounded"
-          >
+          <div key={b.book_id} className="flex justify-between border px-3 py-2 rounded">
             {editingId === b.book_id ? (
               <div className="flex gap-2">
                 <input
@@ -277,7 +278,7 @@ export default function ClassPanel() {
                 {isEditMode && (
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(b)}>✏️</button>
-                    <button onClick={() => removeBook(b.book_id)}>🗑️</button>
+                    <button onClick={() => removeBook(b)}>🗑️</button>
                   </div>
                 )}
               </>
@@ -288,9 +289,7 @@ export default function ClassPanel() {
         {isEditMode && (
           <div className="mt-3">
             {!showBookInput ? (
-              <button onClick={() => setShowBookInput(true)}>
-                ➕ Add Book
-              </button>
+              <button onClick={() => setShowBookInput(true)}>➕ Add Book</button>
             ) : (
               <div className="flex gap-2">
                 <input

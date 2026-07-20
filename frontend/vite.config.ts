@@ -15,5 +15,20 @@ export default defineConfig(({ mode }) => {
     preview: {
       port,
     },
+    build: {
+      // Keep framework code in stable browser-cacheable chunks. Heavy Excel
+      // libraries are imported only when the user clicks upload/export.
+      chunkSizeWarningLimit: 750,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Keep the very large spreadsheet parsers outside all page chunks.
+            // They are downloaded only after an upload/export action.
+            if (id.includes("node_modules") && id.includes("xlsx")) return "vendor-excel";
+            return undefined;
+          },
+        },
+      },
+    },
   };
 });

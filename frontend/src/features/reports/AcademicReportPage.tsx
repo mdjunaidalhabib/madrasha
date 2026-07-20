@@ -11,6 +11,8 @@ const reports: ReportMenuItem[] = [
     title: "ফলাফল",
     subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড, মেধাক্রম",
     endpoint: "/reports/academic/results",
+    printable: "academic-result",
+    defaultOrientation: "landscape",
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
@@ -47,6 +49,7 @@ const reports: ReportMenuItem[] = [
     title: "রুটিন",
     subtitle: "ক্লাস রুটিন, বিষয়, শিক্ষক, সময়",
     endpoint: "/reports/academic/routines",
+    printable: "class-routine",
     columns: [
       { header: "দিন", key: "day", className: smallCol },
       { header: "শুরু", key: "start_time", className: smallCol },
@@ -54,40 +57,6 @@ const reports: ReportMenuItem[] = [
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "বিষয়", key: "subject_name", className: "min-w-44" },
       { header: "শিক্ষক", key: "teacher_name", className: "min-w-44" },
-    ],
-  },
-  {
-    key: "academic-admissions",
-    title: "ভর্তি তালিকা",
-    subtitle: "ভর্তিকৃত শিক্ষার্থীর পূর্ণ তালিকা",
-    endpoint: "/reports/academic/admissions",
-    printable: "admission-register",
-    defaultOrientation: "landscape",
-    columns: [
-      { header: "রোল নম্বর", key: "roll", className: smallCol },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
-      { header: "পিতা", key: "father_name", className: "min-w-44" },
-      { header: "মাতা", key: "mother_name", className: "min-w-44" },
-      { header: "শ্রেণি", key: "class_name", className: smallCol },
-      { header: "বিভাগ", key: "division_name", className: midCol },
-      { header: "মোবাইল", key: "guardian_phone", className: midCol },
-      { header: "জেলা", key: "district", className: midCol },
-    ],
-  },
-  {
-    key: "guardian-phones",
-    title: "অভিভাবক মোবাইল নাম্বার",
-    subtitle: "অভিভাবকদের যোগাযোগ তালিকা",
-    endpoint: "/reports/academic/guardian-phones",
-    printable: "guardian-phone-register",
-    columns: [
-      { header: "রোল নম্বর", key: "roll", className: smallCol },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
-      { header: "পিতা", key: "father_name", className: "min-w-44" },
-      { header: "মোবাইল", key: "guardian_phone", className: midCol },
-      { header: "শিক্ষাবর্ষ", key: "academic_year", className: smallCol },
     ],
   },
   {
@@ -131,28 +100,12 @@ const reports: ReportMenuItem[] = [
       { header: "স্ট্যাটাস", key: "status", className: smallCol },
     ],
   },
-  {
-    key: "academic-id-cards",
-    title: "আইডি কার্ড",
-    subtitle: "শিক্ষার্থীদের আইডি কার্ড প্রিন্ট",
-    endpoint: "/reports/academic/id-cards",
-    printable: "id-card",
-    columns: [
-      { header: "রোল নম্বর", key: "roll", className: smallCol },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
-      { header: "পিতা", key: "father_name", className: "min-w-44" },
-      { header: "শ্রেণি", key: "class_name", className: smallCol },
-      { header: "বিভাগ", key: "division_name", className: midCol },
-      { header: "মোবাইল", key: "guardian_phone", className: midCol },
-    ],
-  },
 ];
 
 const AcademicReportPage = () => (
   <ReportShell
     pageTitle="একাডেমিক রিপোর্ট"
-    pageSubtitle="ফলাফল, রেজাল্ট নোটিশ, রুটিন, ভর্তি তালিকা, অভিভাবক মোবাইল, হাজিরা এবং আইডি কার্ড এক জায়গায়।"
+    pageSubtitle="ফলাফল, রেজাল্ট নোটিশ, রুটিন এবং হাজিরা খাতা এক জায়গায়।"
     accentTitle="Academic Reports"
     reports={reports}
   />
