@@ -163,13 +163,79 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   word-break: break-word;
 }
 
+.academic-result-table {
+  border: 1.4px solid #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.academic-result-table thead {
+  display: table-header-group;
+}
+
 .academic-result-table th,
 .academic-result-table td {
-  padding: 4px 2px;
+  border-color: #111827;
+  padding: 5px 3px;
 }
 
 .academic-result-table td {
-  height: 30px;
+  height: 34px;
+  font-weight: 600;
+}
+
+.academic-result-standard-header {
+  background: #f1f5f9;
+  font-size: 1.04em;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  vertical-align: middle;
+}
+
+.academic-result-subject-serial {
+  height: 27px;
+  padding: 2px 1px !important;
+  background: #e2e8f0;
+  font-size: 1.08em;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.academic-result-subject-name-row {
+  height: 108px;
+}
+
+.academic-result-subject-name-cell {
+  position: relative;
+  height: 108px;
+  overflow: hidden;
+  padding: 0 !important;
+  background: #f8fafc;
+  vertical-align: middle;
+}
+
+.academic-result-subject-name {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: 102px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: normal;
+  text-align: center;
+  text-overflow: clip;
+  font-size: 1.08em;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.academic-result-subject-count {
+  color: #334155;
+  line-height: 1.2;
 }
 
 .result-notice-table {
@@ -238,14 +304,18 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 /* Academic result: adapt meta information and dense subject columns. */
 .print-page-preview[data-report="academic-result"] .academic-result-title {
-  margin-bottom: 7px;
-  font-size: 17px;
+  margin-bottom: 6px;
+  font-size: 22px;
   line-height: 1.15;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-subject-count {
+  font-size: 12px;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-meta {
   margin-bottom: 7px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.15;
 }
 
@@ -256,14 +326,19 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-title {
-  margin-bottom: 5px;
-  font-size: 15px;
+  margin-bottom: 4px;
+  font-size: 20px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-subject-count {
+  font-size: 10px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-meta {
   margin-bottom: 5px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
@@ -279,13 +354,25 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-table
   td {
-  padding: 3px 1px;
+  padding: 4px 2px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-table
   td {
-  height: 25px;
+  height: 30px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-subject-name-row,
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-subject-name-cell {
+  height: 96px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-subject-name {
+  width: 91px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-title {
@@ -306,7 +393,31 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table {
-  font-size: 6.5px !important;
+  font-size: 7.5px !important;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-subject-count {
+  font-size: 7px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-subject-name-row,
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-subject-name-cell {
+  height: 70px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-subject-name {
+  width: 66px;
+  height: 20px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-subject-serial {
+  height: 18px;
+  font-size: 1em;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table th,
@@ -331,7 +442,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
   .academic-result-table {
-  font-size: 6px !important;
+  font-size: 7px !important;
 }
 
 /* Result notice: compact title, rows and signature for short sheets. */

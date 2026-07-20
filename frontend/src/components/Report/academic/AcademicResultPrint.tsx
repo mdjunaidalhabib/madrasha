@@ -1,22 +1,15 @@
 import type { ReportColumn } from "../../../features/reports/types";
 import { cellValue } from "../../../utils/reportUtils";
 
-/**
- * Single source of truth for the academic-result table headers.
- * Change a `header` here and the on-screen table, print preview and exports
- * will all use the same text.
- */
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
-  { header: "রোল নম্বর", key: "roll", className: "min-w-22 text-center" },
-  { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: "min-w-28 text-center" },
+  { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
+  { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
   { header: "শিক্ষার্থী", key: "student_name", className: "min-w-48" },
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
-  { header: "গড়", key: "average", className: "min-w-20 text-center" },
-  { header: "গ্রেড", key: "general_grade", className: "min-w-20 text-center" },
-  { header: "মাদরাসা গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
+  { header: "গড়", key: "average", className: "min-w-20 text-center" },
+  { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
   { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
-  { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
 ];
 
 type AcademicResultPrintProps = {
@@ -79,14 +72,16 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   class_name: 1.05,
   total: 0.75,
   average: 0.72,
-  general_grade: 0.75,
   madrasa_grade: 1.05,
   rank_no: 0.82,
   status: 0.9,
 };
 
 const getColumnWeight = (column: PrintableColumn) =>
-  column.subjectKey ? 0.82 : COLUMN_WEIGHTS[column.key] || 1;
+  column.subjectKey ? 0.72 : COLUMN_WEIGHTS[column.key] || 1;
+
+const toBanglaNumber = (value: number) =>
+  String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
 
 const AcademicResultPrint = ({
   rows,
@@ -112,7 +107,7 @@ const AcademicResultPrint = ({
       if (!subjectMap.has(key)) {
         subjectMap.set(key, {
           key,
-          name: subject.subject_name || `বিষয় ${index + 1}`,
+          name: subject.subject_name || `বিষয় ${index + 1}`,
         });
       }
     });
@@ -135,6 +130,9 @@ const AcademicResultPrint = ({
       : [...configuredColumns, ...subjectColumns];
 
   const totalWeight = printableColumns.reduce((sum, column) => sum + getColumnWeight(column), 0);
+  const subjectSerialMap = new Map(
+    subjectColumns.map((column, index) => [column.key, toBanglaNumber(index + 1)]),
+  );
 
   const getMark = (row: Record<string, any>, subjectKey: string) => {
     const subject = getSubjects(row).find(
@@ -155,19 +153,26 @@ const AcademicResultPrint = ({
 
   return (
     <div className="academic-result-report mx-auto w-full bg-white text-black">
-      <h1 className="academic-result-title mb-3 text-center text-xl font-bold">একাডেমিক ফলাফল</h1>
+      <div className="academic-result-heading my-6 text-center">
+        <h1 className="academic-result-title text-2xl font-extrabold tracking-tight">
+          একাডেমিক ফলাফল
+        </h1>
+      </div>
 
-      <div className="academic-result-meta mb-3 grid grid-cols-4 border-l border-t border-black text-[12px]">
-        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
+      <div
+        className="academic-result-meta mb-3 grid grid-cols-4 border-l border-t border-black font-semibold"
+        style={{ fontSize: "16px" }}
+      >
+        <div className="flex min-h-10 items-center justify-center border-b border-r border-black px-2 text-center">
           <b className="mr-1">বিভাগ:</b> {divisionName}
         </div>
-        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
+        <div className="flex min-h-10 items-center justify-center border-b border-r border-black px-2 text-center">
           <b className="mr-1">শ্রেণি:</b> {className}
         </div>
-        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
+        <div className="flex min-h-10 items-center justify-center border-b border-r border-black px-2 text-center">
           <b className="mr-1">পরীক্ষা:</b> {examName}
         </div>
-        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
+        <div className="flex min-h-10 items-center justify-center border-b border-r border-black px-2 text-center">
           <b className="mr-1">শিক্ষাবর্ষ:</b> {examYear}
         </div>
       </div>
@@ -175,7 +180,7 @@ const AcademicResultPrint = ({
       <table
         className="academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center"
         style={{
-          fontSize: `${Math.max(14, Math.min(18, 20 - printableColumns.length * 0.35))}px`,
+          fontSize: `${Math.max(12, Math.min(16, 19 - printableColumns.length * 0.25))}px`,
         }}
       >
         <colgroup>
@@ -187,16 +192,48 @@ const AcademicResultPrint = ({
           ))}
         </colgroup>
         <thead>
-          <tr>
-            {printableColumns.map((column) => (
-              <th
-                key={`academic-header-${column.key}`}
-                className="border border-black px-1 py-2 leading-tight"
-              >
-                {column.header}
-              </th>
-            ))}
+          <tr className="academic-result-header-main-row">
+            {printableColumns.map((column) =>
+              column.subjectKey ? (
+                <th
+                  key={`academic-subject-serial-${column.key}`}
+                  className="academic-result-subject-serial border border-black"
+                  title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
+                >
+                  {subjectSerialMap.get(column.key)}
+                </th>
+              ) : (
+                <th
+                  key={`academic-header-${column.key}`}
+                  rowSpan={subjectColumns.length ? 2 : 1}
+                  className="academic-result-standard-header border border-black px-1.5 py-2 leading-tight text-center"
+                >
+                  {column.header}
+                </th>
+              ),
+            )}
           </tr>
+          {subjectColumns.length > 0 && (
+            <tr className="academic-result-subject-name-row">
+              {subjectColumns.map((column) => (
+                <th
+                  key={`academic-subject-name-${column.key}`}
+                  className="academic-result-subject-name-cell h-32 border border-black p-0 align-middle"
+                  title={column.header}
+                  style={{ fontWeight: 400 }}
+                >
+                  <div className="flex h-full items-center justify-center overflow-hidden">
+                    <span
+                      className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap leading-none"
+                      style={{ fontWeight: 400, fontSize: "10px" }}
+                    >
+                      {column.header}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          )}
         </thead>
         <tbody>
           {rows.map((row, index) => (
@@ -206,8 +243,8 @@ const AcademicResultPrint = ({
               {printableColumns.map((column) => (
                 <td
                   key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
-                  className={`h-9 border border-black px-1 ${
-                    column.key === "student_name" ? "text-left font-semibold" : "text-center"
+                  className={`h-9 border border-black px-1 text-center ${
+                    column.key === "student_name" ? "font-semibold" : ""
                   } ${column.subjectKey ? "font-semibold" : ""}`}
                 >
                   {getValue(row, column)}
