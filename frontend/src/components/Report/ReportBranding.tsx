@@ -45,13 +45,21 @@ export function ReportBrandHeader() {
   return (
     <div className="report-brand-header mb-3 flex flex-col items-center gap-1 text-center">
       {branding.report_logo && (
-        <img src={branding.report_logo} alt="Logo" className="mb-1 h-16 w-16 object-contain md:h-20 md:w-20" />
+        <img
+          src={branding.report_logo}
+          alt="Logo"
+          className="mb-1 h-16 w-16 object-contain md:h-20 md:w-20"
+        />
       )}
       {branding.name && (
-        <div className="text-lg font-bold text-slate-900 md:text-xl">{branding.name}</div>
+        <div className="report-brand-name text-lg font-bold text-slate-900 md:text-xl">
+          {branding.name}
+        </div>
       )}
       {branding.address && (
-        <div className="text-sm text-slate-600 md:text-base">{branding.address}</div>
+        <div className="report-brand-address text-sm text-slate-600 md:text-base">
+          {branding.address}
+        </div>
       )}
     </div>
   );

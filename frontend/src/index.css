@@ -135,6 +135,287 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* =========================
+   Responsive report tables
+   These rules keep academic results and result notices inside every
+   supported A4/A5 portrait/landscape sheet without horizontal clipping.
+========================= */
+
+.report-content-body,
+.academic-result-report,
+.result-notice-report {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.report-responsive-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.report-responsive-table th,
+.report-responsive-table td {
+  vertical-align: middle;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.academic-result-table th,
+.academic-result-table td {
+  padding: 4px 2px;
+}
+
+.academic-result-table td {
+  height: 30px;
+}
+
+.result-notice-table {
+  font-size: 11px;
+}
+
+.result-notice-table th,
+.result-notice-table td {
+  padding: 6px 4px;
+}
+
+/* Landscape sheets have less vertical space, so the branding is compact. */
+.print-page-preview[data-orientation="landscape"] .report-brand-header {
+  margin-bottom: 6px;
+  gap: 1px;
+}
+
+.print-page-preview[data-orientation="landscape"] .report-brand-header img {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 1px;
+}
+
+.print-page-preview[data-orientation="landscape"] .report-brand-name {
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.print-page-preview[data-orientation="landscape"] .report-brand-address {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+/* A5-specific compaction. */
+.print-page-preview[data-paper-size="a5"] .report-brand-header {
+  margin-bottom: 5px;
+  gap: 1px;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-brand-header img {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 0;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-brand-name {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-brand-address {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-header img {
+  width: 34px;
+  height: 34px;
+}
+
+.print-page-preview[data-paper-size="a5"]::after {
+  right: 7mm;
+  bottom: 2mm;
+  font-size: 8px;
+}
+
+/* Academic result: adapt meta information and dense subject columns. */
+.print-page-preview[data-report="academic-result"] .academic-result-title {
+  margin-bottom: 7px;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-meta {
+  margin-bottom: 7px;
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-meta > div {
+  min-height: 28px;
+  padding: 3px 5px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-title {
+  margin-bottom: 5px;
+  font-size: 15px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-meta {
+  margin-bottom: 5px;
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-meta
+  > div {
+  min-height: 23px;
+  padding: 2px 4px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-table
+  th,
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-table
+  td {
+  padding: 3px 1px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-table
+  td {
+  height: 25px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-title {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-meta {
+  margin-bottom: 4px;
+  font-size: 7.5px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-meta
+  > div {
+  min-height: 20px;
+  padding: 2px 3px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table {
+  font-size: 6.5px !important;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table th,
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table td {
+  padding: 2px 1px;
+  line-height: 1.05;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table td {
+  height: 21px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="portrait"]
+  .academic-result-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-title {
+  font-size: 12px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-table {
+  font-size: 6px !important;
+}
+
+/* Result notice: compact title, rows and signature for short sheets. */
+.print-page-preview[data-report="result-notice"] .result-notice-heading {
+  margin-bottom: 10px;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-title {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-subtitle {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-signature {
+  margin-top: 24px;
+  font-size: 11px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-heading {
+  margin-bottom: 6px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-title {
+  font-size: 16px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-subtitle {
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-table {
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-table
+  th,
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-table
+  td {
+  padding: 4px 2px;
+}
+
+.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
+  .result-notice-signature {
+  margin-top: 14px;
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-heading {
+  margin-bottom: 5px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-title {
+  font-size: 14px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-subtitle {
+  font-size: 8px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-table {
+  font-size: 7px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-table th,
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-table td {
+  padding: 3px 1px;
+  line-height: 1.08;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-signature {
+  margin-top: 10px;
+  font-size: 8px;
+}
+
 /* Mobile preview remains a real paginated preview and can be horizontally scrolled. */
 @media (max-width: 768px) {
   .print-preview-wrap {

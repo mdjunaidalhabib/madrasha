@@ -196,6 +196,9 @@ const PaginatedReportPreview = ({
           className="print-page-preview report-print-page bg-white"
           data-page-number={pageIndex + 1}
           data-total-pages={pages.length}
+          data-report={report.printable || "table"}
+          data-paper-size={paperSize}
+          data-orientation={orientation}
         >
           <ReportWatermark />
           {!hideBrandHeader && <ReportBrandHeader />}

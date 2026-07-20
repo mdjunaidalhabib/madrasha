@@ -1,16 +1,29 @@
+import type { ReportColumn } from "../../../features/reports/types";
 import { cellValue } from "../../../utils/reportUtils";
-import { ReportColumn } from "../../../features/reports/types";
+
+/**
+ * Single source of truth for the academic-result table headers.
+ * Change a `header` here and the on-screen table, print preview and exports
+ * will all use the same text.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
+  { header: "রোল নম্বর", key: "roll", className: "min-w-22 text-center" },
+  { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: "min-w-28 text-center" },
+  { header: "শিক্ষার্থী", key: "student_name", className: "min-w-48" },
+  { header: "মোট", key: "total", className: "min-w-20 text-center" },
+  { header: "গড়", key: "average", className: "min-w-20 text-center" },
+  { header: "গ্রেড", key: "general_grade", className: "min-w-20 text-center" },
+  { header: "মাদরাসা গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
+  { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
+  { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
+];
 
 type AcademicResultPrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
-  /** Column config from the report's menu definition (AcademicReportPage.tsx).
-   * Used to look up header labels so a rename there is reflected here too —
-   * previously this component had its own hardcoded header text and ignored
-   * the configured columns entirely, so renaming a column only affected the
-   * Excel/CSV export, never the on-screen/print preview. */
   columns?: ReportColumn[];
 };
 
@@ -18,6 +31,10 @@ type SubjectMark = {
   book_id?: number | string;
   subject_name?: string;
   mark?: number | string | null;
+};
+
+type PrintableColumn = ReportColumn & {
+  subjectKey?: string;
 };
 
 const formatAverage = (row: Record<string, any>) => {
@@ -55,15 +72,29 @@ const getSubjects = (row: Record<string, any>): SubjectMark[] => {
 const getSubjectKey = (subject: SubjectMark, index: number) =>
   String(subject.book_id ?? subject.subject_name ?? index);
 
+const COLUMN_WEIGHTS: Record<string, number> = {
+  roll: 0.75,
+  registration_no: 1.25,
+  student_name: 1.8,
+  class_name: 1.05,
+  total: 0.75,
+  average: 0.72,
+  general_grade: 0.75,
+  madrasa_grade: 1.05,
+  rank_no: 0.82,
+  status: 0.9,
+};
+
+const getColumnWeight = (column: PrintableColumn) =>
+  column.subjectKey ? 0.82 : COLUMN_WEIGHTS[column.key] || 1;
+
 const AcademicResultPrint = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
-  columns = [],
+  columns = ACADEMIC_RESULT_COLUMNS,
 }: AcademicResultPrintProps) => {
-  const headerMap = new Map(columns.map((c) => [c.key, c.header]));
-  const label = (key: string, fallback: string) => headerMap.get(key) || fallback;
-
+  const configuredColumns = columns.length ? columns : ACADEMIC_RESULT_COLUMNS;
   const firstRow = rows[0] || {};
   const divisionName =
     selectedDivisionName ||
@@ -87,8 +118,23 @@ const AcademicResultPrint = ({
     });
   });
 
-  const subjects = Array.from(subjectMap.values());
-  const subjectWidth = subjects.length > 12 ? 30 : subjects.length > 8 ? 38 : 48;
+  const subjectColumns: PrintableColumn[] = Array.from(subjectMap.values()).map((subject) => ({
+    key: `subject_${subject.key}`,
+    header: subject.name,
+    subjectKey: subject.key,
+  }));
+
+  const totalIndex = configuredColumns.findIndex((column) => column.key === "total");
+  const printableColumns: PrintableColumn[] =
+    totalIndex >= 0
+      ? [
+          ...configuredColumns.slice(0, totalIndex),
+          ...subjectColumns,
+          ...configuredColumns.slice(totalIndex),
+        ]
+      : [...configuredColumns, ...subjectColumns];
+
+  const totalWeight = printableColumns.reduce((sum, column) => sum + getColumnWeight(column), 0);
 
   const getMark = (row: Record<string, any>, subjectKey: string) => {
     const subject = getSubjects(row).find(
@@ -98,58 +144,58 @@ const AcademicResultPrint = ({
     return mark === null || mark === undefined || mark === "" ? "—" : String(mark);
   };
 
-  return (
-    <div className="mx-auto w-full bg-white text-black">
-      <h1 className="mb-3 text-center text-xl font-bold">একাডেমিক ফলাফল</h1>
+  const getValue = (row: Record<string, any>, column: PrintableColumn) => {
+    if (column.subjectKey) return getMark(row, column.subjectKey);
+    if (column.key === "average") return formatAverage(row);
+    if (column.key === "class_name") {
+      return cellValue(row, "class_name") || cellValue(row, "class_name_bn");
+    }
+    return cellValue(row, column.key);
+  };
 
-      <div className="mb-3 grid grid-cols-4 text-[12px]">
-        <div className="flex min-h-9 items-center border border-black px-2">
+  return (
+    <div className="academic-result-report mx-auto w-full bg-white text-black">
+      <h1 className="academic-result-title mb-3 text-center text-xl font-bold">একাডেমিক ফলাফল</h1>
+
+      <div className="academic-result-meta mb-3 grid grid-cols-4 border-l border-t border-black text-[12px]">
+        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
           <b className="mr-1">বিভাগ:</b> {divisionName}
         </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
+        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
           <b className="mr-1">শ্রেণি:</b> {className}
         </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
+        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
           <b className="mr-1">পরীক্ষা:</b> {examName}
         </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
+        <div className="flex min-h-9 items-center border-b border-r border-black px-2">
           <b className="mr-1">শিক্ষাবর্ষ:</b> {examYear}
         </div>
       </div>
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[11px]">
+      <table
+        className="academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center"
+        style={{
+          fontSize: `${Math.max(14, Math.min(18, 20 - printableColumns.length * 0.35))}px`,
+        }}
+      >
+        <colgroup>
+          {printableColumns.map((column) => (
+            <col
+              key={`academic-col-${column.key}`}
+              style={{ width: `${(getColumnWeight(column) / totalWeight) * 100}%` }}
+            />
+          ))}
+        </colgroup>
         <thead>
           <tr>
-            <th className="w-10 border border-black px-1 py-2.5">{label("roll", "রোল")}</th>
-            <th className="w-[68px] border border-black px-1 py-2.5">
-              {label("registration_no", "রেজিঃ নম্বর")}
-            </th>
-            <th className="w-[110px] border border-black px-1 py-2.5">
-              {label("student_name", "শিক্ষার্থীর নাম")}
-            </th>
-            {subjects.map((subject) => (
+            {printableColumns.map((column) => (
               <th
-                key={`subject-header-${subject.key}`}
-                className="border border-black px-0.5 py-1.5 leading-tight"
-                style={{ width: `${subjectWidth}px` }}
+                key={`academic-header-${column.key}`}
+                className="border border-black px-1 py-2 leading-tight"
               >
-                <span className="block break-words">{subject.name}</span>
+                {column.header}
               </th>
             ))}
-            <th className="w-11 border border-black px-1 py-2.5">{label("total", "মোট")}</th>
-            <th className="w-10 border border-black px-1 py-2.5">{label("average", "গড়")}</th>
-            <th className="w-11 border border-black px-1 py-2.5">
-              {label("general_grade", "গ্রেড ")}
-            </th>
-            <th className="w-[58px] border border-black px-1 py-2.5">
-              {label("madrasa_grade", "মাদরাসা গ্রেড")}
-            </th>
-            <th className="w-11 border border-black px-1 py-2.5">
-              {label("rank_no", "মেধাক্রম")}
-            </th>
-            <th className="w-[62px] border border-black px-1 py-2.5">
-              {label("status", "স্ট্যাটাস")}
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -157,25 +203,16 @@ const AcademicResultPrint = ({
             <tr
               key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
             >
-              <td className="h-9 border border-black px-1">{cellValue(row, "roll")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "registration_no")}</td>
-              <td className="h-9 border border-black px-1 text-left font-semibold">
-                {cellValue(row, "student_name")}
-              </td>
-              {subjects.map((subject) => (
+              {printableColumns.map((column) => (
                 <td
-                  key={`subject-mark-${row.student_id || row.id || index}-${subject.key}`}
-                  className="h-9 border border-black px-0.5 font-semibold"
+                  key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
+                  className={`h-9 border border-black px-1 ${
+                    column.key === "student_name" ? "text-left font-semibold" : "text-center"
+                  } ${column.subjectKey ? "font-semibold" : ""}`}
                 >
-                  {getMark(row, subject.key)}
+                  {getValue(row, column)}
                 </td>
               ))}
-              <td className="h-9 border border-black px-1">{cellValue(row, "total")}</td>
-              <td className="h-9 border border-black px-1">{formatAverage(row)}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "general_grade")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "madrasa_grade")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "rank_no")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "status")}</td>
             </tr>
           ))}
         </tbody>

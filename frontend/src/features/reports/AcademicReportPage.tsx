@@ -1,3 +1,5 @@
+import { ACADEMIC_RESULT_COLUMNS } from "../../components/Report/academic/AcademicResultPrint";
+import { RESULT_NOTICE_COLUMNS } from "../../components/Report/academic/ResultNoticeList";
 import ReportShell, { ReportMenuItem } from "./ReportShell";
 
 const idCol = "w-24 min-w-24 max-w-24 text-center";
@@ -13,18 +15,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/results",
     printable: "academic-result",
     defaultOrientation: "landscape",
-    columns: [
-      { header: "রোল নম্বর", key: "roll", className: smallCol },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
-      { header: "শ্রেণি", key: "class_name", className: smallCol },
-      { header: "মোট", key: "total", className: smallCol },
-      { header: "গড়", key: "average", className: smallCol },
-      { header: "গ্রেড", key: "general_grade", className: smallCol },
-      { header: "মাদরাসা গ্রেড", key: "madrasa_grade", className: midCol },
-      { header: "মেধাক্রম", key: "rank_no", className: smallCol },
-      { header: "স্ট্যাটাস", key: "status", className: smallCol },
-    ],
+    columns: ACADEMIC_RESULT_COLUMNS,
   },
 
   {
@@ -33,16 +24,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "প্রকাশিত ফলাফলের প্রিন্টযোগ্য নোটিশ",
     endpoint: "/reports/academic/result-notice",
     printable: "result-notice",
-    columns: [
-      { header: "রোল নম্বর", key: "roll", className: smallCol },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
-      { header: "শ্রেণি", key: "class_name", className: smallCol },
-      { header: "মোট", key: "total", className: smallCol },
-      { header: "গড়", key: "average", className: smallCol },
-      { header: "গ্রেড", key: "general_grade", className: smallCol },
-      { header: "স্ট্যাটাস", key: "status", className: smallCol },
-    ],
+    columns: RESULT_NOTICE_COLUMNS,
   },
   {
     key: "academic-routines",
