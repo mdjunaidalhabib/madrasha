@@ -26,7 +26,7 @@ export class ResultPanelRepository {
   findResultMasterById(id: number, madrasaId: number) {
     return prisma.resultMaster.findFirst({
       where: { id, madrasaId },
-      select: { id: true, classId: true },
+      select: { id: true, examId: true, classId: true },
     });
   }
 
@@ -89,6 +89,12 @@ export class ResultPanelRepository {
             some: { madrasaId, isActive: 1 },
           },
         },
+        student: {
+          madrasaId,
+          classId,
+          deletedAt: null,
+          isActive: 1,
+        },
       },
       _sum: { mark: true },
       _count: { _all: true },
@@ -131,7 +137,7 @@ export class ResultPanelRepository {
   findActiveStudentsInClass(madrasaId: number, classId: number) {
     return prisma.student.findMany({
       where: { madrasaId, classId, deletedAt: null, isActive: 1 },
-      select: { id: true, roll: true, academicYear: true },
+      select: { id: true, roll: true, academicYear: true, nameBn: true },
       orderBy: [{ roll: "asc" }, { id: "asc" }],
     });
   }
@@ -279,11 +285,46 @@ export class ResultPanelRepository {
   findActiveSubjectsForClass(
     madrasaId: number,
     classId: number,
-  ): Promise<{ book: { id: number; nameBn: string | null; name: string | null } | null }[]> {
+  ): Promise<
+    { isMiyari: boolean; book: { id: number; nameBn: string | null; name: string | null } | null }[]
+  > {
     return prisma.madrasaBook.findMany({
       where: { madrasaId, isActive: 1, book: { classId } },
-      select: { book: { select: { id: true, nameBn: true, name: true } } },
+      select: {
+        isMiyari: true,
+        book: { select: { id: true, nameBn: true, name: true } },
+      },
       orderBy: { book: { id: "asc" } },
+    });
+  }
+
+  findStudentsFailingMiyariSubjects(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+    miyariBookIds: number[],
+    failMark: number,
+  ) {
+    if (!miyariBookIds.length) return Promise.resolve([] as { studentId: number }[]);
+
+    return prisma.mark.findMany({
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        bookId: { in: miyariBookIds },
+        mark: { lt: failMark },
+        student: {
+          madrasaId,
+          classId,
+          deletedAt: null,
+          isActive: 1,
+        },
+      },
+      select: { studentId: true },
+      distinct: ["studentId"],
     });
   }
 

@@ -117,6 +117,7 @@ export class ReportsRepository {
             jsonb_build_object(
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
+              'is_miyari', COALESCE(mb.is_miyari, false),
               'mark', m.mark
             )
             ORDER BY b.id

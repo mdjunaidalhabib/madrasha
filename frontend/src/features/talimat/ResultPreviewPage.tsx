@@ -229,9 +229,9 @@ export default function ResultPreviewPage() {
 
       setEditingStudent(null);
       push("success", "নাম্বার আপডেট হয়েছে");
-    } catch (err) {
+    } catch (err: any) {
       logger.error("Save student marks error:", err);
-      push("error", "সেভ করা যায়নি");
+      push("error", err?.response?.data?.message || "সেভ করা যায়নি");
     } finally {
       setStudentSaving(false);
     }
@@ -246,9 +246,9 @@ export default function ResultPreviewPage() {
       await loadSummary();
       await loadOverview();
       push("success", "Result published successfully");
-    } catch (err) {
+    } catch (err: any) {
       logger.error("Publish error:", err);
-      push("error", "Publish failed");
+      push("error", err?.response?.data?.message || "ফলাফল প্রকাশ করা যায়নি");
     } finally {
       setPublishing(false);
     }

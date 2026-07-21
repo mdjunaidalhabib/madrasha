@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
 import { ReportColumn } from "../../../features/reports/types";
 
 type ExamNumberSheetProps = {
@@ -20,7 +20,7 @@ type SubjectMark = {
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   for (const key of keys) {
     const current = row?.[key];
-    if (current !== null && current !== undefined && current !== "") return String(current);
+    if (current !== null && current !== undefined && current !== "") return formatReportValue(current, key);
   }
   return fallback;
 };
@@ -61,7 +61,7 @@ const ExamNumberSheet = ({
   rows.forEach((row) => {
     parseSubjects(row).forEach((subject, index) => {
       const key = String(subject.book_id ?? subject.subject_name ?? index);
-      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || `বিষয় ${index + 1}`);
+      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`);
     });
   });
   const subjects = Array.from(subjectMap.entries());
@@ -114,7 +114,7 @@ const ExamNumberSheet = ({
 
             return (
               <tr key={`exam-number-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-0.5">{startIndex + index + 1}</td>
+                <td className="h-8 border border-black px-0.5">{toBanglaDigits(startIndex + index + 1)}</td>
                 <td className="h-8 border border-black px-0.5">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-0.5">
                   {cellValue(row, "registration_no")}
@@ -129,15 +129,15 @@ const ExamNumberSheet = ({
                       key={`${row.id || index}-${key}`}
                       className="h-8 border border-black px-0.5"
                     >
-                      {mark === null || mark === undefined || mark === "" ? "" : String(mark)}
+                      {mark === null || mark === undefined || mark === "" ? "" : formatReportValue(mark)}
                     </td>
                   );
                 })}
                 <td className="h-8 border border-black px-0.5">
-                  {row.total === null || row.total === undefined ? "" : String(row.total)}
+                  {row.total === null || row.total === undefined ? "" : formatReportValue(row.total)}
                 </td>
                 <td className="h-8 border border-black px-0.5">
-                  {row.average === null || row.average === undefined ? "" : String(row.average)}
+                  {row.average === null || row.average === undefined ? "" : formatReportValue(row.average)}
                 </td>
                 <td className="h-8 border border-black px-0.5" />
               </tr>

@@ -6,6 +6,8 @@ import AuthGuard from "../components/guards/AuthGuard";
 import ModuleGuard from "../components/guards/ModuleGuard";
 import SuperAdminLayout from "../layouts/SuperAdminLayout";
 import PageLoader from "../components/ui/PageLoader";
+import LoginPage from "../features/auth/LoginPage";
+import SuperAdminLoginPage from "../features/super-admin/auth/SuperAdminLoginPage";
 
 // All page-level components are lazy-loaded so that a visitor to any one
 // route (e.g. the public landing page at "/") only downloads the JS for
@@ -13,8 +15,6 @@ import PageLoader from "../components/ui/PageLoader";
 // every feature module) up front. Without this, every visitor — even one
 // who never logs in — had to wait for the whole bundle before anything
 // rendered.
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const StudentListPage = lazy(() => import("../features/students/StudentListPage"));
 const StudentProfilePage = lazy(() => import("../features/students/StudentProfilePage"));
@@ -48,7 +48,6 @@ const AdminWebsiteSettingsPage = lazy(
 const BrandingSettingsPage = lazy(() => import("../features/admin/settings/BrandingSettingsPage"));
 const SettingsPage = lazy(() => import("../features/admin/settings/SettingsPage"));
 
-const SuperAdminLoginPage = lazy(() => import("../features/super-admin/auth/SuperAdminLoginPage"));
 const SuperAdminDashboardPage = lazy(
   () => import("../features/super-admin/dashboard/SuperAdminDashboardPage"),
 );
@@ -254,7 +253,7 @@ export const router = createBrowserRouter([
   // QMS product landing page — shown at the root domain (e.g. https://qms.hikmahit.com)
   { path: "/", element: withSuspense(<QmsLandingPage />) },
 
-  { path: "/super-admin/login", element: withSuspense(<SuperAdminLoginPage />) },
+  { path: "/super-admin/login", element: <SuperAdminLoginPage /> },
   {
     path: "/super-admin",
     element: <SuperAdminLayout />,
@@ -284,7 +283,7 @@ export const router = createBrowserRouter([
 
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
 
-  { path: "/:madrasaSlug/admin/login", element: withSuspense(<LoginPage />) },
+  { path: "/:madrasaSlug/admin/login", element: <LoginPage /> },
   {
     path: "/:madrasaSlug/admin",
     element: (

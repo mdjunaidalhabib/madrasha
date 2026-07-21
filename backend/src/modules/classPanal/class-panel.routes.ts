@@ -6,6 +6,7 @@ import {
   updateClass,
   deleteClass,
   getSubjects,
+  updateMiyariSubjects,
   addSubject,
   updateSubject,
   getSubjectDeleteInfo,
@@ -39,6 +40,8 @@ router.delete("/madrasa-classes/:id", tenantMiddleware, authMiddleware, deleteCl
 router.get("/madrasa-books", tenantMiddleware, authMiddleware, getSubjects);
 
 router.post("/madrasa-books", tenantMiddleware, authMiddleware, addSubject);
+
+router.put("/madrasa-books/miyari", tenantMiddleware, authMiddleware, updateMiyariSubjects);
 
 router.put("/madrasa-books/:id", tenantMiddleware, authMiddleware, updateSubject);
 

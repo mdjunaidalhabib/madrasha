@@ -95,6 +95,7 @@ model MadrasaBook {
   madrasaId Int      @map("madrasa_id")
   bookId    Int      @map("book_id")
   isActive  Int?     @default(1) @map("is_active")
+  isMiyari  Boolean  @default(false) @map("is_miyari")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -102,6 +103,7 @@ model MadrasaBook {
   book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, bookId], map: "uniq_madrasa_book")
+  @@index([madrasaId, isMiyari], map: "idx_madrasa_books_miyari")
   @@map("madrasa_books")
 }
 

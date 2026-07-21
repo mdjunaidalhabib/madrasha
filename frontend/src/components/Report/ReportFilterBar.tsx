@@ -51,21 +51,21 @@ const ReportFilterBar = ({
   onOrientationChange,
 }: ReportFilterBarProps) => {
   return (
-    <div className="no-print flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="no-print flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
         <input
           type="text"
           placeholder="ID / নাম / মোবাইল"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[240px]"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:col-span-2 xl:w-[240px] xl:col-span-1"
         />
 
         {activeReport.requiresExam && (
           <select
             value={selectedExam}
             onChange={(e) => onExamChange(e.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[190px]"
+            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 xl:w-[190px]"
           >
             <option value="">পরীক্ষা নির্বাচন করুন</option>
             {exams.map((exam) => (
@@ -80,7 +80,7 @@ const ReportFilterBar = ({
         <select
           value={selectedDivision}
           onChange={(e) => onDivisionChange(e.target.value)}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 sm:w-[150px]"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 xl:w-[150px]"
         >
           <option value="">সকল বিভাগ</option>
           {divisions.map((division) => (
@@ -94,7 +94,7 @@ const ReportFilterBar = ({
           value={selectedClass}
           onChange={(e) => onClassChange(e.target.value)}
           disabled={!selectedDivision}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400 sm:w-[165px]"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-400 xl:w-[165px]"
         >
           <option value="">{selectedDivision ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}</option>
           {classes.map((cls) => (
@@ -107,7 +107,7 @@ const ReportFilterBar = ({
         <button
           type="button"
           onClick={onClear}
-          className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 xl:w-auto"
         >
           Clear
         </button>

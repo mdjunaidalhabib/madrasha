@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, toBanglaDigits } from "../../../utils/reportUtils";
 
 type ResidentialAttendancePrintProps = {
   rows: Record<string, any>[];
@@ -152,7 +152,11 @@ const ResidentialAttendancePrint = ({
                     <th
                       key={day}
                       className="h-28 w-[10px] border border-slate-900 p-0 align-middle"
-                    ></th>
+                    >
+                      <span className="inline-block -rotate-90 whitespace-nowrap text-[8px] leading-none">
+                        {toBanglaDigits(day)}
+                      </span>
+                    </th>
                   ))}
                 </tr>
               </thead>

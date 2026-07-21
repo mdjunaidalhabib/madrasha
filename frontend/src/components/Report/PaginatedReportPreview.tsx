@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation } from "../common/DataExportPrintActions";
 import { ReportBrandHeader, ReportWatermark } from "./ReportBranding";
 import ReportContent from "./ReportContent";
-import { cellValue } from "../../utils/reportUtils";
+import { cellValue, toBanglaDigits } from "../../utils/reportUtils";
 
 type PageChunk = {
   key: string;
@@ -21,6 +21,10 @@ type PaginatedReportPreviewProps = {
   paperSize: PaperSize;
   orientation: Orientation;
 };
+
+type ReportDensity = "comfortable" | "compact" | "dense" | "ultra-dense";
+
+const MM_TO_CSS_PX = 96 / 25.4;
 
 const chunkRows = (
   rows: Record<string, any>[],
@@ -154,6 +158,53 @@ const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any
   return [rows];
 };
 
+const parseSubjects = (row: Record<string, any>) => {
+  if (Array.isArray(row?.subjects)) return row.subjects;
+  if (typeof row?.subjects !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(row.subjects);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const getEffectiveColumnCount = (report: ReportMenuItem, rows: Record<string, any>[]) => {
+  if (report.printable !== "academic-result") return report.columns.length;
+
+  const subjects = new Set<string>();
+  rows.forEach((row) => {
+    parseSubjects(row).forEach((subject: Record<string, any>, index: number) => {
+      subjects.add(String(subject.book_id ?? subject.subject_name ?? index));
+    });
+  });
+
+  return report.columns.length + subjects.size;
+};
+
+const getDensity = (
+  report: ReportMenuItem,
+  rows: Record<string, any>[],
+  paperSize: PaperSize,
+  orientation: Orientation,
+): ReportDensity => {
+  const columns = getEffectiveColumnCount(report, rows);
+  const a5Penalty = paperSize === "a5" ? 2 : 0;
+  const portraitPenalty = orientation === "portrait" ? 1 : 0;
+  const densityScore = columns + a5Penalty + portraitPenalty;
+
+  if (densityScore >= 18) return "ultra-dense";
+  if (densityScore >= 14) return "dense";
+  if (densityScore >= 10 || rows.length >= 18) return "compact";
+  return "comfortable";
+};
+
+const getPaperWidthMm = (paperSize: PaperSize, orientation: Orientation) => {
+  if (paperSize === "a4") return orientation === "portrait" ? 210 : 297;
+  return orientation === "portrait" ? 148 : 210;
+};
+
 const PaginatedReportPreview = ({
   loading,
   report,
@@ -164,6 +215,9 @@ const PaginatedReportPreview = ({
   paperSize,
   orientation,
 }: PaginatedReportPreviewProps) => {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+
   const pages = useMemo(() => {
     if (loading || !rows.length) {
       return [{ key: `${report.key}-status`, rows: [], startIndex: 0 }];
@@ -188,32 +242,66 @@ const PaginatedReportPreview = ({
     return output.length ? output : [{ key: `${report.key}-empty`, rows: [], startIndex: 0 }];
   }, [loading, orientation, paperSize, report, rows]);
 
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateScale = () => {
+      const availableWidth = Math.max(240, viewport.clientWidth - 16);
+      const paperWidth = getPaperWidthMm(paperSize, orientation) * MM_TO_CSS_PX;
+      const nextScale = Math.min(1, availableWidth / paperWidth);
+      setPreviewScale(Number(nextScale.toFixed(3)));
+    };
+
+    updateScale();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateScale) : null;
+    observer?.observe(viewport);
+    window.addEventListener("resize", updateScale);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [orientation, paperSize]);
+
+  const scaleStyle = {
+    "--report-preview-scale": previewScale,
+  } as CSSProperties;
+
   return (
-    <div className="print-area print-pages">
-      {pages.map((page, pageIndex) => (
-        <section
-          key={page.key}
-          className="print-page-preview report-print-page bg-white"
-          data-page-number={pageIndex + 1}
-          data-total-pages={pages.length}
-          data-report={report.printable || "table"}
-          data-paper-size={paperSize}
-          data-orientation={orientation}
-        >
-          <ReportWatermark />
-          {!hideBrandHeader && <ReportBrandHeader />}
-          <div className="report-content-body">
-            <ReportContent
-              loading={loading}
-              report={report}
-              rows={page.rows}
-              selectedDivisionName={selectedDivisionName}
-              selectedClassName={selectedClassName}
-              startIndex={page.startIndex}
-            />
-          </div>
-        </section>
-      ))}
+    <div ref={viewportRef} className="print-preview-viewport">
+      <div className="print-area print-pages" style={scaleStyle}>
+        {pages.map((page, pageIndex) => {
+          const density = getDensity(report, page.rows, paperSize, orientation);
+
+          return (
+            <section
+              key={page.key}
+              className="print-page-preview report-print-page bg-white"
+              data-page-number={toBanglaDigits(pageIndex + 1)}
+              data-total-pages={toBanglaDigits(pages.length)}
+              data-report={report.printable || "table"}
+              data-paper-size={paperSize}
+              data-orientation={orientation}
+              data-density={density}
+            >
+              <ReportWatermark />
+              {!hideBrandHeader && <ReportBrandHeader />}
+              <div className="report-content-body">
+                <ReportContent
+                  loading={loading}
+                  report={report}
+                  rows={page.rows}
+                  selectedDivisionName={selectedDivisionName}
+                  selectedClassName={selectedClassName}
+                  startIndex={page.startIndex}
+                  isLastPage={pageIndex === pages.length - 1}
+                />
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatReportValue } from "../../utils/reportUtils";
 
 export type PaperSize = "a4" | "a5";
 export type Orientation = "portrait" | "landscape";
@@ -80,7 +81,16 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paperSize, orientation]);
 
-  const getRows = () => data.map((item) => columns.map((col) => item[col.key as string] ?? ""));
+  const getRows = () =>
+    data.map((item) =>
+      columns.map((col) => {
+        const key = String(col.key);
+        const value = item[key];
+        return value === null || value === undefined || value === ""
+          ? ""
+          : formatReportValue(value, key);
+      }),
+    );
 
   const downloadCSV = () => {
     const csvContent = [columns.map((col) => col.header), ...getRows()]
@@ -107,7 +117,12 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       const row: Record<string, any> = {};
 
       columns.forEach((col) => {
-        row[col.header] = item[col.key as string] ?? "";
+        const key = String(col.key);
+        const value = item[key];
+        row[col.header] =
+          value === null || value === undefined || value === ""
+            ? ""
+            : formatReportValue(value, key);
       });
 
       return row;
@@ -129,11 +144,11 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
       <select
         value={paperSize}
         onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
-        className="rounded border border-slate-300 px-3 py-2 text-sm"
+        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-auto"
       >
         <option value="a4">A4</option>
         <option value="a5">A5</option>
@@ -142,7 +157,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <select
         value={orientation}
         onChange={(e) => updateOrientation(e.target.value as Orientation)}
-        className="rounded border border-slate-300 px-3 py-2 text-sm"
+        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-auto"
       >
         <option value="portrait">Portrait</option>
         <option value="landscape">Landscape</option>
@@ -151,7 +166,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <button
         type="button"
         onClick={downloadExcel}
-        className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+        className="h-10 rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-700"
       >
         Excel
       </button>
@@ -159,7 +174,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <button
         type="button"
         onClick={downloadCSV}
-        className="rounded bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+        className="h-10 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white transition hover:bg-purple-700"
       >
         CSV
       </button>
@@ -167,7 +182,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <button
         type="button"
         onClick={printData}
-        className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        className="col-span-2 h-10 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 sm:col-auto"
       >
         Print / PDF
       </button>

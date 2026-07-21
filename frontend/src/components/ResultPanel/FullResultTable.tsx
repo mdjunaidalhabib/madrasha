@@ -27,6 +27,7 @@ interface Book {
   book_name?: string;
   book_name_bn?: string;
   name_bn?: string;
+  is_miyari?: boolean;
 }
 
 interface Props {
@@ -169,10 +170,10 @@ export default function FullResultTable({
 
             {subjectList.map((b) => (
               <th key={b.book_id} className="border px-2 py-2 text-center">
-                {b.book_name ||
-                  b.book_name_bn ||
-                  b.name_bn ||
-                  `Book ${b.book_id}`}
+                <span>
+                  {b.book_name || b.book_name_bn || b.name_bn || `Book ${b.book_id}`}
+                  {b.is_miyari ? <span className="ml-1 text-[10px] font-semibold text-amber-700">(মিয়ারি)</span> : null}
+                </span>
               </th>
             ))}
 
@@ -198,7 +199,10 @@ export default function FullResultTable({
             </tr>
           ) : (
             dataList.map((s) => (
-              <tr key={s.student_id} className="hover:bg-gray-50">
+              <tr
+                key={s.student_id}
+                className={String(s.status || "").toUpperCase() === "FAIL" ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}
+              >
                 <td className="border px-2 py-2 text-center break-words">{s.student_id}</td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>
 

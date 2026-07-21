@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
 
 type StudentAdmissionListPrintProps = {
   rows: Record<string, any>[];
@@ -10,7 +10,7 @@ type StudentAdmissionListPrintProps = {
 const rawValue = (row: Record<string, any>, keys: string[]) => {
   for (const key of keys) {
     const value = row?.[key];
-    if (value !== null && value !== undefined && value !== "") return String(value);
+    if (value !== null && value !== undefined && value !== "") return formatReportValue(value, key);
   }
   return "";
 };
@@ -29,10 +29,16 @@ const StudentAdmissionListPrint = ({
   const className =
     selectedClassName || rawValue(firstRow, ["class_name", "class_name_bn"]) || "সকল শ্রেণি";
   const academicYear = rawValue(firstRow, ["academic_year", "exam_year"]) || "................";
+  const contextLine = `${className} | ${divisionName} | ${academicYear}`;
 
   return (
     <div className="mx-auto w-full bg-white text-black">
-      <h1 className="mb-3 text-center text-xl font-bold">ভর্তি তালিকা</h1>
+      <div className="student-report-heading mb-3 text-center">
+        <h1 className="student-report-title text-xl font-bold">ভর্তি তালিকা</h1>
+        <p className="student-report-subtitle mt-1 text-sm font-semibold text-slate-600">
+          {contextLine}
+        </p>
+      </div>
 
       <div className="mb-3 grid grid-cols-3 text-[13px]">
         <div className="flex min-h-9 items-center border border-black px-2">
@@ -72,7 +78,7 @@ const StudentAdmissionListPrint = ({
 
             return (
               <tr key={`student-admission-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-1">{startIndex + index + 1}</td>
+                <td className="h-8 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
                 <td className="h-8 border border-black px-1">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-1">
                   {cellValue(row, "registration_no")}

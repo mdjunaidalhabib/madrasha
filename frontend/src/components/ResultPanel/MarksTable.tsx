@@ -10,6 +10,7 @@ interface Book {
   book_name_bn?: string;
   name_bn?: string;
   full_marks?: number;
+  is_miyari?: boolean;
 }
 
 interface Props {
@@ -232,8 +233,13 @@ export default function MarksTable({
               {books.length > 0 ? (
                 books.map((b) => (
                   <th key={b.book_id} className="border px-2 sm:px-3 py-2 whitespace-nowrap">
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center gap-0.5">
                       <span>{b.book_name_bn || b.name_bn || `Book ${b.book_id}`}</span>
+                      {b.is_miyari ? (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                          মিয়ারি
+                        </span>
+                      ) : null}
                       <span className="text-xs text-gray-400">/ {b.full_marks ?? 100}</span>
                     </div>
                   </th>

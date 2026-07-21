@@ -84,6 +84,16 @@ export const getSubjects = async (req: Request, res: Response) => {
   }
 };
 
+
+export const updateMiyariSubjects = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.updateMiyariSubjects(req.tenant?.madrasa_id, req.body);
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Miyari subject update error:", "Failed to update miyari subjects");
+  }
+};
+
 export const addSubject = async (req: Request, res: Response) => {
   try {
     await classPanelService.addSubject(req.tenant?.madrasa_id, req.body);

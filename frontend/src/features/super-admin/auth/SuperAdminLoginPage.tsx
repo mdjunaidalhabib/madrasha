@@ -9,12 +9,15 @@ import { useToastStore } from "../../../store/toastStore";
 export default function SuperAdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const setAuth = useAdminAuthStore((s) => s.setAuth);
 
   const navigate = useNavigate();
 
   const handleLogin = async () => {
+    if (loading) return;
+    setLoading(true);
     try {
       const res = await adminApi.post("/super-admin/login", {
         email,
@@ -36,6 +39,8 @@ export default function SuperAdminLoginPage() {
       navigate("/super-admin/dashboard");
     } catch (err: any) {
       useToastStore.getState().show(err.response?.data?.message || "Login failed", "error");
+    } finally {
+      setLoading(false);
     }
   };
   return (
@@ -52,8 +57,8 @@ export default function SuperAdminLoginPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <Button onClick={handleLogin} className="w-full">
-          Login
+        <Button onClick={handleLogin} disabled={loading} className="w-full">
+          {loading ? "Logging in..." : "Login"}
         </Button>
       </div>
     </div>

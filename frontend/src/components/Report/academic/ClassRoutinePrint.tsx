@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
 
 type ClassRoutinePrintProps = {
   rows: Record<string, any>[];
@@ -10,7 +10,7 @@ type ClassRoutinePrintProps = {
 const rawValue = (row: Record<string, any>, keys: string[]) => {
   for (const key of keys) {
     const value = row?.[key];
-    if (value !== null && value !== undefined && value !== "") return String(value);
+    if (value !== null && value !== undefined && value !== "") return formatReportValue(value, key);
   }
   return "";
 };
@@ -56,7 +56,7 @@ const ClassRoutinePrint = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`class-routine-${row.id || index}`}>
-              <td className="h-9 border border-black px-1">{startIndex + index + 1}</td>
+              <td className="h-9 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
               <td className="h-9 border border-black px-1 font-semibold">
                 {cellValue(row, "day")}
               </td>

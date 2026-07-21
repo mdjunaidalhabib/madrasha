@@ -88,7 +88,7 @@ const PREVIEW_ROW: Record<string, any> = {
   division_name: "হিফজ",
   class_name: "৫ম শ্রেণি",
   academic_year: "১৪৪৬-১৪৪৭",
-  result_summary: "উত্তীর্ণ (মুমতাজ)",
+  result_summary: "PASS (মুমতাজ)",
   id: "১০৪৫",
   roll: "০৭",
   exam_name: "বার্ষিক পরীক্ষা",

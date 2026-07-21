@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue } from "../../../utils/reportUtils";
 
 type DailyAttendancePrintProps = {
   rows: Record<string, any>[];
@@ -9,7 +9,7 @@ type DailyAttendancePrintProps = {
 
 const rowText = (row: Record<string, any>, key: string) => {
   const value = row[key];
-  return value === null || value === undefined || value === "" ? "" : String(value);
+  return value === null || value === undefined || value === "" ? "" : formatReportValue(value, key);
 };
 
 const DailyAttendancePrint = ({

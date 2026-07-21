@@ -15,3 +15,8 @@ export interface AddSubjectRequestDto {
 export interface UpdateSubjectRequestDto {
   name_bn: string;
 }
+
+export interface UpdateMiyariSubjectsRequestDto {
+  class_id: number | string;
+  book_ids: Array<number | string>;
+}

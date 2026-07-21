@@ -1,5 +1,5 @@
 import type { ReportColumn } from "../../../features/reports/types";
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatMeritRank, toBanglaDigits } from "../../../utils/reportUtils";
 
 /**
  * Single source of truth for result-notice table headers.
@@ -32,7 +32,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   total: 0.72,
   average: 0.72,
   general_grade: 0.75,
-  rank_no: 0.82,
+  rank_no: 1.0,
   status: 0.9,
 };
 
@@ -43,12 +43,14 @@ const formatCellValue = (row: Record<string, any>, key: string) => {
     const value = row?.average;
     if (value === null || value === undefined || value === "") return "—";
     const numberValue = Number(value);
-    return Number.isFinite(numberValue) ? numberValue.toFixed(2) : String(value);
+    return Number.isFinite(numberValue) ? toBanglaDigits(numberValue.toFixed(2)) : toBanglaDigits(String(value));
   }
 
   if (key === "class_name") {
     return cellValue(row, "class_name") || cellValue(row, "class_name_bn");
   }
+
+  if (key === "rank_no") return formatMeritRank(row?.rank_no);
 
   return cellValue(row, key);
 };
@@ -107,13 +109,18 @@ const ResultNoticeList = ({
             </thead>
             <tbody>
               {group.rows.map((row, index) => (
-                <tr key={`${row.student_id || row.id}-${startIndex + index}`}>
+                <tr
+                  key={`${row.student_id || row.id}-${startIndex + index}`}
+                  className={String(row?.status || "").toUpperCase() === "FAIL" ? "result-notice-fail-row" : ""}
+                >
                   {configuredColumns.map((column) => (
                     <td
                       key={`result-notice-value-${row.student_id || row.id || index}-${column.key}`}
                       className={`border border-slate-500 px-2 py-2 ${
-                        column.key === "student_name" ? "text-left font-semibold" : "text-center"
-                      }`}
+                        column.key === "student_name"
+                          ? "result-notice-student-name text-left font-semibold"
+                          : "text-center"
+                      } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
                     >
                       {formatCellValue(row, column.key)}
                     </td>

@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, formatMeritRank } from "../../../utils/reportUtils";
 
 type MarksheetListProps = {
   rows: Record<string, any>[];
@@ -9,7 +9,9 @@ const MarksheetList = ({ rows }: MarksheetListProps) => (
     {rows.map((row, index) => (
       <section
         key={`marksheet-${row.student_id || row.id || index}`}
-        className="print-page-break border-2 border-slate-800 bg-white p-6"
+        className={`print-page-break border-2 border-slate-800 p-6 ${
+          String(row?.status || "").toUpperCase() === "FAIL" ? "bg-red-50" : "bg-white"
+        }`}
       >
         <div className="text-center">
           <p className="text-xs text-slate-500">بسم الله الرحمن الرحيم</p>
@@ -66,7 +68,7 @@ const MarksheetList = ({ rows }: MarksheetListProps) => (
                 {cellValue(row, "madrasa_grade")}
               </td>
               <td className="border border-slate-500 px-3 py-4 font-semibold">
-                {cellValue(row, "rank_no")}
+                {formatMeritRank(row?.rank_no)}
               </td>
               <td className="border border-slate-500 px-3 py-4 font-semibold">
                 {cellValue(row, "status")}

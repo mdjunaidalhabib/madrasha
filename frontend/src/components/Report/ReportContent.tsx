@@ -26,6 +26,7 @@ type ReportContentProps = {
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  isLastPage?: boolean;
 };
 
 const ReportContent = ({
@@ -35,6 +36,7 @@ const ReportContent = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  isLastPage = true,
 }: ReportContentProps) => {
   if (loading) {
     return (
@@ -103,6 +105,7 @@ const ReportContent = ({
         selectedClassName={selectedClassName}
         startIndex={startIndex}
         columns={report.columns}
+        showSignature={isLastPage}
       />
     );
   }

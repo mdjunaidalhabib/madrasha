@@ -36,7 +36,7 @@ export default function DashboardLayout() {
       {/* Mobile Sidebar */}
       {mobileSidebar && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="w-64 bg-white shadow-xl">
+          <div className="w-56 bg-white shadow-xl">
             <Sidebar closeSidebar={() => setMobileSidebar(false)} />
           </div>
 

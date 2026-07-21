@@ -16,6 +16,9 @@ const toNumber = (value: any, fallback = 0) => {
   return Number.isNaN(n) ? fallback : n;
 };
 
+const toBanglaDigits = (value: string | number) =>
+  String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
+
 const getGradeFast = (avg: number, gradeList: GradeRow[], fallback: string) => {
   for (const g of gradeList) {
     if (avg >= Number(g.minMark) && avg <= Number(g.maxMark)) {
@@ -50,6 +53,91 @@ export class ResultPanelService {
     };
   }
 
+  private async getMarkCompleteness(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+  ) {
+    const [subjects, students, groupedMarks] = await Promise.all([
+      this.repository.findActiveSubjectsForClass(madrasaId, classId),
+      this.repository.findActiveStudentsInClass(madrasaId, classId),
+      this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
+    ]);
+
+    const subjectCount = subjects.filter((row) => row.book).length;
+    if (subjectCount === 0) {
+      throw new BadRequestError("এই শ্রেণিতে কোনো সক্রিয় বিষয় পাওয়া যায়নি");
+    }
+
+    const enteredCountByStudent = new Map(
+      groupedMarks.map((row) => [Number(row.studentId), Number(row._count._all || 0)]),
+    );
+
+    const incompleteStudents = students
+      .map((student) => {
+        const enteredSubjects = Number(enteredCountByStudent.get(student.id) || 0);
+        return {
+          studentId: student.id,
+          studentName: student.nameBn || `শিক্ষার্থী ${student.id}`,
+          roll: student.roll,
+          enteredSubjects,
+          missingSubjects: Math.max(0, subjectCount - enteredSubjects),
+        };
+      })
+      .filter((student) => student.missingSubjects > 0);
+
+    return {
+      subjectCount,
+      studentCount: students.length,
+      incompleteStudents,
+      missingEntries: incompleteStudents.reduce(
+        (sum, student) => sum + student.missingSubjects,
+        0,
+      ),
+    };
+  }
+
+  private async assertAllMarksEntered(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+  ) {
+    const completeness = await this.getMarkCompleteness(
+      madrasaId,
+      examId,
+      classId,
+      resultMasterId,
+    );
+
+    if (completeness.incompleteStudents.length > 0) {
+      // Never keep or publish an old partial total after the subject list or
+      // entered marks become incomplete. The result stays draft until every
+      // active student's every active subject has an explicit mark.
+      await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
+
+      const examples = completeness.incompleteStudents
+        .slice(0, 3)
+        .map((student) =>
+          `${student.studentName}${
+            student.roll ? ` (রোল ${toBanglaDigits(student.roll)})` : ""
+          }`,
+        )
+        .join(", ");
+      const more =
+        completeness.incompleteStudents.length > 3
+          ? `সহ আরও ${toBanglaDigits(completeness.incompleteStudents.length - 3)} জন`
+          : "";
+
+      throw new BadRequestError(
+        `${toBanglaDigits(completeness.incompleteStudents.length)} জন শিক্ষার্থীর মোট ${toBanglaDigits(completeness.missingEntries)}টি বিষয়ের নম্বর দেওয়া হয়নি। ${examples}${more ? ` ${more}` : ""}। সব বিষয়ের নম্বর দিন; অনুপস্থিত হলে ০ লিখুন।`,
+      );
+    }
+
+    return completeness;
+  }
+
   private async rebuildResultSummary(
     madrasaId: number,
     examId: number,
@@ -57,17 +145,30 @@ export class ResultPanelService {
     resultMasterId: number,
     config: ResultCalculationConfig,
   ) {
-    const marks = await this.repository.groupMarksByStudent(
-      madrasaId,
-      examId,
-      classId,
-      resultMasterId,
-    );
+    const [marks, activeSubjects] = await Promise.all([
+      this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
+      this.repository.findActiveSubjectsForClass(madrasaId, classId),
+    ]);
 
     if (!marks.length) {
       await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
       return false;
     }
+
+    const miyariBookIds = activeSubjects
+      .filter((subject) => subject.isMiyari && subject.book)
+      .map((subject) => Number(subject.book!.id));
+    const failedMiyariRows = await this.repository.findStudentsFailingMiyariSubjects(
+      madrasaId,
+      examId,
+      classId,
+      resultMasterId,
+      miyariBookIds,
+      config.failMark,
+    );
+    const studentsFailingMiyari = new Set(
+      failedMiyariRows.map((row) => Number(row.studentId)),
+    );
 
     const sorted = [...marks].sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
 
@@ -82,14 +183,21 @@ export class ResultPanelService {
       // Keep exactly 2 decimal places so the stored value matches what's shown everywhere.
       const average = Math.round(rawAverage * 100) / 100;
 
+      const passed =
+        average >= config.failMark && !studentsFailingMiyari.has(Number(row.studentId));
+
       return {
         resultMasterId,
         studentId: Number(row.studentId),
         total,
         average,
-        generalGrade: getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK),
-        madrasaGrade: getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK),
-        status: average >= config.failMark ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
+        generalGrade: passed
+          ? getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK)
+          : DEFAULT_GENERAL_GRADE_FALLBACK,
+        madrasaGrade: passed
+          ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
+          : DEFAULT_MADRASA_GRADE_FALLBACK,
+        status: passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
         rankNo: index + 1,
         roll: rollByStudentId.get(Number(row.studentId)) ?? null,
       };
@@ -107,11 +215,28 @@ export class ResultPanelService {
 
     const config = await this.loadCalculationConfig(madrasaId);
 
+    let updated = 0;
+    let skipped = 0;
+
     for (const master of masters) {
+      const completeness = await this.getMarkCompleteness(
+        madrasaId,
+        master.examId,
+        master.classId,
+        master.id,
+      );
+
+      if (completeness.incompleteStudents.length > 0) {
+        await this.repository.clearResultSummaryAndMarkDraft(master.id);
+        skipped += 1;
+        continue;
+      }
+
       await this.rebuildResultSummary(madrasaId, master.examId, master.classId, master.id, config);
+      updated += 1;
     }
 
-    return { updated: masters.length };
+    return { updated, skipped };
   }
 
   private async getOrCreateSessionId(madrasaId: number, examId: number, classId: number) {
@@ -236,6 +361,13 @@ export class ResultPanelService {
       result_master_id = master.id;
     }
 
+    await this.assertAllMarksEntered(
+      madrasaId,
+      exam_id,
+      class_id,
+      result_master_id,
+    );
+
     const config = await this.loadCalculationConfig(madrasaId);
     const processed = await this.rebuildResultSummary(
       madrasaId,
@@ -323,6 +455,13 @@ export class ResultPanelService {
 
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
+
+    await this.assertAllMarksEntered(
+      madrasaId,
+      master.examId,
+      master.classId,
+      resultMasterId,
+    );
 
     const summary = await this.repository.findResultSummaryExists(resultMasterId);
     if (!summary) throw new BadRequestError("Process result before publish");
@@ -418,7 +557,10 @@ export class ResultPanelService {
 
     const summaries = await this.repository.findFullResultSummaries(madrasaId, result_master_id);
 
-    const booksMap = new Map<number, { book_id: number; book_name: string }>();
+    const booksMap = new Map<
+      number,
+      { book_id: number; book_name: string; is_miyari: boolean }
+    >();
 
     // Seed with every subject currently assigned to the class, even ones
     // with zero marks entered so far. Previously this map was built only
@@ -431,11 +573,12 @@ export class ResultPanelService {
         madrasaId,
         resolvedClassId,
       );
-      classSubjects.forEach(({ book }) => {
+      classSubjects.forEach(({ book, isMiyari }) => {
         if (!book) return;
         booksMap.set(book.id, {
           book_id: book.id,
           book_name: book.nameBn || book.name || `Book ${book.id}`,
+          is_miyari: isMiyari,
         });
       });
     }
@@ -444,7 +587,11 @@ export class ResultPanelService {
       const marks = row.student.marks.map((m) => {
         const bookName = m.book.nameBn || m.book.name || `Book ${m.bookId}`;
         if (!booksMap.has(m.bookId)) {
-          booksMap.set(m.bookId, { book_id: m.bookId, book_name: bookName });
+          booksMap.set(m.bookId, {
+            book_id: m.bookId,
+            book_name: bookName,
+            is_miyari: false,
+          });
         }
         return { book_id: m.bookId, book_name: bookName, mark: Number(m.mark || 0) };
       });

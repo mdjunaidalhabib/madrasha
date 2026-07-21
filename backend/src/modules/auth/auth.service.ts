@@ -26,16 +26,19 @@ export class AuthService {
       throw new BadRequestError("Invalid credentials");
     }
 
-    const role = await this.repository.findRoleById(user.roleId);
-    const roleKey = normalizeRoleKey(role?.keyName || role?.nameBn);
-
-    const validPassword = await comparePassword(password, user.passwordHash);
+    const [role, validPassword] = await Promise.all([
+      this.repository.findRoleById(user.roleId),
+      comparePassword(password, user.passwordHash),
+    ]);
     if (!validPassword) {
       throw new BadRequestError("Invalid credentials");
     }
 
-    const permissions = await this.resolvePermissions(user.roleId, roleKey);
-    const modules = await this.resolveEnabledModules(user.madrasaId);
+    const roleKey = normalizeRoleKey(role?.keyName || role?.nameBn);
+    const [permissions, modules] = await Promise.all([
+      this.resolvePermissions(user.roleId, roleKey),
+      this.resolveEnabledModules(user.madrasaId),
+    ]);
 
     const token = generateToken({
       id: user.id,

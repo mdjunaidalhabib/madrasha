@@ -54,14 +54,14 @@ function childPath(moduleKey: string, childKey: string) {
   return `${modulePath(moduleKey)}/${FEATURE_PATHS[childKey] || childKey}`;
 }
 function navItemClass(isActive: boolean) {
-  return `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`;
+  return `flex items-center gap-2 rounded-lg px-3 py-2 text-base font-medium transition ${isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`;
 }
 function childItemClass(isActive: boolean) {
-  return `block py-1 text-sm transition ${isActive ? "font-semibold text-blue-600" : "text-gray-600 hover:text-gray-900"}`;
+  return `block py-1.5 text-[15px] transition ${isActive ? "font-semibold text-blue-600" : "text-gray-600 hover:text-gray-900"}`;
 }
 const disabledClass =
-  "flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300";
-const disabledChildClass = "block cursor-not-allowed py-1 text-sm text-slate-300";
+  "flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-base font-medium text-slate-300";
+const disabledChildClass = "block cursor-not-allowed py-1.5 text-[15px] text-slate-300";
 
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   const sidebar = useSidebarStore((s) => s.items);
@@ -75,7 +75,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
 
   return (
     <div
-      className={`flex h-screen flex-col border-r bg-white transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}
+      className={`flex h-screen flex-col border-r bg-white transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
     >
       <div className="flex items-center justify-between border-b p-4">
         {!collapsed && <div className="text-lg font-bold text-blue-600">Madrasa</div>}
@@ -91,7 +91,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto p-2">
+      <nav className="app-sidebar-nav flex-1 space-y-2 overflow-y-auto p-2">
         {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
           const moduleDisabled = Boolean(module.disabled);
@@ -128,7 +128,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           return (
             <div key={module.key} className={moduleDisabled ? "opacity-70" : ""}>
               <div
-                className={`flex items-center gap-2 px-3 py-2 font-semibold ${moduleDisabled ? "text-slate-300" : "text-gray-700"}`}
+                className={`flex items-center gap-2 px-3 py-2 text-base font-semibold ${moduleDisabled ? "text-slate-300" : "text-gray-700"}`}
               >
                 <Icon size={18} />
                 {!collapsed && <span>{module.label}</span>}

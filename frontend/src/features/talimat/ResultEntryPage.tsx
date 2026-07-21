@@ -34,6 +34,7 @@ interface Book {
   name_bn?: string;
   book_name?: string;
   full_marks?: number;
+  is_miyari?: boolean;
 }
 
 const extractArray = (res: any) => {
@@ -310,9 +311,9 @@ export default function ResultEntryPage() {
 
       push("success", "Saved & processed successfully");
       goToPreview();
-    } catch (err) {
+    } catch (err: any) {
       logger.error("Save marks error:", err);
-      push("error", "Save failed");
+      push("error", err?.response?.data?.message || "নম্বর সংরক্ষণ করা যায়নি");
     } finally {
       setLoading(false);
     }

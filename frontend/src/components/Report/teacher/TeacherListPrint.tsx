@@ -1,4 +1,4 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { cellValue, toBanglaDigits } from "../../../utils/reportUtils";
 
 type TeacherListPrintProps = {
   rows: Record<string, any>[];
@@ -20,7 +20,7 @@ const TeacherListPrint = ({
           <b className="mr-1">বিভাগ:</b> {selectedDivisionName || "সকল বিভাগ"}
         </div>
         <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">এই পৃষ্ঠায় শিক্ষক:</b> {rows.length}
+          <b className="mr-1">এই পৃষ্ঠায় শিক্ষক:</b> {toBanglaDigits(rows.length)}
         </div>
       </div>
 
@@ -42,7 +42,7 @@ const TeacherListPrint = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`teacher-list-${row.id || row.teacher_id || index}`}>
-              <td className="h-8 border border-black px-1">{startIndex + index + 1}</td>
+              <td className="h-8 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
               <td className="h-8 border border-black px-1">{cellValue(row, "registration_no")}</td>
               <td className="h-8 border border-black px-1 text-left font-semibold">
                 {cellValue(row, "teacher_name")}

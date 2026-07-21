@@ -2,44 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-ui-bn: "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
+  --font-report-heading: "Noto Serif Bengali", "Hind Siliguri", serif;
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui-bn);
+}
+
 /* =========================
    Screen Print Preview
 ========================= */
 
 .print-preview-wrap {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #eef2f7;
+  padding: clamp(8px, 2vw, 22px);
+}
+
+.print-preview-viewport {
   display: flex;
+  width: 100%;
+  min-width: 0;
   justify-content: center;
-  overflow-x: auto;
-  background: #f1f5f9;
-  padding: 20px;
 }
 
 .print-pages {
   display: flex;
+  width: max-content;
   min-width: max-content;
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  zoom: var(--report-preview-scale, 1);
 }
 
 .print-page-preview {
+  --report-table-font-size: 11.5px;
+  --report-title-font-size: 21px;
+  --report-meta-font-size: 11px;
   position: relative;
   box-sizing: border-box;
   flex: none;
   overflow: hidden;
   background: white;
   padding: 10mm;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+  font-family: var(--font-ui-bn);
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
 }
 
 .report-print-page::after {
   content: "পৃষ্ঠা " attr(data-page-number) " / " attr(data-total-pages);
   position: absolute;
   right: 10mm;
-  bottom: 4mm;
-  z-index: 2;
+  bottom: 7mm;
+  z-index: 3;
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 2px 4px 3px;
+  overflow: visible;
+  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
   font-size: 10px;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: nowrap;
   color: #64748b;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .report-watermark {
@@ -63,6 +111,170 @@
 .report-content-body {
   position: relative;
   z-index: 1;
+}
+
+.report-brand-header {
+  margin-bottom: 10px;
+  gap: 2px;
+}
+
+.report-brand-logo {
+  width: 66px;
+  height: 66px;
+  margin-bottom: 2px;
+}
+
+.report-brand-name {
+  max-width: 94%;
+  font-family: var(--font-report-heading);
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.report-brand-address {
+  max-width: 92%;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.report-content-body h1,
+.report-content-body h2,
+.report-content-body h3 {
+  font-family: var(--font-report-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.print-page-preview .report-content-body h1,
+.print-page-preview .report-content-body h2 {
+  font-size: var(--report-title-font-size) !important;
+  line-height: 1.2;
+}
+
+.print-page-preview .report-content-body h3 {
+  font-size: calc(var(--report-title-font-size) * 0.9) !important;
+  line-height: 1.2;
+}
+
+/* Tailwind utility text and spacing are compacted only inside short paper sheets. */
+.print-page-preview[data-orientation="landscape"] .report-content-body .text-lg {
+  font-size: 15px !important;
+}
+
+.print-page-preview[data-orientation="landscape"] .report-content-body .text-sm {
+  font-size: 10.5px !important;
+}
+
+.print-page-preview[data-orientation="landscape"] .report-content-body .text-xs {
+  font-size: 9px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-2xl,
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-xl {
+  font-size: var(--report-title-font-size) !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-lg {
+  font-size: 11.5px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-base {
+  font-size: 9.5px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-sm {
+  font-size: 8.5px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .text-xs {
+  font-size: 7.4px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .leading-9 {
+  line-height: 1.75 !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .mt-16 {
+  margin-top: 24px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .mt-12 {
+  margin-top: 18px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .mt-10,
+.print-page-preview[data-paper-size="a5"] .report-content-body .mt-8 {
+  margin-top: 14px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .p-8 {
+  padding: 16px !important;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-content-body .p-6 {
+  padding: 12px !important;
+}
+
+.print-page-preview .report-content-body table {
+  max-width: 100%;
+  font-family: var(--font-ui-bn);
+  font-size: var(--report-table-font-size) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-page-preview .report-content-body th {
+  font-weight: 700;
+}
+
+.print-page-preview .report-content-body td {
+  font-weight: 500;
+}
+
+.print-page-preview[data-orientation="landscape"] {
+  --report-table-font-size: 10.75px;
+  --report-title-font-size: 19px;
+  --report-meta-font-size: 10px;
+}
+
+.print-page-preview[data-paper-size="a5"] {
+  --report-table-font-size: 8.6px;
+  --report-title-font-size: 15px;
+  --report-meta-font-size: 8px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] {
+  --report-table-font-size: 8px;
+  --report-title-font-size: 14px;
+  --report-meta-font-size: 7.5px;
+}
+
+.print-page-preview[data-density="compact"] {
+  --report-table-font-size: 10.75px;
+}
+
+.print-page-preview[data-density="dense"] {
+  --report-table-font-size: 9.8px;
+}
+
+.print-page-preview[data-density="ultra-dense"] {
+  --report-table-font-size: 8.9px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-density="compact"] {
+  --report-table-font-size: 8px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-density="dense"] {
+  --report-table-font-size: 7.3px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-density="ultra-dense"] {
+  --report-table-font-size: 6.7px;
 }
 
 /* Exact paper sheets in preview */
@@ -228,8 +440,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   white-space: normal;
   text-align: center;
   text-overflow: clip;
-  font-size: 1.08em;
-  font-weight: 800;
+  font-size: 1em;
+  font-weight: 700;
   line-height: 1.05;
 }
 
@@ -247,66 +459,82 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   padding: 6px 4px;
 }
 
-/* Landscape sheets have less vertical space, so the branding is compact. */
+/* Page-aware report branding: larger on A4, compact but readable on A5. */
 .print-page-preview[data-orientation="landscape"] .report-brand-header {
-  margin-bottom: 6px;
+  margin-bottom: 7px;
   gap: 1px;
 }
 
-.print-page-preview[data-orientation="landscape"] .report-brand-header img {
+.print-page-preview[data-orientation="landscape"] .report-brand-logo {
   width: 52px;
   height: 52px;
   margin-bottom: 1px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-name {
-  font-size: 16px;
-  line-height: 1.15;
+  font-size: 23px;
+  line-height: 1.14;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-address {
-  font-size: 11px;
-  line-height: 1.15;
+  font-size: 11.5px;
+  line-height: 1.22;
 }
 
-/* A5-specific compaction. */
 .print-page-preview[data-paper-size="a5"] .report-brand-header {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   gap: 1px;
 }
 
-.print-page-preview[data-paper-size="a5"] .report-brand-header img {
-  width: 42px;
-  height: 42px;
+.print-page-preview[data-paper-size="a5"] .report-brand-logo {
+  width: 44px;
+  height: 44px;
   margin-bottom: 0;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-name {
-  font-size: 14px;
-  line-height: 1.1;
+  max-width: 96%;
+  font-size: 19px;
+  line-height: 1.12;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-address {
-  font-size: 9px;
-  line-height: 1.1;
+  max-width: 95%;
+  font-size: 10px;
+  line-height: 1.18;
 }
 
-.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-header img {
-  width: 34px;
-  height: 34px;
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-name {
+  font-size: 17px;
+}
+
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-address {
+  font-size: 9px;
 }
 
 .print-page-preview[data-paper-size="a5"]::after {
   right: 7mm;
-  bottom: 2mm;
+  bottom: 6mm;
+  min-height: 16px;
   font-size: 8px;
+  line-height: 1.5;
 }
 
 /* Academic result: adapt meta information and dense subject columns. */
 .print-page-preview[data-report="academic-result"] .academic-result-title {
   margin-bottom: 6px;
-  font-size: 22px;
+  font-size: var(--report-title-font-size);
   line-height: 1.15;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-subtitle {
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-subject-count {
@@ -327,7 +555,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-title {
   margin-bottom: 4px;
-  font-size: 20px;
+  font-size: 18px;
+}
+
+.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
+  .academic-result-subtitle {
+  font-size: 9px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
@@ -377,7 +610,11 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-title {
   margin-bottom: 4px;
-  font-size: 13px;
+  font-size: 14px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-subtitle {
+  font-size: 8px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-meta {
@@ -527,16 +764,19 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-size: 8px;
 }
 
-/* Mobile preview remains a real paginated preview and can be horizontally scrolled. */
+/* The physical page remains exact, while the on-screen preview scales to every viewport. */
 @media (max-width: 768px) {
   .print-preview-wrap {
-    justify-content: flex-start;
     padding: 8px !important;
   }
 
   .print-pages {
-    align-items: flex-start;
     gap: 12px;
+  }
+
+  .report-sidebar {
+    max-height: 48vh;
+    overflow-y: auto;
   }
 }
 
@@ -592,11 +832,18 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
     background: white !important;
   }
 
+  .print-preview-viewport {
+    display: block !important;
+    width: auto !important;
+  }
+
   .print-pages {
     display: block !important;
+    width: auto !important;
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    zoom: 1 !important;
   }
 
   .print-page-preview {
@@ -664,4 +911,296 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .no-print {
     display: none !important;
   }
+}
+
+/* Student report list headings: use the same compact title + context system as result notice. */
+.print-page-preview[data-report="student-admission-list"] .student-report-heading,
+.print-page-preview[data-report="guardian-phone-list"] .student-report-heading {
+  margin-bottom: 10px;
+}
+
+.print-page-preview[data-report="student-admission-list"] .student-report-title,
+.print-page-preview[data-report="guardian-phone-list"] .student-report-title {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.print-page-preview[data-report="student-admission-list"] .student-report-subtitle,
+.print-page-preview[data-report="guardian-phone-list"] .student-report-subtitle {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-heading,
+.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-heading {
+  margin-bottom: 6px;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-title,
+.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-title {
+  font-size: 16px;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-subtitle,
+.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-subtitle {
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-heading,
+.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-heading {
+  margin-bottom: 5px;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-title,
+.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-title {
+  font-size: 14px;
+}
+
+.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-subtitle,
+.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-subtitle {
+  font-size: 8px;
+}
+
+
+/* Academic result readability refinements: portrait default, larger text and safe merit labels. */
+.print-page-preview[data-report="academic-result"] .academic-result-heading {
+  margin-top: 14px;
+  margin-bottom: 10px;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-table {
+  font-size: 11.5px !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-table th,
+.print-page-preview[data-report="academic-result"] .academic-result-table td {
+  line-height: 1.3;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-table td {
+  min-height: 34px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-student-name,
+.print-page-preview[data-report="academic-result"] .academic-result-student-name-header {
+  text-align: left !important;
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-rank-cell {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  font-size: 1.12em;
+  line-height: 1.45 !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow: visible !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-rank-header {
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-table {
+  font-size: 11.5px !important;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-student-name {
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-rank-cell {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  font-size: 1.08em;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table,
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-table {
+  font-size: 8.5px !important;
+}
+
+
+/* Final academic-result and sidebar refinements. */
+.print-page-preview[data-report="academic-result"] .academic-result-table th {
+  font-weight: 400 !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-standard-header,
+.print-page-preview[data-report="academic-result"] .academic-result-subject-serial,
+.print-page-preview[data-report="academic-result"] .academic-result-subject-name {
+  font-weight: 400 !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-student-name-header {
+  text-align: center !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-student-name {
+  text-align: left !important;
+  padding-left: 10px !important;
+  padding-right: 5px !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-rank-cell {
+  overflow: visible !important;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-rank-value {
+  display: inline-block;
+  min-width: 3.2em;
+  padding: 0 0.35em;
+  font-family: "Noto Serif Bengali", "Hind Siliguri", serif;
+  font-size: 1.12em;
+  font-weight: 600;
+  line-height: 1.65;
+  letter-spacing: 0.035em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* A non-breaking leading space keeps the Bengali ১ glyph away from the inline edge. */
+.print-page-preview[data-report="academic-result"] .academic-result-rank-value::before,
+.print-page-preview[data-report="academic-result"] .academic-result-rank-value::after {
+  content: "\00a0";
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-signature {
+  margin-top: 30px;
+  padding-right: 8px;
+  font-size: 11px;
+}
+
+.app-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.app-sidebar-nav:hover {
+  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+}
+
+.app-sidebar-nav::-webkit-scrollbar {
+  width: 3px;
+}
+
+.app-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sidebar-nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+.app-sidebar-nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.report-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.report-sidebar:hover {
+  scrollbar-color: rgba(148, 163, 184, 0.24) transparent;
+}
+
+.report-sidebar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.report-sidebar::-webkit-scrollbar-track,
+.report-sidebar::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.report-sidebar:hover::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-rank-value {
+  min-width: 3em;
+  padding-inline: 0.3em;
+  font-size: 1.08em;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-signature {
+  margin-top: 16px;
+  font-size: 8px;
+}
+
+
+/* Numeric-cell safety: Bengali digits must never touch or clip against table borders. */
+.print-page-preview[data-report="academic-result"] .academic-result-number-cell {
+  padding: 3px 1px !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow: visible !important;
+  line-height: 1.4 !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-number-value {
+  display: inline-flex;
+  min-width: 1.55em;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 0.14em;
+  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: visible;
+  text-rendering: geometricPrecision;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-total-cell,
+.print-page-preview[data-report="academic-result"] .academic-result-average-cell {
+  padding-left: 1px !important;
+  padding-right: 1px !important;
+  font-size: 1.02em;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-rank-value {
+  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
+  .academic-result-number-value {
+  min-width: 1.45em;
+  padding-inline: 0.1em;
+}
+
+/* Failed result rows remain clearly visible in preview, PDF and print. */
+.print-page-preview[data-report="academic-result"] .academic-result-fail-row > td,
+.print-page-preview[data-report="result-notice"] .result-notice-fail-row > td {
+  background-color: #fff1f2 !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-fail-row .academic-result-student-name {
+  color: #991b1b;
 }

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useBrandingStore } from "../../store/brandingStore";
+import { toBanglaDigits } from "../../utils/reportUtils";
 
 /**
  * Renders the madrasa's watermark (behind content) automatically.
@@ -43,23 +44,13 @@ export function ReportBrandHeader() {
   if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
 
   return (
-    <div className="report-brand-header mb-3 flex flex-col items-center gap-1 text-center">
+    <div className="report-brand-header flex flex-col items-center text-center">
       {branding.report_logo && (
-        <img
-          src={branding.report_logo}
-          alt="Logo"
-          className="mb-1 h-16 w-16 object-contain md:h-20 md:w-20"
-        />
+        <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
       )}
-      {branding.name && (
-        <div className="report-brand-name text-lg font-bold text-slate-900 md:text-xl">
-          {branding.name}
-        </div>
-      )}
+      {branding.name && <div className="report-brand-name text-slate-950">{toBanglaDigits(branding.name)}</div>}
       {branding.address && (
-        <div className="report-brand-address text-sm text-slate-600 md:text-base">
-          {branding.address}
-        </div>
+        <div className="report-brand-address text-slate-600">{toBanglaDigits(branding.address)}</div>
       )}
     </div>
   );

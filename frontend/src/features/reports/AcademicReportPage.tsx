@@ -14,7 +14,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড, মেধাক্রম",
     endpoint: "/reports/academic/results",
     printable: "academic-result",
-    defaultOrientation: "landscape",
+    defaultOrientation: "portrait",
     columns: ACADEMIC_RESULT_COLUMNS,
   },
 

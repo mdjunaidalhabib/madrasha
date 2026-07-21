@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cellValue } from "./reportUtils";
+import { cellValue, toBanglaDigits } from "./reportUtils";
 
 /**
  * Editable document templates (Sanad, Testimonial, Transfer Letter, Admit Card rules).
@@ -75,13 +75,13 @@ export function renderTemplateText(template: string, row: Record<string, any>): 
 
   while ((match = TOKEN_REGEX.exec(template)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(<span key={`t-${key++}`}>{template.slice(lastIndex, match.index)}</span>);
+      parts.push(<span key={`t-${key++}`}>{toBanglaDigits(template.slice(lastIndex, match.index))}</span>);
     }
     parts.push(<b key={`f-${key++}`}>{cellValue(row, match[1])}</b>);
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < template.length) {
-    parts.push(<span key={`t-${key++}`}>{template.slice(lastIndex)}</span>);
+    parts.push(<span key={`t-${key++}`}>{toBanglaDigits(template.slice(lastIndex))}</span>);
   }
   return parts;
 }

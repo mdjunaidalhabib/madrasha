@@ -47,9 +47,31 @@ export class ClassPanelRepository {
   findActiveSubjectsByClass(madrasaId: number, classId: number) {
     return prisma.madrasaBook.findMany({
       where: { madrasaId, isActive: 1, book: { classId } },
-      select: { book: { select: { id: true, nameBn: true, classId: true } } },
+      select: {
+        id: true,
+        isMiyari: true,
+        book: { select: { id: true, nameBn: true, classId: true } },
+      },
       orderBy: { book: { id: "asc" } },
     });
+  }
+
+  setMiyariSubjects(madrasaId: number, classId: number, bookIds: number[]) {
+    return prisma.$transaction([
+      prisma.madrasaBook.updateMany({
+        where: { madrasaId, isActive: 1, book: { classId } },
+        data: { isMiyari: false },
+      }),
+      prisma.madrasaBook.updateMany({
+        where: {
+          madrasaId,
+          isActive: 1,
+          bookId: { in: bookIds },
+          book: { classId },
+        },
+        data: { isMiyari: true },
+      }),
+    ]);
   }
 
   createAndLinkSubject(madrasaId: number, nameBn: string, classId: number) {

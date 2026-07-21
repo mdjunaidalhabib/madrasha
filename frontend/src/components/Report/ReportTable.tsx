@@ -9,15 +9,15 @@ type ReportTableProps = {
 
 const ReportTable = ({ report, rows, startIndex = 0 }: ReportTableProps) => {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse border border-black text-sm">
+    <div className="w-full min-w-0">
+      <table className="report-responsive-table w-full border-collapse border border-black text-center">
         <thead>
           <tr className="bg-slate-100">
             {report.columns.map((column) => (
               <th
                 key={column.key}
-                className={`border border-black px-4 py-3 text-center text-xs font-bold text-slate-700 whitespace-normal break-words ${
-                  column.className || "min-w-32"
+                className={`border border-black px-2 py-2 text-center font-normal text-slate-800 whitespace-normal break-words ${
+                  column.className || ""
                 }`}
               >
                 {column.header}
@@ -45,8 +45,8 @@ const ReportTable = ({ report, rows, startIndex = 0 }: ReportTableProps) => {
                 {report.columns.map((column) => (
                   <td
                     key={column.key}
-                    className={`border border-black px-4 py-3 text-center text-slate-700 whitespace-normal break-words ${
-                      column.className || "min-w-32"
+                    className={`border border-black px-2 py-2 text-center text-slate-800 whitespace-normal break-words ${
+                      column.className || ""
                     }`}
                   >
                     {cellValue(row, column.key) || "-"}
