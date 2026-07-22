@@ -30,7 +30,6 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/exam-number-sheet",
     printable: "exam-number-sheet",
     requiresExam: true,
-    defaultOrientation: "landscape",
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },

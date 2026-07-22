@@ -7,7 +7,6 @@ const reports: ReportMenuItem[] = [
     subtitle: "সকল শিক্ষকের পূর্ণ তালিকা",
     endpoint: "/reports/teacher/list",
     printable: "teacher-list",
-    defaultOrientation: "landscape",
     columns: [
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
       { header: "শিক্ষক", key: "teacher_name" },

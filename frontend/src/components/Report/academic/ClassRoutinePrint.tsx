@@ -42,30 +42,30 @@ const ClassRoutinePrint = ({
         </div>
       </div>
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[12px]">
+      <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-12 border border-black px-1 py-2">ক্রমিক</th>
-            <th className="w-24 border border-black px-1 py-2">দিন</th>
-            <th className="w-24 border border-black px-1 py-2">শুরুর সময়</th>
-            <th className="w-24 border border-black px-1 py-2">শেষ সময়</th>
-            <th className="border border-black px-1 py-2">বিষয়</th>
-            <th className="border border-black px-1 py-2">শিক্ষক</th>
+            <th className="w-12 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">দিন</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">শুরুর সময়</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">শেষ সময়</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">বিষয়</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষক</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
             <tr key={`class-routine-${row.id || index}`}>
-              <td className="h-9 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
-              <td className="h-9 border border-black px-1 font-semibold">
+              <td className="h-9 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
+              <td className="h-9 border border-black px-1 font-semibold text-base">
                 {cellValue(row, "day")}
               </td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "start_time")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "end_time")}</td>
-              <td className="h-9 border border-black px-1 text-left font-semibold">
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "start_time")}</td>
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "end_time")}</td>
+              <td className="h-9 border border-black px-1 text-left font-semibold text-base">
                 {cellValue(row, "subject_name")}
               </td>
-              <td className="h-9 border border-black px-1 text-left">
+              <td className="h-9 border border-black px-1 text-left text-base">
                 {cellValue(row, "teacher_name")}
               </td>
             </tr>

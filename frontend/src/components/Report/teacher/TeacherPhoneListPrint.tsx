@@ -24,32 +24,32 @@ const TeacherPhoneListPrint = ({
         </div>
       </div>
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[11px]">
+      <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-12 border border-black px-1 py-2">ক্রমিক</th>
-            <th className="w-24 border border-black px-1 py-2">রেজিঃ নম্বর</th>
-            <th className="border border-black px-1 py-2">শিক্ষকের নাম</th>
-            <th className="w-28 border border-black px-1 py-2">পদবি</th>
-            <th className="w-28 border border-black px-1 py-2">বিভাগ</th>
-            <th className="w-32 border border-black px-1 py-2">মোবাইল নম্বর</th>
-            <th className="w-32 border border-black px-1 py-2">জরুরি মোবাইল</th>
+            <th className="w-12 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষকের নাম</th>
+            <th className="w-28 border border-black px-1 py-2 text-base font-bold">পদবি</th>
+            <th className="w-28 border border-black px-1 py-2 text-base font-bold">বিভাগ</th>
+            <th className="w-32 border border-black px-1 py-2 text-base font-bold">মোবাইল নম্বর</th>
+            <th className="w-32 border border-black px-1 py-2 text-base font-bold">জরুরি মোবাইল</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
             <tr key={`teacher-phone-${row.id || row.teacher_id || index}`}>
-              <td className="h-9 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "registration_no")}</td>
-              <td className="h-9 border border-black px-1 text-left font-semibold">
+              <td className="h-9 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
+              <td className="h-9 border border-black px-1 text-left font-semibold text-base">
                 {cellValue(row, "teacher_name")}
               </td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "designation")}</td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "division_name")}</td>
-              <td className="h-9 border border-black px-1 font-semibold">
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "designation")}</td>
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "division_name")}</td>
+              <td className="h-9 border border-black px-1 font-semibold text-base">
                 {cellValue(row, "phone")}
               </td>
-              <td className="h-9 border border-black px-1">{cellValue(row, "parent_phone")}</td>
+              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "parent_phone")}</td>
             </tr>
           ))}
         </tbody>

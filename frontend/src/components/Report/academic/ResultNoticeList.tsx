@@ -86,7 +86,7 @@ const ResultNoticeList = ({
             </p>
           </div>
 
-          <table className="result-notice-table report-responsive-table w-full table-fixed border-collapse text-center text-sm">
+          <table className="result-notice-table report-responsive-table w-full table-fixed border-collapse text-center">
             <colgroup>
               {configuredColumns.map((column) => (
                 <col
@@ -100,7 +100,7 @@ const ResultNoticeList = ({
                 {configuredColumns.map((column) => (
                   <th
                     key={`result-notice-header-${column.key}`}
-                    className="border border-slate-500 px-2 py-2 leading-tight"
+                    className="border border-slate-500 px-2 py-2 leading-tight text-base font-bold"
                   >
                     {column.header}
                   </th>
@@ -116,7 +116,7 @@ const ResultNoticeList = ({
                   {configuredColumns.map((column) => (
                     <td
                       key={`result-notice-value-${row.student_id || row.id || index}-${column.key}`}
-                      className={`border border-slate-500 px-2 py-2 ${
+                      className={`border border-slate-500 px-2 py-2 text-base ${
                         column.key === "student_name"
                           ? "result-notice-student-name text-left font-semibold"
                           : "text-center"

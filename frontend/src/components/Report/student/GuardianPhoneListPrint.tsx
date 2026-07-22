@@ -52,30 +52,30 @@ const GuardianPhoneListPrint = ({
         </div>
       </div>
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[11px]">
+      <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-11 border border-black px-1 py-2">ক্রমিক</th>
-            <th className="w-14 border border-black px-1 py-2">রোল</th>
-            <th className="w-24 border border-black px-1 py-2">রেজিঃ নম্বর</th>
-            <th className="border border-black px-1 py-2">শিক্ষার্থীর নাম</th>
-            <th className="border border-black px-1 py-2">পিতার নাম</th>
-            <th className="w-32 border border-black px-1 py-2">মোবাইল নম্বর</th>
+            <th className="w-11 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
+            <th className="w-14 border border-black px-1 py-2 text-base font-bold">রোল</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষার্থীর নাম</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">পিতার নাম</th>
+            <th className="w-32 border border-black px-1 py-2 text-base font-bold">মোবাইল নম্বর</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
             <tr key={`guardian-phone-${row.id || row.student_id || index}`}>
-              <td className="h-8 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
-              <td className="h-8 border border-black px-1">{cellValue(row, "roll")}</td>
-              <td className="h-8 border border-black px-1">{cellValue(row, "registration_no")}</td>
-              <td className="h-8 border border-black px-1 text-left font-semibold">
+              <td className="h-8 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
+              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
+              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
+              <td className="h-8 border border-black px-1 text-left font-semibold text-base">
                 {cellValue(row, "student_name")}
               </td>
-              <td className="h-8 border border-black px-1 text-left">
+              <td className="h-8 border border-black px-1 text-left text-base">
                 {cellValue(row, "father_name")}
               </td>
-              <td className="h-8 border border-black px-1 font-semibold">
+              <td className="h-8 border border-black px-1 font-semibold text-base">
                 {cellValue(row, "guardian_phone")}
               </td>
             </tr>

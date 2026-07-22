@@ -52,18 +52,18 @@ const StudentAdmissionListPrint = ({
         </div>
       </div>
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[10px]">
+      <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-9 border border-black px-1 py-2">ক্রমিক</th>
-            <th className="w-11 border border-black px-1 py-2">রোল</th>
-            <th className="w-20 border border-black px-1 py-2">রেজিঃ নম্বর</th>
-            <th className="border border-black px-1 py-2">শিক্ষার্থীর নাম</th>
-            <th className="border border-black px-1 py-2">পিতার নাম</th>
-            <th className="border border-black px-1 py-2">মাতার নাম</th>
-            <th className="w-24 border border-black px-1 py-2">মোবাইল নম্বর</th>
-            <th className="w-20 border border-black px-1 py-2">ভর্তির তারিখ</th>
-            <th className="border border-black px-1 py-2">ঠিকানা</th>
+            <th className="w-9 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
+            <th className="w-11 border border-black px-1 py-2 text-base font-bold">রোল</th>
+            <th className="w-20 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষার্থীর নাম</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">পিতার নাম</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">মাতার নাম</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">মোবাইল নম্বর</th>
+            <th className="w-20 border border-black px-1 py-2 text-base font-bold">ভর্তির তারিখ</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">ঠিকানা</th>
           </tr>
         </thead>
         <tbody>
@@ -78,23 +78,23 @@ const StudentAdmissionListPrint = ({
 
             return (
               <tr key={`student-admission-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-1">{toBanglaDigits(startIndex + index + 1)}</td>
-                <td className="h-8 border border-black px-1">{cellValue(row, "roll")}</td>
-                <td className="h-8 border border-black px-1">
+                <td className="h-8 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
+                <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
+                <td className="h-8 border border-black px-1 text-base">
                   {cellValue(row, "registration_no")}
                 </td>
-                <td className="h-8 border border-black px-1 text-left font-semibold">
+                <td className="h-8 border border-black px-1 text-left font-semibold text-base">
                   {cellValue(row, "student_name")}
                 </td>
-                <td className="h-8 border border-black px-1 text-left">
+                <td className="h-8 border border-black px-1 text-left text-base">
                   {cellValue(row, "father_name")}
                 </td>
-                <td className="h-8 border border-black px-1 text-left">
+                <td className="h-8 border border-black px-1 text-left text-base">
                   {cellValue(row, "mother_name")}
                 </td>
-                <td className="h-8 border border-black px-1">{cellValue(row, "guardian_phone")}</td>
-                <td className="h-8 border border-black px-1">{cellValue(row, "admission_date")}</td>
-                <td className="h-8 border border-black px-1 text-left">{address || "—"}</td>
+                <td className="h-8 border border-black px-1 text-base">{cellValue(row, "guardian_phone")}</td>
+                <td className="h-8 border border-black px-1 text-base">{cellValue(row, "admission_date")}</td>
+                <td className="h-8 border border-black px-1 text-left text-base">{address || "—"}</td>
               </tr>
             );
           })}
