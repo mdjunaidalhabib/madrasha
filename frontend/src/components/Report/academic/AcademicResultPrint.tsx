@@ -1,5 +1,10 @@
 import type { ReportColumn } from "../../../features/reports/types";
-import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
+import {
+  cellValue,
+  formatMeritRank,
+  formatReportValue,
+  toBanglaDigits,
+} from "../../../utils/reportUtils";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
@@ -79,13 +84,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   status: 0.9,
 };
 
-const NUMERIC_COLUMN_KEYS = new Set([
-  "roll",
-  "registration_no",
-  "total",
-  "average",
-  "rank_no",
-]);
+const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no"]);
 
 const getColumnWeight = (column: PrintableColumn) =>
   column.subjectKey ? 0.66 : COLUMN_WEIGHTS[column.key] || 1;
@@ -110,7 +109,21 @@ const AcademicResultPrint = ({
     selectedClassName || rawValue(firstRow, ["class_name", "class_name_bn"]) || "সকল শ্রেণি";
   const examName = rawValue(firstRow, ["exam_name"]) || "সকল পরীক্ষা";
   const examYear = rawValue(firstRow, ["exam_year", "academic_year"]) || "................";
-  const contextLine = `${examName} | ${className} | ${examYear}`;
+  const examNameWithYear = `${examName} - ${examYear}`;
+  const contextLine = `জামাত ${className}`;
+  const madrasaName = rawValue(firstRow, [
+    "madrasa_name",
+    "institute_name",
+    "institution_name",
+    "madrasah_name",
+  ]);
+  const madrasaAddress = rawValue(firstRow, [
+    "madrasa_address",
+    "institute_address",
+    "institution_address",
+    "madrasah_address",
+    "address",
+  ]);
 
   const subjectMap = new Map<string, { key: string; name: string; isMiyari: boolean }>();
   rows.forEach((row) => {
@@ -168,16 +181,32 @@ const AcademicResultPrint = ({
   return (
     <div className="academic-result-report mx-auto w-full bg-white text-black">
       <div className="academic-result-heading my-6 text-center">
-        <h1 className="academic-result-title text-2xl font-extrabold tracking-tight">
-          একাডেমিক ফলাফল
-        </h1>
-        <p className="academic-result-subtitle mt-1 text-sm font-semibold text-slate-600">
+        {madrasaName && (
+          <h1 className="academic-result-madrasa-name text-2xl font-extrabold tracking-tight text-black">
+            {madrasaName}
+          </h1>
+        )}
+        {madrasaAddress && (
+          <p className="academic-result-madrasa-address mt-1 text-sm font-medium text-black">
+            {madrasaAddress}
+          </p>
+        )}
+        <h2
+          className={`academic-result-title font-extrabold tracking-tight text-black ${
+            madrasaName ? "mt-2 text-xl" : "text-2xl"
+          }`}
+        >
+          ফলাফল পত্র
+        </h2>
+        <p className="academic-result-exam-name mt-1 text-base font-bold text-black">
+          {examNameWithYear}
+        </p>
+        <p className="academic-result-subtitle mt-1 text-base font-bold text-black">
           {contextLine}
         </p>
       </div>
 
-
-      <table className="academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center">
+      <table className="academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center text-black">
         <colgroup>
           {printableColumns.map((column) => (
             <col
@@ -192,7 +221,7 @@ const AcademicResultPrint = ({
               column.subjectKey ? (
                 <th
                   key={`academic-subject-serial-${column.key}`}
-                  className="academic-result-subject-serial border border-black"
+                  className="academic-result-subject-serial border border-black text-black"
                   title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
                 >
                   {subjectSerialMap.get(column.key)}
@@ -201,7 +230,7 @@ const AcademicResultPrint = ({
                 <th
                   key={`academic-header-${column.key}`}
                   rowSpan={subjectColumns.length ? 2 : 1}
-                  className={`academic-result-standard-header border border-black px-1.5 py-2 leading-tight text-center ${
+                  className={`academic-result-standard-header border border-black px-1 py-2 text-base font-bold leading-tight text-center text-black ${
                     column.key === "rank_no" ? "academic-result-rank-header" : ""
                   } ${column.key === "student_name" ? "academic-result-student-name-header" : ""}`}
                 >
@@ -215,11 +244,11 @@ const AcademicResultPrint = ({
               {subjectColumns.map((column) => (
                 <th
                   key={`academic-subject-name-${column.key}`}
-                  className="academic-result-subject-name-cell h-32 border border-black p-0 align-middle"
+                  className="academic-result-subject-name-cell h-32 border border-black p-0 align-middle text-black"
                   title={column.header}
                 >
                   <div className="flex h-full items-center justify-center overflow-hidden">
-                    <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap leading-none">
+                    <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-sm font-semibold leading-none text-black">
                       {column.header}
                     </span>
                   </div>
@@ -232,45 +261,49 @@ const AcademicResultPrint = ({
           {rows.map((row, index) => {
             const failed = String(row?.status || "").toUpperCase() === "FAIL";
             return (
-            <tr
-              key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
-              className={failed ? "academic-result-fail-row" : ""}
-            >
-              {printableColumns.map((column) => {
-                const numericColumn = isNumericColumn(column);
-                const columnClass = [
-                  column.key === "student_name"
-                    ? "academic-result-student-name text-left font-semibold"
-                    : "",
-                  column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
-                  column.key === "total" ? "academic-result-total-cell" : "",
-                  column.key === "average" ? "academic-result-average-cell" : "",
-                  numericColumn ? "academic-result-number-cell" : "",
-                  column.subjectKey ? "font-semibold" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
+              <tr
+                key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
+                className={failed ? "academic-result-fail-row" : ""}
+              >
+                {printableColumns.map((column) => {
+                  const numericColumn = isNumericColumn(column);
+                  const columnClass = [
+                    column.key === "student_name"
+                      ? "academic-result-student-name text-left font-semibold"
+                      : "",
+                    column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
+                    column.key === "total"
+                      ? "academic-result-total-cell text-base font-semibold"
+                      : "",
+                    column.key === "average"
+                      ? "academic-result-average-cell text-base font-semibold"
+                      : "",
+                    numericColumn ? "academic-result-number-cell" : "",
+                    column.subjectKey ? "font-semibold" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
 
-                return (
-                  <td
-                    key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
-                    className={`h-9 border border-black text-center ${columnClass}`}
-                  >
-                    {column.key === "rank_no" ? (
-                      <span className="academic-result-rank-value">
-                        {getValue(row, column)}
-                      </span>
-                    ) : numericColumn ? (
-                      <span className="academic-result-number-value">
-                        {getValue(row, column)}
-                      </span>
-                    ) : (
-                      getValue(row, column)
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
+                  return (
+                    <td
+                      key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
+                      className={`h-10 border border-black text-base text-center text-black ${columnClass}`}
+                    >
+                      {column.key === "rank_no" ? (
+                        <span className="academic-result-rank-value text-base font-semibold text-black">
+                          {getValue(row, column)}
+                        </span>
+                      ) : numericColumn ? (
+                        <span className="academic-result-number-value text-base font-semibold text-black">
+                          {getValue(row, column)}
+                        </span>
+                      ) : (
+                        getValue(row, column)
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
             );
           })}
         </tbody>
@@ -278,7 +311,7 @@ const AcademicResultPrint = ({
 
       {showSignature && (
         <div className="academic-result-signature mt-10 flex justify-end">
-          <div className="min-w-44 border-t border-black pt-2 text-center text-sm font-medium">
+          <div className="min-w-44 border-t border-black pt-2 text-center text-base font-medium text-black">
             মুহতামিমের স্বাক্ষর ও সীল
           </div>
         </div>

@@ -8,12 +8,12 @@ import { cellValue, formatMeritRank, toBanglaDigits } from "../../../utils/repor
 // eslint-disable-next-line react-refresh/only-export-components
 export const RESULT_NOTICE_COLUMNS: ReportColumn[] = [
   { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
-  { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: "min-w-28 text-center" },
+  { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
   { header: "শিক্ষার্থী", key: "student_name", className: "min-w-48" },
-  { header: "শ্রেণি", key: "class_name", className: "min-w-28" },
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
-  { header: "গ্রেড", key: "general_grade", className: "min-w-20 text-center" },
+  { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
+  { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
   { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
   { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
 ];
