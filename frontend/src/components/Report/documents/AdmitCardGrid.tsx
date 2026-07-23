@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { cellValue } from "../../../utils/reportUtils";
-import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import { DEFAULT_ADMIT_CARD_RULES, renderTemplateText } from "../../../utils/documentTemplates";
 
 type AdmitCardGridProps = {
@@ -8,14 +7,7 @@ type AdmitCardGridProps = {
 };
 
 const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
-  const templates = useDocumentTemplateStore((s) => s.templates);
-  const fetchTemplates = useDocumentTemplateStore((s) => s.fetchTemplates);
-
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
-  const rulesTemplate = templates?.admit_card_rules || DEFAULT_ADMIT_CARD_RULES;
+  const rulesTemplate = useDocumentTemplate("admit_card_rules", DEFAULT_ADMIT_CARD_RULES);
 
   return (
     <div className="report-admit-card-grid grid gap-4">

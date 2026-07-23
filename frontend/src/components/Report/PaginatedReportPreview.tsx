@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation } from "../common/DataExportPrintActions";
-import { ReportBrandHeader, ReportWatermark } from "./ReportBranding";
+import { ReportBackground, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { cellValue, toBanglaDigits } from "../../utils/reportUtils";
 
@@ -285,6 +285,7 @@ const PaginatedReportPreview = ({
               data-orientation={orientation}
               data-density={density}
             >
+              <ReportBackground />
               <ReportWatermark />
               {!hideBrandHeader && <ReportBrandHeader />}
               <div className="report-content-body">

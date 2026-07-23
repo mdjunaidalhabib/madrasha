@@ -25,6 +25,7 @@ export class SettingsRepository {
         name: true,
         address: true,
         reportLogo: true,
+        reportBanner: true,
         reportWatermark: true,
         reportWatermarkOpacity: true,
       },
@@ -35,7 +36,7 @@ export class SettingsRepository {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
 
-  updateField(madrasaId: number, field: "reportLogo" | "reportWatermark", value: null) {
+  updateField(madrasaId: number, field: "reportLogo" | "reportBanner" | "reportWatermark", value: null) {
     return prisma.madrasa.update({ where: { id: madrasaId }, data: { [field]: value } });
   }
 

@@ -107,6 +107,20 @@ textarea {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.report-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.report-background img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .report-watermark {
   position: absolute;
   inset: 0;
@@ -914,6 +928,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
     page-break-after: auto !important;
   }
 
+  .report-background,
   .report-watermark {
     position: absolute !important;
     z-index: 0 !important;

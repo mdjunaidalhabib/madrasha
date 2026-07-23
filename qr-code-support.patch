@@ -1,0 +1,308 @@
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index c43eb74..8cedabb 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -12,6 +12,7 @@
+         "jspdf": "^4.2.1",
+         "jspdf-autotable": "^5.0.7",
+         "lucide-react": "^0.575.0",
++        "qrcode.react": "^3.1.0",
+         "react": "^18.3.1",
+         "react-dom": "^18.3.1",
+         "react-icons": "^5.6.0",
+@@ -4435,6 +4436,15 @@
+         "node": ">=6"
+       }
+     },
++    "node_modules/qrcode.react": {
++      "version": "3.2.0",
++      "resolved": "https://registry.npmjs.org/qrcode.react/-/qrcode.react-3.2.0.tgz",
++      "integrity": "sha512-YietHHltOHA4+l5na1srdaMx4sVSOjV9tamHs+mwiLWAMr6QVACRUw1Neax5CptFILcNoITctJY0Ipyn5enQ8g==",
++      "license": "ISC",
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0"
++      }
++    },
+     "node_modules/queue-microtask": {
+       "version": "1.2.3",
+       "resolved": "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz",
+diff --git a/frontend/package.json b/frontend/package.json
+index 100f4f7..45a46ae 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -18,6 +18,7 @@
+     "jspdf": "^4.2.1",
+     "jspdf-autotable": "^5.0.7",
+     "lucide-react": "^0.575.0",
++    "qrcode.react": "^3.1.0",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1",
+     "react-icons": "^5.6.0",
+diff --git a/frontend/src/components/Report/documents/AdmitCardGrid.tsx b/frontend/src/components/Report/documents/AdmitCardGrid.tsx
+index a929f92..92b2d68 100644
+--- a/frontend/src/components/Report/documents/AdmitCardGrid.tsx
++++ b/frontend/src/components/Report/documents/AdmitCardGrid.tsx
+@@ -1,7 +1,8 @@
+ import { useEffect } from "react";
+-import { cellValue } from "../../../utils/reportUtils";
++import { buildDocumentQrValue, cellValue } from "../../../utils/reportUtils";
+ import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+ import { DEFAULT_ADMIT_CARD_RULES, renderTemplateText } from "../../../utils/documentTemplates";
++import QRCodeBlock from "../../common/QRCodeBlock";
+ 
+ type AdmitCardGridProps = {
+   rows: Record<string, any>[];
+@@ -24,10 +25,13 @@ const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
+           key={`admit-card-${row.id || index}`}
+           className="print-page-break rounded-xl border-2 border-slate-800 bg-white p-5"
+         >
+-          <div className="text-center">
++          <div className="relative text-center">
+             <p className="text-xs text-slate-500">بسم الله الرحمن الرحيم</p>
+             <h3 className="mt-1 text-lg font-bold text-slate-900">প্রবেশপত্র</h3>
+             <p className="text-xs text-slate-500">{cellValue(row, "exam_name")}</p>
++            <div className="absolute right-0 top-0">
++              <QRCodeBlock value={buildDocumentQrValue(row, "ADMIT-CARD")} size={48} />
++            </div>
+           </div>
+ 
+           {/* Student data fields are always fixed to the real record — never editable text */}
+diff --git a/frontend/src/components/Report/documents/IdCardGrid.tsx b/frontend/src/components/Report/documents/IdCardGrid.tsx
+index 460c8ca..5d06859 100644
+--- a/frontend/src/components/Report/documents/IdCardGrid.tsx
++++ b/frontend/src/components/Report/documents/IdCardGrid.tsx
+@@ -1,4 +1,5 @@
+-import { cellValue } from "../../../utils/reportUtils";
++import { buildDocumentQrValue, cellValue } from "../../../utils/reportUtils";
++import QRCodeBlock from "../../common/QRCodeBlock";
+ 
+ type IdCardGridProps = {
+   rows: Record<string, any>[];
+@@ -54,13 +55,16 @@ const IdCardGrid = ({ rows }: IdCardGridProps) => {
+             </div>
+           </div>
+ 
+-          <div className="border-t border-slate-200 px-4 py-2 text-xs text-slate-700">
+-            <p>
+-              <b>অভিভাবক:</b> {cellValue(row, "father_name")}
+-            </p>
+-            <p>
+-              <b>মোবাইল:</b> {cellValue(row, "guardian_phone")}
+-            </p>
++          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-2 text-xs text-slate-700">
++            <div>
++              <p>
++                <b>অভিভাবক:</b> {cellValue(row, "father_name")}
++              </p>
++              <p>
++                <b>মোবাইল:</b> {cellValue(row, "guardian_phone")}
++              </p>
++            </div>
++            <QRCodeBlock value={buildDocumentQrValue(row, "ID-CARD")} size={48} />
+           </div>
+         </div>
+       ))}
+diff --git a/frontend/src/components/Report/documents/SanadList.tsx b/frontend/src/components/Report/documents/SanadList.tsx
+index 2e61262..f0bf476 100644
+--- a/frontend/src/components/Report/documents/SanadList.tsx
++++ b/frontend/src/components/Report/documents/SanadList.tsx
+@@ -1,6 +1,8 @@
+ import { useEffect } from "react";
+ import { useDocumentTemplateStore } from "../../../store/documentTemplateStore";
+ import { DEFAULT_SANAD_TEMPLATE, renderTemplateText } from "../../../utils/documentTemplates";
++import { buildDocumentQrValue } from "../../../utils/reportUtils";
++import QRCodeBlock from "../../common/QRCodeBlock";
+ 
+ type SanadListProps = {
+   rows: Record<string, any>[];
+@@ -32,8 +34,13 @@ const SanadList = ({ rows }: SanadListProps) => {
+             {renderTemplateText(template, row)}
+           </p>
+ 
+-          <div className="mt-16 flex justify-between text-sm font-semibold">
++          <div className="mt-16 flex items-end justify-between text-sm font-semibold">
+             <span>তারিখ: ........................</span>
++            <QRCodeBlock
++              value={buildDocumentQrValue(row, "CERTIFICATE")}
++              size={56}
++              label="যাচাই কোড"
++            />
+             <span>প্রধান শিক্ষকের স্বাক্ষর ও সীল</span>
+           </div>
+         </div>
+diff --git a/frontend/src/components/Report/student/MarksheetList.tsx b/frontend/src/components/Report/student/MarksheetList.tsx
+index 01ffa3b..ce1c772 100644
+--- a/frontend/src/components/Report/student/MarksheetList.tsx
++++ b/frontend/src/components/Report/student/MarksheetList.tsx
+@@ -1,4 +1,5 @@
+-import { cellValue, formatMeritRank } from "../../../utils/reportUtils";
++import { buildDocumentQrValue, cellValue, formatMeritRank } from "../../../utils/reportUtils";
++import QRCodeBlock from "../../common/QRCodeBlock";
+ 
+ type MarksheetListProps = {
+   rows: Record<string, any>[];
+@@ -77,9 +78,10 @@ const MarksheetList = ({ rows }: MarksheetListProps) => (
+           </tbody>
+         </table>
+ 
+-        <div className="mt-12 flex justify-between text-xs font-semibold text-slate-700">
++        <div className="mt-12 flex items-end justify-between text-xs font-semibold text-slate-700">
+           <span>শ্রেণি শিক্ষকের স্বাক্ষর</span>
+-          <span>পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</span>
++          <QRCodeBlock value={buildDocumentQrValue(row, "RESULT")} size={48} label="যাচাই কোড" />
++          <span>পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</span>
+           <span>প্রধান শিক্ষকের স্বাক্ষর ও সীল</span>
+         </div>
+       </section>
+diff --git a/frontend/src/components/common/QRCodeBlock.tsx b/frontend/src/components/common/QRCodeBlock.tsx
+new file mode 100644
+index 0000000..a4b6deb
+--- /dev/null
++++ b/frontend/src/components/common/QRCodeBlock.tsx
+@@ -0,0 +1,26 @@
++import { QRCodeSVG } from "qrcode.react";
++
++type QRCodeBlockProps = {
++  value: string;
++  size?: number;
++  label?: string;
++  className?: string;
++};
++
++/**
++ * Renders a small QR code for a printable document (ID card, certificate,
++ * admit card, result sheet, receipt...). Renders nothing when there is no
++ * value, so documents remain unaffected until real record data is available.
++ */
++const QRCodeBlock = ({ value, size = 64, label, className = "" }: QRCodeBlockProps) => {
++  if (!value) return null;
++
++  return (
++    <div className={`document-qr-code flex flex-col items-center gap-1 ${className}`}>
++      <QRCodeSVG value={value} size={size} level="M" />
++      {label && <span className="text-[9px] leading-none text-slate-500">{label}</span>}
++    </div>
++  );
++};
++
++export default QRCodeBlock;
+diff --git a/frontend/src/features/accounts/IncomePage.tsx b/frontend/src/features/accounts/IncomePage.tsx
+index 8f27fb7..24f7826 100644
+--- a/frontend/src/features/accounts/IncomePage.tsx
++++ b/frontend/src/features/accounts/IncomePage.tsx
+@@ -5,6 +5,9 @@ import Input from "../../components/ui/Input";
+ import Button from "../../components/ui/Button";
+ import { useToastStore } from "../../store/toastStore";
+ import { incomeFunds, paymentMethods } from "./accountingData";
++import { ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
++import QRCodeBlock from "../../components/common/QRCodeBlock";
++import { buildReceiptQrValue } from "../../utils/reportUtils";
+ 
+ const nowDate = () => new Date().toISOString().slice(0, 10);
+ const nowTime = () => new Date().toTimeString().slice(0, 5);
+@@ -29,6 +32,7 @@ export default function IncomePage() {
+     amount: "",
+     payment_method: paymentMethods[0],
+   });
++  const [lastReceipt, setLastReceipt] = useState<typeof form | null>(null);
+ 
+   const selectedFund = useMemo(
+     () => incomeFunds.find((fund) => fund.name === form.fund) || incomeFunds[0],
+@@ -46,6 +50,7 @@ export default function IncomePage() {
+     if (!form.amount || Number(form.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
+     await api.post("/accounts/income", form);
+     toast.push("success", "আয়/রশিদ জমা সংরক্ষণ হয়েছে");
++    setLastReceipt(form);
+     setForm((prev) => ({
+       ...prev,
+       entry_date: nowDate(),
+@@ -169,6 +174,51 @@ export default function IncomePage() {
+           </Button>
+         </div>
+       </div>
++
++      {lastReceipt && (
++        <div className="space-y-3">
++          <div className="no-print flex items-center justify-between">
++            <p className="text-sm font-semibold text-slate-700">সর্বশেষ রশিদ</p>
++            <Button variant="secondary" onClick={() => window.print()}>
++              প্রিন্ট করুন
++            </Button>
++          </div>
++          <div className="print-area relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
++            <ReportWatermark />
++            <ReportBrandHeader />
++            <div className="report-content-body flex items-start justify-between gap-6">
++              <div className="space-y-1 text-sm text-slate-800">
++                <h3 className="text-lg font-bold">রশিদ</h3>
++                <p>
++                  <b>রশিদ নম্বর:</b> {lastReceipt.receipt_no || "—"}
++                </p>
++                <p>
++                  <b>তারিখ:</b> {lastReceipt.entry_date} {lastReceipt.entry_time}
++                </p>
++                <p>
++                  <b>নাম:</b> {lastReceipt.donor_name}
++                </p>
++                <p>
++                  <b>ঠিকানা:</b> {lastReceipt.address || "—"}
++                </p>
++                <p>
++                  <b>মোবাইল:</b> {lastReceipt.mobile || "—"}
++                </p>
++                <p>
++                  <b>ফান্ড:</b> {lastReceipt.fund} — {lastReceipt.category}
++                </p>
++                <p>
++                  <b>পরিমাণ:</b> ৳ {Number(lastReceipt.amount || 0).toLocaleString("bn-BD")}
++                </p>
++                <p>
++                  <b>পেমেন্ট মাধ্যম:</b> {lastReceipt.payment_method}
++                </p>
++              </div>
++              <QRCodeBlock value={buildReceiptQrValue(lastReceipt)} size={80} label="যাচাই কোড" />
++            </div>
++          </div>
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/frontend/src/utils/reportUtils.ts b/frontend/src/utils/reportUtils.ts
+index 8e67bee..64eaf39 100644
+--- a/frontend/src/utils/reportUtils.ts
++++ b/frontend/src/utils/reportUtils.ts
+@@ -48,6 +48,33 @@ export const formatMeritRank = (value: unknown) => {
+ export const cellValue = (row: Record<string, any>, key: string) =>
+   formatReportValue(row?.[key], key);
+ 
++/**
++ * Builds a compact, machine-readable value for a document's QR code.
++ * Uses the raw record fields (not Bangla-formatted) so the code stays
++ * reliably scannable. Returns "" when there isn't enough data to identify
++ * the record, in which case the QR block simply won't render.
++ */
++export const buildDocumentQrValue = (row: Record<string, any>, docType: string) => {
++  const identifier = row?.registration_no || row?.roll || row?.id;
++  if (!identifier) return "";
++
++  return [docType, identifier, row?.student_name, row?.class_name, row?.academic_year]
++    .filter((part) => part !== null && part !== undefined && part !== "")
++    .join("|");
++};
++
++/**
++ * Builds the QR code value for a printed money receipt.
++ */
++export const buildReceiptQrValue = (receipt: Record<string, any>) => {
++  const identifier = receipt?.receipt_no || `${receipt?.entry_date || ""}-${receipt?.entry_time || ""}`;
++  if (!identifier.replace(/-/g, "")) return "";
++
++  return ["RECEIPT", identifier, receipt?.donor_name, receipt?.amount, receipt?.entry_date]
++    .filter((part) => part !== null && part !== undefined && part !== "")
++    .join("|");
++};
++
+ export const getRowDivisionId = (row: Record<string, any>) =>
+   row.division_id ||
+   row.madrasa_division_id ||

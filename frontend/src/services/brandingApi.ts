@@ -4,6 +4,7 @@ export type BrandingPayload = {
   name?: string | null;
   address?: string | null;
   report_logo?: string | null;
+  report_banner?: string | null;
   report_watermark?: string | null;
   report_watermark_opacity?: number;
 };
@@ -18,7 +19,7 @@ export async function saveBranding(payload: BrandingPayload) {
   return res.data;
 }
 
-export async function deleteBrandingImage(field: "report_logo" | "report_watermark") {
+export async function deleteBrandingImage(field: "report_logo" | "report_banner" | "report_watermark") {
   const res = await api.delete(`/settings/branding/${field}`);
   return res.data;
 }

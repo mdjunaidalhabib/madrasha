@@ -28,7 +28,8 @@ export const MAX_MADRASA_NAME_LENGTH = 200;
 export const MAX_MADRASA_ADDRESS_LENGTH = 255;
 export const DEFAULT_WATERMARK_OPACITY = 0.08;
 
-export const BRANDING_IMAGE_FIELDS: Record<string, "reportLogo" | "reportWatermark"> = {
+export const BRANDING_IMAGE_FIELDS: Record<string, "reportLogo" | "reportBanner" | "reportWatermark"> = {
   report_logo: "reportLogo",
+  report_banner: "reportBanner",
   report_watermark: "reportWatermark",
 };

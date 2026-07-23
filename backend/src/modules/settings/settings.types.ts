@@ -2,6 +2,7 @@ export interface BrandingData {
   name: string | null;
   address: string | null;
   report_logo: string | null;
+  report_banner: string | null;
   report_watermark: string | null;
   report_watermark_opacity: number | null;
 }

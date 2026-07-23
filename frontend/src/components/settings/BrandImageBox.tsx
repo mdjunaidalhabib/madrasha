@@ -26,8 +26,9 @@ export default function BrandImageBox({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      useToastStore.getState().show("দয়া করে একটি ছবি ফাইল নির্বাচন করুন", "error");
+    const allowedTypes = ["image/png", "image/jpeg"];
+    if (!allowedTypes.includes(file.type)) {
+      useToastStore.getState().show("শুধু PNG, JPG বা JPEG ছবি আপলোড করা যাবে", "error");
       return;
     }
 
@@ -82,7 +83,13 @@ export default function BrandImageBox({
         )}
       </div>
 
-      <input type="file" ref={fileRef} hidden accept="image/*" onChange={handleFile} />
+      <input
+        type="file"
+        ref={fileRef}
+        hidden
+        accept="image/png,image/jpeg"
+        onChange={handleFile}
+      />
     </div>
   );
 }

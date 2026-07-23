@@ -3,7 +3,11 @@ import api, { cachedGet } from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
-import { ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
+import {
+  ReportBackground,
+  ReportBrandHeader,
+  ReportWatermark,
+} from "../../components/Report/ReportBranding";
 import { logger } from "../../utils/logger";
 
 type Row = { period: string; total_income: number | string; total_expense: number | string };
@@ -117,6 +121,7 @@ export default function ReportPage() {
       </div>
 
       <div className="print-area relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <ReportBackground />
         <ReportWatermark />
         <ReportBrandHeader />
         <div className="overflow-x-auto">

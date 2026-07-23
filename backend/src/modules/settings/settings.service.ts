@@ -44,15 +44,17 @@ export class SettingsService {
       name: madrasa.name,
       address: madrasa.address,
       report_logo: madrasa.reportLogo,
+      report_banner: madrasa.reportBanner,
       report_watermark: madrasa.reportWatermark,
       report_watermark_opacity: Number(madrasa.reportWatermarkOpacity),
     };
   }
 
   async updateBranding(madrasaId: number, body: UpdateBrandingRequestDto) {
-    const { name, address, report_logo, report_watermark, report_watermark_opacity } = body;
+    const { name, address, report_logo, report_banner, report_watermark, report_watermark_opacity } =
+      body;
 
-    for (const [key, value] of Object.entries({ report_logo, report_watermark })) {
+    for (const [key, value] of Object.entries({ report_logo, report_banner, report_watermark })) {
       if (value !== undefined && !storageProvider.isValidImage(value)) {
         throw new BadRequestError(`Invalid image for ${key}`);
       }
@@ -84,6 +86,9 @@ export class SettingsService {
       ...(address !== undefined ? { address } : {}),
       ...(report_logo !== undefined && report_logo !== null
         ? { reportLogo: storageProvider.persistImage(report_logo) }
+        : {}),
+      ...(report_banner !== undefined && report_banner !== null
+        ? { reportBanner: storageProvider.persistImage(report_banner) }
         : {}),
       ...(report_watermark !== undefined && report_watermark !== null
         ? { reportWatermark: storageProvider.persistImage(report_watermark) }

@@ -12,6 +12,7 @@ export default function BrandingSettingsPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
+  const [background, setBackground] = useState<string | null>(null);
   const [watermark, setWatermark] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(0.08);
 
@@ -34,6 +35,7 @@ export default function BrandingSettingsPage() {
     setName(branding.name ?? "");
     setAddress(branding.address ?? "");
     setLogo(branding.report_logo ?? null);
+    setBackground(branding.report_banner ?? null);
     setWatermark(branding.report_watermark ?? null);
     setOpacity(
       branding.report_watermark_opacity !== undefined && branding.report_watermark_opacity !== null
@@ -57,6 +59,7 @@ export default function BrandingSettingsPage() {
         name: name.trim(),
         address: address.trim(),
         report_logo: logo,
+        report_banner: background,
         report_watermark: watermark,
         report_watermark_opacity: opacity,
       });
@@ -64,6 +67,7 @@ export default function BrandingSettingsPage() {
         name: name.trim(),
         address: address.trim(),
         report_logo: logo,
+        report_banner: background,
         report_watermark: watermark,
         report_watermark_opacity: opacity,
       });
@@ -75,9 +79,10 @@ export default function BrandingSettingsPage() {
     }
   };
 
-  const removeImage = async (field: "report_logo" | "report_watermark") => {
+  const removeImage = async (field: "report_logo" | "report_banner" | "report_watermark") => {
     await deleteBrandingImage(field);
     if (field === "report_logo") setLogo(null);
+    if (field === "report_banner") setBackground(null);
     if (field === "report_watermark") setWatermark(null);
     await fetchBranding(true);
   };
@@ -133,6 +138,14 @@ export default function BrandingSettingsPage() {
           value={logo}
           onChange={setLogo}
           onRemove={() => removeImage("report_logo")}
+        />
+        <BrandImageBox
+          label="ব্যাকগ্রাউন্ড"
+          hint="রিপোর্ট পেজের পুরো পটভূমি জুড়ে দেখাবে (PNG, JPG বা JPEG) — ফিল্ডের তথ্য অপরিবর্তিত থাকবে"
+          value={background}
+          onChange={setBackground}
+          onRemove={() => removeImage("report_banner")}
+          shape="wide"
         />
       </div>
 

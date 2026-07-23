@@ -2,6 +2,7 @@ export interface UpdateBrandingRequestDto {
   name?: string;
   address?: string;
   report_logo?: string | null;
+  report_banner?: string | null;
   report_watermark?: string | null;
   report_watermark_opacity?: number | string | null;
 }

@@ -3,6 +3,28 @@ import { useBrandingStore } from "../../store/brandingStore";
 import { toBanglaDigits } from "../../utils/reportUtils";
 
 /**
+ * Renders the madrasa's uploaded background image behind the report content.
+ * Place once, inside `.print-area`, before `ReportWatermark`. Purely visual —
+ * it never touches report field data.
+ */
+export function ReportBackground() {
+  const branding = useBrandingStore((s) => s.branding);
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+
+  useEffect(() => {
+    fetchBranding();
+  }, [fetchBranding]);
+
+  if (!branding?.report_banner) return null;
+
+  return (
+    <div className="report-background" aria-hidden="true">
+      <img src={branding.report_banner} alt="" />
+    </div>
+  );
+}
+
+/**
  * Renders the madrasa's watermark (behind content) automatically.
  * Place once, inside `.print-area`, as a sibling before the report content.
  */
