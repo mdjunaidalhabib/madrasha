@@ -48,9 +48,9 @@ export function ReportBrandHeader() {
       {branding.report_logo && (
         <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
       )}
-      {branding.name && <div className="report-brand-name text-slate-950">{toBanglaDigits(branding.name)}</div>}
+      {branding.name && <div className="report-brand-name text-black">{toBanglaDigits(branding.name)}</div>}
       {branding.address && (
-        <div className="report-brand-address text-slate-600">{toBanglaDigits(branding.address)}</div>
+        <div className="report-brand-address text-black">{toBanglaDigits(branding.address)}</div>
       )}
     </div>
   );

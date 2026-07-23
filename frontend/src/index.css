@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "SolaimanLipi";
+  src: url("/fonts/SolaimanLipi.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SolaimanLipi";
+  src: url("/fonts/SolaimanLipi-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-ui-bn: "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
-  --font-report-heading: "Noto Serif Bengali", "Hind Siliguri", serif;
+  --font-report-heading: "SolaimanLipi", "Noto Serif Bengali", "Hind Siliguri", serif;
+  --font-report-body: "SolaimanLipi", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
 }
 
 html {
@@ -62,7 +79,7 @@ textarea {
   background: white;
   padding: 10mm;
   color: #0f172a;
-  font-family: var(--font-ui-bn);
+  font-family: var(--font-report-body);
   font-weight: 500;
   line-height: 1.35;
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
@@ -81,7 +98,7 @@ textarea {
   box-sizing: border-box;
   padding: 2px 4px 3px;
   overflow: visible;
-  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
+  font-family: var(--font-report-body);
   font-size: 10px;
   font-weight: 500;
   line-height: 1.55;
@@ -222,7 +239,7 @@ textarea {
 
 .print-page-preview .report-content-body table {
   max-width: 100%;
-  font-family: var(--font-ui-bn);
+  font-family: var(--font-report-body);
   font-size: var(--report-table-font-size) !important;
   font-variant-numeric: tabular-nums;
 }
@@ -529,12 +546,17 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"] .academic-result-title {
   margin-bottom: 6px;
   font-size: var(--report-title-font-size);
+  font-family: var(--font-report-heading);
   line-height: 1.15;
 }
 
+.print-page-preview[data-report="academic-result"] .academic-result-exam-name,
 .print-page-preview[data-report="academic-result"] .academic-result-subtitle {
-  font-size: 11px;
-  line-height: 1.2;
+  font-family: var(--font-report-body);
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-subtitle {
+  margin-top: 0;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-subject-count {
@@ -556,11 +578,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .academic-result-title {
   margin-bottom: 4px;
   font-size: 18px;
-}
-
-.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
-  .academic-result-subtitle {
-  font-size: 9px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
@@ -608,13 +625,28 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   width: 91px;
 }
 
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
+  margin-top: 6px;
+  margin-bottom: 5px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-name {
+  font-size: 16px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-address {
+  margin-top: 1px;
+  font-size: 10px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-exam-name,
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-subtitle {
+  font-size: 10px;
+}
+
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-title {
   margin-bottom: 4px;
   font-size: 14px;
-}
-
-.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-subtitle {
-  font-size: 8px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-meta {
@@ -675,6 +707,23 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
   .academic-result-title {
   font-size: 12px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-madrasa-name {
+  font-size: 14px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-madrasa-address {
+  font-size: 9px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-exam-name,
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-subtitle {
+  font-size: 9px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
@@ -1070,7 +1119,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   display: inline-block;
   min-width: 3.2em;
   padding: 0 0.35em;
-  font-family: "Noto Serif Bengali", "Hind Siliguri", serif;
+  font-family: var(--font-report-heading);
   font-size: 1.12em;
   font-weight: 600;
   line-height: 1.65;
@@ -1170,7 +1219,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   justify-content: center;
   box-sizing: border-box;
   padding: 0 0.14em;
-  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
+  font-family: var(--font-report-body);
   font-weight: 500;
   line-height: 1.45;
   white-space: nowrap;
@@ -1186,7 +1235,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-rank-value {
-  font-family: "Noto Sans Bengali", "Hind Siliguri", sans-serif;
+  font-family: var(--font-report-body);
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]

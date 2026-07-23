@@ -201,7 +201,7 @@ const AcademicResultPrint = ({
         <p className="academic-result-exam-name mt-1 text-base font-bold text-black">
           {examNameWithYear}
         </p>
-        <p className="academic-result-subtitle mt-1 text-base font-bold text-black">
+        <p className="academic-result-subtitle text-base font-bold text-black">
           {contextLine}
         </p>
       </div>

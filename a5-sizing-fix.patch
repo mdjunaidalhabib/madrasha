@@ -1,0 +1,52 @@
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -625,6 +625,25 @@
+   width: 91px;
+ }
+ 
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
++  margin-top: 6px;
++  margin-bottom: 5px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-name {
++  font-size: 16px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-address {
++  margin-top: 1px;
++  font-size: 10px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-exam-name,
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-subtitle {
++  font-size: 10px;
++}
++
+ .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-title {
+   margin-bottom: 4px;
+   font-size: 14px;
+@@ -691,6 +710,23 @@
+ }
+ 
+ .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
++  .academic-result-madrasa-name {
++  font-size: 14px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
++  .academic-result-madrasa-address {
++  font-size: 9px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
++  .academic-result-exam-name,
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
++  .academic-result-subtitle {
++  font-size: 9px;
++}
++
++.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+   .academic-result-table {
+   font-size: 7px !important;
+ }
