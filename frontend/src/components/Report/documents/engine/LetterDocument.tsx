@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { renderTemplateText } from "../../../../utils/documentTemplates";
+// Routed through the shared Document Designer engine (see
+// components/DocumentDesigner) so Talimat's admin-editable templates and
+// every printed report/document go through one token-rendering entry point.
+// Behaviour is unchanged: this re-exports the exact same implementation.
+import { renderTemplateText } from "../../../DocumentDesigner/engine";
 
 export type LetterDocumentProps = {
   row: Record<string, any>;
