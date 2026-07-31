@@ -604,15 +604,58 @@ async function main() {
   );
 
   /* ============== PERMISSIONS ============== */
+  // Expanded during the Phase 3 "Role & Permission Enhancement" review -
+  // the original list only covered students/users/accounts even though
+  // many more modules exist now. Naming convention: "<module>.<action>".
   const permissions = [
     { keyName: "students.read", name: "View Students" },
     { keyName: "students.create", name: "Create Students" },
     { keyName: "students.update", name: "Update Students" },
     { keyName: "students.delete", name: "Delete Students" },
-    { keyName: "users.read", name: "View Users" },
-    { keyName: "users.create", name: "Create Users" },
+    { keyName: "students.approve_admission", name: "Approve/Reject Admissions" },
+    { keyName: "students.promote", name: "Promote Students" },
+
+    { keyName: "teachers.read", name: "View Teachers" },
+    { keyName: "teachers.create", name: "Create Teachers" },
+    { keyName: "teachers.update", name: "Update Teachers" },
+    { keyName: "teachers.delete", name: "Delete Teachers" },
+
+    { keyName: "attendance.read", name: "View Attendance" },
+    { keyName: "attendance.mark", name: "Mark Attendance" },
+
+    { keyName: "routine.read", name: "View Routine" },
+    { keyName: "routine.manage", name: "Manage Routine" },
+
+    { keyName: "exam.read", name: "View Exams" },
+    { keyName: "exam.manage", name: "Manage Exams" },
+    { keyName: "result.read", name: "View Results" },
+    { keyName: "result.manage", name: "Manage Results" },
+
+    { keyName: "fee.read", name: "View Fees/Invoices" },
+    { keyName: "fee.manage", name: "Manage Fee Structures & Invoices" },
+    { keyName: "fee.collect_payment", name: "Record Fee Payments" },
+
+    { keyName: "payroll.read", name: "View Payroll" },
+    { keyName: "payroll.manage", name: "Manage Payroll" },
+
     { keyName: "accounts.read", name: "View Accounts" },
     { keyName: "accounts.create", name: "Create Accounts" },
+    { keyName: "accounts.update", name: "Update Accounts" },
+    { keyName: "accounts.delete", name: "Delete Accounts" },
+
+    { keyName: "users.read", name: "View Users" },
+    { keyName: "users.create", name: "Create Users" },
+    { keyName: "users.update", name: "Update Users" },
+    { keyName: "users.delete", name: "Delete Users" },
+    { keyName: "roles.manage", name: "Manage Roles & Permissions" },
+
+    { keyName: "talimat.manage", name: "Manage Talimat" },
+    { keyName: "reports.read", name: "View Reports" },
+    { keyName: "activity.read", name: "View Activity Log" },
+    { keyName: "settings.manage", name: "Manage Settings" },
+    { keyName: "website.manage", name: "Manage Public Website" },
+    { keyName: "notifications.read", name: "View Notification History" },
+    { keyName: "notifications.send", name: "Send SMS/Email Notifications" },
   ];
   const permissionIds: number[] = [];
   for (const p of permissions) {

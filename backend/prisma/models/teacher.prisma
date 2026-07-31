@@ -65,6 +65,8 @@ model Teacher {
   madrasa            Madrasa             @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   divisionRef        Division            @relation(fields: [divisionId], references: [id], onDelete: Restrict)
   teacherAssignments TeacherAssignment[]
+  classRoutines      ClassRoutine[]
+  payrollRecords     PayrollRecord[]
 
   @@unique([madrasaId, email], map: "uniq_teacher_email")
   @@unique([madrasaId, registrationNo], map: "uniq_teacher_registration_no")

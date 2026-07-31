@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { useToastStore } from "../../store/toastStore";
+import { uploadApi } from "../../services/phase4Api";
+import { logger } from "../../utils/logger";
 
 interface Props {
   data: any;
@@ -14,6 +16,7 @@ const ImageUploadProfile: React.FC<Props> = ({
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(data?.image || null);
+  const [uploading, setUploading] = useState(false);
 
   /* =============================
      HANDLE IMAGE UPLOAD
@@ -35,15 +38,26 @@ const ImageUploadProfile: React.FC<Props> = ({
 
     const reader = new FileReader();
 
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const img = reader.result as string;
 
       setPreview(img);
+      setData((prev: any) => ({ ...prev, image: img }));
 
-      setData((prev: any) => ({
-        ...prev,
-        image: img,
-      }));
+      try {
+        setUploading(true);
+        const res = await uploadApi.uploadImage(img, "teachers");
+        const uploaded = res.data?.data;
+        if (uploaded?.uploaded && uploaded.url) {
+          setPreview(uploaded.url);
+          setData((prev: any) => ({ ...prev, image: uploaded.url as string }));
+        }
+        // else: cloud storage not configured yet - keep the base64 already set.
+      } catch (err) {
+        logger.error("TEACHER PROFILE PHOTO UPLOAD ERROR:", err);
+      } finally {
+        setUploading(false);
+      }
     };
 
     reader.readAsDataURL(file);
@@ -66,7 +80,7 @@ const ImageUploadProfile: React.FC<Props> = ({
       {/* IMAGE BOX */}
       <div
         onClick={() => isEditMode && fileRef.current?.click()}
-        className={`w-40 h-40 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden transition
+        className={`w-40 h-40 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden transition relative
           ${isEditMode ? "hover:bg-gray-100" : "cursor-default"}
         `}
         style={{
@@ -80,6 +94,11 @@ const ImageUploadProfile: React.FC<Props> = ({
             <p>No Image</p>
             {isEditMode && <p>Click to Upload</p>}
           </div>
+        )}
+        {uploading && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
+            আপলোড হচ্ছে...
+          </span>
         )}
       </div>
 

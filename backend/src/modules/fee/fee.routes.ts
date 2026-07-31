@@ -1,0 +1,48 @@
+import { Router } from "express";
+import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
+import { authMiddleware } from "../../shared/middleware/auth.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
+import {
+  getFeeStructures,
+  createFeeStructure,
+  updateFeeStructure,
+  deleteFeeStructure,
+  generateInvoices,
+  getInvoices,
+  payInvoice,
+  getStudentStatement,
+  getPaymentMethodSettings,
+  createPaymentMethodSetting,
+  updatePaymentMethodSetting,
+  deletePaymentMethodSetting,
+} from "./fee.controller";
+
+const router = Router();
+
+router.use(tenantMiddleware, authMiddleware);
+
+// NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware (see
+// shared/permissions/rbac-policy.ts), so this never locks out the
+// primary admin - it only restricts other, non-default roles.
+
+/* ================= FEE STRUCTURE ================= */
+router.get("/fee-structures", rbacMiddleware("fee.read"), getFeeStructures);
+router.post("/fee-structures", rbacMiddleware("fee.manage"), createFeeStructure);
+router.put("/fee-structures/:id", rbacMiddleware("fee.manage"), updateFeeStructure);
+router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStructure);
+
+/* ================= INVOICES ================= */
+router.post("/invoices/generate", rbacMiddleware("fee.manage"), generateInvoices);
+router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
+router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
+
+/* ================= STUDENT ACCOUNT STATEMENT ================= */
+router.get("/students/:id/statement", rbacMiddleware("fee.read"), getStudentStatement);
+
+/* ================= MANUAL PAYMENT METHOD SETUP ================= */
+router.get("/payment-methods", rbacMiddleware("fee.read"), getPaymentMethodSettings);
+router.post("/payment-methods", rbacMiddleware("fee.manage"), createPaymentMethodSetting);
+router.put("/payment-methods/:id", rbacMiddleware("fee.manage"), updatePaymentMethodSetting);
+router.delete("/payment-methods/:id", rbacMiddleware("fee.manage"), deletePaymentMethodSetting);
+
+export default router;

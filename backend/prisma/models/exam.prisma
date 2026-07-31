@@ -15,6 +15,7 @@ model Exam {
   madrasa       Madrasa        @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   resultsMaster ResultMaster[]
   marks         Mark[]
+  examRoutines  ExamRoutine[]
 
   @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
   @@map("exams")

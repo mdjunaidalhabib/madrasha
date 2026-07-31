@@ -7,6 +7,8 @@ import ModuleGuard from "../components/guards/ModuleGuard";
 import SuperAdminLayout from "../layouts/SuperAdminLayout";
 import PageLoader from "../components/ui/PageLoader";
 import LoginPage from "../features/auth/LoginPage";
+const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
 import SuperAdminLoginPage from "../features/super-admin/auth/SuperAdminLoginPage";
 
 // All page-level components are lazy-loaded so that a visitor to any one
@@ -19,6 +21,17 @@ const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const StudentListPage = lazy(() => import("../features/students/StudentListPage"));
 const StudentProfilePage = lazy(() => import("../features/students/StudentProfilePage"));
 const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
+const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
+const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
+const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
+const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
+const FeeManagementPage = lazy(() => import("../features/fee/FeeManagementPage"));
+const StudentStatementPage = lazy(() => import("../features/fee/StudentStatementPage"));
+const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
+const PaymentMethodSettingsPage = lazy(() => import("../features/fee/PaymentMethodSettingsPage"));
+const RolesPermissionsPage = lazy(() => import("../features/roles/RolesPermissionsPage"));
+const UsersPage = lazy(() => import("../features/users/UsersPage"));
+const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
 
 const TeacherAdmissionPage = lazy(() => import("../features/teachers/TeacherPage"));
 const TeacherListPage = lazy(() => import("../features/teachers/TeacherListPage"));
@@ -188,9 +201,51 @@ const madrasaAdminChildren = [
     ),
   },
   {
+    path: "students/admissions/pending",
+    element: (
+      <ModuleGuard module="students">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>
+    ),
+  },
+  {
     path: "students/list",
     element: (
       <ModuleGuard module="students">{withSuspense(<StudentListPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/mark",
+    element: (
+      <ModuleGuard module="students">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "students/promotion",
+    element: (
+      <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "routine",
+    element: (
+      <ModuleGuard module="students">{withSuspense(<ClassExamRoutinePage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "fee-management",
+    element: (
+      <ModuleGuard module="accounts">{withSuspense(<FeeManagementPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "students/statement",
+    element: (
+      <ModuleGuard module="accounts">{withSuspense(<StudentStatementPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "payroll",
+    element: (
+      <ModuleGuard module="accounts">{withSuspense(<PayrollPage />)}</ModuleGuard>
     ),
   },
   {
@@ -236,6 +291,30 @@ const madrasaAdminChildren = [
     path: "settings/branding",
     element: (
       <ModuleGuard module="settings">{withSuspense(<BrandingSettingsPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "settings/payment-methods",
+    element: (
+      <ModuleGuard module="settings">{withSuspense(<PaymentMethodSettingsPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "settings/roles",
+    element: (
+      <ModuleGuard module="settings">{withSuspense(<RolesPermissionsPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "settings/users",
+    element: (
+      <ModuleGuard module="settings">{withSuspense(<UsersPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "notifications",
+    element: (
+      <ModuleGuard module="settings">{withSuspense(<NotificationsPage />)}</ModuleGuard>
     ),
   },
 
@@ -284,6 +363,14 @@ export const router = createBrowserRouter([
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
 
   { path: "/:madrasaSlug/admin/login", element: <LoginPage /> },
+  {
+    path: "/:madrasaSlug/admin/forgot-password",
+    element: withSuspense(<ForgotPasswordPage />),
+  },
+  {
+    path: "/:madrasaSlug/admin/reset-password",
+    element: withSuspense(<ResetPasswordPage />),
+  },
   {
     path: "/:madrasaSlug/admin",
     element: (

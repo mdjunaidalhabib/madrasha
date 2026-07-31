@@ -195,3 +195,42 @@ export const deleteStudent = async (req: Request, res: Response) => {
     return respondWithError(res, error, "DELETE STUDENT ERROR:");
   }
 };
+
+/* =========================================================
+   ADMISSION APPROVAL WORKFLOW
+========================================================= */
+
+export const getPendingAdmissions = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.listPendingAdmissions(madrasaId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "GET PENDING ADMISSIONS ERROR:");
+  }
+};
+
+export const approveAdmission = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    await studentService.approveAdmission(Number(req.params.id), madrasaId, req.user?.id);
+    return res.json({ success: true, message: "Admission approved successfully" });
+  } catch (error) {
+    return respondWithError(res, error, "APPROVE ADMISSION ERROR:");
+  }
+};
+
+export const rejectAdmission = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    await studentService.rejectAdmission(
+      Number(req.params.id),
+      madrasaId,
+      req.user?.id,
+      req.body?.reason,
+    );
+    return res.json({ success: true, message: "Admission rejected successfully" });
+  } catch (error) {
+    return respondWithError(res, error, "REJECT ADMISSION ERROR:");
+  }
+};

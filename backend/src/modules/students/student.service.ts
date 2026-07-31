@@ -459,6 +459,62 @@ export class StudentService {
     const result = await this.repository.deleteManyForTenant(id, madrasaId);
     return result.count;
   }
+
+  /* ================= ADMISSION APPROVAL WORKFLOW ================= */
+
+  /** Admission requests still waiting for admin review. */
+  async listPendingAdmissions(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const rows = await this.repository.findPendingForTenant(madrasaId);
+    return rows.map(toStudentApiDto);
+  }
+
+  /** Approves a pending admission. Roll/registration number were already
+   * assigned at submission time by the existing admission flow, so approval
+   * only flips the status and stamps who reviewed it. */
+  async approveAdmission(id: number, madrasaId: number | undefined, reviewerId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const existing = await this.repository.findByIdForTenant(id, madrasaId);
+    if (!existing) throw new StudentNotFoundError();
+    if (existing.admissionStatus === "APPROVED") {
+      throw new BadRequestError("This admission is already approved");
+    }
+
+    const result = await this.repository.updateManyForTenant(id, madrasaId, {
+      admissionStatus: "APPROVED",
+      reviewedBy: reviewerId ?? null,
+      reviewedAt: new Date(),
+      rejectionReason: null,
+    });
+    if (!result.count) throw new StudentNotFoundError();
+  }
+
+  /** Rejects a pending admission with a reason, keeping the record (rather
+   * than deleting it) so the applicant/guardian can be told why. */
+  async rejectAdmission(
+    id: number,
+    madrasaId: number | undefined,
+    reviewerId: number | undefined,
+    reason: string | undefined,
+  ) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    if (!reason || !reason.trim()) throw new BadRequestError("Rejection reason is required");
+
+    const existing = await this.repository.findByIdForTenant(id, madrasaId);
+    if (!existing) throw new StudentNotFoundError();
+    if (existing.admissionStatus === "REJECTED") {
+      throw new BadRequestError("This admission is already rejected");
+    }
+
+    const result = await this.repository.updateManyForTenant(id, madrasaId, {
+      admissionStatus: "REJECTED",
+      reviewedBy: reviewerId ?? null,
+      reviewedAt: new Date(),
+      rejectionReason: reason.trim(),
+    });
+    if (!result.count) throw new StudentNotFoundError();
+  }
 }
 
 export const studentService = new StudentService();

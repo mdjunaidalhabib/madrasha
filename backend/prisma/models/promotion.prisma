@@ -1,0 +1,45 @@
+// ============================================================
+// STUDENT PROMOTION
+// ============================================================
+
+enum PromotionRecordStatus {
+  PROMOTED
+  RETAINED
+  TRANSFERRED
+}
+
+/// One "run" of promoting a class from one academic year to the next
+/// (e.g. Class 5 / 2025 -> Class 6 / 2026). Each affected student gets a
+/// PromotionRecord row underneath it, so a batch can be audited/undone.
+model PromotionBatch {
+  id           Int      @id @default(autoincrement())
+  madrasaId    Int      @map("madrasa_id")
+  fromClassId  Int      @map("from_class_id")
+  toClassId    Int      @map("to_class_id")
+  fromYear     String   @map("from_year") @db.VarChar(10)
+  toYear       String   @map("to_year") @db.VarChar(10)
+  promotedById Int      @map("promoted_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  madrasa Madrasa           @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  records PromotionRecord[]
+
+  @@index([madrasaId, fromYear, toYear], map: "idx_promotion_batch_madrasa_years")
+  @@map("promotion_batches")
+}
+
+model PromotionRecord {
+  id        Int                   @id @default(autoincrement())
+  batchId   Int                   @map("batch_id")
+  studentId Int                   @map("student_id")
+  oldRoll   Int                   @map("old_roll")
+  newRoll   Int?                  @map("new_roll")
+  status    PromotionRecordStatus
+
+  batch   PromotionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([batchId], map: "idx_promotion_record_batch")
+  @@index([studentId], map: "idx_promotion_record_student")
+  @@map("promotion_records")
+}

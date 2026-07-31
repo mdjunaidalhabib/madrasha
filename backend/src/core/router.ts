@@ -34,6 +34,24 @@ import examRoutes from "../modules/ExamPanel/exam.routes";
 import resultsRoutes from "../modules/ResultPanel/result-panel.routes";
 import websiteRoutes from "../modules/public-website/website.routes";
 
+// 🗓️ Phase 1: Attendance, Routine, Promotion
+import attendanceRoutes from "../modules/attendance/attendance.routes";
+import routineRoutes from "../modules/routine/routine.routes";
+import promotionRoutes from "../modules/promotion/promotion.routes";
+
+// 💰 Phase 2: Fee Management
+import feeRoutes from "../modules/fee/fee.routes";
+import payrollRoutes from "../modules/payroll/payroll.routes";
+
+// 🔐 Phase 3: Role & Permission Enhancement
+import roleRoutes from "../modules/roles/role.routes";
+
+// 📣 Phase 4: SMS/Email Notifications
+import notificationRoutes from "../modules/notifications/notification.routes";
+
+// 🖼️ Phase 4: Image/File Storage (Cloudinary)
+import uploadRoutes from "../modules/uploads/upload.routes";
+
 const router = Router();
 
 router.use("/website", websiteRoutes);
@@ -94,5 +112,33 @@ router.use("/reports", reportsRoutes);
    ACADEMIC STRUCTURE
 ========================= */
 router.use("/", classPanalRoutes);
+
+/* =========================
+   PHASE 1: ATTENDANCE, ROUTINE, PROMOTION
+========================= */
+router.use("/attendance", attendanceRoutes);
+router.use("/", routineRoutes);
+router.use("/promotion", promotionRoutes);
+
+/* =========================
+   PHASE 2: FEE MANAGEMENT
+========================= */
+router.use("/", feeRoutes);
+router.use("/payroll", payrollRoutes);
+
+/* =========================
+   PHASE 3: ROLE & PERMISSION
+========================= */
+router.use("/", roleRoutes);
+
+/* =========================
+   PHASE 4: NOTIFICATIONS
+========================= */
+router.use("/notifications", notificationRoutes);
+
+/* =========================
+   PHASE 4: FILE STORAGE
+========================= */
+router.use("/uploads", uploadRoutes);
 
 export default router;

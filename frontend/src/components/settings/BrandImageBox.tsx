@@ -1,5 +1,7 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useToastStore } from "../../store/toastStore";
+import { uploadApi } from "../../services/phase4Api";
+import { logger } from "../../utils/logger";
 
 type Props = {
   label: string;
@@ -21,6 +23,7 @@ export default function BrandImageBox({
   shape = "square",
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,7 +41,24 @@ export default function BrandImageBox({
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => onChange(reader.result as string);
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      onChange(base64);
+
+      try {
+        setUploading(true);
+        const res = await uploadApi.uploadImage(base64, "branding");
+        const data = res.data?.data;
+        if (data?.uploaded && data.url) {
+          onChange(data.url);
+        }
+        // else: cloud storage not configured yet - keep the base64 already set.
+      } catch (err) {
+        logger.error("BRANDING IMAGE UPLOAD ERROR:", err);
+      } finally {
+        setUploading(false);
+      }
+    };
     reader.readAsDataURL(file);
 
     e.target.value = "";
@@ -51,7 +71,7 @@ export default function BrandImageBox({
 
       <div
         onClick={() => fileRef.current?.click()}
-        className={`flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 hover:bg-gray-100 ${
+        className={`relative flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 hover:bg-gray-100 ${
           shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
@@ -62,6 +82,11 @@ export default function BrandImageBox({
         }}
       >
         {!value && <span className="px-2 text-center text-sm text-gray-500">ছবি আপলোড করুন</span>}
+        {uploading && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
+            আপলোড হচ্ছে...
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex gap-2">

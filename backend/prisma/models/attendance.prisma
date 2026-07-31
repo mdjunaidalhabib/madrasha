@@ -1,0 +1,55 @@
+// ============================================================
+// ATTENDANCE (Student / Teacher / Staff)
+// ============================================================
+
+enum AttendeeType {
+  STUDENT
+  TEACHER
+  STAFF
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+}
+
+/// A single day's attendance record for one attendee (student/teacher/staff)
+/// in one madrasa. `attendeeId` points to the relevant table's `id`
+/// depending on `attendeeType` (students.id / teachers.id / users.id for
+/// staff) - kept generic instead of three separate FK columns so the same
+/// table can later also accept biometric-device pushes.
+model Attendance {
+  id           Int              @id @default(autoincrement())
+  madrasaId    Int              @map("madrasa_id")
+  attendeeType AttendeeType     @map("attendee_type")
+  attendeeId   Int              @map("attendee_id")
+  classId      Int?             @map("class_id")
+  date         DateTime         @db.Date
+  status       AttendanceStatus
+  remarks      String?          @db.VarChar(255)
+
+  /// Who recorded this entry. Null/"biometric" source is represented by
+  /// leaving this null and using `source` below, so biometric-device pushes
+  /// don't need a fake user id.
+  markedById Int?    @map("marked_by")
+  source     String  @default("manual") @db.VarChar(20) @map("source")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  // NOTE: `attendeeId` intentionally has NO foreign key. It is a generic
+  // pointer whose target table depends on `attendeeType` (students.id /
+  // teachers.id / users.id), so a single FK constraint can't describe it.
+  // The application layer is responsible for validating the attendee exists.
+
+  @@unique([madrasaId, attendeeType, attendeeId, date], map: "uniq_attendance_per_day")
+  @@index([madrasaId, date], map: "idx_attendance_madrasa_date")
+  @@index([madrasaId, classId, date], map: "idx_attendance_madrasa_class_date")
+  @@index([madrasaId, attendeeType, attendeeId], map: "idx_attendance_madrasa_attendee")
+  @@map("attendances")
+}

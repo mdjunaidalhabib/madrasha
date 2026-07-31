@@ -21,10 +21,17 @@ export const isMuhtamimRole = (role: string) => normalizeAppRole(role) === "MUHT
 export const isTalimatPermission = (permission: string) =>
   permission.startsWith("talimat.") ||
   permission.startsWith("students.") ||
+  permission.startsWith("teachers.") ||
   permission.startsWith("exam.") ||
-  permission.startsWith("result.");
+  permission.startsWith("result.") ||
+  permission.startsWith("attendance.") ||
+  permission.startsWith("routine.") ||
+  permission.startsWith("notifications.");
 
-export const isAccountsPermission = (permission: string) => permission.startsWith("accounts.");
+export const isAccountsPermission = (permission: string) =>
+  permission.startsWith("accounts.") ||
+  permission.startsWith("fee.") ||
+  permission.startsWith("payroll.");
 
 /**
  * Permits specific roles to hold specific permissions even when the

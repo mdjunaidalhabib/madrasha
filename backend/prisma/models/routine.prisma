@@ -1,0 +1,53 @@
+// ============================================================
+// CLASS ROUTINE & EXAM ROUTINE
+// ============================================================
+
+/// Weekly recurring class period. `dayOfWeek` is 0 (Sunday) - 6 (Saturday),
+/// matching the convention already used elsewhere in this codebase
+/// (see ClassRoutine.days_of_week style fields used on the frontend).
+model ClassRoutine {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  classId   Int      @map("class_id")
+  dayOfWeek Int      @map("day_of_week")
+  subject   String   @db.VarChar(150)
+  teacherId Int?     @map("teacher_id")
+  startTime String   @map("start_time") @db.VarChar(10)
+  endTime   String   @map("end_time") @db.VarChar(10)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  class   Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@index([madrasaId, classId], map: "idx_class_routine_madrasa_class")
+  @@index([madrasaId, teacherId], map: "idx_class_routine_madrasa_teacher")
+  @@map("class_routines")
+}
+
+/// One exam-day slot for a class/subject, linked to an existing Exam
+/// (ExamPanel). Distinct from ClassRoutine because exam routines are
+/// per-exam (date-bound), not weekly recurring.
+model ExamRoutine {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  examId    Int      @map("exam_id")
+  classId   Int      @map("class_id")
+  subject   String   @db.VarChar(150)
+  examDate  DateTime @map("exam_date") @db.Date
+  startTime String   @map("start_time") @db.VarChar(10)
+  endTime   String   @map("end_time") @db.VarChar(10)
+  roomNo    String?  @map("room_no") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, examId], map: "idx_exam_routine_madrasa_exam")
+  @@index([madrasaId, classId, examDate], map: "idx_exam_routine_madrasa_class_date")
+  @@map("exam_routines")
+}

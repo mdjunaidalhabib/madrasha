@@ -1,0 +1,133 @@
+// ============================================================
+// STUDENT FEE MANAGEMENT
+// ============================================================
+
+enum FeeFrequency {
+  ONE_TIME
+  MONTHLY
+  YEARLY
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+/// A reusable fee definition (e.g. "মাসিক বেতন", "ভর্তি ফি") that invoices
+/// get generated from. `classId` null means it applies to every class.
+model FeeStructure {
+  id           Int          @id @default(autoincrement())
+  madrasaId    Int          @map("madrasa_id")
+  classId      Int?         @map("class_id")
+  name         String       @db.VarChar(150)
+  amount       Decimal      @db.Decimal(10, 2)
+  frequency    FeeFrequency
+  academicYear String       @map("academic_year") @db.VarChar(10)
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  class    Class?    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@index([madrasaId, classId, academicYear], map: "idx_fee_structure_madrasa_class_year")
+  @@map("fee_structures")
+}
+
+/// One billable charge for one student. Generated in bulk from a
+/// FeeStructure (see FeeService.generateInvoices) or created ad-hoc.
+model Invoice {
+  id             Int           @id @default(autoincrement())
+  madrasaId      Int           @map("madrasa_id")
+  studentId      Int           @map("student_id")
+  feeStructureId Int?          @map("fee_structure_id")
+  title          String        @db.VarChar(150)
+  amount         Decimal       @db.Decimal(10, 2)
+  paidAmount     Decimal       @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  dueDate        DateTime      @map("due_date") @db.Date
+  status         InvoiceStatus @default(UNPAID)
+  /// Populated only for MONTHLY fee invoices, e.g. "2026-08" — used to
+  /// stop the same month's fee being generated twice for one student.
+  month          String?       @db.VarChar(10)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  madrasa      Madrasa       @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure? @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
+  payments     Payment[]
+
+  @@unique([studentId, feeStructureId, month], map: "uniq_invoice_student_fee_month")
+  @@index([madrasaId, studentId], map: "idx_invoice_madrasa_student")
+  @@index([madrasaId, status], map: "idx_invoice_madrasa_status")
+  @@map("invoices")
+}
+
+/// A single payment applied against an invoice. Multiple partial payments
+/// can exist for one invoice; the invoice's `paidAmount`/`status` are kept
+/// in sync by the service layer whenever a Payment is created.
+model Payment {
+  id             Int      @id @default(autoincrement())
+  madrasaId      Int      @map("madrasa_id")
+  invoiceId      Int      @map("invoice_id")
+  amount         Decimal  @db.Decimal(10, 2)
+  /// CASH / BKASH / NAGAD / BANK / ONLINE ...
+  method         String   @db.VarChar(30)
+  paidAt         DateTime @default(now()) @map("paid_at")
+  receivedById   Int?     @map("received_by")
+  /// Gateway transaction id, once Payment Gateway Integration lands.
+  transactionRef String?  @map("transaction_ref") @db.VarChar(120)
+  /// Which admin-configured manual payment channel was used (e.g. "bKash -
+  /// Personal: 017XXXXXXXX"), frozen at payment time so editing/deleting
+  /// the setting later never changes historical payment records.
+  methodSettingId Int?    @map("method_setting_id")
+  methodLabel     String? @map("method_label") @db.VarChar(150)
+  /// Links back to the auto-created ledger entry (see accounts module) so
+  /// a fee payment always shows up in the existing income/expense report.
+  accountEntryId Int?     @map("account_entry_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  madrasa       Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  invoice       Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  methodSetting PaymentMethodSetting? @relation(fields: [methodSettingId], references: [id], onDelete: SetNull)
+
+  @@index([madrasaId, invoiceId], map: "idx_payment_madrasa_invoice")
+  @@map("payments")
+}
+
+// ============================================================
+// MANUAL PAYMENT METHOD SETUP (admin-configured, no payment gateway)
+// ============================================================
+
+/// One manual payment channel an admin has set up (e.g. a specific bKash
+/// personal number, a bank account, or plain cash-in-hand) so guardians
+/// know where to send money and admins can pick the right one when
+/// recording a payment. There is intentionally no gateway/API behind
+/// this - it is informational + a picklist for manual entry.
+model PaymentMethodSetting {
+  id           Int      @id @default(autoincrement())
+  madrasaId    Int      @map("madrasa_id")
+  /// CASH / BKASH / NAGAD / BANK / OTHER
+  methodType   String   @db.VarChar(20)
+  /// Short display name, e.g. "bKash (Personal)", "Sonali Bank - Main"
+  label        String   @db.VarChar(150)
+  accountName  String?  @map("account_name") @db.VarChar(150)
+  accountNumber String? @map("account_number") @db.VarChar(100)
+  bankName     String?  @map("bank_name") @db.VarChar(150)
+  branch       String?  @db.VarChar(150)
+  /// Free-text instructions shown alongside this method, e.g. "Send Money
+  /// only, then share the transaction ID with the office."
+  instructions String?  @db.VarChar(500)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([madrasaId, isActive], map: "idx_payment_method_madrasa_active")
+  @@map("payment_method_settings")
+}

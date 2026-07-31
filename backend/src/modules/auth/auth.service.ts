@@ -1,6 +1,10 @@
-import { comparePassword } from "../../shared/utils/hash.util";
+import crypto from "crypto";
+import { comparePassword, hashPassword } from "../../shared/utils/hash.util";
 import { generateToken } from "../../shared/utils/jwt.util";
 import { NotFoundError, BadRequestError } from "../../shared/errors";
+import { logger } from "../../shared/logger/logger";
+import { env } from "../../shared/config/env";
+import { emailService } from "../../shared/notifications/email.service";
 import { authRepository, AuthRepository } from "./auth.repository";
 import { LoginCredentials, LoginResult, UnlockCredentials } from "./auth.types";
 import {
@@ -10,6 +14,9 @@ import {
   MUHTAMIM_BASELINE_PERMISSIONS,
   TALIMAT_BASELINE_PERMISSIONS,
   ACCOUNTANT_BASELINE_PERMISSIONS,
+  PASSWORD_RESET_TOKEN_TTL_MS,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+  ACCOUNT_LOCKOUT_DURATION_MS,
 } from "./auth.constants";
 
 const normalizeRoleKey = (value?: string | null) =>
@@ -26,13 +33,35 @@ export class AuthService {
       throw new BadRequestError("Invalid credentials");
     }
 
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throw new BadRequestError(
+        `Too many failed attempts. Try again in ${minutesLeft} minute(s).`,
+      );
+    }
+
     const [role, validPassword] = await Promise.all([
       this.repository.findRoleById(user.roleId),
       comparePassword(password, user.passwordHash),
     ]);
     if (!validPassword) {
+      const attempts = user.failedLoginAttempts + 1;
+      const lockedUntil =
+        attempts >= MAX_FAILED_LOGIN_ATTEMPTS
+          ? new Date(Date.now() + ACCOUNT_LOCKOUT_DURATION_MS)
+          : null;
+      await this.repository.recordFailedLogin(user.id, attempts, lockedUntil);
+
+      if (lockedUntil) {
+        logger.warn(`Account locked after ${attempts} failed logins`, { userId: user.id });
+        throw new BadRequestError(
+          `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.`,
+        );
+      }
       throw new BadRequestError("Invalid credentials");
     }
+
+    await this.repository.recordSuccessfulLogin(user.id);
 
     const roleKey = normalizeRoleKey(role?.keyName || role?.nameBn);
     const [permissions, modules] = await Promise.all([
@@ -98,6 +127,79 @@ export class AuthService {
   private async resolveEnabledModules(madrasaId: number): Promise<string[]> {
     const madrasaModules = await this.repository.findActiveMadrasaModuleKeys(madrasaId);
     return madrasaModules.map((mm) => mm.module.keyName).filter((k): k is string => Boolean(k));
+  }
+
+  /* ================= FORGOT / RESET PASSWORD ================= */
+
+  /**
+   * Issues a one-time reset token if the email matches an active user.
+   * Deliberately does not reveal whether the email exists (same generic
+   * message either way) to avoid leaking which emails are registered.
+   *
+   * NOTE: there is no email/SMS service wired up yet (see Phase 4). Until
+   * one exists, the raw reset link is logged server-side, and — only
+   * outside production — also returned in the API response so the flow
+   * is testable end-to-end without a mail provider.
+   */
+  async forgotPassword(email: string, madrasaId: number): Promise<{ devResetToken?: string }> {
+    const user = await this.repository.findActiveUserByEmailAnyRole(email, madrasaId);
+    if (!user) {
+      // Same response as the success path - don't leak account existence.
+      return {};
+    }
+
+    await this.repository.invalidateExistingResetTokens(user.id);
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+    await this.repository.createResetToken({
+      madrasaId,
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    const madrasa = await this.repository.findMadrasaSlug(madrasaId);
+    const base = env.frontendBaseUrl || `https://${env.rootDomain}`;
+    const resetLink = `${base}/${madrasa?.slug || ""}/admin/reset-password?token=${rawToken}`;
+
+    const emailResult = await emailService.send({
+      to: user.email,
+      subject: "Password Reset Request",
+      html: `
+        <p>Hi ${user.name || ""},</p>
+        <p>Someone requested a password reset for your account. If this was you, click the link below (valid for 1 hour):</p>
+        <p><a href="${resetLink}">${resetLink}</a></p>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+      `,
+      text: `Reset your password: ${resetLink} (valid for 1 hour). If you didn't request this, ignore this email.`,
+    });
+
+    if (!emailResult.success) {
+      // Don't leak the failure to the caller (still return the generic
+      // message) - but log it loudly so an admin/dev notices SMTP is
+      // broken rather than guardians silently never getting the email.
+      logger.error(`Failed to send password-reset email to ${user.email}`, emailResult.errorMessage);
+    }
+
+    if (env.nodeEnv !== "production") {
+      return { devResetToken: rawToken };
+    }
+    return {};
+  }
+
+  async resetPassword(rawToken: string, newPassword: string, madrasaId: number): Promise<void> {
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const resetToken = await this.repository.findValidResetToken(tokenHash);
+    if (!resetToken || resetToken.madrasaId !== madrasaId) {
+      throw new BadRequestError("This reset link is invalid or has expired");
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await this.repository.updateUserPasswordHash(resetToken.userId, passwordHash);
+    await this.repository.markResetTokenUsed(resetToken.id);
   }
 }
 

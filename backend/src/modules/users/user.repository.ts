@@ -28,6 +28,14 @@ export class UserRepository {
   deleteManyForTenant(id: number, madrasaId: number) {
     return prisma.user.deleteMany({ where: { id, madrasaId } });
   }
+
+  updateManyForTenant(id: number, madrasaId: number, data: Prisma.UserUncheckedUpdateInput) {
+    return prisma.user.updateMany({ where: { id, madrasaId }, data });
+  }
+
+  findRoleForTenant(roleId: number, madrasaId: number) {
+    return prisma.role.findFirst({ where: { id: roleId, madrasaId } });
+  }
 }
 
 export const userRepository = new UserRepository();

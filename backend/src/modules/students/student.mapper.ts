@@ -45,5 +45,7 @@ export const toStudentApiDto = (row: Record<string, any>): StudentApiDto => {
     thana: s.thana ?? null,
     village: s.village ?? null,
     image: s.image ?? null,
+    admission_status: s.admissionStatus ?? "APPROVED",
+    rejection_reason: s.rejectionReason ?? null,
   };
 };

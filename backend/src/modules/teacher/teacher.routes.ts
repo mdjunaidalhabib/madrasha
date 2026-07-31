@@ -10,19 +10,23 @@ import {
 
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 
 const router = Router();
 
 router.use(tenantMiddleware);
 router.use(authMiddleware);
 
-router.post("/", createTeacher);
-router.post("/bulk", bulkCreateTeachers);
+// NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware, and TALIMAT
+// has a fallback covering teachers.* (see rbac-policy.ts).
 
-router.get("/", getTeachers);
-router.get("/:id", getTeacherById);
+router.post("/", rbacMiddleware("teachers.create"), createTeacher);
+router.post("/bulk", rbacMiddleware("teachers.create"), bulkCreateTeachers);
 
-router.put("/:id", updateTeacher);
-router.delete("/:id", deleteTeacher);
+router.get("/", rbacMiddleware("teachers.read"), getTeachers);
+router.get("/:id", rbacMiddleware("teachers.read"), getTeacherById);
+
+router.put("/:id", rbacMiddleware("teachers.update"), updateTeacher);
+router.delete("/:id", rbacMiddleware("teachers.delete"), deleteTeacher);
 
 export default router;

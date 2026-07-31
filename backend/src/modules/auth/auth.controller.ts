@@ -44,3 +44,46 @@ export const unlockScreen = async (req: Request, res: Response) => {
     });
   }
 };
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const madrasa_id = req.tenant!.madrasa_id;
+
+    const result = await authService.forgotPassword(email, madrasa_id);
+
+    // Same generic message whether or not the email exists.
+    res.json({
+      message: "If an account with that email exists, a password reset link has been sent.",
+      ...(result.devResetToken ? { dev_reset_token: result.devResetToken } : {}),
+    });
+  } catch (err) {
+    const message = err instanceof ApiError ? err.message : (err as Error)?.message;
+    res.status(HttpStatus.BAD_REQUEST).json({ message: message || "Request failed" });
+  }
+};
+
+/* =========================================================
+   RESET PASSWORD
+========================================================= */
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, new_password } = req.body;
+    const madrasa_id = req.tenant!.madrasa_id;
+
+    await authService.resetPassword(token, new_password, madrasa_id);
+
+    res.json({ message: "Password has been reset successfully. Please log in." });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      res.status(err.statusCode).json({ message: err.message });
+      return;
+    }
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: (err as Error)?.message || "Reset failed",
+    });
+  }
+};

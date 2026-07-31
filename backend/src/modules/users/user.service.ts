@@ -1,8 +1,8 @@
 import { hashPassword } from "../../shared/utils/hash.util";
 import { logActivity } from "../../shared/utils/activity.util";
-import { BadRequestError } from "../../shared/errors";
+import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { userRepository, UserRepository } from "./user.repository";
-import { CreateUserRequestDto } from "./user.dto";
+import { CreateUserRequestDto, UpdateUserRequestDto } from "./user.dto";
 import { USER_ACTIVITY_ENTITY, USER_LIMIT_REACHED_MESSAGE } from "./user.constants";
 
 export class UserService {
@@ -13,6 +13,10 @@ export class UserService {
   }
 
   async createUser(madrasaId: number, actingUserId: number, dto: CreateUserRequestDto) {
+    if (!dto.password || dto.password.length < 6) {
+      throw new BadRequestError("Password must be at least 6 characters");
+    }
+
     const madrasa = await this.repository.findMadrasaUserLimit(madrasaId);
     const userLimit = madrasa?.userLimit ?? 0;
 
@@ -53,6 +57,34 @@ export class UserService {
       entity: USER_ACTIVITY_ENTITY,
       entity_id: id,
       details: `User ${id} deleted`,
+    });
+  }
+
+  /** Changes a user's role and/or active status. Was previously
+   * impossible after creation - the only mutations were create/delete. */
+  async updateUser(madrasaId: number, actingUserId: number, id: number, dto: UpdateUserRequestDto) {
+    const data: Record<string, unknown> = {};
+
+    if (dto.role_id !== undefined) {
+      const role = await this.repository.findRoleForTenant(dto.role_id, madrasaId);
+      if (!role) throw new BadRequestError("Selected role does not belong to this madrasa");
+      data.roleId = dto.role_id;
+    }
+    if (dto.is_active !== undefined) data.isActive = dto.is_active ? 1 : 0;
+    if (dto.name !== undefined && dto.name.trim()) data.name = dto.name.trim();
+
+    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+
+    const result = await this.repository.updateManyForTenant(id, madrasaId, data as any);
+    if (!result.count) throw new NotFoundError("User not found");
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: actingUserId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: id,
+      details: `User ${id} updated`,
     });
   }
 }

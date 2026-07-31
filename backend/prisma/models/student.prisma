@@ -2,6 +2,16 @@
 // STUDENTS
 // ============================================================
 
+/// Admission workflow status. Students created directly by an admin are
+/// APPROVED immediately (unchanged existing behavior); PENDING is used by
+/// online/public admission requests that need admin review before the
+/// student becomes an active, rolled student.
+enum AdmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Student {
   id        Int @id @default(autoincrement())
   madrasaId Int @map("madrasa_id")
@@ -53,6 +63,13 @@ model Student {
   isActive      Int       @default(1) @map("is_active")
   deletedAt     DateTime? @map("deleted_at")
 
+  /// Admission approval workflow. Defaults to APPROVED so every existing
+  /// admin-created admission keeps behaving exactly as before.
+  admissionStatus AdmissionStatus @default(APPROVED) @map("admission_status")
+  rejectionReason String?         @map("rejection_reason") @db.VarChar(255)
+  reviewedBy      Int?            @map("reviewed_by")
+  reviewedAt      DateTime?       @map("reviewed_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -63,6 +80,8 @@ model Student {
 
   resultsSummary ResultSummary[]
   marks          Mark[]
+  promotionRecords PromotionRecord[]
+  invoices       Invoice[]
 
   @@unique([madrasaId, classId, academicYear, roll], map: "unique_roll_per_class_year")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
@@ -73,5 +92,6 @@ model Student {
   @@index([madrasaId, classId], map: "idx_students_madrasa_class")
   @@index([madrasaId, isActive], map: "idx_students_madrasa_active")
   @@index([madrasaId, academicYear], map: "idx_students_madrasa_year")
+  @@index([madrasaId, admissionStatus], map: "idx_students_madrasa_admission_status")
   @@map("students")
 }

@@ -159,13 +159,22 @@ const TeacherListPage = () => {
             <p className="mt-1 text-sm text-gray-500">মোট শিক্ষক: {filteredTeachers.length} জন</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/ihtemam/teacher_admission`)}
-            className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
-          >
-            + নতুন শিক্ষক যোগ করুন
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => navigate(`${adminBase}/payroll`)}
+              className="h-10 rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            >
+              শিক্ষক বেতন (পেরোল)
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`${adminBase}/ihtemam/teacher_admission`)}
+              className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+            >
+              + নতুন শিক্ষক যোগ করুন
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 rounded-xl bg-white p-4 shadow-sm">

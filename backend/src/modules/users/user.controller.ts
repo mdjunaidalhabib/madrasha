@@ -33,3 +33,12 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
 
   res.json({ message: "Deleted" });
 });
+
+export const updateUser = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const id = Number(req.params.id);
+
+  await userService.updateUser(madrasa_id, req.user!.id, id, req.body);
+
+  res.json({ message: "Updated" });
+});

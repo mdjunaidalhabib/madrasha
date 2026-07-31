@@ -410,7 +410,7 @@ CREATE TABLE "madrasa_subscriptions" (
 );
 
 -- CreateTable
-CREATE TABLE "payments" (
+CREATE TABLE "subscription_payments" (
     "id" SERIAL NOT NULL,
     "madrasa_id" INTEGER,
     "subscription_id" INTEGER,
@@ -421,7 +421,7 @@ CREATE TABLE "payments" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "subscription_payments_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -750,13 +750,13 @@ CREATE INDEX "idx_madrasas_plan_status" ON "madrasas"("plan_status");
 CREATE INDEX "idx_subscription_madrasa_active" ON "madrasa_subscriptions"("madrasa_id", "is_active");
 
 -- CreateIndex
-CREATE INDEX "idx_payments_madrasa" ON "payments"("madrasa_id");
+CREATE INDEX "idx_subscription_payments_madrasa" ON "subscription_payments"("madrasa_id");
 
 -- CreateIndex
-CREATE INDEX "idx_payments_subscription" ON "payments"("subscription_id");
+CREATE INDEX "idx_subscription_payments_subscription" ON "subscription_payments"("subscription_id");
 
 -- CreateIndex
-CREATE INDEX "idx_payments_status" ON "payments"("status");
+CREATE INDEX "idx_subscription_payments_status" ON "subscription_payments"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "uniq_madrasa_module" ON "madrasa_modules"("madrasa_id", "module_id");
@@ -903,10 +903,10 @@ ALTER TABLE "madrasa_subscriptions" ADD CONSTRAINT "madrasa_subscriptions_madras
 ALTER TABLE "madrasa_subscriptions" ADD CONSTRAINT "madrasa_subscriptions_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_madrasa_id_fkey" FOREIGN KEY ("madrasa_id") REFERENCES "madrasas"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "subscription_payments" ADD CONSTRAINT "subscription_payments_madrasa_id_fkey" FOREIGN KEY ("madrasa_id") REFERENCES "madrasas"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_subscription_id_fkey" FOREIGN KEY ("subscription_id") REFERENCES "madrasa_subscriptions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "subscription_payments" ADD CONSTRAINT "subscription_payments_subscription_id_fkey" FOREIGN KEY ("subscription_id") REFERENCES "madrasa_subscriptions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "madrasa_modules" ADD CONSTRAINT "madrasa_modules_madrasa_id_fkey" FOREIGN KEY ("madrasa_id") REFERENCES "madrasas"("id") ON DELETE CASCADE ON UPDATE CASCADE;

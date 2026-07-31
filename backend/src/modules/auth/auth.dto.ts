@@ -7,4 +7,13 @@ export interface UnlockRequestDto {
   password: string;
 }
 
+export interface ForgotPasswordRequestDto {
+  email: string;
+}
+
+export interface ResetPasswordRequestDto {
+  token: string;
+  new_password: string;
+}
+
 export type { LoginResult as LoginResponseDto } from "./auth.types";

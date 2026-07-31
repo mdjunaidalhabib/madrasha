@@ -76,6 +76,15 @@ export class StudentRepository {
     });
   }
 
+  /** Admissions still awaiting admin review (see Admission Approval Workflow). */
+  findPendingForTenant(madrasaId: number) {
+    return prisma.student.findMany({
+      where: { madrasaId, admissionStatus: "PENDING" },
+      include: { classRef: { select: { nameBn: true } } },
+      orderBy: { id: "desc" },
+    });
+  }
+
   deleteManyForTenant(id: number, madrasaId: number) {
     return prisma.student.deleteMany({
       where: { id, madrasaId },

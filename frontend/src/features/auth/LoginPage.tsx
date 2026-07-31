@@ -72,6 +72,14 @@ export default function LoginPage() {
         <Button onClick={handleLogin} disabled={loading} className="w-full">
           {loading ? "Logging in..." : "Login"}
         </Button>
+
+        <button
+          type="button"
+          onClick={() => nav(`${getTenantAdminBase(madrasaSlug)}/forgot-password`)}
+          className="w-full text-center text-xs text-blue-600 hover:underline"
+        >
+          পাসওয়ার্ড ভুলে গেছেন?
+        </button>
       </div>
     </div>
   );

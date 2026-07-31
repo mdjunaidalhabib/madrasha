@@ -1,0 +1,42 @@
+// ============================================================
+// SMS / EMAIL NOTIFICATIONS
+// ============================================================
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Every notification attempt (SMS or Email) gets a row here, regardless
+/// of whether it actually succeeded - this is the audit trail admins can
+/// check when a guardian says "I never got the SMS".
+model NotificationLog {
+  id           Int                 @id @default(autoincrement())
+  madrasaId    Int                 @map("madrasa_id")
+  channel      NotificationChannel
+  /// Phone number (SMS) or email address (EMAIL).
+  recipient    String              @db.VarChar(150)
+  /// Only used for EMAIL; ignored for SMS.
+  subject      String?             @db.VarChar(200)
+  message      String              @db.Text
+  status       NotificationStatus  @default(PENDING)
+  /// "smtp" / "sms-gateway" / "console-dev-log" (when no real
+  /// credentials are configured yet - see notification.service.ts).
+  provider     String?             @db.VarChar(50)
+  errorMessage String?             @map("error_message") @db.VarChar(500)
+  sentById     Int?                @map("sent_by")
+  sentAt       DateTime?           @map("sent_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, channel, status], map: "idx_notification_madrasa_channel_status")
+  @@index([madrasaId, createdAt], map: "idx_notification_madrasa_created")
+  @@map("notification_logs")
+}

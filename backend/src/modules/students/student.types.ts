@@ -43,6 +43,8 @@ export interface StudentApiDto {
   thana: string | null;
   village: string | null;
   image: string | null;
+  admission_status: "PENDING" | "APPROVED" | "REJECTED";
+  rejection_reason: string | null;
 }
 
 export type StudentListItem = StudentApiDto;

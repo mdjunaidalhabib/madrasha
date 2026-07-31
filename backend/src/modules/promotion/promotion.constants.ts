@@ -1,0 +1,1 @@
+export const PROMOTION_STATUSES = ["PROMOTED", "RETAINED", "TRANSFERRED"] as const;
