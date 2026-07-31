@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import api, { cachedGet } from "../../services/api";
+import { cachedGet } from "../../services/api";
 
+import PageHeader from "../../components/ui/PageHeader";
 import ExamList from "../../components/ExamPanel/ExamList";
 import GeneralGradeList from "../../components/ExamPanel/GeneralGradeList";
 import MadrasaGradeList from "../../components/ExamPanel/MadrasaGradeList";
@@ -31,25 +32,21 @@ export default function ExamPanel() {
   }, []);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen space-y-8">
-      {/* Header */}
-      <h1 className="text-3xl font-bold text-gray-800">
-        🎓 Exam Management Dashboard
-      </h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="পরীক্ষা ব্যবস্থাপনা"
+        subtitle="পরীক্ষার তালিকা, গ্রেড ও ফেল মার্ক নির্ধারণ করুন"
+      />
 
-      {/* Top Section (Exam + Fail Mark) */}
-      <div className="grid lg:grid-cols-3 gap-6 items-start">
-        {/* Exam List */}
+      <div className="grid gap-4 lg:grid-cols-3 items-start">
         <div className="lg:col-span-2">
           <ExamList exams={exams} reload={loadAll} />
         </div>
 
-        {/* Fail Mark */}
         <FailMarkSetting value={failMark} reload={loadAll} />
       </div>
 
-      {/* Grades Section */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid gap-4 md:grid-cols-2">
         <GeneralGradeList grades={generalGrades} reload={loadAll} />
         <MadrasaGradeList grades={madrasaGrades} reload={loadAll} />
       </div>

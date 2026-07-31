@@ -86,7 +86,26 @@ export class ReportsRepository {
 
   /* ================= ACADEMIC ================= */
 
-  async findAcademicResults(madrasaId: number): Promise<OptionalQueryResult<any>> {
+  findAcademicResults(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    return this.academicResultsQuery(
+      madrasaId,
+      "ORDER BY rm.id DESC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC",
+    );
+  }
+
+  /** Same document as findAcademicResults, but ordered by merit rank (১ম, ২য়, ...)
+   * instead of roll number - used by the separate "মেধাক্রম অনুযায়ী ফলাফল" report. */
+  findAcademicResultsByRank(madrasaId: number): Promise<OptionalQueryResult<any>> {
+    return this.academicResultsQuery(
+      madrasaId,
+      "ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC",
+    );
+  }
+
+  private async academicResultsQuery(
+    madrasaId: number,
+    orderByClause: string,
+  ): Promise<OptionalQueryResult<any>> {
     const result = await this.runOptionalQuery(
       `
       SELECT
@@ -169,7 +188,7 @@ export class ReportsRepository {
         rs.rank_no,
         rm.status,
         rm.id
-      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC
+      ${orderByClause}
       `,
       [madrasaId],
     );

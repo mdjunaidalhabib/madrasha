@@ -7,6 +7,11 @@ model Exam {
   name      String    @db.VarChar(100)
   year      String    @db.VarChar(20)
   madrasaId Int       @default(1) @map("madrasa_id")
+  /// Display order within a madrasa (প্রথম সাময়িক, দ্বিতীয় সাময়িক, বার্ষিক, ...),
+  /// user-adjustable via the "move up/down" controls in Exam Management.
+  /// Everywhere this list is shown (Exam Panel, Result Preview, ...) sorts
+  /// by this instead of id/creation time.
+  sortOrder Int       @default(0) @map("sort_order")
   createdBy Int?      @map("created_by")
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")

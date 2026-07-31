@@ -7,6 +7,10 @@ export class AcademicReportService {
     return this.repository.findAcademicResults(madrasaId);
   }
 
+  getResultsByRank(madrasaId: number) {
+    return this.repository.findAcademicResultsByRank(madrasaId);
+  }
+
   getResultNotice(madrasaId: number) {
     return this.repository.findAcademicResultNotice(madrasaId);
   }

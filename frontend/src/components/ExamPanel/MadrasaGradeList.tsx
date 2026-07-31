@@ -1,6 +1,11 @@
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
+import Button from "../ui/Button";
+import Input from "../ui/Input";
+import EmptyState from "../ui/EmptyState";
 
 type GradeItem = {
   id: string | number;
@@ -26,13 +31,17 @@ export default function MadrasaGradeList({
   const [name, setName] = useState("");
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const add = async () => {
-    if (!name || !min || !max) return useToastStore.getState().show("All fields required", "error");
+    if (!name.trim() || !min || !max) {
+      return useToastStore.getState().show("সব ঘর পূরণ করুন", "error");
+    }
 
     try {
+      setAdding(true);
       await api.post("/madrasa-grades", {
-        name,
+        name: name.trim(),
         min_mark: Number(min),
         max_mark: Number(max),
       });
@@ -42,83 +51,90 @@ export default function MadrasaGradeList({
       setMax("");
       reload();
     } catch {
-      useToastStore.getState().show("Failed", "error");
+      useToastStore.getState().show("গ্রেড যোগ করা যায়নি", "error");
+    } finally {
+      setAdding(false);
     }
   };
 
-  const del = async (id: string | number) => {
-    await api.delete(`/madrasa-grades/${id}`);
-    reload();
+  const del = (id: string | number, gradeName: string) => {
+    useConfirmStore.getState().show({
+      title: "গ্রেড মুছবেন?",
+      message: `"${gradeName}" গ্রেডটি মুছে ফেলতে চান?`,
+      confirmText: "মুছে ফেলুন",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/madrasa-grades/${id}`);
+        reload();
+      },
+    });
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md space-y-5">
-      {/* Header */}
-      <h2 className="text-xl font-semibold text-gray-800">🕌 Madrasa Grades</h2>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-xl">🕌</span>
+        <h2 className="text-lg font-bold text-slate-900">মাদরাসা গ্রেড</h2>
+      </div>
 
-      {/* Input Section */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 outline-none"
-          placeholder="Grade (e.g. Mumtaz)"
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          placeholder="গ্রেড (যেমনঃ মুমতায)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-
-        <div className="flex gap-3">
-          <input
-            className="border rounded-lg px-3 py-2 w-full sm:w-24 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="Min"
+        <div className="flex gap-2">
+          <Input
+            className="w-full sm:w-20"
+            placeholder="সর্বনিম্ন"
             type="number"
             value={min}
             onChange={(e) => setMin(e.target.value)}
           />
-
-          <input
-            className="border rounded-lg px-3 py-2 w-full sm:w-24 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="Max"
+          <Input
+            className="w-full sm:w-20"
+            placeholder="সর্বোচ্চ"
             type="number"
             value={max}
             onChange={(e) => setMax(e.target.value)}
           />
-
-          <button
-            onClick={add}
-            className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:py-0 rounded-lg transition"
-          >
-            Add
-          </button>
+          <Button onClick={add} disabled={adding} className="shrink-0 px-3">
+            <Plus size={16} />
+          </Button>
         </div>
       </div>
 
-      {/* List Section */}
-      <div className="space-y-2">
-        {grades.length === 0 && (
-          <p className="text-gray-400 text-sm">No grades added yet</p>
-        )}
+      {grades.length === 0 ? (
+        <EmptyState title="কোনো গ্রেড যোগ করা হয়নি" hint="উপরে থেকে নতুন গ্রেড যোগ করুন" />
+      ) : (
+        <div className="space-y-2">
+          {grades.map((g) => {
+            const { min: minMark, max: maxMark } = getGradeRange(g);
 
-        {grades.map((g) => {
-          const { min: minMark, max: maxMark } = getGradeRange(g);
-
-          return (
-            <div
-              key={g.id}
-              className="flex justify-between items-center bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-            >
-              <span className="text-gray-700 font-medium">
-                {g.name} ({minMark ?? "-"} - {maxMark ?? "-"})
-              </span>
-
-              <button
-                onClick={() => del(g.id)}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition"
+            return (
+              <div
+                key={g.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
               >
-                Delete
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <span className="font-semibold text-slate-800">
+                  {g.name}{" "}
+                  <span className="font-normal text-slate-500">
+                    ({minMark ?? "-"} - {maxMark ?? "-"})
+                  </span>
+                </span>
+                <button
+                  onClick={() => del(g.id, g.name)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                  aria-label="মুছে ফেলুন"
+                  title="মুছে ফেলুন"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

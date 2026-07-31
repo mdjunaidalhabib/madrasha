@@ -24,12 +24,12 @@ const defaultMadrasaGrades = [
   { keyName: "mumtaz", name: "মুমতায", minMark: 80, maxMark: 100, sortOrder: 1 },
   {
     keyName: "jayyid_jiddan",
-    name: "জাইয়িদ জিদ্দান",
+    name: "জাঃ জিদ্দান",
     minMark: 65,
     maxMark: 79,
     sortOrder: 2,
   },
-  { keyName: "jayyid", name: "জাইয়িদ", minMark: 50, maxMark: 64, sortOrder: 3 },
+  { keyName: "jayyid", name: "জায়্যিদ", minMark: 50, maxMark: 64, sortOrder: 3 },
   { keyName: "maqbul", name: "মাকবুল", minMark: 35, maxMark: 49, sortOrder: 4 },
   { keyName: "rasib", name: "রাসিব", minMark: 0, maxMark: 34, sortOrder: 5 },
 ];

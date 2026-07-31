@@ -26,34 +26,34 @@ export default function FailMarkSetting({
   const update = async () => {
     const failMark = Number(draft);
     if (draft.trim() === "" || !Number.isFinite(failMark) || failMark < 0 || failMark > 100) {
-      return useToastStore.getState().show("Enter a fail mark between 0 and 100", "error");
+      return useToastStore.getState().show("০ থেকে ১০০ এর মধ্যে ফেল মার্ক দিন", "error");
     }
 
     try {
       setIsSaving(true);
       await api.post("/fail-mark", { value: failMark });
-      useToastStore.getState().show("Updated!", "success");
+      useToastStore.getState().show("আপডেট হয়েছে!", "success");
       setIsEditing(false);
       reload();
     } catch {
-      useToastStore.getState().show("Failed to update", "error");
+      useToastStore.getState().show("আপডেট করা যায়নি", "error");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md space-y-5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">❌ Fail Mark</h2>
+        <h2 className="text-lg font-bold text-slate-900">ফেল মার্ক</h2>
 
         {!isEditing && (
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
-            aria-label="Edit fail mark"
-            title="Edit fail mark"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+            aria-label="ফেল মার্ক পরিবর্তন করুন"
+            title="ফেল মার্ক পরিবর্তন করুন"
           >
             <Pencil size={17} />
           </button>
@@ -66,7 +66,7 @@ export default function FailMarkSetting({
             type="number"
             min={0}
             max={100}
-            className="border rounded-lg px-3 py-2 w-full"
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             autoFocus
@@ -77,26 +77,26 @@ export default function FailMarkSetting({
               type="button"
               onClick={update}
               disabled={isSaving}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Check size={17} />
-              {isSaving ? "Saving..." : "Save"}
+              {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </button>
             <button
               type="button"
               onClick={cancelEdit}
               disabled={isSaving}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <X size={17} />
-              Cancel
+              বাতিল
             </button>
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border bg-gray-50 px-4 py-5 text-center">
-          <span className="text-3xl font-bold text-gray-900">{value}</span>
-          <span className="ml-1 text-sm text-gray-500">marks</span>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center">
+          <span className="text-3xl font-bold text-slate-900">{value}</span>
+          <span className="ml-1 text-sm text-slate-500">নম্বর</span>
         </div>
       )}
     </div>

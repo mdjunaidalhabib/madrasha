@@ -4,6 +4,7 @@ import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import {
   getAcademicAdmissionReport,
   getAcademicResultNoticeReport,
+  getAcademicResultsByRankReport,
   getAcademicResultsReport,
   getAcademicRoutineReport,
   getDailyAttendanceReport,
@@ -32,6 +33,7 @@ router.use(tenantMiddleware);
 router.use(authMiddleware);
 
 router.get("/academic/results", getAcademicResultsReport);
+router.get("/academic/results-by-rank", getAcademicResultsByRankReport);
 router.get("/academic/result-notice", getAcademicResultNoticeReport);
 router.get("/academic/routines", getAcademicRoutineReport);
 router.get("/academic/admissions", getAcademicAdmissionReport);

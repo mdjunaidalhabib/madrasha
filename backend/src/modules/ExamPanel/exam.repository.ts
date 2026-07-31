@@ -3,15 +3,42 @@ import { FAIL_MARK_SETTING_NAME } from "./exam.constants";
 
 export class ExamRepository {
   findExams(madrasaId: number) {
-    return prisma.exam.findMany({ where: { madrasaId }, orderBy: { id: "desc" } });
+    return prisma.exam.findMany({
+      where: { madrasaId },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
   }
 
-  createExam(madrasaId: number, name: string, year: string) {
-    return prisma.exam.create({ data: { name, year, madrasaId } });
+  async createExam(madrasaId: number, name: string, year: string) {
+    const last = await prisma.exam.findFirst({
+      where: { madrasaId },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    return prisma.exam.create({
+      data: { name, year, madrasaId, sortOrder: (last?.sortOrder ?? -1) + 1 },
+    });
   }
 
   deleteExam(id: number, madrasaId: number) {
     return prisma.exam.deleteMany({ where: { id, madrasaId } });
+  }
+
+  /** Sets sortOrder = array index for each exam id, in one transaction - used
+   * after a drag-and-drop reorder in the UI. Only touches exams that belong
+   * to this madrasa; unknown/foreign ids are silently ignored. */
+  async reorderExams(madrasaId: number, orderedIds: number[]): Promise<void> {
+    const owned = await prisma.exam.findMany({
+      where: { madrasaId, id: { in: orderedIds } },
+      select: { id: true },
+    });
+    const ownedIds = new Set(owned.map((exam) => exam.id));
+
+    const updates = orderedIds
+      .filter((id) => ownedIds.has(id))
+      .map((id, index) => prisma.exam.update({ where: { id }, data: { sortOrder: index } }));
+
+    if (updates.length) await prisma.$transaction(updates);
   }
 
   findGeneralGrades(madrasaId: number) {

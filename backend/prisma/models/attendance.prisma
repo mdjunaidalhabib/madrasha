@@ -33,8 +33,8 @@ model Attendance {
   /// Who recorded this entry. Null/"biometric" source is represented by
   /// leaving this null and using `source` below, so biometric-device pushes
   /// don't need a fake user id.
-  markedById Int?    @map("marked_by")
-  source     String  @default("manual") @db.VarChar(20) @map("source")
+  markedById Int?   @map("marked_by")
+  source     String @default("manual") @map("source") @db.VarChar(20)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")

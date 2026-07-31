@@ -12,22 +12,22 @@ enum PayrollStatus {
 /// later change to a teacher's base salary never rewrites history for
 /// months already generated.
 model PayrollRecord {
-  id          Int           @id @default(autoincrement())
-  madrasaId   Int           @map("madrasa_id")
-  teacherId   Int           @map("teacher_id")
+  id             Int           @id @default(autoincrement())
+  madrasaId      Int           @map("madrasa_id")
+  teacherId      Int           @map("teacher_id")
   /// "YYYY-MM"
-  month       String        @db.VarChar(10)
-  basicSalary Decimal       @map("basic_salary") @db.Decimal(10, 2)
-  allowances  Decimal       @default(0) @db.Decimal(10, 2)
-  deductions  Decimal       @default(0) @db.Decimal(10, 2)
-  netAmount   Decimal       @map("net_amount") @db.Decimal(10, 2)
-  status      PayrollStatus @default(PENDING)
-  paidAt      DateTime?     @map("paid_at")
-  paidById    Int?          @map("paid_by")
+  month          String        @db.VarChar(10)
+  basicSalary    Decimal       @map("basic_salary") @db.Decimal(10, 2)
+  allowances     Decimal       @default(0) @db.Decimal(10, 2)
+  deductions     Decimal       @default(0) @db.Decimal(10, 2)
+  netAmount      Decimal       @map("net_amount") @db.Decimal(10, 2)
+  status         PayrollStatus @default(PENDING)
+  paidAt         DateTime?     @map("paid_at")
+  paidById       Int?          @map("paid_by")
   /// Links back to the auto-created expense entry in the accounts ledger
   /// once this payroll record is marked paid.
-  accountEntryId Int?       @map("account_entry_id")
-  createdAt   DateTime      @default(now()) @map("created_at")
+  accountEntryId Int?          @map("account_entry_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
 
   madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)

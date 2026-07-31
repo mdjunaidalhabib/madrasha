@@ -1,0 +1,53 @@
+// ============================================================
+// GUARDIAN PORTAL
+// A guardian account is auto-provisioned at student admission time,
+// keyed off Student.guardianPhone (see GuardianService.ensureGuardianForStudent).
+// One guardian can be linked to multiple students (siblings enrolled at the
+// same madrasa share a single login) via GuardianStudent.
+// ============================================================
+
+model Guardian {
+  id        Int @id @default(autoincrement())
+  madrasaId Int @map("madrasa_id")
+
+  phone String  @db.VarChar(20)
+  name  String? @db.VarChar(200)
+
+  passwordHash       String  @map("password_hash") @db.VarChar(255)
+  /// True until the guardian changes their auto-generated default password.
+  mustChangePassword Boolean @default(true) @map("must_change_password")
+
+  isActive Int @default(1) @map("is_active")
+
+  lastLoginAt         DateTime? @map("last_login_at")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa           @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  students GuardianStudent[]
+
+  @@unique([madrasaId, phone], map: "uniq_guardian_madrasa_phone")
+  @@index([madrasaId, isActive], map: "idx_guardians_madrasa_active")
+  @@map("guardians")
+}
+
+/// Links one guardian to one child. Many-to-many so a guardian with
+/// multiple children enrolled at the same madrasa sees all of them under
+/// one login.
+model GuardianStudent {
+  id         Int @id @default(autoincrement())
+  guardianId Int @map("guardian_id")
+  studentId  Int @map("student_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, studentId], map: "uniq_guardian_student")
+  @@index([studentId], map: "idx_guardian_student_student")
+  @@map("guardian_students")
+}

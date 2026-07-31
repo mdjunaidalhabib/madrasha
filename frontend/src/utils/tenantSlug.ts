@@ -9,3 +9,7 @@ export function getTenantSlugFromPath(pathname = window.location.pathname) {
 export function getTenantAdminBase(slug = getTenantSlugFromPath()) {
   return slug ? `/${slug}/admin` : "/demo-madrasa/admin";
 }
+
+export function getTenantGuardianBase(slug = getTenantSlugFromPath()) {
+  return slug ? `/${slug}/guardian` : "/demo-madrasa/guardian";
+}

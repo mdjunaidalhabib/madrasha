@@ -210,7 +210,7 @@ export class ResultPanelRepository {
     return prisma.exam.findMany({
       where: { madrasaId },
       select: { id: true, name: true },
-      orderBy: { id: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 

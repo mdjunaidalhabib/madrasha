@@ -14,6 +14,18 @@ export const getAcademicResultsReport = async (req: Request, res: Response) => {
   }
 };
 
+export const getAcademicResultsByRankReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { rows, warning } = await academicReportService.getResultsByRank(madrasaId);
+    return ok(res, rows, warning);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 export const getAcademicResultNoticeReport = async (req: Request, res: Response) => {
   const madrasaId = requireTenant(req, res);
   if (!madrasaId) return;

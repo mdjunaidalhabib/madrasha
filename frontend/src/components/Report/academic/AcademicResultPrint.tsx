@@ -79,7 +79,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   class_name: 1.05,
   total: 1.05,
   average: 1.12,
-  madrasa_grade: 1.05,
+  madrasa_grade: 1.55,
   rank_no: 1.05,
   status: 0.9,
 };
@@ -110,7 +110,7 @@ const AcademicResultPrint = ({
   const examName = rawValue(firstRow, ["exam_name"]) || "সকল পরীক্ষা";
   const examYear = rawValue(firstRow, ["exam_year", "academic_year"]) || "................";
   const examNameWithYear = `${examName} - ${examYear}`;
-  const contextLine = `জামাত ${className}`;
+  const contextLine = `জামাতঃ ${className}`;
   const madrasaName = rawValue(firstRow, [
     "madrasa_name",
     "institute_name",
@@ -260,10 +260,18 @@ const AcademicResultPrint = ({
         <tbody>
           {rows.map((row, index) => {
             const failed = String(row?.status || "").toUpperCase() === "FAIL";
+            const rankValue = Number(row?.rank_no);
+            const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
+            const rowClass = [
+              failed ? "academic-result-fail-row" : "",
+              isTopRankRow ? "academic-result-top-rank-row" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             return (
               <tr
                 key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
-                className={failed ? "academic-result-fail-row" : ""}
+                className={rowClass}
               >
                 {printableColumns.map((column) => {
                   const numericColumn = isNumericColumn(column);
@@ -295,6 +303,10 @@ const AcademicResultPrint = ({
                         </span>
                       ) : numericColumn ? (
                         <span className="academic-result-number-value text-base font-semibold text-black">
+                          {getValue(row, column)}
+                        </span>
+                      ) : column.key === "madrasa_grade" ? (
+                        <span className="academic-result-grade-value whitespace-nowrap text-base font-semibold text-black">
                           {getValue(row, column)}
                         </span>
                       ) : (

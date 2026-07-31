@@ -10,6 +10,13 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   try {
     const decoded = verifyToken(token) as AuthenticatedUser;
 
+    // Guardian tokens carry no role_id/RBAC identity - they must never be
+    // accepted by tenant-admin routes, including ones that only have
+    // tenantMiddleware+authMiddleware (no rbacMiddleware) such as GET /dashboard.
+    if (decoded?.type === "guardian") {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
     // If this route already resolved a tenant from the URL's slug
     // (tenantMiddleware runs first), make sure the token actually belongs
     // to THAT madrasa. A token is only ever valid for the madrasa it was

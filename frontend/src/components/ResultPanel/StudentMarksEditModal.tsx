@@ -56,7 +56,7 @@ export default function StudentMarksEditModal({
     }
 
     const num = Number(val);
-    if (Number.isNaN(num) || num < 0 || num > max) return;
+    if (Number.isNaN(num) || !Number.isInteger(num) || num < 0 || num > max) return;
 
     setValues((prev) => ({ ...prev, [bookId]: num }));
   };
@@ -137,6 +137,7 @@ export default function StudentMarksEditModal({
                       type="number"
                       min={0}
                       max={max}
+                      step={1}
                       placeholder="0"
                       disabled={saving}
                       className={`no-spinner w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${

@@ -27,6 +27,11 @@ export const deleteExam = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.message(res, "Exam deleted successfully");
 });
 
+export const reorderExams = asyncHandler(async (req: Request, res: Response) => {
+  await examService.reorderExams(getMadrasaId(req), req.body?.ids);
+  return ApiResponse.message(res, "Exam order updated successfully");
+});
+
 /* ================= GENERAL GRADES ================= */
 
 export const getGeneralGrades = asyncHandler(async (req: Request, res: Response) => {

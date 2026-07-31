@@ -1,6 +1,11 @@
 import { useState } from "react";
+import { BarChart3, Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
+import Button from "../ui/Button";
+import Input from "../ui/Input";
+import EmptyState from "../ui/EmptyState";
 
 type GradeItem = {
   id: string | number;
@@ -26,84 +31,106 @@ export default function GeneralGradeList({
   const [name, setName] = useState("");
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
+  const [adding, setAdding] = useState(false);
 
-const add = async () => {
-  if (!name || !min || !max) return useToastStore.getState().show("All fields required", "error");
+  const add = async () => {
+    if (!name.trim() || !min || !max) {
+      return useToastStore.getState().show("সব ঘর পূরণ করুন", "error");
+    }
 
-  try {
-    await api.post("/general-grades", {
-      name,
-      min_mark: Number(min),
-      max_mark: Number(max),
+    try {
+      setAdding(true);
+      await api.post("/general-grades", {
+        name: name.trim(),
+        min_mark: Number(min),
+        max_mark: Number(max),
+      });
+
+      setName("");
+      setMin("");
+      setMax("");
+      reload();
+    } catch {
+      useToastStore.getState().show("গ্রেড যোগ করা যায়নি", "error");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const del = (id: string | number, gradeName: string) => {
+    useConfirmStore.getState().show({
+      title: "গ্রেড মুছবেন?",
+      message: `"${gradeName}" গ্রেডটি মুছে ফেলতে চান?`,
+      confirmText: "মুছে ফেলুন",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/general-grades/${id}`);
+        reload();
+      },
     });
-
-    setName("");
-    setMin("");
-    setMax("");
-    reload();
-  } catch {
-    useToastStore.getState().show("Failed", "error");
-  }
-};
-
-  const del = async (id: string | number) => {
-    await api.delete(`/general-grades/${id}`);
-    reload();
   };
 
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-md space-y-4">
-      <h2 className="text-lg font-semibold text-gray-700">📊 General Grades</h2>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div className="flex items-center gap-2">
+        <BarChart3 className="text-blue-600" size={20} />
+        <h2 className="text-lg font-bold text-slate-900">সাধারণ গ্রেড</h2>
+      </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          className="border rounded-lg px-2 py-1 w-full"
-          placeholder="Grade"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <Input placeholder="গ্রেড (যেমনঃ A+)" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex gap-2">
-          <input
-            className="border rounded-lg px-2 py-1 w-full sm:w-20"
-            placeholder="Min"
+          <Input
+            className="w-full sm:w-20"
+            placeholder="সর্বনিম্ন"
+            type="number"
             value={min}
             onChange={(e) => setMin(e.target.value)}
           />
-          <input
-            className="border rounded-lg px-2 py-1 w-full sm:w-20"
-            placeholder="Max"
+          <Input
+            className="w-full sm:w-20"
+            placeholder="সর্বোচ্চ"
+            type="number"
             value={max}
             onChange={(e) => setMax(e.target.value)}
           />
-          <button
-            onClick={add}
-            className="shrink-0 bg-blue-600 text-white px-3 py-1 sm:py-0 rounded-lg"
-          >
-            Add
-          </button>
+          <Button onClick={add} disabled={adding} className="shrink-0 px-3">
+            <Plus size={16} />
+          </Button>
         </div>
       </div>
 
-      {grades.map((g) => {
-        const { min: minMark, max: maxMark } = getGradeRange(g);
+      {grades.length === 0 ? (
+        <EmptyState title="কোনো গ্রেড যোগ করা হয়নি" hint="উপরে থেকে নতুন গ্রেড যোগ করুন" />
+      ) : (
+        <div className="space-y-2">
+          {grades.map((g) => {
+            const { min: minMark, max: maxMark } = getGradeRange(g);
 
-        return (
-          <div
-            key={g.id}
-            className="flex justify-between bg-gray-50 p-2 rounded-lg"
-          >
-            <span>
-              {g.name} ({minMark ?? "-"} - {maxMark ?? "-"})
-            </span>
-            <button
-              onClick={() => del(g.id)}
-              className="bg-red-500 text-white px-2 rounded"
-            >
-              X
-            </button>
-          </div>
-        );
-      })}
+            return (
+              <div
+                key={g.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
+              >
+                <span className="font-semibold text-slate-800">
+                  {g.name}{" "}
+                  <span className="font-normal text-slate-500">
+                    ({minMark ?? "-"} - {maxMark ?? "-"})
+                  </span>
+                </span>
+                <button
+                  onClick={() => del(g.id, g.name)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                  aria-label="মুছে ফেলুন"
+                  title="মুছে ফেলুন"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

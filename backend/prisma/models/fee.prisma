@@ -70,25 +70,25 @@ model Invoice {
 /// can exist for one invoice; the invoice's `paidAmount`/`status` are kept
 /// in sync by the service layer whenever a Payment is created.
 model Payment {
-  id             Int      @id @default(autoincrement())
-  madrasaId      Int      @map("madrasa_id")
-  invoiceId      Int      @map("invoice_id")
-  amount         Decimal  @db.Decimal(10, 2)
+  id              Int      @id @default(autoincrement())
+  madrasaId       Int      @map("madrasa_id")
+  invoiceId       Int      @map("invoice_id")
+  amount          Decimal  @db.Decimal(10, 2)
   /// CASH / BKASH / NAGAD / BANK / ONLINE ...
-  method         String   @db.VarChar(30)
-  paidAt         DateTime @default(now()) @map("paid_at")
-  receivedById   Int?     @map("received_by")
+  method          String   @db.VarChar(30)
+  paidAt          DateTime @default(now()) @map("paid_at")
+  receivedById    Int?     @map("received_by")
   /// Gateway transaction id, once Payment Gateway Integration lands.
-  transactionRef String?  @map("transaction_ref") @db.VarChar(120)
+  transactionRef  String?  @map("transaction_ref") @db.VarChar(120)
   /// Which admin-configured manual payment channel was used (e.g. "bKash -
   /// Personal: 017XXXXXXXX"), frozen at payment time so editing/deleting
   /// the setting later never changes historical payment records.
-  methodSettingId Int?    @map("method_setting_id")
-  methodLabel     String? @map("method_label") @db.VarChar(150)
+  methodSettingId Int?     @map("method_setting_id")
+  methodLabel     String?  @map("method_label") @db.VarChar(150)
   /// Links back to the auto-created ledger entry (see accounts module) so
   /// a fee payment always shows up in the existing income/expense report.
-  accountEntryId Int?     @map("account_entry_id")
-  createdAt      DateTime @default(now()) @map("created_at")
+  accountEntryId  Int?     @map("account_entry_id")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   madrasa       Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   invoice       Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -108,22 +108,22 @@ model Payment {
 /// recording a payment. There is intentionally no gateway/API behind
 /// this - it is informational + a picklist for manual entry.
 model PaymentMethodSetting {
-  id           Int      @id @default(autoincrement())
-  madrasaId    Int      @map("madrasa_id")
+  id            Int      @id @default(autoincrement())
+  madrasaId     Int      @map("madrasa_id")
   /// CASH / BKASH / NAGAD / BANK / OTHER
-  methodType   String   @db.VarChar(20)
+  methodType    String   @db.VarChar(20)
   /// Short display name, e.g. "bKash (Personal)", "Sonali Bank - Main"
-  label        String   @db.VarChar(150)
-  accountName  String?  @map("account_name") @db.VarChar(150)
-  accountNumber String? @map("account_number") @db.VarChar(100)
-  bankName     String?  @map("bank_name") @db.VarChar(150)
-  branch       String?  @db.VarChar(150)
+  label         String   @db.VarChar(150)
+  accountName   String?  @map("account_name") @db.VarChar(150)
+  accountNumber String?  @map("account_number") @db.VarChar(100)
+  bankName      String?  @map("bank_name") @db.VarChar(150)
+  branch        String?  @db.VarChar(150)
   /// Free-text instructions shown alongside this method, e.g. "Send Money
   /// only, then share the transaction ID with the office."
-  instructions String?  @db.VarChar(500)
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  instructions  String?  @db.VarChar(500)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
   madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   payments Payment[]

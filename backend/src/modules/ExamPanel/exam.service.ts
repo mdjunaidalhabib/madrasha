@@ -70,6 +70,22 @@ export class ExamService {
     }
   }
 
+  async reorderExams(madrasaId: number, ids: unknown) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestError("ids must be a non-empty array");
+    }
+    const parsedIds = ids.map((id) => Number(id));
+    if (parsedIds.some((id) => !Number.isInteger(id))) {
+      throw new BadRequestError("ids must all be integers");
+    }
+
+    try {
+      await this.repository.reorderExams(madrasaId, parsedIds);
+    } catch (err) {
+      return friendlyFailure("reorderExams error:", err, "Failed to reorder exams");
+    }
+  }
+
   /* ================= GENERAL GRADES ================= */
 
   async listGeneralGrades(madrasaId: number) {

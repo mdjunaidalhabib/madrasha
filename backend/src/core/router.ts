@@ -52,6 +52,9 @@ import notificationRoutes from "../modules/notifications/notification.routes";
 // 🖼️ Phase 4: Image/File Storage (Cloudinary)
 import uploadRoutes from "../modules/uploads/upload.routes";
 
+// 👨‍👩‍👧 Phase 5: Guardian Portal
+import guardianRoutes from "../modules/guardian/guardian.routes";
+
 const router = Router();
 
 router.use("/website", websiteRoutes);
@@ -78,6 +81,23 @@ router.use("/dashboard", dashboardRoutes);
 
 // Sidebar (UI config)
 router.use("/sidebar", sidebarRoutes);
+
+/* =========================================================
+   👨‍👩‍👧 GUARDIAN PORTAL
+   Mounted here (before any "/"-root-mounted router below, e.g.
+   examRoutes/routineRoutes/feeRoutes/roleRoutes) on purpose. Those
+   routers apply a blanket `router.use(tenantMiddleware, authMiddleware)`
+   with no path prefix, so once Express enters ANY router mounted at
+   "/", that router's own top-level middleware runs for every request
+   that reaches it - including ones meant for routes registered further
+   down the chain, like /guardian/login (deliberately public) and every
+   other /guardian/* route (guarded by guardianAuthMiddleware, not the
+   admin authMiddleware, which now explicitly rejects guardian tokens).
+   Mounting /guardian before those routers ensures Express matches it
+   first, so it's never accidentally shadowed by an unrelated module's
+   auth check.
+========================================================= */
+router.use("/guardian", guardianRoutes);
 
 /* =========================
    CORE MODULES

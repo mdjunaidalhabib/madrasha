@@ -119,6 +119,7 @@ export default function MarksTable({
     const num = Number(val);
 
     if (Number.isNaN(num)) return;
+    if (!Number.isInteger(num)) return;
     if (num < 0 || num > max) return;
 
     setMarks((prev) => ({
@@ -286,6 +287,7 @@ export default function MarksTable({
                           inputMode="numeric"
                           min={0}
                           max={max}
+                          step={1}
                           placeholder="0"
                           disabled={disabled}
                           className={`no-spinner w-14 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { getPublicWebsite } from "../../../services/websiteApi";
 import EmptyState from "../../../components/ui/EmptyState";
+import { getTenantGuardianBase } from "../../../utils/tenantSlug";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -73,7 +74,16 @@ export default function PublicWebsitePage() {
               <div className="text-xs text-slate-500">Official Website</div>
             </div>
           </div>
-          <div className="text-sm text-slate-500">{madrasa?.phone}</div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-slate-500">{madrasa?.phone}</div>
+            <Link
+              to={`${getTenantGuardianBase(slug)}/login`}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
+              style={{ backgroundColor: themeColor }}
+            >
+              অভিভাবক লগইন
+            </Link>
+          </div>
         </div>
       </header>
 

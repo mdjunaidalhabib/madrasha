@@ -16,6 +16,7 @@ import {
 } from "./student.types";
 import { toStudentApiDto } from "./student.mapper";
 import { StudentAdmissionRequestDto } from "./student.dto";
+import { guardianService } from "../guardian/guardian.service";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
   return STUDENT_REQUIRED_FIELDS.filter((field) => {
@@ -147,7 +148,7 @@ export class StudentService {
 
     if (!classId) throw new BadRequestError("class_id is required");
 
-    return this.repository.runTransaction(async (tx) => {
+    const result = await this.repository.runTransaction(async (tx) => {
       const nid = clean(body.nid) as string | null;
 
       if (nid) {
@@ -206,6 +207,18 @@ export class StudentService {
         registrationNo: created.registrationNo!,
       };
     });
+
+    // Outside the transaction (and its lock ordering) - a fresh direct
+    // admission is always APPROVED (see makeStudentData), so the guardian
+    // account is provisioned right away.
+    await guardianService.ensureGuardianForStudent(
+      madrasaId,
+      result.studentId,
+      body.guardian_phone,
+      body.father_name || body.mother_name,
+    );
+
+    return result;
   }
 
   async admitStudentsBulk(
@@ -241,7 +254,7 @@ export class StudentService {
       };
     });
 
-    return this.repository.runTransaction(async (tx) => {
+    const result = await this.repository.runTransaction(async (tx) => {
       // Use one consistent lock order across all student write flows:
       // identity -> student record -> roll scope -> registration scope.
       // Stable sorting prevents deadlocks between concurrent bulk requests.
@@ -379,6 +392,22 @@ export class StudentService {
 
       return { inserted, updated, preview };
     });
+
+    // Outside the transaction, same reasoning as admitStudent(). One
+    // guardian-provisioning failure must not affect (or roll back) the
+    // student rows this bulk admission already committed - log and continue.
+    for (const row of result.preview) {
+      const source = students[row.row - 1];
+      if (!source) continue;
+      await guardianService.ensureGuardianForStudent(
+        madrasaId,
+        row.id,
+        source.guardian_phone,
+        source.father_name || source.mother_name,
+      );
+    }
+
+    return result;
   }
 
   async updateStudent(id: number, madrasaId: number | undefined, body: Record<string, any>) {
@@ -488,6 +517,13 @@ export class StudentService {
       rejectionReason: null,
     });
     if (!result.count) throw new StudentNotFoundError();
+
+    await guardianService.ensureGuardianForStudent(
+      madrasaId,
+      id,
+      existing.guardianPhone,
+      existing.fatherName || existing.motherName,
+    );
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather

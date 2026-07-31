@@ -5,6 +5,16 @@ export interface AuthenticatedUser {
   role_id: number;
   role?: string;
   role_name?: string;
+  /** Absent on tenant-admin tokens. Guardian tokens set this to "guardian"
+   * so auth.middleware can reject them even on routes without rbacMiddleware. */
+  type?: string;
+}
+
+/** Decoded JWT payload attached to `req.guardian` by guardianAuth.middleware. */
+export interface AuthenticatedGuardian {
+  type: "guardian";
+  guardianId: number;
+  madrasaId: number;
 }
 
 /** Resolved tenant (madrasa) attached to `req.tenant` by tenant.middleware. */

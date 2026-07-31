@@ -23,65 +23,66 @@ enum PaymentStatus {
 }
 
 model Madrasa {
-  id           Int           @id @default(autoincrement())
-  name         String        @db.VarChar(200)
-  slug         String        @unique @db.VarChar(120)
-  phone        String?       @db.VarChar(20)
-  email        String?       @db.VarChar(120)
-  address      String?       @db.VarChar(255)
-  studentLimit Int?          @default(100) @map("student_limit")
-  userLimit    Int?          @default(5) @map("user_limit")
+  id            Int           @id @default(autoincrement())
+  name          String        @db.VarChar(200)
+  slug          String        @unique @db.VarChar(120)
+  phone         String?       @db.VarChar(20)
+  email         String?       @db.VarChar(120)
+  address       String?       @db.VarChar(255)
+  studentLimit  Int?          @default(100) @map("student_limit")
+  userLimit     Int?          @default(5) @map("user_limit")
   websiteStatus WebsiteStatus @default(active) @map("website_status")
-  customDomain String?       @map("custom_domain") @db.VarChar(190)
-  planStatus   PlanStatus    @default(active) @map("plan_status")
-  isActive     Int?          @default(1) @map("is_active")
-  deletedAt    DateTime?     @map("deleted_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
+  customDomain  String?       @map("custom_domain") @db.VarChar(190)
+  planStatus    PlanStatus    @default(active) @map("plan_status")
+  isActive      Int?          @default(1) @map("is_active")
+  deletedAt     DateTime?     @map("deleted_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
 
-  reportLogo             String?  @map("report_logo")
-  reportBanner           String?  @map("report_banner")
-  reportWatermark        String?  @map("report_watermark")
-  reportWatermarkOpacity Decimal  @default(0.08) @map("report_watermark_opacity") @db.Decimal(3, 2)
+  reportLogo             String? @map("report_logo")
+  reportBanner           String? @map("report_banner")
+  reportWatermark        String? @map("report_watermark")
+  reportWatermarkOpacity Decimal @default(0.08) @map("report_watermark_opacity") @db.Decimal(3, 2)
 
   sanadTemplate          String? @map("sanad_template") @db.Text
   testimonialTemplate    String? @map("testimonial_template") @db.Text
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
   admitCardRules         String? @map("admit_card_rules") @db.Text
 
-  subscriptions        MadrasaSubscription[]
-  subscriptionPayments SubscriptionPayment[]
-  madrasaDivisions   MadrasaDivision[]
-  madrasaClasses     MadrasaClass[]
-  madrasaBooks       MadrasaBook[]
-  madrasaModules     MadrasaModule[]
-  roles              Role[]
-  users              User[]
-  students           Student[]
-  teachers           Teacher[]
-  teacherAssignments TeacherAssignment[]
-  accounts           Account[]
-  exams              Exam[]
-  generalGrades      GeneralGrade[]
-  madrasaGrades      MadrasaGrade[]
-  settings           Setting[]
-  resultsMaster      ResultMaster[]
-  activityLogs       ActivityLog[]
-  websiteSettings    WebsiteSettings?
-  websitePages       WebsitePage[]
-  websiteNotices     WebsiteNotice[]
-  websiteGallery     WebsiteGallery[]
-  attendances        Attendance[]
-  classRoutines      ClassRoutine[]
-  examRoutines       ExamRoutine[]
-  promotionBatches   PromotionBatch[]
-  feeStructures      FeeStructure[]
-  invoices           Invoice[]
-  payments           Payment[]
+  subscriptions         MadrasaSubscription[]
+  subscriptionPayments  SubscriptionPayment[]
+  madrasaDivisions      MadrasaDivision[]
+  madrasaClasses        MadrasaClass[]
+  madrasaBooks          MadrasaBook[]
+  madrasaModules        MadrasaModule[]
+  roles                 Role[]
+  users                 User[]
+  students              Student[]
+  teachers              Teacher[]
+  teacherAssignments    TeacherAssignment[]
+  accounts              Account[]
+  exams                 Exam[]
+  generalGrades         GeneralGrade[]
+  madrasaGrades         MadrasaGrade[]
+  settings              Setting[]
+  resultsMaster         ResultMaster[]
+  activityLogs          ActivityLog[]
+  websiteSettings       WebsiteSettings?
+  websitePages          WebsitePage[]
+  websiteNotices        WebsiteNotice[]
+  websiteGallery        WebsiteGallery[]
+  attendances           Attendance[]
+  classRoutines         ClassRoutine[]
+  examRoutines          ExamRoutine[]
+  promotionBatches      PromotionBatch[]
+  feeStructures         FeeStructure[]
+  invoices              Invoice[]
+  payments              Payment[]
   paymentMethodSettings PaymentMethodSetting[]
-  payrollRecords     PayrollRecord[]
-  passwordResetTokens PasswordResetToken[]
-  notificationLogs   NotificationLog[]
+  payrollRecords        PayrollRecord[]
+  passwordResetTokens   PasswordResetToken[]
+  notificationLogs      NotificationLog[]
+  guardians             Guardian[]
 
   @@index([isActive, deletedAt], map: "idx_madrasas_active")
   @@index([planStatus], map: "idx_madrasas_plan_status")
@@ -98,8 +99,8 @@ model MadrasaSubscription {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  madrasa  Madrasa              @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  plan     Plan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
+  madrasa  Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  plan     Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
   payments SubscriptionPayment[]
 
   @@index([madrasaId, isActive], map: "idx_subscription_madrasa_active")
@@ -107,15 +108,15 @@ model MadrasaSubscription {
 }
 
 model SubscriptionPayment {
-  id             Int           @id @default(autoincrement())
-  madrasaId      Int?          @map("madrasa_id")
-  subscriptionId Int?          @map("subscription_id")
-  amount         Decimal?      @db.Decimal(10, 2)
-  paymentMethod  String?       @map("payment_method") @db.VarChar(50)
-  transactionId  String?       @map("transaction_id") @db.VarChar(100)
+  id             Int            @id @default(autoincrement())
+  madrasaId      Int?           @map("madrasa_id")
+  subscriptionId Int?           @map("subscription_id")
+  amount         Decimal?       @db.Decimal(10, 2)
+  paymentMethod  String?        @map("payment_method") @db.VarChar(50)
+  transactionId  String?        @map("transaction_id") @db.VarChar(100)
   status         PaymentStatus? @default(pending)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
 
   // SetNull (not Cascade): payment/billing history is platform-level audit
   // data and should survive even if the tenant or subscription is later
@@ -145,12 +146,12 @@ model MadrasaModule {
 }
 
 model Role {
-  id        Int       @id @default(autoincrement())
-  madrasaId Int?      @map("madrasa_id")
-  keyName   String?   @map("key_name") @db.VarChar(50)
-  nameBn    String?   @map("name_bn") @db.VarChar(100)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement())
+  madrasaId Int?     @map("madrasa_id")
+  keyName   String?  @map("key_name") @db.VarChar(50)
+  nameBn    String?  @map("name_bn") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   madrasa         Madrasa?         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   rolePermissions RolePermission[]
@@ -178,14 +179,14 @@ model RolePermission {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  madrasaId    Int       @map("madrasa_id")
-  name         String    @db.VarChar(200)
-  email        String    @db.VarChar(200)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  roleId       Int       @map("role_id")
-  isActive     Int?      @default(1) @map("is_active")
-  lastLoginAt  DateTime? @map("last_login_at")
+  id                  Int       @id @default(autoincrement())
+  madrasaId           Int       @map("madrasa_id")
+  name                String    @db.VarChar(200)
+  email               String    @db.VarChar(200)
+  passwordHash        String    @map("password_hash") @db.VarChar(255)
+  roleId              Int       @map("role_id")
+  isActive            Int?      @default(1) @map("is_active")
+  lastLoginAt         DateTime? @map("last_login_at")
   /// Consecutive failed login attempts since the last successful login
   /// (or since the lock last expired). Reset to 0 on any successful
   /// login. Paired with `lockedUntil` for a simple account-lockout.
@@ -193,11 +194,11 @@ model User {
   /// Set once failedLoginAttempts crosses the threshold; login is
   /// rejected (even with the correct password) until this time passes.
   lockedUntil         DateTime? @map("locked_until")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  role    Role    @relation(fields: [roleId], references: [id])
+  madrasa             Madrasa              @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  role                Role                 @relation(fields: [roleId], references: [id])
   passwordResetTokens PasswordResetToken[]
 
   @@unique([madrasaId, email], map: "uniq_email_madrasa")

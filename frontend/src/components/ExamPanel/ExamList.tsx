@@ -1,76 +1,177 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GraduationCap, GripVertical, Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
+import Button from "../ui/Button";
+import Input from "../ui/Input";
+import EmptyState from "../ui/EmptyState";
+
+type ExamItem = { id: string | number; name: string; year: string };
 
 interface ExamListProps {
-  exams: Array<{ id: string | number; name: string; year: string }>;
+  exams: ExamItem[];
   reload: () => void;
 }
 
 export default function ExamList({ exams, reload }: ExamListProps) {
   const [name, setName] = useState("");
   const [year, setYear] = useState("");
+  const [adding, setAdding] = useState(false);
 
-const addExam = async () => {
-  if (!name || !year) return useToastStore.getState().show("Required", "error");
+  // Local, optimistically-reorderable copy of the list, so dragging feels
+  // instant instead of waiting on a round-trip to the server on every
+  // dragOver. Resynced from props whenever the parent reloads.
+  const [items, setItems] = useState<ExamItem[]>(exams);
+  const [draggingId, setDraggingId] = useState<string | number | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | number | null>(null);
+  const savedOrderRef = useRef<string>("");
 
-  try {
-    await api.post("/exams", { name, year });
-    setName("");
-    setYear("");
-    reload();
-  } catch {
-    useToastStore.getState().show("Failed", "error");
-  }
-};
-  const deleteExam = async (id: string | number) => {
-    await api.delete(`/exams/${id}`);
-    reload();
+  useEffect(() => {
+    setItems(exams);
+  }, [exams]);
+
+  const addExam = async () => {
+    if (!name.trim() || !year.trim()) {
+      return useToastStore.getState().show("পরীক্ষার নাম ও বছর দিন", "error");
+    }
+
+    try {
+      setAdding(true);
+      await api.post("/exams", { name: name.trim(), year: year.trim() });
+      setName("");
+      setYear("");
+      reload();
+    } catch {
+      useToastStore.getState().show("পরীক্ষা যোগ করা যায়নি", "error");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const deleteExam = (id: string | number, examName: string) => {
+    useConfirmStore.getState().show({
+      title: "পরীক্ষা মুছবেন?",
+      message: `"${examName}" পরীক্ষাটি মুছে ফেলতে চান? এই সাথে সম্পর্কিত রেজাল্ট ডেটাও প্রভাবিত হতে পারে।`,
+      confirmText: "মুছে ফেলুন",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/exams/${id}`);
+        reload();
+      },
+    });
+  };
+
+  const persistOrder = async (ordered: ExamItem[]) => {
+    const snapshot = ordered.map((item) => item.id).join(",");
+    if (snapshot === savedOrderRef.current) return;
+    savedOrderRef.current = snapshot;
+
+    try {
+      await api.put("/exams/reorder", { ids: ordered.map((item) => item.id) });
+    } catch {
+      useToastStore.getState().show("ক্রম পরিবর্তন করা যায়নি", "error");
+      reload();
+    }
+  };
+
+  const handleDragStart = (id: string | number) => {
+    setDraggingId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, overId: string | number) => {
+    e.preventDefault();
+    if (overId === draggingId) return;
+    setDragOverId(overId);
+
+    const fromIndex = items.findIndex((item) => item.id === draggingId);
+    const toIndex = items.findIndex((item) => item.id === overId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setItems(next);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    setDragOverId(null);
+    persistOrder(items);
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
-      <h2 className="text-xl font-semibold text-gray-700">📘 Exams</h2>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div className="flex items-center gap-2">
+        <GraduationCap className="text-blue-600" size={20} />
+        <h2 className="text-lg font-bold text-slate-900">পরীক্ষাসমূহ</h2>
+      </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          className="border rounded-lg px-3 py-2 w-full"
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          placeholder="পরীক্ষার নাম (যেমনঃ প্রথম সাময়িক পরীক্ষা)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Exam Name"
         />
-        <input
-          className="border rounded-lg px-3 py-2 w-full sm:w-32"
+        <Input
+          className="sm:w-32"
+          placeholder="সাল"
           value={year}
           onChange={(e) => setYear(e.target.value)}
-          placeholder="Year"
         />
-        <button
-          onClick={addExam}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg sm:py-0"
-        >
-          Add
-        </button>
+        <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
+          <Plus size={16} />
+          {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
+        </Button>
       </div>
 
-      <div className="space-y-2">
-        {exams.map((e) => (
-          <div
-            key={e.id}
-            className="flex justify-between items-center bg-gray-50 px-4 py-2 rounded-lg"
-          >
-            <span>
-              {e.name} ({e.year})
-            </span>
-            <button
-              onClick={() => deleteExam(e.id)}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm"
+      {items.length === 0 ? (
+        <EmptyState title="কোনো পরীক্ষা যোগ করা হয়নি" hint="উপরে থেকে নতুন পরীক্ষা যোগ করুন" />
+      ) : (
+        <div className="space-y-2">
+          {items.length > 1 && (
+            <p className="text-xs text-slate-400">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
+          )}
+
+          {items.map((e) => (
+            <div
+              key={e.id}
+              draggable
+              onDragStart={() => handleDragStart(e.id)}
+              onDragOver={(ev) => handleDragOver(ev, e.id)}
+              onDrop={(ev) => ev.preventDefault()}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
+                draggingId === e.id
+                  ? "border-blue-300 bg-blue-50 opacity-60"
+                  : dragOverId === e.id
+                    ? "border-blue-300 bg-blue-50"
+                    : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+              }`}
             >
-              Delete
-            </button>
-          </div>
-        ))}
-      </div>
+              <div className="flex items-center gap-2.5">
+                <span className="cursor-grab text-slate-400 active:cursor-grabbing" title="টেনে সরান">
+                  <GripVertical size={18} />
+                </span>
+
+                <div>
+                  <p className="font-semibold text-slate-800">{e.name}</p>
+                  <p className="text-xs text-slate-500">{e.year}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => deleteExam(e.id, e.name)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                aria-label="মুছে ফেলুন"
+                title="মুছে ফেলুন"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,8 +11,17 @@ const reports: ReportMenuItem[] = [
   {
     key: "academic-results",
     title: "ফলাফল",
-    subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড, মেধাক্রম",
+    subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড, মেধাক্রম — রোল নম্বর অনুযায়ী সাজানো",
     endpoint: "/reports/academic/results",
+    printable: "academic-result",
+    defaultOrientation: "portrait",
+    columns: ACADEMIC_RESULT_COLUMNS,
+  },
+  {
+    key: "academic-results-by-rank",
+    title: "ফলাফল (মেধাক্রম অনুযায়ী)",
+    subtitle: "শিক্ষার্থীদের ফলাফল, গ্রেড — মেধাক্রম (১ম, ২য়, ৩য় ...) অনুযায়ী সাজানো",
+    endpoint: "/reports/academic/results-by-rank",
     printable: "academic-result",
     defaultOrientation: "portrait",
     columns: ACADEMIC_RESULT_COLUMNS,

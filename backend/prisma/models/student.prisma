@@ -78,10 +78,11 @@ model Student {
   classRef      Class    @relation("StudentClass", fields: [classId], references: [id], onDelete: Restrict)
   previousClass Class?   @relation("StudentPreviousClass", fields: [previousClassId], references: [id], onDelete: SetNull)
 
-  resultsSummary ResultSummary[]
-  marks          Mark[]
+  resultsSummary   ResultSummary[]
+  marks            Mark[]
   promotionRecords PromotionRecord[]
-  invoices       Invoice[]
+  invoices         Invoice[]
+  guardianLinks    GuardianStudent[]
 
   @@unique([madrasaId, classId, academicYear, roll], map: "unique_roll_per_class_year")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")

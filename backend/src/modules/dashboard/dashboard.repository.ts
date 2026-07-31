@@ -1,6 +1,11 @@
 import { prisma } from "../../shared/database/prisma";
-import { DASHBOARD_RECENT_TRANSACTIONS_LIMIT } from "./dashboard.constants";
-import { FundBalanceRow, RecentTransactionRow, TodayTotalsRow } from "./dashboard.types";
+import { DASHBOARD_RECENT_TRANSACTIONS_LIMIT, DASHBOARD_UPCOMING_EXAMS_LIMIT } from "./dashboard.constants";
+import { FundBalanceRow, RecentTransactionRow, TodayTotalsRow, UpcomingExamRow } from "./dashboard.types";
+
+const startOfTodayUTC = (): Date => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+};
 
 export class DashboardRepository {
   countActiveStudents(madrasaId: number) {
@@ -52,6 +57,56 @@ export class DashboardRepository {
       ORDER BY COALESCE(entry_date, CAST(created_at AS DATE)) DESC, id DESC
       LIMIT ${DASHBOARD_RECENT_TRANSACTIONS_LIMIT}
     `;
+  }
+
+  async findTodayStudentAttendanceCounts(madrasaId: number) {
+    const groups = await prisma.attendance.groupBy({
+      by: ["status"],
+      where: { madrasaId, attendeeType: "STUDENT", date: startOfTodayUTC() },
+      _count: { _all: true },
+    });
+    const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
+    for (const group of groups) {
+      counts[group.status] = group._count._all;
+    }
+    return counts;
+  }
+
+  countPendingAdmissions(madrasaId: number) {
+    return prisma.student.count({ where: { madrasaId, admissionStatus: "PENDING" } });
+  }
+
+  async findOverdueInvoices(madrasaId: number) {
+    return prisma.invoice.findMany({
+      where: {
+        madrasaId,
+        dueDate: { lt: startOfTodayUTC() },
+        status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+      },
+      select: { amount: true, paidAmount: true },
+    });
+  }
+
+  async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {
+    const rows = await prisma.examRoutine.findMany({
+      where: { madrasaId, examDate: { gte: startOfTodayUTC() } },
+      orderBy: { examDate: "asc" },
+      take: DASHBOARD_UPCOMING_EXAMS_LIMIT,
+      include: {
+        exam: { select: { name: true } },
+        class: { select: { nameBn: true, name: true } },
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      examName: row.exam.name,
+      className: row.class.nameBn || row.class.name || "",
+      subject: row.subject,
+      examDate: row.examDate,
+      startTime: row.startTime,
+      endTime: row.endTime,
+    }));
   }
 }
 

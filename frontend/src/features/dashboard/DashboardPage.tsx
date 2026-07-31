@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
+import StatTile from "../../components/ui/StatTile";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
@@ -18,47 +19,75 @@ export default function DashboardPage() {
     })();
   }, []);
 
-  if (!data) {
-    return (
-      <div className="rounded-2xl bg-white p-8 text-slate-500 shadow-sm">
-        ড্যাশবোর্ড লোড হচ্ছে...
-      </div>
-    );
-  }
+  const loading = !data;
 
-  const cards = [
-    { label: "মোট ছাত্র", value: data.students, tone: "text-blue-700", bg: "bg-blue-50" },
-    { label: "মোট শিক্ষক", value: data.teachers, tone: "text-indigo-700", bg: "bg-indigo-50" },
-    { label: "মোট আয়", value: money(data.income), tone: "text-emerald-700", bg: "bg-emerald-50" },
-    { label: "মোট ব্যয়", value: money(data.expense), tone: "text-rose-700", bg: "bg-rose-50" },
-    {
-      label: "বর্তমান ব্যালেন্স",
-      value: money(data.balance),
-      tone: "text-slate-900",
-      bg: "bg-slate-50",
-    },
-    {
-      label: "আজকের আয়/ব্যয়",
-      value: `${money(data.todayIncome)} / ${money(data.todayExpense)}`,
-      tone: "text-amber-700",
-      bg: "bg-amber-50",
-    },
-  ];
+  const cards = loading
+    ? []
+    : [
+        { label: "মোট ছাত্র", value: data.students, tone: "blue" as const },
+        { label: "মোট শিক্ষক", value: data.teachers, tone: "indigo" as const },
+        { label: "মোট আয়", value: data.income, tone: "emerald" as const, variant: "currency" as const },
+        { label: "মোট ব্যয়", value: data.expense, tone: "rose" as const, variant: "currency" as const },
+        {
+          label: "বর্তমান ব্যালেন্স",
+          value: data.balance,
+          tone: "slate" as const,
+          variant: "currency" as const,
+        },
+        {
+          label: "আজকের আয়/ব্যয়",
+          value: data.todayIncome,
+          tone: "amber" as const,
+          variant: "currency" as const,
+          subLabel: `ব্যয়: ${money(data.todayExpense)}`,
+        },
+      ];
 
   return (
     <div className="space-y-6">
       <PageHeader title="ড্যাশবোর্ড" subtitle="মাদরাসার এক নজরের সারাংশ" />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            className={`rounded-2xl border border-slate-200 ${card.bg} p-5 shadow-sm`}
-          >
-            <p className="text-sm text-slate-500">{card.label}</p>
-            <p className={`mt-2 text-2xl font-bold ${card.tone}`}>{card.value}</p>
-          </div>
-        ))}
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => <StatTile key={i} label="" value="" loading />)
+          : cards.map((card) => <StatTile key={card.label} {...card} />)}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <StatTile key={i} label="" value="" loading />)
+        ) : (
+          <>
+            <StatTile
+              label="আজকের হাজিরা %"
+              value={data.attendanceToday.percentage}
+              variant="percentage"
+              tone="emerald"
+              subLabel={`${data.attendanceToday.total} জনের হাজিরা নেওয়া হয়েছে`}
+              to={`${adminBase}/attendance/mark`}
+            />
+            <StatTile
+              label="অনুমোদনের অপেক্ষায় ভর্তি"
+              value={data.pendingAdmissionsCount}
+              tone="amber"
+              to={`${adminBase}/students/admissions/pending`}
+            />
+            <StatTile
+              label="বকেয়া ফি"
+              value={data.overdueFees.totalDue}
+              variant="currency"
+              tone="rose"
+              subLabel={`${data.overdueFees.count} টি ইনভয়েস`}
+              to={`${adminBase}/fee-management`}
+            />
+            <StatTile
+              label="আসন্ন পরীক্ষা"
+              value={data.upcomingExams.length}
+              tone="indigo"
+              to={`${adminBase}/routine`}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -70,12 +99,12 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {(data.fundBalances || []).map((fund: any) => (
+            {(data?.fundBalances || []).map((fund: any) => (
               <div
                 key={fund.fund || "empty"}
                 className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
               >
-                <span className="font-medium text-slate-700">{fund.fund || "নির্ধারিত নয়"}</span>
+                <span className="font-medium text-slate-700">{fund.fund || "নির্ধারিত নয়"}</span>
                 <span className="font-bold text-slate-900">{money(fund.balance)}</span>
               </div>
             ))}
@@ -89,13 +118,13 @@ export default function DashboardPage() {
               className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white"
               to={`${adminBase}/accounts/income`}
             >
-              আয় এন্ট্রি
+              আয় এন্ট্রি
             </Link>
             <Link
               className="rounded-xl bg-rose-600 px-4 py-3 text-center text-sm font-semibold text-white"
               to={`${adminBase}/accounts/expense`}
             >
-              ব্যয় এন্ট্রি
+              ব্যয় এন্ট্রি
             </Link>
             <Link
               className="rounded-xl bg-slate-800 px-4 py-3 text-center text-sm font-semibold text-white"
@@ -109,31 +138,70 @@ export default function DashboardPage() {
 
       <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="border-b px-5 py-4">
+          <h2 className="text-lg font-bold text-slate-900">আসন্ন পরীক্ষা</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="bg-slate-50 text-left text-slate-500">
+              <tr>
+                <th className="px-5 py-3">তারিখ</th>
+                <th className="px-5 py-3">পরীক্ষা</th>
+                <th className="px-5 py-3">শ্রেণি</th>
+                <th className="px-5 py-3">বিষয়</th>
+                <th className="px-5 py-3">সময়</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.upcomingExams || []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-6 text-center text-slate-400">
+                    আসন্ন কোনো পরীক্ষা নেই
+                  </td>
+                </tr>
+              )}
+              {(data?.upcomingExams || []).map((exam: any) => (
+                <tr key={exam.id} className="border-t">
+                  <td className="px-5 py-3">{new Date(exam.examDate).toLocaleDateString("bn-BD")}</td>
+                  <td className="px-5 py-3">{exam.examName}</td>
+                  <td className="px-5 py-3">{exam.className}</td>
+                  <td className="px-5 py-3">{exam.subject}</td>
+                  <td className="px-5 py-3">
+                    {exam.startTime} - {exam.endTime}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="border-b px-5 py-4">
           <h2 className="text-lg font-bold text-slate-900">সাম্প্রতিক হিসাব</h2>
         </div>
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
-            <tr>
-              <th className="px-5 py-3">তারিখ</th>
-              <th className="px-5 py-3">ধরন</th>
-              <th className="px-5 py-3">ফান্ড</th>
-              <th className="px-5 py-3">খাত</th>
-              <th className="px-5 py-3">পরিমাণ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data.recentTransactions || []).map((item: any) => (
-              <tr key={item.id} className="border-t">
-                <td className="px-5 py-3">{item.entry_date}</td>
-                <td className="px-5 py-3">{item.type === "income" ? "আয়" : "ব্যয়"}</td>
-                <td className="px-5 py-3">{item.fund}</td>
-                <td className="px-5 py-3">{item.category}</td>
-                <td className="px-5 py-3 font-semibold">{money(item.amount)}</td>
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-slate-50 text-left text-slate-500">
+              <tr>
+                <th className="px-5 py-3">তারিখ</th>
+                <th className="px-5 py-3">ধরন</th>
+                <th className="px-5 py-3">ফান্ড</th>
+                <th className="px-5 py-3">খাত</th>
+                <th className="px-5 py-3">পরিমাণ</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(data?.recentTransactions || []).map((item: any) => (
+                <tr key={item.id} className="border-t">
+                  <td className="px-5 py-3">{item.entry_date}</td>
+                  <td className="px-5 py-3">{item.type === "income" ? "আয়" : "ব্যয়"}</td>
+                  <td className="px-5 py-3">{item.fund}</td>
+                  <td className="px-5 py-3">{item.category}</td>
+                  <td className="px-5 py-3 font-semibold">{money(item.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

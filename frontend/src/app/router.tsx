@@ -2,7 +2,9 @@ import { lazy, Suspense, type JSX } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
+import GuardianLayout from "../layouts/GuardianLayout";
 import AuthGuard from "../components/guards/AuthGuard";
+import GuardianAuthGuard from "../components/guards/GuardianAuthGuard";
 import ModuleGuard from "../components/guards/ModuleGuard";
 import SuperAdminLayout from "../layouts/SuperAdminLayout";
 import PageLoader from "../components/ui/PageLoader";
@@ -10,6 +12,16 @@ import LoginPage from "../features/auth/LoginPage";
 const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
 import SuperAdminLoginPage from "../features/super-admin/auth/SuperAdminLoginPage";
+
+const GuardianLoginPage = lazy(() => import("../features/guardian/GuardianLoginPage"));
+const GuardianChangePasswordPage = lazy(
+  () => import("../features/guardian/GuardianChangePasswordPage"),
+);
+const GuardianDashboardPage = lazy(() => import("../features/guardian/GuardianDashboardPage"));
+const GuardianAttendancePage = lazy(() => import("../features/guardian/GuardianAttendancePage"));
+const GuardianResultsPage = lazy(() => import("../features/guardian/GuardianResultsPage"));
+const GuardianFeesPage = lazy(() => import("../features/guardian/GuardianFeesPage"));
+const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoticesPage"));
 
 // All page-level components are lazy-loaded so that a visitor to any one
 // route (e.g. the public landing page at "/") only downloads the JS for
@@ -379,6 +391,29 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: madrasaAdminChildren,
+  },
+
+  { path: "/:madrasaSlug/guardian/login", element: withSuspense(<GuardianLoginPage />) },
+  {
+    path: "/:madrasaSlug/guardian",
+    element: (
+      <GuardianAuthGuard>
+        <GuardianLayout />
+      </GuardianAuthGuard>
+    ),
+    children: [
+      { index: true, element: <Navigate to="dashboard" replace /> },
+      { path: "dashboard", element: withSuspense(<GuardianDashboardPage />) },
+      { path: "attendance", element: withSuspense(<GuardianAttendancePage />) },
+      { path: "results", element: withSuspense(<GuardianResultsPage />) },
+      { path: "fees", element: withSuspense(<GuardianFeesPage />) },
+      { path: "notices", element: withSuspense(<GuardianNoticesPage />) },
+      { path: "*", element: withSuspense(<NotFoundPage />) },
+    ],
+  },
+  {
+    path: "/:madrasaSlug/guardian/change-password",
+    element: withSuspense(<GuardianChangePasswordPage />),
   },
 
   { path: "/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
