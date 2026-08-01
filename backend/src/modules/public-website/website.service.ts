@@ -1,20 +1,26 @@
 import { Request } from "express";
-import { WebsiteStatus } from "@prisma/client";
+import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { websiteRepository, WebsiteRepository } from "./website.repository";
 import {
+  SaveWebsiteCommitteeMemberRequestDto,
   SaveWebsiteGalleryItemRequestDto,
   SaveWebsiteNoticeRequestDto,
+  SaveWebsiteSlideRequestDto,
+  SubmitWebsiteAdmissionApplicationRequestDto,
   UpsertWebsitePageRequestDto,
   UpsertWebsiteSettingsRequestDto,
 } from "./website.dto";
-import { DEFAULT_THEME_COLOR, VALID_WEBSITE_STATUSES } from "./website.constants";
+import { DEFAULT_THEME_COLOR, VALID_ADMISSION_STATUSES, VALID_WEBSITE_STATUSES } from "./website.constants";
 import {
   toMadrasaApiDto,
+  toWebsiteAdmissionApplicationApiDto,
+  toWebsiteCommitteeMemberApiDto,
   toWebsiteGalleryApiDto,
   toWebsiteNoticeApiDto,
   toWebsitePageApiDto,
   toWebsiteSettingsApiDto,
+  toWebsiteSlideApiDto,
 } from "./website.mapper";
 
 export const resolveTenantId = (req: Request): number =>
@@ -41,11 +47,14 @@ export class WebsiteService {
       throw new ForbiddenError("This website is not published yet");
     }
 
-    const [pages, notices, teachers, gallery] = await Promise.all([
+    const [pages, notices, teachers, gallery, slides, committee, classes] = await Promise.all([
       this.repository.findPublishedPages(madrasa.id),
       this.repository.findPublishedNotices(madrasa.id),
       this.repository.findTeachersOptional(madrasa.id),
       this.repository.findPublishedGallery(madrasa.id),
+      this.repository.findPublishedSlides(madrasa.id),
+      this.repository.findPublishedCommittee(madrasa.id),
+      this.repository.findActiveClassNames(madrasa.id),
     ]);
 
     return {
@@ -55,16 +64,22 @@ export class WebsiteService {
       notices: notices.map(toWebsiteNoticeApiDto),
       teachers,
       gallery: gallery.map(toWebsiteGalleryApiDto),
+      slides: slides.map(toWebsiteSlideApiDto),
+      committee: committee.map(toWebsiteCommitteeMemberApiDto),
+      classes,
     };
   }
 
   async getWebsiteSettings(madrasaId: number) {
-    const [madrasa, settings, pages, notices, gallery] = await Promise.all([
+    const [madrasa, settings, pages, notices, gallery, slides, committee, admissions] = await Promise.all([
       this.repository.findMadrasaForAdmin(madrasaId),
       this.repository.findSettings(madrasaId),
       this.repository.findAllPages(madrasaId),
       this.repository.findAllNotices(madrasaId),
       this.repository.findAllGallery(madrasaId),
+      this.repository.findAllSlides(madrasaId),
+      this.repository.findAllCommittee(madrasaId),
+      this.repository.findAllAdmissionApplications(madrasaId),
     ]);
 
     return {
@@ -73,6 +88,9 @@ export class WebsiteService {
       pages: pages.map(toWebsitePageApiDto),
       notices: notices.map(toWebsiteNoticeApiDto),
       gallery: gallery.map(toWebsiteGalleryApiDto),
+      slides: slides.map(toWebsiteSlideApiDto),
+      committee: committee.map(toWebsiteCommitteeMemberApiDto),
+      admissions: admissions.map(toWebsiteAdmissionApplicationApiDto),
     };
   }
 
@@ -92,7 +110,20 @@ export class WebsiteService {
       show_admission,
       show_about,
       show_contact,
+      show_slider,
+      show_muhtamim,
+      show_committee,
+      show_notice_bar,
+      notice_bar_text,
       is_published,
+      muhtamim_name,
+      muhtamim_designation,
+      muhtamim_photo,
+      muhtamim_message,
+      facebook_url,
+      youtube_url,
+      instagram_url,
+      whatsapp_channel_url,
     } = body;
 
     await this.repository.updateMadrasaContactInfo(madrasaId, {
@@ -113,7 +144,20 @@ export class WebsiteService {
       showAdmission: boolValue(show_admission),
       showAbout: boolValue(show_about),
       showContact: boolValue(show_contact),
+      showSlider: boolValue(show_slider),
+      showMuhtamim: boolValue(show_muhtamim),
+      showCommittee: boolValue(show_committee),
+      showNoticeBar: boolValue(show_notice_bar),
+      noticeBarText: notice_bar_text || null,
       isPublished: boolValue(is_published),
+      muhtamimName: muhtamim_name || null,
+      muhtamimDesignation: muhtamim_designation || null,
+      muhtamimPhoto: muhtamim_photo || null,
+      muhtamimMessage: muhtamim_message || null,
+      facebookUrl: facebook_url || null,
+      youtubeUrl: youtube_url || null,
+      instagramUrl: instagram_url || null,
+      whatsappChannelUrl: whatsapp_channel_url || null,
     };
 
     await this.repository.upsertSettings(madrasaId, shared, { madrasaId, ...shared });
@@ -189,6 +233,115 @@ export class WebsiteService {
 
   async deleteWebsiteGalleryItem(madrasaId: number, id: number) {
     await this.repository.deleteGalleryItem(id, madrasaId);
+  }
+
+  async saveWebsiteSlide(madrasaId: number, body: SaveWebsiteSlideRequestDto) {
+    const { id, title, subtitle, image_url, button_text, button_link, is_published = 1, sort_order = 0 } = body;
+    if (!image_url) throw new BadRequestError("Slide image URL required");
+
+    const shared = {
+      title: title || null,
+      subtitle: subtitle || null,
+      imageUrl: image_url,
+      buttonText: button_text || null,
+      buttonLink: button_link || null,
+      isPublished: boolValue(is_published),
+      sortOrder: Number(sort_order) || 0,
+    };
+
+    let slideId = Number(id) || 0;
+    if (slideId) {
+      await this.repository.updateSlide(slideId, madrasaId, shared);
+    } else {
+      const created = await this.repository.createSlide({ madrasaId, ...shared });
+      slideId = created.id;
+    }
+
+    const saved = await this.repository.findSlideById(slideId, madrasaId);
+    return saved ? toWebsiteSlideApiDto(saved) : null;
+  }
+
+  async deleteWebsiteSlide(madrasaId: number, id: number) {
+    await this.repository.deleteSlide(id, madrasaId);
+  }
+
+  async saveWebsiteCommitteeMember(madrasaId: number, body: SaveWebsiteCommitteeMemberRequestDto) {
+    const { id, name, designation, photo_url, phone, is_published = 1, sort_order = 0 } = body;
+    if (!name?.trim()) throw new BadRequestError("Committee member name required");
+
+    const shared = {
+      name,
+      designation: designation || null,
+      photoUrl: photo_url || null,
+      phone: phone || null,
+      isPublished: boolValue(is_published),
+      sortOrder: Number(sort_order) || 0,
+    };
+
+    let memberId = Number(id) || 0;
+    if (memberId) {
+      await this.repository.updateCommitteeMember(memberId, madrasaId, shared);
+    } else {
+      const created = await this.repository.createCommitteeMember({ madrasaId, ...shared });
+      memberId = created.id;
+    }
+
+    const saved = await this.repository.findCommitteeMemberById(memberId, madrasaId);
+    return saved ? toWebsiteCommitteeMemberApiDto(saved) : null;
+  }
+
+  async deleteWebsiteCommitteeMember(madrasaId: number, id: number) {
+    await this.repository.deleteCommitteeMember(id, madrasaId);
+  }
+
+  async submitAdmissionApplication(slug: string, body: SubmitWebsiteAdmissionApplicationRequestDto) {
+    const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
+      throw new ForbiddenError("This website is currently disabled");
+    }
+
+    const {
+      student_name,
+      father_name,
+      mother_name,
+      gender,
+      date_of_birth,
+      class_applied,
+      guardian_phone,
+      address,
+      note,
+    } = body;
+
+    if (!student_name?.trim()) throw new BadRequestError("Student name required");
+    if (!guardian_phone?.trim()) throw new BadRequestError("Guardian phone required");
+
+    const created = await this.repository.createAdmissionApplication({
+      madrasaId: madrasa.id,
+      studentName: student_name.trim(),
+      fatherName: father_name || null,
+      motherName: mother_name || null,
+      gender: gender || null,
+      dateOfBirth: date_of_birth ? new Date(date_of_birth) : null,
+      classApplied: class_applied || null,
+      guardianPhone: guardian_phone.trim(),
+      address: address || null,
+      note: note || null,
+    });
+
+    return toWebsiteAdmissionApplicationApiDto(created);
+  }
+
+  async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {
+    if (!(VALID_ADMISSION_STATUSES as readonly string[]).includes(status)) {
+      throw new BadRequestError("Invalid admission status");
+    }
+    await this.repository.updateAdmissionApplicationStatus(id, madrasaId, status as WebsiteAdmissionStatus);
+    return status;
+  }
+
+  async deleteAdmissionApplication(madrasaId: number, id: number) {
+    await this.repository.deleteAdmissionApplication(id, madrasaId);
   }
 
   async updateWebsiteStatusBySuperAdmin(id: number, status: string) {

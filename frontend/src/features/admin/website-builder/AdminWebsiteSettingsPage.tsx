@@ -3,17 +3,26 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import EmptyState from "../../../components/ui/EmptyState";
 import {
+  deleteAdmissionApplication,
+  deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
   deleteWebsiteNotice,
+  deleteWebsiteSlide,
   getWebsiteSettings,
+  saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
   saveWebsiteNotice,
   saveWebsitePage,
   saveWebsiteSettings,
+  saveWebsiteSlide,
+  updateAdmissionApplicationStatus,
+  type WebsiteAdmissionApplication,
+  type WebsiteCommitteeMemberPayload,
   type WebsiteGalleryPayload,
   type WebsiteNoticePayload,
   type WebsitePagePayload,
   type WebsiteSettingsPayload,
+  type WebsiteSlidePayload,
 } from "../../../services/websiteApi";
 import { useAuthStore } from "../../../store/authStore";
 import { getTenantSlugFromPath } from "../../../utils/tenantSlug";
@@ -39,16 +48,33 @@ const defaultSettings: WebsiteSettingsPayload = {
   show_admission: 1,
   show_about: 1,
   show_contact: 1,
+  show_slider: 1,
+  show_muhtamim: 1,
+  show_committee: 1,
+  show_notice_bar: 1,
   is_published: 1,
+  muhtamim_name: "",
+  muhtamim_designation: "",
+  muhtamim_photo: "",
+  muhtamim_message: "",
+  notice_bar_text: "",
+  facebook_url: "",
+  youtube_url: "",
+  instagram_url: "",
+  whatsapp_channel_url: "",
 };
 
 const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
   ["is_published", "Website published", "বন্ধ করলে public website hidden থাকবে"],
+  ["show_notice_bar", "Notice scroll bar", "নেভবারের নিচে চলমান নোটিশ বার দেখাবে"],
+  ["show_slider", "Home slider", "হোমপেজে ছবির স্লাইডার দেখাবে"],
   ["show_about", "About section", "মাদ্রাসার পরিচিতি দেখাবে"],
+  ["show_muhtamim", "Muhtamim's message", "মুহতামিম সাহেবের বাণী দেখাবে"],
   ["show_admission", "Admission section", "ভর্তি তথ্য দেখাবে"],
-  ["show_notices", "Notice section", "নোটিশ দেখাবে"],
+  ["show_notices", "Notice section", "নোটিশ বোর্ড দেখাবে"],
   ["show_gallery", "Gallery section", "ছবি/গ্যালারি দেখাবে"],
   ["show_teachers", "Teachers section", "শিক্ষক section দেখাবে"],
+  ["show_committee", "Committee section", "মাদ্রাসা কমিটি দেখাবে"],
   ["show_contact", "Contact section", "যোগাযোগ তথ্য দেখাবে"],
 ];
 
@@ -59,6 +85,9 @@ export default function AdminWebsiteSettingsPage() {
   const [pages, setPages] = useState<WebsitePagePayload[]>(defaultPages);
   const [notices, setNotices] = useState<WebsiteNoticePayload[]>([]);
   const [gallery, setGallery] = useState<WebsiteGalleryPayload[]>([]);
+  const [slides, setSlides] = useState<WebsiteSlidePayload[]>([]);
+  const [committee, setCommittee] = useState<WebsiteCommitteeMemberPayload[]>([]);
+  const [admissions, setAdmissions] = useState<WebsiteAdmissionApplication[]>([]);
   const [noticeDraft, setNoticeDraft] = useState<WebsiteNoticePayload>({
     title: "",
     content: "",
@@ -67,6 +96,21 @@ export default function AdminWebsiteSettingsPage() {
   const [galleryDraft, setGalleryDraft] = useState<WebsiteGalleryPayload>({
     title: "",
     image_url: "",
+    is_published: 1,
+    sort_order: 0,
+  });
+  const [slideDraft, setSlideDraft] = useState<WebsiteSlidePayload>({
+    title: "",
+    subtitle: "",
+    image_url: "",
+    is_published: 1,
+    sort_order: 0,
+  });
+  const [committeeDraft, setCommitteeDraft] = useState<WebsiteCommitteeMemberPayload>({
+    name: "",
+    designation: "",
+    photo_url: "",
+    phone: "",
     is_published: 1,
     sort_order: 0,
   });
@@ -99,6 +143,9 @@ export default function AdminWebsiteSettingsPage() {
 
         if (Array.isArray(data?.notices)) setNotices(data.notices);
         if (Array.isArray(data?.gallery)) setGallery(data.gallery);
+        if (Array.isArray(data?.slides)) setSlides(data.slides);
+        if (Array.isArray(data?.committee)) setCommittee(data.committee);
+        if (Array.isArray(data?.admissions)) setAdmissions(data.admissions);
       })
       .finally(() => setLoading(false));
   }, [user?.madrasa_id]);
@@ -152,6 +199,50 @@ export default function AdminWebsiteSettingsPage() {
     if (!id) return;
     await deleteWebsiteGalleryItem(id);
     setGallery((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const submitSlide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!slideDraft.image_url?.trim()) return;
+    const saved = await saveWebsiteSlide(slideDraft);
+    setSlides((prev) => [saved.data, ...prev.filter((item) => item.id !== saved.data.id)]);
+    setSlideDraft({
+      title: "",
+      subtitle: "",
+      image_url: "",
+      is_published: 1,
+      sort_order: 0,
+    });
+  };
+
+  const removeSlide = async (id?: number) => {
+    if (!id) return;
+    await deleteWebsiteSlide(id);
+    setSlides((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const submitCommitteeMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!committeeDraft.name?.trim()) return;
+    const saved = await saveWebsiteCommitteeMember(committeeDraft);
+    setCommittee((prev) => [saved.data, ...prev.filter((item) => item.id !== saved.data.id)]);
+    setCommitteeDraft({ name: "", designation: "", photo_url: "", phone: "", is_published: 1, sort_order: 0 });
+  };
+
+  const removeCommitteeMember = async (id?: number) => {
+    if (!id) return;
+    await deleteWebsiteCommitteeMember(id);
+    setCommittee((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const changeAdmissionStatus = async (id: number, status: "pending" | "approved" | "rejected") => {
+    await updateAdmissionApplicationStatus(id, status);
+    setAdmissions((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  };
+
+  const removeAdmission = async (id: number) => {
+    await deleteAdmissionApplication(id);
+    setAdmissions((prev) => prev.filter((item) => item.id !== id));
   };
 
   if (loading)
@@ -245,6 +336,106 @@ export default function AdminWebsiteSettingsPage() {
               value={form.theme_color || "#2563eb"}
               onChange={(e) => update("theme_color", e.target.value)}
             />
+          </div>
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+          <div>
+            <h2 className="text-lg font-bold">চলমান নোটিশ বার</h2>
+            <p className="text-sm text-gray-500">
+              হোমপেজের একদম উপরে যে লেখাটি স্ক্রল হয়ে চলবে সেটি এখানে লিখুন। একাধিক লাইন লিখলে প্রতিটি
+              লাইন আলাদা আলাদা ভাবে স্ক্রল হবে। খালি রাখলে নোটিশ বার দেখাবে না।
+            </p>
+          </div>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300"
+            rows={3}
+            value={form.notice_bar_text || ""}
+            onChange={(e) => update("notice_bar_text", e.target.value)}
+            placeholder="যেমনঃ আগামী ১৫ই রমজান থেকে ভর্তি কার্যক্রম শুরু হবে।"
+          />
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+          <h2 className="text-lg font-bold">মুহতামিম সাহেবের বাণী</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">নাম</label>
+              <Input
+                value={form.muhtamim_name || ""}
+                onChange={(e) => update("muhtamim_name", e.target.value)}
+                placeholder="মাওলানা মুহাম্মদ ..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">পদবি</label>
+              <Input
+                value={form.muhtamim_designation || ""}
+                onChange={(e) => update("muhtamim_designation", e.target.value)}
+                placeholder="মুহতামিম ও শায়খুল হাদীস"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium">ছবির URL</label>
+              <Input
+                value={form.muhtamim_photo || ""}
+                onChange={(e) => update("muhtamim_photo", e.target.value)}
+                placeholder="https://.../muhtamim.jpg"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">বাণী</label>
+            <textarea
+              className="mt-1 w-full rounded border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300"
+              rows={6}
+              value={form.muhtamim_message || ""}
+              onChange={(e) => update("muhtamim_message", e.target.value)}
+              placeholder="মুহতামিম সাহেবের বাণী লিখুন..."
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+          <div>
+            <h2 className="text-lg font-bold">Social Media Links</h2>
+            <p className="text-sm text-gray-500">
+              খালি রাখলে সেই আইকনটি public website-এর footer এবং WhatsApp button-এ দেখাবে না।
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">Facebook page URL</label>
+              <Input
+                value={form.facebook_url || ""}
+                onChange={(e) => update("facebook_url", e.target.value)}
+                placeholder="https://facebook.com/yourpage"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">YouTube channel URL</label>
+              <Input
+                value={form.youtube_url || ""}
+                onChange={(e) => update("youtube_url", e.target.value)}
+                placeholder="https://youtube.com/@yourchannel"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Instagram profile URL</label>
+              <Input
+                value={form.instagram_url || ""}
+                onChange={(e) => update("instagram_url", e.target.value)}
+                placeholder="https://instagram.com/yourprofile"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">WhatsApp channel URL</label>
+              <Input
+                value={form.whatsapp_channel_url || ""}
+                onChange={(e) => update("whatsapp_channel_url", e.target.value)}
+                placeholder="https://whatsapp.com/channel/..."
+              />
+            </div>
           </div>
         </section>
 
@@ -412,6 +603,219 @@ export default function AdminWebsiteSettingsPage() {
           <EmptyState
             title="No gallery images yet"
             hint="Image URL add করলে public website gallery section-এ দেখা যাবে।"
+          />
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+        <h2 className="text-lg font-bold">Hero Slider</h2>
+        <p className="text-sm text-gray-500">
+          হোমপেজের উপরে যে ছবিগুলো স্লাইড হয়ে দেখা যাবে। প্রতিটি স্লাইডে caption (title/subtitle) ঐচ্ছিক।
+          <br />
+          <span className="font-semibold text-gray-600">
+            প্রস্তাবিত ছবির সাইজ: 1600 x 900px (16:9, landscape) — সব ডিভাইসে ঠিকভাবে ফিট হবে।
+          </span>
+        </p>
+        <form onSubmit={submitSlide} className="rounded-xl border p-4 space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              value={slideDraft.title || ""}
+              onChange={(e) => setSlideDraft((prev) => ({ ...prev, title: e.target.value }))}
+              placeholder="Slide title"
+            />
+            <Input
+              value={slideDraft.subtitle || ""}
+              onChange={(e) => setSlideDraft((prev) => ({ ...prev, subtitle: e.target.value }))}
+              placeholder="Slide subtitle"
+            />
+            <Input
+              value={slideDraft.image_url || ""}
+              onChange={(e) => setSlideDraft((prev) => ({ ...prev, image_url: e.target.value }))}
+              placeholder="Image URL (recommended: 1600x900px)"
+            />
+            <Input
+              type="number"
+              value={slideDraft.sort_order ?? 0}
+              onChange={(e) => setSlideDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))}
+              placeholder="Sort order"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={slideDraft.is_published !== 0}
+              onChange={(e) =>
+                setSlideDraft((prev) => ({ ...prev, is_published: e.target.checked ? 1 : 0 }))
+              }
+            />
+            Publish this slide
+          </label>
+          <Button type="submit">Add slide</Button>
+        </form>
+
+        {slides.length ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            {slides.map((item) => (
+              <div key={item.id || item.image_url} className="rounded-xl border p-3">
+                <img
+                  src={item.image_url}
+                  alt={item.title || "Slide"}
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+                <div className="mt-2 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{item.title || "Untitled slide"}</p>
+                    {item.subtitle && <p className="text-xs text-gray-500">{item.subtitle}</p>}
+                    {item.is_published === 0 && <p className="text-xs text-amber-600">Hidden</p>}
+                  </div>
+                  <Button type="button" variant="danger" onClick={() => removeSlide(item.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No slides yet"
+            hint="Slide add করলে হোমপেজে স্লাইডার হিসেবে দেখা যাবে।"
+          />
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+        <h2 className="text-lg font-bold">মাদ্রাসা কমিটি</h2>
+        <form onSubmit={submitCommitteeMember} className="rounded-xl border p-4 space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              value={committeeDraft.name || ""}
+              onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="নাম"
+            />
+            <Input
+              value={committeeDraft.designation || ""}
+              onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, designation: e.target.value }))}
+              placeholder="পদবি (যেমন: সভাপতি)"
+            />
+            <Input
+              value={committeeDraft.photo_url || ""}
+              onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, photo_url: e.target.value }))}
+              placeholder="ছবির URL"
+            />
+            <Input
+              value={committeeDraft.phone || ""}
+              onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="ফোন (ঐচ্ছিক)"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={committeeDraft.is_published !== 0}
+              onChange={(e) =>
+                setCommitteeDraft((prev) => ({ ...prev, is_published: e.target.checked ? 1 : 0 }))
+              }
+            />
+            Publish this member
+          </label>
+          <Button type="submit">Add committee member</Button>
+        </form>
+
+        {committee.length ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            {committee.map((item) => (
+              <div key={item.id || item.name} className="flex items-center gap-3 rounded-xl border p-3">
+                {item.photo_url ? (
+                  <img src={item.photo_url} alt={item.name} className="h-14 w-14 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
+                    {item.name?.[0] || "?"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{item.name}</p>
+                  <p className="truncate text-xs text-gray-500">{item.designation}</p>
+                  {item.is_published === 0 && <p className="text-xs text-amber-600">Hidden</p>}
+                </div>
+                <Button type="button" variant="danger" onClick={() => removeCommitteeMember(item.id)}>
+                  Delete
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No committee members yet"
+            hint="কমিটির সদস্য add করলে public website-এ দেখা যাবে।"
+          />
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 shadow space-y-5">
+        <h2 className="text-lg font-bold">অনলাইন ভর্তি আবেদনসমূহ</h2>
+        <p className="text-sm text-gray-500">
+          Public website থেকে জমা হওয়া ভর্তি আবেদনসমূহ এখানে দেখা ও review করা যাবে।
+        </p>
+        {admissions.length ? (
+          <div className="space-y-3">
+            {admissions.map((app) => (
+              <div key={app.id} className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">{app.student_name}</h3>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {[app.class_applied, app.gender, app.guardian_phone].filter(Boolean).join(" • ")}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      পিতা: {app.father_name || "N/A"} • মাতা: {app.mother_name || "N/A"}
+                    </p>
+                    {app.address && <p className="mt-1 text-xs text-gray-500">ঠিকানা: {app.address}</p>}
+                    {app.note && <p className="mt-1 text-xs text-gray-500">নোট: {app.note}</p>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        app.status === "approved"
+                          ? "bg-green-100 text-green-700"
+                          : app.status === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {app.status === "approved"
+                        ? "গৃহীত"
+                        : app.status === "rejected"
+                          ? "বাতিল"
+                          : "অপেক্ষমান"}
+                    </span>
+                    <div className="flex gap-2">
+                      {app.status !== "approved" && (
+                        <Button type="button" onClick={() => changeAdmissionStatus(app.id, "approved")}>
+                          Approve
+                        </Button>
+                      )}
+                      {app.status !== "rejected" && (
+                        <Button
+                          type="button"
+                          variant="danger"
+                          onClick={() => changeAdmissionStatus(app.id, "rejected")}
+                        >
+                          Reject
+                        </Button>
+                      )}
+                      <Button type="button" variant="danger" onClick={() => removeAdmission(app.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No admission applications yet"
+            hint="Public website থেকে কেউ আবেদন করলে এখানে দেখা যাবে।"
           />
         )}
       </section>

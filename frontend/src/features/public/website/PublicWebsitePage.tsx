@@ -3,110 +3,38 @@ import { Link, useParams } from "react-router-dom";
 import {
   Bell,
   ChevronUp,
+  Facebook,
   GraduationCap,
   Image as ImageIcon,
   Info,
+  Instagram,
   Loader2,
   Mail,
   MapPin,
   Menu,
   Phone,
-  Sparkles,
+  Quote,
   Users,
+  UsersRound,
   X,
+  Youtube,
 } from "lucide-react";
 import { getPublicWebsite } from "../../../services/websiteApi";
 import { getTenantGuardianBase } from "../../../utils/tenantSlug";
+import { accentStrong, accentText, initials, pickTextOn, withAlpha } from "./colorUtils";
+import HeroSlider from "./HeroSlider";
+import NoticeMarquee from "./NoticeMarquee";
 
 const NAV_LABELS: Record<string, string> = {
   about: "পরিচিতি",
+  muhtamim: "মুহতামিমের বাণী",
   admission: "ভর্তি তথ্য",
   teachers: "শিক্ষকবৃন্দ",
+  committee: "কমিটি",
   gallery: "গ্যালারি",
   notices: "নোটিশ",
   contact: "যোগাযোগ",
 };
-
-// --- Color system -----------------------------------------------------
-// The theme color is an arbitrary hex an admin picks from a plain color
-// input, so it can land anywhere from a deep navy to a pale pastel. Using
-// it directly as text-on-white or as a solid badge fill (as a first pass
-// did) made labels/badges/buttons wash out or vanish whenever an admin
-// chose a light color. Every brand-colored surface below now goes through
-// one of these helpers so text always stays legible regardless of the
-// picked color.
-
-function hexToRgb(hex: string) {
-  let c = (hex || "").replace("#", "");
-  if (c.length === 3)
-    c = c
-      .split("")
-      .map((ch) => ch + ch)
-      .join("");
-  const num = parseInt(c, 16);
-  if (!c || Number.isNaN(num)) return { r: 37, g: 99, b: 235 };
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  const h = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n)))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-
-function withAlpha(hex: string, alpha: number) {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function relativeLuminance(hex: string) {
-  const { r, g, b } = hexToRgb(hex);
-  const lin = (v: number) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-function mixHex(hexA: string, hexB: string, t: number) {
-  const a = hexToRgb(hexA);
-  const b = hexToRgb(hexB);
-  return rgbToHex(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t);
-}
-
-/** Darkened just enough to stay a solid, confident badge/button/icon fill. */
-function accentStrong(hex: string) {
-  let color = hex;
-  let guard = 0;
-  while (relativeLuminance(color) > 0.42 && guard < 8) {
-    color = mixHex(color, "#000000", 0.16);
-    guard++;
-  }
-  return color;
-}
-
-/** Darkened just enough to read clearly as text/label color on a white card. */
-function accentText(hex: string) {
-  let color = hex;
-  let guard = 0;
-  while (relativeLuminance(color) > 0.38 && guard < 8) {
-    color = mixHex(color, "#000000", 0.14);
-    guard++;
-  }
-  return color;
-}
-
-function pickTextOn(hex: string) {
-  return relativeLuminance(hex) > 0.5 ? "#0f172a" : "#ffffff";
-}
-
-function initials(name?: string) {
-  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "M";
-  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
-}
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -125,6 +53,26 @@ function isRecent(value?: string | null) {
   if (!value) return false;
   const days = (Date.now() - new Date(value).getTime()) / 86400000;
   return days >= 0 && days <= 7;
+}
+
+function waLink(phone?: string | null) {
+  const digits = (phone || "").replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : "";
+}
+
+function WhatsAppIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.876 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+      <path d="M12.001 2C6.478 2 2 6.477 2 12c0 1.82.478 3.53 1.31 5.005L2 22l5.147-1.28A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12.001 2zm0 18.222a8.19 8.19 0 0 1-4.169-1.13l-.299-.177-3.055.76.797-2.981-.194-.306A8.19 8.19 0 0 1 3.778 12c0-4.535 3.688-8.222 8.223-8.222 4.535 0 8.222 3.687 8.222 8.222 0 4.535-3.687 8.222-8.222 8.222z" />
+    </svg>
+  );
 }
 
 function SectionHeader({
@@ -191,6 +139,8 @@ export default function PublicWebsitePage() {
   const notices = data?.notices || [];
   const teachers = data?.teachers || [];
   const gallery = data?.gallery || [];
+  const slides = data?.slides || [];
+  const committee = data?.committee || [];
 
   const pageMap = useMemo(() => {
     const pages = data?.pages || [];
@@ -206,18 +156,21 @@ export default function PublicWebsitePage() {
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
   const onAccent = useMemo(() => pickTextOn(accentSolid), [accentSolid]);
   const guardianLoginUrl = `${getTenantGuardianBase(slug)}/login`;
+  const admissionUrl = "admission";
 
   const visibleSections = useMemo(() => {
     const s = data?.settings || {};
     const list: string[] = [];
     if (s.show_about !== 0 && pageMap.about) list.push("about");
+    if (s.show_muhtamim !== 0 && settings.muhtamim_message) list.push("muhtamim");
     if (s.show_admission !== 0 && pageMap.admission) list.push("admission");
     if (s.show_teachers !== 0) list.push("teachers");
+    if (s.show_committee !== 0 && committee.length) list.push("committee");
     if (s.show_gallery !== 0) list.push("gallery");
     if (s.show_notices !== 0) list.push("notices");
     if (s.show_contact !== 0) list.push("contact");
     return list;
-  }, [data, pageMap]);
+  }, [data, pageMap, committee.length, settings.muhtamim_message]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -243,6 +196,13 @@ export default function PublicWebsitePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
 
   if (loading) {
     return (
@@ -281,10 +241,9 @@ export default function PublicWebsitePage() {
     <div className="min-h-screen bg-white text-slate-900">
       {/* Header */}
       <header
-        className={`fixed inset-x-0 top-0 z-50 border-b bg-white transition-shadow ${
-          scrolled ? "border-slate-100 shadow-sm" : "border-transparent"
-        }`}
+        className={`fixed inset-x-0 top-0 z-50 bg-white transition-shadow ${scrolled ? "shadow-sm" : ""}`}
       >
+        {/* Row 1: brand (full name, never truncated) + actions */}
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <a href="#top" className="flex min-w-0 items-center gap-3">
             {settings.logo_url ? (
@@ -302,148 +261,164 @@ export default function PublicWebsitePage() {
               </div>
             )}
             <div className="min-w-0">
-              <div className="truncate text-base font-extrabold leading-tight text-slate-900">
+              <div className="break-words text-base font-extrabold leading-tight text-slate-900">
                 {madrasa?.name}
               </div>
               <div className="text-[11px] font-medium text-slate-400">Official Website</div>
             </div>
           </a>
 
-          <nav className="hidden items-center gap-1 lg:flex">
-            {visibleSections.map((key) => (
-              <a
-                key={key}
-                href={`#${key}`}
-                className="rounded-full px-3.5 py-2 text-sm font-semibold transition"
-                style={
-                  activeId === key
-                    ? { color: onAccent, backgroundColor: accentSolid }
-                    : { color: "#334155" }
-                }
-              >
-                {NAV_LABELS[key]}
-              </a>
-            ))}
-          </nav>
-
-          <div className="hidden items-center gap-3 lg:flex">
-            {madrasa?.phone && (
-              <a
-                href={`tel:${madrasa.phone}`}
-                className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
-              >
-                <Phone size={15} />
-                {madrasa.phone}
-              </a>
-            )}
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <Link
               to={guardianLoginUrl}
-              className="rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90"
-              style={{ backgroundColor: accentSolid, color: onAccent }}
+              className="whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50"
+              style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
             >
               অভিভাবক লগইন
+            </Link>
+            <Link
+              to={admissionUrl}
+              className="whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-bold shadow-sm transition hover:opacity-90"
+              style={{ backgroundColor: accentSolid, color: onAccent }}
+            >
+              অনলাইনে ভর্তি
             </Link>
           </div>
 
           <button
             type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-lg p-2 text-slate-700 lg:hidden"
+            onClick={() => setMenuOpen(true)}
+            className="shrink-0 rounded-lg p-2 text-slate-700 lg:hidden"
             aria-label="Menu"
           >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            <Menu size={22} />
           </button>
         </div>
 
-        {menuOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-3 lg:hidden">
-            <nav className="flex flex-col gap-1">
-              {visibleSections.map((key) => (
-                <a
-                  key={key}
-                  href={`#${key}`}
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700"
-                >
-                  {NAV_LABELS[key]}
-                </a>
-              ))}
-              <Link
-                to={guardianLoginUrl}
-                onClick={() => setMenuOpen(false)}
-                className="mt-2 rounded-xl px-4 py-2.5 text-center text-sm font-bold"
-                style={{ backgroundColor: accentSolid, color: onAccent }}
+        {/* Row 2: menu bar — distinct band, desktop only (mobile uses the drawer) */}
+        <nav
+          className="no-scrollbar hidden overflow-x-auto lg:block"
+          style={{ backgroundColor: accentSolid }}
+        >
+          <div className="mx-auto flex max-w-6xl items-center justify-center gap-1 px-4">
+            {visibleSections.map((key) => (
+              <a
+                key={key}
+                href={`#${key}`}
+                className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition"
+                style={{ color: onAccent, opacity: activeId === key ? 1 : 0.78 }}
               >
-                অভিভাবক লগইন
-              </Link>
-            </nav>
+                {NAV_LABELS[key]}
+                <span
+                  className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
+                  style={{ backgroundColor: onAccent, opacity: activeId === key ? 1 : 0 }}
+                />
+              </a>
+            ))}
           </div>
+        </nav>
+
+        {settings.show_notice_bar !== 0 && (
+          <NoticeMarquee text={settings.notice_bar_text} accentSolid={accentSolid} onAccent={onAccent} />
         )}
       </header>
 
-      {/* Hero */}
-      <section
-        id="top"
-        className="relative overflow-hidden pb-28 pt-32 text-white md:pb-32 md:pt-40"
-        style={{ background: `linear-gradient(135deg, ${accentSolid} 0%, #05070d 85%)` }}
+      {/* Mobile menu: left-side sliding drawer */}
+      <div
+        className={`fixed inset-0 z-[55] bg-black/40 transition-opacity duration-300 lg:hidden ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-[60] flex w-72 max-w-[80%] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-black/15" />
-        <div
-          className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl"
-          style={{ backgroundColor: withAlpha("#ffffff", 0.08) }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-32 -right-16 h-96 w-96 rounded-full blur-3xl"
-          style={{ backgroundColor: withAlpha(accentSolid, 0.45) }}
-        />
-
-        <div className="relative mx-auto max-w-4xl px-4 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white/90 ring-1 ring-white/20">
-            <Sparkles size={13} />
-            Official Madrasa Website
-          </span>
-          <h1 className="mt-5 text-3xl font-extrabold leading-tight md:text-5xl">
-            {settings.hero_title || madrasa?.name}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm text-white/85 md:text-base">
-            {settings.hero_subtitle || madrasa?.address || "Welcome to our madrasa website."}
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to={guardianLoginUrl}
-              className="rounded-xl bg-white px-6 py-3 text-sm font-bold shadow-lg transition hover:-translate-y-0.5"
-              style={{ color: accentLabel }}
-            >
-              অভিভাবক লগইন
-            </Link>
-            {settings.show_admission !== 0 && pageMap.admission && (
-              <a
-                href="#admission"
-                className="rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-2">
+            {settings.logo_url ? (
+              <img
+                src={settings.logo_url}
+                alt="Logo"
+                className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
+              />
+            ) : (
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow"
+                style={{ backgroundColor: accentSolid, color: onAccent }}
               >
-                ভর্তি তথ্য দেখুন
-              </a>
+                {initials(madrasa?.name)}
+              </div>
             )}
+            <span className="break-words text-sm font-extrabold leading-tight text-slate-900">
+              {madrasa?.name}
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          {madrasa?.website_status === "limited" && (
-            <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
-              Limited mode enabled by Super Admin.
-            </div>
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+          {visibleSections.map((key) => (
+            <a
+              key={key}
+              href={`#${key}`}
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              {NAV_LABELS[key]}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-4">
+          <Link
+            to={admissionUrl}
+            onClick={() => setMenuOpen(false)}
+            className="rounded-xl px-4 py-2.5 text-center text-sm font-bold"
+            style={{ backgroundColor: accentSolid, color: onAccent }}
+          >
+            অনলাইনে ভর্তি
+          </Link>
+          <Link
+            to={guardianLoginUrl}
+            onClick={() => setMenuOpen(false)}
+            className="rounded-xl border px-4 py-2.5 text-center text-sm font-bold"
+            style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
+          >
+            অভিভাবক লগইন
+          </Link>
+          {madrasa?.phone && (
+            <a
+              href={`tel:${madrasa.phone}`}
+              className="flex items-center justify-center gap-1.5 py-1 text-sm font-medium text-slate-500"
+            >
+              <Phone size={15} />
+              {madrasa.phone}
+            </a>
           )}
         </div>
-      </section>
+      </aside>
+
+      {/* Hero / Slider */}
+      <HeroSlider
+        slides={settings.show_slider !== 0 ? slides : []}
+        fallbackTitle={settings.hero_title || madrasa?.name || ""}
+        fallbackSubtitle={settings.hero_subtitle || madrasa?.address || "Welcome to our madrasa website."}
+        accentSolid={accentSolid}
+        websiteStatus={madrasa?.website_status}
+      />
 
       {/* Quick info strip */}
-      <div className="relative z-10 mx-auto -mt-14 max-w-5xl px-4">
+      <div className="relative z-10 mx-auto mt-6 max-w-5xl px-4">
         <div className="grid gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-xl sm:grid-cols-3">
           <a
             href={madrasa?.phone ? `tel:${madrasa.phone}` : undefined}
@@ -526,6 +501,57 @@ export default function PublicWebsitePage() {
           );
         }
 
+        if (key === "muhtamim") {
+          return (
+            <section key="muhtamim" id="muhtamim" className={bandClass}>
+              <div className="mx-auto max-w-4xl px-4">
+                <SectionHeader
+                  index={num}
+                  icon={<Quote size={22} />}
+                  eyebrow="মুহতামিমের বাণী"
+                  title={settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
+                  accentSolid={accentSolid}
+                  accentLabel={accentLabel}
+                  onAccent={onAccent}
+                />
+                <div
+                  className="mt-10 flex flex-col items-center gap-6 rounded-3xl border p-6 text-center md:flex-row md:items-start md:text-left md:p-8"
+                  style={{ borderColor: withAlpha(accentSolid, 0.2), backgroundColor: withAlpha(accentSolid, 0.05) }}
+                >
+                  {settings.muhtamim_photo ? (
+                    <img
+                      src={settings.muhtamim_photo}
+                      alt={settings.muhtamim_name || "Muhtamim"}
+                      className="h-28 w-28 shrink-0 rounded-2xl object-cover shadow-md"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold shadow-md"
+                      style={{ backgroundColor: accentSolid, color: onAccent }}
+                    >
+                      {initials(settings.muhtamim_name)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <Quote size={26} style={{ color: accentSolid }} className="mx-auto md:mx-0" />
+                    <p className="mt-3 whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base">
+                      {settings.muhtamim_message}
+                    </p>
+                    {settings.muhtamim_name && (
+                      <p className="mt-4 text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
+                    )}
+                    {settings.muhtamim_designation && (
+                      <p className="text-xs font-semibold" style={{ color: accentLabel }}>
+                        {settings.muhtamim_designation}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         if (key === "admission") {
           return (
             <section key="admission" id="admission" className={bandClass}>
@@ -549,15 +575,24 @@ export default function PublicWebsitePage() {
                   <p className="whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base">
                     {pageMap.admission.content}
                   </p>
-                  {settings.show_contact !== 0 && (
-                    <a
-                      href="#contact"
-                      className="mt-6 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      to={admissionUrl}
+                      className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
                       style={{ backgroundColor: accentSolid, color: onAccent }}
                     >
-                      যোগাযোগ করুন
-                    </a>
-                  )}
+                      অনলাইনে ভর্তি ফরম পূরণ করুন
+                    </Link>
+                    {settings.show_contact !== 0 && (
+                      <a
+                        href="#contact"
+                        className="inline-flex items-center gap-1.5 rounded-xl border px-5 py-2.5 text-sm font-bold transition hover:bg-white"
+                        style={{ borderColor: withAlpha(accentSolid, 0.3), color: accentLabel }}
+                      >
+                        যোগাযোগ করুন
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
@@ -607,6 +642,54 @@ export default function PublicWebsitePage() {
                     শিক্ষক তথ্য এখনো প্রকাশ করা হয়নি।
                   </p>
                 )}
+              </div>
+            </section>
+          );
+        }
+
+        if (key === "committee") {
+          return (
+            <section key="committee" id="committee" className={bandClass}>
+              <div className="mx-auto max-w-6xl px-4">
+                <SectionHeader
+                  index={num}
+                  icon={<UsersRound size={22} />}
+                  eyebrow="পরিচালনা পর্ষদ"
+                  title="মাদ্রাসা কমিটি"
+                  accentSolid={accentSolid}
+                  accentLabel={accentLabel}
+                  onAccent={onAccent}
+                />
+                <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {committee.map((member: any) => (
+                    <div
+                      key={member.id}
+                      className="overflow-hidden rounded-2xl border border-slate-100 bg-white text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                    >
+                      <div className="h-1.5" style={{ backgroundColor: accentSolid }} />
+                      <div className="p-5">
+                        {member.photo_url ? (
+                          <img
+                            src={member.photo_url}
+                            alt={member.name}
+                            className="mx-auto h-16 w-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold"
+                            style={{ backgroundColor: accentSolid, color: onAccent }}
+                          >
+                            {initials(member.name)}
+                          </div>
+                        )}
+                        <div className="mt-3 font-bold text-slate-900">{member.name}</div>
+                        <div className="mt-1 text-xs font-medium text-slate-500">
+                          {member.designation || "Committee Member"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           );
@@ -779,31 +862,148 @@ export default function PublicWebsitePage() {
       })}
 
       {/* Footer */}
-      <footer className="bg-slate-950 py-10 text-slate-300">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 text-center">
-          <div className="flex items-center gap-3">
-            {settings.logo_url ? (
-              <img src={settings.logo_url} alt="Logo" className="h-9 w-9 rounded-full object-cover" />
-            ) : (
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
-                style={{ backgroundColor: accentSolid, color: onAccent }}
-              >
-                {initials(madrasa?.name)}
+      <footer className="relative bg-slate-950 text-slate-300">
+        <div className="h-1 w-full" style={{ backgroundColor: accentSolid }} />
+
+        <div className="mx-auto max-w-6xl px-4 py-14">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Brand */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-3">
+                {settings.logo_url ? (
+                  <img
+                    src={settings.logo_url}
+                    alt="Logo"
+                    className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white/10"
+                  />
+                ) : (
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                    style={{ backgroundColor: accentSolid, color: onAccent }}
+                  >
+                    {initials(madrasa?.name)}
+                  </div>
+                )}
+                <span className="break-words text-lg font-extrabold leading-tight text-white">
+                  {madrasa?.name}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-7 text-slate-400">
+                {settings.hero_subtitle || madrasa?.address || "একটি ইসলামিক শিক্ষা প্রতিষ্ঠান।"}
+              </p>
+
+              {(settings.facebook_url ||
+                settings.youtube_url ||
+                settings.instagram_url ||
+                settings.whatsapp_channel_url) && (
+                <div className="mt-5 flex items-center gap-2.5">
+                  {[
+                    settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={16} /> },
+                    settings.youtube_url && { href: settings.youtube_url, label: "YouTube", icon: <Youtube size={16} /> },
+                    settings.instagram_url && { href: settings.instagram_url, label: "Instagram", icon: <Instagram size={16} /> },
+                    settings.whatsapp_channel_url && {
+                      href: settings.whatsapp_channel_url,
+                      label: "WhatsApp",
+                      icon: <WhatsAppIcon size={16} />,
+                    },
+                  ]
+                    .filter(Boolean)
+                    .map((social: any) => (
+                      <a
+                        key={social.label}
+                        href={social.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={social.label}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white"
+                        style={{ ["--accent" as any]: accentSolid }}
+                      >
+                        {social.icon}
+                      </a>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick links */}
+            {visibleSections.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-white">প্রয়োজনীয় লিংক</h3>
+                <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
+                <nav className="mt-4 flex flex-col gap-2.5 text-sm text-slate-400">
+                  {visibleSections.map((key) => (
+                    <a key={key} href={`#${key}`} className="w-fit transition hover:text-white">
+                      {NAV_LABELS[key]}
+                    </a>
+                  ))}
+                </nav>
               </div>
             )}
-            <span className="text-base font-bold text-white">{madrasa?.name}</span>
+
+            {/* Contact */}
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">যোগাযোগ</h3>
+              <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
+              <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
+                {madrasa?.phone && (
+                  <a href={`tel:${madrasa.phone}`} className="flex items-start gap-2.5 transition hover:text-white">
+                    <Phone size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <span>{madrasa.phone}</span>
+                  </a>
+                )}
+                {madrasa?.email && (
+                  <a
+                    href={`mailto:${madrasa.email}`}
+                    className="flex items-start gap-2.5 break-all transition hover:text-white"
+                  >
+                    <Mail size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <span>{madrasa.email}</span>
+                  </a>
+                )}
+                {madrasa?.address && (
+                  <a
+                    href={mapsUrl || undefined}
+                    target={mapsUrl ? "_blank" : undefined}
+                    rel="noreferrer"
+                    className="flex items-start gap-2.5 transition hover:text-white"
+                  >
+                    <MapPin size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <span>{madrasa.address}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">অভিভাবক ও ভর্তি</h3>
+              <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
+              <div className="mt-4 flex flex-col gap-2.5">
+                <Link
+                  to={admissionUrl}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
+                  style={{ backgroundColor: accentSolid, color: onAccent }}
+                >
+                  অনলাইনে ভর্তি
+                </Link>
+                <Link
+                  to={guardianLoginUrl}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-white/5"
+                >
+                  অভিভাবক লগইন
+                </Link>
+              </div>
+            </div>
           </div>
-          <nav className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-slate-400">
-            {visibleSections.map((key) => (
-              <a key={key} href={`#${key}`} className="hover:text-white">
-                {NAV_LABELS[key]}
-              </a>
-            ))}
-          </nav>
-          <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} {madrasa?.name}. All rights reserved.
-          </p>
+        </div>
+
+        <div className="border-t border-white/10">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-left">
+            <p className="text-xs text-slate-500">
+              &copy; {new Date().getFullYear()} {madrasa?.name}. সর্বস্বত্ব সংরক্ষিত।
+            </p>
+            <p className="text-xs text-slate-500">Official Website</p>
+          </div>
         </div>
       </footer>
 
@@ -816,6 +1016,20 @@ export default function PublicWebsitePage() {
           aria-label="Back to top"
         >
           <ChevronUp size={20} />
+        </a>
+      )}
+
+      {/* Floating WhatsApp button */}
+      {madrasa?.phone && (
+        <a
+          href={waLink(madrasa.phone)}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="WhatsApp এ চ্যাট করুন"
+          className="fixed bottom-6 left-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:scale-110"
+        >
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366] opacity-75" />
+          <WhatsAppIcon size={28} />
         </a>
       )}
 

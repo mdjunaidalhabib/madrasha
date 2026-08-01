@@ -34,9 +34,17 @@ export class SidebarService {
     // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.
     // Filter it here so existing databases stop showing it immediately, even
     // before the seed is run again.
-    const modules = madrasaModules
-      .map((mm) => mm.module)
-      .filter((module) => module.keyName !== "admission");
+    let modules = madrasaModules.map((mm) => mm.module).filter((module) => module.keyName !== "admission");
+
+    // `website` now lives inside the Settings hub (সেটিংস > ওয়েবসাইট সেটিংস)
+    // instead of its own top-level sidebar entry. Only fold it in when the
+    // tenant actually has the `settings` module, so a tenant without it
+    // (which shouldn't normally happen, but keeps this change non-breaking)
+    // still gets a way to reach their website settings.
+    const hasSettingsModule = modules.some((module) => module.keyName === "settings");
+    if (hasSettingsModule) {
+      modules = modules.filter((module) => module.keyName !== "website");
+    }
 
     const moduleIds = modules.map((m) => m.id);
     const features = await this.repository.findFeaturesByModuleIds(moduleIds);

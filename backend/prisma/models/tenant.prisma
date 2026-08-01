@@ -9,6 +9,12 @@ enum WebsiteStatus {
   disabled
 }
 
+enum WebsiteAdmissionStatus {
+  pending
+  approved
+  rejected
+}
+
 enum PlanStatus {
   trial
   active
@@ -49,48 +55,51 @@ model Madrasa {
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
   admitCardRules         String? @map("admit_card_rules") @db.Text
 
-  idCardDesign           String? @map("id_card_design") @db.VarChar(20)
-  idCardBackgroundImage  String? @map("id_card_background_image") @db.Text
+  idCardDesign          String? @map("id_card_design") @db.VarChar(20)
+  idCardBackgroundImage String? @map("id_card_background_image") @db.Text
 
   admitCardDesign          String? @map("admit_card_design") @db.VarChar(20)
   admitCardBackgroundImage String? @map("admit_card_background_image") @db.Text
   letterDesign             String? @map("letter_design") @db.VarChar(20)
   letterBackgroundImage    String? @map("letter_background_image") @db.Text
 
-  subscriptions         MadrasaSubscription[]
-  subscriptionPayments  SubscriptionPayment[]
-  madrasaDivisions      MadrasaDivision[]
-  madrasaClasses        MadrasaClass[]
-  madrasaBooks          MadrasaBook[]
-  madrasaModules        MadrasaModule[]
-  roles                 Role[]
-  users                 User[]
-  students              Student[]
-  teachers              Teacher[]
-  teacherAssignments    TeacherAssignment[]
-  accounts              Account[]
-  exams                 Exam[]
-  generalGrades         GeneralGrade[]
-  madrasaGrades         MadrasaGrade[]
-  settings              Setting[]
-  resultsMaster         ResultMaster[]
-  activityLogs          ActivityLog[]
-  websiteSettings       WebsiteSettings?
-  websitePages          WebsitePage[]
-  websiteNotices        WebsiteNotice[]
-  websiteGallery        WebsiteGallery[]
-  attendances           Attendance[]
-  classRoutines         ClassRoutine[]
-  examRoutines          ExamRoutine[]
-  promotionBatches      PromotionBatch[]
-  feeStructures         FeeStructure[]
-  invoices              Invoice[]
-  payments              Payment[]
-  paymentMethodSettings PaymentMethodSetting[]
-  payrollRecords        PayrollRecord[]
-  passwordResetTokens   PasswordResetToken[]
-  notificationLogs      NotificationLog[]
-  guardians             Guardian[]
+  subscriptions                MadrasaSubscription[]
+  subscriptionPayments         SubscriptionPayment[]
+  madrasaDivisions             MadrasaDivision[]
+  madrasaClasses               MadrasaClass[]
+  madrasaBooks                 MadrasaBook[]
+  madrasaModules               MadrasaModule[]
+  roles                        Role[]
+  users                        User[]
+  students                     Student[]
+  teachers                     Teacher[]
+  teacherAssignments           TeacherAssignment[]
+  accounts                     Account[]
+  exams                        Exam[]
+  generalGrades                GeneralGrade[]
+  madrasaGrades                MadrasaGrade[]
+  settings                     Setting[]
+  resultsMaster                ResultMaster[]
+  activityLogs                 ActivityLog[]
+  websiteSettings              WebsiteSettings?
+  websitePages                 WebsitePage[]
+  websiteNotices               WebsiteNotice[]
+  websiteGallery               WebsiteGallery[]
+  websiteSlides                WebsiteSlide[]
+  websiteCommitteeMembers      WebsiteCommitteeMember[]
+  websiteAdmissionApplications WebsiteAdmissionApplication[]
+  attendances                  Attendance[]
+  classRoutines                ClassRoutine[]
+  examRoutines                 ExamRoutine[]
+  promotionBatches             PromotionBatch[]
+  feeStructures                FeeStructure[]
+  invoices                     Invoice[]
+  payments                     Payment[]
+  paymentMethodSettings        PaymentMethodSetting[]
+  payrollRecords               PayrollRecord[]
+  passwordResetTokens          PasswordResetToken[]
+  notificationLogs             NotificationLog[]
+  guardians                    Guardian[]
 
   @@index([isActive, deletedAt], map: "idx_madrasas_active")
   @@index([planStatus], map: "idx_madrasas_plan_status")
@@ -277,21 +286,37 @@ model ActivityLog {
 // ------------------------------------------------------------
 
 model WebsiteSettings {
-  id            Int      @id @default(autoincrement())
-  madrasaId     Int      @unique @map("madrasa_id")
-  logoUrl       String?  @map("logo_url") @db.VarChar(255)
-  heroTitle     String?  @map("hero_title") @db.VarChar(190)
-  heroSubtitle  String?  @map("hero_subtitle") @db.Text
-  themeColor    String?  @default("#2563eb") @map("theme_color") @db.VarChar(30)
-  showNotices   Int?     @default(1) @map("show_notices")
-  showGallery   Int?     @default(1) @map("show_gallery")
-  showTeachers  Int?     @default(1) @map("show_teachers")
-  showAdmission Int?     @default(1) @map("show_admission")
-  showAbout     Int?     @default(1) @map("show_about")
-  showContact   Int?     @default(1) @map("show_contact")
-  isPublished   Int?     @default(1) @map("is_published")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  id            Int     @id @default(autoincrement())
+  madrasaId     Int     @unique @map("madrasa_id")
+  logoUrl       String? @map("logo_url") @db.VarChar(255)
+  heroTitle     String? @map("hero_title") @db.VarChar(190)
+  heroSubtitle  String? @map("hero_subtitle") @db.Text
+  themeColor    String? @default("#2563eb") @map("theme_color") @db.VarChar(30)
+  showNotices   Int?    @default(1) @map("show_notices")
+  showGallery   Int?    @default(1) @map("show_gallery")
+  showTeachers  Int?    @default(1) @map("show_teachers")
+  showAdmission Int?    @default(1) @map("show_admission")
+  showAbout     Int?    @default(1) @map("show_about")
+  showContact   Int?    @default(1) @map("show_contact")
+  showSlider    Int?    @default(1) @map("show_slider")
+  showMuhtamim  Int?    @default(1) @map("show_muhtamim")
+  showCommittee Int?    @default(1) @map("show_committee")
+  showNoticeBar Int?    @default(1) @map("show_notice_bar")
+  isPublished   Int?    @default(1) @map("is_published")
+  noticeBarText String? @map("notice_bar_text") @db.Text
+
+  muhtamimName        String? @map("muhtamim_name") @db.VarChar(190)
+  muhtamimDesignation String? @map("muhtamim_designation") @db.VarChar(190)
+  muhtamimPhoto       String? @map("muhtamim_photo") @db.VarChar(255)
+  muhtamimMessage     String? @map("muhtamim_message") @db.Text
+
+  facebookUrl        String? @map("facebook_url") @db.VarChar(255)
+  youtubeUrl         String? @map("youtube_url") @db.VarChar(255)
+  instagramUrl       String? @map("instagram_url") @db.VarChar(255)
+  whatsappChannelUrl String? @map("whatsapp_channel_url") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
 
@@ -345,4 +370,68 @@ model WebsiteGallery {
 
   @@index([madrasaId, isPublished, sortOrder], map: "idx_website_gallery_madrasa")
   @@map("website_gallery")
+}
+
+/// Homepage hero slider images (distinct from the WebsiteGallery photo grid) —
+/// each slide can carry its own caption + CTA button.
+model WebsiteSlide {
+  id          Int      @id @default(autoincrement())
+  madrasaId   Int      @map("madrasa_id")
+  title       String?  @db.VarChar(190)
+  subtitle    String?  @db.VarChar(255)
+  imageUrl    String   @map("image_url") @db.VarChar(255)
+  buttonText  String?  @map("button_text") @db.VarChar(60)
+  buttonLink  String?  @map("button_link") @db.VarChar(255)
+  isPublished Int?     @default(1) @map("is_published")
+  sortOrder   Int?     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, isPublished, sortOrder], map: "idx_website_slides_madrasa")
+  @@map("website_slides")
+}
+
+model WebsiteCommitteeMember {
+  id          Int      @id @default(autoincrement())
+  madrasaId   Int      @map("madrasa_id")
+  name        String   @db.VarChar(190)
+  designation String?  @db.VarChar(190)
+  photoUrl    String?  @map("photo_url") @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  isPublished Int?     @default(1) @map("is_published")
+  sortOrder   Int?     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, isPublished, sortOrder], map: "idx_website_committee_madrasa")
+  @@map("website_committee_members")
+}
+
+/// Public "online admission" form submissions from the marketing website.
+/// Reviewed manually by the madrasa admin (status pending/approved/rejected);
+/// approval does not auto-create a Student record.
+model WebsiteAdmissionApplication {
+  id            Int                    @id @default(autoincrement())
+  madrasaId     Int                    @map("madrasa_id")
+  studentName   String                 @map("student_name") @db.VarChar(190)
+  fatherName    String?                @map("father_name") @db.VarChar(190)
+  motherName    String?                @map("mother_name") @db.VarChar(190)
+  gender        String?                @db.VarChar(10)
+  dateOfBirth   DateTime?              @map("date_of_birth") @db.Date
+  classApplied  String?                @map("class_applied") @db.VarChar(100)
+  guardianPhone String?                @map("guardian_phone") @db.VarChar(20)
+  address       String?                @db.Text
+  note          String?                @db.Text
+  status        WebsiteAdmissionStatus @default(pending)
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, status, createdAt], map: "idx_website_admission_madrasa")
+  @@map("website_admission_applications")
 }

@@ -90,6 +90,7 @@ const SuperAdminWebsiteControlPage = lazy(
 );
 
 const PublicWebsitePage = lazy(() => import("../features/public/website/PublicWebsitePage"));
+const AdmissionApplyPage = lazy(() => import("../features/public/website/AdmissionApplyPage"));
 const QmsLandingPage = lazy(() => import("../features/public/landing/QmsLandingPage"));
 const NotFoundPage = lazy(() => import("../features/common/NotFoundPage"));
 const UnauthorizedPage = lazy(() => import("../features/common/UnauthorizedPage"));
@@ -287,16 +288,15 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "website-settings",
-    element: (
-      <ModuleGuard module="website">{withSuspense(<AdminWebsiteSettingsPage />)}</ModuleGuard>
-    ),
-  },
-
-  {
     path: "settings",
     element: (
       <ModuleGuard module="settings">{withSuspense(<SettingsPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "settings/website",
+    element: (
+      <ModuleGuard module="website">{withSuspense(<AdminWebsiteSettingsPage />)}</ModuleGuard>
     ),
   },
   {
@@ -373,6 +373,7 @@ export const router = createBrowserRouter([
   },
 
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
+  { path: "/m/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
 
   { path: "/:madrasaSlug/admin/login", element: <LoginPage /> },
   {
@@ -416,6 +417,7 @@ export const router = createBrowserRouter([
     element: withSuspense(<GuardianChangePasswordPage />),
   },
 
+  { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
   { path: "/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
 
   { path: "*", element: withSuspense(<NotFoundPage />) },

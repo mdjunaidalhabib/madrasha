@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
-import { Image, Wallet, Users, ShieldCheck } from "lucide-react";
+import { Image, Wallet, Users, ShieldCheck, Globe } from "lucide-react";
+import { useAuthStore } from "../../../store/authStore";
 
 export default function SettingsPage() {
+  const modules = useAuthStore((s) => s.modules);
+  const hasWebsite = modules.includes("website") || modules.includes("website_settings");
+
   return (
     <div className="space-y-6">
       <div>
@@ -24,6 +28,23 @@ export default function SettingsPage() {
             </p>
           </div>
         </Link>
+
+        {hasWebsite && (
+          <Link
+            to="website"
+            className="flex items-start gap-3 rounded-2xl border bg-white p-4 shadow-sm transition hover:border-sky-300 hover:shadow-md"
+          >
+            <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
+              <Globe size={22} />
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900">ওয়েবসাইট সেটিংস</div>
+              <p className="mt-1 text-sm text-gray-600">
+                মাদ্রাসার পাবলিক ওয়েবসাইটের নাম, লোগো, ব্যানার, নোটিশ, গ্যালারি ও পেজ কন্টেন্ট পরিচালনা করুন।
+              </p>
+            </div>
+          </Link>
+        )}
 
         <Link
           to="payment-methods"

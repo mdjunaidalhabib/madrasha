@@ -37,8 +37,8 @@ const ICONS: Record<string, any> = {
 const MODULE_PATHS: Record<string, string> = {
   reports: "reports",
   report: "reports",
-  website: "website-settings",
-  website_settings: "website-settings",
+  website: "settings/website",
+  website_settings: "settings/website",
 };
 const FEATURE_PATHS: Record<string, string> = {
   acadamic_report: "academic-report",

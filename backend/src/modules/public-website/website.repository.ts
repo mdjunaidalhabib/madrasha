@@ -1,6 +1,17 @@
-import { Prisma, WebsiteStatus } from "@prisma/client";
+import { Prisma, WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
-import { PUBLIC_NOTICES_LIMIT, PUBLIC_TEACHERS_LIMIT, PUBLIC_GALLERY_LIMIT, ADMIN_NOTICES_LIMIT, ADMIN_GALLERY_LIMIT } from "./website.constants";
+import {
+  PUBLIC_NOTICES_LIMIT,
+  PUBLIC_TEACHERS_LIMIT,
+  PUBLIC_GALLERY_LIMIT,
+  PUBLIC_SLIDES_LIMIT,
+  PUBLIC_COMMITTEE_LIMIT,
+  ADMIN_NOTICES_LIMIT,
+  ADMIN_GALLERY_LIMIT,
+  ADMIN_SLIDES_LIMIT,
+  ADMIN_COMMITTEE_LIMIT,
+  ADMIN_ADMISSIONS_LIMIT,
+} from "./website.constants";
 
 export class WebsiteRepository {
   findPublicMadrasaBySlug(slug: string) {
@@ -65,6 +76,42 @@ export class WebsiteRepository {
     });
   }
 
+  findPublishedSlides(madrasaId: number) {
+    return prisma.websiteSlide.findMany({
+      where: { madrasaId, isPublished: 1 },
+      select: {
+        id: true,
+        title: true,
+        subtitle: true,
+        imageUrl: true,
+        buttonText: true,
+        buttonLink: true,
+        isPublished: true,
+        sortOrder: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      take: PUBLIC_SLIDES_LIMIT,
+    });
+  }
+
+  findPublishedCommittee(madrasaId: number) {
+    return prisma.websiteCommitteeMember.findMany({
+      where: { madrasaId, isPublished: 1 },
+      select: { id: true, name: true, designation: true, photoUrl: true, phone: true, sortOrder: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      take: PUBLIC_COMMITTEE_LIMIT,
+    });
+  }
+
+  async findActiveClassNames(madrasaId: number): Promise<{ id: number; name: string }[]> {
+    const rows = await prisma.madrasaClass.findMany({
+      where: { madrasaId, isActive: 1, class: { isActive: true } },
+      select: { classId: true, class: { select: { name: true, nameBn: true, sortOrder: true } } },
+      orderBy: { class: { sortOrder: "asc" } },
+    });
+    return rows.map((r) => ({ id: r.classId, name: r.class?.nameBn || r.class?.name || "" }));
+  }
+
   findMadrasaForAdmin(madrasaId: number) {
     return prisma.madrasa.findUnique({
       where: { id: madrasaId },
@@ -103,6 +150,30 @@ export class WebsiteRepository {
       select: { id: true, title: true, imageUrl: true, isPublished: true, sortOrder: true },
       orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
       take: ADMIN_GALLERY_LIMIT,
+    });
+  }
+
+  findAllSlides(madrasaId: number) {
+    return prisma.websiteSlide.findMany({
+      where: { madrasaId },
+      orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
+      take: ADMIN_SLIDES_LIMIT,
+    });
+  }
+
+  findAllCommittee(madrasaId: number) {
+    return prisma.websiteCommitteeMember.findMany({
+      where: { madrasaId },
+      orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
+      take: ADMIN_COMMITTEE_LIMIT,
+    });
+  }
+
+  findAllAdmissionApplications(madrasaId: number) {
+    return prisma.websiteAdmissionApplication.findMany({
+      where: { madrasaId },
+      orderBy: { id: "desc" },
+      take: ADMIN_ADMISSIONS_LIMIT,
     });
   }
 
@@ -169,6 +240,50 @@ export class WebsiteRepository {
 
   deleteGalleryItem(id: number, madrasaId: number) {
     return prisma.websiteGallery.deleteMany({ where: { id, madrasaId } });
+  }
+
+  updateSlide(id: number, madrasaId: number, data: Prisma.WebsiteSlideUpdateInput) {
+    return prisma.websiteSlide.updateMany({ where: { id, madrasaId }, data });
+  }
+
+  createSlide(data: Prisma.WebsiteSlideUncheckedCreateInput) {
+    return prisma.websiteSlide.create({ data });
+  }
+
+  findSlideById(id: number, madrasaId: number) {
+    return prisma.websiteSlide.findFirst({ where: { id, madrasaId } });
+  }
+
+  deleteSlide(id: number, madrasaId: number) {
+    return prisma.websiteSlide.deleteMany({ where: { id, madrasaId } });
+  }
+
+  updateCommitteeMember(id: number, madrasaId: number, data: Prisma.WebsiteCommitteeMemberUpdateInput) {
+    return prisma.websiteCommitteeMember.updateMany({ where: { id, madrasaId }, data });
+  }
+
+  createCommitteeMember(data: Prisma.WebsiteCommitteeMemberUncheckedCreateInput) {
+    return prisma.websiteCommitteeMember.create({ data });
+  }
+
+  findCommitteeMemberById(id: number, madrasaId: number) {
+    return prisma.websiteCommitteeMember.findFirst({ where: { id, madrasaId } });
+  }
+
+  deleteCommitteeMember(id: number, madrasaId: number) {
+    return prisma.websiteCommitteeMember.deleteMany({ where: { id, madrasaId } });
+  }
+
+  createAdmissionApplication(data: Prisma.WebsiteAdmissionApplicationUncheckedCreateInput) {
+    return prisma.websiteAdmissionApplication.create({ data });
+  }
+
+  updateAdmissionApplicationStatus(id: number, madrasaId: number, status: WebsiteAdmissionStatus) {
+    return prisma.websiteAdmissionApplication.updateMany({ where: { id, madrasaId }, data: { status } });
+  }
+
+  deleteAdmissionApplication(id: number, madrasaId: number) {
+    return prisma.websiteAdmissionApplication.deleteMany({ where: { id, madrasaId } });
   }
 
   updateWebsiteStatus(id: number, status: WebsiteStatus) {

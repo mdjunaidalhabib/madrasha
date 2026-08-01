@@ -106,6 +106,92 @@ export const deleteWebsiteGalleryItem = async (req: Request, res: Response) => {
   }
 };
 
+export const saveWebsiteSlide = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    if (!madrasaId) throw new BadRequestError("madrasa_id required");
+
+    const latest = await websiteService.saveWebsiteSlide(madrasaId, req.body);
+    res.json({ message: "Slide saved", data: latest });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteWebsiteSlide = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    const id = Number(req.params.id);
+    if (!madrasaId || !id) throw new BadRequestError("Invalid request");
+
+    await websiteService.deleteWebsiteSlide(madrasaId, id);
+    res.json({ message: "Slide deleted" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const saveWebsiteCommitteeMember = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    if (!madrasaId) throw new BadRequestError("madrasa_id required");
+
+    const latest = await websiteService.saveWebsiteCommitteeMember(madrasaId, req.body);
+    res.json({ message: "Committee member saved", data: latest });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteWebsiteCommitteeMember = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    const id = Number(req.params.id);
+    if (!madrasaId || !id) throw new BadRequestError("Invalid request");
+
+    await websiteService.deleteWebsiteCommitteeMember(madrasaId, id);
+    res.json({ message: "Committee member deleted" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const submitAdmissionApplication = async (req: Request, res: Response) => {
+  try {
+    const slug = String(req.params.slug || "").trim();
+    const data = await websiteService.submitAdmissionApplication(slug, req.body);
+    res.status(HttpStatus.CREATED).json({ message: "Application submitted", data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateAdmissionApplicationStatus = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    const id = Number(req.params.id);
+    if (!madrasaId || !id) throw new BadRequestError("Invalid request");
+
+    const status = await websiteService.updateAdmissionApplicationStatus(madrasaId, id, String(req.body.status || ""));
+    res.json({ message: "Application status updated", status });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteAdmissionApplication = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    const id = Number(req.params.id);
+    if (!madrasaId || !id) throw new BadRequestError("Invalid request");
+
+    await websiteService.deleteAdmissionApplication(madrasaId, id);
+    res.json({ message: "Application deleted" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 export const updateWebsiteStatusBySuperAdmin = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);

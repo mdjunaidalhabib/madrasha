@@ -1,7 +1,13 @@
 export const DEFAULT_THEME_COLOR = "#2563eb";
 export const VALID_WEBSITE_STATUSES = ["active", "limited", "disabled"] as const;
+export const VALID_ADMISSION_STATUSES = ["pending", "approved", "rejected"] as const;
 export const PUBLIC_NOTICES_LIMIT = 10;
 export const PUBLIC_TEACHERS_LIMIT = 12;
 export const PUBLIC_GALLERY_LIMIT = 12;
+export const PUBLIC_SLIDES_LIMIT = 8;
+export const PUBLIC_COMMITTEE_LIMIT = 30;
 export const ADMIN_NOTICES_LIMIT = 30;
 export const ADMIN_GALLERY_LIMIT = 50;
+export const ADMIN_SLIDES_LIMIT = 20;
+export const ADMIN_COMMITTEE_LIMIT = 50;
+export const ADMIN_ADMISSIONS_LIMIT = 200;
