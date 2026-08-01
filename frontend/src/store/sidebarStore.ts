@@ -9,6 +9,7 @@ type SidebarItem = {
     key: string;
     label: string;
     disabled?: boolean;
+    count?: number;
   }[];
 };
 

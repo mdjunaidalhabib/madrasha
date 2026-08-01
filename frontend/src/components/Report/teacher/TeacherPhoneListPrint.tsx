@@ -27,7 +27,6 @@ const TeacherPhoneListPrint = ({
       <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-12 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
             <th className="w-24 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
             <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষকের নাম</th>
             <th className="w-28 border border-black px-1 py-2 text-base font-bold">পদবি</th>
@@ -39,7 +38,6 @@ const TeacherPhoneListPrint = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`teacher-phone-${row.id || row.teacher_id || index}`}>
-              <td className="h-9 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
               <td className="h-9 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
               <td className="h-9 border border-black px-1 text-left font-semibold text-base">
                 {cellValue(row, "teacher_name")}

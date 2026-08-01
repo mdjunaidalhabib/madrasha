@@ -308,39 +308,58 @@ export default function ClassPanel() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          {books.map((book) => {
-            const isMiyari = miyariBookIds.includes(Number(book.book_id));
-            return (
-              <div
-                key={book.book_id}
-                className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-                  isMiyari ? "border-amber-300 bg-amber-50" : "bg-white"
-                }`}
-              >
-                {editingId === book.book_id ? (
-                  <div className="flex gap-2">
-                    <input
-                      value={editingName}
-                      onChange={(event) => setEditingName(event.target.value)}
-                      className="rounded border px-2 py-1"
-                    />
-                    <button onClick={saveEdit}>✔</button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{book.book_name_bn}</span>
-                    {isMiyari && (
-                      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900">
-                        মিয়ারি
-                      </span>
-                    )}
-                  </div>
-                )}
+        {books.length === 0 ? (
+          <p className="rounded-lg border border-dashed py-6 text-center text-sm text-slate-400">
+            কোনো কিতাব যোগ করা হয়নি
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {books.map((book) => {
+              const isMiyari = miyariBookIds.includes(Number(book.book_id));
+              return (
+                <div
+                  key={book.book_id}
+                  className={`flex w-auto shrink-0 flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
+                    isMiyari ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  {editingId === book.book_id ? (
+                    <div className="flex gap-2">
+                      <input
+                        value={editingName}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        className="w-full rounded border px-2 py-1"
+                        autoFocus
+                      />
+                      <button onClick={saveEdit} className="shrink-0 text-emerald-600">
+                        ✔
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="break-words font-medium leading-snug">{book.book_name_bn}</span>
 
-                <div className="flex items-center gap-3">
+                      {isEditMode && (
+                        <div className="flex shrink-0 gap-1.5 text-slate-500">
+                          <button onClick={() => startEdit(book)} aria-label="কিতাব এডিট করুন">
+                            ✏️
+                          </button>
+                          <button onClick={() => removeBook(book)} aria-label="কিতাব ডিলিট করুন">
+                            🗑️
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isMiyari && !isEditMode && (
+                    <span className="w-fit rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                      মিয়ারি
+                    </span>
+                  )}
+
                   {isEditMode && (
-                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
                       <input
                         type="checkbox"
                         checked={isMiyari}
@@ -350,22 +369,11 @@ export default function ClassPanel() {
                       মিয়ারি কিতাব
                     </label>
                   )}
-
-                  {isEditMode && editingId !== book.book_id && (
-                    <div className="flex gap-2">
-                      <button onClick={() => startEdit(book)} aria-label="কিতাব এডিট করুন">
-                        ✏️
-                      </button>
-                      <button onClick={() => removeBook(book)} aria-label="কিতাব ডিলিট করুন">
-                        🗑️
-                      </button>
-                    </div>
-                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {isEditMode && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

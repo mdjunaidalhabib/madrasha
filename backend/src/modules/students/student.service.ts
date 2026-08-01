@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { studentRepository, StudentRepository } from "./student.repository";
-import { isValidDate, clean, toNumber, toGenderNumber } from "../../shared/utils/parse.util";
+import { isValidDate, clean, toNumber, toGenderNumber, toDateOrNull } from "../../shared/utils/parse.util";
 import { BadRequestError } from "../../shared/errors";
 import { STUDENT_REQUIRED_FIELDS, STUDENT_FIELD_MAP } from "./student.constants";
 import {
@@ -52,6 +52,9 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   gender: toGenderNumber(body.gender),
   dob: body.dob ? new Date(body.dob) : null,
   age: toNumber(body.age),
+  bloodGroup: clean(body.blood_group),
+  residencyType: toNumber(body.residency_type),
+  isOrphan: toNumber(body.is_orphan) ?? 0,
   // Roll is assigned explicitly below by the server. Client-provided roll values
   // are rejected before this function is called.
   roll: null as number | null,
@@ -60,6 +63,9 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   classId: toNumber(body.class_id),
   academicYear: String(body.academic_year || new Date().getFullYear()),
   previousClassId: toNumber(body.previous_class_id),
+  previousInstitution: clean(body.previous_institution),
+  previousResult: clean(body.previous_result),
+  admissionDate: body.admission_date ? toDateOrNull(body.admission_date) : undefined,
 
   fatherName: clean(body.father_name),
   fatherArabicName: clean(body.father_arabic_name),
@@ -71,6 +77,12 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   motherOccupation: clean(body.mother_occupation),
 
   guardianPhone: clean(body.guardian_phone),
+  guardianPhone2: clean(body.guardian_phone_2),
+
+  altGuardianName: clean(body.alt_guardian_name),
+  altGuardianRelation: clean(body.alt_guardian_relation),
+  altGuardianAddress: clean(body.alt_guardian_address),
+  altGuardianPhone: clean(body.alt_guardian_phone),
 
   division: clean(body.division),
   district: clean(body.district),
@@ -126,8 +138,10 @@ export class StudentService {
   async admitStudent(
     body: StudentAdmissionRequestDto,
     madrasaId: number | undefined,
+    options?: { forcePending?: boolean },
   ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
+    const forcePending = options?.forcePending === true;
 
     if (!body || Object.keys(body).length === 0) {
       throw new BadRequestError("Empty request body (Check express.json())");
@@ -161,7 +175,18 @@ export class StudentService {
         existing = await this.repository.findByIdForTenantOnTx(tx, existing.id, madrasaId);
       }
 
-      const data = makeStudentData(body, madrasaId);
+      const data = makeStudentData(body, madrasaId) as Record<string, any>;
+
+      // Auto-derived, never a manual client input (see AdmissionType doc-comment
+      // on the Prisma model): a matching NID lookup means this is a returning
+      // student being re-admitted, not a brand new one.
+      data.admissionType = existing ? "RE_ADMISSION" : "NEW";
+      if (forcePending) {
+        // Public/online submissions always land as PENDING regardless of
+        // whether they match an existing (already-approved) student, so a
+        // Muhtamim reviews every public application before it takes effect.
+        data.admissionStatus = "PENDING";
+      }
 
       if (
         existing &&
@@ -208,7 +233,13 @@ export class StudentService {
       };
     });
 
-    // Outside the transaction (and its lock ordering) - a fresh direct
+    // A PENDING admission isn't a real enrolled student yet - guardian
+    // provisioning happens in approveAdmission() once a Muhtamim approves it.
+    if (forcePending) {
+      return result;
+    }
+
+    // Outside the transaction (and its lock ordering) - a direct admin
     // admission is always APPROVED (see makeStudentData), so the guardian
     // account is provisioned right away.
     await guardianService.ensureGuardianForStudent(
@@ -315,7 +346,8 @@ export class StudentService {
         const { student, classId, academicYear } = prepared[index];
         const nid = clean(student.nid) as string | null;
         const existing = nid ? existingByNid.get(nid) || null : null;
-        const data = makeStudentData(student, madrasaId);
+        const data = makeStudentData(student, madrasaId) as Record<string, any>;
+        data.admissionType = existing ? "RE_ADMISSION" : "NEW";
 
         if (
           existing &&
@@ -438,10 +470,12 @@ export class StudentService {
           key === "age" ||
           key === "division_id" ||
           key === "class_id" ||
-          key === "previous_class_id"
+          key === "previous_class_id" ||
+          key === "residency_type" ||
+          key === "is_orphan"
         ) {
           data[field] = toNumber(body[key]);
-        } else if (key === "dob") {
+        } else if (key === "dob" || key === "admission_date") {
           const v = clean(body[key]);
           data[field] = v ? new Date(v as string) : null;
         } else {

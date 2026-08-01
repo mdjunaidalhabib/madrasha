@@ -166,6 +166,16 @@ export const submitAdmissionApplication = async (req: Request, res: Response) =>
   }
 };
 
+export const submitFullAdmissionApplication = async (req: Request, res: Response) => {
+  try {
+    const slug = String(req.params.slug || "").trim();
+    const result = await websiteService.submitFullAdmissionApplication(slug, req.body);
+    res.status(HttpStatus.CREATED).json({ message: "Application submitted", data: result });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 export const updateAdmissionApplicationStatus = async (req: Request, res: Response) => {
   try {
     const madrasaId = resolveTenantId(req);

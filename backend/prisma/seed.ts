@@ -544,6 +544,12 @@ async function main() {
         sortOrder: 1,
       },
       { keyName: "all_teacher", name: "All Teachers", nameBn: "শিক্ষকসমূহ", sortOrder: 2 },
+      {
+        keyName: "pending",
+        name: "Pending Admission",
+        nameBn: "পেন্ডিং ভর্তি অনুমোদন",
+        sortOrder: 3,
+      },
     ],
     reports: [
       {
@@ -568,6 +574,8 @@ async function main() {
       { keyName: "exam_panel", name: "Exam Panel", nameBn: "পরিক্ষা প্যানেল", sortOrder: 3 },
       { keyName: "results", name: "Results", nameBn: "রেজাল্ট", sortOrder: 4 },
       { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট টেমপ্লেট", sortOrder: 5 },
+      { keyName: "routine", name: "Routine", nameBn: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
+      { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
     ],
     accounts: [
       { keyName: "income", name: "Income", nameBn: "আয়/রশিদ জমা", sortOrder: 1 },
@@ -577,6 +585,25 @@ async function main() {
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },
       { keyName: "list", name: "list", nameBn: "ছাত্রসমূহ", sortOrder: 2 },
+      { keyName: "statement", name: "Statement", nameBn: "হিসাব বিবরণী", sortOrder: 3 },
+      {
+        keyName: "fee_management",
+        name: "Fee Management",
+        nameBn: "ফি ব্যবস্থাপনা",
+        sortOrder: 4,
+      },
+      {
+        keyName: "notifications",
+        name: "SMS/Email",
+        nameBn: "SMS/ইমেইল পাঠান",
+        sortOrder: 5,
+      },
+      {
+        keyName: "attendance_mark",
+        name: "Attendance",
+        nameBn: "উপস্থিতি নিন",
+        sortOrder: 6,
+      },
     ],
   };
 

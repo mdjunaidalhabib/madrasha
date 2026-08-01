@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { roleApi, userAdminApi, type RoleItem, type UserItem } from "../../services/phase3Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
@@ -18,6 +19,7 @@ const UsersPage = () => {
 
   const [form, setForm] = useState(emptyForm);
   const [creating, setCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +44,10 @@ const UsersPage = () => {
 
   const roleName = (roleId: number) => roles.find((r) => r.id === roleId)?.name_bn || `#${roleId}`;
 
+  // মুহতামিম রোল এই পেজ থেকে কাউকে দেওয়া যাবে না - প্রতিটি মাদ্রাসার একজনই
+  // ডিফল্ট মুহতামিম থাকতে পারেন, সেটা সুপার অ্যাডমিন প্যানেল থেকে নির্ধারিত।
+  const assignableRoles = roles.filter((r) => r.key_name !== "MUHTAMIM");
+
   const handleCreate = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.role_id) {
       useToastStore.getState().show("নাম, ইমেইল, পাসওয়ার্ড ও রোল দিন", "error");
@@ -57,6 +63,7 @@ const UsersPage = () => {
       });
       useToastStore.getState().show("ইউজার তৈরি হয়েছে", "success");
       setForm(emptyForm);
+      setShowPassword(false);
       load();
     } catch (err: any) {
       const msg = err?.response?.data?.message || "ইউজার তৈরি করতে সমস্যা হয়েছে";
@@ -114,40 +121,67 @@ const UsersPage = () => {
         {/* Create user */}
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-700">নতুন ইউজার যোগ করুন</h2>
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            <input
-              type="text"
-              placeholder="নাম"
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
-            />
-            <input
-              type="email"
-              placeholder="ইমেইল"
-              value={form.email}
-              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[180px]"
-            />
-            <input
-              type="password"
-              placeholder="পাসওয়ার্ড"
-              value={form.password}
-              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[150px]"
-            />
-            <select
-              value={form.role_id}
-              onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
-            >
-              <option value="">রোল নির্বাচন করুন</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name_bn}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">
+            <div className="flex flex-col gap-1 sm:w-[160px]">
+              <label className="text-xs font-medium text-gray-600">নাম</label>
+              <input
+                type="text"
+                placeholder="স্টাফের নাম"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1 sm:w-[180px]">
+              <label className="text-xs font-medium text-gray-600">ইমেইল</label>
+              <input
+                type="email"
+                placeholder="লগইন ইমেইল"
+                value={form.email}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1 sm:w-[150px]">
+              <label className="text-xs font-medium text-gray-600">পাসওয়ার্ড</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="কমপক্ষে ৬ অক্ষর"
+                  value={form.password}
+                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 pr-9 text-sm outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700"
+                  aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 sm:w-[160px]">
+              <label className="text-xs font-medium text-gray-600">রোল</label>
+              <select
+                value={form.role_id}
+                onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              >
+                <option value="">রোল নির্বাচন করুন</option>
+                {assignableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name_bn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               type="button"
               disabled={creating}
@@ -157,6 +191,10 @@ const UsersPage = () => {
               {creating ? "তৈরি হচ্ছে..." : "যোগ করুন"}
             </button>
           </div>
+          <p className="mt-2 text-xs text-gray-400">
+            মুহতামিম রোল এখান থেকে দেওয়া যায় না — প্রতিটি মাদ্রাসার একজনই ডিফল্ট মুহতামিম থাকতে
+            পারেন।
+          </p>
         </div>
 
         {/* User list */}
@@ -178,6 +216,11 @@ const UsersPage = () => {
                     <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                       {roleName(user.roleId)}
                     </span>
+                    {user.isMuhtamim && (
+                      <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        ডিফল্ট মুহতামিম
+                      </span>
+                    )}
                     {!user.isActive && (
                       <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">
                         নিষ্ক্রিয়
@@ -189,9 +232,18 @@ const UsersPage = () => {
                     <select
                       value={user.roleId}
                       onChange={(e) => handleRoleChange(user, Number(e.target.value))}
-                      className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none"
+                      disabled={user.isMuhtamim}
+                      title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
+                      className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                     >
-                      {roles.map((role) => (
+                      {/* মুহতামিমের নিজের রোলটা তালিকায় না থাকলে select-এ ভুল
+                          value দেখাবে, তাই এই একটা ক্ষেত্রেই সেটাকে যোগ করা হচ্ছে। */}
+                      {user.isMuhtamim && (
+                        <option key={user.roleId} value={user.roleId}>
+                          {roleName(user.roleId)}
+                        </option>
+                      )}
+                      {assignableRoles.map((role) => (
                         <option key={role.id} value={role.id}>
                           {role.name_bn}
                         </option>
@@ -200,17 +252,21 @@ const UsersPage = () => {
                     <button
                       type="button"
                       onClick={() => handleToggleActive(user)}
-                      className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                      disabled={user.isMuhtamim}
+                      title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
+                      className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       {user.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(user)}
-                      className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                    >
-                      মুছুন
-                    </button>
+                    {!user.isMuhtamim && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(user)}
+                        className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                      >
+                        মুছুন
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

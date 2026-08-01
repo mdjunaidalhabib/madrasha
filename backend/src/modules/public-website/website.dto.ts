@@ -66,6 +66,16 @@ export interface UpdateWebsiteAdmissionStatusRequestDto {
   status: string;
 }
 
+/**
+ * Full admission form submitted from the public website - mirrors the
+ * admin AdmissionPage field set (see student.dto.ts) so a public applicant
+ * fills out exactly the same information office staff would enter. This
+ * creates a real (PENDING) `Student` row via `studentService.admitStudent`,
+ * unlike `SubmitWebsiteAdmissionApplicationRequestDto` above which only
+ * writes a lightweight inquiry row.
+ */
+export type SubmitFullAdmissionRequestDto = Record<string, unknown>;
+
 export interface UpsertWebsitePageRequestDto {
   page_key: string;
   title: string;

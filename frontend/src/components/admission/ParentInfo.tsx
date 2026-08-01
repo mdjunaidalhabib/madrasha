@@ -135,6 +135,20 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
           />
           <ErrorText field="parentPhone" />
         </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1">
+            অভিভাবকের বিকল্প মোবাইল নম্বর
+          </label>
+          <input
+            name="parentPhone2"
+            value={formData.parentPhone2 || ""}
+            onChange={handleChange}
+            placeholder="বিকল্প মোবাইল নম্বর"
+            className={inputClass("parentPhone2")}
+          />
+          <ErrorText field="parentPhone2" />
+        </div>
       </div>
     </div>
   );

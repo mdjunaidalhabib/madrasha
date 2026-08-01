@@ -37,6 +37,8 @@ export interface UserItem {
   email: string;
   roleId: number;
   isActive: number;
+  roleKey: string | null;
+  isMuhtamim: boolean;
 }
 
 export const userAdminApi = {

@@ -5,8 +5,22 @@ export class UserRepository {
   findManyForTenant(madrasaId: number) {
     return prisma.user.findMany({
       where: { madrasaId },
-      select: { id: true, name: true, email: true, roleId: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        roleId: true,
+        isActive: true,
+        role: { select: { keyName: true } },
+      },
       orderBy: { id: "desc" },
+    });
+  }
+
+  findByIdForTenant(id: number, madrasaId: number) {
+    return prisma.user.findFirst({
+      where: { id, madrasaId },
+      select: { id: true, role: { select: { keyName: true } } },
     });
   }
 

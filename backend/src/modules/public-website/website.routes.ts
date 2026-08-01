@@ -15,6 +15,7 @@ import {
   saveWebsiteNotice,
   saveWebsiteSlide,
   submitAdmissionApplication,
+  submitFullAdmissionApplication,
   updateAdmissionApplicationStatus,
   upsertWebsitePage,
   upsertWebsiteSettings,
@@ -25,6 +26,7 @@ const router = Router();
 
 router.get("/public/:slug", getPublicWebsite);
 router.post("/public/:slug/admission", submitAdmissionApplication);
+router.post("/public/:slug/admission-full", submitFullAdmissionApplication);
 router.get("/admin/settings", tenantMiddleware, authMiddleware, getWebsiteSettings);
 router.put("/admin/settings", tenantMiddleware, authMiddleware, upsertWebsiteSettings);
 router.put("/admin/pages", tenantMiddleware, authMiddleware, upsertWebsitePage);

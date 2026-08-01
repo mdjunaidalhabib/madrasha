@@ -24,11 +24,17 @@ export interface StudentApiDto {
   gender: number | null;
   dob: Date | null;
   age: number | null;
+  blood_group: string | null;
+  residency_type: number | null;
+  is_orphan: number | null;
   roll: number | null;
   division_id: number | null;
   class_id: number | null;
   academic_year: string;
   previous_class_id: number | null;
+  previous_institution: string | null;
+  previous_result: string | null;
+  admission_date: Date | null;
   current_class: string | null;
   father_name: string | null;
   father_arabic_name: string | null;
@@ -38,12 +44,18 @@ export interface StudentApiDto {
   mother_nid: string | null;
   mother_occupation: string | null;
   guardian_phone: string | null;
+  guardian_phone_2: string | null;
+  alt_guardian_name: string | null;
+  alt_guardian_relation: string | null;
+  alt_guardian_address: string | null;
+  alt_guardian_phone: string | null;
   division: string | null;
   district: string | null;
   thana: string | null;
   village: string | null;
   image: string | null;
   admission_status: "PENDING" | "APPROVED" | "REJECTED";
+  admission_type: "NEW" | "RE_ADMISSION";
   rejection_reason: string | null;
 }
 

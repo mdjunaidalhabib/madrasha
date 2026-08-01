@@ -2,11 +2,14 @@ import { Request } from "express";
 import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { websiteRepository, WebsiteRepository } from "./website.repository";
+import { studentService } from "../students/student.service";
+import { classPanelService } from "../classPanal/class-panel.service";
 import {
   SaveWebsiteCommitteeMemberRequestDto,
   SaveWebsiteGalleryItemRequestDto,
   SaveWebsiteNoticeRequestDto,
   SaveWebsiteSlideRequestDto,
+  SubmitFullAdmissionRequestDto,
   SubmitWebsiteAdmissionApplicationRequestDto,
   UpsertWebsitePageRequestDto,
   UpsertWebsiteSettingsRequestDto,
@@ -47,15 +50,22 @@ export class WebsiteService {
       throw new ForbiddenError("This website is not published yet");
     }
 
-    const [pages, notices, teachers, gallery, slides, committee, classes] = await Promise.all([
+    const [pages, notices, teachers, gallery, slides, committee, divisions] = await Promise.all([
       this.repository.findPublishedPages(madrasa.id),
       this.repository.findPublishedNotices(madrasa.id),
       this.repository.findTeachersOptional(madrasa.id),
       this.repository.findPublishedGallery(madrasa.id),
       this.repository.findPublishedSlides(madrasa.id),
       this.repository.findPublishedCommittee(madrasa.id),
-      this.repository.findActiveClassNames(madrasa.id),
+      // Reused as-is from the admin class panel - madrasaId is passed
+      // directly so no tenant-header auth is needed for this public route.
+      classPanelService.listDivisions(madrasa.id),
     ]);
+
+    const classesByDivision = await Promise.all(
+      divisions.map((division) => classPanelService.listClasses(madrasa.id, division.division_id)),
+    );
+    const classes = classesByDivision.flat();
 
     return {
       madrasa: toMadrasaApiDto(madrasa),
@@ -66,6 +76,7 @@ export class WebsiteService {
       gallery: gallery.map(toWebsiteGalleryApiDto),
       slides: slides.map(toWebsiteSlideApiDto),
       committee: committee.map(toWebsiteCommitteeMemberApiDto),
+      divisions,
       classes,
     };
   }
@@ -330,6 +341,22 @@ export class WebsiteService {
     });
 
     return toWebsiteAdmissionApplicationApiDto(created);
+  }
+
+  /**
+   * Full admission form submitted from the public website - mirrors the
+   * admin admission form field set and creates a real (PENDING) `Student`
+   * row via studentService.admitStudent, so a Muhtamim can review/approve it
+   * through the same pending-admissions workflow as any other admission.
+   */
+  async submitFullAdmissionApplication(slug: string, body: SubmitFullAdmissionRequestDto) {
+    const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
+      throw new ForbiddenError("This website is currently disabled");
+    }
+
+    return studentService.admitStudent(body as any, madrasa.id, { forcePending: true });
   }
 
   async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {

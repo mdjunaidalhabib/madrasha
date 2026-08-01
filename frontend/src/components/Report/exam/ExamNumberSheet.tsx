@@ -88,7 +88,6 @@ const ExamNumberSheet = ({
       <table className="w-full table-fixed border-collapse border border-black text-center text-[9px]">
         <thead>
           <tr>
-            <th className="w-9 border border-black px-0.5 py-2">{label("sl", "ক্রমিক")}</th>
             <th className="w-10 border border-black px-0.5 py-2">{label("roll", "রোল")}</th>
             <th className="w-16 border border-black px-0.5 py-2">{label("registration_no", "রেজিঃ")}</th>
             <th className="w-28 border border-black px-1 py-2">{label("student_name", "শিক্ষার্থীর নাম")}</th>
@@ -114,7 +113,6 @@ const ExamNumberSheet = ({
 
             return (
               <tr key={`exam-number-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-0.5">{toBanglaDigits(startIndex + index + 1)}</td>
                 <td className="h-8 border border-black px-0.5">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-0.5">
                   {cellValue(row, "registration_no")}

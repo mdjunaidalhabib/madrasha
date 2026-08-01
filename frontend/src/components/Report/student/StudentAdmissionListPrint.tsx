@@ -1,4 +1,4 @@
-import { cellValue, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue } from "../../../utils/reportUtils";
 
 type StudentAdmissionListPrintProps = {
   rows: Record<string, any>[];
@@ -55,7 +55,6 @@ const StudentAdmissionListPrint = ({
       <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-9 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
             <th className="w-11 border border-black px-1 py-2 text-base font-bold">রোল</th>
             <th className="w-20 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
             <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষার্থীর নাম</th>
@@ -78,7 +77,6 @@ const StudentAdmissionListPrint = ({
 
             return (
               <tr key={`student-admission-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
                 <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-1 text-base">
                   {cellValue(row, "registration_no")}

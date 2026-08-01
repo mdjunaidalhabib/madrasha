@@ -124,6 +124,12 @@ const madrasaAdminChildren = [
     ),
   },
   {
+    path: "ihtemam/pending",
+    element: (
+      <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>
+    ),
+  },
+  {
     path: "ihtemam/:id",
     element: (
       <ModuleGuard module="ihtemam">{withSuspense(<TeacherProfilePage />)}</ModuleGuard>

@@ -199,62 +199,6 @@ const StudentListPage = () => {
 
           <button
             type="button"
-            onClick={() => navigate(`${adminBase}/students/statement`)}
-            className="h-10 w-full rounded-lg border border-cyan-300 bg-cyan-50 px-4 text-sm font-medium text-cyan-700 shadow-sm transition hover:bg-cyan-100 md:w-auto"
-          >
-            হিসাব বিবরণী
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/fee-management`)}
-            className="h-10 w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100 md:w-auto"
-          >
-            ফি ব্যবস্থাপনা
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/notifications`)}
-            className="h-10 w-full rounded-lg border border-pink-300 bg-pink-50 px-4 text-sm font-medium text-pink-700 shadow-sm transition hover:bg-pink-100 md:w-auto"
-          >
-            SMS/ইমেইল পাঠান
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/routine`)}
-            className="h-10 w-full rounded-lg border border-teal-300 bg-teal-50 px-4 text-sm font-medium text-teal-700 shadow-sm transition hover:bg-teal-100 md:w-auto"
-          >
-            ক্লাস/পরীক্ষার রুটিন
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/students/promotion`)}
-            className="h-10 w-full rounded-lg border border-purple-300 bg-purple-50 px-4 text-sm font-medium text-purple-700 shadow-sm transition hover:bg-purple-100 md:w-auto"
-          >
-            শিক্ষার্থী প্রমোশন
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/attendance/mark`)}
-            className="h-10 w-full rounded-lg border border-blue-300 bg-blue-50 px-4 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 md:w-auto"
-          >
-            উপস্থিতি নিন
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate(`${adminBase}/students/admissions/pending`)}
-            className="h-10 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 md:w-auto"
-          >
-            পেন্ডিং ভর্তি অনুমোদন
-          </button>
-
-          <button
-            type="button"
             onClick={() => navigate(`${adminBase}/students/new_admission`)}
             className="h-10 w-full rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 md:w-auto"
           >

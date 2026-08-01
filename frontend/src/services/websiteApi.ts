@@ -165,6 +165,16 @@ export async function submitAdmissionApplication(
   return res.data;
 }
 
+/**
+ * Full admission form (mirrors the admin admission form field set) - creates
+ * a real PENDING student record for a Muhtamim to review, unlike
+ * submitAdmissionApplication() above which only files a lightweight inquiry.
+ */
+export async function submitFullAdmissionApplication(slug: string, payload: Record<string, unknown>) {
+  const res = await api.post(`/website/public/${slug}/admission-full`, payload);
+  return res.data;
+}
+
 export async function updateAdmissionApplicationStatus(
   id: number,
   status: "pending" | "approved" | "rejected",

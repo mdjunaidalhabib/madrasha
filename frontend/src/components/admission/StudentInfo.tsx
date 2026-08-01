@@ -9,6 +9,9 @@ interface Props {
   setFormData: React.Dispatch<React.SetStateAction<AdmissionFormData>>;
   errors: AdmissionFormErrors;
   setErrors: React.Dispatch<React.SetStateAction<AdmissionFormErrors>>;
+  /** true once the NID lookup has matched an existing student - see AdmissionPage's
+   * previousStudent state. Purely a read-only indicator, never manually set. */
+  isReturning?: boolean;
 }
 
 interface Division {
@@ -24,7 +27,7 @@ interface ClassItem {
 const CURRENT_YEAR = new Date().getFullYear();
 const ACADEMIC_YEARS = Array.from({ length: 8 }, (_, index) => String(CURRENT_YEAR - 4 + index));
 
-const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors }) => {
+const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors, isReturning }) => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
@@ -64,6 +67,16 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
   const isValidDate = (date: string) => {
     const d = new Date(date);
     return !isNaN(d.getTime());
+  };
+
+  const formatAdmissionDate = (date: string) => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -173,7 +186,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">NID</label>
+          <label className="text-sm font-medium text-gray-600 mb-1">NID/জন্ম নিবন্ধন নম্বর</label>
           <input
             name="nid"
             value={formData.nid || ""}
@@ -197,6 +210,38 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             readOnly
             aria-readonly="true"
             className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700`}
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600">ভর্তির ধরন</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+          <input
+            type="text"
+            value={isReturning ? "পুনঃভর্তি (পুরাতন)" : "নতুন"}
+            readOnly
+            aria-readonly="true"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600">ভর্তির তারিখ</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+          <input
+            type="text"
+            value={formatAdmissionDate(formData.admissionDate)}
+            readOnly
+            aria-readonly="true"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
           />
         </div>
 
@@ -284,24 +329,6 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পূর্বের শ্রেণি</label>
-          <select
-            name="previousClass"
-            value={formData.previousClass || ""}
-            onChange={handleChange}
-            disabled={!classes.length || loadingClasses}
-            className={inputClass("previousClass")}
-          >
-            <option value="">{loadingClasses ? "লোড হচ্ছে..." : "নির্বাচন করুন"}</option>
-            {classes.map((c) => (
-              <option key={c.class_id} value={c.class_id}>
-                {c.class_name_bn}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1">
             বর্তমান শ্রেণি <span className="text-red-500">*</span>
           </label>
@@ -320,6 +347,46 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             ))}
           </select>
           <ErrorText field="currentClass" />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1">পূর্বের শ্রেণি</label>
+          <select
+            name="previousClass"
+            value={formData.previousClass || ""}
+            onChange={handleChange}
+            disabled={!classes.length || loadingClasses}
+            className={inputClass("previousClass")}
+          >
+            <option value="">{loadingClasses ? "লোড হচ্ছে..." : "নির্বাচন করুন"}</option>
+            {classes.map((c) => (
+              <option key={c.class_id} value={c.class_id}>
+                {c.class_name_bn}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1">পূর্ববর্তী প্রতিষ্ঠান</label>
+          <input
+            name="previousInstitution"
+            value={formData.previousInstitution || ""}
+            onChange={handleChange}
+            placeholder="পূর্ববর্তী প্রতিষ্ঠানের নাম"
+            className={inputClass("previousInstitution")}
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1">পূর্বের ফলাফল</label>
+          <input
+            name="previousResult"
+            value={formData.previousResult || ""}
+            onChange={handleChange}
+            placeholder="যেমন: মুমতায/জায়্যিদ জিদ্দান"
+            className={inputClass("previousResult")}
+          />
         </div>
       </div>
     </div>

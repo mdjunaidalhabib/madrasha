@@ -1,4 +1,4 @@
-import { cellValue, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
+import { cellValue, formatReportValue } from "../../../utils/reportUtils";
 
 type ClassRoutinePrintProps = {
   rows: Record<string, any>[];
@@ -45,7 +45,6 @@ const ClassRoutinePrint = ({
       <table className="w-full table-fixed border-collapse border border-black text-center">
         <thead>
           <tr>
-            <th className="w-12 border border-black px-1 py-2 text-base font-bold">ক্রমিক</th>
             <th className="w-24 border border-black px-1 py-2 text-base font-bold">দিন</th>
             <th className="w-24 border border-black px-1 py-2 text-base font-bold">শুরুর সময়</th>
             <th className="w-24 border border-black px-1 py-2 text-base font-bold">শেষ সময়</th>
@@ -56,7 +55,6 @@ const ClassRoutinePrint = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`class-routine-${row.id || index}`}>
-              <td className="h-9 border border-black px-1 text-base">{toBanglaDigits(startIndex + index + 1)}</td>
               <td className="h-9 border border-black px-1 font-semibold text-base">
                 {cellValue(row, "day")}
               </td>

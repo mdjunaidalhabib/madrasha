@@ -103,15 +103,6 @@ export class WebsiteRepository {
     });
   }
 
-  async findActiveClassNames(madrasaId: number): Promise<{ id: number; name: string }[]> {
-    const rows = await prisma.madrasaClass.findMany({
-      where: { madrasaId, isActive: 1, class: { isActive: true } },
-      select: { classId: true, class: { select: { name: true, nameBn: true, sortOrder: true } } },
-      orderBy: { class: { sortOrder: "asc" } },
-    });
-    return rows.map((r) => ({ id: r.classId, name: r.class?.nameBn || r.class?.name || "" }));
-  }
-
   findMadrasaForAdmin(madrasaId: number) {
     return prisma.madrasa.findUnique({
       where: { id: madrasaId },

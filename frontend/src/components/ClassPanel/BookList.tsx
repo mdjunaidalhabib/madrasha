@@ -17,28 +17,45 @@ export default function BookList({
 
   return (
     <div>
-      <h2 className="mb-3 font-medium text-gray-700">বই নির্বাচন করুন</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-medium text-gray-700">বই নির্বাচন করুন</h2>
+        {books.length > 0 && (
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+            {selectedBooks.length} / {books.length} নির্বাচিত
+          </span>
+        )}
+      </div>
 
       {books.length === 0 ? (
-        <p className="text-gray-400">কোনো বই পাওয়া যায়নি</p>
+        <p className="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400">
+          কোনো বই পাওয়া যায়নি
+        </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+        <div className="flex max-h-64 flex-wrap content-start gap-2 overflow-y-auto pr-1">
           {books.map((b: any) => {
             const active = selectedBooks.includes(b.book_id);
 
             return (
-              <div
+              <button
+                type="button"
                 key={b.book_id}
                 onClick={() => toggleBook(b.book_id)}
-                className={`cursor-pointer border rounded-lg px-3 py-2 text-sm transition
+                title={b.book_name_bn}
+                className={`group relative flex w-auto shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition
                   ${
                     active
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white hover:bg-gray-100"
+                      ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
                   }`}
               >
-                {b.book_name_bn}
-              </div>
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px]
+                    ${active ? "border-white/80 bg-white/20" : "border-gray-300 group-hover:border-blue-400"}`}
+                >
+                  {active && "✓"}
+                </span>
+                <span className="truncate">{b.book_name_bn}</span>
+              </button>
             );
           })}
         </div>

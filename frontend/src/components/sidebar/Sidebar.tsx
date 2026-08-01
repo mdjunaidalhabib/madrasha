@@ -47,10 +47,22 @@ const FEATURE_PATHS: Record<string, string> = {
   exam_report: "exam_report",
   teacher_report: "teacher_report",
 };
+// Some sidebar entries (moved here from plain action buttons on the ছাত্র
+// তালিকা page) live at routes that don't match their menu's own module path
+// (e.g. "promotion" sits under তালিমাত but its route is still students/promotion)
+// — these need the full path, not module/childKey.
+const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
+  fee_management: "fee-management",
+  notifications: "notifications",
+  routine: "routine",
+  promotion: "students/promotion",
+  attendance_mark: "attendance/mark",
+};
 function modulePath(key: string) {
   return MODULE_PATHS[key] || key;
 }
 function childPath(moduleKey: string, childKey: string) {
+  if (ABSOLUTE_CHILD_PATHS[childKey]) return ABSOLUTE_CHILD_PATHS[childKey];
   return `${modulePath(moduleKey)}/${FEATURE_PATHS[childKey] || childKey}`;
 }
 function navItemClass(isActive: boolean) {
@@ -149,9 +161,14 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                         onClick={handleClick}
                         onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
                         onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                        className={({ isActive }) => childItemClass(isActive)}
+                        className={({ isActive }) => `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`}
                       >
-                        {child.label}
+                        <span>{child.label}</span>
+                        {Boolean(child.count) && (
+                          <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                            {child.count}
+                          </span>
+                        )}
                       </NavLink>
                     );
                   })}

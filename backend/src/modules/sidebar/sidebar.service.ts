@@ -47,7 +47,10 @@ export class SidebarService {
     }
 
     const moduleIds = modules.map((m) => m.id);
-    const features = await this.repository.findFeaturesByModuleIds(moduleIds);
+    const [features, pendingAdmissionsCount] = await Promise.all([
+      this.repository.findFeaturesByModuleIds(moduleIds),
+      this.repository.countPendingAdmissions(madrasaId),
+    ]);
 
     return modules.map((mod) => {
       const disabled = !isAllowed(roleKey, mod.keyName || "");
@@ -72,6 +75,75 @@ export class SidebarService {
           sort_order: 2.5,
           disabled,
         });
+      }
+
+      // Same reasoning as exam_report above - surfaces the pending-admission
+      // review page under ইহতিমাম in installations seeded before this
+      // feature existed.
+      if (mod.keyName === "ihtemam" && !children.some((child) => child.key === "pending")) {
+        children.push({
+          id: -1004,
+          key: "pending",
+          label: "পেন্ডিং ভর্তি অনুমোদন",
+          sort_order: 3,
+          disabled,
+        });
+      }
+
+      // Badge the item with how many admissions are actually waiting, and
+      // relabel it to "পেন্ডিং ভর্তি অনুমোদন" even for installs whose DB row
+      // still has the old "পেন্ডিং" label from before students/pending_admission
+      // was folded back into this one.
+      if (mod.keyName === "ihtemam") {
+        const pendingChild = children.find((child) => child.key === "pending");
+        if (pendingChild) {
+          pendingChild.label = "পেন্ডিং ভর্তি অনুমোদন";
+          if (pendingAdmissionsCount > 0) pendingChild.count = pendingAdmissionsCount;
+        }
+      }
+
+      // Same reasoning as exam_report/pending above - surfaces ক্লাস/পরীক্ষার
+      // রুটিন ও শিক্ষার্থী প্রমোশন under তালিমাত in installations seeded before
+      // they moved here from ছাত্র বিভাগ.
+      if (mod.keyName === "talimat") {
+        const fallbackTalimatChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "routine", label: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
+          { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
+        ];
+        for (const fallback of fallbackTalimatChildren) {
+          if (!children.some((child) => child.key === fallback.key)) {
+            children.push({
+              id: -(3000 + fallback.sortOrder),
+              key: fallback.key,
+              label: fallback.label,
+              sort_order: fallback.sortOrder,
+              disabled,
+            });
+          }
+        }
+      }
+
+      // These used to be plain action buttons on the ছাত্র তালিকা page instead
+      // of sidebar entries. Same reasoning as exam_report/pending above -
+      // surface them immediately in installations seeded before this change.
+      if (mod.keyName === "students") {
+        const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "statement", label: "হিসাব বিবরণী", sortOrder: 3 },
+          { key: "fee_management", label: "ফি ব্যবস্থাপনা", sortOrder: 4 },
+          { key: "notifications", label: "SMS/ইমেইল পাঠান", sortOrder: 5 },
+          { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 6 },
+        ];
+        for (const fallback of fallbackStudentChildren) {
+          if (!children.some((child) => child.key === fallback.key)) {
+            children.push({
+              id: -(2000 + fallback.sortOrder),
+              key: fallback.key,
+              label: fallback.label,
+              sort_order: fallback.sortOrder,
+              disabled,
+            });
+          }
+        }
       }
 
       children.sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));

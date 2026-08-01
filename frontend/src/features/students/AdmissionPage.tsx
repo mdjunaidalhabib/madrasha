@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import StudentInfo from "../../components/admission/StudentInfo";
 import ParentInfo from "../../components/admission/ParentInfo";
+import OtherInfo from "../../components/admission/OtherInfo";
+import AlternateGuardianInfo from "../../components/admission/AlternateGuardianInfo";
 import AddressInfo from "../../components/admission/AddressInfo";
 import ImageUpload from "../../components/admission/ImageUpload";
 import SubmitButton from "../../components/admission/SubmitButton";
@@ -20,10 +22,16 @@ export interface AdmissionFormData {
   gender: number | null;
   dob: string;
   age: number | null;
+  bloodGroup: string;
+  residencyType: number | null;
+  isOrphan: boolean;
   roll: string;
+  admissionDate: string;
   academicYear: string;
   academicDivision: string;
   previousClass: string;
+  previousInstitution: string;
+  previousResult: string;
   currentClass: string;
   fatherName: string;
   fatherArabicName: string;
@@ -33,6 +41,12 @@ export interface AdmissionFormData {
   motherNid: string;
   motherOccupation: string;
   parentPhone: string;
+  parentPhone2: string;
+  hasAltGuardian: boolean;
+  altGuardianName: string;
+  altGuardianRelation: string;
+  altGuardianAddress: string;
+  altGuardianPhone: string;
   division: string;
   district: string;
   thana: string;
@@ -50,11 +64,16 @@ interface PreviousStudentData {
   gender: number | null;
   dob: string | null;
   age: number | null;
+  blood_group: string | null;
+  residency_type: number | null;
+  is_orphan: number | null;
   roll: number | null;
   division_id: number | null;
   class_id: number | null;
   academic_year: string;
   previous_class_id: number | null;
+  previous_institution: string | null;
+  previous_result: string | null;
   current_class: string | null;
   father_name: string | null;
   father_arabic_name: string | null;
@@ -64,6 +83,11 @@ interface PreviousStudentData {
   mother_nid: string | null;
   mother_occupation: string | null;
   guardian_phone: string | null;
+  guardian_phone_2: string | null;
+  alt_guardian_name: string | null;
+  alt_guardian_relation: string | null;
+  alt_guardian_address: string | null;
+  alt_guardian_phone: string | null;
   division: string | null;
   district: string | null;
   thana: string | null;
@@ -82,6 +106,8 @@ type ClassItem = {
   division_id?: number;
 };
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 const initialState: AdmissionFormData = {
   name: "",
   arabicName: "",
@@ -89,10 +115,16 @@ const initialState: AdmissionFormData = {
   gender: null,
   dob: "",
   age: null,
+  bloodGroup: "",
+  residencyType: null,
+  isOrphan: false,
   roll: "",
+  admissionDate: todayIso(),
   academicYear: String(new Date().getFullYear()),
   academicDivision: "",
   previousClass: "",
+  previousInstitution: "",
+  previousResult: "",
   currentClass: "",
   fatherName: "",
   fatherArabicName: "",
@@ -102,6 +134,12 @@ const initialState: AdmissionFormData = {
   motherNid: "",
   motherOccupation: "",
   parentPhone: "",
+  parentPhone2: "",
+  hasAltGuardian: false,
+  altGuardianName: "",
+  altGuardianRelation: "",
+  altGuardianAddress: "",
+  altGuardianPhone: "",
   division: "",
   district: "",
   thana: "",
@@ -176,6 +214,11 @@ const AdmissionPage = () => {
             age: data.age ?? prev.age,
             academicDivision: data.division_id ? String(data.division_id) : prev.academicDivision,
             previousClass: data.class_id ? String(data.class_id) : prev.previousClass,
+            bloodGroup: data.blood_group || prev.bloodGroup,
+            residencyType: data.residency_type ?? prev.residencyType,
+            isOrphan: data.is_orphan === 1 ? true : prev.isOrphan,
+            previousInstitution: data.previous_institution || prev.previousInstitution,
+            previousResult: data.previous_result || prev.previousResult,
             fatherName: data.father_name || prev.fatherName,
             fatherArabicName: data.father_arabic_name || prev.fatherArabicName,
             fatherNid: data.father_nid || prev.fatherNid,
@@ -184,6 +227,12 @@ const AdmissionPage = () => {
             motherNid: data.mother_nid || prev.motherNid,
             motherOccupation: data.mother_occupation || prev.motherOccupation,
             parentPhone: data.guardian_phone || prev.parentPhone,
+            parentPhone2: data.guardian_phone_2 || prev.parentPhone2,
+            hasAltGuardian: Boolean(data.alt_guardian_name) || prev.hasAltGuardian,
+            altGuardianName: data.alt_guardian_name || prev.altGuardianName,
+            altGuardianRelation: data.alt_guardian_relation || prev.altGuardianRelation,
+            altGuardianAddress: data.alt_guardian_address || prev.altGuardianAddress,
+            altGuardianPhone: data.alt_guardian_phone || prev.altGuardianPhone,
             division: data.division || prev.division,
             district: data.district || prev.district,
             thana: data.thana || prev.thana,
@@ -527,11 +576,24 @@ const AdmissionPage = () => {
       name_bn: formData.name,
       gender: toGenderNumber(formData.gender),
       dob: formData.dob || null,
+      blood_group: formData.bloodGroup || null,
+      residency_type: formData.residencyType,
+      is_orphan: formData.isOrphan ? 1 : 0,
       class_id: Number(formData.currentClass),
       academic_year: formData.academicYear,
+      admission_date: formData.admissionDate || null,
       previous_class_id: Number(formData.previousClass) || null,
+      previous_institution: formData.previousInstitution || null,
+      previous_result: formData.previousResult || null,
       division_id: Number(formData.academicDivision),
       guardian_phone: cleanPhone(formData.parentPhone),
+      guardian_phone_2: formData.parentPhone2 ? cleanPhone(formData.parentPhone2) : null,
+      alt_guardian_name: formData.hasAltGuardian ? formData.altGuardianName || null : null,
+      alt_guardian_relation: formData.hasAltGuardian ? formData.altGuardianRelation || null : null,
+      alt_guardian_address: formData.hasAltGuardian ? formData.altGuardianAddress || null : null,
+      alt_guardian_phone: formData.hasAltGuardian
+        ? cleanPhone(formData.altGuardianPhone) || null
+        : null,
       arabic_name: formData.arabicName || null,
       nid: formData.nid || null,
       age: calculateAge(formData.dob),
@@ -613,6 +675,7 @@ const AdmissionPage = () => {
           setFormData={setFormData}
           errors={errors}
           setErrors={setErrors}
+          isReturning={Boolean(previousStudent)}
         />
 
         <ParentInfo
@@ -621,6 +684,10 @@ const AdmissionPage = () => {
           errors={errors}
           setErrors={setErrors}
         />
+
+        <AlternateGuardianInfo formData={formData} setFormData={setFormData} />
+
+        <OtherInfo formData={formData} setFormData={setFormData} />
 
         <AddressInfo formData={formData} setFormData={setFormData} />
         <SubmitButton loading={loading} isReAdmission={Boolean(previousStudent)} />

@@ -226,11 +226,14 @@ export default function TeacherAssignmentPanel() {
                   </div>
                 </div>
 
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {a.books?.map((b: any, j: number) => (
-                    <div key={j} className="bg-gray-100 px-2 py-1 rounded">
+                    <span
+                      key={j}
+                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                    >
                       📘 {b.book_name_bn}
-                    </div>
+                    </span>
                   ))}
                 </div>
               </div>

@@ -11,6 +11,7 @@ import { logger } from "../../utils/logger";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
+import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -169,6 +170,11 @@ const StudentProfilePage = () => {
               {saving ? "Saving..." : "Update"}
             </button>
           )}
+
+          <AdmissionFormPrintButton
+            row={student}
+            className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+          />
 
           <button onClick={handleDelete} className="rounded bg-red-500 px-4 py-2 text-white">
             Delete
