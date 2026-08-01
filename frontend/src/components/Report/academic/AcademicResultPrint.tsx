@@ -10,7 +10,7 @@ import {
 export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
   { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
-  { header: "শিক্ষার্থী", key: "student_name", className: "min-w-48" },
+  { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-48" },
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
@@ -187,7 +187,7 @@ const AcademicResultPrint = ({
           </h1>
         )}
         {madrasaAddress && (
-          <p className="academic-result-madrasa-address mt-1 text-sm font-medium text-black">
+          <p className="academic-result-madrasa-address mt-1 text-base font-medium text-black">
             {madrasaAddress}
           </p>
         )}
@@ -221,7 +221,7 @@ const AcademicResultPrint = ({
               column.subjectKey ? (
                 <th
                   key={`academic-subject-serial-${column.key}`}
-                  className="academic-result-subject-serial border border-black text-black"
+                  className="academic-result-subject-serial border border-black text-base text-black"
                   title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
                 >
                   {subjectSerialMap.get(column.key)}
@@ -244,11 +244,11 @@ const AcademicResultPrint = ({
               {subjectColumns.map((column) => (
                 <th
                   key={`academic-subject-name-${column.key}`}
-                  className="academic-result-subject-name-cell h-32 border border-black p-0 align-middle text-black"
+                  className="academic-result-subject-name-cell border border-black p-0 align-middle text-black"
                   title={column.header}
                 >
                   <div className="flex h-full items-center justify-center overflow-hidden">
-                    <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-sm font-semibold leading-none text-black">
+                    <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-base leading-none text-black">
                       {column.header}
                     </span>
                   </div>

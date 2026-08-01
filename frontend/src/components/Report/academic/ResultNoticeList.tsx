@@ -9,11 +9,11 @@ import { cellValue, formatMeritRank, toBanglaDigits } from "../../../utils/repor
 export const RESULT_NOTICE_COLUMNS: ReportColumn[] = [
   { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
   { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
-  { header: "শিক্ষার্থী", key: "student_name", className: "min-w-48" },
+  { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-48" },
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
-  { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
+  { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
   { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
   { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
 ];
@@ -67,9 +67,23 @@ const ResultNoticeList = ({
   );
 
   const groups = Object.values(
-    rows.reduce<Record<string, { title: string; rows: Record<string, any>[] }>>((acc, row) => {
-      const title = `${cellValue(row, "exam_name")} | ${cellValue(row, "class_name")} | ${cellValue(row, "exam_year")}`;
-      if (!acc[title]) acc[title] = { title, rows: [] };
+    rows.reduce<
+      Record<
+        string,
+        {
+          title: string;
+          examName: string;
+          examYear: string;
+          className: string;
+          rows: Record<string, any>[];
+        }
+      >
+    >((acc, row) => {
+      const examName = cellValue(row, "exam_name");
+      const examYear = cellValue(row, "exam_year");
+      const className = formatCellValue(row, "class_name");
+      const title = `${examName} | ${className} | ${examYear}`;
+      if (!acc[title]) acc[title] = { title, examName, examYear, className, rows: [] };
       acc[title].rows.push(row);
       return acc;
     }, {}),
@@ -80,9 +94,12 @@ const ResultNoticeList = ({
       {groups.map((group, groupIndex) => (
         <section key={group.title} className={groupIndex ? "print-page-break pt-4" : ""}>
           <div className="result-notice-heading mb-4 text-center">
-            <h2 className="result-notice-title text-2xl font-bold">রেজাল্ট নোটিশ</h2>
-            <p className="result-notice-subtitle mt-1 text-sm font-semibold text-slate-600">
-              {group.title}
+            <h2 className="result-notice-title text-2xl font-bold">ফলাফল সারসংক্ষেপ</h2>
+            <p className="result-notice-exam-name mt-1 text-base font-bold text-black">
+              {group.examName} - {group.examYear}
+            </p>
+            <p className="result-notice-subtitle text-base font-bold text-black">
+              জামাতঃ {group.className}
             </p>
           </div>
 

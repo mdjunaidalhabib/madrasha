@@ -3,6 +3,7 @@ import { cachedGet } from "../../services/api";
 import { studentStatementApi } from "../../services/phase2Api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -213,9 +214,7 @@ const StudentStatementPage = () => {
             হিসাব দেখতে প্রথমে একজন ছাত্র নির্বাচন করুন
           </div>
         ) : loading ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
-            লোড হচ্ছে...
-          </div>
+          <SkeletonList items={5} />
         ) : !statement || statement.invoices.length === 0 ? (
           <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
             এই ছাত্রের কোনো ইনভয়েস নেই

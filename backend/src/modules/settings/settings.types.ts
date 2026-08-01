@@ -14,3 +14,18 @@ export interface DocumentTemplatesData {
   admit_card_rules: string | null;
   tokens: Record<string, string[]>;
 }
+
+export interface IdCardDesignData {
+  id_card_design: string;
+  id_card_background_image: string | null;
+}
+
+export interface AdmitCardDesignData {
+  admit_card_design: string;
+  admit_card_background_image: string | null;
+}
+
+export interface LetterDesignData {
+  letter_design: string;
+  letter_background_image: string | null;
+}

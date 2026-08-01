@@ -5,6 +5,7 @@ import Modal from "../../components/ui/Modal";
 import { useToastStore } from "../../store/toastStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
+import { SkeletonTable } from "../../components/ui/Skeleton";
 
 type PendingStudent = {
   id: number | string;
@@ -123,7 +124,7 @@ const PendingAdmissionsPage = () => {
         {/* Content */}
         <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
           {loading ? (
-            <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonTable rows={6} columns={6} />
           ) : error ? (
             <div className="py-10 text-center text-sm text-red-600">{error}</div>
           ) : rows.length === 0 ? (

@@ -1,4 +1,5 @@
 import Button from "../../components/ui/Button";
+import { SkeletonList, SkeletonTable } from "../ui/Skeleton";
 import {
   Madrasa,
   Plan,
@@ -78,7 +79,7 @@ export default function MadrasasTable({
       {/* Mobile / tablet: card list (hidden on md+) */}
       <div className="divide-y md:hidden">
         {loading ? (
-          <div className="p-4 text-gray-500">Loading...</div>
+          <SkeletonList items={4} className="p-4" />
         ) : !items.length ? (
           <div className="p-4 text-gray-500">No madrasas found.</div>
         ) : (
@@ -130,61 +131,55 @@ export default function MadrasasTable({
 
       {/* Desktop: table (hidden below md) */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-[1150px] w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3 text-left">Name</th>
-              <th className="p-3 text-left">Slug</th>
-              <th className="p-3 text-left">Website</th>
-              <th className="p-3 text-left">Plan</th>
-              <th className="p-3 text-left">Student Limit</th>
-              <th className="p-3 text-left">User Limit</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+        {loading ? (
+          <SkeletonTable rows={6} columns={8} />
+        ) : (
+          <table className="min-w-[1150px] w-full text-sm">
+            <thead className="bg-gray-100">
               <tr>
-                <td className="p-4 text-gray-500" colSpan={8}>
-                  Loading...
-                </td>
+                <th className="p-3 text-left">Name</th>
+                <th className="p-3 text-left">Slug</th>
+                <th className="p-3 text-left">Website</th>
+                <th className="p-3 text-left">Plan</th>
+                <th className="p-3 text-left">Student Limit</th>
+                <th className="p-3 text-left">User Limit</th>
+                <th className="p-3 text-left">Status</th>
+                <th className="p-3 text-left">Actions</th>
               </tr>
-            ) : (
-              <>
-                {items.map((m) => (
-                  <tr key={m.id} className="border-t">
-                    <td className="p-3 font-medium">{m.name}</td>
-                    <td className="p-3 text-gray-700">{m.slug}</td>
-                    <td className="p-3">
-                      <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold capitalize text-blue-700">
-                        {m.website_status || "active"}
-                      </span>
-                    </td>
-                    <td className="p-3">{renderPlanControl(m)}</td>
-                    <td className="p-3">{m.student_limit}</td>
-                    <td className="p-3">{m.user_limit}</td>
-                    <td className="p-3">
-                      {m.is_active ? (
-                        <span className="text-green-600 font-semibold">Active</span>
-                      ) : (
-                        <span className="text-red-600 font-semibold">Inactive</span>
-                      )}
-                    </td>
-                    <td className="p-3">{renderActions(m)}</td>
-                  </tr>
-                ))}
-                {!items.length && (
-                  <tr>
-                    <td className="p-4 text-gray-500" colSpan={8}>
-                      No madrasas found.
-                    </td>
-                  </tr>
-                )}
-              </>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((m) => (
+                <tr key={m.id} className="border-t">
+                  <td className="p-3 font-medium">{m.name}</td>
+                  <td className="p-3 text-gray-700">{m.slug}</td>
+                  <td className="p-3">
+                    <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold capitalize text-blue-700">
+                      {m.website_status || "active"}
+                    </span>
+                  </td>
+                  <td className="p-3">{renderPlanControl(m)}</td>
+                  <td className="p-3">{m.student_limit}</td>
+                  <td className="p-3">{m.user_limit}</td>
+                  <td className="p-3">
+                    {m.is_active ? (
+                      <span className="text-green-600 font-semibold">Active</span>
+                    ) : (
+                      <span className="text-red-600 font-semibold">Inactive</span>
+                    )}
+                  </td>
+                  <td className="p-3">{renderActions(m)}</td>
+                </tr>
+              ))}
+              {!items.length && (
+                <tr>
+                  <td className="p-4 text-gray-500" colSpan={8}>
+                    No madrasas found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

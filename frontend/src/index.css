@@ -27,6 +27,7 @@ html {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body,
@@ -166,7 +167,7 @@ textarea {
 
 .report-brand-address {
   max-width: 92%;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -352,21 +353,11 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   page-break-inside: avoid;
 }
 
-/* Card grids must follow paper width, not browser viewport width. */
+/* The ID card is a fixed physical CR80-portrait size (54mm x 85.6mm) so
+   printed sheets can be cut and laminated as real cards; column count is
+   however many fit the page width, not a paper-size-specific override. */
 .report-id-card-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-html[data-print-size="a4"][data-print-orientation="landscape"] .report-id-card-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-html[data-print-size="a5"][data-print-orientation="portrait"] .report-id-card-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-html[data-print-size="a5"][data-print-orientation="landscape"] .report-id-card-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, 54mm);
 }
 
 .report-admit-card-grid {
@@ -425,9 +416,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-weight: 600;
 }
 
+/* Font-size intentionally NOT set here - the header shares Tailwind's
+   text-base class (and the same paper-size/orientation compaction rules in
+   the block above) with the student-name cell, so the two always resolve
+   to the exact same px value in every A4/A5 x portrait/landscape combo. */
 .academic-result-standard-header {
   background: #f1f5f9;
-  font-size: 1.04em;
   font-weight: 800;
   letter-spacing: 0.01em;
   vertical-align: middle;
@@ -436,23 +430,22 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .academic-result-subject-serial {
   height: 27px;
   padding: 2px 1px !important;
-  background: #e2e8f0;
-  font-size: 1.08em;
+  background: #f1f5f9;
   font-weight: 900;
   line-height: 1;
   vertical-align: middle;
 }
 
 .academic-result-subject-name-row {
-  height: 108px;
+  height: 135px;
 }
 
 .academic-result-subject-name-cell {
   position: relative;
-  height: 108px;
+  height: 135px;
   overflow: hidden;
   padding: 0 !important;
-  background: #f8fafc;
+  background: #f1f5f9;
   vertical-align: middle;
 }
 
@@ -461,17 +454,31 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   top: 50%;
   left: 50%;
   display: flex;
-  width: 102px;
-  height: 27px;
+  /* No font-size set here on purpose - the span carries Tailwind's
+     text-base class (see JSX), the same class the standard headers and
+     student-name cell use, so this always renders at the exact same size
+     as the rest of the header row in every paper-size/orientation combo.
+     The row height is sized for a typical name, not the single longest
+     one in the whole system - most names sit snugly instead of centered
+     in a lot of empty space, at the cost of clipping (via overflow +
+     text-overflow below) on rare unusually long kitab names instead of
+     reserving room for them. */
+  width: 130px;
+  height: 24px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transform: translate(-50%, -50%) rotate(-90deg);
-  white-space: normal;
+  /* translate3d (not translate) forces this rotated label onto its own
+     GPU-composited layer. Without it, Chromium/print-preview zoom rasterizes
+     rotate(-90deg) text on sub-pixel boundaries and it renders visibly
+     thinner than the horizontal headers next to it, even at equal
+     font-weight - most noticeable at the A4 landscape zoom level. */
+  transform: translate3d(-50%, -50%, 0) rotate(-90deg);
+  backface-visibility: hidden;
+  white-space: nowrap;
   text-align: center;
   text-overflow: clip;
-  font-size: 1em;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.05;
 }
 
@@ -502,12 +509,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-name {
-  font-size: 23px;
+  font-size: 30px;
   line-height: 1.14;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-address {
-  font-size: 11.5px;
+  font-size: 18px;
   line-height: 1.22;
 }
 
@@ -530,7 +537,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-paper-size="a5"] .report-brand-address {
   max-width: 95%;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.18;
 }
 
@@ -540,11 +547,11 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-name {
-  font-size: 17px;
+  font-size: 21px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-address {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .print-page-preview[data-paper-size="a5"]::after {
@@ -630,12 +637,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .academic-result-subject-name-row,
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-subject-name-cell {
-  height: 96px;
+  height: 130px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-subject-name {
-  width: 91px;
+  width: 125px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
@@ -649,7 +656,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-address {
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-exam-name,
@@ -687,19 +694,18 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .academic-result-subject-name-row,
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
   .academic-result-subject-name-cell {
-  height: 70px;
+  height: 78px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
   .academic-result-subject-name {
-  width: 66px;
-  height: 20px;
+  width: 74px;
+  height: 14px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
   .academic-result-subject-serial {
   height: 18px;
-  font-size: 1em;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table th,
@@ -724,12 +730,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
   .academic-result-madrasa-name {
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
   .academic-result-madrasa-address {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
@@ -754,9 +760,17 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   line-height: 1.15;
 }
 
+/* No font-size set here - result-notice-exam-name/subtitle share the same
+   text-base Tailwind class (and a5 scaling below) as academic-result's
+   exam-name/subtitle, so the two report types render this line at the same
+   size and weight - matching the "ফলাফল" page design as requested. */
+.print-page-preview[data-report="result-notice"] .result-notice-exam-name,
 .print-page-preview[data-report="result-notice"] .result-notice-subtitle {
-  font-size: 11px;
-  line-height: 1.2;
+  font-family: var(--font-report-body);
+}
+
+.print-page-preview[data-report="result-notice"] .result-notice-subtitle {
+  margin-top: 0;
 }
 
 .print-page-preview[data-report="result-notice"] .result-notice-signature {
@@ -772,11 +786,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="result-notice"][data-orientation="landscape"]
   .result-notice-title {
   font-size: 16px;
-}
-
-.print-page-preview[data-report="result-notice"][data-orientation="landscape"]
-  .result-notice-subtitle {
-  font-size: 9px;
 }
 
 .print-page-preview[data-report="result-notice"][data-orientation="landscape"]
@@ -807,8 +816,16 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-size: 14px;
 }
 
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-exam-name,
 .print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-subtitle {
-  font-size: 8px;
+  font-size: 10px;
+}
+
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"][data-orientation="landscape"]
+  .result-notice-exam-name,
+.print-page-preview[data-report="result-notice"][data-paper-size="a5"][data-orientation="landscape"]
+  .result-notice-subtitle {
+  font-size: 9px;
 }
 
 .print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-table {
@@ -1087,7 +1104,10 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="result-notice"] .result-notice-rank-cell {
   padding-left: 4px !important;
   padding-right: 4px !important;
-  font-size: 1.08em;
+  /* No font-size override - this cell keeps the same text-base (1rem) size
+     as the rest of the row. An em value here was relative to the
+     compacted table font-size (11.5px), not to text-base's 1rem, so ১ম/২য়/
+     ৩য় rendered visibly smaller than the neighboring cells. */
   line-height: 1.4 !important;
   white-space: nowrap !important;
   word-break: normal !important;
@@ -1099,17 +1119,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-size: 8.5px !important;
 }
 
-
-/* Final academic-result and sidebar refinements. */
-.print-page-preview[data-report="academic-result"] .academic-result-table th {
-  font-weight: 400 !important;
-}
-
-.print-page-preview[data-report="academic-result"] .academic-result-standard-header,
-.print-page-preview[data-report="academic-result"] .academic-result-subject-serial,
-.print-page-preview[data-report="academic-result"] .academic-result-subject-name {
-  font-weight: 400 !important;
-}
 
 .print-page-preview[data-report="academic-result"] .academic-result-student-name-header {
   text-align: center !important;

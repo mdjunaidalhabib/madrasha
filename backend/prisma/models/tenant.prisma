@@ -49,6 +49,14 @@ model Madrasa {
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
   admitCardRules         String? @map("admit_card_rules") @db.Text
 
+  idCardDesign           String? @map("id_card_design") @db.VarChar(20)
+  idCardBackgroundImage  String? @map("id_card_background_image") @db.Text
+
+  admitCardDesign          String? @map("admit_card_design") @db.VarChar(20)
+  admitCardBackgroundImage String? @map("admit_card_background_image") @db.Text
+  letterDesign             String? @map("letter_design") @db.VarChar(20)
+  letterBackgroundImage    String? @map("letter_background_image") @db.Text
+
   subscriptions         MadrasaSubscription[]
   subscriptionPayments  SubscriptionPayment[]
   madrasaDivisions      MadrasaDivision[]

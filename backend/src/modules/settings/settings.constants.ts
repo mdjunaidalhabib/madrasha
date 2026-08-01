@@ -33,3 +33,8 @@ export const BRANDING_IMAGE_FIELDS: Record<string, "reportLogo" | "reportBanner"
   report_banner: "reportBanner",
   report_watermark: "reportWatermark",
 };
+
+// Shared by id-card, admit-card and letter (sanad/testimonial/transfer)
+// design settings — all three use the same 4-way preset/custom choice.
+export const DOCUMENT_DESIGNS = ["classic", "minimal", "arch", "custom"] as const;
+export const DEFAULT_DOCUMENT_DESIGN = "classic";

@@ -74,3 +74,63 @@ export const updateDocumentTemplates = async (req: Request, res: Response) => {
     respondError(res, error);
   }
 };
+
+export const getIdCardDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getIdCardDesign(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateIdCardDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    await settingsService.updateIdCardDesign(madrasa_id, req.body);
+    res.json({ message: "আইডি কার্ড ডিজাইন সেভ হয়েছে" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const getAdmitCardDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getAdmitCardDesign(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateAdmitCardDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    await settingsService.updateAdmitCardDesign(madrasa_id, req.body);
+    res.json({ message: "প্রবেশপত্র ডিজাইন সেভ হয়েছে" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const getLetterDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getLetterDesign(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateLetterDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    await settingsService.updateLetterDesign(madrasa_id, req.body);
+    res.json({ message: "ডিজাইন সেভ হয়েছে" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};

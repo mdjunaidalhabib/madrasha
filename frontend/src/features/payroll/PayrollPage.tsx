@@ -3,6 +3,7 @@ import { payrollApi, type PayrollStatus } from "../../services/phase2Api";
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type PayrollRow = {
   id: number;
@@ -159,7 +160,7 @@ const PayrollPage = () => {
         {/* List */}
         <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
           {loading ? (
-            <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonList items={6} />
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500">
               এই মাসে এখনো কোনো পেরোল তৈরি করা হয়নি

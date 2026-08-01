@@ -9,6 +9,13 @@ import {
   UpsertWebsiteSettingsRequestDto,
 } from "./website.dto";
 import { DEFAULT_THEME_COLOR, VALID_WEBSITE_STATUSES } from "./website.constants";
+import {
+  toMadrasaApiDto,
+  toWebsiteGalleryApiDto,
+  toWebsiteNoticeApiDto,
+  toWebsitePageApiDto,
+  toWebsiteSettingsApiDto,
+} from "./website.mapper";
 
 export const resolveTenantId = (req: Request): number =>
   Number((req as any).tenant?.madrasa_id || req.body.madrasa_id || req.query.madrasa_id);
@@ -41,7 +48,14 @@ export class WebsiteService {
       this.repository.findPublishedGallery(madrasa.id),
     ]);
 
-    return { madrasa, settings: settings || {}, pages, notices, teachers, gallery };
+    return {
+      madrasa: toMadrasaApiDto(madrasa),
+      settings: toWebsiteSettingsApiDto(settings),
+      pages: pages.map(toWebsitePageApiDto),
+      notices: notices.map(toWebsiteNoticeApiDto),
+      teachers,
+      gallery: gallery.map(toWebsiteGalleryApiDto),
+    };
   }
 
   async getWebsiteSettings(madrasaId: number) {
@@ -54,11 +68,11 @@ export class WebsiteService {
     ]);
 
     return {
-      madrasa: madrasa || null,
-      settings: settings || null,
-      pages,
-      notices,
-      gallery,
+      madrasa: toMadrasaApiDto(madrasa),
+      settings: settings ? toWebsiteSettingsApiDto(settings) : null,
+      pages: pages.map(toWebsitePageApiDto),
+      notices: notices.map(toWebsiteNoticeApiDto),
+      gallery: gallery.map(toWebsiteGalleryApiDto),
     };
   }
 

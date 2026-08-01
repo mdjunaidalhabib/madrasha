@@ -9,6 +9,7 @@ import {
   ReportWatermark,
 } from "../../components/Report/ReportBranding";
 import { logger } from "../../utils/logger";
+import { SkeletonText } from "../../components/ui/Skeleton";
 
 type Row = { period: string; total_income: number | string; total_expense: number | string };
 
@@ -136,11 +137,13 @@ export default function ReportPage() {
           </thead>
           <tbody className="text-sm">
             {loading ? (
-              <tr>
-                <td className="px-5 py-8 text-center text-slate-500" colSpan={4}>
-                  রিপোর্ট লোড হচ্ছে...
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skeleton-${i}`}>
+                  <td className="px-5 py-4" colSpan={4}>
+                    <SkeletonText />
+                  </td>
+                </tr>
+              ))
             ) : error ? (
               <tr>
                 <td className="px-5 py-8 text-center text-rose-600" colSpan={4}>

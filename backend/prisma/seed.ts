@@ -332,16 +332,13 @@ async function main() {
       { name: "Mojizate Rasul", nameBn: "মুজিযাতে রাসূল" },
     ],
     "kitab/Taisir": [
-      { name: "Taisirul Mubtadi", nameBn: "তাইসিরুল মুবতাদী" },
       { name: "Talimul Islam 4", nameBn: "তালিমুল ইসলাম ৪" },
       { name: "Urdu Tesri", nameBn: "উর্দু তেসরী" },
-      { name: "Farsi Poheli", nameBn: "ফার্সি পহেলি" },
       { name: "Eso Arabi Shikhi 1", nameBn: "এসো আরবি শিখি ১" },
       { name: "Bangla", nameBn: "বাংলা" },
       { name: "English & Grammar", nameBn: "ইংরেজি ও গ্রামার" },
       { name: "Gonit", nameBn: "গণিত" },
-      { name: "Itihas", nameBn: "ইতিহাস" },
-      { name: "Bhugol", nameBn: "ভূগোল" },
+      { name: "Itihas O Bhugol", nameBn: "ইতিহাস ও ভূগোল" },
     ],
     "kitab/Mizan": [
       { name: "Mizanus Sarf", nameBn: "মীযানুস সারফ" },

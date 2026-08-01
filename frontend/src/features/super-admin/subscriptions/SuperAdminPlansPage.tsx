@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "../../../components/ui/Modal";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import { SkeletonList, SkeletonTable } from "../../../components/ui/Skeleton";
 import { useToastStore } from "../../../store/toastStore";
 
 import {
@@ -93,18 +94,6 @@ function IconButton({
     <button type="button" onClick={onClick} title={title} className={cls}>
       {children}
     </button>
-  );
-}
-
-function SkeletonRow() {
-  return (
-    <tr className="animate-pulse">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <td key={i} className="px-4 py-3">
-          <div className="h-3 w-full rounded bg-gray-100" />
-        </td>
-      ))}
-    </tr>
   );
 }
 
@@ -417,13 +406,7 @@ export default function SuperAdminPlansPage() {
 
       {/* Mobile card list (hidden on md+) */}
       <div className="mt-5 space-y-3 md:hidden">
-        {loading &&
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-2xl border bg-white p-4">
-              <div className="h-3 w-2/3 rounded bg-gray-100" />
-              <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
-            </div>
-          ))}
+        {loading && <SkeletonList items={3} />}
 
         {!loading && tab === "plans" && rows.length === 0 && (
           <div className="rounded-2xl border bg-white p-6 text-center">
@@ -533,8 +516,11 @@ export default function SuperAdminPlansPage() {
 
       {/* Desktop table (hidden below md) */}
       <div className="mt-5 hidden overflow-hidden rounded-2xl border bg-white md:block">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        {loading ? (
+          <SkeletonTable rows={6} columns={8} className="rounded-none border-0 shadow-none" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs text-gray-600">
               <tr>
                 <th className="px-4 py-3">ID</th>
@@ -549,16 +535,7 @@ export default function SuperAdminPlansPage() {
             </thead>
 
             <tbody className="divide-y">
-              {loading && (
-                <>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <SkeletonRow key={i} />
-                  ))}
-                </>
-              )}
-
-              {!loading &&
-                tab === "plans" &&
+              {tab === "plans" &&
                 rows.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50/60">
                     <td className="px-4 py-3 text-gray-700">{p.id}</td>
@@ -595,8 +572,7 @@ export default function SuperAdminPlansPage() {
                   </tr>
                 ))}
 
-              {!loading &&
-                tab === "trash" &&
+              {tab === "trash" &&
                 trashRows.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50/60">
                     <td className="px-4 py-3 text-gray-700">{p.id}</td>
@@ -635,7 +611,7 @@ export default function SuperAdminPlansPage() {
                   </tr>
                 ))}
 
-              {!loading && tab === "plans" && rows.length === 0 && (
+              {tab === "plans" && rows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center">
                     <div className="text-sm font-medium text-gray-800">কোনো Plan পাওয়া যায়নি</div>
@@ -644,7 +620,7 @@ export default function SuperAdminPlansPage() {
                 </tr>
               )}
 
-              {!loading && tab === "trash" && trashRows.length === 0 && (
+              {tab === "trash" && trashRows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center">
                     <div className="text-sm font-medium text-gray-800">Trash খালি</div>
@@ -655,6 +631,7 @@ export default function SuperAdminPlansPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Create/Edit Modal */}

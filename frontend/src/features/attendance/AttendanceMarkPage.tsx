@@ -4,6 +4,7 @@ import { cachedGet } from "../../services/api";
 import { attendanceApi, type AttendanceStatus } from "../../services/phase1Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type Division = {
   division_id: number;
@@ -318,8 +319,8 @@ const AttendanceMarkPage = () => {
             উপস্থিতি নেওয়ার জন্য প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
           </div>
         ) : studentsLoading ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
-            লোড হচ্ছে...
+          <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+            <SkeletonList items={6} />
           </div>
         ) : studentsInClass.length === 0 ? (
           <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">

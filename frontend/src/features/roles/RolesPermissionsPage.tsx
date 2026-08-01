@@ -3,6 +3,7 @@ import { roleApi, type PermissionCatalogItem, type RoleItem } from "../../servic
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -162,7 +163,7 @@ const RolesPermissionsPage = () => {
         {/* Role list */}
         <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
           {loading ? (
-            <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonList items={6} />
           ) : roles.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500">কোনো রোল নেই</div>
           ) : (

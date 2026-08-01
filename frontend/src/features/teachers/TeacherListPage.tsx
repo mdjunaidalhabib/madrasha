@@ -4,6 +4,7 @@ import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
+import { SkeletonTable } from "../../components/ui/Skeleton";
 
 type Division = {
   division_id: number | string;
@@ -232,7 +233,7 @@ const TeacherListPage = () => {
 
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {loading ? (
-            <div className="p-6 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonTable rows={8} columns={8} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[950px] border-collapse text-center">

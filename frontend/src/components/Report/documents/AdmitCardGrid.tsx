@@ -1,6 +1,12 @@
-import { cellValue } from "../../../utils/reportUtils";
+import { useEffect } from "react";
+import { useBrandingStore } from "../../../store/brandingStore";
+import { useAdmitCardDesignStore } from "../../../store/admitCardDesignStore";
 import { useDocumentTemplate } from "./engine/useDocumentTemplate";
-import { DEFAULT_ADMIT_CARD_RULES, renderTemplateText } from "../../../utils/documentTemplates";
+import { DEFAULT_ADMIT_CARD_RULES } from "../../../utils/documentTemplates";
+import AdmitCardClassic from "./admit-card-designs/AdmitCardClassic";
+import AdmitCardMinimal from "./admit-card-designs/AdmitCardMinimal";
+import AdmitCardArch from "./admit-card-designs/AdmitCardArch";
+import AdmitCardCustom from "./admit-card-designs/AdmitCardCustom";
 
 type AdmitCardGridProps = {
   rows: Record<string, any>[];
@@ -9,55 +15,49 @@ type AdmitCardGridProps = {
 const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
   const rulesTemplate = useDocumentTemplate("admit_card_rules", DEFAULT_ADMIT_CARD_RULES);
 
+  const branding = useBrandingStore((s) => s.branding);
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+  const design = useAdmitCardDesignStore((s) => s.design);
+  const fetchDesign = useAdmitCardDesignStore((s) => s.fetchDesign);
+
+  useEffect(() => {
+    fetchBranding();
+    fetchDesign();
+  }, [fetchBranding, fetchDesign]);
+
+  const madrasaName = branding?.name || "";
+  const designKey = design?.admit_card_design || "classic";
+  const backgroundImage = design?.admit_card_background_image;
+
   return (
     <div className="report-admit-card-grid grid gap-4">
-      {rows.map((row, index) => (
-        <div
-          key={`admit-card-${row.id || index}`}
-          className="print-page-break rounded-xl border-2 border-slate-800 bg-white p-5"
-        >
-          <div className="text-center">
-            <p className="text-xs text-slate-500">بسم الله الرحمن الرحيم</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900">প্রবেশপত্র</h3>
-            <p className="text-xs text-slate-500">{cellValue(row, "exam_name")}</p>
-          </div>
+      {rows.map((row, index) => {
+        const key = `admit-card-${row.id || index}`;
 
-          {/* Student data fields are always fixed to the real record — never editable text */}
-          <div className="mt-4 space-y-1 text-sm text-slate-700">
-            <p>
-              <b>নাম:</b> {cellValue(row, "student_name")}
-            </p>
-            <p>
-              <b>পিতা:</b> {cellValue(row, "father_name")}
-            </p>
-            <p>
-              <b>রেজিস্ট্রেশন নম্বর:</b> {cellValue(row, "registration_no")}
-            </p>
-            <p>
-              <b>রোল নম্বর:</b> {cellValue(row, "roll")}
-            </p>
-            <p>
-              <b>শ্রেণি:</b> {cellValue(row, "class_name")}
-            </p>
-            <p>
-              <b>বিভাগ:</b> {cellValue(row, "division_name")}
-            </p>
-            <p>
-              <b>সেশন:</b> {cellValue(row, "academic_year")}
-            </p>
-          </div>
-
-          {/* Rules/notice text is admin-editable via Document Template settings */}
-          <div className="mt-4 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-xs leading-6 text-slate-600">
-            {renderTemplateText(rulesTemplate, row)}
-          </div>
-
-          <div className="mt-8 flex justify-between text-xs text-slate-600">
-            <span>পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</span>
-            <span>প্রধান শিক্ষকের স্বাক্ষর</span>
-          </div>
-        </div>
-      ))}
+        if (designKey === "minimal") {
+          return (
+            <AdmitCardMinimal key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
+          );
+        }
+        if (designKey === "arch") {
+          return (
+            <AdmitCardArch key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
+          );
+        }
+        if (designKey === "custom" && backgroundImage) {
+          return (
+            <AdmitCardCustom
+              key={key}
+              row={row}
+              rulesTemplate={rulesTemplate}
+              backgroundImage={backgroundImage}
+            />
+          );
+        }
+        return (
+          <AdmitCardClassic key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
+        );
+      })}
     </div>
   );
 };

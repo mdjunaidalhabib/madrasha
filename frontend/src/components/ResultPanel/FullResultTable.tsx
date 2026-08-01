@@ -1,6 +1,7 @@
 "use client";
 
 import { useConfirmStore } from "../../store/confirmStore";
+import { SkeletonTable } from "../ui/Skeleton";
 
 interface SummaryMark {
   book_id: number;
@@ -151,10 +152,7 @@ export default function FullResultTable({
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-          <span className="text-sm">লোড হচ্ছে...</span>
-        </div>
+        <SkeletonTable rows={8} columns={subjectList.length + 9} />
       ) : (
       <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
       <table className="w-full table-fixed min-w-[900px] border text-xs sm:text-sm">

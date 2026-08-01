@@ -29,7 +29,7 @@ const reports: ReportMenuItem[] = [
 
   {
     key: "academic-result-notice",
-    title: "রেজাল্ট নোটিশ",
+    title: "ফলাফল সারসংক্ষেপ",
     subtitle: "প্রকাশিত ফলাফলের প্রিন্টযোগ্য নোটিশ",
     endpoint: "/reports/academic/result-notice",
     printable: "result-notice",
@@ -71,7 +71,7 @@ const reports: ReportMenuItem[] = [
     printable: "daily-attendance-register",
     columns: [
       { header: "তারিখ", key: "date", className: midCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
+      { header: "শিক্ষার্থীর নাম", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "স্ট্যাটাস", key: "status", className: smallCol },
     ],
@@ -84,7 +84,7 @@ const reports: ReportMenuItem[] = [
     printable: "digital-attendance",
     columns: [
       { header: "তারিখ", key: "date", className: midCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
+      { header: "শিক্ষার্থীর নাম", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "ইন টাইম", key: "check_in", className: smallCol },
       { header: "আউট টাইম", key: "check_out", className: smallCol },
@@ -96,7 +96,7 @@ const reports: ReportMenuItem[] = [
 const AcademicReportPage = () => (
   <ReportShell
     pageTitle="একাডেমিক রিপোর্ট"
-    pageSubtitle="ফলাফল, রেজাল্ট নোটিশ, রুটিন এবং হাজিরা খাতা এক জায়গায়।"
+    pageSubtitle="ফলাফল, ফলাফল সারসংক্ষেপ, রুটিন এবং হাজিরা খাতা এক জায়গায়।"
     accentTitle="Academic Reports"
     reports={reports}
   />

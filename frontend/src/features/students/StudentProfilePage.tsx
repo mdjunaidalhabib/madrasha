@@ -8,6 +8,7 @@ import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfi
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 import { logger } from "../../utils/logger";
+import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 
@@ -122,7 +123,13 @@ const StudentProfilePage = () => {
     });
   };
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading)
+    return (
+      <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+        <SkeletonCard lines={6} />
+        <SkeletonCard lines={4} />
+      </div>
+    );
   if (!student) return <p className="p-6">No student found</p>;
 
   return (

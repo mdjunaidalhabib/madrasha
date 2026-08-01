@@ -16,7 +16,7 @@ const reports: ReportMenuItem[] = [
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
+      { header: "শিক্ষার্থীর নাম", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "বিভাগ", key: "division_name", className: midCol },
       { header: "পরীক্ষা", key: "exam_name", className: midCol },
@@ -33,7 +33,7 @@ const reports: ReportMenuItem[] = [
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
-      { header: "শিক্ষার্থী", key: "student_name", className: nameCol },
+      { header: "শিক্ষার্থীর নাম", key: "student_name", className: nameCol },
       { header: "শ্রেণি", key: "class_name", className: smallCol },
       { header: "বিভাগ", key: "division_name", className: midCol },
       { header: "পরীক্ষা", key: "exam_name", className: midCol },

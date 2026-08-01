@@ -1,3 +1,5 @@
+import { SkeletonList } from "../ui/Skeleton";
+
 interface Division {
   division_id: number;
   division_name_bn: string;
@@ -61,11 +63,7 @@ export default function OverviewGrid({
   onSelect,
 }: Props) {
   if (loading) {
-    return (
-      <div className="bg-white shadow-md rounded-xl p-6 text-center text-blue-500">
-        লোড হচ্ছে...
-      </div>
-    );
+    return <SkeletonList items={6} />;
   }
 
   if (exams.length === 0 || divisions.length === 0) {

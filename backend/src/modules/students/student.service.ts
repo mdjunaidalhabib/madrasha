@@ -419,7 +419,7 @@ export class StudentService {
 
     assertRollIsServerManaged(body);
 
-    return this.repository.runTransaction(async (tx) => {
+    const { count, guardianPhone, guardianFallbackName } = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
       const existing = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
       if (!existing) throw new StudentNotFoundError();
@@ -466,8 +466,26 @@ export class StudentService {
       }
 
       const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, data);
-      return result.count;
+      return {
+        count: result.count,
+        // Resolve the *current* phone: this request's value if it touched
+        // the field, otherwise whatever was already on file. That second
+        // case is what backfills a guardian account for older students who
+        // already had a phone number saved before this account-linking
+        // existed, the first time anyone edits them.
+        guardianPhone: ("guardianPhone" in data ? data.guardianPhone : existing.guardianPhone) as
+          | string
+          | null,
+        guardianFallbackName: data.fatherName || data.motherName || existing.fatherName || existing.motherName,
+      };
     });
+
+    // Outside the transaction, same as admitStudent: guardian provisioning
+    // does its own writes and shouldn't be nested in the student-row lock.
+    // ensureGuardianForStudent no-ops safely when guardianPhone is empty.
+    await guardianService.ensureGuardianForStudent(madrasaId, id, guardianPhone, guardianFallbackName);
+
+    return count;
   }
 
   async getNextRoll(

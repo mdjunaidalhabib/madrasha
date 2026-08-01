@@ -1,4 +1,5 @@
 import { ReportMenuItem } from "../../../src/features/reports/types";
+import { SkeletonTable } from "../ui/Skeleton";
 import AcademicResultPrint from "./academic/AcademicResultPrint";
 import ClassRoutinePrint from "./academic/ClassRoutinePrint";
 import DailyAttendancePrint from "./academic/DailyAttendancePrint";
@@ -40,8 +41,8 @@ const ReportContent = ({
 }: ReportContentProps) => {
   if (loading) {
     return (
-      <div className="flex h-56 items-center justify-center border border-black bg-white text-sm text-slate-500">
-        রিপোর্ট লোড হচ্ছে...
+      <div className="border border-black bg-white p-4">
+        <SkeletonTable rows={8} columns={6} className="border-0 shadow-none" />
       </div>
     );
   }

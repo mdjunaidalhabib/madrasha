@@ -7,6 +7,7 @@ import {
 } from "../../services/phase4Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 const STATUS_LABELS: Record<NotificationStatus, { label: string; className: string }> = {
   PENDING: { label: "প্রক্রিয়াধীন", className: "bg-gray-100 text-gray-600" },
@@ -193,7 +194,7 @@ const NotificationsPage = () => {
           </div>
 
           {loading ? (
-            <div className="py-8 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonList items={6} />
           ) : logs.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-500">কোনো ইতিহাস নেই</div>
           ) : (

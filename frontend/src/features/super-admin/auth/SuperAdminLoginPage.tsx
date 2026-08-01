@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import adminApi from "../../../services/adminApi";
 import { useAdminAuthStore } from "../../../store/adminAuthStore";
 import Button from "../../../components/ui/Button";
@@ -9,6 +10,7 @@ import { useToastStore } from "../../../store/toastStore";
 export default function SuperAdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const setAuth = useAdminAuthStore((s) => s.setAuth);
@@ -50,12 +52,23 @@ export default function SuperAdminLoginPage() {
 
         <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
-        <Input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="relative">
+          <Input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         <Button onClick={handleLogin} disabled={loading} className="w-full">
           {loading ? "Logging in..." : "Login"}

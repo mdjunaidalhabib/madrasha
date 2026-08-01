@@ -6,6 +6,7 @@ import {
 } from "../../services/phase2Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 const METHOD_TYPE_LABELS: Record<PaymentMethodType, string> = {
   CASH: "নগদ",
@@ -269,7 +270,7 @@ const PaymentMethodSettingsPage = () => {
         {/* List */}
         <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
           {loading ? (
-            <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+            <SkeletonList items={6} />
           ) : methods.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500">
               এখনো কোনো পেমেন্ট পদ্ধতি যোগ করা হয়নি

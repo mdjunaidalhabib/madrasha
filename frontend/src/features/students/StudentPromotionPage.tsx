@@ -4,6 +4,7 @@ import { promotionApi, type PromotionPreviewRow } from "../../services/phase1Api
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type Division = {
   division_id: number;
@@ -279,65 +280,71 @@ const StudentPromotionPage = () => {
         </div>
 
         {/* Preview + decisions */}
-        {previewed && (
+        {(previewLoading || previewed) && (
           <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-700">
-                ২. প্রতিটি ছাত্রের সিদ্ধান্ত পর্যালোচনা করুন
-              </h2>
-              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                <span>মোট: {rows.length}</span>
-                <span className="text-green-700">উত্তীর্ণ: {summary.PROMOTED}</span>
-                <span className="text-red-700">অকৃতকার্য: {summary.RETAINED}</span>
-                <span className="text-gray-700">স্থানান্তরিত: {summary.TRANSFERRED}</span>
-              </div>
-            </div>
-
-            {rows.length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-500">
-                এই শ্রেণি ও শিক্ষাবর্ষে কোনো সক্রিয় ছাত্র পাওয়া যায়নি
-              </div>
+            {previewLoading ? (
+              <SkeletonList items={6} />
             ) : (
-              <div className="flex flex-col gap-2">
-                {rows.map((row) => (
-                  <div
-                    key={row.student_id}
-                    className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-10 shrink-0 text-sm font-semibold text-gray-500">
-                        {row.roll ?? "-"}
-                      </span>
-                      <span className="text-sm font-medium text-gray-800">{row.name_bn}</span>
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs ${
-                          row.result_status === "FAIL"
-                            ? "bg-red-100 text-red-700"
-                            : row.result_status === "PASS"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {RESULT_LABELS[row.result_status] || row.result_status}
-                      </span>
-                    </div>
-
-                    <select
-                      value={row.status}
-                      onChange={(event) =>
-                        setRowStatus(row.student_id, event.target.value as DecisionStatus)
-                      }
-                      className="h-8 w-full rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[220px]"
-                    >
-                      {(Object.keys(STATUS_LABELS) as DecisionStatus[]).map((status) => (
-                        <option key={status} value={status}>
-                          {STATUS_LABELS[status]}
-                        </option>
-                      ))}
-                    </select>
+              <>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-gray-700">
+                    ২. প্রতিটি ছাত্রের সিদ্ধান্ত পর্যালোচনা করুন
+                  </h2>
+                  <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                    <span>মোট: {rows.length}</span>
+                    <span className="text-green-700">উত্তীর্ণ: {summary.PROMOTED}</span>
+                    <span className="text-red-700">অকৃতকার্য: {summary.RETAINED}</span>
+                    <span className="text-gray-700">স্থানান্তরিত: {summary.TRANSFERRED}</span>
                   </div>
-                ))}
-              </div>
+                </div>
+
+                {rows.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-gray-500">
+                    এই শ্রেণি ও শিক্ষাবর্ষে কোনো সক্রিয় ছাত্র পাওয়া যায়নি
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {rows.map((row) => (
+                      <div
+                        key={row.student_id}
+                        className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-10 shrink-0 text-sm font-semibold text-gray-500">
+                            {row.roll ?? "-"}
+                          </span>
+                          <span className="text-sm font-medium text-gray-800">{row.name_bn}</span>
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs ${
+                              row.result_status === "FAIL"
+                                ? "bg-red-100 text-red-700"
+                                : row.result_status === "PASS"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {RESULT_LABELS[row.result_status] || row.result_status}
+                          </span>
+                        </div>
+
+                        <select
+                          value={row.status}
+                          onChange={(event) =>
+                            setRowStatus(row.student_id, event.target.value as DecisionStatus)
+                          }
+                          className="h-8 w-full rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[220px]"
+                        >
+                          {(Object.keys(STATUS_LABELS) as DecisionStatus[]).map((status) => (
+                            <option key={status} value={status}>
+                              {STATUS_LABELS[status]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

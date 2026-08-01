@@ -53,7 +53,7 @@ const getCapacity = (report: ReportMenuItem, paperSize: PaperSize, orientation: 
   }
 
   if (printable === "id-card") {
-    return { "a4-portrait": 6, "a4-landscape": 6, "a5-portrait": 2, "a5-landscape": 4 }[mode] || 6;
+    return { "a4-portrait": 9, "a4-landscape": 8, "a5-portrait": 4, "a5-landscape": 3 }[mode] || 9;
   }
 
   if (printable === "admit-card") {
@@ -287,7 +287,7 @@ const PaginatedReportPreview = ({
             >
               <ReportBackground />
               <ReportWatermark />
-              {!hideBrandHeader && <ReportBrandHeader />}
+              {!hideBrandHeader && report.printable !== "id-card" && <ReportBrandHeader />}
               <div className="report-content-body">
                 <ReportContent
                   loading={loading}

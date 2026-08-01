@@ -13,3 +13,18 @@ export interface UpdateDocumentTemplatesRequestDto {
   transfer_letter_template?: string | null;
   admit_card_rules?: string | null;
 }
+
+export interface UpdateIdCardDesignRequestDto {
+  id_card_design?: string;
+  id_card_background_image?: string | null;
+}
+
+export interface UpdateAdmitCardDesignRequestDto {
+  admit_card_design?: string;
+  admit_card_background_image?: string | null;
+}
+
+export interface UpdateLetterDesignRequestDto {
+  letter_design?: string;
+  letter_background_image?: string | null;
+}

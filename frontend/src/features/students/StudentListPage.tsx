@@ -4,6 +4,7 @@ import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
+import { SkeletonTable } from "../../components/ui/Skeleton";
 
 type Division = {
   division_id: number;
@@ -346,9 +347,7 @@ const StudentListPage = () => {
 
         {/* Loading state */}
         {loading ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-            লোড হচ্ছে...
-          </div>
+          <SkeletonTable rows={8} columns={9} />
         ) : filteredStudents.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
             কোন ছাত্র পাওয়া যায়নি

@@ -3,6 +3,7 @@ import adminApi from "../../../services/adminApi";
 import Button from "../../../components/ui/Button";
 import DeleteConfirmModal from "../../../components/super-admin/DeleteConfirmModal";
 import { useToastStore } from "../../../store/toastStore";
+import { SkeletonTable } from "../../../components/ui/Skeleton";
 
 export default function SuperAdminMadrasasTrashPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -70,7 +71,7 @@ export default function SuperAdminMadrasasTrashPage() {
       <h2 className="text-lg font-bold mb-4">Trash</h2>
 
       {loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <SkeletonTable rows={6} columns={4} />
       ) : !items.length ? (
         <p className="text-gray-500">Trash is empty</p>
       ) : (

@@ -55,6 +55,39 @@ export class SettingsRepository {
   updateDocumentTemplates(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
+
+  findIdCardDesign(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { idCardDesign: true, idCardBackgroundImage: true },
+    });
+  }
+
+  updateIdCardDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
+    return prisma.madrasa.update({ where: { id: madrasaId }, data });
+  }
+
+  findAdmitCardDesign(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { admitCardDesign: true, admitCardBackgroundImage: true },
+    });
+  }
+
+  updateAdmitCardDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
+    return prisma.madrasa.update({ where: { id: madrasaId }, data });
+  }
+
+  findLetterDesign(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { letterDesign: true, letterBackgroundImage: true },
+    });
+  }
+
+  updateLetterDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
+    return prisma.madrasa.update({ where: { id: madrasaId }, data });
+  }
 }
 
 export const settingsRepository = new SettingsRepository();

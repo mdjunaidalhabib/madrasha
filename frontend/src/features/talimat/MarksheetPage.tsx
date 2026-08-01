@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
+import { SkeletonCard } from "../../components/ui/Skeleton";
 
 export default function MarksheetPage() {
   const { student_id } = useParams();
@@ -13,7 +14,12 @@ export default function MarksheetPage() {
     })();
   }, [student_id]);
 
-  if (!data) return <div>Loading...</div>;
+  if (!data)
+    return (
+      <div className="p-3 sm:p-6">
+        <SkeletonCard lines={6} className="mx-auto max-w-3xl" />
+      </div>
+    );
 
   return (
     <div className="p-3 sm:p-6 print:p-0">

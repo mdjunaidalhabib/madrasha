@@ -12,6 +12,7 @@ import {
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -465,7 +466,7 @@ const FeeManagementPage = () => {
 
             <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
               {invoicesLoading ? (
-                <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+                <SkeletonList items={6} />
               ) : invoices.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">কোনো ইনভয়েস নেই</div>
               ) : (

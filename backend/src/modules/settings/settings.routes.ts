@@ -10,6 +10,12 @@ import {
   deleteBrandingImage,
   getDocumentTemplates,
   updateDocumentTemplates,
+  getIdCardDesign,
+  updateIdCardDesign,
+  getAdmitCardDesign,
+  updateAdmitCardDesign,
+  getLetterDesign,
+  updateLetterDesign,
 } from "./settings.controller";
 
 const router = Router();
@@ -23,5 +29,14 @@ router.delete("/branding/:field", tenantMiddleware, authMiddleware, deleteBrandi
 
 router.get("/document-templates", tenantMiddleware, authMiddleware, getDocumentTemplates);
 router.put("/document-templates", tenantMiddleware, authMiddleware, updateDocumentTemplates);
+
+router.get("/id-card-design", tenantMiddleware, authMiddleware, getIdCardDesign);
+router.put("/id-card-design", tenantMiddleware, authMiddleware, updateIdCardDesign);
+
+router.get("/admit-card-design", tenantMiddleware, authMiddleware, getAdmitCardDesign);
+router.put("/admit-card-design", tenantMiddleware, authMiddleware, updateAdmitCardDesign);
+
+router.get("/letter-design", tenantMiddleware, authMiddleware, getLetterDesign);
+router.put("/letter-design", tenantMiddleware, authMiddleware, updateLetterDesign);
 
 export default router;

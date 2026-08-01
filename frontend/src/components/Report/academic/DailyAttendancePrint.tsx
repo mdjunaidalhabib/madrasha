@@ -60,9 +60,9 @@ const DailyAttendancePrint = ({
           <table className="w-full table-fixed border-collapse text-center">
             <thead>
               <tr>
-                <th className="w-14 border border-slate-900 p-1 text-[12px]">রোল</th>
-                <th className="w-16 border border-slate-900 p-1 text-[11px]">রেজিঃ নম্বর</th>
-                <th className="w-36 border border-slate-900 p-1 text-[13px]">শিক্ষার্থীর নাম</th>
+                <th className="w-14 border border-slate-900 p-1 text-base">রোল</th>
+                <th className="w-16 border border-slate-900 p-1 text-base">রেজিঃ নম্বর</th>
+                <th className="w-36 border border-slate-900 p-1 text-base">শিক্ষার্থীর নাম</th>
                 {days.map((day) => (
                   <th key={day} className="h-16 w-[12px] border border-slate-900 p-0 align-middle">
                     <span className="inline-block -rotate-90 whitespace-nowrap text-[9px] leading-none">
@@ -80,13 +80,13 @@ const DailyAttendancePrint = ({
             <tbody>
               {group.students.map((row, index) => (
                 <tr key={`daily-${row.student_id || row.id || index}`}>
-                  <td className="h-7 border border-slate-900 p-0 text-[12px]">
+                  <td className="h-7 border border-slate-900 p-0 text-base">
                     {cellValue(row, "roll")}
                   </td>
-                  <td className="h-7 border border-slate-900 p-0 text-[12px]">
+                  <td className="h-7 border border-slate-900 p-0 text-base">
                     {cellValue(row, "registration_no")}
                   </td>
-                  <td className="h-7 border border-slate-900 px-2 text-[12px] font-semibold">
+                  <td className="h-7 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
                     {cellValue(row, "student_name")}
                   </td>
                   {days.map((day) => (

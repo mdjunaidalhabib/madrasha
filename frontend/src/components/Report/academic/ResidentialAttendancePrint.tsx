@@ -136,15 +136,15 @@ const ResidentialAttendancePrint = ({
             {groupIndex === 0 && (
               <thead>
                 <tr>
-                  <th className="w-12 border border-slate-900 p-0.5 text-[12px] font-bold">
+                  <th className="w-12 border border-slate-900 p-0.5 text-base font-bold">
                     রোল
                   </th>
 
-                  <th className="w-16 border border-slate-900 p-0.5 text-[11px] font-bold">
+                  <th className="w-16 border border-slate-900 p-0.5 text-base font-bold">
                     রেজিঃ নম্বর
                   </th>
 
-                  <th className="w-32 border border-slate-900 p-0.5 text-[14px] font-bold">
+                  <th className="w-32 border border-slate-900 p-0.5 text-base font-bold">
                     শিক্ষার্থীর নাম
                   </th>
 
@@ -165,15 +165,15 @@ const ResidentialAttendancePrint = ({
             <tbody>
               {group.students.map((row, index) => (
                 <tr key={`attendance-${groupIndex}-${row.id || index}`}>
-                  <td className="h-7 w-12 border border-slate-900 p-0 text-[13px]">
+                  <td className="h-7 w-12 border border-slate-900 p-0 text-base">
                     {cellValue(row, "roll")}
                   </td>
 
-                  <td className="h-7 w-16 border border-slate-900 p-0 text-[12px]">
+                  <td className="h-7 w-16 border border-slate-900 p-0 text-base">
                     {cellValue(row, "registration_no")}
                   </td>
 
-                  <td className="h-7 w-32 border border-slate-900 px-3 text-[14px] font-semibold">
+                  <td className="h-7 w-32 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
                     {cellValue(row, "student_name")}
                   </td>
 

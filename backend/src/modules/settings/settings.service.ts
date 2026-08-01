@@ -1,8 +1,20 @@
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { storageProvider } from "../../shared/storage";
 import { settingsRepository, SettingsRepository } from "./settings.repository";
-import { BrandingData, DocumentTemplatesData } from "./settings.types";
-import { UpdateBrandingRequestDto, UpdateDocumentTemplatesRequestDto } from "./settings.dto";
+import {
+  BrandingData,
+  DocumentTemplatesData,
+  IdCardDesignData,
+  AdmitCardDesignData,
+  LetterDesignData,
+} from "./settings.types";
+import {
+  UpdateBrandingRequestDto,
+  UpdateDocumentTemplatesRequestDto,
+  UpdateIdCardDesignRequestDto,
+  UpdateAdmitCardDesignRequestDto,
+  UpdateLetterDesignRequestDto,
+} from "./settings.dto";
 import {
   TEMPLATE_TOKENS,
   MAX_TEMPLATE_LENGTH,
@@ -10,7 +22,13 @@ import {
   MAX_MADRASA_ADDRESS_LENGTH,
   DEFAULT_WATERMARK_OPACITY,
   BRANDING_IMAGE_FIELDS,
+  DOCUMENT_DESIGNS,
+  DEFAULT_DOCUMENT_DESIGN,
 } from "./settings.constants";
+
+function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
+  return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
+}
 
 function isValidTextValue(value: unknown, maxLength: number): value is string | null {
   if (value === null || value === undefined || value === "") return true;
@@ -138,6 +156,111 @@ export class SettingsService {
         ? { transferLetterTemplate: transfer_letter_template }
         : {}),
       ...(admit_card_rules !== undefined ? { admitCardRules: admit_card_rules } : {}),
+    });
+  }
+
+  async getIdCardDesign(madrasaId: number): Promise<IdCardDesignData> {
+    const madrasa = await this.repository.findIdCardDesign(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    return {
+      id_card_design: madrasa.idCardDesign || DEFAULT_DOCUMENT_DESIGN,
+      id_card_background_image: madrasa.idCardBackgroundImage,
+    };
+  }
+
+  async updateIdCardDesign(madrasaId: number, body: UpdateIdCardDesignRequestDto) {
+    const { id_card_design, id_card_background_image } = body;
+
+    if (id_card_design !== undefined && !isValidDesignKey(id_card_design)) {
+      throw new BadRequestError("Invalid id card design");
+    }
+
+    if (id_card_background_image !== undefined && !storageProvider.isValidImage(id_card_background_image)) {
+      throw new BadRequestError("Invalid image for id_card_background_image");
+    }
+
+    await this.repository.updateIdCardDesign(madrasaId, {
+      ...(id_card_design !== undefined ? { idCardDesign: id_card_design } : {}),
+      ...(id_card_background_image !== undefined
+        ? {
+            idCardBackgroundImage:
+              id_card_background_image === null
+                ? null
+                : storageProvider.persistImage(id_card_background_image),
+          }
+        : {}),
+    });
+  }
+
+  async getAdmitCardDesign(madrasaId: number): Promise<AdmitCardDesignData> {
+    const madrasa = await this.repository.findAdmitCardDesign(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    return {
+      admit_card_design: madrasa.admitCardDesign || DEFAULT_DOCUMENT_DESIGN,
+      admit_card_background_image: madrasa.admitCardBackgroundImage,
+    };
+  }
+
+  async updateAdmitCardDesign(madrasaId: number, body: UpdateAdmitCardDesignRequestDto) {
+    const { admit_card_design, admit_card_background_image } = body;
+
+    if (admit_card_design !== undefined && !isValidDesignKey(admit_card_design)) {
+      throw new BadRequestError("Invalid admit card design");
+    }
+
+    if (
+      admit_card_background_image !== undefined &&
+      !storageProvider.isValidImage(admit_card_background_image)
+    ) {
+      throw new BadRequestError("Invalid image for admit_card_background_image");
+    }
+
+    await this.repository.updateAdmitCardDesign(madrasaId, {
+      ...(admit_card_design !== undefined ? { admitCardDesign: admit_card_design } : {}),
+      ...(admit_card_background_image !== undefined
+        ? {
+            admitCardBackgroundImage:
+              admit_card_background_image === null
+                ? null
+                : storageProvider.persistImage(admit_card_background_image),
+          }
+        : {}),
+    });
+  }
+
+  async getLetterDesign(madrasaId: number): Promise<LetterDesignData> {
+    const madrasa = await this.repository.findLetterDesign(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    return {
+      letter_design: madrasa.letterDesign || DEFAULT_DOCUMENT_DESIGN,
+      letter_background_image: madrasa.letterBackgroundImage,
+    };
+  }
+
+  async updateLetterDesign(madrasaId: number, body: UpdateLetterDesignRequestDto) {
+    const { letter_design, letter_background_image } = body;
+
+    if (letter_design !== undefined && !isValidDesignKey(letter_design)) {
+      throw new BadRequestError("Invalid letter design");
+    }
+
+    if (letter_background_image !== undefined && !storageProvider.isValidImage(letter_background_image)) {
+      throw new BadRequestError("Invalid image for letter_background_image");
+    }
+
+    await this.repository.updateLetterDesign(madrasaId, {
+      ...(letter_design !== undefined ? { letterDesign: letter_design } : {}),
+      ...(letter_background_image !== undefined
+        ? {
+            letterBackgroundImage:
+              letter_background_image === null
+                ? null
+                : storageProvider.persistImage(letter_background_image),
+          }
+        : {}),
     });
   }
 }

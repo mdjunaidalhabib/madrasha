@@ -3,6 +3,7 @@ import { cachedGet } from "../../services/api";
 import { classRoutineApi, examRoutineApi } from "../../services/phase1Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -420,7 +421,7 @@ const ClassExamRoutinePage = () => {
                   রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
                 </div>
               ) : listLoading ? (
-                <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+                <SkeletonList items={6} />
               ) : sortedClassRoutines.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">
                   এই শ্রেণিতে এখনো কোনো রুটিন যোগ করা হয়নি
@@ -518,7 +519,7 @@ const ClassExamRoutinePage = () => {
                   রুটিন দেখতে প্রথমে পরীক্ষা এবং/অথবা শ্রেণি নির্বাচন করুন
                 </div>
               ) : listLoading ? (
-                <div className="py-10 text-center text-sm text-gray-500">লোড হচ্ছে...</div>
+                <SkeletonList items={6} />
               ) : sortedExamRoutines.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">
                   এখনো কোনো পরীক্ষার রুটিন যোগ করা হয়নি

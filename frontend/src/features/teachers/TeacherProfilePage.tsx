@@ -8,6 +8,7 @@ import TeacherAddressProfile from "../../components/teacherProfile/TeacherAddres
 import ImageUploadProfile from "../../components/teacherProfile/ImageUploadProfile";
 
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { SkeletonCard } from "../../components/ui/Skeleton";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
@@ -150,7 +151,13 @@ const TeacherProfilePage = () => {
      LOADING STATE
   ============================= */
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading)
+    return (
+      <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+        <SkeletonCard lines={6} />
+        <SkeletonCard lines={4} />
+      </div>
+    );
 
   if (!teacher) return <p className="p-6">No teacher found</p>;
 
