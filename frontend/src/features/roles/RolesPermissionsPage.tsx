@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { roleApi, type PermissionCatalogItem, type RoleItem } from "../../services/phase3Api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
@@ -116,15 +117,23 @@ const RolesPermissionsPage = () => {
     }
   };
 
-  const handleDelete = async (role: RoleItem) => {
-    try {
-      await roleApi.remove(role.id);
-      useToastStore.getState().show("রোল মুছে ফেলা হয়েছে", "success");
-      setRoles((prev) => prev.filter((r) => r.id !== role.id));
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
-      useToastStore.getState().show(msg, "error");
-    }
+  const handleDelete = (role: RoleItem) => {
+    useConfirmStore.getState().show({
+      title: "রোল ডিলিট করুন",
+      message: `"${role.name_bn}" রোলটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+      confirmText: "ডিলিট করুন",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await roleApi.remove(role.id);
+          useToastStore.getState().show("রোল মুছে ফেলা হয়েছে", "success");
+          setRoles((prev) => prev.filter((r) => r.id !== role.id));
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          useToastStore.getState().show(msg, "error");
+        }
+      },
+    });
   };
 
   return (

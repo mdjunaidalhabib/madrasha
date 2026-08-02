@@ -9,11 +9,11 @@ const startOfTodayUTC = (): Date => {
 
 export class DashboardRepository {
   countActiveStudents(madrasaId: number) {
-    return prisma.student.count({ where: { madrasaId, isActive: 1 } });
+    return prisma.student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
   }
 
   countActiveTeachers(madrasaId: number) {
-    return prisma.teacher.count({ where: { madrasaId, isActive: 1 } });
+    return prisma.teacher.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
   }
 
   countUsers(madrasaId: number) {
@@ -73,7 +73,9 @@ export class DashboardRepository {
   }
 
   countPendingAdmissions(madrasaId: number) {
-    return prisma.student.count({ where: { madrasaId, admissionStatus: "PENDING" } });
+    return prisma.student.count({
+      where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
+    });
   }
 
   async findOverdueInvoices(madrasaId: number) {
@@ -89,7 +91,7 @@ export class DashboardRepository {
 
   async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {
     const rows = await prisma.examRoutine.findMany({
-      where: { madrasaId, examDate: { gte: startOfTodayUTC() } },
+      where: { madrasaId, examDate: { gte: startOfTodayUTC() }, exam: { deletedAt: null } },
       orderBy: { examDate: "asc" },
       take: DASHBOARD_UPCOMING_EXAMS_LIMIT,
       include: {

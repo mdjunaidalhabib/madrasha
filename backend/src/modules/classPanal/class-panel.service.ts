@@ -80,9 +80,6 @@ export class ClassPanelService {
     );
 
     if (!classId) throw new BadRequestError("class_id is required");
-    if (bookIds.length < 1) {
-      throw new BadRequestError("অন্তত ১টি মিয়ারি কিতাব নির্বাচন করুন");
-    }
 
     const subjects = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
     const activeBookIds = new Set(subjects.map((row) => row.book.id));

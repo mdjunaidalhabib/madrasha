@@ -129,19 +129,19 @@ const TeacherProfilePage = () => {
 
   const handleDelete = () => {
     useConfirmStore.getState().show({
-      title: "Delete Teacher",
-      message: "Are you sure to delete this teacher?",
-      confirmText: "Delete",
+      title: "শিক্ষক মুছবেন?",
+      message: "এই শিক্ষককে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
+      confirmText: "ট্র্যাশে সরান",
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/teachers/${id}`);
 
-          useToastStore.getState().show("🗑️ Teacher Deleted", "success");
+          useToastStore.getState().show("🗑️ ট্র্যাশে সরানো হয়েছে", "success");
 
           navigate(`${adminBase}/ihtemam/all_teacher`);
         } catch {
-          useToastStore.getState().show("❌ Delete failed", "error");
+          useToastStore.getState().show("❌ মুছে ফেলা যায়নি", "error");
         }
       },
     });

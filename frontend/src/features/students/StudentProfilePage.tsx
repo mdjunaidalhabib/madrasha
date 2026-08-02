@@ -107,18 +107,18 @@ const StudentProfilePage = () => {
 
   const handleDelete = () => {
     useConfirmStore.getState().show({
-      title: "Delete Student",
-      message: "Are you sure to delete this student?",
-      confirmText: "Delete",
+      title: "শিক্ষার্থী মুছবেন?",
+      message: "এই শিক্ষার্থীকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
+      confirmText: "ট্র্যাশে সরান",
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/students/${id}`);
-          useToastStore.getState().show("Deleted", "success");
+          useToastStore.getState().show("ট্র্যাশে সরানো হয়েছে", "success");
           navigate(`${adminBase}/students/list`);
         } catch (error) {
           logger.error("DELETE ERROR:", error);
-          useToastStore.getState().show("Delete failed", "error");
+          useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
         }
       },
     });

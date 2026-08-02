@@ -6,6 +6,7 @@ import {
   deleteStudent,
   createStudent,
   createStudentsBulk,
+  updateStudentsBulk,
   lookupStudentByNid,
   getNextRoll,
   getPendingAdmissions,
@@ -38,6 +39,16 @@ router.post(
   authMiddleware,
   rbacMiddleware("students.create"),
   createStudentsBulk,
+);
+
+// BULK UPDATE EXISTING STUDENTS FROM EXCEL (personal/guardian/address info
+// only - class/division/academic_year/roll are locked, see student.service.ts)
+router.post(
+  "/bulk-update",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.update"),
+  updateStudentsBulk,
 );
 
 // LOOKUP BY NID (returning-student / re-admission check) - must be

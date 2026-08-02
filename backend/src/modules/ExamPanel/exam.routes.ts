@@ -5,6 +5,7 @@ import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getExams,
   createExam,
+  updateExam,
   deleteExam,
   reorderExams,
   getGeneralGrades,
@@ -28,6 +29,7 @@ router.use(tenantMiddleware, authMiddleware);
 router.get("/exams", rbacMiddleware("exam.read"), getExams);
 router.post("/exams", rbacMiddleware("exam.manage"), createExam);
 router.put("/exams/reorder", rbacMiddleware("exam.manage"), reorderExams);
+router.put("/exams/:id", rbacMiddleware("exam.manage"), updateExam);
 router.delete("/exams/:id", rbacMiddleware("exam.manage"), deleteExam);
 
 /* ================= GENERAL GRADES ================= */

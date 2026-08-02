@@ -96,6 +96,23 @@ export interface BulkAdmissionResult {
   preview: BulkAdmissionRow[];
 }
 
+export interface BulkUpdateRow {
+  row: number;
+  id: number;
+  name: string;
+  status: "updated" | "unchanged" | "skipped";
+  changes: Array<{ field: string; old: unknown; new: unknown }>;
+  notes: string[];
+  error?: string;
+}
+
+export interface BulkUpdateResult {
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  preview: BulkUpdateRow[];
+}
+
 export class StudentNotFoundError extends NotFoundError {
   constructor() {
     super("Student not found");

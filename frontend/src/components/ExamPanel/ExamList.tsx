@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { GraduationCap, GripVertical, Plus, Trash2 } from "lucide-react";
+import { Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
@@ -27,6 +27,11 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   const [dragOverId, setDragOverId] = useState<string | number | null>(null);
   const savedOrderRef = useRef<string>("");
 
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editYear, setEditYear] = useState("");
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     setItems(exams);
   }, [exams]);
@@ -52,14 +57,47 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   const deleteExam = (id: string | number, examName: string) => {
     useConfirmStore.getState().show({
       title: "পরীক্ষা মুছবেন?",
-      message: `"${examName}" পরীক্ষাটি মুছে ফেলতে চান? এই সাথে সম্পর্কিত রেজাল্ট ডেটাও প্রভাবিত হতে পারে।`,
-      confirmText: "মুছে ফেলুন",
+      message: `"${examName}" পরীক্ষাটি ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।`,
+      confirmText: "ট্র্যাশে সরান",
       danger: true,
       onConfirm: async () => {
         await api.delete(`/exams/${id}`);
+        useToastStore.getState().show("ট্র্যাশে সরানো হয়েছে", "success");
         reload();
       },
     });
+  };
+
+  const startEdit = (exam: ExamItem) => {
+    setEditingId(exam.id);
+    setEditName(exam.name);
+    setEditYear(exam.year);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName("");
+    setEditYear("");
+  };
+
+  const saveEdit = async (id: string | number) => {
+    if (!editName.trim() || !editYear.trim()) {
+      return useToastStore.getState().show("পরীক্ষার নাম ও বছর দিন", "error");
+    }
+
+    try {
+      setSaving(true);
+      await api.put(`/exams/${id}`, { name: editName.trim(), year: editYear.trim() });
+      useToastStore.getState().show("পরীক্ষা আপডেট হয়েছে", "success");
+      cancelEdit();
+      reload();
+    } catch (err: any) {
+      useToastStore
+        .getState()
+        .show(err?.response?.data?.message || "পরীক্ষা আপডেট করা যায়নি", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const persistOrder = async (ordered: ExamItem[]) => {
@@ -133,43 +171,104 @@ export default function ExamList({ exams, reload }: ExamListProps) {
             <p className="text-xs text-slate-400">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
           )}
 
-          {items.map((e) => (
-            <div
-              key={e.id}
-              draggable
-              onDragStart={() => handleDragStart(e.id)}
-              onDragOver={(ev) => handleDragOver(ev, e.id)}
-              onDrop={(ev) => ev.preventDefault()}
-              onDragEnd={handleDragEnd}
-              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
-                draggingId === e.id
-                  ? "border-blue-300 bg-blue-50 opacity-60"
-                  : dragOverId === e.id
-                    ? "border-blue-300 bg-blue-50"
-                    : "border-slate-200 bg-slate-50 hover:bg-slate-100"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="cursor-grab text-slate-400 active:cursor-grabbing" title="টেনে সরান">
-                  <GripVertical size={18} />
-                </span>
+          {items.map((e) => {
+            const isEditing = editingId === e.id;
 
-                <div>
-                  <p className="font-semibold text-slate-800">{e.name}</p>
-                  <p className="text-xs text-slate-500">{e.year}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => deleteExam(e.id, e.name)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
-                aria-label="মুছে ফেলুন"
-                title="মুছে ফেলুন"
+            return (
+              <div
+                key={e.id}
+                draggable={!isEditing}
+                onDragStart={() => handleDragStart(e.id)}
+                onDragOver={(ev) => handleDragOver(ev, e.id)}
+                onDrop={(ev) => ev.preventDefault()}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
+                  draggingId === e.id
+                    ? "border-blue-300 bg-blue-50 opacity-60"
+                    : dragOverId === e.id
+                      ? "border-blue-300 bg-blue-50"
+                      : isEditing
+                        ? "border-blue-300 bg-blue-50"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                }`}
               >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
+                {isEditing ? (
+                  <>
+                    <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                      <Input
+                        autoFocus
+                        value={editName}
+                        onChange={(ev) => setEditName(ev.target.value)}
+                        placeholder="পরীক্ষার নাম"
+                      />
+                      <Input
+                        className="sm:w-28"
+                        value={editYear}
+                        onChange={(ev) => setEditYear(ev.target.value)}
+                        placeholder="সাল"
+                      />
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => saveEdit(e.id)}
+                        disabled={saving}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50"
+                        aria-label="সংরক্ষণ করুন"
+                        title="সংরক্ষণ করুন"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={saving}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+                        aria-label="বাতিল করুন"
+                        title="বাতিল করুন"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="cursor-grab text-slate-400 active:cursor-grabbing"
+                        title="টেনে সরান"
+                      >
+                        <GripVertical size={18} />
+                      </span>
+
+                      <div>
+                        <p className="font-semibold text-slate-800">{e.name}</p>
+                        <p className="text-xs text-slate-500">{e.year}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => startEdit(e)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50"
+                        aria-label="সম্পাদনা করুন"
+                        title="সম্পাদনা করুন"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => deleteExam(e.id, e.name)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                        aria-label="মুছে ফেলুন"
+                        title="মুছে ফেলুন"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

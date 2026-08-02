@@ -29,6 +29,7 @@ export class RoutineRepository {
     return prisma.examRoutine.findMany({
       where: {
         madrasaId,
+        exam: { deletedAt: null },
         ...(examId ? { examId } : {}),
         ...(classId ? { classId } : {}),
       },

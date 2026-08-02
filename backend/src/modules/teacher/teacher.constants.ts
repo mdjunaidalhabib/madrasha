@@ -41,3 +41,16 @@ export const TEACHER_NUMBER_FIELDS = new Set([
   "division_id",
   "gender",
 ]);
+
+// Bulk-update (Excel round-trip on existing teachers) excludes `image`
+// (binary data isn't round-trippable via Excel). Unlike students, teachers
+// have no Promotion-equivalent audit-trailed workflow, so division_id stays
+// editable here - existence is re-checked against the tenant's activated
+// divisions inside the transaction (see findDivisionIdsForTenantOnTx).
+export const TEACHER_BULK_UPDATE_EXCLUDED_FIELDS = ["image"] as const;
+
+export const TEACHER_BULK_UPDATE_FIELD_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(TEACHER_FIELD_MAP).filter(
+    ([key]) => !(TEACHER_BULK_UPDATE_EXCLUDED_FIELDS as readonly string[]).includes(key),
+  ),
+);

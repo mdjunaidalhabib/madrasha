@@ -163,26 +163,25 @@ export default function ClassPanel() {
     setEditingName(book.book_name_bn);
   };
 
-  const toggleMiyari = (bookId: number) => {
-    setMiyariBookIds((current) =>
-      current.includes(bookId) ? current.filter((id) => id !== bookId) : [...current, bookId],
-    );
-  };
+  // Checking/unchecking a book saves immediately - no separate "Save" step,
+  // and zero miyari books is a valid state (a class doesn't have to have one).
+  const toggleMiyari = async (bookId: number) => {
+    const previous = miyariBookIds;
+    const next = previous.includes(bookId)
+      ? previous.filter((id) => id !== bookId)
+      : [...previous, bookId];
 
-  const saveMiyariBooks = async () => {
-    if (miyariBookIds.length < 1) {
-      useToastStore.getState().push("error", "অন্তত ১টি মিয়ারি কিতাব নির্বাচন করুন");
-      return;
-    }
-
+    setMiyariBookIds(next);
     setSavingMiyari(true);
     try {
       const res = await api.put("/madrasa-books/miyari", {
         class_id: Number(classId),
-        book_ids: miyariBookIds,
+        book_ids: next,
       });
       useToastStore.getState().push("success", res.data?.message || "মিয়ারি কিতাব সংরক্ষণ হয়েছে");
-      await loadBooks();
+    } catch (err: any) {
+      setMiyariBookIds(previous);
+      useToastStore.getState().push("error", err?.response?.data?.message || "সংরক্ষণ করা যায়নি");
     } finally {
       setSavingMiyari(false);
     }
@@ -196,7 +195,7 @@ export default function ClassPanel() {
         <div>
           <h1 className="text-xl font-semibold">মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা</h1>
           <p className="mt-1 text-sm text-slate-500">
-            প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চাইলে সব কিতাবই মিয়ারি করা যাবে।
+            প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।
           </p>
         </div>
 
@@ -363,8 +362,9 @@ export default function ClassPanel() {
                       <input
                         type="checkbox"
                         checked={isMiyari}
+                        disabled={savingMiyari}
                         onChange={() => toggleMiyari(Number(book.book_id))}
-                        className="h-4 w-4"
+                        className="h-4 w-4 disabled:cursor-not-allowed"
                       />
                       মিয়ারি কিতাব
                     </label>
@@ -376,7 +376,7 @@ export default function ClassPanel() {
         )}
 
         {isEditMode && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             {!showBookInput ? (
               <button onClick={() => setShowBookInput(true)}>➕ কিতাব যোগ করুন</button>
             ) : (
@@ -390,14 +390,6 @@ export default function ClassPanel() {
                 <button onClick={addBook}>✔</button>
               </div>
             )}
-
-            <button
-              onClick={saveMiyariBooks}
-              disabled={savingMiyari || miyariBookIds.length < 1}
-              className="rounded bg-amber-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {savingMiyari ? "সংরক্ষণ হচ্ছে..." : "মিয়ারি সেটিং সংরক্ষণ করুন"}
-            </button>
           </div>
         )}
       </div>

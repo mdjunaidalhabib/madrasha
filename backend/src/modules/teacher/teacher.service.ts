@@ -1,14 +1,20 @@
 import { Prisma } from "@prisma/client";
 import { teacherRepository, TeacherRepository } from "./teacher.repository";
-import { toNumber } from "../../shared/utils/parse.util";
+import { toNumber, clean, isValidDate } from "../../shared/utils/parse.util";
 import { BadRequestError, TenantNotResolvedError } from "../../shared/errors";
 import {
   TEACHER_FIELD_MAP,
   TEACHER_DATE_FIELDS,
   TEACHER_NUMBER_FIELDS,
+  TEACHER_BULK_UPDATE_FIELD_MAP,
 } from "./teacher.constants";
-import { BulkTeacherResult, TeacherNotFoundError } from "./teacher.types";
-import { TeacherPayloadDto } from "./teacher.dto";
+import {
+  BulkTeacherResult,
+  TeacherBulkUpdateResult,
+  TeacherBulkUpdateRow,
+  TeacherNotFoundError,
+} from "./teacher.types";
+import { TeacherPayloadDto, TeacherBulkUpdateRowDto } from "./teacher.dto";
 import { toTeacherApiDto } from "./teacher.mapper";
 
 const toSnakeCase = (obj: Record<string, unknown> = {}) => {
@@ -259,6 +265,239 @@ export class TeacherService {
 
     const result = await this.repository.updateManyForTenant(id, madrasaId, data);
     return result.count;
+  }
+
+  /**
+   * Bulk-update existing teachers via an Excel round-trip (export -> edit ->
+   * re-upload). Per-row partial success, not all-or-nothing: every field
+   * written is pre-validated in JS before any Prisma call (a real Postgres
+   * error mid-$transaction would poison every statement after it), so one
+   * bad row never rolls back the good ones. Mirrors
+   * student.service.ts's updateStudentsBulk. Unlike students, teachers have
+   * no Promotion-equivalent audit-trailed workflow, so division_id stays
+   * editable here (existence re-checked against the tenant's activated
+   * divisions). email is uniqueness-checked (@@unique([madrasaId, email]))
+   * both within the batch and against other existing teachers before any
+   * write, for the same "never let a real DB error hit mid-transaction"
+   * reason.
+   */
+  async updateTeachersBulk(
+    rows: TeacherBulkUpdateRowDto[],
+    madrasaId: number | undefined,
+  ): Promise<TeacherBulkUpdateResult> {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new BadRequestError("Teacher list is required");
+    }
+
+    if (!rows.some((r) => toNumber(r.id) !== null)) {
+      throw new BadRequestError(
+        "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন",
+      );
+    }
+
+    type PreparedRow = {
+      row: number;
+      id: number | null;
+      data: Record<string, any>;
+      notes: string[];
+      skipReason: string | null;
+    };
+
+    const prepared: PreparedRow[] = rows.map((row, index) => {
+      const rowNumber = index + 1;
+      const id = toNumber(row.id);
+      const notes: string[] = [];
+
+      if (!id) {
+        return { row: rowNumber, id: null, data: {}, notes, skipReason: "id নেই বা সঠিক নয়" };
+      }
+
+      const data: Record<string, any> = {};
+      for (const key of Object.keys(TEACHER_BULK_UPDATE_FIELD_MAP)) {
+        const field = TEACHER_BULK_UPDATE_FIELD_MAP[key];
+        const value = (row as Record<string, unknown>)[key];
+
+        if (TEACHER_DATE_FIELDS.has(key)) {
+          const cleaned = clean(value);
+          if (cleaned && !isValidDate(cleaned as string)) {
+            notes.push(
+              key === "dob"
+                ? "জন্ম তারিখ সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে"
+                : "যোগদানের তারিখ সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে",
+            );
+            continue; // keep the existing value untouched
+          }
+          data[field] = cleaned ? new Date(cleaned as string) : null;
+        } else if (key === "gender") {
+          data[field] = toGenderNumber(value);
+        } else if (key === "division_id") {
+          // division_id is NOT NULL on Teacher - a blank cell can never mean
+          // "clear it", only "leave unchanged".
+          const cleaned = clean(value);
+          if (cleaned === null) continue;
+          const num = toNumber(cleaned);
+          if (num === null) {
+            notes.push("একাডেমিক বিভাগের আইডি সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে");
+            continue;
+          }
+          data[field] = num; // existence re-checked against real division ids below
+        } else if (key === "phone" || key === "parent_phone") {
+          data[field] = cleanPhone(value) || null;
+        } else if (TEACHER_NUMBER_FIELDS.has(key)) {
+          data[field] = toNumber(value);
+        } else {
+          data[field] = clean(value);
+        }
+      }
+
+      if (!data.nameBn || !String(data.nameBn).trim()) {
+        return { row: rowNumber, id, data: {}, notes, skipReason: "নাম (name_bn) খালি রাখা যাবে না" };
+      }
+
+      return { row: rowNumber, id, data, notes, skipReason: null };
+    });
+
+    // In-batch email de-duplication (no DB call needed): if the same new
+    // email value appears on more than one row, applying either one first
+    // would make the other's update() collide with @@unique([madrasaId,
+    // email]) mid-transaction. Drop it from every row that shares it.
+    const emailRowIndexes = new Map<string, number[]>();
+    prepared.forEach((item, idx) => {
+      if (item.skipReason || item.id === null || !item.data.email) return;
+      const key = String(item.data.email).trim();
+      if (!emailRowIndexes.has(key)) emailRowIndexes.set(key, []);
+      emailRowIndexes.get(key)!.push(idx);
+    });
+    for (const indexes of emailRowIndexes.values()) {
+      if (indexes.length <= 1) continue;
+      for (const idx of indexes) {
+        delete prepared[idx].data.email;
+        prepared[idx].notes.push("এই ইমেইল একই ফাইলে একাধিক সারিতে ব্যবহৃত হয়েছে, উপেক্ষা করা হয়েছে");
+      }
+    }
+
+    const result = await this.repository.runTransaction(async (tx) => {
+      const validIds = [
+        ...new Set(
+          prepared.filter((r): r is PreparedRow & { id: number } => r.id !== null && !r.skipReason)
+            .map((r) => r.id),
+        ),
+      ].sort((a, b) => a - b);
+
+      for (const id of validIds) {
+        await this.repository.lockTeacherRecordOnTx(tx, madrasaId, id);
+      }
+
+      const existingRows = await this.repository.findManyByIdsForTenantOnTx(tx, validIds, madrasaId);
+      const existingById = new Map(existingRows.map((t) => [t.id, t as Record<string, any>]));
+      const validDivisionIds = await this.repository.findDivisionIdsForTenantOnTx(tx, madrasaId);
+
+      const candidateEmails = [
+        ...new Set(
+          prepared
+            .filter((r) => r.id !== null && !r.skipReason && r.data.email)
+            .map((r) => String(r.data.email)),
+        ),
+      ];
+      const emailOwners = await this.repository.findTeachersByEmailsForTenantOnTx(
+        tx,
+        candidateEmails,
+        madrasaId,
+      );
+      const ownerIdByEmail = new Map(emailOwners.map((t) => [String(t.email), t.id]));
+
+      let updated = 0;
+      let unchanged = 0;
+      let skipped = 0;
+      const preview: TeacherBulkUpdateRow[] = [];
+
+      for (const item of prepared) {
+        const rawName = String((rows[item.row - 1] as Record<string, unknown>)?.name_bn ?? "");
+
+        if (item.skipReason || item.id === null) {
+          skipped++;
+          preview.push({
+            row: item.row,
+            id: item.id ?? 0,
+            name: rawName,
+            status: "skipped",
+            changes: [],
+            notes: item.notes,
+            error: item.skipReason ?? "id নেই বা সঠিক নয়",
+          });
+          continue;
+        }
+
+        const existing = existingById.get(item.id);
+        if (!existing) {
+          skipped++;
+          preview.push({
+            row: item.row,
+            id: item.id,
+            name: rawName,
+            status: "skipped",
+            changes: [],
+            notes: item.notes,
+            error: "এই আইডির শিক্ষক পাওয়া যায়নি",
+          });
+          continue;
+        }
+
+        const notes = [...item.notes];
+        const data = { ...item.data };
+
+        if (
+          "divisionId" in data &&
+          data.divisionId != null &&
+          !validDivisionIds.has(data.divisionId)
+        ) {
+          delete data.divisionId;
+          notes.push("একাডেমিক বিভাগের আইডি সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে");
+        }
+
+        if ("email" in data && data.email) {
+          const ownerId = ownerIdByEmail.get(String(data.email));
+          if (ownerId !== undefined && ownerId !== item.id) {
+            delete data.email;
+            notes.push("এই ইমেইল ইতিমধ্যে অন্য শিক্ষকের সাথে ব্যবহৃত হয়েছে, পরিবর্তন উপেক্ষা করা হয়েছে");
+          }
+        }
+
+        const changes = Object.entries(data)
+          .map(([field, value]) => ({ field, old: existing[field], new: value }))
+          .filter((change) => String(change.old ?? "") !== String(change.new ?? ""));
+
+        if (!changes.length) {
+          unchanged++;
+          preview.push({
+            row: item.row,
+            id: item.id,
+            name: existing.nameBn,
+            status: "unchanged",
+            changes: [],
+            notes,
+          });
+          continue;
+        }
+
+        await this.repository.updateManyForTenantOnTx(tx, item.id, madrasaId, data);
+        updated++;
+        preview.push({
+          row: item.row,
+          id: item.id,
+          name: data.nameBn ?? existing.nameBn,
+          status: "updated",
+          changes,
+          notes,
+        });
+      }
+
+      return { updated, unchanged, skipped, preview };
+    });
+
+    return result;
   }
 
   async deleteTeacher(id: number, madrasaId: number | undefined) {

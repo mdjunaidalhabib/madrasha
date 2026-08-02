@@ -5,7 +5,7 @@ import { TransactionClient } from "../../shared/database/transaction";
 export class PayrollRepository {
   findActiveTeachers(madrasaId: number) {
     return prisma.teacher.findMany({
-      where: { madrasaId, isActive: 1 },
+      where: { madrasaId, isActive: 1, deletedAt: null },
       select: { id: true, nameBn: true, salary: true },
     });
   }

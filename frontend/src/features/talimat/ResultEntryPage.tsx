@@ -10,7 +10,10 @@ import MarksTable from "../../components/ResultPanel/MarksTable";
 import ResultActions from "../../components/ResultPanel/ResultActions";
 import { logger } from "../../utils/logger";
 
-type MarksState = Record<number, Record<number, number>>;
+// A student/book entry maps to `null` once cleared — kept (not deleted from
+// state) so buildMarksPayload() still emits a row telling the backend to
+// remove the saved mark instead of silently omitting it.
+type MarksState = Record<number, Record<number, number | null>>;
 
 interface Division {
   division_id: number;
@@ -27,6 +30,8 @@ interface ClassItem {
 interface Student {
   id: number;
   name_bn: string;
+  roll?: number | string | null;
+  registration_no?: number | string | null;
 }
 interface Book {
   book_id: number;
@@ -91,7 +96,7 @@ export default function ResultEntryPage() {
         setExams(extractArray(e.data));
       } catch (err) {
         logger.error("Init load error:", err);
-        push("error", "Division / Exam load failed");
+        push("error", "বিভাগ / পরীক্ষা লোড ব্যর্থ হয়েছে");
       }
     };
     init();
@@ -205,15 +210,14 @@ export default function ResultEntryPage() {
     Object.keys(marks).forEach((sid) => {
       Object.keys(marks[+sid] || {}).forEach((bid) => {
         const value = marks[+sid]?.[+bid];
-        if (value !== undefined && value !== null && value !== ("" as any)) {
-          payload.push({
-            student_id: +sid,
-            book_id: +bid,
-            mark: Number(value),
-            exam_id: +examId,
-            class_id: +classId,
-          });
-        }
+        if (value === undefined) return;
+        payload.push({
+          student_id: +sid,
+          book_id: +bid,
+          mark: value === null ? null : Number(value),
+          exam_id: +examId,
+          class_id: +classId,
+        });
       });
     });
     return payload;
@@ -284,10 +288,10 @@ export default function ResultEntryPage() {
     const payload = buildMarksPayload();
 
     if (!examId || !classId) {
-      return push("error", "Exam এবং Class select করুন");
+      return push("error", "পরীক্ষা ও শ্রেণি নির্বাচন করুন");
     }
     if (payload.length === 0) {
-      return push("error", "No marks entered!");
+      return push("error", "কোনো নম্বর দেওয়া হয়নি!");
     }
 
     setLoading(true);
@@ -309,7 +313,7 @@ export default function ResultEntryPage() {
         result_master_id: masterId,
       });
 
-      push("success", "Saved & processed successfully");
+      push("success", "সংরক্ষণ ও প্রসেস সফল হয়েছে");
       goToPreview();
     } catch (err: any) {
       logger.error("Save marks error:", err);
@@ -321,11 +325,27 @@ export default function ResultEntryPage() {
 
   const handleReset = () => {
     useConfirmStore.getState().show({
-      title: "Reset Marks",
-      message: "সব entered marks reset করতে চান?",
-      confirmText: "Reset",
+      title: "নম্বর রিসেট",
+      message: "সব দেওয়া নম্বর রিসেট করতে চান?",
+      confirmText: "রিসেট",
       danger: true,
-      onConfirm: () => setMarks({}),
+      onConfirm: () => {
+        // Null out every existing entry (rather than wiping to `{}`) so the
+        // usual [marks] autosave effect picks these up as delete rows and
+        // actually clears them server-side too — an empty `{}` has no rows
+        // left to build a payload from, so the old marks would just reload
+        // on the next fetch.
+        setMarks((prev) => {
+          const cleared: MarksState = {};
+          Object.keys(prev).forEach((sid) => {
+            cleared[+sid] = {};
+            Object.keys(prev[+sid] || {}).forEach((bid) => {
+              cleared[+sid][+bid] = null;
+            });
+          });
+          return cleared;
+        });
+      },
     });
   };
 
@@ -356,7 +376,7 @@ export default function ResultEntryPage() {
 
       {editMode && (
         <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded">
-          ✏️ Existing Result Found — আপনি marks update করতে পারবেন
+          ✏️ পূর্বের রেজাল্ট পাওয়া গেছে — আপনি নম্বর আপডেট করতে পারবেন
         </div>
       )}
 

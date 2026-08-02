@@ -3,6 +3,11 @@ export interface CreateExamRequestDto {
   year: string | number;
 }
 
+export interface UpdateExamRequestDto {
+  name: string;
+  year: string | number;
+}
+
 export interface SaveGradeRequestDto {
   name: string;
   min_mark: number | string;

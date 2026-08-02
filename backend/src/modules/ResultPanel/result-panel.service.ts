@@ -285,33 +285,51 @@ export class ResultPanelService {
       ? Number(result_master_id)
       : await this.getOrCreateSessionId(madrasaId, exam_id, class_id);
 
+    // A cleared cell arrives as mark: null/"" — that's a delete, not an
+    // upsert-to-zero, so split the batch before writing.
+    const isCleared = (m: MarkRowDto) => m.mark === null || m.mark === undefined || m.mark === "";
+    const upsertRows = data.filter((m) => !isCleared(m));
+    const deleteRows = data.filter(isCleared);
+
     // NOTE: original code did one bulk `INSERT ... ON DUPLICATE KEY UPDATE`.
     // Prisma has no native bulk-upsert, so this is N upserts inside a
     // single transaction against the (resultMasterId, studentId, classId,
     // bookId) unique constraint - same end result, one round trip per row
     // instead of one round trip total.
-    await this.repository.upsertMarksInTransaction(
-      data.map((m) => ({
-        where: {
-          uniq_mark: {
+    if (upsertRows.length) {
+      await this.repository.upsertMarksInTransaction(
+        upsertRows.map((m) => ({
+          where: {
+            uniq_mark: {
+              resultMasterId,
+              studentId: toNumber(m.student_id),
+              classId: toNumber(m.class_id),
+              bookId: toNumber(m.book_id),
+            },
+          },
+          update: { mark: toNumber(m.mark), examId: toNumber(m.exam_id) },
+          create: {
             resultMasterId,
             studentId: toNumber(m.student_id),
+            examId: toNumber(m.exam_id),
             classId: toNumber(m.class_id),
             bookId: toNumber(m.book_id),
+            mark: toNumber(m.mark),
+            madrasaId,
           },
-        },
-        update: { mark: toNumber(m.mark), examId: toNumber(m.exam_id) },
-        create: {
-          resultMasterId,
-          studentId: toNumber(m.student_id),
-          examId: toNumber(m.exam_id),
-          classId: toNumber(m.class_id),
-          bookId: toNumber(m.book_id),
-          mark: toNumber(m.mark),
-          madrasaId,
-        },
-      })),
-    );
+        })),
+      );
+    }
+
+    if (deleteRows.length) {
+      await this.repository.deleteMarksInTransaction(
+        resultMasterId,
+        deleteRows.map((m) => ({
+          studentId: toNumber(m.student_id) ?? 0,
+          bookId: toNumber(m.book_id) ?? 0,
+        })),
+      );
+    }
 
     return { message: "Marks saved successfully", result_master_id: resultMasterId };
   }

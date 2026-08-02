@@ -1,8 +1,14 @@
 import React, { useMemo, useRef } from "react";
+import { toBanglaDigits, normalizeBanglaDigits } from "../../utils/reportUtils";
+
+const displayNumber = (value: number | string | null | undefined) =>
+  value === null || value === undefined || value === "" ? "-" : toBanglaDigits(value);
 
 interface Student {
   id: number;
   name_bn: string;
+  roll?: number | string | null;
+  registration_no?: number | string | null;
 }
 
 interface Book {
@@ -16,8 +22,8 @@ interface Book {
 interface Props {
   students: Student[];
   books: Book[];
-  marks: Record<number, Record<number, number>>;
-  setMarks: React.Dispatch<React.SetStateAction<Record<number, Record<number, number>>>>;
+  marks: Record<number, Record<number, number | null>>;
+  setMarks: React.Dispatch<React.SetStateAction<Record<number, Record<number, number | null>>>>;
   disabled?: boolean;
   /** Pass mark threshold as a percentage (0-100). Defaults to 33 (common fail-mark). */
   failMark?: number;
@@ -98,21 +104,22 @@ export default function MarksTable({
     }
   };
 
-  const handle = (sid: number, bid: number, val: string, max = 100) => {
+  const handle = (sid: number, bid: number, rawVal: string, max = 100) => {
+    // Digits only — typing stays plain ASCII, so strip anything else and
+    // normalize any stray Bengali digits (e.g. from a mobile OS keyboard).
+    const val = normalizeBanglaDigits(rawVal).replace(/\D/g, "");
+
     if (val === "") {
-      setMarks((prev) => {
-        const copy = { ...prev };
-
-        if (copy[sid]) {
-          delete copy[sid][bid];
-
-          if (Object.keys(copy[sid]).length === 0) {
-            delete copy[sid];
-          }
-        }
-
-        return copy;
-      });
+      // Keep the entry as `null` rather than deleting the key — this is what
+      // tells the parent's autosave to actually persist the clear as a
+      // delete instead of just quietly dropping the row from the payload.
+      setMarks((prev) => ({
+        ...prev,
+        [sid]: {
+          ...prev[sid],
+          [bid]: null,
+        },
+      }));
       return;
     }
 
@@ -138,15 +145,15 @@ export default function MarksTable({
 
     students.forEach((s) => {
       books.forEach((b) => {
-        if (marks?.[s.id]?.[b.book_id] !== undefined) filledCells += 1;
+        if (marks?.[s.id]?.[b.book_id] != null) filledCells += 1;
       });
     });
 
     return { filled: filledCells, total: totalCells };
   }, [students, books, marks, rowCount, colCount]);
 
-  const getCellStyle = (value: number | undefined, max: number) => {
-    if (value === undefined) {
+  const getCellStyle = (value: number | null | undefined, max: number) => {
+    if (value == null) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
     }
 
@@ -163,20 +170,8 @@ export default function MarksTable({
 
   return (
     <div className="bg-white shadow-md rounded-xl p-3 sm:p-4">
-      {/* Hide native number input spin buttons (Chrome/Safari + Firefox) */}
-      <style>{`
-        input.no-spinner::-webkit-outer-spin-button,
-        input.no-spinner::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input.no-spinner[type="number"] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
-
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-700">📊 Marks Entry</h2>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-700">📊 নম্বর এন্ট্রি</h2>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {autosaveStatus !== "idle" && (
@@ -204,7 +199,7 @@ export default function MarksTable({
                 />
               </div>
               <span className="text-xs font-medium text-gray-500">
-                {filled}/{total}
+                {toBanglaDigits(filled)}/{toBanglaDigits(total)}
               </span>
             </div>
           )}
@@ -213,8 +208,8 @@ export default function MarksTable({
 
       {books.length > 0 && students.length > 0 && (
         <p className="hidden sm:block text-xs text-gray-400 mb-2">
-          ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50">Enter</kbd> চাপুন
-          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — Arrow keys দিয়েও ঘরে ঘরে যাওয়া যাবে
+          ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50">⏎</kbd> চাপুন
+          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে
         </p>
       )}
 
@@ -227,26 +222,28 @@ export default function MarksTable({
           {/* HEADER */}
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap">রোল</th>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap">রেজি. নং</th>
               <th className="border px-2 sm:px-3 py-2 text-left sticky left-0 z-20 bg-gray-100 min-w-[96px]">
-                Student
+                শিক্ষার্থীর নাম
               </th>
 
               {books.length > 0 ? (
                 books.map((b) => (
                   <th key={b.book_id} className="border px-2 sm:px-3 py-2 whitespace-nowrap">
                     <div className="flex flex-col items-center gap-0.5">
-                      <span>{b.book_name_bn || b.name_bn || `Book ${b.book_id}`}</span>
+                      <span>{b.book_name_bn || b.name_bn || `বই ${toBanglaDigits(b.book_id)}`}</span>
                       {b.is_miyari ? (
                         <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                           মিয়ারি
                         </span>
                       ) : null}
-                      <span className="text-xs text-gray-400">/ {b.full_marks ?? 100}</span>
+                      <span className="text-xs text-gray-400">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
                     </div>
                   </th>
                 ))
               ) : (
-                <th className="border px-3 py-2 text-gray-400">Subjects will appear here</th>
+                <th className="border px-3 py-2 text-gray-400">বিষয়সমূহ এখানে দেখাবে</th>
               )}
             </tr>
           </thead>
@@ -256,19 +253,36 @@ export default function MarksTable({
             {students.length === 0 || books.length === 0 ? (
               <tr>
                 <td
-                  colSpan={books.length > 0 ? books.length + 1 : 2}
+                  colSpan={books.length > 0 ? books.length + 3 : 4}
                   className="text-center py-10 text-gray-400"
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-2xl">📊</span>
-                    <p className="font-medium">Division, Exam এবং Class select করুন</p>
-                    <p className="text-sm text-gray-400">তারপর এখানে marks entry table দেখাবে</p>
-                  </div>
+                  {disabled ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+                      <p className="text-sm">লোড হচ্ছে...</p>
+                    </div>
+                  ) : students.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl">🧑‍🎓</span>
+                      <p className="font-medium">এই শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl">📘</span>
+                      <p className="font-medium">এই শ্রেণির জন্য কোনো বই যুক্ত করা হয়নি</p>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (
               students.map((s, rowIndex) => (
                 <tr key={s.id} className="hover:bg-gray-50 transition">
+                  <td className="border px-2 sm:px-3 py-2 text-center text-gray-600 whitespace-nowrap">
+                    {displayNumber(s.roll)}
+                  </td>
+                  <td className="border px-2 sm:px-3 py-2 text-center text-gray-600 whitespace-nowrap">
+                    {displayNumber(s.registration_no)}
+                  </td>
                   <td className="border px-2 sm:px-3 py-2 font-medium text-gray-700 whitespace-nowrap sticky left-0 z-10 bg-white">
                     {s.name_bn}
                   </td>
@@ -283,19 +297,16 @@ export default function MarksTable({
                           ref={(el) => {
                             inputRefs.current[cellKey(rowIndex, colIndex)] = el;
                           }}
-                          type="number"
+                          type="text"
                           inputMode="numeric"
-                          min={0}
-                          max={max}
-                          step={1}
-                          placeholder="0"
+                          placeholder="০"
                           disabled={disabled}
-                          className={`no-spinner w-14 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
+                          className={`w-14 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
                             disabled
                               ? "bg-gray-100 cursor-not-allowed text-gray-400"
                               : getCellStyle(value, max)
                           }`}
-                          value={value ?? ""}
+                          value={value != null ? toBanglaDigits(value) : ""}
                           onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
                           onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
                           onFocus={(e) => e.target.select()}
@@ -314,11 +325,11 @@ export default function MarksTable({
       {books.length > 0 && students.length > 0 && (
         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block" /> Fail
+            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block" /> ফেল
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block" />{" "}
-            Pass
+            পাশ
           </span>
         </div>
       )}

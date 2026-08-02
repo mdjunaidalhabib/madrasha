@@ -2,11 +2,13 @@ import { Prisma } from "@prisma/client";
 import { studentRepository, StudentRepository } from "./student.repository";
 import { isValidDate, clean, toNumber, toGenderNumber, toDateOrNull } from "../../shared/utils/parse.util";
 import { BadRequestError } from "../../shared/errors";
-import { STUDENT_REQUIRED_FIELDS, STUDENT_FIELD_MAP } from "./student.constants";
+import { STUDENT_REQUIRED_FIELDS, STUDENT_FIELD_MAP, STUDENT_BULK_UPDATE_FIELD_MAP } from "./student.constants";
 import {
   AdmissionResult,
   BulkAdmissionResult,
   BulkAdmissionRow,
+  BulkUpdateResult,
+  BulkUpdateRow,
   MissingFieldsError,
   PreviousStudentLookup,
   StudentListFilters,
@@ -15,7 +17,7 @@ import {
   TenantNotResolvedError,
 } from "./student.types";
 import { toStudentApiDto } from "./student.mapper";
-import { StudentAdmissionRequestDto } from "./student.dto";
+import { StudentAdmissionRequestDto, StudentBulkUpdateRowDto } from "./student.dto";
 import { guardianService } from "../guardian/guardian.service";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
@@ -436,6 +438,225 @@ export class StudentService {
         row.id,
         source.guardian_phone,
         source.father_name || source.mother_name,
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Bulk-update existing students via an Excel round-trip (export -> edit ->
+   * re-upload). Unlike admitStudentsBulk this is per-row partial success, not
+   * all-or-nothing: every field written is pre-validated in JS before any
+   * Prisma call (a real Postgres error mid-$transaction would poison every
+   * statement after it), so one bad row never rolls back the good ones.
+   * class_id/division_id/academic_year/roll are structurally locked out via
+   * STUDENT_BULK_UPDATE_FIELD_MAP - changing those must go through Promotion.
+   */
+  async updateStudentsBulk(
+    rows: StudentBulkUpdateRowDto[],
+    madrasaId: number | undefined,
+  ): Promise<BulkUpdateResult> {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new BadRequestError("Students array is required");
+    }
+
+    if (!rows.some((r) => toNumber(r.id) !== null)) {
+      throw new BadRequestError(
+        "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন",
+      );
+    }
+
+    type PreparedRow = {
+      row: number;
+      id: number | null;
+      data: Record<string, any>;
+      notes: string[];
+      skipReason: string | null;
+    };
+
+    const prepared: PreparedRow[] = rows.map((row, index) => {
+      const rowNumber = index + 1;
+      const id = toNumber(row.id);
+      const notes: string[] = [];
+
+      if (!id) {
+        return { row: rowNumber, id: null, data: {}, notes, skipReason: "id নেই বা সঠিক নয়" };
+      }
+
+      const data: Record<string, any> = {};
+      for (const key of Object.keys(STUDENT_BULK_UPDATE_FIELD_MAP)) {
+        const field = STUDENT_BULK_UPDATE_FIELD_MAP[key];
+        const value = (row as Record<string, unknown>)[key];
+
+        if (key === "dob" || key === "admission_date") {
+          const cleaned = clean(value);
+          if (cleaned && !isValidDate(cleaned as string)) {
+            notes.push(
+              key === "dob"
+                ? "জন্ম তারিখ সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে"
+                : "ভর্তির তারিখ সঠিক নয়, পরিবর্তন উপেক্ষা করা হয়েছে",
+            );
+            continue; // keep the existing value untouched
+          }
+          data[field] = cleaned ? new Date(cleaned as string) : null;
+        } else if (key === "gender") {
+          data[field] = toGenderNumber(value);
+        } else if (key === "previous_class_id") {
+          const cleaned = clean(value);
+          if (cleaned === null) {
+            data[field] = null; // blank cell = intentional clear
+          } else {
+            const num = toNumber(cleaned);
+            if (num === null) {
+              notes.push("পূর্ববর্তী শ্রেণির আইডি সঠিক নয়, উপেক্ষা করা হয়েছে");
+              continue;
+            }
+            data[field] = num; // existence re-checked against real class ids below
+          }
+        } else if (key === "age" || key === "residency_type" || key === "is_orphan") {
+          data[field] = toNumber(value);
+        } else {
+          data[field] = clean(value);
+        }
+      }
+
+      if (!data.nameBn || !String(data.nameBn).trim()) {
+        return { row: rowNumber, id, data: {}, notes, skipReason: "নাম (name_bn) খালি রাখা যাবে না" };
+      }
+
+      return { row: rowNumber, id, data, notes, skipReason: null };
+    });
+
+    const result = await this.repository.runTransaction(async (tx) => {
+      const validIds = [
+        ...new Set(
+          prepared.filter((r): r is PreparedRow & { id: number } => r.id !== null && !r.skipReason)
+            .map((r) => r.id),
+        ),
+      ].sort((a, b) => a - b);
+
+      for (const id of validIds) {
+        await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
+      }
+
+      const existingRows = await this.repository.findManyByIdsForTenantOnTx(tx, validIds, madrasaId);
+      const existingById = new Map(existingRows.map((s) => [s.id, s as Record<string, any>]));
+      const validClassIds = await this.repository.findClassIdsForTenantOnTx(tx, madrasaId);
+
+      let updated = 0;
+      let unchanged = 0;
+      let skipped = 0;
+      const preview: BulkUpdateRow[] = [];
+
+      for (const item of prepared) {
+        const rawName = String((rows[item.row - 1] as Record<string, unknown>)?.name_bn ?? "");
+
+        if (item.skipReason || item.id === null) {
+          skipped++;
+          preview.push({
+            row: item.row,
+            id: item.id ?? 0,
+            name: rawName,
+            status: "skipped",
+            changes: [],
+            notes: item.notes,
+            error: item.skipReason ?? "id নেই বা সঠিক নয়",
+          });
+          continue;
+        }
+
+        const existing = existingById.get(item.id);
+        if (!existing) {
+          skipped++;
+          preview.push({
+            row: item.row,
+            id: item.id,
+            name: rawName,
+            status: "skipped",
+            changes: [],
+            notes: item.notes,
+            error: "এই আইডির শিক্ষার্থী পাওয়া যায়নি",
+          });
+          continue;
+        }
+
+        const notes = [...item.notes];
+        const data = { ...item.data };
+
+        if (
+          "previousClassId" in data &&
+          data.previousClassId != null &&
+          !validClassIds.has(data.previousClassId)
+        ) {
+          delete data.previousClassId;
+          notes.push("পূর্ববর্তী শ্রেণির আইডি সঠিক নয়, উপেক্ষা করা হয়েছে");
+        }
+
+        const source = rows[item.row - 1] as Record<string, unknown>;
+        const lockedTamperKeys: Array<[string, string]> = [
+          ["class_id", "classId"],
+          ["division_id", "divisionId"],
+          ["academic_year", "academicYear"],
+          ["roll", "roll"],
+        ];
+        const tampered = lockedTamperKeys.some(([snakeKey, camelKey]) => {
+          const raw = source[snakeKey];
+          if (raw === undefined || raw === null || String(raw).trim() === "") return false;
+          return String(raw) !== String(existing[camelKey] ?? "");
+        });
+        if (tampered) {
+          notes.push(
+            "ক্লাস/বিভাগ/সেশন/রোল পরিবর্তনের চেষ্টা উপেক্ষা করা হয়েছে — এর জন্য 'প্রমোশন' ফিচার ব্যবহার করুন",
+          );
+        }
+
+        const changes = Object.entries(data)
+          .map(([field, value]) => ({ field, old: existing[field], new: value }))
+          .filter((change) => String(change.old ?? "") !== String(change.new ?? ""));
+
+        if (!changes.length) {
+          unchanged++;
+          preview.push({
+            row: item.row,
+            id: item.id,
+            name: existing.nameBn,
+            status: "unchanged",
+            changes: [],
+            notes,
+          });
+          continue;
+        }
+
+        await this.repository.updateManyForTenantOnTx(tx, item.id, madrasaId, data);
+        updated++;
+        preview.push({
+          row: item.row,
+          id: item.id,
+          name: data.nameBn ?? existing.nameBn,
+          status: "updated",
+          changes,
+          notes,
+        });
+      }
+
+      return { updated, unchanged, skipped, preview };
+    });
+
+    // Outside the transaction, same reasoning as admitStudentsBulk(): a
+    // guardian-provisioning failure must not roll back already-committed
+    // student rows - log and continue per row.
+    for (const row of result.preview) {
+      if (row.status === "skipped") continue;
+      const source = rows[row.row - 1] as Record<string, unknown> | undefined;
+      if (!source) continue;
+      await guardianService.ensureGuardianForStudent(
+        madrasaId,
+        row.id,
+        source.guardian_phone as string | undefined,
+        (source.father_name as string | undefined) || (source.mother_name as string | undefined),
       );
     }
 

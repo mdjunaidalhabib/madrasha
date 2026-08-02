@@ -41,3 +41,11 @@ export interface BulkAdmissionRequestDto {
 }
 
 export type StudentUpdateRequestDto = Partial<StudentAdmissionRequestDto>;
+
+export interface StudentBulkUpdateRowDto extends StudentUpdateRequestDto {
+  id: number | string;
+}
+
+export interface BulkUpdateRequestDto {
+  students: StudentBulkUpdateRowDto[];
+}

@@ -51,3 +51,21 @@ export const STUDENT_NUMERIC_FIELDS = [
   "residency_type",
   "is_orphan",
 ] as const;
+
+// Bulk-update (Excel round-trip on existing students) must never touch class/
+// division/academic_year/roll - those stay locked and can only be changed
+// through the dedicated প্রমোশন feature, which keeps its own audit trail.
+// `image` is excluded too since binary data isn't round-trippable via Excel.
+export const STUDENT_BULK_UPDATE_EXCLUDED_FIELDS = [
+  "class_id",
+  "division_id",
+  "academic_year",
+  "roll",
+  "image",
+] as const;
+
+export const STUDENT_BULK_UPDATE_FIELD_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(STUDENT_FIELD_MAP).filter(
+    ([key]) => !(STUDENT_BULK_UPDATE_EXCLUDED_FIELDS as readonly string[]).includes(key),
+  ),
+);

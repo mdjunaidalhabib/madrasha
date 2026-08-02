@@ -49,6 +49,17 @@ export const updateTeacher = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
+export const updateTeachersBulk = asyncHandler(async (req: Request, res: Response) => {
+  const madrasaId = req.tenant?.madrasa_id;
+  const teachers = Array.isArray(req.body?.teachers) ? req.body.teachers : [];
+  const result = await teacherService.updateTeachersBulk(teachers, madrasaId);
+
+  return ApiResponse.success(res, {
+    message: "Bulk update processed",
+    extra: result,
+  });
+});
+
 export const deleteTeacher = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const affectedRows = await teacherService.deleteTeacher(Number(req.params.id), madrasaId);

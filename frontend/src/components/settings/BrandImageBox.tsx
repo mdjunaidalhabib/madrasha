@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
+import { ImageUp, Loader2, X } from "lucide-react";
 import { useToastStore } from "../../store/toastStore";
-import { uploadApi } from "../../services/phase4Api";
+import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "../../utils/logger";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   onChange: (dataUrl: string) => void;
   onRemove: () => void;
   shape?: "square" | "wide";
+  folder?: UploadFolder;
 };
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
@@ -21,6 +23,7 @@ export default function BrandImageBox({
   onChange,
   onRemove,
   shape = "square",
+  folder = "branding",
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -47,7 +50,7 @@ export default function BrandImageBox({
 
       try {
         setUploading(true);
-        const res = await uploadApi.uploadImage(base64, "branding");
+        const res = await uploadApi.uploadImage(base64, folder);
         const data = res.data?.data;
         if (data?.uploaded && data.url) {
           onChange(data.url);
@@ -65,13 +68,18 @@ export default function BrandImageBox({
   };
 
   return (
-    <div className="rounded-xl border p-4">
-      <p className="mb-1 font-semibold">{label}</p>
-      {hint && <p className="mb-3 text-xs text-gray-500">{hint}</p>}
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <p className="font-semibold text-gray-900">{label}</p>
+      {hint && <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{hint}</p>}
 
       <div
         onClick={() => fileRef.current?.click()}
-        className={`relative flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 hover:bg-gray-100 ${
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+        }}
+        className={`relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-300 hover:bg-blue-50/40 ${
           shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
@@ -81,9 +89,15 @@ export default function BrandImageBox({
           backgroundPosition: "center",
         }}
       >
-        {!value && <span className="px-2 text-center text-sm text-gray-500">ছবি আপলোড করুন</span>}
+        {!value && (
+          <span className="flex flex-col items-center gap-1.5 px-2 text-center text-xs text-gray-400">
+            <ImageUp size={22} className="text-gray-300" />
+            ছবি আপলোড করুন
+          </span>
+        )}
         {uploading && (
-          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
+          <span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/50 text-xs text-white">
+            <Loader2 size={14} className="animate-spin" />
             আপলোড হচ্ছে...
           </span>
         )}
@@ -93,16 +107,18 @@ export default function BrandImageBox({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
         >
+          <ImageUp size={14} />
           আপলোড
         </button>
         {value && (
           <button
             type="button"
             onClick={onRemove}
-            className="rounded bg-red-500 px-3 py-1 text-sm text-white"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100"
           >
+            <X size={14} />
             মুছুন
           </button>
         )}

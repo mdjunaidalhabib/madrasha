@@ -146,6 +146,34 @@ export class SidebarService {
         }
       }
 
+      // "settings" has no other real sidebar children in the DB yet - its
+      // sub-pages only exist as cards on the settings hub page (see
+      // SettingsPage.tsx). Same reasoning as reports/ihtemam/talimat/students
+      // above - surface them directly as an expandable submenu (matching how
+      // রিপোর্ট সমূহ already works) so jumping between settings pages doesn't
+      // require going back through the hub page every time.
+      if (mod.keyName === "settings") {
+        const fallbackSettingsChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 0 },
+          { key: "branding", label: "রিপোর্ট ব্র্যান্ডিং", sortOrder: 1 },
+          { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 2 },
+          { key: "users", label: "স্টাফ ব্যবস্থাপনা", sortOrder: 3 },
+          { key: "roles", label: "রোল ও পারমিশন", sortOrder: 4 },
+          { key: "trash", label: "ট্র্যাশ", sortOrder: 5 },
+        ];
+        for (const fallback of fallbackSettingsChildren) {
+          if (!children.some((child) => child.key === fallback.key)) {
+            children.push({
+              id: -(4000 + fallback.sortOrder),
+              key: fallback.key,
+              label: fallback.label,
+              sort_order: fallback.sortOrder,
+              disabled,
+            });
+          }
+        }
+      }
+
       children.sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
 
       return {

@@ -5,6 +5,7 @@ import {
   getTeachers,
   getTeacherById,
   updateTeacher,
+  updateTeachersBulk,
   deleteTeacher,
 } from "./teacher.controller";
 
@@ -22,6 +23,9 @@ router.use(authMiddleware);
 
 router.post("/", rbacMiddleware("teachers.create"), createTeacher);
 router.post("/bulk", rbacMiddleware("teachers.create"), bulkCreateTeachers);
+
+// BULK UPDATE EXISTING TEACHERS FROM EXCEL (personal/employment info only)
+router.post("/bulk-update", rbacMiddleware("teachers.update"), updateTeachersBulk);
 
 router.get("/", rbacMiddleware("teachers.read"), getTeachers);
 router.get("/:id", rbacMiddleware("teachers.read"), getTeacherById);

@@ -71,7 +71,7 @@ const AdminWebsiteSettingsPage = lazy(
   () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
 );
 const BrandingSettingsPage = lazy(() => import("../features/admin/settings/BrandingSettingsPage"));
-const SettingsPage = lazy(() => import("../features/admin/settings/SettingsPage"));
+const TrashPage = lazy(() => import("../features/admin/TrashPage"));
 
 const SuperAdminDashboardPage = lazy(
   () => import("../features/super-admin/dashboard/SuperAdminDashboardPage"),
@@ -294,12 +294,6 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "settings",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<SettingsPage />)}</ModuleGuard>
-    ),
-  },
-  {
     path: "settings/website",
     element: (
       <ModuleGuard module="website">{withSuspense(<AdminWebsiteSettingsPage />)}</ModuleGuard>
@@ -327,6 +321,12 @@ const madrasaAdminChildren = [
     path: "settings/users",
     element: (
       <ModuleGuard module="settings">{withSuspense(<UsersPage />)}</ModuleGuard>
+    ),
+  },
+  {
+    path: "settings/trash",
+    element: (
+      <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>
     ),
   },
   {

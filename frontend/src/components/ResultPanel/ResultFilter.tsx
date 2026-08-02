@@ -49,7 +49,7 @@ export default function ResultFilter({
         }}
         className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm"
       >
-        <option value="">Division</option>
+        <option value="">বিভাগ</option>
         {divisions.map((d) => (
           <option key={d.division_id} value={d.division_id}>
             {d.division_name_bn}
@@ -63,7 +63,7 @@ export default function ResultFilter({
         onChange={(e) => setExamId(e.target.value)}
         className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm"
       >
-        <option value="">Exam</option>
+        <option value="">পরীক্ষা</option>
         {exams.map((e) => (
           <option key={e.id} value={e.id}>
             {e.name}
@@ -78,7 +78,7 @@ export default function ResultFilter({
         disabled={!divisionId}
         className="w-full border p-2.5 sm:p-2 rounded disabled:bg-gray-100 text-base sm:text-sm"
       >
-        <option value="">Class</option>
+        <option value="">শ্রেণি</option>
         {classes.map((c) => (
           <option key={c.class_id} value={c.class_id}>
             {c.class_name_bn}

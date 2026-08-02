@@ -55,6 +55,9 @@ import uploadRoutes from "../modules/uploads/upload.routes";
 // 👨‍👩‍👧 Phase 5: Guardian Portal
 import guardianRoutes from "../modules/guardian/guardian.routes";
 
+// 🗑️ Trash (soft-delete) for Students, Teachers, Exams
+import trashRoutes from "../modules/trash/trash.routes";
+
 const router = Router();
 
 router.use("/website", websiteRoutes);
@@ -160,5 +163,10 @@ router.use("/notifications", notificationRoutes);
    PHASE 4: FILE STORAGE
 ========================= */
 router.use("/uploads", uploadRoutes);
+
+/* =========================
+   TRASH (SOFT-DELETE)
+========================= */
+router.use("/trash", trashRoutes);
 
 export default router;

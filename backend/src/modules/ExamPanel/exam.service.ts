@@ -2,7 +2,12 @@ import { Prisma } from "@prisma/client";
 import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
-import { CreateExamRequestDto, SaveGradeRequestDto, UpdateFailMarkRequestDto } from "./exam.dto";
+import {
+  CreateExamRequestDto,
+  SaveGradeRequestDto,
+  UpdateExamRequestDto,
+  UpdateFailMarkRequestDto,
+} from "./exam.dto";
 import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK } from "./exam.constants";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
@@ -57,6 +62,26 @@ export class ExamService {
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("createExam error:", err, "Failed to create exam");
+    }
+  }
+
+  async updateExam(id: number, madrasaId: number, dto: UpdateExamRequestDto) {
+    if (isEmpty(dto.name) || isEmpty(dto.year)) {
+      throw new BadRequestError("Name and year are required");
+    }
+
+    try {
+      const result = await this.repository.updateExam(
+        id,
+        madrasaId,
+        String(dto.name).trim(),
+        String(dto.year).trim(),
+      );
+      if (!result.count) throw new NotFoundError("Exam not found");
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
+      return friendlyFailure("updateExam error:", err, "Failed to update exam");
     }
   }
 

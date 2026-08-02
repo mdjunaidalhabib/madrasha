@@ -37,7 +37,7 @@ export class FeeRepository {
 
   findStudentsForBilling(madrasaId: number, classId: number, academicYear: string) {
     return prisma.student.findMany({
-      where: { madrasaId, classId, academicYear, isActive: 1 },
+      where: { madrasaId, classId, academicYear, isActive: 1, deletedAt: null },
       select: { id: true },
     });
   }

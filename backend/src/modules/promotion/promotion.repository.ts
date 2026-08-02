@@ -4,7 +4,7 @@ import { TransactionClient } from "../../shared/database/transaction";
 export class PromotionRepository {
   findStudentsInClass(madrasaId: number, classId: number, academicYear: string) {
     return prisma.student.findMany({
-      where: { madrasaId, classId, academicYear, isActive: 1 },
+      where: { madrasaId, classId, academicYear, isActive: 1, deletedAt: null },
       orderBy: { roll: "asc" },
     });
   }
@@ -21,7 +21,7 @@ export class PromotionRepository {
 
   async getMaxRollOnTx(tx: TransactionClient, madrasaId: number, classId: number, academicYear: string) {
     const result = await tx.student.aggregate({
-      where: { madrasaId, classId, academicYear },
+      where: { madrasaId, classId, academicYear, deletedAt: null },
       _max: { roll: true },
     });
     return result._max.roll ?? 0;

@@ -8,7 +8,9 @@ export interface MarkRowDto {
   exam_id: number | string;
   class_id: number | string;
   book_id: number | string;
-  mark: number | string;
+  // null/undefined/"" means "clear this mark" — the row is deleted rather
+  // than upserted (see ResultPanelService.saveMarks).
+  mark: number | string | null;
 }
 
 export interface SaveMarksRequestDto {

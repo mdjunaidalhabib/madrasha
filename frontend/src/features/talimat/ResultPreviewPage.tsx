@@ -168,7 +168,22 @@ export default function ResultPreviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId, classId]);
 
+  // Clicking a class in the overview grid normally opens its preview here.
+  // But a class with no marks entered yet has nothing to preview — send the
+  // teacher straight to Number Entry instead of a page that just shows empty.
   const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
+    const status = statuses.find((s) => s.exam_id === selExamId && s.class_id === selClassId);
+    const notEnteredYet = !status || status.entered_students <= 0;
+
+    if (notEnteredYet) {
+      const params = new URLSearchParams({ examId: String(selExamId), classId: String(selClassId) });
+      const cls = classes.find((c) => c.class_id === selClassId);
+      if (cls) params.set("divisionId", String(cls.division_id));
+      if (status?.result_master_id) params.set("resultMasterId", String(status.result_master_id));
+      navigate(`${adminBase}/talimat/results/entry?${params.toString()}`);
+      return;
+    }
+
     setSearchParams({ examId: String(selExamId), classId: String(selClassId) });
   };
 

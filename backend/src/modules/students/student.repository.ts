@@ -5,28 +5,15 @@ import { TransactionClient } from "../../shared/database/transaction";
 export class StudentRepository {
   findMany(where: Prisma.StudentWhereInput) {
     return prisma.student.findMany({
-      where,
-      select: {
-        id: true,
-        nameBn: true,
-        fatherName: true,
-        guardianPhone: true,
-        divisionId: true,
-        classId: true,
-        academicYear: true,
-        previousClassId: true,
-        gender: true,
-        roll: true,
-        registrationNo: true,
-        classRef: { select: { nameBn: true } },
-      },
-      orderBy: { id: "desc" },
+      where: { ...where, deletedAt: null },
+      include: { classRef: { select: { nameBn: true } } },
+      orderBy: [{ registrationNo: "asc" }, { id: "asc" }],
     });
   }
 
   findByIdForTenant(id: number, madrasaId: number) {
     return prisma.student.findFirst({
-      where: { id, madrasaId },
+      where: { id, madrasaId, deletedAt: null },
       include: { classRef: { select: { nameBn: true } } },
     });
   }
@@ -39,7 +26,7 @@ export class StudentRepository {
    */
   findByNid(madrasaId: number, nid: string) {
     return prisma.student.findFirst({
-      where: { madrasaId, nid },
+      where: { madrasaId, nid, deletedAt: null },
       include: { classRef: { select: { nameBn: true } } },
       orderBy: { id: "desc" },
     });
@@ -53,7 +40,7 @@ export class StudentRepository {
    * used to auto-assign the next roll when the admin doesn't specify one. */
   async getMaxRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
     const result = await prisma.student.aggregate({
-      where: { madrasaId, classId, academicYear },
+      where: { madrasaId, classId, academicYear, deletedAt: null },
       _max: { roll: true },
     });
     return result._max.roll ?? 0;
@@ -79,26 +66,45 @@ export class StudentRepository {
   /** Admissions still awaiting admin review (see Admission Approval Workflow). */
   findPendingForTenant(madrasaId: number) {
     return prisma.student.findMany({
-      where: { madrasaId, admissionStatus: "PENDING" },
+      where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
       include: { classRef: { select: { nameBn: true } } },
       orderBy: { id: "desc" },
     });
   }
 
+  // Soft delete — moves the student to Trash instead of hard-deleting.
   deleteManyForTenant(id: number, madrasaId: number) {
-    return prisma.student.deleteMany({
-      where: { id, madrasaId },
+    return prisma.student.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
   }
 
   /* ---- transaction-scoped helpers used by the bulk-admission flow ---- */
 
   findByIdForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {
-    return tx.student.findFirst({ where: { id, madrasaId } });
+    return tx.student.findFirst({ where: { id, madrasaId, deletedAt: null } });
+  }
+
+  /** Batched lookup for bulk-update: one query instead of N. */
+  findManyByIdsForTenantOnTx(tx: TransactionClient, ids: number[], madrasaId: number) {
+    return tx.student.findMany({ where: { id: { in: ids }, madrasaId, deletedAt: null } });
+  }
+
+  /** Valid class ids for a tenant (Class is a global catalog, activated per
+   * tenant via MadrasaClass), used to pre-validate previous_class_id before
+   * it reaches an update() call - a bad FK value would otherwise poison the
+   * rest of the surrounding $transaction on Postgres. */
+  async findClassIdsForTenantOnTx(tx: TransactionClient, madrasaId: number): Promise<Set<number>> {
+    const rows = await tx.madrasaClass.findMany({ where: { madrasaId }, select: { classId: true } });
+    return new Set(rows.map((r) => r.classId));
   }
 
   findByNidOnTx(tx: TransactionClient, madrasaId: number, nid: string) {
-    return tx.student.findFirst({ where: { madrasaId, nid }, orderBy: { id: "desc" } });
+    return tx.student.findFirst({
+      where: { madrasaId, nid, deletedAt: null },
+      orderBy: { id: "desc" },
+    });
   }
 
   /**
@@ -161,7 +167,7 @@ export class StudentRepository {
     academicYear: string,
   ): Promise<number> {
     const result = await tx.student.aggregate({
-      where: { madrasaId, classId, academicYear },
+      where: { madrasaId, classId, academicYear, deletedAt: null },
       _max: { roll: true },
     });
     return result._max.roll ?? 0;

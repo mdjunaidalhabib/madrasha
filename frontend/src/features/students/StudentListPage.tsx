@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
+import BulkUpdateModal from "../../components/students/BulkUpdateModal";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
+import { StudentFullRecord } from "../../types/student";
 
 type Division = {
   division_id: number;
@@ -44,6 +46,7 @@ const StudentListPage = () => {
   const [loading, setLoading] = useState(false);
   const [classLoading, setClassLoading] = useState(false);
   const [error, setError] = useState("");
+  const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
@@ -272,7 +275,15 @@ const StudentListPage = () => {
               </select>
             </div>
 
-            <div className="flex shrink-0 justify-start lg:justify-end">
+            <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkUpdateOpen(true)}
+                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+              >
+                বাল্ক আপডেট
+              </button>
+
               <DataExportPrintActions
                 title="ছাত্র তালিকা"
                 fileName="student-list"
@@ -418,6 +429,15 @@ const StudentListPage = () => {
           </>
         )}
       </div>
+
+      <BulkUpdateModal
+        open={bulkUpdateOpen}
+        students={filteredStudents as unknown as StudentFullRecord[]}
+        divisions={divisions}
+        classes={classes}
+        onClose={() => setBulkUpdateOpen(false)}
+        onSuccess={loadStudents}
+      />
     </div>
   );
 };

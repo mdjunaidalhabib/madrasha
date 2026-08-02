@@ -96,7 +96,9 @@ export class PromotionService {
 
         for (const decision of dto.decisions) {
           const studentId = Number(decision.student_id);
-          const student = await tx.student.findFirst({ where: { id: studentId, madrasaId } });
+          const student = await tx.student.findFirst({
+            where: { id: studentId, madrasaId, deletedAt: null },
+          });
           if (!student) continue; // silently skip students no longer valid for this tenant
 
           if (decision.status === "PROMOTED") {

@@ -38,6 +38,22 @@ export class ResultPanelRepository {
     return prisma.$transaction(rows.map((row) => prisma.mark.upsert(row)));
   }
 
+  /** Removes marks a teacher cleared back to blank in the entry grid — an
+   * upsert has no "delete" verb, so cleared cells are carried through
+   * saveMarks() as their own batch instead of being silently dropped. */
+  deleteMarksInTransaction(
+    resultMasterId: number,
+    rows: { studentId: number; bookId: number }[],
+  ) {
+    return prisma.$transaction(
+      rows.map((row) =>
+        prisma.mark.deleteMany({
+          where: { resultMasterId, studentId: row.studentId, bookId: row.bookId },
+        }),
+      ),
+    );
+  }
+
   // NOTE: signature is intentionally `Prisma.MarkUpsertArgs[]`, not `any[]`,
   // so a mismatched `where` key (e.g. a wrong compound-unique name) is
   // caught at compile time instead of only surfacing as a runtime
@@ -185,6 +201,7 @@ export class ResultPanelRepository {
         rm.status AS publish_status,
         (SELECT COUNT(*) FROM students st
            WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.division_id = ${divisionId}
+             AND st.deleted_at IS NULL
         ) AS total_students,
         (SELECT COUNT(DISTINCT rs.student_id) FROM results_summary rs
            WHERE rs.result_master_id = rm.id
@@ -208,7 +225,7 @@ export class ResultPanelRepository {
 
   findExams(madrasaId: number) {
     return prisma.exam.findMany({
-      where: { madrasaId },
+      where: { madrasaId, deletedAt: null },
       select: { id: true, name: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
@@ -231,14 +248,14 @@ export class ResultPanelRepository {
         rm.id AS result_master_id,
         rm.status AS publish_status,
         (SELECT COUNT(*) FROM students st
-           WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id
+           WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.deleted_at IS NULL
         ) AS total_students,
         (SELECT COUNT(DISTINCT rs.student_id) FROM results_summary rs
            WHERE rs.result_master_id = rm.id
         ) AS entered_students
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
-      JOIN exams e ON e.madrasa_id = ${madrasaId}
+      JOIN exams e ON e.madrasa_id = ${madrasaId} AND e.deleted_at IS NULL
       LEFT JOIN results_master rm
         ON rm.class_id = c.id AND rm.exam_id = e.id AND rm.madrasa_id = ${madrasaId}
       WHERE mc.madrasa_id = ${madrasaId} AND mc.is_active = 1
@@ -247,7 +264,7 @@ export class ResultPanelRepository {
 
   findResultSummaries(madrasaId: number, examId: number, classId: number) {
     return prisma.resultSummary.findMany({
-      where: { resultMaster: { madrasaId, examId, classId } },
+      where: { resultMaster: { madrasaId, examId, classId }, student: { deletedAt: null } },
       select: {
         resultMasterId: true,
         studentId: true,
@@ -330,7 +347,7 @@ export class ResultPanelRepository {
 
   findFullResultSummaries(madrasaId: number, resultMasterId: number) {
     return prisma.resultSummary.findMany({
-      where: { resultMasterId, resultMaster: { madrasaId } },
+      where: { resultMasterId, resultMaster: { madrasaId }, student: { deletedAt: null } },
       select: {
         resultMasterId: true,
         total: true,

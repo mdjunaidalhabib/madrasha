@@ -72,7 +72,7 @@ export class GuardianRepository {
 
   findChildrenForGuardian(guardianId: number, madrasaId: number) {
     return prisma.guardianStudent.findMany({
-      where: { guardianId, student: { madrasaId } },
+      where: { guardianId, student: { madrasaId, deletedAt: null } },
       include: {
         student: {
           select: {

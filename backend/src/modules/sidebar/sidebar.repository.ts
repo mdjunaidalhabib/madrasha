@@ -32,7 +32,9 @@ export class SidebarRepository {
   /** Badge count for the ইহতিমাম > পেন্ডিং sidebar item (see dashboard.repository.ts's
    * identical query for the dashboard stat tile - kept separate per module boundaries). */
   countPendingAdmissions(madrasaId: number) {
-    return prisma.student.count({ where: { madrasaId, admissionStatus: "PENDING" } });
+    return prisma.student.count({
+      where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
+    });
   }
 }
 

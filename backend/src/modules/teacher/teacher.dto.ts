@@ -36,3 +36,11 @@ export interface TeacherPayloadDto {
 export interface BulkTeacherRequestDto {
   teachers: TeacherPayloadDto[];
 }
+
+export interface TeacherBulkUpdateRowDto extends Partial<TeacherPayloadDto> {
+  id: number | string;
+}
+
+export interface BulkTeacherUpdateRequestDto {
+  teachers: TeacherBulkUpdateRowDto[];
+}

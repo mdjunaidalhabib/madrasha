@@ -4,7 +4,7 @@ import { FAIL_MARK_SETTING_NAME } from "./exam.constants";
 export class ExamRepository {
   findExams(madrasaId: number) {
     return prisma.exam.findMany({
-      where: { madrasaId },
+      where: { madrasaId, deletedAt: null },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -20,8 +20,21 @@ export class ExamRepository {
     });
   }
 
+  updateExam(id: number, madrasaId: number, name: string, year: string) {
+    return prisma.exam.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { name, year },
+    });
+  }
+
+  // Soft delete — moves the exam to Trash instead of hard-deleting it. This
+  // also sidesteps the FK error that used to happen when marks/results
+  // already existed for the exam (Mark.exam/ResultMaster.exam are Restrict).
   deleteExam(id: number, madrasaId: number) {
-    return prisma.exam.deleteMany({ where: { id, madrasaId } });
+    return prisma.exam.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
   }
 
   /** Sets sortOrder = array index for each exam id, in one transaction - used
@@ -29,7 +42,7 @@ export class ExamRepository {
    * to this madrasa; unknown/foreign ids are silently ignored. */
   async reorderExams(madrasaId: number, orderedIds: number[]): Promise<void> {
     const owned = await prisma.exam.findMany({
-      where: { madrasaId, id: { in: orderedIds } },
+      where: { madrasaId, id: { in: orderedIds }, deletedAt: null },
       select: { id: true },
     });
     const ownedIds = new Set(owned.map((exam) => exam.id));

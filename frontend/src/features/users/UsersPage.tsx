@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { roleApi, userAdminApi, type RoleItem, type UserItem } from "../../services/phase3Api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
 
@@ -97,15 +98,23 @@ const UsersPage = () => {
     }
   };
 
-  const handleDelete = async (user: UserItem) => {
-    try {
-      await userAdminApi.remove(user.id);
-      useToastStore.getState().show("ইউজার মুছে ফেলা হয়েছে", "success");
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
-      useToastStore.getState().show(msg, "error");
-    }
+  const handleDelete = (user: UserItem) => {
+    useConfirmStore.getState().show({
+      title: "ইউজার ডিলিট করুন",
+      message: `"${user.name}" (${user.email}) কে স্থায়ীভাবে মুছে ফেলতে চান? তিনি আর এই প্যানেলে লগইন করতে পারবেন না।`,
+      confirmText: "ডিলিট করুন",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await userAdminApi.remove(user.id);
+          useToastStore.getState().show("ইউজার মুছে ফেলা হয়েছে", "success");
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          useToastStore.getState().show(msg, "error");
+        }
+      },
+    });
   };
 
   return (

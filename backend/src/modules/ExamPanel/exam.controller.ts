@@ -22,6 +22,11 @@ export const createExam = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.message(res, "Exam created successfully");
 });
 
+export const updateExam = asyncHandler(async (req: Request, res: Response) => {
+  await examService.updateExam(Number(req.params.id), getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "Exam updated successfully");
+});
+
 export const deleteExam = asyncHandler(async (req: Request, res: Response) => {
   await examService.deleteExam(Number(req.params.id), getMadrasaId(req));
   return ApiResponse.message(res, "Exam deleted successfully");

@@ -157,6 +157,25 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
 };
 
 /* =========================================================
+   BULK UPDATE STUDENTS FROM EXCEL
+========================================================= */
+export const updateStudentsBulk = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const students = Array.isArray(req.body?.students) ? req.body.students : [];
+    const result = await studentService.updateStudentsBulk(students, madrasaId);
+
+    return res.json({
+      success: true,
+      message: "Bulk update processed",
+      ...result,
+    });
+  } catch (error) {
+    return respondWithError(res, error, "🔥 BULK UPDATE STUDENT ERROR:");
+  }
+};
+
+/* =========================================================
    UPDATE STUDENT
 ========================================================= */
 export const updateStudent = async (req: Request, res: Response) => {
