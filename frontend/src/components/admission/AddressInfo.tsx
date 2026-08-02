@@ -61,7 +61,7 @@ const AddressInfo: React.FC<Props> = ({ formData, setFormData }) => {
           />
         </div>
 
-        {/* Village */}
+        {/* Village*/}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1">
             গ্রাম
