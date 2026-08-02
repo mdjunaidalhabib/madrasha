@@ -8,6 +8,7 @@ import {
   UpdateClassRequestDto,
   UpdateSubjectRequestDto,
   UpdateMiyariSubjectsRequestDto,
+  ReorderSubjectsRequestDto,
 } from "./class-panel.dto";
 
 export class ClassPanelService {
@@ -96,6 +97,32 @@ export class ClassPanelService {
       refreshed_results: resultRefresh.updated,
       skipped_incomplete_results: resultRefresh.skipped,
     };
+  }
+
+  async reorderSubjects(madrasaId: number | undefined, dto: ReorderSubjectsRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const classId = Number(dto.class_id);
+    if (!classId) throw new BadRequestError("class_id is required");
+
+    const orderedBookIds = (Array.isArray(dto.book_ids) ? dto.book_ids : []).map(Number);
+    if (orderedBookIds.some((id) => !id)) {
+      throw new BadRequestError("book_ids must be valid ids");
+    }
+
+    const subjects = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
+    const activeBookIds = subjects.map((row) => row.book.id);
+
+    const sameSet =
+      activeBookIds.length === orderedBookIds.length &&
+      activeBookIds.every((id) => orderedBookIds.includes(id));
+    if (!sameSet) {
+      throw new BadRequestError("book_ids must match this class's active books exactly");
+    }
+
+    await this.repository.reorderSubjects(madrasaId, orderedBookIds);
+
+    return { message: "কিতাবের ক্রম সংরক্ষণ করা হয়েছে" };
   }
 
   async addSubject(madrasaId: number | undefined, dto: AddSubjectRequestDto) {

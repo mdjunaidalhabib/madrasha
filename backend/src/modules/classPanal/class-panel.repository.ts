@@ -50,10 +50,22 @@ export class ClassPanelRepository {
       select: {
         id: true,
         isMiyari: true,
+        sortOrder: true,
         book: { select: { id: true, nameBn: true, classId: true } },
       },
-      orderBy: { book: { id: "asc" } },
+      orderBy: [{ sortOrder: "asc" }, { book: { id: "asc" } }],
     });
+  }
+
+  async reorderSubjects(madrasaId: number, orderedBookIds: number[]) {
+    await prisma.$transaction(
+      orderedBookIds.map((bookId, index) =>
+        prisma.madrasaBook.updateMany({
+          where: { madrasaId, bookId, isActive: 1 },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
   }
 
   setMiyariSubjects(madrasaId: number, classId: number, bookIds: number[]) {
@@ -76,8 +88,16 @@ export class ClassPanelRepository {
 
   createAndLinkSubject(madrasaId: number, nameBn: string, classId: number) {
     return prisma.$transaction(async (tx) => {
+      const lastSubject = await tx.madrasaBook.findFirst({
+        where: { madrasaId, isActive: 1, book: { classId } },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+
       const book = await tx.book.create({ data: { nameBn, classId } });
-      await tx.madrasaBook.create({ data: { madrasaId, bookId: book.id } });
+      await tx.madrasaBook.create({
+        data: { madrasaId, bookId: book.id, sortOrder: (lastSubject?.sortOrder ?? -1) + 1 },
+      });
       return book;
     });
   }

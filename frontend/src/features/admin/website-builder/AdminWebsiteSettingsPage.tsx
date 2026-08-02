@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bell,
-  ClipboardList,
   ExternalLink,
   GalleryHorizontalEnd,
+  Globe,
   Images,
   Pencil,
   Plus,
@@ -19,7 +19,6 @@ import EmptyState from "../../../components/ui/EmptyState";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import BrandImageBox from "../../../components/settings/BrandImageBox";
 import {
-  deleteAdmissionApplication,
   deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
   deleteWebsiteNotice,
@@ -31,8 +30,6 @@ import {
   saveWebsitePage,
   saveWebsiteSettings,
   saveWebsiteSlide,
-  updateAdmissionApplicationStatus,
-  type WebsiteAdmissionApplication,
   type WebsiteCommitteeMemberPayload,
   type WebsiteGalleryPayload,
   type WebsiteNoticePayload,
@@ -102,7 +99,6 @@ const emptyCommittee: WebsiteCommitteeMemberPayload = {
 };
 
 const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
-  ["is_published", "ওয়েবসাইট প্রকাশিত", "বন্ধ করলে পুরো পাবলিক ওয়েবসাইট সবার কাছে অদৃশ্য থাকবে"],
   ["show_notice_bar", "চলমান নোটিশ বার", "নেভবারের নিচে স্ক্রলিং নোটিশ বার দেখাবে"],
   ["show_slider", "হোম স্লাইডার", "হোমপেজে ছবির স্লাইডার দেখাবে"],
   ["show_about", "আমাদের সম্পর্কে", "মাদ্রাসার পরিচিতি সেকশন দেখাবে"],
@@ -115,7 +111,7 @@ const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
   ["show_contact", "যোগাযোগ", "যোগাযোগ তথ্য সেকশন দেখাবে"],
 ];
 
-type TabKey = "general" | "notices" | "gallery" | "slider" | "committee" | "admissions";
+type TabKey = "general" | "notices" | "gallery" | "slider" | "committee";
 
 const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700";
 const textAreaClass =
@@ -403,7 +399,6 @@ export default function AdminWebsiteSettingsPage() {
   const [gallery, setGallery] = useState<WebsiteGalleryPayload[]>([]);
   const [slides, setSlides] = useState<WebsiteSlidePayload[]>([]);
   const [committee, setCommittee] = useState<WebsiteCommitteeMemberPayload[]>([]);
-  const [admissions, setAdmissions] = useState<WebsiteAdmissionApplication[]>([]);
 
   const [noticeDraft, setNoticeDraft] = useState<WebsiteNoticePayload>(emptyNotice);
   const [galleryDraft, setGalleryDraft] = useState<WebsiteGalleryPayload>(emptyGallery);
@@ -449,7 +444,6 @@ export default function AdminWebsiteSettingsPage() {
         if (Array.isArray(data?.gallery)) setGallery(data.gallery);
         if (Array.isArray(data?.slides)) setSlides(data.slides);
         if (Array.isArray(data?.committee)) setCommittee(data.committee);
-        if (Array.isArray(data?.admissions)) setAdmissions(data.admissions);
       })
       .catch((err) => {
         logger.error("LOAD WEBSITE SETTINGS ERROR:", err);
@@ -733,51 +727,17 @@ export default function AdminWebsiteSettingsPage() {
     });
   };
 
-  // ---------- Admissions ----------
-  const changeAdmissionStatus = async (id: number, status: "pending" | "approved" | "rejected") => {
-    try {
-      await updateAdmissionApplicationStatus(id, status);
-      setAdmissions((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
-      toast(status === "approved" ? "আবেদনটি গৃহীত হয়েছে।" : "আবেদনটি বাতিল করা হয়েছে।", "success");
-    } catch (err) {
-      logger.error("UPDATE ADMISSION STATUS ERROR:", err);
-      toast("স্ট্যাটাস আপডেট করা যায়নি।", "error");
-    }
-  };
-
-  const removeAdmission = (app: WebsiteAdmissionApplication) => {
-    useConfirmStore.getState().show({
-      title: "আবেদন মুছুন",
-      message: `"${app.student_name}" এর আবেদনটি স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "মুছুন",
-      danger: true,
-      onConfirm: async () => {
-        try {
-          await deleteAdmissionApplication(app.id);
-          setAdmissions((prev) => prev.filter((item) => item.id !== app.id));
-          toast("আবেদন মুছে ফেলা হয়েছে।", "success");
-        } catch (err) {
-          logger.error("DELETE ADMISSION ERROR:", err);
-          toast("আবেদন মুছতে সমস্যা হয়েছে।", "error");
-        }
-      },
-    });
-  };
-
-  const pendingAdmissions = admissions.filter((a) => a.status === "pending").length;
-
   const tabs: Array<{ key: TabKey; label: string; icon: typeof Settings2; badge?: number }> = [
     { key: "general", label: "সাধারণ সেটিংস", icon: Settings2 },
     { key: "notices", label: "নোটিশ", icon: Bell, badge: notices.length },
     { key: "gallery", label: "গ্যালারি", icon: Images, badge: gallery.length },
     { key: "slider", label: "হিরো স্লাইডার", icon: GalleryHorizontalEnd, badge: slides.length },
     { key: "committee", label: "মাদ্রাসা কমিটি", icon: Users, badge: committee.length },
-    { key: "admissions", label: "ভর্তি আবেদন", icon: ClipboardList, badge: pendingAdmissions },
   ];
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <PageHeader title="ওয়েবসাইট সেটিংস" />
         <SkeletonCard lines={3} />
         <SkeletonCard lines={3} />
@@ -786,7 +746,7 @@ export default function AdminWebsiteSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="ওয়েবসাইট সেটিংস"
         subtitle="মাদ্রাসার পাবলিক ওয়েবসাইটের নাম, লোগো, ব্যানার, নোটিশ, গ্যালারি ও পেজ কন্টেন্ট এখান থেকে পরিচালনা করুন।"
@@ -795,13 +755,61 @@ export default function AdminWebsiteSettingsPage() {
             href={publicUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+            className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-600/30 active:translate-y-0"
           >
-            <ExternalLink size={15} />
             ওয়েবসাইট দেখুন
+            <ExternalLink
+              size={15}
+              className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
           </a>
         }
       />
+
+      <div
+        className={`flex items-center justify-between gap-4 rounded-2xl border-2 p-5 shadow-sm transition ${
+          (form.is_published as number) !== 0
+            ? "border-green-200 bg-green-50/60"
+            : "border-red-200 bg-red-50/60"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+              (form.is_published as number) !== 0
+                ? "bg-green-100 text-green-600"
+                : "bg-red-100 text-red-600"
+            }`}
+          >
+            <Globe size={20} />
+          </span>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-gray-900">ওয়েবসাইট প্রকাশিত</span>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                  (form.is_published as number) !== 0
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {(form.is_published as number) !== 0 ? "লাইভ আছে" : "বন্ধ আছে"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-600">
+              এটি মাস্টার সুইচ — বন্ধ করলে পুরো পাবলিক ওয়েবসাইট (সব ট্যাবের সব সেকশনসহ) সবার কাছে অদৃশ্য হয়ে যাবে।
+            </p>
+          </div>
+        </div>
+        {savingToggle === "is_published" ? (
+          <span className="shrink-0 text-xs text-gray-400">সংরক্ষণ হচ্ছে...</span>
+        ) : (
+          <ToggleSwitch
+            checked={(form.is_published as number) !== 0}
+            onChange={(v) => handleToggle("is_published", v)}
+          />
+        )}
+      </div>
 
       {/* Tab bar */}
       <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
@@ -1482,72 +1490,6 @@ export default function AdminWebsiteSettingsPage() {
           ) : (
             <EmptyState title="এখনো কোনো কমিটির সদস্য যোগ করা হয়নি" hint="কমিটির সদস্য যোগ করলে পাবলিক ওয়েবসাইটে দেখা যাবে।" />
           )}
-        </div>
-      )}
-
-      {tab === "admissions" && (
-        <div className="space-y-5">
-          <SectionCard title="অনলাইন ভর্তি আবেদনসমূহ" hint="পাবলিক ওয়েবসাইট থেকে জমা হওয়া ভর্তি আবেদনসমূহ এখানে দেখা ও পর্যালোচনা করা যাবে।">
-            {admissions.length ? (
-              <div className="space-y-3">
-                {admissions.map((app) => (
-                  <div key={app.id} className="rounded-xl border border-gray-200 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{app.student_name}</h3>
-                        <p className="mt-1 text-sm text-gray-600">
-                          {[app.class_applied, app.gender, app.guardian_phone].filter(Boolean).join(" • ")}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          পিতা: {app.father_name || "N/A"} • মাতা: {app.mother_name || "N/A"}
-                        </p>
-                        {app.address && <p className="mt-1 text-xs text-gray-500">ঠিকানা: {app.address}</p>}
-                        {app.note && <p className="mt-1 text-xs text-gray-500">নোট: {app.note}</p>}
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                            app.status === "approved"
-                              ? "bg-green-100 text-green-700"
-                              : app.status === "rejected"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {app.status === "approved"
-                            ? "গৃহীত"
-                            : app.status === "rejected"
-                              ? "বাতিল"
-                              : "অপেক্ষমান"}
-                        </span>
-                        <div className="flex gap-2">
-                          {app.status !== "approved" && (
-                            <Button type="button" onClick={() => changeAdmissionStatus(app.id, "approved")}>
-                              গ্রহণ করুন
-                            </Button>
-                          )}
-                          {app.status !== "rejected" && (
-                            <Button
-                              type="button"
-                              variant="danger"
-                              onClick={() => changeAdmissionStatus(app.id, "rejected")}
-                            >
-                              বাতিল করুন
-                            </Button>
-                          )}
-                          <Button type="button" variant="secondary" onClick={() => removeAdmission(app)}>
-                            মুছুন
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="এখনো কোনো ভর্তি আবেদন নেই" hint="পাবলিক ওয়েবসাইট থেকে কেউ আবেদন করলে এখানে দেখা যাবে।" />
-            )}
-          </SectionCard>
         </div>
       )}
     </div>

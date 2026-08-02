@@ -19,13 +19,17 @@ export default function ClassPanel() {
   const [className, setClassName] = useState("");
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
   const [editingClassName, setEditingClassName] = useState("");
+  const [editingClassOriginalName, setEditingClassOriginalName] = useState("");
   const [showClassInput, setShowClassInput] = useState(false);
 
   // BOOK
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingOriginalName, setEditingOriginalName] = useState("");
   const [showBookInput, setShowBookInput] = useState(false);
+  const [dragBookId, setDragBookId] = useState<number | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   /* ================= LOAD ================= */
 
@@ -102,13 +106,18 @@ export default function ClassPanel() {
   };
 
   const saveClassEdit = async () => {
-    if (!editingClassName.trim()) return;
+    const trimmed = editingClassName.trim();
+    if (!trimmed || trimmed === editingClassOriginalName.trim()) {
+      setEditingClassId(null);
+      return;
+    }
 
-    await api.put(`/madrasa-classes/${editingClassId}`, {
-      name_bn: editingClassName,
+    const id = editingClassId;
+    setEditingClassId(null);
+    await api.put(`/madrasa-classes/${id}`, {
+      name_bn: trimmed,
     });
 
-    setEditingClassId(null);
     loadClasses();
   };
 
@@ -148,19 +157,82 @@ export default function ClassPanel() {
   };
 
   const saveEdit = async () => {
-    if (!editingName.trim()) return;
+    const trimmed = editingName.trim();
+    if (!trimmed || trimmed === editingOriginalName.trim()) {
+      setEditingId(null);
+      return;
+    }
 
-    await api.put(`/madrasa-books/${editingId}`, {
-      name_bn: editingName,
+    const id = editingId;
+    setEditingId(null);
+    await api.put(`/madrasa-books/${id}`, {
+      name_bn: trimmed,
     });
 
-    setEditingId(null);
     loadBooks();
   };
 
   const startEdit = (book: any) => {
     setEditingId(book.book_id);
     setEditingName(book.book_name_bn);
+    setEditingOriginalName(book.book_name_bn);
+  };
+
+  /* ================= BOOK ORDER (drag & drop) ================= */
+
+  const reorderBooksLocally = (targetBookId: number) => {
+    if (dragBookId === null || dragBookId === targetBookId) return;
+
+    setBooks((prev) => {
+      const from = prev.findIndex((b: any) => b.book_id === dragBookId);
+      const to = prev.findIndex((b: any) => b.book_id === targetBookId);
+      if (from === -1 || to === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const persistBookOrder = async (orderedBooks: any[]) => {
+    setSavingOrder(true);
+    try {
+      await api.put("/madrasa-books/reorder", {
+        class_id: Number(classId),
+        book_ids: orderedBooks.map((b) => b.book_id),
+      });
+    } catch (err: any) {
+      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      loadBooks();
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  // Pointer Events (not HTML5 drag-and-drop) so the same handlers work for
+  // mouse, touch and pen. elementFromPoint uses viewport hit-testing, so it
+  // keeps finding the card under the finger/cursor even while this handle
+  // holds pointer capture.
+  const handleHandlePointerDown = (bookId: number) => (event: React.PointerEvent) => {
+    if (!isEditMode || savingOrder) return;
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    setDragBookId(bookId);
+  };
+
+  const handleHandlePointerMove = (event: React.PointerEvent) => {
+    if (dragBookId === null) return;
+    const hovered = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+    const card = hovered?.closest<HTMLElement>("[data-book-id]");
+    const targetBookId = Number(card?.dataset.bookId);
+    if (!targetBookId) return;
+    reorderBooksLocally(targetBookId);
+  };
+
+  const handleHandlePointerEnd = () => {
+    if (dragBookId === null) return;
+    setDragBookId(null);
+    persistBookOrder(books);
   };
 
   // Checking/unchecking a book saves immediately - no separate "Save" step,
@@ -191,9 +263,9 @@ export default function ClassPanel() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা</h1>
+          <h1 className="text-lg font-semibold sm:text-xl">মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা</h1>
           <p className="mt-1 text-sm text-slate-500">
             প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।
           </p>
@@ -205,7 +277,7 @@ export default function ClassPanel() {
             setShowClassInput(false);
             setShowBookInput(false);
           }}
-          className="rounded bg-gray-800 px-4 py-2 text-white"
+          className="w-full shrink-0 touch-manipulation rounded bg-gray-800 px-4 py-2.5 text-white sm:w-auto sm:py-2"
         >
           {isEditMode ? "এডিট বন্ধ করুন" : "এডিট করুন"}
         </button>
@@ -218,7 +290,7 @@ export default function ClassPanel() {
             <button
               key={division.division_id}
               onClick={() => setDivisionId(String(division.division_id))}
-              className={`rounded border px-3 py-2 ${
+              className={`touch-manipulation rounded border px-3 py-2 ${
                 divisionId === String(division.division_id)
                   ? "border-blue-500 bg-blue-500 text-white"
                   : "bg-white"
@@ -237,18 +309,21 @@ export default function ClassPanel() {
           {classes.map((classItem) => (
             <div key={classItem.class_id} className="flex items-center gap-1">
               {editingClassId === classItem.class_id ? (
-                <>
-                  <input
-                    value={editingClassName}
-                    onChange={(event) => setEditingClassName(event.target.value)}
-                    className="rounded border px-2 py-1"
-                  />
-                  <button onClick={saveClassEdit}>✔</button>
-                </>
+                <input
+                  value={editingClassName}
+                  onChange={(event) => setEditingClassName(event.target.value)}
+                  onBlur={saveClassEdit}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+                    if (event.key === "Escape") setEditingClassId(null);
+                  }}
+                  className="w-32 min-w-0 rounded border px-2 py-2 sm:w-auto"
+                  autoFocus
+                />
               ) : (
                 <button
                   onClick={() => setClassId(String(classItem.class_id))}
-                  className={`rounded border px-3 py-2 ${
+                  className={`touch-manipulation rounded border px-3 py-2 ${
                     classId === String(classItem.class_id)
                       ? "border-emerald-600 bg-emerald-600 text-white"
                       : "bg-white"
@@ -264,12 +339,18 @@ export default function ClassPanel() {
                     onClick={() => {
                       setEditingClassId(classItem.class_id);
                       setEditingClassName(classItem.class_name_bn);
+                      setEditingClassOriginalName(classItem.class_name_bn);
                     }}
                     aria-label="শ্রেণি এডিট করুন"
+                    className="touch-manipulation rounded p-2 hover:bg-gray-100 active:bg-gray-200"
                   >
                     ✏️
                   </button>
-                  <button onClick={() => removeClass(classItem.class_id)} aria-label="শ্রেণি ডিলিট করুন">
+                  <button
+                    onClick={() => removeClass(classItem.class_id)}
+                    aria-label="শ্রেণি ডিলিট করুন"
+                    className="touch-manipulation rounded p-2 hover:bg-red-50 active:bg-red-100"
+                  >
                     🗑️
                   </button>
                 </>
@@ -279,16 +360,27 @@ export default function ClassPanel() {
 
           {isEditMode &&
             (!showClassInput ? (
-              <button onClick={() => setShowClassInput(true)}>➕ শ্রেণি যোগ করুন</button>
+              <button
+                onClick={() => setShowClassInput(true)}
+                className="touch-manipulation rounded border border-dashed px-3 py-2"
+              >
+                ➕ শ্রেণি যোগ করুন
+              </button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex w-full gap-2 sm:w-auto">
                 <input
                   value={className}
                   onChange={(event) => setClassName(event.target.value)}
-                  className="rounded border px-2 py-1"
+                  className="w-full min-w-0 rounded border px-2 py-2 sm:w-auto"
                   placeholder="শ্রেণির নাম"
+                  autoFocus
                 />
-                <button onClick={addClass}>✔</button>
+                <button
+                  onClick={addClass}
+                  className="touch-manipulation shrink-0 rounded bg-emerald-600 px-3 py-2 text-white"
+                >
+                  ✔
+                </button>
               </div>
             ))}
         </div>
@@ -300,6 +392,7 @@ export default function ClassPanel() {
             <h2 className="font-medium">কিতাবসমূহ</h2>
             <p className="mt-1 text-xs text-slate-500">
               মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। অন্য কিতাবে ফেল করলে গড় পাস থাকলে PASS হবে।
+              {isEditMode && " টেনে (drag) কিতাবের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।"}
             </p>
           </div>
           <div className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -318,32 +411,56 @@ export default function ClassPanel() {
               return (
                 <div
                   key={book.book_id}
-                  className={`flex w-auto shrink-0 flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
+                  data-book-id={book.book_id}
+                  className={`flex w-auto max-w-full shrink-0 flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
                     isMiyari ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"
-                  }`}
+                  } ${dragBookId === book.book_id ? "opacity-50" : ""}`}
                 >
                   {editingId === book.book_id ? (
-                    <div className="flex gap-2">
-                      <input
-                        value={editingName}
-                        onChange={(event) => setEditingName(event.target.value)}
-                        className="w-full rounded border px-2 py-1"
-                        autoFocus
-                      />
-                      <button onClick={saveEdit} className="shrink-0 text-emerald-600">
-                        ✔
-                      </button>
-                    </div>
+                    <input
+                      value={editingName}
+                      onChange={(event) => setEditingName(event.target.value)}
+                      onBlur={saveEdit}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+                        if (event.key === "Escape") setEditingId(null);
+                      }}
+                      className="w-full rounded border px-2 py-1"
+                      autoFocus
+                    />
                   ) : (
                     <div className="flex items-start justify-between gap-2">
-                      <span className="break-words font-medium leading-snug">{book.book_name_bn}</span>
+                      {isEditMode && (
+                        <span
+                          onPointerDown={handleHandlePointerDown(book.book_id)}
+                          onPointerMove={handleHandlePointerMove}
+                          onPointerUp={handleHandlePointerEnd}
+                          onPointerCancel={handleHandlePointerEnd}
+                          className="shrink-0 cursor-grab select-none rounded p-1.5 text-slate-400 active:cursor-grabbing active:bg-gray-100"
+                          style={{ touchAction: "none" }}
+                          aria-label="কিতাব সরান"
+                        >
+                          ⠿
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 break-words font-medium leading-snug">
+                        {book.book_name_bn}
+                      </span>
 
                       {isEditMode && (
-                        <div className="flex shrink-0 gap-1.5 text-slate-500">
-                          <button onClick={() => startEdit(book)} aria-label="কিতাব এডিট করুন">
+                        <div className="flex shrink-0 gap-0.5 text-slate-500">
+                          <button
+                            onClick={() => startEdit(book)}
+                            aria-label="কিতাব এডিট করুন"
+                            className="touch-manipulation rounded p-1.5 hover:bg-gray-100 active:bg-gray-200"
+                          >
                             ✏️
                           </button>
-                          <button onClick={() => removeBook(book)} aria-label="কিতাব ডিলিট করুন">
+                          <button
+                            onClick={() => removeBook(book)}
+                            aria-label="কিতাব ডিলিট করুন"
+                            className="touch-manipulation rounded p-1.5 hover:bg-red-50 active:bg-red-100"
+                          >
                             🗑️
                           </button>
                         </div>
@@ -358,13 +475,13 @@ export default function ClassPanel() {
                   )}
 
                   {isEditMode && (
-                    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+                    <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-slate-600">
                       <input
                         type="checkbox"
                         checked={isMiyari}
                         disabled={savingMiyari}
                         onChange={() => toggleMiyari(Number(book.book_id))}
-                        className="h-4 w-4 disabled:cursor-not-allowed"
+                        className="h-5 w-5 disabled:cursor-not-allowed"
                       />
                       মিয়ারি কিতাব
                     </label>
@@ -378,16 +495,27 @@ export default function ClassPanel() {
         {isEditMode && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {!showBookInput ? (
-              <button onClick={() => setShowBookInput(true)}>➕ কিতাব যোগ করুন</button>
+              <button
+                onClick={() => setShowBookInput(true)}
+                className="touch-manipulation rounded border border-dashed px-3 py-2"
+              >
+                ➕ কিতাব যোগ করুন
+              </button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex w-full gap-2 sm:w-auto">
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className="rounded border px-2 py-1"
+                  className="w-full min-w-0 rounded border px-2 py-2 sm:w-auto"
                   placeholder="কিতাবের নাম"
+                  autoFocus
                 />
-                <button onClick={addBook}>✔</button>
+                <button
+                  onClick={addBook}
+                  className="touch-manipulation shrink-0 rounded bg-emerald-600 px-3 py-2 text-white"
+                >
+                  ✔
+                </button>
               </div>
             )}
           </div>

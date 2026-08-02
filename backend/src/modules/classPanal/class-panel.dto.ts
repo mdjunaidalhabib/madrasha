@@ -20,3 +20,8 @@ export interface UpdateMiyariSubjectsRequestDto {
   class_id: number | string;
   book_ids: Array<number | string>;
 }
+
+export interface ReorderSubjectsRequestDto {
+  class_id: number | string;
+  book_ids: Array<number | string>;
+}

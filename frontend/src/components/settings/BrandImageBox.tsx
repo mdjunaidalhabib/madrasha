@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ImageUp, Loader2, X } from "lucide-react";
+import { ImageUp, Loader2, Pencil, X } from "lucide-react";
 import { useToastStore } from "../../store/toastStore";
 import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "../../utils/logger";
@@ -67,6 +67,8 @@ export default function BrandImageBox({
     e.target.value = "";
   };
 
+  const ratioLabel = shape === "wide" ? "অনুপাত ১৬:৯" : "অনুপাত ১:১";
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <p className="font-semibold text-gray-900">{label}</p>
@@ -79,7 +81,7 @@ export default function BrandImageBox({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
         }}
-        className={`relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-300 hover:bg-blue-50/40 ${
+        className={`group relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-400 hover:bg-blue-50/40 ${
           shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
@@ -90,37 +92,41 @@ export default function BrandImageBox({
         }}
       >
         {!value && (
-          <span className="flex flex-col items-center gap-1.5 px-2 text-center text-xs text-gray-400">
-            <ImageUp size={22} className="text-gray-300" />
-            ছবি আপলোড করুন
+          <span className="flex flex-col items-center gap-1 px-2 text-center text-xs text-gray-400">
+            <ImageUp size={22} className="text-gray-300 transition group-hover:text-blue-400" />
+            <span>ছবি আপলোড করুন</span>
+            <span className="text-[10px] text-gray-300">{ratioLabel}</span>
           </span>
         )}
+
+        {value && !uploading && (
+          <>
+            <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              {ratioLabel}
+            </span>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
+              <Pencil size={16} />
+              <span className="text-xs font-medium">পরিবর্তন করুন</span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100"
+              title="মুছুন"
+            >
+              <X size={14} />
+            </button>
+          </>
+        )}
+
         {uploading && (
           <span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/50 text-xs text-white">
             <Loader2 size={14} className="animate-spin" />
             আপলোড হচ্ছে...
           </span>
-        )}
-      </div>
-
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
-        >
-          <ImageUp size={14} />
-          আপলোড
-        </button>
-        {value && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100"
-          >
-            <X size={14} />
-            মুছুন
-          </button>
         )}
       </div>
 

@@ -305,6 +305,14 @@ const TeacherListPage = () => {
           )}
         </div>
       </div>
+
+      <BulkUpdateModal
+        open={bulkUpdateOpen}
+        teachers={filteredTeachers as unknown as TeacherFullRecord[]}
+        divisions={divisions}
+        onClose={() => setBulkUpdateOpen(false)}
+        onSuccess={loadTeachers}
+      />
     </div>
   );
 };
