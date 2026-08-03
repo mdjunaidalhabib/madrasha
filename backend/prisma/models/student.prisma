@@ -24,10 +24,10 @@ model Student {
   id        Int @id @default(autoincrement())
   madrasaId Int @map("madrasa_id")
 
-  divisionId      Int    @map("division_id")
-  classId         Int    @map("class_id")
-  academicYear    String @default("2025") @map("academic_year") @db.VarChar(10)
-  previousClassId Int?   @map("previous_class_id")
+  divisionId          Int     @map("division_id")
+  classId             Int     @map("class_id")
+  academicYear        String  @default("2025") @map("academic_year") @db.VarChar(10)
+  previousClassId     Int?    @map("previous_class_id")
   previousInstitution String? @map("previous_institution") @db.VarChar(200)
   previousResult      String? @map("previous_result") @db.VarChar(100)
 

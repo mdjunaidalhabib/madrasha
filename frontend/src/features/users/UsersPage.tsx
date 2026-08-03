@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import { roleApi, userAdminApi, type RoleItem, type UserItem } from "../../services/phase3Api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
+import EmptyState from "../../components/ui/EmptyState";
+import PageHeader from "../../components/ui/PageHeader";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import SectionCard from "../../components/settings/SectionCard";
+import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -12,6 +18,7 @@ const normalizeArray = (payload: any) => {
 };
 
 const emptyForm = { name: "", email: "", password: "", role_id: "" };
+const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600";
 
 const UsersPage = () => {
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -118,171 +125,167 @@ const UsersPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">স্টাফ ব্যবস্থাপনা</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            যারা এই প্যানেলে লগইন করবে তাদের অ্যাকাউন্ট তৈরি ও রোল নির্ধারণ করুন
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="স্টাফ ব্যবস্থাপনা"
+        subtitle="যারা এই প্যানেলে লগইন করবে তাদের অ্যাকাউন্ট তৈরি ও রোল নির্ধারণ করুন"
+      />
 
-        {/* Create user */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">নতুন ইউজার যোগ করুন</h2>
-          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">
-            <div className="flex flex-col gap-1 sm:w-[160px]">
-              <label className="text-xs font-medium text-gray-600">নাম</label>
-              <input
-                type="text"
-                placeholder="স্টাফের নাম"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1 sm:w-[180px]">
-              <label className="text-xs font-medium text-gray-600">ইমেইল</label>
-              <input
-                type="email"
-                placeholder="লগইন ইমেইল"
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1 sm:w-[150px]">
-              <label className="text-xs font-medium text-gray-600">পাসওয়ার্ড</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="কমপক্ষে ৬ অক্ষর"
-                  value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                  className="h-9 w-full rounded-md border border-gray-300 px-3 pr-9 text-sm outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700"
-                  aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1 sm:w-[160px]">
-              <label className="text-xs font-medium text-gray-600">রোল</label>
-              <select
-                value={form.role_id}
-                onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-              >
-                <option value="">রোল নির্বাচন করুন</option>
-                {assignableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name_bn}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              disabled={creating}
-              onClick={handleCreate}
-              className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
-            >
-              {creating ? "তৈরি হচ্ছে..." : "যোগ করুন"}
-            </button>
+      <SectionCard title="নতুন ইউজার যোগ করুন">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className={fieldLabelClass}>নাম</label>
+            <Input
+              type="text"
+              placeholder="স্টাফের নাম"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              className="h-10"
+            />
           </div>
-          <p className="mt-2 text-xs text-gray-400">
-            মুহতামিম রোল এখান থেকে দেওয়া যায় না — প্রতিটি মাদ্রাসার একজনই ডিফল্ট মুহতামিম থাকতে
-            পারেন।
-          </p>
+
+          <div>
+            <label className={fieldLabelClass}>ইমেইল</label>
+            <Input
+              type="email"
+              placeholder="লগইন ইমেইল"
+              value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              className="h-10"
+            />
+          </div>
+
+          <div>
+            <label className={fieldLabelClass}>পাসওয়ার্ড</label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="কমপক্ষে ৬ অক্ষর"
+                value={form.password}
+                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                className="h-10 pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700"
+                aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className={fieldLabelClass}>রোল</label>
+            <select
+              value={form.role_id}
+              onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
+              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="">রোল নির্বাচন করুন</option>
+              {assignableRoles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name_bn}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* User list */}
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          {loading ? (
-            <SkeletonList items={6} />
-          ) : users.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">কোনো ইউজার নেই</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="text-sm">
-                    <span className="font-semibold text-gray-800">{user.name}</span>{" "}
-                    <span className="text-gray-500">({user.email})</span>{" "}
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4">
+          <p className="text-xs text-gray-400">
+            মুহতামিম রোল এখান থেকে দেওয়া যায় না — প্রতিটি মাদ্রাসার একজনই ডিফল্ট মুহতামিম থাকতে পারেন।
+          </p>
+          <Button disabled={creating} onClick={handleCreate} className="gap-1.5">
+            {!creating && <Plus size={15} />}
+            {creating ? "তৈরি হচ্ছে..." : "যোগ করুন"}
+          </Button>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="সব ইউজার">
+        {loading ? (
+          <SkeletonList items={6} />
+        ) : users.length === 0 ? (
+          <EmptyState title="কোনো ইউজার নেই" />
+        ) : (
+          <div className="space-y-3">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 text-sm">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-gray-900">{user.name}</span>
+                    <span className="text-gray-500">({user.email})</span>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
                       {roleName(user.roleId)}
                     </span>
                     {user.isMuhtamim && (
-                      <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                         ডিফল্ট মুহতামিম
                       </span>
                     )}
                     {!user.isActive && (
-                      <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-600">
                         নিষ্ক্রিয়
                       </span>
                     )}
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      value={user.roleId}
-                      onChange={(e) => handleRoleChange(user, Number(e.target.value))}
-                      disabled={user.isMuhtamim}
-                      title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
-                      className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-                    >
-                      {/* মুহতামিমের নিজের রোলটা তালিকায় না থাকলে select-এ ভুল
-                          value দেখাবে, তাই এই একটা ক্ষেত্রেই সেটাকে যোগ করা হচ্ছে। */}
-                      {user.isMuhtamim && (
-                        <option key={user.roleId} value={user.roleId}>
-                          {roleName(user.roleId)}
-                        </option>
-                      )}
-                      {assignableRoles.map((role) => (
-                        <option key={role.id} value={role.id}>
-                          {role.name_bn}
-                        </option>
-                      ))}
-                    </select>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={user.roleId}
+                    onChange={(e) => handleRoleChange(user, Number(e.target.value))}
+                    disabled={user.isMuhtamim}
+                    title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
+                    className="h-9 rounded-lg border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    {/* মুহতামিমের নিজের রোলটা তালিকায় না থাকলে select-এ ভুল
+                        value দেখাবে, তাই এই একটা ক্ষেত্রেই সেটাকে যোগ করা হচ্ছে। */}
+                    {user.isMuhtamim && (
+                      <option key={user.roleId} value={user.roleId}>
+                        {roleName(user.roleId)}
+                      </option>
+                    )}
+                    {assignableRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name_bn}
+                      </option>
+                    ))}
+                  </select>
+                  <ToggleSwitch
+                    checked={Boolean(user.isActive)}
+                    onChange={() => handleToggleActive(user)}
+                    disabled={user.isMuhtamim}
+                    title={
+                      user.isMuhtamim
+                        ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন"
+                        : user.isActive
+                          ? "নিষ্ক্রিয় করুন"
+                          : "সক্রিয় করুন"
+                    }
+                  />
+                  {!user.isMuhtamim && (
                     <button
                       type="button"
-                      onClick={() => handleToggleActive(user)}
-                      disabled={user.isMuhtamim}
-                      title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
-                      className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                      onClick={() => handleDelete(user)}
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                      title="মুছুন"
                     >
-                      {user.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                      <Trash2 size={16} />
                     </button>
-                    {!user.isMuhtamim && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(user)}
-                        className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                      >
-                        মুছুন
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 };

@@ -14,6 +14,7 @@ export default function MadrasasTable({
   onToggleActive,
   onDelete,
   onEdit,
+  onCloudinary,
 }: {
   loading: boolean;
   items: Madrasa[];
@@ -23,6 +24,7 @@ export default function MadrasasTable({
   onToggleActive: (m: Madrasa) => Promise<void>;
   onDelete: (m: Madrasa) => void;
   onEdit: (m: Madrasa) => void;
+  onCloudinary: (m: Madrasa) => void;
 }) {
   const renderPlanControl = (m: Madrasa) =>
     plans.length ? (
@@ -70,6 +72,14 @@ export default function MadrasasTable({
         className="flex-1 sm:flex-none"
       >
         Trash
+      </Button>
+      <Button
+        variant="secondary"
+        onClick={() => onCloudinary(m)}
+        disabled={busyId === m.id}
+        className="flex-1 sm:flex-none"
+      >
+        Cloudinary
       </Button>
     </div>
   );

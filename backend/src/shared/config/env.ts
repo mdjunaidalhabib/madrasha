@@ -78,15 +78,22 @@ export const env = {
   smsParamMessage: process.env.SMS_PARAM_MESSAGE || "message",
 
   /* ================= FILE STORAGE (Cloudinary) ================= */
-  // Everything storage-related is driven from these env vars only -
-  // there is no DB-based "storage settings" table, so credentials never
-  // pass through the database. When cloudName/apiKey/apiSecret aren't
-  // all set, CloudinaryService reports "not configured" instead of
-  // throwing, so callers can fall back to the old inline-base64 behavior.
+  // Each madrasa (tenant) has its own Cloudinary account, configured by the
+  // super admin and stored in the `madrasa_cloudinary_configs` table (see
+  // MadrasaCloudinaryConfig in prisma/models/tenant.prisma) - the API secret
+  // is encrypted at rest with `secretsEncryptionKey` below, via
+  // shared/utils/crypto.util.ts. These CLOUDINARY_* vars are unused
+  // leftovers from the old single-tenant setup and are no longer read by
+  // the upload flow; the folder name still applies per-tenant.
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
   // Base folder every upload from this app goes into, e.g.
   // "madrasha/<madrasaId>/students" is built from this + a sub-folder.
   cloudinaryUploadFolder: process.env.CLOUDINARY_UPLOAD_FOLDER || "madrasha",
+
+  // 32-byte (64 hex char) key used to encrypt per-tenant secrets (currently
+  // just Cloudinary API secrets) before they're stored in the database.
+  // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  secretsEncryptionKey: process.env.SECRETS_ENCRYPTION_KEY || "",
 };

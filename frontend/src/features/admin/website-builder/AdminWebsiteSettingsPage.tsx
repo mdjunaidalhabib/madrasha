@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   ExternalLink,
@@ -10,7 +10,6 @@ import {
   Settings2,
   Trash2,
   Users,
-  X,
 } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
@@ -18,6 +17,11 @@ import PageHeader from "../../../components/ui/PageHeader";
 import EmptyState from "../../../components/ui/EmptyState";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import BrandImageBox from "../../../components/settings/BrandImageBox";
+import SectionCard from "../../../components/settings/SectionCard";
+import { ToggleSwitch, PublishToggle } from "../../../components/settings/ToggleSwitch";
+import InlineTextField, { textAreaClass } from "../../../components/settings/InlineTextField";
+import InlineImageField from "../../../components/settings/InlineImageField";
+import { CLOUD_NOT_CONFIGURED_MSG, isPendingCloudUpload } from "../../../utils/cloudUpload";
 import {
   deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
@@ -114,259 +118,6 @@ const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
 type TabKey = "general" | "notices" | "gallery" | "slider" | "committee";
 
 const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700";
-const textAreaClass =
-  "w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100";
-
-function SectionCard({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      aria-pressed={checked}
-      className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition ${
-        checked ? "bg-blue-600" : "bg-gray-300"
-      }`}
-    >
-      <span
-        className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
-function PublishToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-      <ToggleSwitch checked={checked} onChange={onChange} />
-      প্রকাশ করুন
-    </label>
-  );
-}
-
-/**
- * Read-only by default; click the pencil to edit that one field in place and
- * save it — the rest of the section stays read-only.
- */
-function InlineTextField({
-  label,
-  value,
-  placeholder,
-  hint,
-  multiline,
-  rows = 3,
-  type = "text",
-  required,
-  onSave,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  hint?: string;
-  multiline?: boolean;
-  rows?: number;
-  type?: "text" | "color";
-  required?: boolean;
-  onSave: (value: string) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value || "");
-  const [saving, setSaving] = useState(false);
-
-  const startEdit = () => {
-    setDraft(value || "");
-    setEditing(true);
-  };
-
-  const cancel = () => setEditing(false);
-
-  const save = async () => {
-    if (required && !draft.trim()) {
-      useToastStore.getState().show(`${label} খালি রাখা যাবে না।`, "error");
-      return;
-    }
-    setSaving(true);
-    try {
-      await onSave(draft.trim());
-      setEditing(false);
-    } catch {
-      // error toast already shown by onSave — stay in edit mode so the user can retry
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!editing) {
-    return (
-      <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500">{label}</p>
-          {type === "color" ? (
-            <span className="mt-1 inline-flex items-center gap-2">
-              <span
-                className="h-5 w-5 rounded border border-gray-200"
-                style={{ backgroundColor: value || "#2563eb" }}
-              />
-              <span className="text-sm text-gray-900">{value || "#2563eb"}</span>
-            </span>
-          ) : (
-            <p className="mt-0.5 whitespace-pre-line break-words text-sm text-gray-900">
-              {value?.trim() ? value : <span className="text-gray-400">যোগ করা হয়নি</span>}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
-        >
-          <Pencil size={14} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
-      <p className="mb-1.5 text-xs font-medium text-gray-500">{label}</p>
-      {hint && <p className="mb-2 text-xs text-gray-500">{hint}</p>}
-      {multiline ? (
-        <textarea
-          autoFocus
-          rows={rows}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={placeholder}
-          className={textAreaClass}
-        />
-      ) : type === "color" ? (
-        <input
-          type="color"
-          autoFocus
-          value={draft || "#2563eb"}
-          onChange={(e) => setDraft(e.target.value)}
-          className="h-10 w-24 cursor-pointer rounded-lg border border-gray-300 p-1"
-        />
-      ) : (
-        <Input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={placeholder} />
-      )}
-      <div className="mt-3 flex justify-end gap-2">
-        <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
-          বাতিল
-        </Button>
-        <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function InlineImageField({
-  label,
-  hint,
-  value,
-  folder,
-  onSave,
-}: {
-  label: string;
-  hint?: string;
-  value: string | null | undefined;
-  folder?: "branding" | "gallery";
-  onSave: (value: string) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value || "");
-  const [saving, setSaving] = useState(false);
-
-  const startEdit = () => {
-    setDraft(value || "");
-    setEditing(true);
-  };
-
-  const cancel = () => setEditing(false);
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await onSave(draft);
-      setEditing(false);
-    } catch {
-      // error toast already shown by onSave
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!editing) {
-    return (
-      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60">
-        {value ? (
-          <img
-            src={value}
-            alt={label}
-            className="h-14 w-14 shrink-0 rounded-lg border border-gray-200 bg-white object-contain"
-          />
-        ) : (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300">
-            <Images size={20} />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500">{label}</p>
-          <p className="text-sm text-gray-900">
-            {value ? "আপলোড করা আছে" : <span className="text-gray-400">যোগ করা হয়নি</span>}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
-        >
-          <Pencil size={14} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
-      <div className="max-w-xs">
-        <BrandImageBox
-          label={label}
-          hint={hint}
-          folder={folder}
-          value={draft}
-          onChange={setDraft}
-          onRemove={() => setDraft("")}
-        />
-      </div>
-      <div className="mt-3 flex justify-end gap-2">
-        <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
-          বাতিল
-        </Button>
-        <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 const badgeCount = (n: number) =>
   n > 0 && (
@@ -416,6 +167,27 @@ export default function AdminWebsiteSettingsPage() {
   const [editingPageIndex, setEditingPageIndex] = useState<number | null>(null);
   const [pageDraft, setPageDraft] = useState<WebsitePagePayload | null>(null);
   const [savingPage, setSavingPage] = useState(false);
+
+  // Existing items in Notices/Gallery/Slider/Committee are edited in place
+  // (pencil icon on the item itself), the same pattern as "পেজ কন্টেন্ট"
+  // above — the top form is only ever for creating a *new* item.
+  const [editingNoticeId, setEditingNoticeId] = useState<number | null>(null);
+  const [noticeEditDraft, setNoticeEditDraft] = useState<WebsiteNoticePayload | null>(null);
+  const [savingNoticeEdit, setSavingNoticeEdit] = useState(false);
+
+  const [editingGalleryId, setEditingGalleryId] = useState<number | null>(null);
+  const [galleryEditDraft, setGalleryEditDraft] = useState<WebsiteGalleryPayload | null>(null);
+  const [savingGalleryEdit, setSavingGalleryEdit] = useState(false);
+
+  const [editingSlideId, setEditingSlideId] = useState<number | null>(null);
+  const [slideEditDraft, setSlideEditDraft] = useState<WebsiteSlidePayload | null>(null);
+  const [savingSlideEdit, setSavingSlideEdit] = useState(false);
+
+  const [editingCommitteeId, setEditingCommitteeId] = useState<number | null>(null);
+  const [committeeEditDraft, setCommitteeEditDraft] = useState<WebsiteCommitteeMemberPayload | null>(
+    null,
+  );
+  const [savingCommitteeEdit, setSavingCommitteeEdit] = useState(false);
 
   const publicUrl = useMemo(() => `${window.location.origin}/${slug}`, [slug]);
 
@@ -539,13 +311,9 @@ export default function AdminWebsiteSettingsPage() {
     setSavingNotice(true);
     try {
       const saved = await saveWebsiteNotice(noticeDraft);
-      const editing = Boolean(noticeDraft.id);
-      setNotices((prev) => {
-        const next = prev.filter((n) => n.id !== saved.data.id);
-        return editing ? prev.map((n) => (n.id === saved.data.id ? saved.data : n)) : [saved.data, ...next];
-      });
+      setNotices((prev) => [saved.data, ...prev]);
       setNoticeDraft(emptyNotice);
-      toast(editing ? "নোটিশ আপডেট হয়েছে।" : "নোটিশ যোগ করা হয়েছে।", "success");
+      toast("নোটিশ যোগ করা হয়েছে।", "success");
     } catch (err) {
       logger.error("SAVE NOTICE ERROR:", err);
       toast("নোটিশ সংরক্ষণ করা যায়নি।", "error");
@@ -554,7 +322,35 @@ export default function AdminWebsiteSettingsPage() {
     }
   };
 
-  const editNotice = (notice: WebsiteNoticePayload) => setNoticeDraft(notice);
+  const startEditNotice = (notice: WebsiteNoticePayload) => {
+    setEditingNoticeId(notice.id!);
+    setNoticeEditDraft(notice);
+  };
+
+  const cancelEditNotice = () => {
+    setEditingNoticeId(null);
+    setNoticeEditDraft(null);
+  };
+
+  const saveNoticeEdit = async () => {
+    if (!noticeEditDraft) return;
+    if (!noticeEditDraft.title?.trim()) {
+      toast("নোটিশের শিরোনাম দিন।", "error");
+      return;
+    }
+    setSavingNoticeEdit(true);
+    try {
+      const saved = await saveWebsiteNotice(noticeEditDraft);
+      setNotices((prev) => prev.map((n) => (n.id === saved.data.id ? saved.data : n)));
+      toast("নোটিশ আপডেট হয়েছে।", "success");
+      cancelEditNotice();
+    } catch (err) {
+      logger.error("SAVE NOTICE ERROR:", err);
+      toast("নোটিশ সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingNoticeEdit(false);
+    }
+  };
 
   const removeNotice = (notice: WebsiteNoticePayload) => {
     if (!notice.id) return;
@@ -567,7 +363,7 @@ export default function AdminWebsiteSettingsPage() {
         try {
           await deleteWebsiteNotice(notice.id!);
           setNotices((prev) => prev.filter((n) => n.id !== notice.id));
-          if (noticeDraft.id === notice.id) setNoticeDraft(emptyNotice);
+          if (editingNoticeId === notice.id) cancelEditNotice();
           toast("নোটিশ মুছে ফেলা হয়েছে।", "success");
         } catch (err) {
           logger.error("DELETE NOTICE ERROR:", err);
@@ -584,18 +380,16 @@ export default function AdminWebsiteSettingsPage() {
       toast("ছবি আপলোড করুন।", "error");
       return;
     }
+    if (isPendingCloudUpload(galleryDraft.image_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
     setSavingGallery(true);
     try {
       const saved = await saveWebsiteGalleryItem(galleryDraft);
-      const editing = Boolean(galleryDraft.id);
-      setGallery((prev) => {
-        const next = prev.filter((item) => item.id !== saved.data.id);
-        return editing
-          ? prev.map((item) => (item.id === saved.data.id ? saved.data : item))
-          : [saved.data, ...next];
-      });
+      setGallery((prev) => [saved.data, ...prev]);
       setGalleryDraft(emptyGallery);
-      toast(editing ? "গ্যালারি ছবি আপডেট হয়েছে।" : "গ্যালারিতে ছবি যোগ করা হয়েছে।", "success");
+      toast("গ্যালারিতে ছবি যোগ করা হয়েছে।", "success");
     } catch (err) {
       logger.error("SAVE GALLERY ERROR:", err);
       toast("ছবি সংরক্ষণ করা যায়নি।", "error");
@@ -604,7 +398,39 @@ export default function AdminWebsiteSettingsPage() {
     }
   };
 
-  const editGalleryItem = (item: WebsiteGalleryPayload) => setGalleryDraft(item);
+  const startEditGalleryItem = (item: WebsiteGalleryPayload) => {
+    setEditingGalleryId(item.id!);
+    setGalleryEditDraft(item);
+  };
+
+  const cancelEditGalleryItem = () => {
+    setEditingGalleryId(null);
+    setGalleryEditDraft(null);
+  };
+
+  const saveGalleryEdit = async () => {
+    if (!galleryEditDraft) return;
+    if (!galleryEditDraft.image_url?.trim()) {
+      toast("ছবি আপলোড করুন।", "error");
+      return;
+    }
+    if (isPendingCloudUpload(galleryEditDraft.image_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
+    setSavingGalleryEdit(true);
+    try {
+      const saved = await saveWebsiteGalleryItem(galleryEditDraft);
+      setGallery((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
+      toast("গ্যালারি ছবি আপডেট হয়েছে।", "success");
+      cancelEditGalleryItem();
+    } catch (err) {
+      logger.error("SAVE GALLERY ERROR:", err);
+      toast("ছবি সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingGalleryEdit(false);
+    }
+  };
 
   const removeGalleryItem = (item: WebsiteGalleryPayload) => {
     if (!item.id) return;
@@ -617,7 +443,7 @@ export default function AdminWebsiteSettingsPage() {
         try {
           await deleteWebsiteGalleryItem(item.id!);
           setGallery((prev) => prev.filter((g) => g.id !== item.id));
-          if (galleryDraft.id === item.id) setGalleryDraft(emptyGallery);
+          if (editingGalleryId === item.id) cancelEditGalleryItem();
           toast("ছবি মুছে ফেলা হয়েছে।", "success");
         } catch (err) {
           logger.error("DELETE GALLERY ERROR:", err);
@@ -634,18 +460,16 @@ export default function AdminWebsiteSettingsPage() {
       toast("স্লাইডের ছবি আপলোড করুন।", "error");
       return;
     }
+    if (isPendingCloudUpload(slideDraft.image_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
     setSavingSlide(true);
     try {
       const saved = await saveWebsiteSlide(slideDraft);
-      const editing = Boolean(slideDraft.id);
-      setSlides((prev) => {
-        const next = prev.filter((item) => item.id !== saved.data.id);
-        return editing
-          ? prev.map((item) => (item.id === saved.data.id ? saved.data : item))
-          : [saved.data, ...next];
-      });
+      setSlides((prev) => [saved.data, ...prev]);
       setSlideDraft(emptySlide);
-      toast(editing ? "স্লাইড আপডেট হয়েছে।" : "স্লাইড যোগ করা হয়েছে।", "success");
+      toast("স্লাইড যোগ করা হয়েছে।", "success");
     } catch (err) {
       logger.error("SAVE SLIDE ERROR:", err);
       toast("স্লাইড সংরক্ষণ করা যায়নি।", "error");
@@ -654,7 +478,39 @@ export default function AdminWebsiteSettingsPage() {
     }
   };
 
-  const editSlide = (item: WebsiteSlidePayload) => setSlideDraft(item);
+  const startEditSlide = (item: WebsiteSlidePayload) => {
+    setEditingSlideId(item.id!);
+    setSlideEditDraft(item);
+  };
+
+  const cancelEditSlide = () => {
+    setEditingSlideId(null);
+    setSlideEditDraft(null);
+  };
+
+  const saveSlideEdit = async () => {
+    if (!slideEditDraft) return;
+    if (!slideEditDraft.image_url?.trim()) {
+      toast("স্লাইডের ছবি আপলোড করুন।", "error");
+      return;
+    }
+    if (isPendingCloudUpload(slideEditDraft.image_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
+    setSavingSlideEdit(true);
+    try {
+      const saved = await saveWebsiteSlide(slideEditDraft);
+      setSlides((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
+      toast("স্লাইড আপডেট হয়েছে।", "success");
+      cancelEditSlide();
+    } catch (err) {
+      logger.error("SAVE SLIDE ERROR:", err);
+      toast("স্লাইড সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingSlideEdit(false);
+    }
+  };
 
   const removeSlide = (item: WebsiteSlidePayload) => {
     if (!item.id) return;
@@ -667,7 +523,7 @@ export default function AdminWebsiteSettingsPage() {
         try {
           await deleteWebsiteSlide(item.id!);
           setSlides((prev) => prev.filter((s) => s.id !== item.id));
-          if (slideDraft.id === item.id) setSlideDraft(emptySlide);
+          if (editingSlideId === item.id) cancelEditSlide();
           toast("স্লাইড মুছে ফেলা হয়েছে।", "success");
         } catch (err) {
           logger.error("DELETE SLIDE ERROR:", err);
@@ -684,18 +540,16 @@ export default function AdminWebsiteSettingsPage() {
       toast("সদস্যের নাম দিন।", "error");
       return;
     }
+    if (isPendingCloudUpload(committeeDraft.photo_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
     setSavingCommittee(true);
     try {
       const saved = await saveWebsiteCommitteeMember(committeeDraft);
-      const editing = Boolean(committeeDraft.id);
-      setCommittee((prev) => {
-        const next = prev.filter((item) => item.id !== saved.data.id);
-        return editing
-          ? prev.map((item) => (item.id === saved.data.id ? saved.data : item))
-          : [saved.data, ...next];
-      });
+      setCommittee((prev) => [saved.data, ...prev]);
       setCommitteeDraft(emptyCommittee);
-      toast(editing ? "কমিটির সদস্য আপডেট হয়েছে।" : "কমিটির সদস্য যোগ করা হয়েছে।", "success");
+      toast("কমিটির সদস্য যোগ করা হয়েছে।", "success");
     } catch (err) {
       logger.error("SAVE COMMITTEE ERROR:", err);
       toast("সংরক্ষণ করা যায়নি।", "error");
@@ -704,7 +558,39 @@ export default function AdminWebsiteSettingsPage() {
     }
   };
 
-  const editCommitteeMember = (item: WebsiteCommitteeMemberPayload) => setCommitteeDraft(item);
+  const startEditCommitteeMember = (item: WebsiteCommitteeMemberPayload) => {
+    setEditingCommitteeId(item.id!);
+    setCommitteeEditDraft(item);
+  };
+
+  const cancelEditCommitteeMember = () => {
+    setEditingCommitteeId(null);
+    setCommitteeEditDraft(null);
+  };
+
+  const saveCommitteeEdit = async () => {
+    if (!committeeEditDraft) return;
+    if (!committeeEditDraft.name?.trim()) {
+      toast("সদস্যের নাম দিন।", "error");
+      return;
+    }
+    if (isPendingCloudUpload(committeeEditDraft.photo_url)) {
+      toast(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
+    setSavingCommitteeEdit(true);
+    try {
+      const saved = await saveWebsiteCommitteeMember(committeeEditDraft);
+      setCommittee((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
+      toast("কমিটির সদস্য আপডেট হয়েছে।", "success");
+      cancelEditCommitteeMember();
+    } catch (err) {
+      logger.error("SAVE COMMITTEE ERROR:", err);
+      toast("সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingCommitteeEdit(false);
+    }
+  };
 
   const removeCommitteeMember = (item: WebsiteCommitteeMemberPayload) => {
     if (!item.id) return;
@@ -717,7 +603,7 @@ export default function AdminWebsiteSettingsPage() {
         try {
           await deleteWebsiteCommitteeMember(item.id!);
           setCommittee((prev) => prev.filter((m) => m.id !== item.id));
-          if (committeeDraft.id === item.id) setCommitteeDraft(emptyCommittee);
+          if (editingCommitteeId === item.id) cancelEditCommitteeMember();
           toast("সদস্য মুছে ফেলা হয়েছে।", "success");
         } catch (err) {
           logger.error("DELETE COMMITTEE ERROR:", err);
@@ -1089,8 +975,8 @@ export default function AdminWebsiteSettingsPage() {
       )}
 
       {tab === "notices" && (
-        <div className="space-y-5">
-          <SectionCard title={noticeDraft.id ? "নোটিশ সম্পাদনা করুন" : "নতুন নোটিশ যোগ করুন"}>
+        <div className="space-y-6">
+          <SectionCard title="নতুন নোটিশ যোগ করুন">
             <form onSubmit={submitNotice} className="space-y-3">
               <Input
                 value={noticeDraft.title || ""}
@@ -1109,72 +995,108 @@ export default function AdminWebsiteSettingsPage() {
                   checked={noticeDraft.is_published !== 0}
                   onChange={(v) => setNoticeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
                 />
-                <div className="flex gap-2">
-                  {noticeDraft.id && (
-                    <Button type="button" variant="secondary" onClick={() => setNoticeDraft(emptyNotice)}>
-                      <X size={15} className="mr-1" />
-                      বাতিল
-                    </Button>
-                  )}
-                  <Button disabled={savingNotice} type="submit" className="gap-1.5">
-                    {!savingNotice && (noticeDraft.id ? <Pencil size={15} /> : <Plus size={15} />)}
-                    {savingNotice ? "সংরক্ষণ হচ্ছে..." : noticeDraft.id ? "আপডেট করুন" : "যোগ করুন"}
-                  </Button>
-                </div>
+                <Button disabled={savingNotice} type="submit" className="gap-1.5">
+                  {!savingNotice && <Plus size={15} />}
+                  {savingNotice ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+                </Button>
               </div>
             </form>
           </SectionCard>
 
-          {notices.length ? (
-            <div className="space-y-3">
-              {notices.map((notice) => (
-                <div
-                  key={notice.id}
-                  className="flex items-start justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <h3 className="font-semibold text-gray-900">{notice.title}</h3>
-                      {notice.is_published === 0 && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                          খসড়া / অপ্রকাশিত
-                        </span>
-                      )}
+          <SectionCard title="সব নোটিশ" hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+            {notices.length ? (
+              <div className="space-y-3">
+                {notices.map((notice) =>
+                  editingNoticeId === notice.id && noticeEditDraft ? (
+                    <div key={notice.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                      <Input
+                        value={noticeEditDraft.title || ""}
+                        onChange={(e) =>
+                          setNoticeEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+                        }
+                        placeholder="নোটিশের শিরোনাম"
+                      />
+                      <textarea
+                        className={`${textAreaClass} mt-3`}
+                        rows={3}
+                        value={noticeEditDraft.content || ""}
+                        onChange={(e) =>
+                          setNoticeEditDraft((prev) => (prev ? { ...prev, content: e.target.value } : prev))
+                        }
+                        placeholder="নোটিশের বিস্তারিত"
+                      />
+                      <div className="mt-3 flex items-center justify-between">
+                        <PublishToggle
+                          checked={noticeEditDraft.is_published !== 0}
+                          onChange={(v) =>
+                            setNoticeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={savingNoticeEdit}
+                            onClick={cancelEditNotice}
+                          >
+                            বাতিল
+                          </Button>
+                          <Button type="button" disabled={savingNoticeEdit} onClick={saveNoticeEdit}>
+                            {savingNoticeEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    {notice.content && (
-                      <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{notice.content}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editNotice(notice)}
-                      className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                  ) : (
+                    <div
+                      key={notice.id}
+                      className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60"
                     >
-                      <Pencil size={12} />
-                      সম্পাদনা
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeNotice(notice)}
-                      className="flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                    >
-                      <Trash2 size={12} />
-                      মুছুন
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="এখনো কোনো নোটিশ যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম নোটিশটি যোগ করুন।" />
-          )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <h3 className="font-semibold text-gray-900">{notice.title}</h3>
+                          {notice.is_published === 0 && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                              খসড়া / অপ্রকাশিত
+                            </span>
+                          )}
+                        </div>
+                        {notice.content && (
+                          <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{notice.content}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditNotice(notice)}
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="সম্পাদনা"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeNotice(notice)}
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="মুছুন"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyState title="এখনো কোনো নোটিশ যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম নোটিশটি যোগ করুন।" />
+            )}
+          </SectionCard>
         </div>
       )}
 
       {tab === "gallery" && (
-        <div className="space-y-5">
-          <SectionCard title={galleryDraft.id ? "গ্যালারি ছবি সম্পাদনা করুন" : "নতুন ছবি যোগ করুন"}>
+        <div className="space-y-6">
+          <SectionCard title="নতুন ছবি যোগ করুন">
             <form onSubmit={submitGallery} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-xs">
@@ -1212,67 +1134,112 @@ export default function AdminWebsiteSettingsPage() {
                   checked={galleryDraft.is_published !== 0}
                   onChange={(v) => setGalleryDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
                 />
-                <div className="flex gap-2">
-                  {galleryDraft.id && (
-                    <Button type="button" variant="secondary" onClick={() => setGalleryDraft(emptyGallery)}>
-                      <X size={15} className="mr-1" />
-                      বাতিল
-                    </Button>
-                  )}
-                  <Button disabled={savingGallery} type="submit" className="gap-1.5">
-                    {!savingGallery && (galleryDraft.id ? <Pencil size={15} /> : <Plus size={15} />)}
-                    {savingGallery ? "সংরক্ষণ হচ্ছে..." : galleryDraft.id ? "আপডেট করুন" : "যোগ করুন"}
-                  </Button>
-                </div>
+                <Button disabled={savingGallery} type="submit" className="gap-1.5">
+                  {!savingGallery && <Plus size={15} />}
+                  {savingGallery ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+                </Button>
               </div>
             </form>
           </SectionCard>
 
-          {gallery.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {gallery.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-                  <img
-                    src={item.image_url}
-                    alt={item.title || "Gallery"}
-                    className="h-32 w-full rounded-lg object-cover"
-                  />
-                  <div className="mt-2 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-gray-900">{item.title || "গ্যালারি ছবি"}</p>
-                      {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+          <SectionCard title="সব ছবি" hint="যেকোনো ছবির পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+            {gallery.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {gallery.map((item) =>
+                  editingGalleryId === item.id && galleryEditDraft ? (
+                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3">
+                      <div className="max-w-xs">
+                        <BrandImageBox
+                          label="ছবি"
+                          folder="gallery"
+                          value={galleryEditDraft.image_url}
+                          onChange={(url) =>
+                            setGalleryEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))
+                          }
+                          onRemove={() =>
+                            setGalleryEditDraft((prev) => (prev ? { ...prev, image_url: "" } : prev))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <label className={fieldLabelClass}>ছবির শিরোনাম</label>
+                        <Input
+                          value={galleryEditDraft.title || ""}
+                          onChange={(e) =>
+                            setGalleryEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <PublishToggle
+                          checked={galleryEditDraft.is_published !== 0}
+                          onChange={(v) =>
+                            setGalleryEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={savingGalleryEdit}
+                            onClick={cancelEditGalleryItem}
+                          >
+                            বাতিল
+                          </Button>
+                          <Button type="button" disabled={savingGalleryEdit} onClick={saveGalleryEdit}>
+                            {savingGalleryEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-2 flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editGalleryItem(item)}
-                      className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                  ) : (
+                    <div
+                      key={item.id}
+                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
                     >
-                      <Pencil size={12} />
-                      সম্পাদনা
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeGalleryItem(item)}
-                      className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                    >
-                      <Trash2 size={12} />
-                      মুছুন
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="এখনো কোনো গ্যালারি ছবি যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম ছবিটি যোগ করুন।" />
-          )}
+                      <img
+                        src={item.image_url}
+                        alt={item.title || "Gallery"}
+                        className="h-32 w-full rounded-lg object-cover"
+                      />
+                      <div className="mt-2 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-gray-900">{item.title || "গ্যালারি ছবি"}</p>
+                          {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEditGalleryItem(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            title="সম্পাদনা"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryItem(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            title="মুছুন"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyState title="এখনো কোনো গ্যালারি ছবি যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম ছবিটি যোগ করুন।" />
+            )}
+          </SectionCard>
         </div>
       )}
 
       {tab === "slider" && (
-        <div className="space-y-5">
-          <SectionCard title={slideDraft.id ? "স্লাইড সম্পাদনা করুন" : "নতুন স্লাইড যোগ করুন"}>
+        <div className="space-y-6">
+          <SectionCard title="নতুন স্লাইড যোগ করুন">
             <p className="-mt-2 mb-3 text-xs text-gray-500">
               প্রস্তাবিত ছবির সাইজ: 1600 x 900px (16:9, landscape) — সব ডিভাইসে ঠিকভাবে ফিট হবে।
             </p>
@@ -1320,66 +1287,127 @@ export default function AdminWebsiteSettingsPage() {
                   checked={slideDraft.is_published !== 0}
                   onChange={(v) => setSlideDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
                 />
-                <div className="flex gap-2">
-                  {slideDraft.id && (
-                    <Button type="button" variant="secondary" onClick={() => setSlideDraft(emptySlide)}>
-                      <X size={15} className="mr-1" />
-                      বাতিল
-                    </Button>
-                  )}
-                  <Button disabled={savingSlide} type="submit" className="gap-1.5">
-                    {!savingSlide && (slideDraft.id ? <Pencil size={15} /> : <Plus size={15} />)}
-                    {savingSlide ? "সংরক্ষণ হচ্ছে..." : slideDraft.id ? "আপডেট করুন" : "যোগ করুন"}
-                  </Button>
-                </div>
+                <Button disabled={savingSlide} type="submit" className="gap-1.5">
+                  {!savingSlide && <Plus size={15} />}
+                  {savingSlide ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+                </Button>
               </div>
             </form>
           </SectionCard>
 
-          {slides.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {slides.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-                  <img
-                    src={item.image_url}
-                    alt={item.title || "Slide"}
-                    className="h-32 w-full rounded-lg object-cover"
-                  />
-                  <div className="mt-2 min-w-0">
-                    <p className="truncate font-semibold text-gray-900">{item.title || "শিরোনামহীন স্লাইড"}</p>
-                    {item.subtitle && <p className="truncate text-xs text-gray-500">{item.subtitle}</p>}
-                    {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
-                  </div>
-                  <div className="mt-2 flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editSlide(item)}
-                      className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+          <SectionCard title="সব স্লাইড" hint="যেকোনো স্লাইডের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+            {slides.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {slides.map((item) =>
+                  editingSlideId === item.id && slideEditDraft ? (
+                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3">
+                      <div className="max-w-xs">
+                        <BrandImageBox
+                          label="স্লাইড ছবি"
+                          folder="gallery"
+                          shape="wide"
+                          value={slideEditDraft.image_url}
+                          onChange={(url) =>
+                            setSlideEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))
+                          }
+                          onRemove={() =>
+                            setSlideEditDraft((prev) => (prev ? { ...prev, image_url: "" } : prev))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <label className={fieldLabelClass}>শিরোনাম</label>
+                          <Input
+                            value={slideEditDraft.title || ""}
+                            onChange={(e) =>
+                              setSlideEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className={fieldLabelClass}>সাব-টাইটেল</label>
+                          <Input
+                            value={slideEditDraft.subtitle || ""}
+                            onChange={(e) =>
+                              setSlideEditDraft((prev) => (prev ? { ...prev, subtitle: e.target.value } : prev))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <PublishToggle
+                          checked={slideEditDraft.is_published !== 0}
+                          onChange={(v) =>
+                            setSlideEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={savingSlideEdit}
+                            onClick={cancelEditSlide}
+                          >
+                            বাতিল
+                          </Button>
+                          <Button type="button" disabled={savingSlideEdit} onClick={saveSlideEdit}>
+                            {savingSlideEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={item.id}
+                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
                     >
-                      <Pencil size={12} />
-                      সম্পাদনা
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeSlide(item)}
-                      className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                    >
-                      <Trash2 size={12} />
-                      মুছুন
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="এখনো কোনো স্লাইড যোগ করা হয়নি" hint="স্লাইড যোগ করলে হোমপেজে স্লাইডার হিসেবে দেখা যাবে।" />
-          )}
+                      <img
+                        src={item.image_url}
+                        alt={item.title || "Slide"}
+                        className="h-32 w-full rounded-lg object-cover"
+                      />
+                      <div className="mt-2 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-gray-900">
+                            {item.title || "শিরোনামহীন স্লাইড"}
+                          </p>
+                          {item.subtitle && <p className="truncate text-xs text-gray-500">{item.subtitle}</p>}
+                          {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEditSlide(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            title="সম্পাদনা"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSlide(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            title="মুছুন"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyState title="এখনো কোনো স্লাইড যোগ করা হয়নি" hint="স্লাইড যোগ করলে হোমপেজে স্লাইডার হিসেবে দেখা যাবে।" />
+            )}
+          </SectionCard>
         </div>
       )}
 
       {tab === "committee" && (
-        <div className="space-y-5">
-          <SectionCard title={committeeDraft.id ? "সদস্য সম্পাদনা করুন" : "নতুন সদস্য যোগ করুন"}>
+        <div className="space-y-6">
+          <SectionCard title="নতুন সদস্য যোগ করুন">
             <form onSubmit={submitCommitteeMember} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-[9rem]">
@@ -1423,73 +1451,141 @@ export default function AdminWebsiteSettingsPage() {
                   checked={committeeDraft.is_published !== 0}
                   onChange={(v) => setCommitteeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
                 />
-                <div className="flex gap-2">
-                  {committeeDraft.id && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setCommitteeDraft(emptyCommittee)}
-                    >
-                      <X size={15} className="mr-1" />
-                      বাতিল
-                    </Button>
-                  )}
-                  <Button disabled={savingCommittee} type="submit" className="gap-1.5">
-                    {!savingCommittee && (committeeDraft.id ? <Pencil size={15} /> : <Plus size={15} />)}
-                    {savingCommittee ? "সংরক্ষণ হচ্ছে..." : committeeDraft.id ? "আপডেট করুন" : "যোগ করুন"}
-                  </Button>
-                </div>
+                <Button disabled={savingCommittee} type="submit" className="gap-1.5">
+                  {!savingCommittee && <Plus size={15} />}
+                  {savingCommittee ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+                </Button>
               </div>
             </form>
           </SectionCard>
 
-          {committee.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {committee.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm"
-                >
-                  {item.photo_url ? (
-                    <img
-                      src={item.photo_url}
-                      alt={item.name}
-                      className="h-14 w-14 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
-                      {item.name?.[0] || "?"}
+          <SectionCard title="কমিটির সদস্যরা" hint="যেকোনো সদস্যের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+            {committee.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {committee.map((item) =>
+                  editingCommitteeId === item.id && committeeEditDraft ? (
+                    <div
+                      key={item.id}
+                      className="sm:col-span-2 lg:col-span-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4"
+                    >
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="max-w-[9rem]">
+                          <BrandImageBox
+                            label="ছবি"
+                            folder="gallery"
+                            value={committeeEditDraft.photo_url}
+                            onChange={(url) =>
+                              setCommitteeEditDraft((prev) => (prev ? { ...prev, photo_url: url } : prev))
+                            }
+                            onRemove={() =>
+                              setCommitteeEditDraft((prev) => (prev ? { ...prev, photo_url: "" } : prev))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className={fieldLabelClass}>নাম</label>
+                            <Input
+                              value={committeeEditDraft.name || ""}
+                              onChange={(e) =>
+                                setCommitteeEditDraft((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className={fieldLabelClass}>পদবি</label>
+                            <Input
+                              value={committeeEditDraft.designation || ""}
+                              onChange={(e) =>
+                                setCommitteeEditDraft((prev) =>
+                                  prev ? { ...prev, designation: e.target.value } : prev,
+                                )
+                              }
+                              placeholder="যেমন: সভাপতি"
+                            />
+                          </div>
+                          <div>
+                            <label className={fieldLabelClass}>ফোন (ঐচ্ছিক)</label>
+                            <Input
+                              value={committeeEditDraft.phone || ""}
+                              onChange={(e) =>
+                                setCommitteeEditDraft((prev) => (prev ? { ...prev, phone: e.target.value } : prev))
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <PublishToggle
+                          checked={committeeEditDraft.is_published !== 0}
+                          onChange={(v) =>
+                            setCommitteeEditDraft((prev) =>
+                              prev ? { ...prev, is_published: v ? 1 : 0 } : prev,
+                            )
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={savingCommitteeEdit}
+                            onClick={cancelEditCommitteeMember}
+                          >
+                            বাতিল
+                          </Button>
+                          <Button type="button" disabled={savingCommitteeEdit} onClick={saveCommitteeEdit}>
+                            {savingCommitteeEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-gray-900">{item.name}</p>
-                    <p className="truncate text-xs text-gray-500">{item.designation}</p>
-                    {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editCommitteeMember(item)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100"
-                      title="সম্পাদনা"
+                  ) : (
+                    <div
+                      key={item.id}
+                      className="group flex items-center gap-3 rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
                     >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeCommitteeMember(item)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
-                      title="মুছুন"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="এখনো কোনো কমিটির সদস্য যোগ করা হয়নি" hint="কমিটির সদস্য যোগ করলে পাবলিক ওয়েবসাইটে দেখা যাবে।" />
-          )}
+                      {item.photo_url ? (
+                        <img
+                          src={item.photo_url}
+                          alt={item.name}
+                          className="h-14 w-14 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
+                          {item.name?.[0] || "?"}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-gray-900">{item.name}</p>
+                        <p className="truncate text-xs text-gray-500">{item.designation}</p>
+                        {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditCommitteeMember(item)}
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="সম্পাদনা"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCommitteeMember(item)}
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="মুছুন"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyState title="এখনো কোনো কমিটির সদস্য যোগ করা হয়নি" hint="কমিটির সদস্য যোগ করলে পাবলিক ওয়েবসাইটে দেখা যাবে।" />
+            )}
+          </SectionCard>
         </div>
       )}
     </div>

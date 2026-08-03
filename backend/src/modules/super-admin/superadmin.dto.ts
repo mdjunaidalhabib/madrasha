@@ -39,3 +39,9 @@ export interface CreateMadrasaUserRequestDto {
   password: string;
   role_id: number | string;
 }
+
+export interface SaveMadrasaCloudinaryConfigRequestDto {
+  cloud_name: string;
+  api_key: string;
+  api_secret: string;
+}

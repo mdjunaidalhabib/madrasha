@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import api, { cachedGet } from "../../services/api";
 import { useConfirmStore } from "../../store/confirmStore";
 import { useToastStore } from "../../store/toastStore";
+import PageHeader from "../../components/ui/PageHeader";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import SectionCard from "../../components/settings/SectionCard";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function ClassPanel() {
   const [divisions, setDivisions] = useState<any[]>([]);
@@ -262,148 +268,171 @@ export default function ClassPanel() {
   /* ================= UI ================= */
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold sm:text-xl">মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা"
+        subtitle="প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।"
+        actions={
+          <Button
+            variant={isEditMode ? "secondary" : "primary"}
+            className="w-full gap-1.5 sm:w-auto"
+            onClick={() => {
+              setIsEditMode(!isEditMode);
+              setShowClassInput(false);
+              setShowBookInput(false);
+            }}
+          >
+            {isEditMode ? (
+              <>
+                <Check size={15} />
+                এডিট বন্ধ করুন
+              </>
+            ) : (
+              <>
+                <Pencil size={15} />
+                এডিট করুন
+              </>
+            )}
+          </Button>
+        }
+      />
 
-        <button
-          onClick={() => {
-            setIsEditMode(!isEditMode);
-            setShowClassInput(false);
-            setShowBookInput(false);
-          }}
-          className="w-full shrink-0 touch-manipulation rounded bg-gray-800 px-4 py-2.5 text-white sm:w-auto sm:py-2"
-        >
-          {isEditMode ? "এডিট বন্ধ করুন" : "এডিট করুন"}
-        </button>
-      </div>
-
-      <div>
-        <h2 className="mb-2 font-medium">বিভাগ</h2>
+      <SectionCard title="বিভাগ">
         <div className="flex flex-wrap gap-2">
           {divisions.map((division) => (
             <button
               key={division.division_id}
               onClick={() => setDivisionId(String(division.division_id))}
-              className={`touch-manipulation rounded border px-3 py-2 ${
+              className={`touch-manipulation rounded-lg border px-3 py-2 text-sm font-medium transition ${
                 divisionId === String(division.division_id)
-                  ? "border-blue-500 bg-blue-500 text-white"
-                  : "bg-white"
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
               {division.division_name_bn}
             </button>
           ))}
         </div>
-      </div>
+      </SectionCard>
 
-      <div>
-        <h2 className="mb-2 font-medium">শ্রেণি</h2>
-
+      <SectionCard title="শ্রেণি">
         <div className="flex flex-wrap gap-2">
-          {classes.map((classItem) => (
-            <div key={classItem.class_id} className="flex items-center gap-1">
-              {editingClassId === classItem.class_id ? (
-                <input
-                  value={editingClassName}
-                  onChange={(event) => setEditingClassName(event.target.value)}
-                  onBlur={saveClassEdit}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-                    if (event.key === "Escape") setEditingClassId(null);
-                  }}
-                  className="w-32 min-w-0 rounded border px-2 py-2 sm:w-auto"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => setClassId(String(classItem.class_id))}
-                  className={`touch-manipulation rounded border px-3 py-2 ${
-                    classId === String(classItem.class_id)
-                      ? "border-emerald-600 bg-emerald-600 text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  {classItem.class_name_bn}
-                </button>
-              )}
-
-              {isEditMode && (
-                <>
-                  <button
-                    onClick={() => {
-                      setEditingClassId(classItem.class_id);
-                      setEditingClassName(classItem.class_name_bn);
-                      setEditingClassOriginalName(classItem.class_name_bn);
-                    }}
-                    aria-label="শ্রেণি এডিট করুন"
-                    className="touch-manipulation rounded p-2 hover:bg-gray-100 active:bg-gray-200"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => removeClass(classItem.class_id)}
-                    aria-label="শ্রেণি ডিলিট করুন"
-                    className="touch-manipulation rounded p-2 hover:bg-red-50 active:bg-red-100"
-                  >
-                    🗑️
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
+          {classes.map((classItem) => {
+            const isEditingThis = editingClassId === classItem.class_id;
+            return (
+              <div
+                key={classItem.class_id}
+                className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
+                  isEditingThis ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-white"
+                }`}
+              >
+                {isEditingThis ? (
+                  <>
+                    <Input
+                      value={editingClassName}
+                      onChange={(event) => setEditingClassName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") saveClassEdit();
+                        if (event.key === "Escape") setEditingClassId(null);
+                      }}
+                      className="h-8 w-36 min-w-0 sm:w-48"
+                      autoFocus
+                    />
+                    <button
+                      onClick={saveClassEdit}
+                      aria-label="সংরক্ষণ করুন"
+                      className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => setEditingClassId(null)}
+                      aria-label="বাতিল"
+                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setClassId(String(classItem.class_id))}
+                      className={`touch-manipulation rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                        classId === String(classItem.class_id)
+                          ? "bg-emerald-600 text-white"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {classItem.class_name_bn}
+                    </button>
+                    {isEditMode && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingClassId(classItem.class_id);
+                            setEditingClassName(classItem.class_name_bn);
+                            setEditingClassOriginalName(classItem.class_name_bn);
+                          }}
+                          aria-label="শ্রেণি এডিট করুন"
+                          className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => removeClass(classItem.class_id)}
+                          aria-label="শ্রেণি ডিলিট করুন"
+                          className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
 
           {isEditMode &&
             (!showClassInput ? (
               <button
                 onClick={() => setShowClassInput(true)}
-                className="touch-manipulation rounded border border-dashed px-3 py-2"
+                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
               >
-                ➕ শ্রেণি যোগ করুন
+                <Plus size={15} />
+                শ্রেণি যোগ করুন
               </button>
             ) : (
               <div className="flex w-full gap-2 sm:w-auto">
-                <input
+                <Input
                   value={className}
                   onChange={(event) => setClassName(event.target.value)}
-                  className="w-full min-w-0 rounded border px-2 py-2 sm:w-auto"
+                  className="w-full min-w-0 sm:w-auto"
                   placeholder="শ্রেণির নাম"
                   autoFocus
                 />
-                <button
-                  onClick={addClass}
-                  className="touch-manipulation shrink-0 rounded bg-emerald-600 px-3 py-2 text-white"
-                >
-                  ✔
-                </button>
+                <Button onClick={addClass} className="shrink-0 px-3">
+                  <Check size={16} />
+                </Button>
               </div>
             ))}
         </div>
-      </div>
+      </SectionCard>
 
-      <div>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-medium">কিতাবসমূহ</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। অন্য কিতাবে ফেল করলে গড় পাস থাকলে PASS হবে।
-              {isEditMode && " টেনে (drag) কিতাবের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।"}
-            </p>
-          </div>
-          <div className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+      <SectionCard
+        title="কিতাবসমূহ"
+        hint={`মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। অন্য কিতাবে ফেল করলে গড় পাস থাকলে PASS হবে।${
+          isEditMode ? " টেনে (drag) কিতাবের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।" : ""
+        }`}
+      >
+        <div className="mb-3 flex justify-end">
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
             নির্বাচিত মিয়ারি: {miyariBookIds.length}টি
-          </div>
+          </span>
         </div>
 
         {books.length === 0 ? (
-          <p className="rounded-lg border border-dashed py-6 text-center text-sm text-slate-400">
-            কোনো কিতাব যোগ করা হয়নি
-          </p>
+          <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
         ) : (
           <div className="flex flex-wrap gap-3">
             {books.map((book) => {
@@ -412,22 +441,40 @@ export default function ClassPanel() {
                 <div
                   key={book.book_id}
                   data-book-id={book.book_id}
-                  className={`flex w-auto max-w-full shrink-0 flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
-                    isMiyari ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"
+                  className={`flex w-auto max-w-full shrink-0 flex-col gap-2 rounded-xl border px-3 py-2.5 transition ${
+                    editingId === book.book_id
+                      ? "border-blue-200 bg-blue-50/40"
+                      : isMiyari
+                        ? "border-amber-300 bg-amber-50"
+                        : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/60"
                   } ${dragBookId === book.book_id ? "opacity-50" : ""}`}
                 >
                   {editingId === book.book_id ? (
-                    <input
-                      value={editingName}
-                      onChange={(event) => setEditingName(event.target.value)}
-                      onBlur={saveEdit}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-                        if (event.key === "Escape") setEditingId(null);
-                      }}
-                      className="w-full rounded border px-2 py-1"
-                      autoFocus
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={editingName}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveEdit();
+                          if (event.key === "Escape") setEditingId(null);
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={saveEdit}
+                        aria-label="সংরক্ষণ করুন"
+                        className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        aria-label="বাতিল"
+                        className="shrink-0 touch-manipulation rounded-md p-2 text-gray-500 hover:bg-gray-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-start justify-between gap-2">
                       {isEditMode && (
@@ -436,32 +483,32 @@ export default function ClassPanel() {
                           onPointerMove={handleHandlePointerMove}
                           onPointerUp={handleHandlePointerEnd}
                           onPointerCancel={handleHandlePointerEnd}
-                          className="shrink-0 cursor-grab select-none rounded p-1.5 text-slate-400 active:cursor-grabbing active:bg-gray-100"
+                          className="shrink-0 cursor-grab select-none rounded p-1.5 text-gray-400 active:cursor-grabbing active:bg-gray-100"
                           style={{ touchAction: "none" }}
                           aria-label="কিতাব সরান"
                         >
-                          ⠿
+                          <GripVertical size={15} />
                         </span>
                       )}
-                      <span className="min-w-0 flex-1 break-words font-medium leading-snug">
+                      <span className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900">
                         {book.book_name_bn}
                       </span>
 
                       {isEditMode && (
-                        <div className="flex shrink-0 gap-0.5 text-slate-500">
+                        <div className="flex shrink-0 gap-0.5">
                           <button
                             onClick={() => startEdit(book)}
                             aria-label="কিতাব এডিট করুন"
-                            className="touch-manipulation rounded p-1.5 hover:bg-gray-100 active:bg-gray-200"
+                            className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100"
                           >
-                            ✏️
+                            <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => removeBook(book)}
                             aria-label="কিতাব ডিলিট করুন"
-                            className="touch-manipulation rounded p-1.5 hover:bg-red-50 active:bg-red-100"
+                            className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100"
                           >
-                            🗑️
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       )}
@@ -475,7 +522,7 @@ export default function ClassPanel() {
                   )}
 
                   {isEditMode && (
-                    <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-slate-600">
+                    <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-gray-600">
                       <input
                         type="checkbox"
                         checked={isMiyari}
@@ -497,30 +544,28 @@ export default function ClassPanel() {
             {!showBookInput ? (
               <button
                 onClick={() => setShowBookInput(true)}
-                className="touch-manipulation rounded border border-dashed px-3 py-2"
+                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
               >
-                ➕ কিতাব যোগ করুন
+                <Plus size={15} />
+                কিতাব যোগ করুন
               </button>
             ) : (
               <div className="flex w-full gap-2 sm:w-auto">
-                <input
+                <Input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className="w-full min-w-0 rounded border px-2 py-2 sm:w-auto"
+                  className="w-full min-w-0 sm:w-auto"
                   placeholder="কিতাবের নাম"
                   autoFocus
                 />
-                <button
-                  onClick={addBook}
-                  className="touch-manipulation shrink-0 rounded bg-emerald-600 px-3 py-2 text-white"
-                >
-                  ✔
-                </button>
+                <Button onClick={addBook} className="shrink-0 px-3">
+                  <Check size={16} />
+                </Button>
               </div>
             )}
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

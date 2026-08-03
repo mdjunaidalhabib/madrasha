@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { roleApi, type PermissionCatalogItem, type RoleItem } from "../../services/phase3Api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import Modal from "../../components/ui/Modal";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import PageHeader from "../../components/ui/PageHeader";
+import EmptyState from "../../components/ui/EmptyState";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
+import SectionCard from "../../components/settings/SectionCard";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -137,92 +143,80 @@ const RolesPermissionsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">রোল ও পারমিশন</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            নতুন রোল তৈরি করুন এবং প্রতিটা রোলের জন্য কোন কোন মডিউলে অ্যাক্সেস থাকবে তা নির্ধারণ
-            করুন
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="রোল ও পারমিশন"
+        subtitle="নতুন রোল তৈরি করুন এবং প্রতিটা রোলের জন্য কোন কোন মডিউলে অ্যাক্সেস থাকবে তা নির্ধারণ করুন"
+      />
 
-        {/* Create role */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">নতুন রোল তৈরি করুন</h2>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              value={newRoleName}
-              onChange={(e) => setNewRoleName(e.target.value)}
-              placeholder="রোলের নাম (যেমন: ক্লাস টিচার)"
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:max-w-xs"
-            />
-            <button
-              type="button"
-              disabled={creating}
-              onClick={handleCreateRole}
-              className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
-            >
-              {creating ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
-            </button>
-          </div>
+      <SectionCard title="নতুন রোল তৈরি করুন">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            type="text"
+            value={newRoleName}
+            onChange={(e) => setNewRoleName(e.target.value)}
+            placeholder="রোলের নাম (যেমন: ক্লাস টিচার)"
+            className="sm:max-w-xs"
+          />
+          <Button disabled={creating} onClick={handleCreateRole} className="gap-1.5">
+            {!creating && <Plus size={15} />}
+            {creating ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+          </Button>
         </div>
+      </SectionCard>
 
-        {/* Role list */}
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          {loading ? (
-            <SkeletonList items={6} />
-          ) : roles.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">কোনো রোল নেই</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {roles.map((role) => (
-                <div
-                  key={role.id}
-                  className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="text-sm">
-                    <span className="font-semibold text-gray-800">{role.name_bn}</span>{" "}
+      <SectionCard title="সব রোল">
+        {loading ? (
+          <SkeletonList items={6} />
+        ) : roles.length === 0 ? (
+          <EmptyState title="কোনো রোল নেই" />
+        ) : (
+          <div className="space-y-3">
+            {roles.map((role) => (
+              <div
+                key={role.id}
+                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 text-sm">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-gray-900">{role.name_bn}</span>
                     {role.is_protected && (
-                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
                         ডিফল্ট রোল
                       </span>
                     )}
-                    <span className="text-gray-500"> · {role.permission_keys.length} টি পারমিশন</span>
-                    <span className="text-gray-500"> · {role.user_count} জন ইউজার</span>
                   </div>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {role.permission_keys.length} টি পারমিশন · {role.user_count} জন ইউজার
+                  </p>
+                </div>
 
-                  <div className="flex gap-2">
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(role)}
+                    className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                  >
+                    <Pencil size={12} />
+                    পারমিশন সেট করুন
+                  </button>
+                  {!role.is_protected && (
                     <button
                       type="button"
-                      onClick={() => openEditModal(role)}
-                      className="h-8 rounded-md border border-blue-300 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                      disabled={role.user_count > 0}
+                      onClick={() => handleDelete(role)}
+                      title={role.user_count > 0 ? "এই রোলে ইউজার আছে বলে মুছা যাবে না" : "মুছুন"}
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 sm:disabled:opacity-0"
                     >
-                      পারমিশন সেট করুন
+                      <Trash2 size={16} />
                     </button>
-                    {!role.is_protected && (
-                      <button
-                        type="button"
-                        disabled={role.user_count > 0}
-                        onClick={() => handleDelete(role)}
-                        title={
-                          role.user_count > 0
-                            ? "এই রোলে ইউজার আছে বলে মুছা যাবে না"
-                            : undefined
-                        }
-                        className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        মুছুন
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       {/* Permission matrix modal */}
       <Modal
@@ -269,21 +263,12 @@ const RolesPermissionsPage = () => {
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setEditingRole(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <Button type="button" variant="secondary" onClick={() => setEditingRole(null)}>
             বাতিল
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSavePermissions}
-            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="button" disabled={saving} onClick={handleSavePermissions}>
             {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-          </button>
+          </Button>
         </div>
       </Modal>
     </div>

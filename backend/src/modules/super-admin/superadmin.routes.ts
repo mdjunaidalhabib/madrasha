@@ -23,6 +23,9 @@ import {
   listMadrasaUsers,
   createMadrasaUser,
   deleteMadrasaUser,
+  getMadrasaCloudinaryConfig,
+  saveMadrasaCloudinaryConfig,
+  deleteMadrasaCloudinaryConfig,
 } from "./superadmin.controller";
 
 /* =========================
@@ -84,6 +87,14 @@ router.get("/madrasas/:id/roles", superAdminMiddleware, listMadrasaRoles);
 router.get("/madrasas/:id/users", superAdminMiddleware, listMadrasaUsers);
 router.post("/madrasas/:id/users", superAdminMiddleware, createMadrasaUser);
 router.delete("/madrasas/:id/users/:userId", superAdminMiddleware, deleteMadrasaUser);
+
+/* =====================================================
+   MADRASA CLOUDINARY CONFIG (per-tenant storage account)
+===================================================== */
+
+router.get("/madrasas/:id/cloudinary", superAdminMiddleware, getMadrasaCloudinaryConfig);
+router.put("/madrasas/:id/cloudinary", superAdminMiddleware, saveMadrasaCloudinaryConfig);
+router.delete("/madrasas/:id/cloudinary", superAdminMiddleware, deleteMadrasaCloudinaryConfig);
 
 /* =====================================================
    PLANS (TRASH SYSTEM)

@@ -1,5 +1,6 @@
 import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
+import { encryptSecret } from "../../shared/utils/crypto.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
@@ -30,7 +31,12 @@ import {
 
 /** The role that always represents a madrasa's default/owner account (created on madrasa setup). */
 const DEFAULT_PROTECTED_ROLE_KEY = "MUHTAMIM";
-import { AssignPlanRequestDto, CreateMadrasaRequestDto, UpdateMadrasaRequestDto } from "./superadmin.dto";
+import {
+  AssignPlanRequestDto,
+  CreateMadrasaRequestDto,
+  SaveMadrasaCloudinaryConfigRequestDto,
+  UpdateMadrasaRequestDto,
+} from "./superadmin.dto";
 
 function slugify(text: string) {
   return text
@@ -569,6 +575,34 @@ export class SuperAdminService {
 
   async permanentDeleteMadrasa(id: number) {
     await this.repository.runTransaction((tx) => this.repository.permanentDeleteCascadeOnTx(tx, id));
+  }
+
+  async getMadrasaCloudinaryConfig(id: number) {
+    if (!id) throw new InvalidMadrasaIdError();
+    const config = await this.repository.findCloudinaryConfig(id);
+    if (!config) return { configured: false, cloud_name: null, api_key: null };
+    return { configured: true, cloud_name: config.cloudName, api_key: config.apiKey };
+  }
+
+  async saveMadrasaCloudinaryConfig(id: number, dto: SaveMadrasaCloudinaryConfigRequestDto) {
+    if (!id) throw new InvalidMadrasaIdError();
+    if (!dto.cloud_name?.trim() || !dto.api_key?.trim() || !dto.api_secret?.trim()) {
+      throw new BadRequestError("cloud_name, api_key and api_secret are all required");
+    }
+
+    const madrasa = await this.repository.findMadrasaDetail(id);
+    if (!madrasa) throw new MadrasaNotFoundError();
+
+    await this.repository.upsertCloudinaryConfig(id, {
+      cloudName: dto.cloud_name.trim(),
+      apiKey: dto.api_key.trim(),
+      apiSecretEnc: encryptSecret(dto.api_secret.trim()),
+    });
+  }
+
+  async deleteMadrasaCloudinaryConfig(id: number) {
+    if (!id) throw new InvalidMadrasaIdError();
+    await this.repository.deleteCloudinaryConfig(id);
   }
 }
 

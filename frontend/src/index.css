@@ -36,6 +36,27 @@ input,
 select,
 textarea {
   font-family: var(--font-ui-bn);
+  /* Chrome's UA stylesheet resets replaced form controls, so the
+     text-rendering set on <html> above doesn't inherit into them. Bengali
+     digits with thin strokes (১ especially) can then anti-alias so poorly
+     at small input font-sizes that they look partially missing. */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Chrome/Edge reserve ~20px inside every <input type="number"> for the
+   native up/down spin buttons. In the narrow marks/amount/limit fields used
+   across the app (e.g. w-14/w-20), that steals room from the digits
+   themselves and the first character renders clipped. Spinners add no value
+   here since every one of these fields is typed, not stepped. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* =========================

@@ -301,7 +301,8 @@ export default function MarksTable({
                           inputMode="numeric"
                           placeholder="০"
                           disabled={disabled}
-                          className={`w-14 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
+                          style={{ fontFamily: '"Noto Sans Bengali", "Hind Siliguri", sans-serif' }}
+                          className={`w-16 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
                             disabled
                               ? "bg-gray-100 cursor-not-allowed text-gray-400"
                               : getCellStyle(value, max)

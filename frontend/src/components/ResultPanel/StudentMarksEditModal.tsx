@@ -82,18 +82,6 @@ export default function StudentMarksEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      {/* Hide native number input spin buttons, same as the bulk entry table */}
-      <style>{`
-        input.no-spinner::-webkit-outer-spin-button,
-        input.no-spinner::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input.no-spinner[type="number"] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
-
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col p-4">
         <div className="flex justify-between items-start mb-3 shrink-0">
           <div>
@@ -140,7 +128,7 @@ export default function StudentMarksEditModal({
                       step={1}
                       placeholder="0"
                       disabled={saving}
-                      className={`no-spinner w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
+                      className={`w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
                         saving
                           ? "bg-gray-100 cursor-not-allowed text-gray-400"
                           : getCellStyle(value, max)

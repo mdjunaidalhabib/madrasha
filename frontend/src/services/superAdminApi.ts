@@ -136,6 +136,34 @@ export async function updateMadrasa(id: number, payload: any) {
 }
 
 /* =========================
+   MADRASA CLOUDINARY CONFIG
+========================= */
+
+export type MadrasaCloudinaryConfig = {
+  configured: boolean;
+  cloud_name: string | null;
+  api_key: string | null;
+};
+
+export async function getMadrasaCloudinaryConfig(id: number) {
+  const res = await api.get(`/super/madrasas/${id}/cloudinary`);
+  return res.data.data as MadrasaCloudinaryConfig;
+}
+
+export async function saveMadrasaCloudinaryConfig(
+  id: number,
+  payload: { cloud_name: string; api_key: string; api_secret: string },
+) {
+  const res = await api.put(`/super/madrasas/${id}/cloudinary`, payload);
+  return res.data;
+}
+
+export async function deleteMadrasaCloudinaryConfig(id: number) {
+  const res = await api.delete(`/super/madrasas/${id}/cloudinary`);
+  return res.data;
+}
+
+/* =========================
    TRASH MADRASAS
 ========================= */
 

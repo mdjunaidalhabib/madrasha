@@ -192,3 +192,31 @@ export const permanentDeleteMadrasa = async (req: Request, res: Response) => {
     respondError(res, error, "Permanent delete error:");
   }
 };
+
+/* ================= PER-TENANT CLOUDINARY CONFIG ================= */
+export const getMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
+  try {
+    const data = await superAdminService.getMadrasaCloudinaryConfig(Number(req.params.id));
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const saveMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
+  try {
+    await superAdminService.saveMadrasaCloudinaryConfig(Number(req.params.id), req.body);
+    res.json({ message: "Cloudinary config saved" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
+  try {
+    await superAdminService.deleteMadrasaCloudinaryConfig(Number(req.params.id));
+    res.json({ message: "Cloudinary config removed" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};

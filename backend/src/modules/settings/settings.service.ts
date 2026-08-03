@@ -20,7 +20,6 @@ import {
   MAX_TEMPLATE_LENGTH,
   MAX_MADRASA_NAME_LENGTH,
   MAX_MADRASA_ADDRESS_LENGTH,
-  DEFAULT_WATERMARK_OPACITY,
   BRANDING_IMAGE_FIELDS,
   DOCUMENT_DESIGNS,
   DEFAULT_DOCUMENT_DESIGN,
@@ -90,7 +89,7 @@ export class SettingsService {
       throw new BadRequestError("Madrasa name cannot be empty");
     }
 
-    let opacity = DEFAULT_WATERMARK_OPACITY;
+    let opacity: number | undefined;
     if (report_watermark_opacity !== undefined && report_watermark_opacity !== null) {
       opacity = Number(report_watermark_opacity);
       if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
@@ -111,7 +110,10 @@ export class SettingsService {
       ...(report_watermark !== undefined && report_watermark !== null
         ? { reportWatermark: storageProvider.persistImage(report_watermark) }
         : {}),
-      reportWatermarkOpacity: opacity,
+      // Only touch opacity when the caller actually sent it - each field is
+      // now saved independently (inline edit UI), so a save of e.g. just the
+      // name must not silently reset this back to DEFAULT_WATERMARK_OPACITY.
+      ...(opacity !== undefined ? { reportWatermarkOpacity: opacity } : {}),
     });
   }
 

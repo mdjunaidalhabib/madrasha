@@ -14,6 +14,7 @@ import {
 import SearchPaginationBar from "../../../components/super-admin/SearchPaginationBar";
 import MadrasasTable from "../../../components/super-admin/MadrasasTable";
 import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/CreateMadrasaModal";
+import MadrasaCloudinaryModal from "../../../components/super-admin/MadrasaCloudinaryModal";
 import DivisionsSection from "../../../components/super-admin/create-madrasa/DivisionsSection";
 import ToggleSection from "../../../components/super-admin/create-madrasa/ToggleSection";
 import MadrasaUsersSection from "../../../components/super-admin/create-madrasa/MadrasaUsersSection";
@@ -78,6 +79,7 @@ export default function SuperAdminMadrasasPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Madrasa | null>(null);
+  const [cloudinaryFor, setCloudinaryFor] = useState<Madrasa | null>(null);
 
   /* ==============================
      Pagination
@@ -295,6 +297,7 @@ export default function SuperAdminMadrasasPage() {
         onToggleActive={onToggleActive}
         onDelete={onDelete}
         onEdit={setEditing}
+        onCloudinary={setCloudinaryFor}
       />
 
       {editing && (
@@ -314,6 +317,10 @@ export default function SuperAdminMadrasasPage() {
           onClose={() => setOpenCreate(false)}
           onSubmit={onCreate}
         />
+      )}
+
+      {cloudinaryFor && (
+        <MadrasaCloudinaryModal madrasa={cloudinaryFor} onClose={() => setCloudinaryFor(null)} />
       )}
     </div>
   );

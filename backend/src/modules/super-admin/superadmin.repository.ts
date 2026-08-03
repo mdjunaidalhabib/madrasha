@@ -509,6 +509,25 @@ export class SuperAdminRepository {
       await tx.madrasa.delete({ where: { id } });
     })();
   }
+
+  findCloudinaryConfig(madrasaId: number) {
+    return prisma.madrasaCloudinaryConfig.findUnique({ where: { madrasaId } });
+  }
+
+  upsertCloudinaryConfig(
+    madrasaId: number,
+    data: { cloudName: string; apiKey: string; apiSecretEnc: string },
+  ) {
+    return prisma.madrasaCloudinaryConfig.upsert({
+      where: { madrasaId },
+      create: { madrasaId, ...data },
+      update: data,
+    });
+  }
+
+  deleteCloudinaryConfig(madrasaId: number) {
+    return prisma.madrasaCloudinaryConfig.deleteMany({ where: { madrasaId } });
+  }
 }
 
 export const superAdminRepository = new SuperAdminRepository();
