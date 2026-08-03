@@ -117,10 +117,18 @@ const ResultNoticeList = ({
           </thead>
         )}
         <tbody>
-          {rows.map((row, index) => (
+          {rows.map((row, index) => {
+            const rowStatus = String(row?.status || "").toUpperCase();
+            const rowClass =
+              rowStatus === "FAIL"
+                ? "result-notice-fail-row"
+                : rowStatus === "ABSENT"
+                  ? "result-notice-absent-row"
+                  : "";
+            return (
             <tr
               key={`${row.student_id || row.id}-${startIndex + index}`}
-              className={String(row?.status || "").toUpperCase() === "FAIL" ? "result-notice-fail-row" : ""}
+              className={rowClass}
             >
               {configuredColumns.map((column) => (
                 <td
@@ -135,7 +143,8 @@ const ResultNoticeList = ({
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
 

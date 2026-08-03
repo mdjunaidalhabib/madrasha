@@ -7,6 +7,7 @@ interface SummaryMark {
   book_id: number;
   book_name: string;
   mark: number;
+  is_absent?: boolean;
 }
 
 interface Summary {
@@ -79,7 +80,8 @@ export default function FullResultTable({
 
   const getMark = (student: Summary, bookId: number) => {
     const found = student.marks?.find((m) => m.book_id === bookId);
-    return found ? found.mark : "-";
+    if (!found) return "-";
+    return found.is_absent ? "অনু" : found.mark;
   };
 
   return (
@@ -199,7 +201,13 @@ export default function FullResultTable({
             dataList.map((s) => (
               <tr
                 key={s.student_id}
-                className={String(s.status || "").toUpperCase() === "FAIL" ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}
+                className={
+                  String(s.status || "").toUpperCase() === "FAIL"
+                    ? "bg-red-50 hover:bg-red-100"
+                    : String(s.status || "").toUpperCase() === "ABSENT"
+                      ? "bg-amber-50 hover:bg-amber-100"
+                      : "hover:bg-gray-50"
+                }
               >
                 <td className="border px-2 py-2 text-center break-words">{s.student_id}</td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>

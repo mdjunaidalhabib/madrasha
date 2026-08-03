@@ -1369,3 +1369,15 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"] .academic-result-fail-row .academic-result-student-name {
   color: #991b1b;
 }
+
+/* A student absent from every subject gets a distinct amber highlight —
+   separate from the fail-row red, since "didn't sit the exam" isn't the
+   same outcome as "sat and failed". */
+.print-page-preview[data-report="academic-result"] .academic-result-absent-row > td,
+.print-page-preview[data-report="result-notice"] .result-notice-absent-row > td {
+  background-color: #fffbeb !important;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-absent-row .academic-result-student-name {
+  color: #92400e;
+}

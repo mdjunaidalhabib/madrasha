@@ -10,6 +10,7 @@ enum ResultPublishStatus {
 enum ResultRowStatus {
   PASS
   FAIL
+  ABSENT
 }
 
 model ResultMaster {
@@ -83,7 +84,8 @@ model Mark {
   classId        Int @map("class_id")
   bookId         Int @map("book_id")
 
-  mark Float @default(0)
+  mark     Float   @default(0)
+  isAbsent Boolean @default(false) @map("is_absent")
 
   madrasaId Int @default(1) @map("madrasa_id")
 

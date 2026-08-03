@@ -72,7 +72,7 @@ export class ResultPanelRepository {
           },
         },
       },
-      select: { studentId: true, bookId: true, mark: true, resultMasterId: true },
+      select: { studentId: true, bookId: true, mark: true, isAbsent: true, resultMasterId: true },
       orderBy: [{ studentId: "asc" }, { bookId: "asc" }],
     });
   }
@@ -113,6 +113,41 @@ export class ResultPanelRepository {
         },
       },
       _sum: { mark: true },
+      _count: { _all: true },
+    });
+  }
+
+  /** Per-student count of subjects marked absent (isAbsent = true) within a
+   * result session — compared against the student's total entered-subject
+   * count from groupMarksByStudent() to detect a student who missed every
+   * subject, so their overall result can be flagged ABSENT instead of
+   * PASS/FAIL (see ResultPanelService.rebuildResultSummary). */
+  countAbsentMarksByStudent(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+  ) {
+    return prisma.mark.groupBy({
+      by: ["studentId"],
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        isAbsent: true,
+        book: {
+          madrasaBooks: {
+            some: { madrasaId, isActive: 1 },
+          },
+        },
+        student: {
+          madrasaId,
+          classId,
+          deletedAt: null,
+          isActive: 1,
+        },
+      },
       _count: { _all: true },
     });
   }
@@ -370,7 +405,12 @@ export class ResultPanelRepository {
                   },
                 },
               },
-              select: { bookId: true, mark: true, book: { select: { nameBn: true, name: true } } },
+              select: {
+                bookId: true,
+                mark: true,
+                isAbsent: true,
+                book: { select: { nameBn: true, name: true } },
+              },
               orderBy: { bookId: "asc" },
             },
           },

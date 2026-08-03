@@ -37,6 +37,7 @@ type SubjectMark = {
   subject_name?: string;
   is_miyari?: boolean;
   mark?: number | string | null;
+  is_absent?: boolean;
 };
 
 type PrintableColumn = ReportColumn & {
@@ -207,7 +208,9 @@ const AcademicResultPrint = ({
     const subject = getSubjects(row).find(
       (item, index) => getSubjectKey(item, index) === subjectKey,
     );
-    const mark = subject?.mark;
+    if (!subject) return "—";
+    if (subject.is_absent) return "অনু";
+    const mark = subject.mark;
     return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
   };
 
@@ -310,11 +313,14 @@ const AcademicResultPrint = ({
           )}
           <tbody>
             {rows.map((row, index) => {
-              const failed = String(row?.status || "").toUpperCase() === "FAIL";
+              const rowStatus = String(row?.status || "").toUpperCase();
+              const failed = rowStatus === "FAIL";
+              const isAbsentRow = rowStatus === "ABSENT";
               const rankValue = Number(row?.rank_no);
               const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
               const rowClass = [
                 failed ? "academic-result-fail-row" : "",
+                isAbsentRow ? "academic-result-absent-row" : "",
                 isTopRankRow ? "academic-result-top-rank-row" : "",
               ]
                 .filter(Boolean)

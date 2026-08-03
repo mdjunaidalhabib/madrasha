@@ -11,6 +11,10 @@ export interface MarkRowDto {
   // null/undefined/"" means "clear this mark" — the row is deleted rather
   // than upserted (see ResultPanelService.saveMarks).
   mark: number | string | null;
+  // True when the student did not sit this subject's exam. `mark` is still
+  // sent as 0 alongside this so the average calculation keeps counting the
+  // subject (see ResultPanelService.rebuildResultSummary).
+  is_absent?: boolean;
 }
 
 export interface SaveMarksRequestDto {

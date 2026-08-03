@@ -1,5 +1,10 @@
 import React, { useMemo, useRef } from "react";
-import { toBanglaDigits, normalizeBanglaDigits } from "../../utils/reportUtils";
+import {
+  toBanglaDigits,
+  normalizeBanglaDigits,
+  ABSENT_MARK,
+  ABSENT_MARK_LABEL,
+} from "../../utils/reportUtils";
 
 const displayNumber = (value: number | string | null | undefined) =>
   value === null || value === undefined || value === "" ? "-" : toBanglaDigits(value);
@@ -105,6 +110,20 @@ export default function MarksTable({
   };
 
   const handle = (sid: number, bid: number, rawVal: string, max = 100) => {
+    // A lone "-" marks the student absent for this subject — the fast path
+    // for the common case, since the cell is select-all'd on focus, so this
+    // is always a single clean keystroke, not appended to existing digits.
+    if (rawVal === "-") {
+      setMarks((prev) => ({
+        ...prev,
+        [sid]: {
+          ...prev[sid],
+          [bid]: ABSENT_MARK,
+        },
+      }));
+      return;
+    }
+
     // Digits only — typing stays plain ASCII, so strip anything else and
     // normalize any stray Bengali digits (e.g. from a mobile OS keyboard).
     const val = normalizeBanglaDigits(rawVal).replace(/\D/g, "");
@@ -155,6 +174,10 @@ export default function MarksTable({
   const getCellStyle = (value: number | null | undefined, max: number) => {
     if (value == null) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
+    }
+
+    if (value === ABSENT_MARK) {
+      return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400";
     }
 
     const pct = max > 0 ? (value / max) * 100 : 0;
@@ -209,7 +232,10 @@ export default function MarksTable({
       {books.length > 0 && students.length > 0 && (
         <p className="hidden sm:block text-xs text-gray-400 mb-2">
           ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50">⏎</kbd> চাপুন
-          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে
+          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে।
+          কেউ পরীক্ষা না দিলে ঘরে শুধু{" "}
+          <kbd className="px-1 py-0.5 border rounded bg-gray-50">-</kbd> চাপুন — স্বয়ংক্রিয়ভাবে
+          "{ABSENT_MARK_LABEL}" (অনুপস্থিত) বসে যাবে।
         </p>
       )}
 
@@ -307,7 +333,13 @@ export default function MarksTable({
                               ? "bg-gray-100 cursor-not-allowed text-gray-400"
                               : getCellStyle(value, max)
                           }`}
-                          value={value != null ? toBanglaDigits(value) : ""}
+                          value={
+                            value === ABSENT_MARK
+                              ? ABSENT_MARK_LABEL
+                              : value != null
+                                ? toBanglaDigits(value)
+                                : ""
+                          }
                           onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
                           onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
                           onFocus={(e) => e.target.select()}
@@ -331,6 +363,10 @@ export default function MarksTable({
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block" />{" "}
             পাশ
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block" />{" "}
+            অনুপস্থিত
           </span>
         </div>
       )}

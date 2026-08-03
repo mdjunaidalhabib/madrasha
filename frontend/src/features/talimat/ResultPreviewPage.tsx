@@ -4,6 +4,7 @@ import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { ABSENT_MARK } from "../../utils/reportUtils";
 
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
@@ -36,6 +37,7 @@ interface SummaryMark {
   book_id: number;
   book_name: string;
   mark: number;
+  is_absent?: boolean;
 }
 interface SummaryItem {
   result_master_id: number;
@@ -217,13 +219,18 @@ export default function ResultPreviewPage() {
   const handleSaveStudentMarks = async (values: Record<number, number>) => {
     if (!editingStudent || !examId || !classId) return;
 
-    const payload = Object.keys(values).map((bid) => ({
-      student_id: editingStudent.student_id,
-      book_id: +bid,
-      mark: Number(values[+bid]),
-      exam_id: +examId,
-      class_id: +classId,
-    }));
+    const payload = Object.keys(values).map((bid) => {
+      const raw = values[+bid];
+      const isAbsent = raw === ABSENT_MARK;
+      return {
+        student_id: editingStudent.student_id,
+        book_id: +bid,
+        mark: isAbsent ? 0 : Number(raw),
+        is_absent: isAbsent,
+        exam_id: +examId,
+        class_id: +classId,
+      };
+    });
 
     if (payload.length === 0) {
       return push("error", "অন্তত একটি নাম্বার দিন");

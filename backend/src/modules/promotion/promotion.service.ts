@@ -48,7 +48,11 @@ export class PromotionService {
           name_bn: student.nameBn,
           roll: student.roll,
           result_status: resultStatus || "NO_RESULT",
-          suggested_status: resultStatus === "FAIL" ? "RETAINED" : "PROMOTED",
+          // A student absent from every subject (status ABSENT) is treated
+          // the same as FAIL here — they never actually completed the exam,
+          // so they shouldn't be silently suggested for promotion either.
+          suggested_status:
+            resultStatus === "FAIL" || resultStatus === "ABSENT" ? "RETAINED" : "PROMOTED",
         };
       });
     } catch (err) {

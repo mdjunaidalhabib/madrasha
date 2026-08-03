@@ -4,6 +4,7 @@ import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { ABSENT_MARK } from "../../utils/reportUtils";
 
 import ResultFilter from "../../components/ResultPanel/ResultFilter";
 import MarksTable from "../../components/ResultPanel/MarksTable";
@@ -171,7 +172,8 @@ export default function ResultEntryPage() {
         // Accept both formats so frontend/backend can be deployed separately.
         const studentId = Number(r.student_id ?? r.studentId);
         const bookId = Number(r.book_id ?? r.bookId);
-        const mark = Number(r.mark);
+        const isAbsent = Boolean(r.is_absent ?? r.isAbsent);
+        const mark = isAbsent ? ABSENT_MARK : Number(r.mark);
 
         if (!Number.isFinite(studentId) || !Number.isFinite(bookId) || !Number.isFinite(mark)) {
           return;
@@ -211,10 +213,12 @@ export default function ResultEntryPage() {
       Object.keys(marks[+sid] || {}).forEach((bid) => {
         const value = marks[+sid]?.[+bid];
         if (value === undefined) return;
+        const isAbsent = value === ABSENT_MARK;
         payload.push({
           student_id: +sid,
           book_id: +bid,
-          mark: value === null ? null : Number(value),
+          mark: value === null ? null : isAbsent ? 0 : Number(value),
+          is_absent: isAbsent,
           exam_id: +examId,
           class_id: +classId,
         });

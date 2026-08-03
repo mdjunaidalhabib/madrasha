@@ -35,6 +35,7 @@ const STATUS_LABELS: Record<DecisionStatus, string> = {
 const RESULT_LABELS: Record<string, string> = {
   PASS: "পাস",
   FAIL: "ফেল",
+  ABSENT: "অনুপস্থিত",
   NO_RESULT: "ফলাফল নেই",
 };
 
@@ -320,7 +321,9 @@ const StudentPromotionPage = () => {
                                 ? "bg-red-100 text-red-700"
                                 : row.result_status === "PASS"
                                   ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-600"
+                                  : row.result_status === "ABSENT"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-gray-100 text-gray-600"
                             }`}
                           >
                             {RESULT_LABELS[row.result_status] || row.result_status}

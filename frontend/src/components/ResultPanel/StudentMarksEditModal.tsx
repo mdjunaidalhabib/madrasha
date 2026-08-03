@@ -1,9 +1,16 @@
 import { useState } from "react";
+import {
+  toBanglaDigits,
+  normalizeBanglaDigits,
+  ABSENT_MARK,
+  ABSENT_MARK_LABEL,
+} from "../../utils/reportUtils";
 
 interface SummaryMark {
   book_id: number;
   book_name: string;
   mark: number;
+  is_absent?: boolean;
 }
 
 interface Book {
@@ -40,12 +47,21 @@ export default function StudentMarksEditModal({
   const initial: Record<number, number> = {};
   books.forEach((b) => {
     const found = student.marks?.find((m) => m.book_id === b.book_id);
-    if (found) initial[b.book_id] = found.mark;
+    if (found) initial[b.book_id] = found.is_absent ? ABSENT_MARK : found.mark;
   });
 
   const [values, setValues] = useState<Record<number, number>>(initial);
 
-  const handleChange = (bookId: number, val: string, max: number) => {
+  const handleChange = (bookId: number, rawVal: string, max: number) => {
+    // A lone "-" marks the student absent for this subject — same shortcut
+    // as the bulk marks-entry grid (see MarksTable.tsx).
+    if (rawVal === "-") {
+      setValues((prev) => ({ ...prev, [bookId]: ABSENT_MARK }));
+      return;
+    }
+
+    const val = normalizeBanglaDigits(rawVal).replace(/\D/g, "");
+
     if (val === "") {
       setValues((prev) => {
         const copy = { ...prev };
@@ -69,6 +85,10 @@ export default function StudentMarksEditModal({
   const getCellStyle = (value: number | undefined, max: number) => {
     if (value === undefined) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
+    }
+
+    if (value === ABSENT_MARK) {
+      return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400";
     }
 
     const pct = max > 0 ? (value / max) * 100 : 0;
@@ -122,18 +142,22 @@ export default function StudentMarksEditModal({
                   </td>
                   <td className="border px-2 py-1">
                     <input
-                      type="number"
-                      min={0}
-                      max={max}
-                      step={1}
-                      placeholder="0"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="০"
                       disabled={saving}
                       className={`w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
                         saving
                           ? "bg-gray-100 cursor-not-allowed text-gray-400"
                           : getCellStyle(value, max)
                       }`}
-                      value={value ?? ""}
+                      value={
+                        value === ABSENT_MARK
+                          ? ABSENT_MARK_LABEL
+                          : value != null
+                            ? toBanglaDigits(value)
+                            : ""
+                      }
                       onChange={(e) => handleChange(b.book_id, e.target.value, max)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -151,6 +175,10 @@ export default function StudentMarksEditModal({
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block" /> Pass
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block" />{" "}
+            অনুপস্থিত ("-" চাপুন)
           </span>
         </div>
 

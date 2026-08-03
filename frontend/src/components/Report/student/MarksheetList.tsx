@@ -8,10 +8,16 @@ type MarksheetListProps = {
 
 const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: MarksheetListProps) => {
   const row = rows[0] || {};
-  const failed = String(row?.status || "").toUpperCase() === "FAIL";
+  const rowStatus = String(row?.status || "").toUpperCase();
+  const failed = rowStatus === "FAIL";
+  const isAbsent = rowStatus === "ABSENT";
 
   return (
-    <section className={`border-2 border-slate-800 p-6 ${failed ? "bg-red-50" : "bg-white"}`}>
+    <section
+      className={`border-2 border-slate-800 p-6 ${
+        failed ? "bg-red-50" : isAbsent ? "bg-amber-50" : "bg-white"
+      }`}
+    >
       {isFirstPage && (
         <div className="report-block-heading">
           <div className="text-center">

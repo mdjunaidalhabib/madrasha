@@ -89,7 +89,7 @@ export interface PromotionPreviewRow {
   student_id: number;
   name_bn: string;
   roll: number;
-  result_status: "PASS" | "FAIL" | "NO_RESULT";
+  result_status: "PASS" | "FAIL" | "ABSENT" | "NO_RESULT";
   suggested_status: "PROMOTED" | "RETAINED";
 }
 

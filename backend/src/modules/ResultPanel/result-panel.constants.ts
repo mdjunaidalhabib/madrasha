@@ -11,4 +11,5 @@ export const RESULT_STATUS = {
 export const MARK_STATUS = {
   PASS: "PASS",
   FAIL: "FAIL",
+  ABSENT: "ABSENT",
 } as const;

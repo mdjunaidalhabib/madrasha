@@ -1,5 +1,14 @@
 const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
 
+// Sentinel stored in a marks-entry cell's local state to mean "student is
+// absent for this subject" — typed as a plain `number` (not a separate
+// union member) so it flows through the existing
+// `Record<studentId, Record<bookId, number | null>>` state/save-payload
+// shapes untouched. Negative and outside 0..full_marks, so it can never
+// collide with a real score.
+export const ABSENT_MARK = -1;
+export const ABSENT_MARK_LABEL = "অনু";
+
 const REPORT_TEXT_MAP: Record<string, string> = {
   PASS: "PASS",
   FAIL: "FAIL",

@@ -137,7 +137,8 @@ export class ReportsRepository {
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
               'is_miyari', COALESCE(mb.is_miyari, false),
-              'mark', m.mark
+              'mark', m.mark,
+              'is_absent', COALESCE(m.is_absent, false)
             )
             ORDER BY b.id
           ) FILTER (WHERE b.id IS NOT NULL),
@@ -436,7 +437,8 @@ export class ReportsRepository {
             jsonb_build_object(
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
-              'mark', m.mark
+              'mark', m.mark,
+              'is_absent', COALESCE(m.is_absent, false)
             )
             ORDER BY b.id
           ) FILTER (WHERE b.id IS NOT NULL),

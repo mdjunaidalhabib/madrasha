@@ -131,7 +131,7 @@ export class ResultPanelService {
           : "";
 
       throw new BadRequestError(
-        `${toBanglaDigits(completeness.incompleteStudents.length)} জন শিক্ষার্থীর মোট ${toBanglaDigits(completeness.missingEntries)}টি বিষয়ের নম্বর দেওয়া হয়নি। ${examples}${more ? ` ${more}` : ""}। সব বিষয়ের নম্বর দিন; অনুপস্থিত হলে ০ লিখুন।`,
+        `${toBanglaDigits(completeness.incompleteStudents.length)} জন শিক্ষার্থীর মোট ${toBanglaDigits(completeness.missingEntries)}টি বিষয়ের নম্বর দেওয়া হয়নি। ${examples}${more ? ` ${more}` : ""}। সব বিষয়ের নম্বর দিন; অনুপস্থিত হলে ঘরে "-" লিখুন।`,
       );
     }
 
@@ -145,15 +145,20 @@ export class ResultPanelService {
     resultMasterId: number,
     config: ResultCalculationConfig,
   ) {
-    const [marks, activeSubjects] = await Promise.all([
+    const [marks, activeSubjects, absentCounts] = await Promise.all([
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findActiveSubjectsForClass(madrasaId, classId),
+      this.repository.countAbsentMarksByStudent(madrasaId, examId, classId, resultMasterId),
     ]);
 
     if (!marks.length) {
       await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
       return false;
     }
+
+    const absentCountByStudent = new Map(
+      absentCounts.map((row) => [Number(row.studentId), Number(row._count._all || 0)]),
+    );
 
     const miyariBookIds = activeSubjects
       .filter((subject) => subject.isMiyari && subject.book)
@@ -176,29 +181,47 @@ export class ResultPanelService {
     const students = await this.repository.findRollsByStudentIds(studentIds);
     const rollByStudentId = new Map(students.map((student) => [student.id, student.roll ?? null]));
 
-    const summaryData = sorted.map((row, index) => {
+    // Absent students don't get a merit rank — rankNo counts only up through
+    // students who actually sat the exam, so "১ম" always means the best
+    // performing student who was present, not just first in sort order.
+    let rankCounter = 0;
+
+    const summaryData = sorted.map((row) => {
       const total = Number(row._sum.mark || 0);
       const subjectCount = row._count._all || 0;
       const rawAverage = subjectCount > 0 ? total / subjectCount : 0;
       // Keep exactly 2 decimal places so the stored value matches what's shown everywhere.
       const average = Math.round(rawAverage * 100) / 100;
 
+      // A student absent in every subject gets no PASS/FAIL/grade at all —
+      // one who's absent in only some subjects still gets graded normally,
+      // with those subjects counted as 0 in the average (handled above by
+      // `mark` already being 0 for absent rows).
+      const absentSubjectCount = absentCountByStudent.get(Number(row.studentId)) || 0;
+      const fullyAbsent = subjectCount > 0 && absentSubjectCount === subjectCount;
+
       const passed =
-        average >= config.failMark && !studentsFailingMiyari.has(Number(row.studentId));
+        !fullyAbsent &&
+        average >= config.failMark &&
+        !studentsFailingMiyari.has(Number(row.studentId));
 
       return {
         resultMasterId,
         studentId: Number(row.studentId),
         total,
         average,
-        generalGrade: passed
-          ? getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK)
-          : DEFAULT_GENERAL_GRADE_FALLBACK,
-        madrasaGrade: passed
-          ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
-          : DEFAULT_MADRASA_GRADE_FALLBACK,
-        status: passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
-        rankNo: index + 1,
+        generalGrade: fullyAbsent
+          ? null
+          : passed
+            ? getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK)
+            : DEFAULT_GENERAL_GRADE_FALLBACK,
+        madrasaGrade: fullyAbsent
+          ? null
+          : passed
+            ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
+            : DEFAULT_MADRASA_GRADE_FALLBACK,
+        status: fullyAbsent ? MARK_STATUS.ABSENT : passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
+        rankNo: fullyAbsent ? null : ++rankCounter,
         roll: rollByStudentId.get(Number(row.studentId)) ?? null,
       };
     });
@@ -307,7 +330,11 @@ export class ResultPanelService {
               bookId: toNumber(m.book_id),
             },
           },
-          update: { mark: toNumber(m.mark), examId: toNumber(m.exam_id) },
+          update: {
+            mark: toNumber(m.mark),
+            examId: toNumber(m.exam_id),
+            isAbsent: Boolean(m.is_absent),
+          },
           create: {
             resultMasterId,
             studentId: toNumber(m.student_id),
@@ -315,6 +342,7 @@ export class ResultPanelService {
             classId: toNumber(m.class_id),
             bookId: toNumber(m.book_id),
             mark: toNumber(m.mark),
+            isAbsent: Boolean(m.is_absent),
             madrasaId,
           },
         })),
@@ -358,6 +386,7 @@ export class ResultPanelService {
       student_id: row.studentId,
       book_id: row.bookId,
       mark: Number(row.mark),
+      is_absent: Boolean(row.isAbsent),
       result_master_id: row.resultMasterId,
     }));
 
@@ -611,7 +640,12 @@ export class ResultPanelService {
             is_miyari: false,
           });
         }
-        return { book_id: m.bookId, book_name: bookName, mark: Number(m.mark || 0) };
+        return {
+          book_id: m.bookId,
+          book_name: bookName,
+          mark: Number(m.mark || 0),
+          is_absent: Boolean(m.isAbsent),
+        };
       });
 
       return {
