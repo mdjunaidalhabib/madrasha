@@ -180,7 +180,7 @@ function MethodFormFields({
  * Admin panel setup screen for MANUAL payment methods only — there is no
  * payment gateway here. Admins add the channels guardians should pay
  * into (a bKash number, a bank account, "cash at office" etc); these then
- * show up as a picklist when recording a payment in Fee Management.
+ * show up as a picklist when recording a payment in Fee Management..
  */
 const PaymentMethodSettingsPage = () => {
   const [methods, setMethods] = useState<PaymentMethodSetting[]>([]);
