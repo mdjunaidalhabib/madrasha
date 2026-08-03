@@ -20,6 +20,17 @@ export type LetterDocumentProps = {
   design?: LetterDesignKey;
   /** Only used when design === "custom": a full-page background image. */
   backgroundImage?: string | null;
+  /** Heading renders only on the record's first physical page. */
+  isFirstPage?: boolean;
+  /** Footer renders only on the record's last physical page. */
+  isLastPage?: boolean;
+  /**
+   * When the token-rendered body is too tall for one page, the caller
+   * (PaginatedReportPreview's measurement pass) pre-splits it with
+   * splitTextToFit and hands back just the slice that belongs on THIS
+   * physical page - overriding the full `template` render.
+   */
+  bodyTextOverride?: string;
 };
 
 const ArchCorners = () => (
@@ -57,21 +68,27 @@ const LetterDocument = ({
   footer,
   design = "classic",
   backgroundImage,
+  isFirstPage = true,
+  isLastPage = true,
+  bodyTextOverride,
 }: LetterDocumentProps) => {
+  const bodyText = bodyTextOverride ?? renderTemplateText(template, row);
+
   const content = (
     <>
-      {showBismillah ? (
-        <div className="text-center">
-          <p className="text-sm text-slate-500">بسم الله الرحمن الرحيم</p>
-          <h3 className={headingClassName}>{heading}</h3>
-        </div>
-      ) : (
-        <h3 className={headingClassName}>{heading}</h3>
-      )}
+      {isFirstPage &&
+        (showBismillah ? (
+          <div className="report-block-heading text-center">
+            <p className="text-sm text-slate-500">بسم الله الرحمن الرحيم</p>
+            <h3 className={headingClassName}>{heading}</h3>
+          </div>
+        ) : (
+          <h3 className={`report-block-heading ${headingClassName}`}>{heading}</h3>
+        ))}
 
-      <p className={bodyClassName}>{renderTemplateText(template, row)}</p>
+      <p className={`report-block-body ${bodyClassName}`}>{bodyText}</p>
 
-      {footer}
+      {isLastPage && <div className="report-block-signature">{footer}</div>}
     </>
   );
 

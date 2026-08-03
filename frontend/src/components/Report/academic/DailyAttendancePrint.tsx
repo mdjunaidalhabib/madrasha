@@ -5,6 +5,7 @@ type DailyAttendancePrintProps = {
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  isFirstPage?: boolean;
 };
 
 const rowText = (row: Record<string, any>, key: string) => {
@@ -17,36 +18,25 @@ const DailyAttendancePrint = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  isFirstPage = true,
 }: DailyAttendancePrintProps) => {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const groupedRows = Object.values(
-    rows.reduce<
-      Record<string, { divisionName: string; className: string; students: Record<string, any>[] }>
-    >((acc, row) => {
-      const divisionName = rowText(row, "division_name") || selectedDivisionName || "সকল বিভাগ";
-      const className = rowText(row, "class_name") || selectedClassName || "সকল শ্রেণি";
-      const key = `${divisionName}-${className}`;
-      if (!acc[key]) acc[key] = { divisionName, className, students: [] };
-      acc[key].students.push(row);
-      return acc;
-    }, {}),
-  );
+  const firstRow = rows[0] || {};
+  const divisionName = rowText(firstRow, "division_name") || selectedDivisionName || "সকল বিভাগ";
+  const className = rowText(firstRow, "class_name") || selectedClassName || "সকল শ্রেণি";
 
   return (
     <div className="attendance-a4 mx-auto w-full bg-white text-slate-900">
-      {groupedRows.map((group, groupIndex) => (
-        <section
-          key={`${group.divisionName}-${group.className}`}
-          className={groupIndex > 0 ? "print-page-break pt-5" : ""}
-        >
-          <div className="mb-3 text-center">
+      <section className={isFirstPage ? "" : "pt-5"}>
+        {isFirstPage && (
+          <div className="report-block-heading mb-3 text-center">
             <h1 className="mb-3 text-xl font-bold">দৈনন্দিন হাজিরা খাতা</h1>
             <div className="grid grid-cols-4 gap-1 text-[13px]">
               <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-                বিভাগ: {group.divisionName}
+                বিভাগ: {divisionName}
               </div>
               <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
-                শ্রেণি: {group.className}
+                শ্রেণি: {className}
               </div>
               <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
                 বছর: ........................
@@ -56,8 +46,10 @@ const DailyAttendancePrint = ({
               </div>
             </div>
           </div>
+        )}
 
-          <table className="w-full table-fixed border-collapse text-center">
+        <table className="w-full table-fixed border-collapse text-center">
+          {isFirstPage && (
             <thead>
               <tr>
                 <th className="w-14 border border-slate-900 p-1 text-base">রোল</th>
@@ -77,31 +69,31 @@ const DailyAttendancePrint = ({
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {group.students.map((row, index) => (
-                <tr key={`daily-${row.student_id || row.id || index}`}>
-                  <td className="h-7 border border-slate-900 p-0 text-base">
-                    {cellValue(row, "roll")}
-                  </td>
-                  <td className="h-7 border border-slate-900 p-0 text-base">
-                    {cellValue(row, "registration_no")}
-                  </td>
-                  <td className="h-7 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
-                    {cellValue(row, "student_name")}
-                  </td>
-                  {days.map((day) => (
-                    <td
-                      key={`${row.student_id || row.id}-${day}`}
-                      className="h-7 border border-slate-900 p-0"
-                    />
-                  ))}
-                  <td className="h-7 border border-slate-900 p-0" />
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ))}
+          )}
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`daily-${startIndex + index}-${row.student_id || row.id || index}`}>
+                <td className="h-7 border border-slate-900 p-0 text-base">
+                  {cellValue(row, "roll")}
+                </td>
+                <td className="h-7 border border-slate-900 p-0 text-base">
+                  {cellValue(row, "registration_no")}
+                </td>
+                <td className="h-7 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
+                  {cellValue(row, "student_name")}
+                </td>
+                {days.map((day) => (
+                  <td
+                    key={`${row.student_id || row.id}-${day}`}
+                    className="h-7 border border-slate-900 p-0"
+                  />
+                ))}
+                <td className="h-7 border border-slate-900 p-0" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 };

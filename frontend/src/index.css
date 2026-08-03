@@ -164,7 +164,11 @@ input[type="number"]::-webkit-inner-spin-button {
   content: "পৃষ্ঠা " attr(data-page-number) " / " attr(data-total-pages);
   position: absolute;
   right: 10mm;
-  bottom: 7mm;
+  /* Sits entirely inside the bottom padding band (10mm), below the content
+     area's own bottom edge, so it never overlaps the last table row/line -
+     it must never encroach on the 10mm content margin it's meant to live
+     outside of. */
+  bottom: 2mm;
   z-index: 3;
   display: inline-flex;
   min-height: 18px;
@@ -483,11 +487,10 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .academic-result-table th,
 .academic-result-table td {
   border-color: #111827;
-  padding: 5px 3px;
+  padding: 2.5px 1.5px;
 }
 
 .academic-result-table td {
-  height: 34px;
   font-weight: 600;
 }
 
@@ -504,20 +507,25 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .academic-result-subject-serial {
   height: 27px;
-  padding: 2px 1px !important;
+  padding: 1px 0.5px !important;
   background: #f1f5f9;
   font-weight: 900;
   line-height: 1;
   vertical-align: middle;
 }
 
+/* --subject-name-max-width is set inline per-table (AcademicResultPrint.tsx)
+   from the actual longest subject name in THAT report (canvas-measured,
+   clamped 60-200px) - the row/box grow together to fit it instead of a
+   fixed guess that clips unusually long kitab names. Reports where every
+   name is short stay just as compact as before. */
 .academic-result-subject-name-row {
-  height: 135px;
+  height: calc(var(--subject-name-max-width, 130px) + 4px);
 }
 
 .academic-result-subject-name-cell {
   position: relative;
-  height: 135px;
+  height: calc(var(--subject-name-max-width, 130px) + 4px);
   overflow: hidden;
   padding: 0 !important;
   background: #f1f5f9;
@@ -532,13 +540,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   /* No font-size set here on purpose - the span carries Tailwind's
      text-base class (see JSX), the same class the standard headers and
      student-name cell use, so this always renders at the exact same size
-     as the rest of the header row in every paper-size/orientation combo.
-     The row height is sized for a typical name, not the single longest
-     one in the whole system - most names sit snugly instead of centered
-     in a lot of empty space, at the cost of clipping (via overflow +
-     text-overflow below) on rare unusually long kitab names instead of
-     reserving room for them. */
-  width: 130px;
+     as the rest of the header row in every paper-size/orientation combo. */
+  width: var(--subject-name-max-width, 130px);
   height: 24px;
   align-items: center;
   justify-content: center;
@@ -552,9 +555,19 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   backface-visibility: hidden;
   white-space: nowrap;
   text-align: center;
-  text-overflow: clip;
+  /* Safety net only: the box is sized to fit every real name up to the
+     200px clamp, so this only ever engages for a pathological outlier
+     past that clamp - ellipsis degrades gracefully instead of a raw cut. */
+  text-overflow: ellipsis;
   font-weight: 800;
   line-height: 1.05;
+  /* rotate(-90deg) text anti-aliases lighter than upright text at the same
+     color/weight (see translate3d comment above) - force pure black and
+     the same smoothing/rendering hints as the rest of the header row so it
+     doesn't read as gray next to them. */
+  color: #000;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .academic-result-subject-count {
@@ -631,7 +644,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-paper-size="a5"]::after {
   right: 7mm;
-  bottom: 6mm;
+  /* Same reasoning as the base rule, scaled to A5's 7mm padding band. */
+  bottom: 1mm;
   min-height: 16px;
   font-size: 8px;
   line-height: 1.5;
@@ -699,25 +713,19 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-table
   td {
-  padding: 4px 2px;
-}
-
-.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
-  .academic-result-table
-  td {
-  height: 30px;
+  padding: 2px 1px;
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-subject-name-row,
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-subject-name-cell {
-  height: 130px;
+  height: calc(var(--subject-name-max-width, 130px) + 2px);
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
   .academic-result-subject-name {
-  width: 125px;
+  width: calc(var(--subject-name-max-width, 130px) - 2px);
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
@@ -769,12 +777,14 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .academic-result-subject-name-row,
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
   .academic-result-subject-name-cell {
-  height: 78px;
+  /* a5's table font-size is forced to ~7.5px (~0.58x the 16px this was
+     measured at), so the measured box scales down with it. */
+  height: calc((var(--subject-name-max-width, 130px) + 4px) * 0.58);
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
   .academic-result-subject-name {
-  width: 74px;
+  width: calc(var(--subject-name-max-width, 130px) * 0.58);
   height: 14px;
 }
 
@@ -785,12 +795,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table th,
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table td {
-  padding: 2px 1px;
+  padding: 1px 0.5px;
   line-height: 1.05;
-}
-
-.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-table td {
-  height: 21px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="portrait"]
@@ -1133,9 +1139,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-table td {
-  min-height: 34px;
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: 2.5px;
+  padding-bottom: 2.5px;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-student-name,
@@ -1234,7 +1239,14 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-signature {
-  margin-top: 80px;
+  /* Same gap on every paper size/orientation combo - do not split this into
+     per-paper-size overrides again, that's what caused A4/A5 to visibly
+     mismatch before. padding-top (not margin-top) on purpose: margin can
+     collapse away depending on what's above it (an empty table, a table
+     with no thead on a continuation page, etc.), padding never does - this
+     is the blank space to physically sign above the line, it must never
+     silently shrink to nothing. */
+  padding-top: 48px;
   padding-right: 8px;
   font-size: 11px;
 }
@@ -1295,19 +1307,18 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-signature {
-  margin-top: 40px;
   font-size: 8px;
 }
 
 
 /* Numeric-cell safety: Bengali digits must never touch or clip against table borders. */
 .print-page-preview[data-report="academic-result"] .academic-result-number-cell {
-  padding: 3px 1px !important;
+  padding: 0.5px 1px !important;
   white-space: nowrap !important;
   word-break: normal !important;
   overflow-wrap: normal !important;
   overflow: visible !important;
-  line-height: 1.4 !important;
+  line-height: 1.05 !important;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-number-value {
@@ -1319,7 +1330,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   padding: 0 0.14em;
   font-family: var(--font-report-body);
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.05;
   white-space: nowrap;
   overflow: visible;
   text-rendering: geometricPrecision;

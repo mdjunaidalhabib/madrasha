@@ -5,6 +5,7 @@ type GuardianPhoneListPrintProps = {
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  isFirstPage?: boolean;
 };
 
 const rawValue = (row: Record<string, any>, keys: string[]) => {
@@ -20,6 +21,7 @@ const GuardianPhoneListPrint = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  isFirstPage = true,
 }: GuardianPhoneListPrintProps) => {
   const firstRow = rows[0] || {};
   const divisionName =
@@ -33,7 +35,9 @@ const GuardianPhoneListPrint = ({
 
   return (
     <div className="mx-auto w-full bg-white text-black">
-      <div className="student-report-heading mb-3 text-center">
+      {isFirstPage && (
+      <>
+      <div className="student-report-heading report-block-heading mb-3 text-center">
         <h1 className="student-report-title text-xl font-bold">অভিভাবক মোবাইল নম্বর তালিকা</h1>
         <p className="student-report-subtitle mt-1 text-sm font-semibold text-slate-600">
           {contextLine}
@@ -51,8 +55,13 @@ const GuardianPhoneListPrint = ({
           <b className="mr-1">শিক্ষাবর্ষ:</b> {academicYear}
         </div>
       </div>
+      </>
+      )}
 
-      <table className="w-full table-fixed border-collapse border border-black text-center">
+      <table
+        className={`w-full table-fixed border-collapse border border-black text-center ${isFirstPage ? "" : "mt-6"}`}
+      >
+        {isFirstPage && (
         <thead>
           <tr>
             <th className="w-14 border border-black px-1 py-2 text-base font-bold">রোল</th>
@@ -62,9 +71,10 @@ const GuardianPhoneListPrint = ({
             <th className="w-32 border border-black px-1 py-2 text-base font-bold">মোবাইল নম্বর</th>
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`guardian-phone-${row.id || row.student_id || index}`}>
+            <tr key={`guardian-phone-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
               <td className="h-8 border border-black px-1 text-left font-semibold text-base">

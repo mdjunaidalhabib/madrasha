@@ -57,6 +57,7 @@ const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   routine: "routine",
   promotion: "students/promotion",
   attendance_mark: "attendance/mark",
+  payroll: "payroll",
 };
 function modulePath(key: string) {
   return MODULE_PATHS[key] || key;

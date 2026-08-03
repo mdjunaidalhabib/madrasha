@@ -5,6 +5,7 @@ type StudentAdmissionListPrintProps = {
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  isFirstPage?: boolean;
 };
 
 const rawValue = (row: Record<string, any>, keys: string[]) => {
@@ -20,6 +21,7 @@ const StudentAdmissionListPrint = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  isFirstPage = true,
 }: StudentAdmissionListPrintProps) => {
   const firstRow = rows[0] || {};
   const divisionName =
@@ -33,7 +35,9 @@ const StudentAdmissionListPrint = ({
 
   return (
     <div className="mx-auto w-full bg-white text-black">
-      <div className="student-report-heading mb-3 text-center">
+      {isFirstPage && (
+      <>
+      <div className="student-report-heading report-block-heading mb-3 text-center">
         <h1 className="student-report-title text-xl font-bold">ভর্তি তালিকা</h1>
         <p className="student-report-subtitle mt-1 text-sm font-semibold text-slate-600">
           {contextLine}
@@ -51,8 +55,13 @@ const StudentAdmissionListPrint = ({
           <b className="mr-1">শিক্ষাবর্ষ:</b> {academicYear}
         </div>
       </div>
+      </>
+      )}
 
-      <table className="w-full table-fixed border-collapse border border-black text-center">
+      <table
+        className={`w-full table-fixed border-collapse border border-black text-center ${isFirstPage ? "" : "mt-6"}`}
+      >
+        {isFirstPage && (
         <thead>
           <tr>
             <th className="w-11 border border-black px-1 py-2 text-base font-bold">রোল</th>
@@ -65,6 +74,7 @@ const StudentAdmissionListPrint = ({
             <th className="border border-black px-1 py-2 text-base font-bold">ঠিকানা</th>
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.map((row, index) => {
             const address = [
@@ -76,7 +86,7 @@ const StudentAdmissionListPrint = ({
               .join(", ");
 
             return (
-              <tr key={`student-admission-${row.id || row.student_id || index}`}>
+              <tr key={`student-admission-${startIndex + index}-${row.id || row.student_id || index}`}>
                 <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-1 text-base">
                   {cellValue(row, "registration_no")}

@@ -12,3 +12,12 @@ export const CLOUD_NOT_CONFIGURED_MSG =
 
 export const isPendingCloudUpload = (value?: string | null) =>
   typeof value === "string" && value.startsWith("data:image/");
+
+/** Extracts the Cloudinary public_id (folder path included, no extension)
+ * from a secure_url, e.g. ".../upload/v169.../madrasa_uploads/branding/abc.png"
+ * -> "madrasa_uploads/branding/abc". Returns null for non-Cloudinary URLs. */
+export const getCloudinaryPublicId = (url?: string | null): string | null => {
+  if (!url || !url.includes("res.cloudinary.com")) return null;
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+  return match ? match[1] : null;
+};

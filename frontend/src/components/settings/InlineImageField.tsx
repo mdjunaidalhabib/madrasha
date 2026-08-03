@@ -3,8 +3,10 @@ import { Pencil, Images } from "lucide-react";
 import Button from "../ui/Button";
 import BrandImageBox from "./BrandImageBox";
 import { useToastStore } from "../../store/toastStore";
-import { CLOUD_NOT_CONFIGURED_MSG, isPendingCloudUpload } from "../../utils/cloudUpload";
-import type { UploadFolder } from "../../services/phase4Api";
+import { useConfirmStore } from "../../store/confirmStore";
+import { CLOUD_NOT_CONFIGURED_MSG, getCloudinaryPublicId } from "../../utils/cloudUpload";
+import { uploadApi, type UploadFolder } from "../../services/phase4Api";
+import { logger } from "../../utils/logger";
 
 export default function InlineImageField({
   label,
@@ -32,20 +34,56 @@ export default function InlineImageField({
 
   const cancel = () => setEditing(false);
 
-  const save = async () => {
-    if (isPendingCloudUpload(draft)) {
+  // Uploading already persists the file to cloud storage - as soon as that
+  // succeeds, save it as this field's value right away, no separate "Save"
+  // click needed. Cleans up the old Cloudinary asset it replaced too.
+  const handleUploaded = async (url: string | null) => {
+    if (!url) {
       useToastStore.getState().show(CLOUD_NOT_CONFIGURED_MSG, "error");
       return;
     }
     setSaving(true);
     try {
-      await onSave(draft);
+      await onSave(url);
+      const oldPublicId = getCloudinaryPublicId(value);
+      if (oldPublicId && oldPublicId !== getCloudinaryPublicId(url)) {
+        uploadApi
+          .deleteImage(oldPublicId)
+          .catch((err) => logger.error("OLD BRAND IMAGE CLEANUP ERROR:", err));
+      }
       setEditing(false);
     } catch {
       // error toast already shown by onSave
     } finally {
       setSaving(false);
     }
+  };
+
+  const remove = () => {
+    useConfirmStore.getState().show({
+      title: "ছবি মুছুন",
+      message: `"${label}" মুছে ফেলা হবে। এগিয়ে যেতে চান?`,
+      confirmText: "মুছুন",
+      danger: true,
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await onSave("");
+          const oldPublicId = getCloudinaryPublicId(value);
+          if (oldPublicId) {
+            uploadApi
+              .deleteImage(oldPublicId)
+              .catch((err) => logger.error("BRAND IMAGE DELETE ERROR:", err));
+          }
+          setDraft("");
+          setEditing(false);
+        } catch {
+          // error toast already shown by onSave
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   };
 
   if (!editing) {
@@ -96,6 +134,7 @@ export default function InlineImageField({
           shape={shape}
           value={draft}
           onChange={setDraft}
+          onUploaded={handleUploaded}
           onRemove={() => setDraft("")}
         />
       </div>
@@ -103,9 +142,11 @@ export default function InlineImageField({
         <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
           বাতিল
         </Button>
-        <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-        </Button>
+        {value && (
+          <Button type="button" variant="danger" disabled={saving} onClick={remove}>
+            {saving ? "মুছে ফেলা হচ্ছে..." : "মুছুন"}
+          </Button>
+        )}
       </div>
     </div>
   );

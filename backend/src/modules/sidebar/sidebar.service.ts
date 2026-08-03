@@ -146,6 +146,18 @@ export class SidebarService {
         }
       }
 
+      // Same reasoning as talimat/students above - surfaces শিক্ষক বেতন (পেরোল)
+      // under হিসাব in installations seeded before this feature existed.
+      if (mod.keyName === "accounts" && !children.some((child) => child.key === "payroll")) {
+        children.push({
+          id: -5004,
+          key: "payroll",
+          label: "শিক্ষক বেতন (পেরোল)",
+          sort_order: 4,
+          disabled,
+        });
+      }
+
       // "settings" has no other real sidebar children in the DB yet - its
       // sub-pages only exist as cards on the settings hub page (see
       // SettingsPage.tsx). Same reasoning as reports/ihtemam/talimat/students

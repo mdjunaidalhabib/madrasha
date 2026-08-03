@@ -3,13 +3,11 @@ import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation } from "../common/DataExportPrintActions";
 import { ReportBackground, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
 import ReportContent from "./ReportContent";
-import { cellValue, toBanglaDigits } from "../../utils/reportUtils";
-
-type PageChunk = {
-  key: string;
-  rows: Record<string, any>[];
-  startIndex: number;
-};
+import { toBanglaDigits } from "../../utils/reportUtils";
+import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getPagePaddingMm } from "./pagination/pageGeometry";
+import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks";
+import { splitTextToFit } from "./pagination/splitTextToFit";
+import { getPrintableConfig } from "./pagination/printableConfig";
 
 type PaginatedReportPreviewProps = {
   loading: boolean;
@@ -24,144 +22,44 @@ type PaginatedReportPreviewProps = {
 
 type ReportDensity = "comfortable" | "compact" | "dense" | "ultra-dense";
 
-const MM_TO_CSS_PX = 96 / 25.4;
-
-const chunkRows = (
-  rows: Record<string, any>[],
-  capacity: number,
-  keyPrefix: string,
-): PageChunk[] => {
-  if (!rows.length) return [{ key: `${keyPrefix}-empty`, rows: [], startIndex: 0 }];
-
-  const pages: PageChunk[] = [];
-  for (let index = 0; index < rows.length; index += capacity) {
-    pages.push({
-      key: `${keyPrefix}-${index}`,
-      rows: rows.slice(index, index + capacity),
-      startIndex: index,
-    });
-  }
-  return pages;
+type ResolvedPage = {
+  key: string;
+  rows: Record<string, any>[];
+  startIndex: number;
+  // Only the very first physical page of a group (exam/class/year context
+  // for grouped types, or the whole report for ungrouped ones) shows the
+  // institution brand header - matches the pre-rewrite behaviour exactly.
+  isFirstPageOfGroup: boolean;
+  // Whether THIS physical page is where its record/group's own heading
+  // renders (independent of isFirstPageOfGroup - every blocks-kind record
+  // gets its own heading on its own first page, not just the report's).
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  density: ReportDensity;
+  // Single-record free-text types (testimonial/certificate/transfer-letter)
+  // only: the pre-sliced body text that belongs on this specific physical
+  // page, when the full body didn't fit on one page.
+  bodyTextOverride?: string;
 };
 
-const getCapacity = (report: ReportMenuItem, paperSize: PaperSize, orientation: Orientation) => {
-  const mode = `${paperSize}-${orientation}`;
-  const printable = report.printable || "table";
+// Kept unused on purpose (a sliver of every page's budget) so the last row
+// or card lands a hair short of the page's bottom padding instead of
+// touching it right at the measured limit.
+const SAFETY_MARGIN_RATIO = 0.01;
+// Continuation pages render without a heading/thead - just the small top
+// margin every print component adds in its place (Tailwind `mt-6` = 24px),
+// applied uniformly whenever `isFirstPage` is false.
+const CONTINUATION_TOP_OFFSET_PX = 24;
 
-  if (["marksheet", "certificate", "testimonial", "transfer-letter"].includes(printable)) {
-    return 1;
-  }
+const getPaperWidthPx = (paperSize: PaperSize, orientation: Orientation) =>
+  getPaperWidthMm(paperSize, orientation) * MM_TO_CSS_PX;
 
-  if (printable === "id-card") {
-    return { "a4-portrait": 9, "a4-landscape": 8, "a5-portrait": 4, "a5-landscape": 3 }[mode] || 9;
-  }
-
-  if (printable === "admit-card") {
-    return { "a4-portrait": 4, "a4-landscape": 2, "a5-portrait": 1, "a5-landscape": 2 }[mode] || 4;
-  }
-
-  if (["attendance-register", "daily-attendance-register"].includes(printable)) {
-    return (
-      { "a4-portrait": 24, "a4-landscape": 13, "a5-portrait": 13, "a5-landscape": 7 }[mode] || 24
-    );
-  }
-
-  if (["student-admission-list", "guardian-phone-list"].includes(printable)) {
-    return (
-      { "a4-portrait": 18, "a4-landscape": 12, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
-    );
-  }
-
-  if (printable === "exam-signature-sheet") {
-    return (
-      { "a4-portrait": 19, "a4-landscape": 12, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 19
-    );
-  }
-
-  if (printable === "exam-number-sheet") {
-    return (
-      { "a4-portrait": 18, "a4-landscape": 14, "a5-portrait": 8, "a5-landscape": 7 }[mode] || 14
-    );
-  }
-
-  if (printable === "academic-result") {
-    return (
-      { "a4-portrait": 15, "a4-landscape": 10, "a5-portrait": 7, "a5-landscape": 5 }[mode] || 15
-    );
-  }
-
-  if (
-    [
-      "result-notice",
-      "digital-attendance",
-      "class-routine",
-      "teacher-list",
-      "teacher-phone-list",
-    ].includes(printable)
-  ) {
-    return (
-      { "a4-portrait": 18, "a4-landscape": 11, "a5-portrait": 9, "a5-landscape": 6 }[mode] || 18
-    );
-  }
-
-  return { "a4-portrait": 15, "a4-landscape": 9, "a5-portrait": 8, "a5-landscape": 5 }[mode] || 15;
-};
-
-const groupRowsForPagination = (report: ReportMenuItem, rows: Record<string, any>[]) => {
-  if (report.printable === "result-notice") {
-    return Object.values(
-      rows.reduce<Record<string, Record<string, any>[]>>((acc, row) => {
-        const key = [
-          cellValue(row, "exam_name"),
-          cellValue(row, "class_name"),
-          cellValue(row, "exam_year"),
-        ].join("|");
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(row);
-        return acc;
-      }, {}),
-    );
-  }
-
-  if (
-    report.printable === "attendance-register" ||
-    report.printable === "daily-attendance-register" ||
-    report.printable === "student-admission-list" ||
-    report.printable === "guardian-phone-list" ||
-    report.printable === "academic-result" ||
-    report.printable === "class-routine" ||
-    report.printable === "exam-signature-sheet" ||
-    report.printable === "exam-number-sheet"
-  ) {
-    return Object.values(
-      rows.reduce<Record<string, Record<string, any>[]>>((acc, row) => {
-        const division =
-          cellValue(row, "division_name") || cellValue(row, "division_name_bn") || "সকল বিভাগ";
-        const className =
-          cellValue(row, "class_name") || cellValue(row, "class_name_bn") || "সকল শ্রেণি";
-        const academicYear =
-          cellValue(row, "academic_year") || cellValue(row, "exam_year") || "সকল শিক্ষাবর্ষ";
-        const examName =
-          report.printable === "exam-signature-sheet" ||
-          report.printable === "exam-number-sheet" ||
-          report.printable === "academic-result"
-            ? cellValue(row, "exam_name") || "পরীক্ষা"
-            : "";
-        const key = `${division}|${className}|${academicYear}|${examName}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(row);
-        return acc;
-      }, {}),
-    );
-  }
-
-  return [rows];
-};
+const getPaperHeightPx = (paperSize: PaperSize, orientation: Orientation) =>
+  getPaperHeightMm(paperSize, orientation) * MM_TO_CSS_PX;
 
 const parseSubjects = (row: Record<string, any>) => {
   if (Array.isArray(row?.subjects)) return row.subjects;
   if (typeof row?.subjects !== "string") return [];
-
   try {
     const parsed = JSON.parse(row.subjects);
     return Array.isArray(parsed) ? parsed : [];
@@ -183,26 +81,247 @@ const getEffectiveColumnCount = (report: ReportMenuItem, rows: Record<string, an
   return report.columns.length + subjects.size;
 };
 
+// Computed once per GROUP (not per already-chunked page) so every physical
+// page belonging to the same exam/class/year context renders at the same
+// font size - the old per-page-chunk version was circular (density decided
+// capacity, capacity decided the chunked row count density then read back).
 const getDensity = (
   report: ReportMenuItem,
-  rows: Record<string, any>[],
+  groupRows: Record<string, any>[],
   paperSize: PaperSize,
   orientation: Orientation,
 ): ReportDensity => {
-  const columns = getEffectiveColumnCount(report, rows);
+  const columns = getEffectiveColumnCount(report, groupRows);
   const a5Penalty = paperSize === "a5" ? 2 : 0;
   const portraitPenalty = orientation === "portrait" ? 1 : 0;
   const densityScore = columns + a5Penalty + portraitPenalty;
 
   if (densityScore >= 18) return "ultra-dense";
   if (densityScore >= 14) return "dense";
-  if (densityScore >= 10 || rows.length >= 18) return "compact";
+  if (densityScore >= 10 || groupRows.length >= 18) return "compact";
   return "comfortable";
 };
 
-const getPaperWidthMm = (paperSize: PaperSize, orientation: Orientation) => {
-  if (paperSize === "a4") return orientation === "portrait" ? 210 : 297;
-  return orientation === "portrait" ? 148 : 210;
+const groupRows = (rows: Record<string, any>[], getGroupKey: (row: Record<string, any>) => string) => {
+  const map = new Map<string, Record<string, any>[]>();
+  rows.forEach((row) => {
+    const key = getGroupKey(row);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(row);
+  });
+  return Array.from(map.values());
+};
+
+// ---- table-kind measurement (academic-result, result-notice, attendance
+// registers, student/guardian/teacher lists, exam sheets, default table) ----
+
+type TableGroupMeasurement = {
+  // Distance from the page's content-top to the first data row's own top -
+  // measured as a position delta (not a sum of each block's own
+  // getBoundingClientRect().height) so it automatically captures the brand
+  // header, heading, thead AND every margin between them (Tailwind's
+  // `my-6`/`mt-10`/etc. add margin that sits OUTSIDE an element's own
+  // measured height and would otherwise be silently dropped).
+  firstRowOffsetPx: number;
+  // Distance from the last data row's bottom to the footer's bottom -same
+  // position-delta trick, so it captures the footer's own `mt-*` margin
+  // plus its height in one measurement instead of just the box height.
+  footerReservePx: number;
+  rowHeightsPx: number[];
+};
+
+const measureTableGroupContainer = (
+  container: HTMLElement,
+  paddingTopPx: number,
+): TableGroupMeasurement => {
+  const footerEl = container.querySelector(".report-block-signature");
+  const dataRows = Array.from(container.querySelectorAll("tbody tr"));
+  const containerTop = container.getBoundingClientRect().top;
+  const firstRow = dataRows[0];
+  const lastRow = dataRows[dataRows.length - 1];
+
+  const firstRowOffsetPx = firstRow
+    ? firstRow.getBoundingClientRect().top - containerTop - paddingTopPx
+    : 0;
+
+  const footerReservePx =
+    footerEl && lastRow
+      ? footerEl.getBoundingClientRect().bottom - lastRow.getBoundingClientRect().bottom
+      : 0;
+
+  return {
+    firstRowOffsetPx,
+    footerReservePx,
+    rowHeightsPx: dataRows.map((tr) => tr.getBoundingClientRect().height),
+  };
+};
+
+const paginateTableGroup = (
+  measurement: TableGroupMeasurement,
+  groupRowsData: Record<string, any>[],
+  availableHeightPx: number,
+  continuationOffsetPx: number,
+): Record<string, any>[][] => {
+  const safetyPx = availableHeightPx * SAFETY_MARGIN_RATIO;
+  const firstPageBudgetPx = availableHeightPx - measurement.firstRowOffsetPx - safetyPx;
+  const continuationPageBudgetPx = availableHeightPx - continuationOffsetPx - safetyPx;
+
+  const blocks: MeasuredBlock[] = measurement.rowHeightsPx.map((heightPx, i) => ({
+    id: String(i),
+    heightPx,
+  }));
+
+  const pageIdGroups = paginateBlocks(blocks, {
+    firstPageBudgetPx,
+    continuationPageBudgetPx,
+    footerReservePx: measurement.footerReservePx,
+  });
+
+  return pageIdGroups.map((ids) => ids.map((id) => groupRowsData[Number(id)]));
+};
+
+// ---- grid-kind measurement (id-card, admit-card) ----
+
+type GridMeasurement = {
+  // Position delta from content-top to the first card's own top - captures
+  // the brand header's height AND its `margin-bottom` (index.css) in one
+  // measurement, the same way table-kind's firstRowOffsetPx does.
+  firstCardOffsetPx: number;
+  cardRows: { heightPx: number; cardIndices: number[] }[];
+};
+
+const measureGridContainer = (container: HTMLElement, paddingTopPx: number): GridMeasurement => {
+  const cards = Array.from(container.querySelectorAll<HTMLElement>(".print-page-break"));
+  const containerTop = container.getBoundingClientRect().top;
+
+  const cardRows: { heightPx: number; cardIndices: number[] }[] = [];
+  let currentTop: number | null = null;
+
+  cards.forEach((card, index) => {
+    const rect = card.getBoundingClientRect();
+    if (currentTop === null || Math.abs(rect.top - currentTop) > 2) {
+      cardRows.push({ heightPx: rect.height, cardIndices: [index] });
+      currentTop = rect.top;
+    } else {
+      const row = cardRows[cardRows.length - 1];
+      row.heightPx = Math.max(row.heightPx, rect.height);
+      row.cardIndices.push(index);
+    }
+  });
+
+  const firstCardOffsetPx = cards[0]
+    ? cards[0].getBoundingClientRect().top - containerTop - paddingTopPx
+    : 0;
+
+  return { firstCardOffsetPx, cardRows };
+};
+
+const paginateGrid = (measurement: GridMeasurement, availableHeightPx: number): number[][] => {
+  const safetyPx = availableHeightPx * SAFETY_MARGIN_RATIO;
+  const firstPageBudgetPx = availableHeightPx - measurement.firstCardOffsetPx - safetyPx;
+  const continuationPageBudgetPx = availableHeightPx - safetyPx;
+
+  const blocks: MeasuredBlock[] = measurement.cardRows.map((row, i) => ({
+    id: String(i),
+    heightPx: row.heightPx,
+  }));
+
+  const pageIdGroups = paginateBlocks(blocks, { firstPageBudgetPx, continuationPageBudgetPx });
+
+  return pageIdGroups.map((ids) => ids.flatMap((id) => measurement.cardRows[Number(id)].cardIndices));
+};
+
+// ---- blocks-kind measurement (marksheet, certificate, testimonial,
+// transfer-letter): each row is its own independent physical document that
+// almost always fits one page, but must flow onto a continuation page
+// instead of being clipped when it doesn't. ----
+
+type RecordPage = {
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  bodyTextOverride?: string;
+};
+
+const measureAndSplitRecord = (
+  container: HTMLElement,
+  paddingTopPx: number,
+  firstPageBudgetPx: number,
+  continuationBudgetPx: number,
+): RecordPage[] => {
+  const paddingYPx = paddingTopPx * 2;
+  const containerTop = container.getBoundingClientRect().top;
+  const naturalHeightPx = container.getBoundingClientRect().height - paddingYPx;
+
+  if (naturalHeightPx <= firstPageBudgetPx) {
+    return [{ isFirstPage: true, isLastPage: true }];
+  }
+
+  const footerEl = container.querySelector<HTMLElement>(".report-block-signature");
+  const bodyEl = container.querySelector<HTMLElement>(".report-block-body");
+  const contentOnlyHeightPx = footerEl
+    ? footerEl.getBoundingClientRect().top - containerTop - paddingTopPx
+    : naturalHeightPx;
+  // The gap between content and footer (from the footer's own `mt-*`
+  // margin, e.g. LetterDocument's footer) collapses into the space BEFORE
+  // the footer's box rather than being part of its own measured height, so
+  // "total natural height minus content-only height" is what actually needs
+  // reserving - not just footerEl's own getBoundingClientRect().height.
+  const footerReservePx = footerEl ? naturalHeightPx - contentOnlyHeightPx : 0;
+
+  if (!bodyEl) {
+    // No splittable free-text body (marksheet's fixed heading/info/table
+    // sequence) - the only thing that can move to a continuation page is
+    // the footer/signature block.
+    if (contentOnlyHeightPx <= firstPageBudgetPx) {
+      return [
+        { isFirstPage: true, isLastPage: false },
+        { isFirstPage: false, isLastPage: true },
+      ];
+    }
+    // Even the content alone doesn't fit and there's no text block left to
+    // split further - render it whole rather than silently losing data.
+    return [{ isFirstPage: true, isLastPage: true }];
+  }
+
+  const fullBodyText = bodyEl.textContent || "";
+  const headingHeightPx = bodyEl.getBoundingClientRect().top - containerTop - paddingTopPx;
+
+  const measure = (candidate: string) => {
+    const original = bodyEl.textContent;
+    bodyEl.textContent = candidate;
+    const height = bodyEl.getBoundingClientRect().height;
+    bodyEl.textContent = original;
+    return height;
+  };
+
+  const pages: RecordPage[] = [];
+  let remainder = fullBodyText;
+  let isFirst = true;
+
+  while (true) {
+    const pageBudgetPx = isFirst ? firstPageBudgetPx - headingHeightPx : continuationBudgetPx;
+    const budgetWithFooterPx = pageBudgetPx - footerReservePx;
+
+    if (measure(remainder) <= budgetWithFooterPx) {
+      pages.push({ isFirstPage: isFirst, isLastPage: true, bodyTextOverride: remainder });
+      break;
+    }
+
+    const { fits, remainder: rest } = splitTextToFit(remainder, pageBudgetPx, measure);
+
+    if (!rest || rest === remainder) {
+      // Couldn't make forward progress (budget smaller than a single word) -
+      // stop here instead of looping forever.
+      pages.push({ isFirstPage: isFirst, isLastPage: true, bodyTextOverride: remainder });
+      break;
+    }
+
+    pages.push({ isFirstPage: isFirst, isLastPage: false, bodyTextOverride: fits });
+    remainder = rest;
+    isFirst = false;
+  }
+
+  return pages;
 };
 
 const PaginatedReportPreview = ({
@@ -216,31 +335,210 @@ const PaginatedReportPreview = ({
   orientation,
 }: PaginatedReportPreviewProps) => {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [previewScale, setPreviewScale] = useState(1);
+  const [resolvedPages, setResolvedPages] = useState<ResolvedPage[] | null>(null);
 
-  const pages = useMemo(() => {
-    if (loading || !rows.length) {
-      return [{ key: `${report.key}-status`, rows: [], startIndex: 0 }];
+  const config = getPrintableConfig(report);
+  const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
+
+  const groups = useMemo(() => {
+    if (config.kind !== "table" || !rows.length) return [];
+    return groupRows(rows, config.getGroupKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, report.printable, config.kind]);
+
+  type MeasureTarget = {
+    key: string;
+    rows: Record<string, any>[];
+    showBrand: boolean;
+    density: ReportDensity;
+    // Defaults to true/true (a group/record's natural full render) for
+    // every target except the continuation-offset probe below, which needs
+    // isFirstPage=false to measure what a REAL continuation page's top
+    // overhead actually is instead of guessing a fixed px value.
+    isFirstPage?: boolean;
+    isLastPage?: boolean;
+  };
+
+  const CONTINUATION_PROBE_KEY = "table-continuation-probe";
+
+  const measureTargets: MeasureTarget[] = useMemo(() => {
+    if (loading || !rows.length) return [];
+
+    if (config.kind === "table") {
+      const tableTargets = groups.map((groupRowsData, i) => ({
+        key: `table-${i}`,
+        rows: groupRowsData,
+        showBrand: showBrandAtAll && i === 0,
+        density: getDensity(report, groupRowsData, paperSize, orientation),
+      }));
+
+      // One extra off-screen probe (not tied to any real group) rendered
+      // with isFirstPage=false so the effect can measure exactly how much
+      // top overhead a continuation page has - reading it from the DOM
+      // instead of assuming every table-kind component uses the same
+      // hardcoded margin utility.
+      return [
+        ...tableTargets,
+        {
+          key: CONTINUATION_PROBE_KEY,
+          rows: [rows[0]],
+          showBrand: false,
+          density: getDensity(report, groups[0] ?? rows, paperSize, orientation),
+          isFirstPage: false,
+          isLastPage: false,
+        },
+      ];
     }
 
-    const capacity = getCapacity(report, paperSize, orientation);
-    const groups = groupRowsForPagination(report, rows);
-    const output: PageChunk[] = [];
-    let globalStartIndex = 0;
+    if (config.kind === "grid") {
+      return [{ key: "grid", rows, showBrand: showBrandAtAll, density: "comfortable" }];
+    }
 
-    groups.forEach((group, groupIndex) => {
-      const groupPages = chunkRows(group, capacity, `${report.key}-group-${groupIndex}`);
-      groupPages.forEach((page) => {
-        output.push({
-          ...page,
-          startIndex: globalStartIndex + page.startIndex,
+    return rows.map((row, i) => ({
+      key: `blocks-${i}`,
+      rows: [row],
+      showBrand: showBrandAtAll && i === 0,
+      density: "comfortable",
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll]);
+
+  useLayoutEffect(() => {
+    if (loading || !rows.length) {
+      setResolvedPages(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const runMeasurement = () => {
+      if (cancelled) return;
+
+      const paddingMm = getPagePaddingMm(paperSize);
+      const paddingPx = paddingMm * MM_TO_CSS_PX;
+      const availableHeightPx = getPaperHeightPx(paperSize, orientation) - paddingPx * 2;
+
+      const nextPages: ResolvedPage[] = [];
+      let globalStartIndex = 0;
+      let isVeryFirstPage = true;
+
+      if (config.kind === "table") {
+        const probeContainer = measureRefs.current.get(CONTINUATION_PROBE_KEY);
+        const continuationOffsetPx = probeContainer
+          ? measureTableGroupContainer(probeContainer, paddingPx).firstRowOffsetPx
+          : CONTINUATION_TOP_OFFSET_PX;
+
+        groups.forEach((groupRowsData, groupIndex) => {
+          const container = measureRefs.current.get(`table-${groupIndex}`);
+          if (!container) return;
+
+          const measurement = measureTableGroupContainer(container, paddingPx);
+          const producedPages = paginateTableGroup(
+            measurement,
+            groupRowsData,
+            availableHeightPx,
+            continuationOffsetPx,
+          );
+
+          producedPages.forEach((pageRows, pageIndexInGroup) => {
+            nextPages.push({
+              key: `${report.key}-table-${groupIndex}-${pageIndexInGroup}`,
+              rows: pageRows,
+              startIndex: globalStartIndex,
+              isFirstPageOfGroup: isVeryFirstPage,
+              isFirstPage: pageIndexInGroup === 0,
+              isLastPage: pageIndexInGroup === producedPages.length - 1,
+              density: getDensity(report, groupRowsData, paperSize, orientation),
+            });
+            globalStartIndex += pageRows.length;
+            isVeryFirstPage = false;
+          });
         });
-      });
-      globalStartIndex += group.length;
-    });
+      } else if (config.kind === "grid") {
+        const container = measureRefs.current.get("grid");
+        if (container) {
+          const measurement = measureGridContainer(container, paddingPx);
+          const producedPages = paginateGrid(measurement, availableHeightPx);
 
-    return output.length ? output : [{ key: `${report.key}-empty`, rows: [], startIndex: 0 }];
-  }, [loading, orientation, paperSize, report, rows]);
+          producedPages.forEach((cardIndices, pageIndex) => {
+            nextPages.push({
+              key: `${report.key}-grid-${pageIndex}`,
+              rows: cardIndices.map((i) => rows[i]),
+              startIndex: 0,
+              isFirstPageOfGroup: pageIndex === 0,
+              isFirstPage: true,
+              isLastPage: true,
+              density: "comfortable",
+            });
+          });
+        }
+      } else {
+        const continuationBudgetPx = availableHeightPx - CONTINUATION_TOP_OFFSET_PX;
+        const firstContainer = measureRefs.current.get("blocks-0");
+        const firstRecordBrandHeightPx =
+          showBrandAtAll && firstContainer
+            ? firstContainer.querySelector(".report-brand-header")?.getBoundingClientRect().height ?? 0
+            : 0;
+
+        rows.forEach((row, rowIndex) => {
+          const container = measureRefs.current.get(`blocks-${rowIndex}`);
+          if (!container) return;
+
+          const firstPageBudgetPx =
+            rowIndex === 0 ? availableHeightPx - firstRecordBrandHeightPx : availableHeightPx;
+          const recordPages = measureAndSplitRecord(
+            container,
+            paddingPx,
+            firstPageBudgetPx,
+            continuationBudgetPx,
+          );
+
+          recordPages.forEach((recordPage, pageIndexInRecord) => {
+            nextPages.push({
+              key: `${report.key}-blocks-${rowIndex}-${pageIndexInRecord}`,
+              rows: [row],
+              startIndex: 0,
+              isFirstPageOfGroup: isVeryFirstPage,
+              isFirstPage: recordPage.isFirstPage,
+              isLastPage: recordPage.isLastPage,
+              density: "comfortable",
+              bodyTextOverride: recordPage.bodyTextOverride,
+            });
+            isVeryFirstPage = false;
+          });
+        });
+      }
+
+      setResolvedPages(
+        nextPages.length
+          ? nextPages
+          : [
+              {
+                key: `${report.key}-empty`,
+                rows: [],
+                startIndex: 0,
+                isFirstPageOfGroup: true,
+                isFirstPage: true,
+                isLastPage: true,
+                density: "comfortable",
+              },
+            ],
+      );
+    };
+
+    runMeasurement();
+
+    if (typeof document !== "undefined" && "fonts" in document) {
+      document.fonts.ready.then(runMeasurement).catch(() => {});
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll, measureTargets]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -248,7 +546,7 @@ const PaginatedReportPreview = ({
 
     const updateScale = () => {
       const availableWidth = Math.max(240, viewport.clientWidth - 16);
-      const paperWidth = getPaperWidthMm(paperSize, orientation) * MM_TO_CSS_PX;
+      const paperWidth = getPaperWidthPx(paperSize, orientation);
       const nextScale = Math.min(1, availableWidth / paperWidth);
       setPreviewScale(Number(nextScale.toFixed(3)));
     };
@@ -264,46 +562,113 @@ const PaginatedReportPreview = ({
     };
   }, [orientation, paperSize]);
 
-  const scaleStyle = {
-    "--report-preview-scale": previewScale,
-  } as CSSProperties;
+  const scaleStyle = { "--report-preview-scale": previewScale } as CSSProperties;
+
+  const statusPage: ResolvedPage = {
+    key: `${report.key}-status`,
+    rows: [],
+    startIndex: 0,
+    isFirstPageOfGroup: true,
+    isFirstPage: true,
+    isLastPage: true,
+    density: "comfortable",
+  };
+
+  const fallbackPages: ResolvedPage[] = rows.length
+    ? [
+        {
+          key: `${report.key}-fallback`,
+          rows,
+          startIndex: 0,
+          isFirstPageOfGroup: true,
+          isFirstPage: true,
+          isLastPage: true,
+          density: getDensity(report, rows, paperSize, orientation),
+        },
+      ]
+    : [statusPage];
+
+  const pages = loading || !rows.length ? [statusPage] : resolvedPages ?? fallbackPages;
 
   return (
-    <div ref={viewportRef} className="print-preview-viewport">
-      <div className="print-area print-pages" style={scaleStyle}>
-        {pages.map((page, pageIndex) => {
-          const density = getDensity(report, page.rows, paperSize, orientation);
-
-          return (
-            <section
-              key={page.key}
+    <>
+      {measureTargets.length > 0 && (
+        <div aria-hidden="true" style={{ position: "fixed", top: 0, left: "-99999px", visibility: "hidden" }}>
+          {measureTargets.map((target) => (
+            <div
+              key={target.key}
+              ref={(el) => {
+                if (el) measureRefs.current.set(target.key, el);
+                else measureRefs.current.delete(target.key);
+              }}
               className="print-page-preview report-print-page bg-white"
-              data-page-number={toBanglaDigits(pageIndex + 1)}
-              data-total-pages={toBanglaDigits(pages.length)}
               data-report={report.printable || "table"}
               data-paper-size={paperSize}
               data-orientation={orientation}
-              data-density={density}
+              data-density={target.density}
+              style={{
+                width: `${getPaperWidthPx(paperSize, orientation)}px`,
+                padding: `${getPagePaddingMm(paperSize)}mm`,
+                height: "auto",
+                overflow: "visible",
+              }}
             >
-              <ReportBackground />
-              <ReportWatermark />
-              {!hideBrandHeader && report.printable !== "id-card" && <ReportBrandHeader />}
+              {target.showBrand && <ReportBrandHeader />}
               <div className="report-content-body">
                 <ReportContent
-                  loading={loading}
+                  loading={false}
                   report={report}
-                  rows={page.rows}
+                  rows={target.rows}
                   selectedDivisionName={selectedDivisionName}
                   selectedClassName={selectedClassName}
-                  startIndex={page.startIndex}
-                  isLastPage={pageIndex === pages.length - 1}
+                  startIndex={0}
+                  isFirstPage={target.isFirstPage ?? true}
+                  isLastPage={target.isLastPage ?? true}
                 />
               </div>
-            </section>
-          );
-        })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div ref={viewportRef} className="print-preview-viewport">
+        <div className="print-area print-pages" style={scaleStyle}>
+          {pages.map((page, pageIndex) => {
+            const showsBrandHeader = showBrandAtAll && page.isFirstPageOfGroup;
+
+            return (
+              <section
+                key={page.key}
+                className="print-page-preview report-print-page bg-white"
+                data-page-number={toBanglaDigits(pageIndex + 1)}
+                data-total-pages={toBanglaDigits(pages.length)}
+                data-report={report.printable || "table"}
+                data-paper-size={paperSize}
+                data-orientation={orientation}
+                data-density={page.density}
+              >
+                <ReportBackground />
+                <ReportWatermark />
+                {showsBrandHeader && <ReportBrandHeader />}
+                <div className="report-content-body">
+                  <ReportContent
+                    loading={loading}
+                    report={report}
+                    rows={page.rows}
+                    selectedDivisionName={selectedDivisionName}
+                    selectedClassName={selectedClassName}
+                    startIndex={page.startIndex}
+                    isFirstPage={page.isFirstPage}
+                    isLastPage={page.isLastPage}
+                    bodyTextOverride={page.bodyTextOverride}
+                  />
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

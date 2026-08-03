@@ -10,6 +10,10 @@ type Props = {
   value: string | null | undefined;
   onChange: (dataUrl: string) => void;
   onRemove: () => void;
+  /** Fires once the upload attempt for a newly picked file settles - the
+   * hosted URL on success, or null if cloud storage rejected it / isn't
+   * configured (the base64 set via onChange is kept as a fallback then). */
+  onUploaded?: (url: string | null) => void;
   shape?: "square" | "wide";
   folder?: UploadFolder;
 };
@@ -22,6 +26,7 @@ export default function BrandImageBox({
   value,
   onChange,
   onRemove,
+  onUploaded,
   shape = "square",
   folder = "branding",
 }: Props) {
@@ -54,10 +59,14 @@ export default function BrandImageBox({
         const data = res.data?.data;
         if (data?.uploaded && data.url) {
           onChange(data.url);
+          onUploaded?.(data.url);
+        } else {
+          // cloud storage not configured yet - keep the base64 already set.
+          onUploaded?.(null);
         }
-        // else: cloud storage not configured yet - keep the base64 already set.
       } catch (err) {
         logger.error("BRANDING IMAGE UPLOAD ERROR:", err);
+        onUploaded?.(null);
       } finally {
         setUploading(false);
       }

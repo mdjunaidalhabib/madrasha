@@ -1,3 +1,4 @@
+import { useMemo, type CSSProperties } from "react";
 import type { ReportColumn } from "../../../features/reports/types";
 import {
   cellValue,
@@ -14,7 +15,11 @@ export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
-  { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
+  // Zero-width space between মেধা and ক্রম gives the browser a clean wrap
+  // point (matching রোল/নম্বর's natural space-driven wrap) instead of
+  // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
+  // when the column is too narrow for one line.
+  { header: "মেধা​ক্রম", key: "rank_no", className: "min-w-24 text-center" },
 ];
 
 type AcademicResultPrintProps = {
@@ -23,7 +28,8 @@ type AcademicResultPrintProps = {
   selectedClassName?: string;
   startIndex?: number;
   columns?: ReportColumn[];
-  showSignature?: boolean;
+  isFirstPage?: boolean;
+  isLastPage?: boolean;
 };
 
 type SubjectMark = {
@@ -80,7 +86,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   total: 1.05,
   average: 1.12,
   madrasa_grade: 1.55,
-  rank_no: 1.05,
+  rank_no: 1.35,
   status: 0.9,
 };
 
@@ -92,12 +98,42 @@ const getColumnWeight = (column: PrintableColumn) =>
 const isNumericColumn = (column: PrintableColumn) =>
   Boolean(column.subjectKey) || NUMERIC_COLUMN_KEYS.has(column.key);
 
+// Matches the font/weight/size the rotated subject-name span renders with
+// (see .academic-result-subject-name in index.css) so the measured width
+// reflects what actually gets painted, not a generic system font guess.
+const SUBJECT_NAME_FONT = '800 16px Kalpurush, "Hind Siliguri", "Noto Sans Bengali", sans-serif';
+const SUBJECT_NAME_MIN_WIDTH = 60;
+const SUBJECT_NAME_MAX_WIDTH = 200;
+
+let measureContext: CanvasRenderingContext2D | null | undefined;
+const getMeasureContext = () => {
+  if (measureContext === undefined) {
+    measureContext =
+      typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  }
+  return measureContext;
+};
+
+// The subject-name header box is sized to the longest subject name actually
+// present in THIS report (clamped), not a fixed guess - so a report with only
+// short names stays compact and one with a long kitab name grows to fit it
+// instead of clipping.
+const getSubjectNameBoxWidth = (headers: string[]) => {
+  const ctx = getMeasureContext();
+  if (!ctx) return SUBJECT_NAME_MIN_WIDTH;
+  ctx.font = SUBJECT_NAME_FONT;
+  const longest = headers.reduce((max, header) => Math.max(max, ctx.measureText(header).width), 0);
+  const withPadding = Math.ceil(longest) + 6;
+  return Math.min(SUBJECT_NAME_MAX_WIDTH, Math.max(SUBJECT_NAME_MIN_WIDTH, withPadding));
+};
+
 const AcademicResultPrint = ({
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
   columns = ACADEMIC_RESULT_COLUMNS,
-  showSignature = true,
+  isFirstPage = true,
+  isLastPage = true,
 }: AcademicResultPrintProps) => {
   const configuredColumns = columns.length ? columns : ACADEMIC_RESULT_COLUMNS;
   const firstRow = rows[0] || {};
@@ -160,6 +196,13 @@ const AcademicResultPrint = ({
     subjectColumns.map((column, index) => [column.key, toBanglaDigits(index + 1)]),
   );
 
+  const subjectHeaderKey = subjectColumns.map((column) => column.header).join("|");
+  const subjectNameBoxWidth = useMemo(
+    () => getSubjectNameBoxWidth(subjectColumns.map((column) => column.header)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [subjectHeaderKey],
+  );
+
   const getMark = (row: Record<string, any>, subjectKey: string) => {
     const subject = getSubjects(row).find(
       (item, index) => getSubjectKey(item, index) === subjectKey,
@@ -180,151 +223,160 @@ const AcademicResultPrint = ({
 
   return (
     <div className="academic-result-report mx-auto w-full bg-white text-black">
-      <div className="academic-result-heading my-6 text-center">
-        {madrasaName && (
-          <h1 className="academic-result-madrasa-name text-2xl font-extrabold tracking-tight text-black">
-            {madrasaName}
-          </h1>
+      <div>
+        {isFirstPage && (
+          <div className="academic-result-heading report-block-heading my-6 text-center">
+            {madrasaName && (
+              <h1 className="academic-result-madrasa-name text-2xl font-extrabold tracking-tight text-black">
+                {madrasaName}
+              </h1>
+            )}
+            {madrasaAddress && (
+              <p className="academic-result-madrasa-address mt-1 text-base font-medium text-black">
+                {madrasaAddress}
+              </p>
+            )}
+            <h2
+              className={`academic-result-title font-extrabold tracking-tight text-black ${
+                madrasaName ? "mt-2 text-xl" : "text-2xl"
+              }`}
+            >
+              ফলাফল পত্র
+            </h2>
+            <p className="academic-result-exam-name mt-1 text-base font-bold text-black">
+              {examNameWithYear}
+            </p>
+            <p className="academic-result-subtitle text-base font-bold text-black">{contextLine}</p>
+          </div>
         )}
-        {madrasaAddress && (
-          <p className="academic-result-madrasa-address mt-1 text-base font-medium text-black">
-            {madrasaAddress}
-          </p>
-        )}
-        <h2
-          className={`academic-result-title font-extrabold tracking-tight text-black ${
-            madrasaName ? "mt-2 text-xl" : "text-2xl"
+
+        <table
+          className={`academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center text-black ${
+            isFirstPage ? "" : "mt-6"
           }`}
+          style={{ "--subject-name-max-width": `${subjectNameBoxWidth}px` } as CSSProperties}
         >
-          ফলাফল পত্র
-        </h2>
-        <p className="academic-result-exam-name mt-1 text-base font-bold text-black">
-          {examNameWithYear}
-        </p>
-        <p className="academic-result-subtitle text-base font-bold text-black">
-          {contextLine}
-        </p>
+          <colgroup>
+            {printableColumns.map((column) => (
+              <col
+                key={`academic-col-${column.key}`}
+                style={{ width: `${(getColumnWeight(column) / totalWeight) * 100}%` }}
+              />
+            ))}
+          </colgroup>
+          {isFirstPage && (
+            <thead>
+              <tr className="academic-result-header-main-row">
+                {printableColumns.map((column) =>
+                  column.subjectKey ? (
+                    <th
+                      key={`academic-subject-serial-${column.key}`}
+                      className="academic-result-subject-serial border border-black text-base text-black"
+                      title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
+                    >
+                      {subjectSerialMap.get(column.key)}
+                    </th>
+                  ) : (
+                    <th
+                      key={`academic-header-${column.key}`}
+                      rowSpan={subjectColumns.length ? 2 : 1}
+                      className={`academic-result-standard-header border border-black px-0.5 py-1 text-base font-bold leading-tight text-center text-black ${
+                        column.key === "rank_no" ? "academic-result-rank-header" : ""
+                      } ${column.key === "student_name" ? "academic-result-student-name-header" : ""}`}
+                    >
+                      {column.header}
+                    </th>
+                  ),
+                )}
+              </tr>
+              {subjectColumns.length > 0 && (
+                <tr className="academic-result-subject-name-row">
+                  {subjectColumns.map((column) => (
+                    <th
+                      key={`academic-subject-name-${column.key}`}
+                      className="academic-result-subject-name-cell border border-black p-0 align-middle text-black"
+                      title={column.header}
+                    >
+                      <div className="flex h-full items-center justify-center overflow-hidden">
+                        <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-base leading-none text-black">
+                          {column.header}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              )}
+            </thead>
+          )}
+          <tbody>
+            {rows.map((row, index) => {
+              const failed = String(row?.status || "").toUpperCase() === "FAIL";
+              const rankValue = Number(row?.rank_no);
+              const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
+              const rowClass = [
+                failed ? "academic-result-fail-row" : "",
+                isTopRankRow ? "academic-result-top-rank-row" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+              return (
+                <tr
+                  key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
+                  className={rowClass}
+                >
+                  {printableColumns.map((column) => {
+                    const numericColumn = isNumericColumn(column);
+                    const columnClass = [
+                      column.key === "student_name"
+                        ? "academic-result-student-name text-left font-semibold"
+                        : "",
+                      column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
+                      column.key === "total"
+                        ? "academic-result-total-cell text-base font-semibold"
+                        : "",
+                      column.key === "average"
+                        ? "academic-result-average-cell text-base font-semibold"
+                        : "",
+                      numericColumn ? "academic-result-number-cell" : "",
+                      column.subjectKey ? "font-semibold" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ");
+
+                    return (
+                      <td
+                        key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
+                        className={`border border-black text-base text-center text-black ${columnClass}`}
+                      >
+                        {column.key === "rank_no" ? (
+                          <span className="academic-result-rank-value text-base font-semibold text-black">
+                            {getValue(row, column)}
+                          </span>
+                        ) : numericColumn ? (
+                          <span className="academic-result-number-value text-base font-semibold text-black">
+                            {getValue(row, column)}
+                          </span>
+                        ) : column.key === "madrasa_grade" ? (
+                          <span className="academic-result-grade-value whitespace-nowrap text-base font-semibold text-black">
+                            {getValue(row, column)}
+                          </span>
+                        ) : (
+                          getValue(row, column)
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      <table className="academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center text-black">
-        <colgroup>
-          {printableColumns.map((column) => (
-            <col
-              key={`academic-col-${column.key}`}
-              style={{ width: `${(getColumnWeight(column) / totalWeight) * 100}%` }}
-            />
-          ))}
-        </colgroup>
-        <thead>
-          <tr className="academic-result-header-main-row">
-            {printableColumns.map((column) =>
-              column.subjectKey ? (
-                <th
-                  key={`academic-subject-serial-${column.key}`}
-                  className="academic-result-subject-serial border border-black text-base text-black"
-                  title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
-                >
-                  {subjectSerialMap.get(column.key)}
-                </th>
-              ) : (
-                <th
-                  key={`academic-header-${column.key}`}
-                  rowSpan={subjectColumns.length ? 2 : 1}
-                  className={`academic-result-standard-header border border-black px-1 py-2 text-base font-bold leading-tight text-center text-black ${
-                    column.key === "rank_no" ? "academic-result-rank-header" : ""
-                  } ${column.key === "student_name" ? "academic-result-student-name-header" : ""}`}
-                >
-                  {column.header}
-                </th>
-              ),
-            )}
-          </tr>
-          {subjectColumns.length > 0 && (
-            <tr className="academic-result-subject-name-row">
-              {subjectColumns.map((column) => (
-                <th
-                  key={`academic-subject-name-${column.key}`}
-                  className="academic-result-subject-name-cell border border-black p-0 align-middle text-black"
-                  title={column.header}
-                >
-                  <div className="flex h-full items-center justify-center overflow-hidden">
-                    <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-base leading-none text-black">
-                      {column.header}
-                    </span>
-                  </div>
-                </th>
-              ))}
-            </tr>
-          )}
-        </thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const failed = String(row?.status || "").toUpperCase() === "FAIL";
-            const rankValue = Number(row?.rank_no);
-            const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
-            const rowClass = [
-              failed ? "academic-result-fail-row" : "",
-              isTopRankRow ? "academic-result-top-rank-row" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <tr
-                key={`academic-result-${row.result_master_id || "result"}-${row.student_id || row.id || index}`}
-                className={rowClass}
-              >
-                {printableColumns.map((column) => {
-                  const numericColumn = isNumericColumn(column);
-                  const columnClass = [
-                    column.key === "student_name"
-                      ? "academic-result-student-name text-left font-semibold"
-                      : "",
-                    column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
-                    column.key === "total"
-                      ? "academic-result-total-cell text-base font-semibold"
-                      : "",
-                    column.key === "average"
-                      ? "academic-result-average-cell text-base font-semibold"
-                      : "",
-                    numericColumn ? "academic-result-number-cell" : "",
-                    column.subjectKey ? "font-semibold" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-
-                  return (
-                    <td
-                      key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
-                      className={`h-10 border border-black text-base text-center text-black ${columnClass}`}
-                    >
-                      {column.key === "rank_no" ? (
-                        <span className="academic-result-rank-value text-base font-semibold text-black">
-                          {getValue(row, column)}
-                        </span>
-                      ) : numericColumn ? (
-                        <span className="academic-result-number-value text-base font-semibold text-black">
-                          {getValue(row, column)}
-                        </span>
-                      ) : column.key === "madrasa_grade" ? (
-                        <span className="academic-result-grade-value whitespace-nowrap text-base font-semibold text-black">
-                          {getValue(row, column)}
-                        </span>
-                      ) : (
-                        getValue(row, column)
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {showSignature && (
-        <div className="academic-result-signature mt-10 flex justify-end">
-          <div className="min-w-44 border-t border-black pt-2 text-center text-base font-medium text-black">
-            মুহতামিমের স্বাক্ষর ও সীল
+      {isLastPage && (
+        <div className="academic-result-signature report-block-signature flex justify-end">
+          <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
+            মুহতামিমের স্বাক্ষর
           </div>
         </div>
       )}

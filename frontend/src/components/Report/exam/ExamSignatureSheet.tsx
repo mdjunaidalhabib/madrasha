@@ -5,6 +5,8 @@ type ExamSignatureSheetProps = {
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
+  isFirstPage?: boolean;
+  isLastPage?: boolean;
 };
 
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
@@ -20,6 +22,8 @@ const ExamSignatureSheet = ({
   selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
+  isFirstPage = true,
+  isLastPage = true,
 }: ExamSignatureSheetProps) => {
   const firstRow = rows[0] || {};
   const examName = value(firstRow, ["exam_name"], "........................");
@@ -31,6 +35,8 @@ const ExamSignatureSheet = ({
 
   return (
     <div className="mx-auto w-full bg-white text-black">
+      {isFirstPage && (
+      <div className="report-block-heading">
       <h1 className="mb-3 text-center text-xl font-bold">পরীক্ষার স্বাক্ষরপত্র</h1>
 
       <div className="mb-2 grid grid-cols-4 text-[12px]">
@@ -59,8 +65,13 @@ const ExamSignatureSheet = ({
           <b className="mr-1">সময়:</b> ................................
         </div>
       </div>
+      </div>
+      )}
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[12px]">
+      <table
+        className={`w-full table-fixed border-collapse border border-black text-center text-[12px] ${isFirstPage ? "" : "mt-6"}`}
+      >
+        {isFirstPage && (
         <thead>
           <tr>
             <th className="w-14 border border-black px-1 py-2">রোল</th>
@@ -70,9 +81,10 @@ const ExamSignatureSheet = ({
             <th className="w-24 border border-black px-1 py-2">মন্তব্য</th>
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`exam-sign-${row.id || row.student_id || index}`}>
+            <tr key={`exam-sign-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-9 border border-black px-1">{cellValue(row, "roll")}</td>
               <td className="h-9 border border-black px-1">{cellValue(row, "registration_no")}</td>
               <td className="h-9 border border-black px-2 text-left font-semibold">
@@ -85,11 +97,13 @@ const ExamSignatureSheet = ({
         </tbody>
       </table>
 
-      <div className="mt-10 grid grid-cols-3 gap-10 text-center text-[12px]">
+      {isLastPage && (
+      <div className="report-block-signature mt-10 grid grid-cols-3 gap-10 text-center text-[12px]">
         <div className="border-t border-black pt-1">কক্ষ পরিদর্শকের স্বাক্ষর</div>
         <div className="border-t border-black pt-1">সহকারী কক্ষ পরিদর্শকের স্বাক্ষর</div>
         <div className="border-t border-black pt-1">পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</div>
       </div>
+      )}
     </div>
   );
 };

@@ -28,6 +28,8 @@ type ReportContentProps = {
   selectedClassName?: string;
   startIndex?: number;
   isLastPage?: boolean;
+  isFirstPage?: boolean;
+  bodyTextOverride?: string;
 };
 
 const ReportContent = ({
@@ -38,6 +40,8 @@ const ReportContent = ({
   selectedClassName = "",
   startIndex = 0,
   isLastPage = true,
+  isFirstPage = true,
+  bodyTextOverride,
 }: ReportContentProps) => {
   if (loading) {
     return (
@@ -47,23 +51,63 @@ const ReportContent = ({
     );
   }
 
-  if (!rows.length) {
+  if (!rows.length && isFirstPage) {
+    // A non-first page can legitimately have zero rows - it's a dedicated
+    // page for a footer/signature that had no room left on the last page
+    // of actual content, not a "this report has no data" state.
     return (
       <div className="flex h-56 items-center justify-center border border-black bg-white text-sm text-slate-500">
-        কোনো ডাটা পাওয়া যায়নি
+        কোনো ডাটা পাওয়া যায়নি
       </div>
     );
   }
 
-  if (report.printable === "marksheet") return <MarksheetList rows={rows} />;
+  if (report.printable === "marksheet") {
+    return <MarksheetList rows={rows} isFirstPage={isFirstPage} isLastPage={isLastPage} />;
+  }
   if (report.printable === "result-notice") {
-    return <ResultNoticeList rows={rows} startIndex={startIndex} columns={report.columns} />;
+    return (
+      <ResultNoticeList
+        rows={rows}
+        startIndex={startIndex}
+        columns={report.columns}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
+      />
+    );
   }
   if (report.printable === "id-card") return <IdCardGrid rows={rows} />;
   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} />;
-  if (report.printable === "certificate") return <SanadList rows={rows} />;
-  if (report.printable === "testimonial") return <TestimonialList rows={rows} />;
-  if (report.printable === "transfer-letter") return <TransferLetterList rows={rows} />;
+  if (report.printable === "certificate") {
+    return (
+      <SanadList
+        rows={rows}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
+        bodyTextOverride={bodyTextOverride}
+      />
+    );
+  }
+  if (report.printable === "testimonial") {
+    return (
+      <TestimonialList
+        rows={rows}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
+        bodyTextOverride={bodyTextOverride}
+      />
+    );
+  }
+  if (report.printable === "transfer-letter") {
+    return (
+      <TransferLetterList
+        rows={rows}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
+        bodyTextOverride={bodyTextOverride}
+      />
+    );
+  }
 
   if (report.printable === "attendance-register") {
     return (
@@ -72,6 +116,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -83,6 +128,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -94,6 +140,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -106,7 +153,8 @@ const ReportContent = ({
         selectedClassName={selectedClassName}
         startIndex={startIndex}
         columns={report.columns}
-        showSignature={isLastPage}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
       />
     );
   }
@@ -118,6 +166,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -129,6 +178,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -140,6 +190,7 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -150,6 +201,7 @@ const ReportContent = ({
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -160,6 +212,7 @@ const ReportContent = ({
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
       />
     );
   }
@@ -171,6 +224,8 @@ const ReportContent = ({
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
       />
     );
   }
@@ -183,6 +238,8 @@ const ReportContent = ({
         selectedClassName={selectedClassName}
         startIndex={startIndex}
         columns={report.columns}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
       />
     );
   }

@@ -9,6 +9,8 @@ type ExamNumberSheetProps = {
   /** Column config from the report's menu definition (ExamReportPage.tsx),
    * so a header rename there is reflected in this print preview too. */
   columns?: ReportColumn[];
+  isFirstPage?: boolean;
+  isLastPage?: boolean;
 };
 
 type SubjectMark = {
@@ -45,6 +47,8 @@ const ExamNumberSheet = ({
   selectedClassName = "",
   startIndex = 0,
   columns = [],
+  isFirstPage = true,
+  isLastPage = true,
 }: ExamNumberSheetProps) => {
   const headerMap = new Map(columns.map((c) => [c.key, c.header]));
   const label = (key: string, fallback: string) => headerMap.get(key) || fallback;
@@ -68,6 +72,8 @@ const ExamNumberSheet = ({
 
   return (
     <div className="mx-auto w-full bg-white text-black">
+      {isFirstPage && (
+      <div className="report-block-heading">
       <h1 className="mb-3 text-center text-xl font-bold">পরীক্ষার নম্বরপত্র</h1>
 
       <div className="mb-3 grid grid-cols-4 text-[12px]">
@@ -84,8 +90,13 @@ const ExamNumberSheet = ({
           <b className="mr-1">শিক্ষাবর্ষ:</b> {examYear}
         </div>
       </div>
+      </div>
+      )}
 
-      <table className="w-full table-fixed border-collapse border border-black text-center text-[9px]">
+      <table
+        className={`w-full table-fixed border-collapse border border-black text-center text-[9px] ${isFirstPage ? "" : "mt-6"}`}
+      >
+        {isFirstPage && (
         <thead>
           <tr>
             <th className="w-10 border border-black px-0.5 py-2">{label("roll", "রোল")}</th>
@@ -101,6 +112,7 @@ const ExamNumberSheet = ({
             <th className="w-16 border border-black px-0.5 py-2">{label("remarks", "মন্তব্য")}</th>
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.map((row, index) => {
             const rowSubjects = parseSubjects(row);
@@ -112,7 +124,7 @@ const ExamNumberSheet = ({
             );
 
             return (
-              <tr key={`exam-number-${row.id || row.student_id || index}`}>
+              <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
                 <td className="h-8 border border-black px-0.5">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-0.5">
                   {cellValue(row, "registration_no")}
@@ -144,11 +156,13 @@ const ExamNumberSheet = ({
         </tbody>
       </table>
 
-      <div className="mt-10 grid grid-cols-3 gap-12 text-center text-[12px]">
+      {isLastPage && (
+      <div className="report-block-signature mt-10 grid grid-cols-3 gap-12 text-center text-[12px]">
         <div className="border-t border-black pt-1">বিষয় শিক্ষকের স্বাক্ষর</div>
         <div className="border-t border-black pt-1">শ্রেণি শিক্ষকের স্বাক্ষর</div>
         <div className="border-t border-black pt-1">পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</div>
       </div>
+      )}
     </div>
   );
 };

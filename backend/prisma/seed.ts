@@ -581,6 +581,7 @@ async function main() {
       { keyName: "income", name: "Income", nameBn: "আয়/রশিদ জমা", sortOrder: 1 },
       { keyName: "expense", name: "Expense", nameBn: "ব্যয়/ভাউচার তৈরী", sortOrder: 2 },
       { keyName: "report", name: "Report", nameBn: "আয় ব্যয় রিপোর্ট", sortOrder: 3 },
+      { keyName: "payroll", name: "Payroll", nameBn: "শিক্ষক বেতন (পেরোল)", sortOrder: 4 },
     ],
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },

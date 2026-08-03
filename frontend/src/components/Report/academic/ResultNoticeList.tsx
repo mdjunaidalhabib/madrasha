@@ -22,6 +22,8 @@ type ResultNoticeListProps = {
   rows: Record<string, any>[];
   startIndex?: number;
   columns?: ReportColumn[];
+  isFirstPage?: boolean;
+  isLastPage?: boolean;
 };
 
 const COLUMN_WEIGHTS: Record<string, number> = {
@@ -59,6 +61,8 @@ const ResultNoticeList = ({
   rows,
   startIndex = 0,
   columns = RESULT_NOTICE_COLUMNS,
+  isFirstPage = true,
+  isLastPage = true,
 }: ResultNoticeListProps) => {
   const configuredColumns = columns.length ? columns : RESULT_NOTICE_COLUMNS;
   const totalWeight = configuredColumns.reduce(
@@ -66,92 +70,80 @@ const ResultNoticeList = ({
     0,
   );
 
-  const groups = Object.values(
-    rows.reduce<
-      Record<
-        string,
-        {
-          title: string;
-          examName: string;
-          examYear: string;
-          className: string;
-          rows: Record<string, any>[];
-        }
-      >
-    >((acc, row) => {
-      const examName = cellValue(row, "exam_name");
-      const examYear = cellValue(row, "exam_year");
-      const className = formatCellValue(row, "class_name");
-      const title = `${examName} | ${className} | ${examYear}`;
-      if (!acc[title]) acc[title] = { title, examName, examYear, className, rows: [] };
-      acc[title].rows.push(row);
-      return acc;
-    }, {}),
-  );
+  const firstRow = rows[0] || {};
+  const examName = cellValue(firstRow, "exam_name");
+  const examYear = cellValue(firstRow, "exam_year");
+  const className = formatCellValue(firstRow, "class_name");
 
   return (
-    <div className="result-notice-report space-y-6">
-      {groups.map((group, groupIndex) => (
-        <section key={group.title} className={groupIndex ? "print-page-break pt-4" : ""}>
-          <div className="result-notice-heading mb-4 text-center">
-            <h2 className="result-notice-title text-2xl font-bold">ফলাফল সারসংক্ষেপ</h2>
-            <p className="result-notice-exam-name mt-1 text-base font-bold text-black">
-              {group.examName} - {group.examYear}
-            </p>
-            <p className="result-notice-subtitle text-base font-bold text-black">
-              জামাতঃ {group.className}
-            </p>
-          </div>
+    <div className="result-notice-report">
+      {isFirstPage && (
+        <div className="result-notice-heading report-block-heading mb-4 text-center">
+          <h2 className="result-notice-title text-2xl font-bold">ফলাফল সারসংক্ষেপ</h2>
+          <p className="result-notice-exam-name mt-1 text-base font-bold text-black">
+            {examName} - {examYear}
+          </p>
+          <p className="result-notice-subtitle text-base font-bold text-black">
+            জামাতঃ {className}
+          </p>
+        </div>
+      )}
 
-          <table className="result-notice-table report-responsive-table w-full table-fixed border-collapse text-center">
-            <colgroup>
+      <table
+        className={`result-notice-table report-responsive-table w-full table-fixed border-collapse text-center ${
+          isFirstPage ? "" : "mt-6"
+        }`}
+      >
+        <colgroup>
+          {configuredColumns.map((column) => (
+            <col
+              key={`result-notice-col-${column.key}`}
+              style={{ width: `${(getColumnWeight(column.key) / totalWeight) * 100}%` }}
+            />
+          ))}
+        </colgroup>
+        {isFirstPage && (
+          <thead>
+            <tr className="bg-slate-100">
               {configuredColumns.map((column) => (
-                <col
-                  key={`result-notice-col-${column.key}`}
-                  style={{ width: `${(getColumnWeight(column.key) / totalWeight) * 100}%` }}
-                />
-              ))}
-            </colgroup>
-            <thead>
-              <tr className="bg-slate-100">
-                {configuredColumns.map((column) => (
-                  <th
-                    key={`result-notice-header-${column.key}`}
-                    className="border border-slate-500 px-2 py-2 leading-tight text-base font-bold"
-                  >
-                    {column.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {group.rows.map((row, index) => (
-                <tr
-                  key={`${row.student_id || row.id}-${startIndex + index}`}
-                  className={String(row?.status || "").toUpperCase() === "FAIL" ? "result-notice-fail-row" : ""}
+                <th
+                  key={`result-notice-header-${column.key}`}
+                  className="border border-slate-500 px-2 py-2 leading-tight text-base font-bold"
                 >
-                  {configuredColumns.map((column) => (
-                    <td
-                      key={`result-notice-value-${row.student_id || row.id || index}-${column.key}`}
-                      className={`border border-slate-500 px-2 py-2 text-base ${
-                        column.key === "student_name"
-                          ? "result-notice-student-name text-left font-semibold"
-                          : "text-center"
-                      } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
-                    >
-                      {formatCellValue(row, column.key)}
-                    </td>
-                  ))}
-                </tr>
+                  {column.header}
+                </th>
               ))}
-            </tbody>
-          </table>
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {rows.map((row, index) => (
+            <tr
+              key={`${row.student_id || row.id}-${startIndex + index}`}
+              className={String(row?.status || "").toUpperCase() === "FAIL" ? "result-notice-fail-row" : ""}
+            >
+              {configuredColumns.map((column) => (
+                <td
+                  key={`result-notice-value-${row.student_id || row.id || index}-${column.key}`}
+                  className={`border border-slate-500 px-2 py-2 text-base ${
+                    column.key === "student_name"
+                      ? "result-notice-student-name text-left font-semibold"
+                      : "text-center"
+                  } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
+                >
+                  {formatCellValue(row, column.key)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-          <div className="result-notice-signature mt-10 text-right text-sm font-semibold">
-            প্রধান শিক্ষকের স্বাক্ষর ও সীল
-          </div>
-        </section>
-      ))}
+      {isLastPage && (
+        <div className="result-notice-signature report-block-signature mt-10 text-right text-sm font-semibold">
+          প্রধান শিক্ষকের স্বাক্ষর ও সীল
+        </div>
+      )}
     </div>
   );
 };
