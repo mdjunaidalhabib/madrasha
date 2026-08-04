@@ -1419,7 +1419,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 /* Top-3 merit rank rows get a light green highlight across the full row. */
 .print-page-preview[data-report="academic-result"] .academic-result-top-rank-row > td {
-  background-color: #f0fdf4 !important;
+  background-color: #bbf7d0 !important;
 }
 
 /* Failed result rows remain clearly visible in preview, PDF and print -
