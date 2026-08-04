@@ -338,12 +338,17 @@ export class ResultPanelRepository {
     madrasaId: number,
     classId: number,
   ): Promise<
-    { isMiyari: boolean; book: { id: number; nameBn: string | null; name: string | null } | null }[]
+    {
+      isMiyari: boolean;
+      fullMark: number;
+      book: { id: number; nameBn: string | null; name: string | null } | null;
+    }[]
   > {
     return prisma.madrasaBook.findMany({
       where: { madrasaId, isActive: 1, book: { classId } },
       select: {
         isMiyari: true,
+        fullMark: true,
         book: { select: { id: true, nameBn: true, name: true } },
       },
       orderBy: { book: { id: "asc" } },

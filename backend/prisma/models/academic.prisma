@@ -100,6 +100,7 @@ model MadrasaBook {
   bookId    Int      @map("book_id")
   isActive  Int?     @default(1) @map("is_active")
   isMiyari  Boolean  @default(false) @map("is_miyari")
+  fullMark  Int      @default(100) @map("full_mark")
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")

@@ -56,6 +56,7 @@ interface SummaryItem {
 interface Book {
   book_id: number;
   book_name?: string;
+  full_marks?: number;
 }
 interface GradeItem {
   id: string | number;

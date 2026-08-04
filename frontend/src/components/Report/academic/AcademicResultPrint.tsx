@@ -64,6 +64,7 @@ type SubjectMark = {
   book_id?: number | string;
   subject_name?: string;
   is_miyari?: boolean;
+  full_marks?: number | string;
   mark?: number | string | null;
   is_absent?: boolean;
 };
@@ -205,7 +206,10 @@ const AcademicResultPrint = ({
     "address",
   ]);
 
-  const subjectMap = new Map<string, { key: string; name: string; isMiyari: boolean }>();
+  const subjectMap = new Map<
+    string,
+    { key: string; name: string; isMiyari: boolean; fullMark: number }
+  >();
   rows.forEach((row) => {
     getSubjects(row).forEach((subject, index) => {
       const key = getSubjectKey(subject, index);
@@ -214,14 +218,21 @@ const AcademicResultPrint = ({
           key,
           name: subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`,
           isMiyari: Boolean(subject.is_miyari),
+          fullMark: Number(subject.full_marks ?? 100) || 100,
         });
       }
     });
   });
 
+  // Every subject defaults to 100 marks; a subject configured otherwise (e.g.
+  // Hifz-division subjects run at 50) gets its full mark appended to the
+  // header so readers know the scale without cluttering every mark cell.
   const subjectColumns: PrintableColumn[] = Array.from(subjectMap.values()).map((subject) => ({
     key: `subject_${subject.key}`,
-    header: subject.name,
+    header:
+      subject.fullMark !== 100
+        ? `${subject.name} (${toBanglaDigits(subject.fullMark)})`
+        : subject.name,
     subjectKey: subject.key,
   }));
 

@@ -50,10 +50,18 @@ export class ClassPanelRepository {
       select: {
         id: true,
         isMiyari: true,
+        fullMark: true,
         sortOrder: true,
         book: { select: { id: true, nameBn: true, classId: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { book: { id: "asc" } }],
+    });
+  }
+
+  updateSubjectFullMark(madrasaId: number, bookId: number, fullMark: number) {
+    return prisma.madrasaBook.updateMany({
+      where: { madrasaId, bookId, isActive: 1 },
+      data: { fullMark },
     });
   }
 

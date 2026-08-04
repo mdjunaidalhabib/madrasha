@@ -31,6 +31,15 @@ import {
 
 /** The role that always represents a madrasa's default/owner account (created on madrasa setup). */
 const DEFAULT_PROTECTED_ROLE_KEY = "MUHTAMIM";
+
+/** In the নাযেরা/হিফজ division, only a class's own primary subject (Nazera in
+ * the Nazera class, Hifz in the Hifz class) is a 100-mark exam — every other
+ * subject there (Tajweed, Masael, ...) is a 50-mark exam. Every other
+ * division's subjects stay at the usual 100. */
+const getDefaultFullMark = (book: { name: string | null; class: { name: string | null; division: { keyName: string | null } | null } | null }) => {
+  if (book.class?.division?.keyName !== "nazera_hifz") return 100;
+  return book.name === book.class.name ? 100 : 50;
+};
 import {
   AssignPlanRequestDto,
   CreateMadrasaRequestDto,
@@ -296,7 +305,12 @@ export class SuperAdminService {
     if (allBooks.length) {
       await this.repository.seedMadrasaBooksOnTx(
         tx,
-        allBooks.map((b) => ({ madrasaId, bookId: b.id, isActive: 0 })),
+        allBooks.map((b) => ({
+          madrasaId,
+          bookId: b.id,
+          isActive: 0,
+          fullMark: getDefaultFullMark(b),
+        })),
       );
     }
     await this.repository.activateMadrasaBooksOnTx(tx, madrasaId, bookIds);

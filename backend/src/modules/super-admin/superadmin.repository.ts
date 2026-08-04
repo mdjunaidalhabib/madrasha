@@ -280,7 +280,13 @@ export class SuperAdminRepository {
   }
 
   findAllBookIdsOnTx(tx: TransactionClient) {
-    return tx.book.findMany({ select: { id: true } });
+    return tx.book.findMany({
+      select: {
+        id: true,
+        name: true,
+        class: { select: { name: true, division: { select: { keyName: true } } } },
+      },
+    });
   }
 
   seedMadrasaBooksOnTx(tx: TransactionClient, rows: Prisma.MadrasaBookCreateManyInput[]) {

@@ -66,6 +66,7 @@ export class ClassPanelService {
       book_name_bn: r.book.nameBn,
       class_id: r.book.classId,
       is_miyari: r.isMiyari,
+      full_marks: r.fullMark,
     }));
   }
 
@@ -148,6 +149,20 @@ export class ClassPanelService {
 
     const updated = await this.repository.updateSubjectForMadrasa(madrasaId, id, dto.name_bn);
     if (!updated) throw new NotFoundError("Subject not found");
+
+    if (dto.full_marks !== undefined) {
+      const fullMark = Number(dto.full_marks);
+      if (!Number.isFinite(fullMark) || fullMark <= 0) {
+        throw new BadRequestError("full_marks must be a positive number");
+      }
+
+      // `updated.id` — not the route's `id` — because a shared seeded
+      // subject may have just been copy-on-write'd to a new private Book
+      // (see updateSubjectForMadrasa), which repoints this madrasa's
+      // madrasa_books row at that new book id.
+      await this.repository.updateSubjectFullMark(madrasaId, updated.id, Math.round(fullMark));
+      await this.results.reprocessClassResults(madrasaId, linkedSubject.book.classId);
+    }
   }
 
   async getSubjectDeleteInfo(madrasaId: number | undefined, id: number) {

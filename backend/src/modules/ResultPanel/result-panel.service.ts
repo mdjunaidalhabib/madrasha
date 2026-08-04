@@ -164,6 +164,15 @@ export class ResultPanelService {
       absentCounts.map((row) => [Number(row.studentId), Number(row._count._all || 0)]),
     );
 
+    // Subjects can carry different full marks (e.g. one 100-mark subject
+    // alongside several 50-mark subjects in the নাযেরা/হিফজ division), so the
+    // average is the percentage of total marks earned out of total marks
+    // possible - not a plain sum/count, which would silently assume every
+    // subject is worth 100.
+    const totalFullMarks = activeSubjects
+      .filter((subject) => subject.book)
+      .reduce((sum, subject) => sum + Number(subject.fullMark || 100), 0);
+
     const miyariBookIds = activeSubjects
       .filter((subject) => subject.isMiyari && subject.book)
       .map((subject) => Number(subject.book!.id));
@@ -193,7 +202,7 @@ export class ResultPanelService {
     const summaryData = sorted.map((row) => {
       const total = Number(row._sum.mark || 0);
       const subjectCount = row._count._all || 0;
-      const rawAverage = subjectCount > 0 ? total / subjectCount : 0;
+      const rawAverage = totalFullMarks > 0 ? (total / totalFullMarks) * 100 : 0;
       // Keep exactly 2 decimal places so the stored value matches what's shown everywhere.
       const average = Math.round(rawAverage * 100) / 100;
 
@@ -610,7 +619,7 @@ export class ResultPanelService {
 
     const booksMap = new Map<
       number,
-      { book_id: number; book_name: string; is_miyari: boolean }
+      { book_id: number; book_name: string; is_miyari: boolean; full_marks: number }
     >();
 
     // Seed with every subject currently assigned to the class, even ones
@@ -624,12 +633,13 @@ export class ResultPanelService {
         madrasaId,
         resolvedClassId,
       );
-      classSubjects.forEach(({ book, isMiyari }) => {
+      classSubjects.forEach(({ book, isMiyari, fullMark }) => {
         if (!book) return;
         booksMap.set(book.id, {
           book_id: book.id,
           book_name: book.nameBn || book.name || `Book ${book.id}`,
           is_miyari: isMiyari,
+          full_marks: fullMark,
         });
       });
     }
@@ -642,6 +652,7 @@ export class ResultPanelService {
             book_id: m.bookId,
             book_name: bookName,
             is_miyari: false,
+            full_marks: 100,
           });
         }
         return {

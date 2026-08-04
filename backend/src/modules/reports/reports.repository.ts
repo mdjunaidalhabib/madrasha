@@ -137,6 +137,7 @@ export class ReportsRepository {
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
               'is_miyari', COALESCE(mb.is_miyari, false),
+              'full_marks', COALESCE(mb.full_mark, 100),
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )
@@ -437,6 +438,7 @@ export class ReportsRepository {
             jsonb_build_object(
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
+              'full_marks', COALESCE(mb.full_mark, 100),
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )

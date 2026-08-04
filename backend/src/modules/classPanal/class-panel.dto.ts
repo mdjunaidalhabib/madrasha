@@ -14,6 +14,7 @@ export interface AddSubjectRequestDto {
 
 export interface UpdateSubjectRequestDto {
   name_bn: string;
+  full_marks?: number | string;
 }
 
 export interface UpdateMiyariSubjectsRequestDto {
