@@ -9,6 +9,7 @@ import { ABSENT_MARK } from "../../utils/reportUtils";
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
+import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
 import { logger } from "../../utils/logger";
 
 interface Division {
@@ -56,6 +57,12 @@ interface Book {
   book_id: number;
   book_name?: string;
 }
+interface GradeItem {
+  id: string | number;
+  name: string;
+  min_mark?: number;
+  max_mark?: number;
+}
 
 const extractArray = (res: any) => {
   if (Array.isArray(res)) return res;
@@ -95,6 +102,8 @@ export default function ResultPreviewPage() {
   const [failMark, setFailMark] = useState(33);
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
   const [studentSaving, setStudentSaving] = useState(false);
+  const [generalGrades, setGeneralGrades] = useState<GradeItem[]>([]);
+  const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -122,6 +131,13 @@ export default function ResultPreviewPage() {
         if (!Number.isNaN(value)) setFailMark(value);
       })
       .catch((err) => logger.error("Fail mark load error:", err));
+
+    Promise.all([cachedGet("/general-grades"), cachedGet("/madrasa-grades")])
+      .then(([g, m]) => {
+        setGeneralGrades(extractArray(g.data));
+        setMadrasaGrades(extractArray(m.data));
+      })
+      .catch((err) => logger.error("Grades load error:", err));
   }, [loadOverview]);
 
   const loadSummary = async () => {
@@ -331,6 +347,14 @@ export default function ResultPreviewPage() {
               ← সব দেখুন
             </button>
           </div>
+
+          {summary.length > 0 && (
+            <ResultStatsCards
+              statuses={summary.map((s) => s.status)}
+              generalGrades={generalGrades}
+              madrasaGrades={madrasaGrades}
+            />
+          )}
 
           <FullResultTable
             summary={summary}

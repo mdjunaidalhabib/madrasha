@@ -40,6 +40,9 @@ type ResolvedPage = {
   // only: the pre-sliced body text that belongs on this specific physical
   // page, when the full body didn't fit on one page.
   bodyTextOverride?: string;
+  // academic-result only: pass/fail/absent counts for the WHOLE group (this
+  // class's this exam), not just this physical page's row slice.
+  resultStats?: ResultStats;
 };
 
 // Kept unused on purpose (a sliver of every page's budget) so the last row
@@ -100,6 +103,27 @@ const getDensity = (
   if (densityScore >= 14) return "dense";
   if (densityScore >= 10 || groupRows.length >= 18) return "compact";
   return "comfortable";
+};
+
+type ResultStats = { total: number; pass: number; fail: number; absent: number };
+
+// Computed from the GROUP's full row set (every row belonging to this
+// class/exam, before pagination slices it across physical pages) - not from
+// a single page's `rows`, otherwise "কতজন পাশ" would only reflect whatever
+// students happened to land on that one printed page.
+const getResultStats = (groupRowsData: Record<string, any>[]): ResultStats => {
+  let pass = 0;
+  let fail = 0;
+  let absent = 0;
+
+  groupRowsData.forEach((row) => {
+    const status = String(row?.status || "").toUpperCase();
+    if (status === "PASS") pass += 1;
+    else if (status === "FAIL") fail += 1;
+    else if (status === "ABSENT") absent += 1;
+  });
+
+  return { total: groupRowsData.length, pass, fail, absent };
 };
 
 const groupRows = (rows: Record<string, any>[], getGroupKey: (row: Record<string, any>) => string) => {
@@ -359,6 +383,7 @@ const PaginatedReportPreview = ({
     // overhead actually is instead of guessing a fixed px value.
     isFirstPage?: boolean;
     isLastPage?: boolean;
+    resultStats?: ResultStats;
   };
 
   const CONTINUATION_PROBE_KEY = "table-continuation-probe";
@@ -367,11 +392,17 @@ const PaginatedReportPreview = ({
     if (loading || !rows.length) return [];
 
     if (config.kind === "table") {
+      // Includes resultStats so the off-screen measurement reflects the
+      // stats box's real height - otherwise firstRowOffsetPx would be
+      // under-measured and the real first page's table could start too high,
+      // colliding with the box actually rendered above it.
       const tableTargets = groups.map((groupRowsData, i) => ({
         key: `table-${i}`,
         rows: groupRowsData,
         showBrand: showBrandAtAll && i === 0,
         density: getDensity(report, groupRowsData, paperSize, orientation),
+        resultStats:
+          report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined,
       }));
 
       // One extra off-screen probe (not tied to any real group) rendered
@@ -441,6 +472,8 @@ const PaginatedReportPreview = ({
             availableHeightPx,
             continuationOffsetPx,
           );
+          const resultStats =
+            report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
 
           producedPages.forEach((pageRows, pageIndexInGroup) => {
             nextPages.push({
@@ -451,6 +484,7 @@ const PaginatedReportPreview = ({
               isFirstPage: pageIndexInGroup === 0,
               isLastPage: pageIndexInGroup === producedPages.length - 1,
               density: getDensity(report, groupRowsData, paperSize, orientation),
+              resultStats,
             });
             globalStartIndex += pageRows.length;
             isVeryFirstPage = false;
@@ -584,6 +618,7 @@ const PaginatedReportPreview = ({
           isFirstPage: true,
           isLastPage: true,
           density: getDensity(report, rows, paperSize, orientation),
+          resultStats: report.printable === "academic-result" ? getResultStats(rows) : undefined,
         },
       ]
     : [statusPage];
@@ -624,6 +659,7 @@ const PaginatedReportPreview = ({
                   startIndex={0}
                   isFirstPage={target.isFirstPage ?? true}
                   isLastPage={target.isLastPage ?? true}
+                  resultStats={target.resultStats}
                 />
               </div>
             </div>
@@ -661,6 +697,7 @@ const PaginatedReportPreview = ({
                     isFirstPage={page.isFirstPage}
                     isLastPage={page.isLastPage}
                     bodyTextOverride={page.bodyTextOverride}
+                    resultStats={page.resultStats}
                   />
                 </div>
               </section>

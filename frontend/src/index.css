@@ -668,6 +668,48 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   margin-top: 0;
 }
 
+/* Result-summary + grade-scale boxes, side by side inside one group overlaid
+   on the empty top-right corner of the heading - `position: absolute` on the
+   group so it never competes with the centered madrasa name/address for
+   horizontal width (a flex layout stealing width from that text is exactly
+   what clipped the address before). The group takes no space in normal
+   flow, so the table right below starts as soon as the heading text does -
+   kept narrow/tight (line-height, padding, box width) specifically so
+   realistic content never grows taller than that text block and ends up
+   overlapping the table. */
+.print-page-preview[data-report="academic-result"] .academic-result-info-box-group {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: #fff;
+}
+
+/* Divider between the two sections - reads as ONE box with a middle line,
+   not two separate boxes with a gap between them. */
+.print-page-preview[data-report="academic-result"] .academic-result-info-box-divider {
+  border-right: 1px solid #000;
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-info-box {
+  width: 100px;
+  padding: 1px 6px;
+  font-size: 12px;
+  /* Bangla matras (vowel signs) extend well above/below the base glyph -
+     1.2 was tight enough that adjacent rows visually crowded and clipped
+     them (e.g. জিদ্দান's ি). 1.3 keeps them clear without the extra height
+     1.45 added. */
+  line-height: 1.3;
+  font-family: var(--font-report-body);
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-info-box-title {
+  margin-bottom: 1px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid #000;
+  font-size: 12px;
+  text-align: center;
+}
+
 .print-page-preview[data-report="academic-result"] .academic-result-subject-count {
   font-size: 12px;
 }
@@ -729,12 +771,33 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
-  margin-top: 6px;
+  margin-top: 4px;
   margin-bottom: 5px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-name {
   font-size: 16px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-info-box-group {
+  top: -3px;
+  right: 3px;
+}
+
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-info-box {
+  width: 78px;
+  padding: 1px 5px;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+/* "ফলাফল সারসংক্ষেপ" is long enough at this box width that it was wrapping
+   to 2 lines - shrink just the title text and stop it wrapping, rather than
+   widening the whole box (which would waste space in the grade-scale side
+   too, since গ্রেড স্কেল fits on one line already). */
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-info-box-title {
+  font-size: 7px;
+  white-space: nowrap;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-madrasa-address {
@@ -1125,8 +1188,9 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 /* Academic result readability refinements: portrait default, larger text and safe merit labels. */
 .print-page-preview[data-report="academic-result"] .academic-result-heading {
-  margin-top: 14px;
-  margin-bottom: 10px;
+  position: relative;
+  margin-top: 6px;
+  margin-bottom: 8px;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-table {
@@ -1363,7 +1427,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
    the fail color, since failing status matters more than rank. */
 .print-page-preview[data-report="academic-result"] .academic-result-fail-row > td,
 .print-page-preview[data-report="result-notice"] .result-notice-fail-row > td {
-  background-color: #fff1f2 !important;
+  background-color: #fecaca !important;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-fail-row .academic-result-student-name {
@@ -1375,7 +1439,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
    same outcome as "sat and failed". */
 .print-page-preview[data-report="academic-result"] .academic-result-absent-row > td,
 .print-page-preview[data-report="result-notice"] .result-notice-absent-row > td {
-  background-color: #fffbeb !important;
+  background-color: #fde68a !important;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-absent-row .academic-result-student-name {

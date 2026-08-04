@@ -1,11 +1,36 @@
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ReportColumn } from "../../../features/reports/types";
+import { cachedGet } from "../../../services/api";
 import {
   cellValue,
   formatMeritRank,
   formatReportValue,
   toBanglaDigits,
 } from "../../../utils/reportUtils";
+
+type GradeItem = {
+  id: string | number;
+  name: string;
+  minMark?: number;
+  maxMark?: number;
+  min_mark?: number;
+  max_mark?: number;
+};
+
+const getGradeRange = (grade: GradeItem) => ({
+  min: grade.minMark ?? grade.min_mark,
+  max: grade.maxMark ?? grade.max_mark,
+});
+
+const sortByMinDesc = (grades: GradeItem[]) =>
+  [...grades].sort((a, b) => Number(getGradeRange(b).min ?? 0) - Number(getGradeRange(a).min ?? 0));
+
+const extractGradeArray = (res: any) => {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.data?.data)) return res.data.data;
+  return [];
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
@@ -22,6 +47,8 @@ export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   { header: "মেধা​ক্রম", key: "rank_no", className: "min-w-24 text-center" },
 ];
 
+type ResultStats = { total: number; pass: number; fail: number; absent: number };
+
 type AcademicResultPrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
@@ -30,6 +57,7 @@ type AcademicResultPrintProps = {
   columns?: ReportColumn[];
   isFirstPage?: boolean;
   isLastPage?: boolean;
+  resultStats?: ResultStats;
 };
 
 type SubjectMark = {
@@ -128,6 +156,9 @@ const getSubjectNameBoxWidth = (headers: string[]) => {
   return Math.min(SUBJECT_NAME_MAX_WIDTH, Math.max(SUBJECT_NAME_MIN_WIDTH, withPadding));
 };
 
+const formatPercent = (count: number, total: number) =>
+  total > 0 ? toBanglaDigits(((count / total) * 100).toFixed(1)) : toBanglaDigits("0");
+
 const AcademicResultPrint = ({
   rows,
   selectedDivisionName = "",
@@ -135,7 +166,19 @@ const AcademicResultPrint = ({
   columns = ACADEMIC_RESULT_COLUMNS,
   isFirstPage = true,
   isLastPage = true,
+  resultStats,
 }: AcademicResultPrintProps) => {
+  const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
+
+  useEffect(() => {
+    cachedGet("/madrasa-grades")
+      .then((res) => setMadrasaGrades(extractGradeArray(res.data)))
+      .catch(() => {
+        // Non-critical: the report still prints fine without the grade-scale
+        // reference box if this lookup fails.
+      });
+  }, []);
+
   const configuredColumns = columns.length ? columns : ACADEMIC_RESULT_COLUMNS;
   const firstRow = rows[0] || {};
   const divisionName =
@@ -224,11 +267,84 @@ const AcademicResultPrint = ({
     return cellValue(row, column.key);
   };
 
+  // "রাসিব" is this madrasa's fail-grade name (min_mark 0) - a grade *scale*
+  // reference is only useful for the passing grades a student can earn, so
+  // it's dropped from the legend rather than listed alongside them.
+  const visibleMadrasaGrades = madrasaGrades.filter((g) => g.name !== "রাসিব");
+  const hasStats = Boolean(resultStats && resultStats.total > 0);
+  const hasGrades = visibleMadrasaGrades.length > 0;
+
   return (
     <div className="academic-result-report mx-auto w-full bg-white text-black">
       <div>
         {isFirstPage && (
           <div className="academic-result-heading report-block-heading my-6 text-center">
+            {/* `position: absolute` on purpose - this group must never
+                compete with the centered madrasa name/address for
+                horizontal room (a flex layout stealing width from that text
+                is exactly what clipped the address before). It overlays the
+                empty top-right corner instead, taking no space in normal
+                flow - so the table right below starts as soon as the text
+                does, as long as the group ends up no taller than the text
+                block. Both boxes sit side by side inside it (not stacked),
+                so together they're wide but short. */}
+            {(hasStats || hasGrades) && (
+              <div className="academic-result-info-box-group flex items-stretch border border-black text-left text-black">
+                {hasStats && (
+                  <div
+                    className={`academic-result-info-box ${hasGrades ? "academic-result-info-box-divider" : ""}`}
+                  >
+                    <p className="academic-result-info-box-title font-bold">ফলাফল সারসংক্ষেপ</p>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
+                      <span className="min-w-0 truncate">মোট</span>
+                      <span className="shrink-0">{toBanglaDigits(resultStats!.total)}</span>
+                    </div>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
+                      <span className="min-w-0 truncate">পাশ</span>
+                      <span className="shrink-0">
+                        {toBanglaDigits(resultStats!.pass)} (
+                        {formatPercent(resultStats!.pass, resultStats!.total)}%)
+                      </span>
+                    </div>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
+                      <span className="min-w-0 truncate">ফেল</span>
+                      <span className="shrink-0">
+                        {toBanglaDigits(resultStats!.fail)} (
+                        {formatPercent(resultStats!.fail, resultStats!.total)}%)
+                      </span>
+                    </div>
+                    {resultStats!.absent > 0 && (
+                      <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
+                        <span className="min-w-0 truncate">অনুপস্থিত</span>
+                        <span className="shrink-0">
+                          {toBanglaDigits(resultStats!.absent)} (
+                          {formatPercent(resultStats!.absent, resultStats!.total)}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hasGrades && (
+                  <div className="academic-result-info-box">
+                    <p className="academic-result-info-box-title font-bold">গ্রেড স্কেল</p>
+                    {sortByMinDesc(visibleMadrasaGrades).map((g) => {
+                      const { min } = getGradeRange(g);
+                      return (
+                        <div
+                          key={`madrasa-${g.id}`}
+                          className="academic-result-info-box-row flex items-baseline justify-between gap-0.5"
+                        >
+                          <span className="min-w-0 truncate">{g.name}</span>
+                          <span className="shrink-0">{toBanglaDigits(min ?? "-")}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {madrasaName && (
               <h1 className="academic-result-madrasa-name text-2xl font-extrabold tracking-tight text-black">
                 {madrasaName}

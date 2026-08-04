@@ -15,7 +15,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: Markshee
   return (
     <section
       className={`border-2 border-slate-800 p-6 ${
-        failed ? "bg-red-50" : isAbsent ? "bg-amber-50" : "bg-white"
+        failed ? "bg-red-200" : isAbsent ? "bg-amber-200" : "bg-white"
       }`}
     >
       {isFirstPage && (

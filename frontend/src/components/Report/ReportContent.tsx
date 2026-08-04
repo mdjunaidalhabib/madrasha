@@ -30,6 +30,9 @@ type ReportContentProps = {
   isLastPage?: boolean;
   isFirstPage?: boolean;
   bodyTextOverride?: string;
+  // academic-result only: pass/fail/absent counts for the whole class/exam
+  // group this page belongs to (see PaginatedReportPreview.getResultStats).
+  resultStats?: { total: number; pass: number; fail: number; absent: number };
 };
 
 const ReportContent = ({
@@ -42,6 +45,7 @@ const ReportContent = ({
   isLastPage = true,
   isFirstPage = true,
   bodyTextOverride,
+  resultStats,
 }: ReportContentProps) => {
   if (loading) {
     return (
@@ -155,6 +159,7 @@ const ReportContent = ({
         columns={report.columns}
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
+        resultStats={resultStats}
       />
     );
   }
