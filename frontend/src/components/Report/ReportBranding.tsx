@@ -66,7 +66,7 @@ export function ReportBrandHeader() {
   if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
 
   return (
-    <div className="report-brand-header flex flex-col items-center text-center">
+    <div className="report-brand-header relative flex flex-col items-center text-center">
       {branding.report_logo && (
         <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
       )}

@@ -229,9 +229,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .report-brand-logo {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 66px;
   height: 66px;
-  margin-bottom: 2px;
 }
 
 .report-brand-name {
@@ -593,7 +596,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-orientation="landscape"] .report-brand-logo {
   width: 52px;
   height: 52px;
-  margin-bottom: 1px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-name {
@@ -614,7 +616,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 .print-page-preview[data-paper-size="a5"] .report-brand-logo {
   width: 44px;
   height: 44px;
-  margin-bottom: 0;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-name {
