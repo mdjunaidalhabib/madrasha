@@ -399,7 +399,7 @@ const PaginatedReportPreview = ({
       const tableTargets = groups.map((groupRowsData, i) => ({
         key: `table-${i}`,
         rows: groupRowsData,
-        showBrand: showBrandAtAll && i === 0,
+        showBrand: showBrandAtAll,
         density: getDensity(report, groupRowsData, paperSize, orientation),
         resultStats:
           report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined,
@@ -480,14 +480,13 @@ const PaginatedReportPreview = ({
               key: `${report.key}-table-${groupIndex}-${pageIndexInGroup}`,
               rows: pageRows,
               startIndex: globalStartIndex,
-              isFirstPageOfGroup: isVeryFirstPage,
+              isFirstPageOfGroup: pageIndexInGroup === 0,
               isFirstPage: pageIndexInGroup === 0,
               isLastPage: pageIndexInGroup === producedPages.length - 1,
               density: getDensity(report, groupRowsData, paperSize, orientation),
               resultStats,
             });
             globalStartIndex += pageRows.length;
-            isVeryFirstPage = false;
           });
         });
       } else if (config.kind === "grid") {
@@ -676,8 +675,6 @@ const PaginatedReportPreview = ({
               <section
                 key={page.key}
                 className="print-page-preview report-print-page bg-white"
-                data-page-number={toBanglaDigits(pageIndex + 1)}
-                data-total-pages={toBanglaDigits(pages.length)}
                 data-report={report.printable || "table"}
                 data-paper-size={paperSize}
                 data-orientation={orientation}
@@ -686,6 +683,12 @@ const PaginatedReportPreview = ({
                 <ReportBackground />
                 <ReportWatermark />
                 {showsBrandHeader && <ReportBrandHeader />}
+                <div className="report-page-footer">
+                  <span className="report-page-footer-label">পৃষ্ঠা:</span>
+                  <span className="report-page-footer-number">
+                    {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
+                  </span>
+                </div>
                 <div className="report-content-body">
                   <ReportContent
                     loading={loading}

@@ -160,10 +160,9 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
 }
 
-.report-print-page::after {
-  content: "পৃষ্ঠা " attr(data-page-number) " / " attr(data-total-pages);
+.report-page-footer {
   position: absolute;
-  right: 10mm;
+  right: 3mm;
   /* Sits entirely inside the bottom padding band (10mm), below the content
      area's own bottom edge, so it never overlaps the last table row/line -
      it must never encroach on the 10mm content margin it's meant to live
@@ -173,6 +172,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: inline-flex;
   min-height: 18px;
   align-items: center;
+  gap: 2px;
   justify-content: center;
   box-sizing: border-box;
   padding: 2px 4px 3px;
@@ -184,6 +184,12 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
   color: #64748b;
   background: rgba(255, 255, 255, 0.92);
+}
+
+.report-page-footer-number {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .report-background {
@@ -643,13 +649,17 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-size: 13px;
 }
 
-.print-page-preview[data-paper-size="a5"]::after {
-  right: 7mm;
+.print-page-preview[data-paper-size="a5"] .report-page-footer {
+  right: 2mm;
   /* Same reasoning as the base rule, scaled to A5's 7mm padding band. */
   bottom: 1mm;
   min-height: 16px;
   font-size: 8px;
   line-height: 1.5;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-page-footer-number {
+  font-size: 9.5px;
 }
 
 /* Academic result: adapt meta information and dense subject columns. */
