@@ -198,8 +198,8 @@ export default function AdmissionApplyPage() {
             ফিরে যান
           </Link>
           <div className="ml-auto flex items-center gap-2">
-            {settings.logo_url ? (
-              <img src={settings.logo_url} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
+            {madrasa?.logo_url ? (
+              <img src={madrasa.logo_url} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"

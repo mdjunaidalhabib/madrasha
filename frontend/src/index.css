@@ -1419,7 +1419,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 /* Top-3 merit rank rows get a light green highlight across the full row. */
 .print-page-preview[data-report="academic-result"] .academic-result-top-rank-row > td {
-  background-color: #bbf7d0 !important;
+  background-color: #dcfce7 !important;
 }
 
 /* Failed result rows remain clearly visible in preview, PDF and print -
@@ -1427,11 +1427,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
    the fail color, since failing status matters more than rank. */
 .print-page-preview[data-report="academic-result"] .academic-result-fail-row > td,
 .print-page-preview[data-report="result-notice"] .result-notice-fail-row > td {
-  background-color: #fecaca !important;
-}
-
-.print-page-preview[data-report="academic-result"] .academic-result-fail-row .academic-result-student-name {
-  color: #991b1b;
+  background-color: #fee2e2 !important;
 }
 
 /* A student absent from every subject gets a distinct amber highlight —
@@ -1439,9 +1435,5 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
    same outcome as "sat and failed". */
 .print-page-preview[data-report="academic-result"] .academic-result-absent-row > td,
 .print-page-preview[data-report="result-notice"] .result-notice-absent-row > td {
-  background-color: #fde68a !important;
-}
-
-.print-page-preview[data-report="academic-result"] .academic-result-absent-row .academic-result-student-name {
-  color: #92400e;
+  background-color: #fef3c7 !important;
 }

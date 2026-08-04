@@ -7,11 +7,17 @@ import { uploadConfig } from "../config/upload.config";
  * settings module (branding logo/banner/watermark) already relies on -
  * extracted here unchanged so it can be swapped for a real object-storage
  * provider later without touching controllers/services.
+ *
+ * Also accepts `https://` URLs: the shared upload widget (BrandImageBox)
+ * uploads to Cloudinary and hands back a hosted URL rather than a base64
+ * data URI whenever Cloudinary is configured for the tenant, so a value
+ * arriving here can legitimately be either form.
  */
 export class InlineBase64StorageProvider implements IStorageProvider {
   isValidImage(value: unknown): value is string | null {
     if (value === null || value === undefined || value === "") return true;
     if (typeof value !== "string") return false;
+    if (value.startsWith("https://")) return true;
     if (!value.startsWith(uploadConfig.allowedImagePrefix)) return false;
     if (value.length > uploadConfig.maxInlineImageLength) return false;
     return true;

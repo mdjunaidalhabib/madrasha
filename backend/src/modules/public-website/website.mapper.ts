@@ -19,6 +19,9 @@ export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => 
     email: row.email ?? null,
     address: row.address ?? null,
     website_status: row.websiteStatus ?? "active",
+    // The public site's logo comes from branding settings (report_logo),
+    // not the old website-settings logo_url field - see BrandingSettingsPage.
+    logo_url: row.reportLogo ?? null,
   };
 };
 

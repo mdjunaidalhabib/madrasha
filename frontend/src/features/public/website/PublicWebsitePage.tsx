@@ -246,9 +246,9 @@ export default function PublicWebsitePage() {
         {/* Row 1: brand (full name, never truncated) + actions */}
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <a href="#top" className="flex min-w-0 items-center gap-3">
-            {settings.logo_url ? (
+            {madrasa?.logo_url ? (
               <img
-                src={settings.logo_url}
+                src={madrasa?.logo_url}
                 alt="Logo"
                 className="h-10 w-10 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
@@ -338,9 +338,9 @@ export default function PublicWebsitePage() {
       >
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4">
           <div className="flex min-w-0 items-center gap-2">
-            {settings.logo_url ? (
+            {madrasa?.logo_url ? (
               <img
-                src={settings.logo_url}
+                src={madrasa?.logo_url}
                 alt="Logo"
                 className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
@@ -870,9 +870,9 @@ export default function PublicWebsitePage() {
             {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3">
-                {settings.logo_url ? (
+                {madrasa?.logo_url ? (
                   <img
-                    src={settings.logo_url}
+                    src={madrasa?.logo_url}
                     alt="Logo"
                     className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white/10"
                   />

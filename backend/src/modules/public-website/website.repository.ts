@@ -26,6 +26,7 @@ export class WebsiteRepository {
         address: true,
         isActive: true,
         websiteStatus: true,
+        reportLogo: true,
       },
     });
   }

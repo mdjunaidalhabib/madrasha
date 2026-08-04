@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Bell,
   ExternalLink,
@@ -22,6 +23,7 @@ import { ToggleSwitch, PublishToggle } from "../../../components/settings/Toggle
 import InlineTextField, { textAreaClass } from "../../../components/settings/InlineTextField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import { CLOUD_NOT_CONFIGURED_MSG, isPendingCloudUpload } from "../../../utils/cloudUpload";
+import { getTenantAdminBase } from "../../../utils/tenantSlug";
 import {
   deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
@@ -761,13 +763,19 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard title="লোগো">
-            <InlineImageField
-              label="ওয়েবসাইট লোগো"
-              hint="বর্গাকার ছবি ভালো দেখায় (স্বচ্ছ পটভূমি সহ PNG সবচেয়ে ভালো)"
-              value={form.logo_url}
-              folder="branding"
-              onSave={(v) => saveSettingsField("logo_url", v)}
-            />
+            <p className="text-sm text-slate-600">
+              ওয়েবসাইটের লোগো এখন{" "}
+              <span className="font-semibold text-slate-800">ব্র্যান্ডিং সেটিংস</span>{" "}
+              থেকে নেওয়া হয়, যাতে একটি লোগোই ওয়েবসাইট ও আইডি কার্ড/মার্কশিটের মতো সব রিপোর্টে
+              একইরকম দেখায়।
+            </p>
+            <Link
+              to={`${getTenantAdminBase()}/settings/branding`}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
+            >
+              ব্র্যান্ডিং সেটিংসে লোগো পরিবর্তন করুন
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
           </SectionCard>
 
           <SectionCard title="হোমপেজ ব্যানার">
