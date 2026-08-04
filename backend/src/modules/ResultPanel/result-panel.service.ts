@@ -20,8 +20,12 @@ const toBanglaDigits = (value: string | number) =>
   String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
 
 const getGradeFast = (avg: number, gradeList: GradeRow[], fallback: string) => {
+  // maxMark is stored as a whole number boundary (e.g. 79), but avg can be a
+  // decimal (e.g. 79.50) from averaging subject marks. Comparing with a
+  // strict `<= maxMark` leaves decimals between two integer bands (79 and 80)
+  // matching nothing, so treat the upper bound as exclusive at maxMark + 1.
   for (const g of gradeList) {
-    if (avg >= Number(g.minMark) && avg <= Number(g.maxMark)) {
+    if (avg >= Number(g.minMark) && avg < Number(g.maxMark) + 1) {
       return g.name;
     }
   }

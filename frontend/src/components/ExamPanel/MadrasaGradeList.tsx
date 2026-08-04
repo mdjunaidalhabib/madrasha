@@ -21,6 +21,26 @@ const getGradeRange = (grade: GradeItem) => ({
   max: grade.maxMark ?? grade.max_mark,
 });
 
+// Grade ranges must be contiguous (one grade's max + 1 = next grade's min) —
+// getGradeFast() in result-panel.service.ts falls back to a default grade
+// for any average that lands in a gap, so surface gaps here before they bite.
+const findGradeGaps = (grades: GradeItem[]) => {
+  const sorted = grades
+    .map((g) => getGradeRange(g))
+    .filter((r) => r.min !== undefined && r.max !== undefined)
+    .sort((a, b) => Number(a.min) - Number(b.min));
+
+  const gaps: { from: number; to: number }[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const prevMax = Number(sorted[i - 1].max);
+    const currMin = Number(sorted[i].min);
+    if (currMin > prevMax + 1) {
+      gaps.push({ from: prevMax + 1, to: currMin - 1 });
+    }
+  }
+  return gaps;
+};
+
 export default function MadrasaGradeList({
   grades,
   reload,
@@ -28,6 +48,7 @@ export default function MadrasaGradeList({
   grades: GradeItem[];
   reload: () => void;
 }) {
+  const gradeGaps = findGradeGaps(grades);
   const [name, setName] = useState("");
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
@@ -103,6 +124,14 @@ export default function MadrasaGradeList({
           </Button>
         </div>
       </div>
+
+      {gradeGaps.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          ⚠️ গ্রেড রেঞ্জের মাঝে ফাঁক আছে:{" "}
+          {gradeGaps.map((g) => (g.from === g.to ? `${g.from}` : `${g.from}-${g.to}`)).join(", ")}
+          {" "}— এই নম্বর পেলে সঠিক গ্রেড বসবে না।
+        </div>
+      )}
 
       {grades.length === 0 ? (
         <EmptyState title="কোনো গ্রেড যোগ করা হয়নি" hint="উপরে থেকে নতুন গ্রেড যোগ করুন" />
