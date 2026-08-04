@@ -5,7 +5,7 @@ const AddressInfoProfile = ({
   handleChange,
   editableField,
   setEditableField,
-  isEditMode, // ✅ added
+  isEditMode,
 }: any) => {
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border mt-6">
