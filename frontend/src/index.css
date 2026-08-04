@@ -684,6 +684,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   background: #fff;
 }
 
+.print-page-preview[data-report="academic-result"][data-paper-size="a4"][data-orientation="landscape"]
+  .academic-result-info-box-group {
+  top: -20px;
+  right: 24px;
+}
+
 /* Divider between the two sections - reads as ONE box with a middle line,
    not two separate boxes with a gap between them. */
 .print-page-preview[data-report="academic-result"] .academic-result-info-box-divider {
@@ -691,7 +697,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-info-box {
-  width: 100px;
+  width: max-content;
   padding: 1px 6px;
   font-size: 12px;
   /* Bangla matras (vowel signs) extend well above/below the base glyph -
@@ -700,6 +706,10 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
      1.45 added. */
   line-height: 1.3;
   font-family: var(--font-report-body);
+}
+
+.print-page-preview[data-report="academic-result"] .academic-result-info-box-row + .academic-result-info-box-row {
+  margin-top: 1.5px;
 }
 
 .print-page-preview[data-report="academic-result"] .academic-result-info-box-title {
@@ -784,8 +794,13 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   right: 3px;
 }
 
+.print-page-preview[data-report="academic-result"][data-paper-size="a5"][data-orientation="landscape"]
+  .academic-result-info-box-group {
+  right: 14px;
+}
+
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-info-box {
-  width: 78px;
+  width: max-content;
   padding: 1px 5px;
   font-size: 9px;
   line-height: 1.3;

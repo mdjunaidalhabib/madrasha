@@ -295,33 +295,31 @@ const AcademicResultPrint = ({
                     className={`academic-result-info-box ${hasGrades ? "academic-result-info-box-divider" : ""}`}
                   >
                     <p className="academic-result-info-box-title font-bold">ফলাফল সারসংক্ষেপ</p>
-                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
-                      <span className="min-w-0 truncate">মোট</span>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
+                      <span className="whitespace-nowrap">মোট:</span>
                       <span className="shrink-0">{toBanglaDigits(resultStats!.total)}</span>
                     </div>
-                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
-                      <span className="min-w-0 truncate">পাশ</span>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
+                      <span className="whitespace-nowrap">পাশ:</span>
                       <span className="shrink-0">
                         {toBanglaDigits(resultStats!.pass)} (
                         {formatPercent(resultStats!.pass, resultStats!.total)}%)
                       </span>
                     </div>
-                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
-                      <span className="min-w-0 truncate">ফেল</span>
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
+                      <span className="whitespace-nowrap">ফেল:</span>
                       <span className="shrink-0">
                         {toBanglaDigits(resultStats!.fail)} (
                         {formatPercent(resultStats!.fail, resultStats!.total)}%)
                       </span>
                     </div>
-                    {resultStats!.absent > 0 && (
-                      <div className="academic-result-info-box-row flex items-baseline justify-between gap-0.5">
-                        <span className="min-w-0 truncate">অনুপস্থিত</span>
-                        <span className="shrink-0">
-                          {toBanglaDigits(resultStats!.absent)} (
-                          {formatPercent(resultStats!.absent, resultStats!.total)}%)
-                        </span>
-                      </div>
-                    )}
+                    <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
+                      <span className="whitespace-nowrap">অনুপস্থিত:</span>
+                      <span className="shrink-0">
+                        {toBanglaDigits(resultStats!.absent)} (
+                        {formatPercent(resultStats!.absent, resultStats!.total)}%)
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -333,9 +331,9 @@ const AcademicResultPrint = ({
                       return (
                         <div
                           key={`madrasa-${g.id}`}
-                          className="academic-result-info-box-row flex items-baseline justify-between gap-0.5"
+                          className="academic-result-info-box-row flex items-baseline justify-between gap-3"
                         >
-                          <span className="min-w-0 truncate">{g.name}</span>
+                          <span className="whitespace-nowrap">{g.name}:</span>
                           <span className="shrink-0">{toBanglaDigits(min ?? "-")}</span>
                         </div>
                       );
