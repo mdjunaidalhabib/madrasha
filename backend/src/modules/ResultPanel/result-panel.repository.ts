@@ -5,13 +5,13 @@ import { ClassStatusRow, OverviewStatusRow } from "./result-panel.types";
 export class ResultPanelRepository {
   findResultMaster(madrasaId: number, examId: number, classId: number) {
     return prisma.resultMaster.findFirst({
-      where: { madrasaId, examId, classId },
+      where: { madrasaId, examId, classId, deletedAt: null },
     });
   }
 
   findLatestResultMasterId(madrasaId: number, examId: number, classId: number) {
     return prisma.resultMaster.findFirst({
-      where: { madrasaId, examId, classId },
+      where: { madrasaId, examId, classId, deletedAt: null },
       orderBy: { id: "desc" },
       select: { id: true },
     });
@@ -25,8 +25,15 @@ export class ResultPanelRepository {
 
   findResultMasterById(id: number, madrasaId: number) {
     return prisma.resultMaster.findFirst({
-      where: { id, madrasaId },
+      where: { id, madrasaId, deletedAt: null },
       select: { id: true, examId: true, classId: true },
+    });
+  }
+
+  softDeleteResultMaster(id: number, madrasaId: number) {
+    return prisma.resultMaster.updateMany({
+      where: { id, madrasaId },
+      data: { deletedAt: new Date() },
     });
   }
 
@@ -154,7 +161,7 @@ export class ResultPanelRepository {
 
   findResultMastersByClass(madrasaId: number, classId: number) {
     return prisma.resultMaster.findMany({
-      where: { madrasaId, classId },
+      where: { madrasaId, classId, deletedAt: null },
       select: { id: true, examId: true, classId: true },
       orderBy: { id: "asc" },
     });
@@ -245,6 +252,7 @@ export class ResultPanelRepository {
       JOIN classes c ON c.id = mc.class_id
       LEFT JOIN results_master rm
         ON rm.class_id = c.id AND rm.exam_id = ${examId} AND rm.madrasa_id = ${madrasaId}
+        AND rm.deleted_at IS NULL
       WHERE mc.madrasa_id = ${madrasaId} AND c.division_id = ${divisionId} AND mc.is_active = 1
       ORDER BY c.id ASC
     `;
@@ -293,13 +301,17 @@ export class ResultPanelRepository {
       JOIN exams e ON e.madrasa_id = ${madrasaId} AND e.deleted_at IS NULL
       LEFT JOIN results_master rm
         ON rm.class_id = c.id AND rm.exam_id = e.id AND rm.madrasa_id = ${madrasaId}
+        AND rm.deleted_at IS NULL
       WHERE mc.madrasa_id = ${madrasaId} AND mc.is_active = 1
     `;
   }
 
   findResultSummaries(madrasaId: number, examId: number, classId: number) {
     return prisma.resultSummary.findMany({
-      where: { resultMaster: { madrasaId, examId, classId }, student: { deletedAt: null } },
+      where: {
+        resultMaster: { madrasaId, examId, classId, deletedAt: null },
+        student: { deletedAt: null },
+      },
       select: {
         resultMasterId: true,
         studentId: true,
@@ -318,14 +330,6 @@ export class ResultPanelRepository {
 
   findResultSummaryExists(resultMasterId: number) {
     return prisma.resultSummary.findFirst({ where: { resultMasterId }, select: { id: true } });
-  }
-
-  deleteResultInTransaction(id: number) {
-    return prisma.$transaction([
-      prisma.mark.deleteMany({ where: { resultMasterId: id } }),
-      prisma.resultSummary.deleteMany({ where: { resultMasterId: id } }),
-      prisma.resultMaster.delete({ where: { id } }),
-    ]);
   }
 
   /** Every active subject assigned to a class, regardless of whether any
@@ -387,7 +391,11 @@ export class ResultPanelRepository {
 
   findFullResultSummaries(madrasaId: number, resultMasterId: number) {
     return prisma.resultSummary.findMany({
-      where: { resultMasterId, resultMaster: { madrasaId }, student: { deletedAt: null } },
+      where: {
+        resultMasterId,
+        resultMaster: { madrasaId, deletedAt: null },
+        student: { deletedAt: null },
+      },
       select: {
         resultMasterId: true,
         total: true,
@@ -401,6 +409,7 @@ export class ResultPanelRepository {
           select: {
             id: true,
             nameBn: true,
+            registrationNo: true,
             marks: {
               where: {
                 resultMasterId,
@@ -421,7 +430,7 @@ export class ResultPanelRepository {
           },
         },
       },
-      orderBy: [{ rankNo: "asc" }, { studentId: "asc" }],
+      orderBy: [{ student: { registrationNo: "asc" } }],
     });
   }
 }

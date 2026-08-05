@@ -1,10 +1,12 @@
 import { Router } from "express";
 import {
   getDivisions,
+  deleteDivision,
   getClasses,
   addClass,
   updateClass,
   deleteClass,
+  reorderClasses,
   getSubjects,
   updateMiyariSubjects,
   reorderSubjects,
@@ -24,12 +26,16 @@ const router = Router();
 ========================= */
 router.get("/madrasa-divisions", tenantMiddleware, authMiddleware, getDivisions);
 
+router.delete("/madrasa-divisions/:id", tenantMiddleware, authMiddleware, deleteDivision);
+
 /* =========================
    CLASSES
 ========================= */
 router.get("/madrasa-classes", tenantMiddleware, authMiddleware, getClasses);
 
 router.post("/madrasa-classes", tenantMiddleware, authMiddleware, addClass);
+
+router.put("/madrasa-classes/reorder", tenantMiddleware, authMiddleware, reorderClasses);
 
 router.put("/madrasa-classes/:id", tenantMiddleware, authMiddleware, updateClass);
 

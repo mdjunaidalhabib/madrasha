@@ -1,4 +1,4 @@
-import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { resultPanelService, ResultPanelService } from "../ResultPanel/result-panel.service";
 import { classPanelRepository, ClassPanelRepository } from "./class-panel.repository";
 import { TenantNotFoundInPanelError } from "./class-panel.types";
@@ -9,6 +9,7 @@ import {
   UpdateSubjectRequestDto,
   UpdateMiyariSubjectsRequestDto,
   ReorderSubjectsRequestDto,
+  ReorderClassesRequestDto,
 } from "./class-panel.dto";
 
 export class ClassPanelService {
@@ -43,7 +44,7 @@ export class ClassPanelService {
     }
 
     const created = await this.repository.createClass(dto.name_bn, Number(dto.division_id));
-    await this.repository.linkClassToMadrasa(madrasaId, created.id);
+    await this.repository.linkClassToMadrasa(madrasaId, created.id, Number(dto.division_id));
   }
 
   async updateClass(id: number, dto: UpdateClassRequestDto) {
@@ -54,6 +55,37 @@ export class ClassPanelService {
   async deleteClass(madrasaId: number | undefined, id: number) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
     await this.repository.deactivateMadrasaClass(madrasaId, id);
+  }
+
+  async deleteDivision(madrasaId: number | undefined, id: number) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    await this.repository.deactivateMadrasaDivision(madrasaId, id);
+  }
+
+  async reorderClasses(madrasaId: number | undefined, dto: ReorderClassesRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const divisionId = Number(dto.division_id);
+    if (!divisionId) throw new BadRequestError("division_id is required");
+
+    const orderedClassIds = (Array.isArray(dto.class_ids) ? dto.class_ids : []).map(Number);
+    if (orderedClassIds.some((id) => !id)) {
+      throw new BadRequestError("class_ids must be valid ids");
+    }
+
+    const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
+    const activeClassIds = rows.map((row) => row.class.id);
+
+    const sameSet =
+      activeClassIds.length === orderedClassIds.length &&
+      activeClassIds.every((id) => orderedClassIds.includes(id));
+    if (!sameSet) {
+      throw new BadRequestError("class_ids must match this division's active classes exactly");
+    }
+
+    await this.repository.reorderClasses(madrasaId, orderedClassIds);
+
+    return { message: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে" };
   }
 
   async listSubjects(madrasaId: number | undefined, classId: number) {
@@ -181,21 +213,14 @@ export class ClassPanelService {
     };
   }
 
-  async deleteSubject(madrasaId: number | undefined, id: number, confirmMarkDeletion = false) {
+  async deleteSubject(madrasaId: number | undefined, id: number) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
     if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
 
-    const markCount = await this.repository.countSubjectMarks(madrasaId, id);
-    if (markCount > 0 && !confirmMarkDeletion) {
-      throw new ConflictError(
-        "This subject has saved marks. Confirm mark deletion before deleting the subject.",
-        { requires_confirmation: true, mark_count: markCount },
-      );
-    }
-
-    await this.repository.deactivateSubjectAndRemoveMarks(madrasaId, id);
+    // Marks are preserved — this only moves the subject to Trash.
+    await this.repository.deactivateSubject(madrasaId, id);
     await this.results.reprocessClassResults(madrasaId, linkedSubject.book.classId);
   }
 }

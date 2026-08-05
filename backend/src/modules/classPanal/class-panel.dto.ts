@@ -26,3 +26,8 @@ export interface ReorderSubjectsRequestDto {
   class_id: number | string;
   book_ids: Array<number | string>;
 }
+
+export interface ReorderClassesRequestDto {
+  division_id: number | string;
+  class_ids: Array<number | string>;
+}

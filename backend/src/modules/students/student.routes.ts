@@ -12,13 +12,15 @@ import {
   getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
+  bulkDeleteStudents,
+  expelStudent,
 } from "./student.controller";
 
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
-import { studentIdParamSchema } from "./student.validation";
+import { studentIdParamSchema, studentBulkDeleteSchema, studentExpelSchema } from "./student.validation";
 
 const router = express.Router();
 
@@ -83,6 +85,16 @@ router.patch(
   rejectAdmission,
 );
 
+// EXPEL / UN-EXPEL - status flag only, does not move the student to Trash.
+router.patch(
+  "/:id/expel",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.expel"),
+  validate(studentExpelSchema),
+  expelStudent,
+);
+
 // GET ALL
 router.get("/", tenantMiddleware, authMiddleware, rbacMiddleware("students.read"), getStudents);
 
@@ -104,6 +116,18 @@ router.put(
   rbacMiddleware("students.update"),
   validate(studentIdParamSchema),
   updateStudent,
+);
+
+// BULK DELETE (Student List "select many -> move to Trash") - must be
+// registered before "/:id" below (same DELETE method), otherwise "/:id"
+// would swallow "/bulk" with id="bulk", same ordering rule as "/lookup" above.
+router.delete(
+  "/bulk",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.delete"),
+  validate(studentBulkDeleteSchema),
+  bulkDeleteStudents,
 );
 
 // DELETE

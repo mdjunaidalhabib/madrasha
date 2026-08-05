@@ -92,7 +92,7 @@ export class GuardianRepository {
     return prisma.resultSummary.findMany({
       where: {
         studentId,
-        resultMaster: { madrasaId, status: "PUBLISHED" },
+        resultMaster: { madrasaId, status: "PUBLISHED", deletedAt: null },
       },
       include: {
         resultMaster: {

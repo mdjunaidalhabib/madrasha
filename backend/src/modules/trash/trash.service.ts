@@ -49,6 +49,54 @@ export class TrashService {
     }));
   }
 
+  async listDivisions(madrasaId: number) {
+    const rows = await this.repository.findTrashedDivisions(madrasaId);
+    return rows.map((row) => ({
+      id: row.id,
+      name_bn: row.division.nameBn,
+      name: row.division.name,
+      deleted_at: row.deletedAt,
+      days_remaining: daysRemaining(row.deletedAt),
+    }));
+  }
+
+  async listClasses(madrasaId: number) {
+    const rows = await this.repository.findTrashedClasses(madrasaId);
+    return rows.map((row) => ({
+      id: row.id,
+      class_name_bn: row.class.nameBn,
+      class_name: row.class.name,
+      division_name_bn: row.class.division?.nameBn ?? null,
+      deleted_at: row.deletedAt,
+      days_remaining: daysRemaining(row.deletedAt),
+    }));
+  }
+
+  async listBooks(madrasaId: number) {
+    const rows = await this.repository.findTrashedBooks(madrasaId);
+    return rows.map((row) => ({
+      id: row.id,
+      book_name_bn: row.book.nameBn,
+      book_name: row.book.name,
+      deleted_at: row.deletedAt,
+      days_remaining: daysRemaining(row.deletedAt),
+    }));
+  }
+
+  async listResults(madrasaId: number) {
+    const rows = await this.repository.findTrashedResults(madrasaId);
+    return rows.map((row) => ({
+      id: row.id,
+      exam_name: row.exam.name,
+      exam_year: row.exam.year,
+      class_name_bn: row.class.nameBn,
+      class_name: row.class.name,
+      status: row.status,
+      deleted_at: row.deletedAt,
+      days_remaining: daysRemaining(row.deletedAt),
+    }));
+  }
+
   /* ================= RESTORE ================= */
 
   async restoreStudent(id: number, madrasaId: number) {
@@ -66,6 +114,26 @@ export class TrashService {
     if (!result.count) throw new NotFoundError("Trashed exam not found");
   }
 
+  async restoreDivision(id: number, madrasaId: number) {
+    const result = await this.repository.restoreDivision(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed division not found");
+  }
+
+  async restoreClass(id: number, madrasaId: number) {
+    const result = await this.repository.restoreClass(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed class not found");
+  }
+
+  async restoreBook(id: number, madrasaId: number) {
+    const result = await this.repository.restoreBook(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed book not found");
+  }
+
+  async restoreResult(id: number, madrasaId: number) {
+    const result = await this.repository.restoreResult(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed result not found");
+  }
+
   /* ================= PERMANENT DELETE ================= */
 
   async permanentDeleteStudent(id: number, madrasaId: number) {
@@ -81,6 +149,26 @@ export class TrashService {
   async permanentDeleteExam(id: number, madrasaId: number) {
     const count = await this.repository.permanentDeleteExam(id, madrasaId);
     if (!count) throw new NotFoundError("Trashed exam not found");
+  }
+
+  async permanentDeleteDivision(id: number, madrasaId: number) {
+    const result = await this.repository.permanentDeleteDivision(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed division not found");
+  }
+
+  async permanentDeleteClass(id: number, madrasaId: number) {
+    const result = await this.repository.permanentDeleteClass(id, madrasaId);
+    if (!result.count) throw new NotFoundError("Trashed class not found");
+  }
+
+  async permanentDeleteBook(id: number, madrasaId: number) {
+    const count = await this.repository.permanentDeleteBook(id, madrasaId);
+    if (!count) throw new NotFoundError("Trashed book not found");
+  }
+
+  async permanentDeleteResult(id: number, madrasaId: number) {
+    const count = await this.repository.permanentDeleteResult(id, madrasaId);
+    if (!count) throw new NotFoundError("Trashed result not found");
   }
 
   /* ================= AUTO-PURGE ================= */

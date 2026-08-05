@@ -86,8 +86,12 @@ model Student {
   registrationNo Int @map("registration_no")
 
   admissionDate DateTime? @default(now()) @map("admission_date")
-  isActive      Int       @default(1) @map("is_active")
-  deletedAt     DateTime? @map("deleted_at")
+
+  /// Enrollment status while the record is NOT in Trash: 1 = সক্রিয় (active),
+  /// 0 = বহিষ্কৃত (expelled). Distinct from `deletedAt` — an expelled student
+  /// stays fully visible everywhere, just flagged, and is reversible.
+  isActive  Int       @default(1) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
 
   /// Admission approval workflow. Defaults to APPROVED so every existing
   /// admin-created admission keeps behaving exactly as before.

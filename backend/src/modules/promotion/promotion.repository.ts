@@ -13,7 +13,7 @@ export class PromotionRepository {
    * used to look up each student's pass/fail status for the preview. */
   findResultMaster(madrasaId: number, classId: number, examId?: number) {
     return prisma.resultMaster.findFirst({
-      where: { madrasaId, classId, ...(examId ? { examId } : {}) },
+      where: { madrasaId, classId, deletedAt: null, ...(examId ? { examId } : {}) },
       orderBy: { id: "desc" },
       include: { summary: true },
     });

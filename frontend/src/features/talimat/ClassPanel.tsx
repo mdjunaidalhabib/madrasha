@@ -25,6 +25,8 @@ export default function ClassPanel() {
   const [editingClassName, setEditingClassName] = useState("");
   const [editingClassOriginalName, setEditingClassOriginalName] = useState("");
   const [showClassInput, setShowClassInput] = useState(false);
+  const [dragClassId, setDragClassId] = useState<number | null>(null);
+  const [savingClassOrder, setSavingClassOrder] = useState(false);
 
   // BOOK
   const [name, setName] = useState("");
@@ -50,6 +52,19 @@ export default function ClassPanel() {
   useEffect(() => {
     loadDivisions();
   }, [loadDivisions]);
+
+  const removeDivision = (id: number) => {
+    useConfirmStore.getState().show({
+      title: "বিভাগ ডিলিট করুন",
+      message: "বিভাগটি ট্রাশে পাঠাতে চান? পরে ট্রাশ থেকে ফিরিয়ে আনা যাবে।",
+      confirmText: "ডিলিট করুন",
+      danger: true,
+      onConfirm: async () => {
+        await api.delete(`/madrasa-divisions/${id}`);
+        loadDivisions();
+      },
+    });
+  };
 
   const loadClasses = useCallback(async () => {
     const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
@@ -127,6 +142,59 @@ export default function ClassPanel() {
     loadClasses();
   };
 
+  /* ================= CLASS ORDER (drag & drop) ================= */
+
+  const reorderClassesLocally = (targetClassId: number) => {
+    if (dragClassId === null || dragClassId === targetClassId) return;
+
+    setClasses((prev) => {
+      const from = prev.findIndex((c: any) => c.class_id === dragClassId);
+      const to = prev.findIndex((c: any) => c.class_id === targetClassId);
+      if (from === -1 || to === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const persistClassOrder = async (orderedClasses: any[]) => {
+    setSavingClassOrder(true);
+    try {
+      await api.put("/madrasa-classes/reorder", {
+        division_id: Number(divisionId),
+        class_ids: orderedClasses.map((c) => c.class_id),
+      });
+    } catch (err: any) {
+      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      loadClasses();
+    } finally {
+      setSavingClassOrder(false);
+    }
+  };
+
+  const handleClassHandlePointerDown = (targetClassId: number) => (event: React.PointerEvent) => {
+    if (savingClassOrder) return;
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    setDragClassId(targetClassId);
+  };
+
+  const handleClassHandlePointerMove = (event: React.PointerEvent) => {
+    if (dragClassId === null) return;
+    const hovered = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+    const card = hovered?.closest<HTMLElement>("[data-class-id]");
+    const targetClassId = Number(card?.dataset.classId);
+    if (!targetClassId) return;
+    reorderClassesLocally(targetClassId);
+  };
+
+  const handleClassHandlePointerEnd = () => {
+    if (dragClassId === null) return;
+    setDragClassId(null);
+    persistClassOrder(classes);
+  };
+
   /* ================= BOOK ================= */
 
   const addBook = async () => {
@@ -141,22 +209,14 @@ export default function ClassPanel() {
     loadBooks();
   };
 
-  const removeBook = async (book: any) => {
-    const response = await api.get(`/madrasa-books/${book.book_id}/delete-info`);
-    const deleteInfo = response.data || {};
-    const hasMarks = Boolean(deleteInfo.has_marks);
-    const markCount = Number(deleteInfo.mark_count || 0);
-
+  const removeBook = (book: any) => {
     useConfirmStore.getState().show({
-      title: hasMarks ? "কিতাব ও নম্বর ডিলিট করুন" : "কিতাব ডিলিট করুন",
-      message: hasMarks
-        ? `“${book.book_name_bn}” কিতাবে ${markCount}টি নম্বর এন্ট্রি আছে। কিতাবটি ডিলিট করলে এর সব নম্বরও স্থায়ীভাবে ডিলিট হবে। আপনি কি নিশ্চিত?`
-        : `“${book.book_name_bn}” কিতাবটি ডিলিট করতে চান?`,
+      title: "কিতাব ডিলিট করুন",
+      message: `“${book.book_name_bn}” কিতাবটি ট্রাশে পাঠাতে চান? এর নম্বরসমূহ সংরক্ষিত থাকবে, ট্রাশ থেকে ফিরিয়ে আনা যাবে।`,
       confirmText: "ডিলিট করুন",
       danger: true,
       onConfirm: async () => {
-        const confirmQuery = hasMarks ? "?confirm_marks=true" : "";
-        await api.delete(`/madrasa-books/${book.book_id}${confirmQuery}`);
+        await api.delete(`/madrasa-books/${book.book_id}`);
         await loadBooks();
       },
     });
@@ -292,32 +352,51 @@ export default function ClassPanel() {
 
       <SectionCard title="বিভাগ">
         <div className="flex flex-wrap gap-2">
-          {divisions.map((division) => (
-            <button
-              key={division.division_id}
-              onClick={() => setDivisionId(String(division.division_id))}
-              className={`touch-manipulation rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                divisionId === String(division.division_id)
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {division.division_name_bn}
-            </button>
-          ))}
+          {divisions.map((division) => {
+            const isActiveDivision = divisionId === String(division.division_id);
+            return (
+              <div
+                key={division.division_id}
+                className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
+                  isActiveDivision ? "border-blue-600 bg-blue-600" : "border-gray-200 bg-white"
+                }`}
+              >
+                <button
+                  onClick={() => setDivisionId(String(division.division_id))}
+                  className={`touch-manipulation rounded-md px-2.5 py-1.5 text-sm font-medium transition ${
+                    isActiveDivision ? "text-white" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {division.division_name_bn}
+                </button>
+                <button
+                  onClick={() => removeDivision(division.division_id)}
+                  aria-label="বিভাগ ডিলিট করুন"
+                  className={`touch-manipulation rounded-md p-1.5 ${
+                    isActiveDivision
+                      ? "text-blue-100 hover:bg-blue-700"
+                      : "text-gray-400 hover:bg-red-50 hover:text-red-600"
+                  }`}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </SectionCard>
 
-      <SectionCard title="শ্রেণি">
+      <SectionCard title="শ্রেণি" hint="টেনে (drag) শ্রেণির ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।">
         <div className="flex flex-wrap gap-2">
           {classes.map((classItem) => {
             const isEditingThis = editingClassId === classItem.class_id;
             return (
               <div
                 key={classItem.class_id}
+                data-class-id={classItem.class_id}
                 className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
                   isEditingThis ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-white"
-                }`}
+                } ${dragClassId === classItem.class_id ? "opacity-50" : ""}`}
               >
                 {isEditingThis ? (
                   <>
@@ -348,6 +427,17 @@ export default function ClassPanel() {
                   </>
                 ) : (
                   <>
+                    <span
+                      onPointerDown={handleClassHandlePointerDown(classItem.class_id)}
+                      onPointerMove={handleClassHandlePointerMove}
+                      onPointerUp={handleClassHandlePointerEnd}
+                      onPointerCancel={handleClassHandlePointerEnd}
+                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-400 active:cursor-grabbing active:bg-gray-100"
+                      style={{ touchAction: "none" }}
+                      aria-label="শ্রেণি সরান"
+                    >
+                      <GripVertical size={14} />
+                    </span>
                     <button
                       onClick={() => setClassId(String(classItem.class_id))}
                       className={`touch-manipulation rounded-md px-3 py-1.5 text-sm font-medium transition ${

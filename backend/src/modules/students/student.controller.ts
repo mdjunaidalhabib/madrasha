@@ -216,6 +216,43 @@ export const deleteStudent = async (req: Request, res: Response) => {
 };
 
 /* =========================================================
+   BULK DELETE STUDENTS (Student List bulk action -> Trash)
+========================================================= */
+export const bulkDeleteStudents = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const ids: number[] = req.body.ids;
+    const affectedRows = await studentService.bulkDeleteStudents(madrasaId, ids);
+
+    return res.json({
+      success: true,
+      message: "Selected students moved to trash",
+      affectedRows,
+    });
+  } catch (error) {
+    return respondWithError(res, error, "BULK DELETE STUDENTS ERROR:");
+  }
+};
+
+/* =========================================================
+   EXPEL / UN-EXPEL STUDENT (status only, not Trash)
+========================================================= */
+export const expelStudent = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const expelled: boolean = req.body.expelled;
+    await studentService.setExpelStatus(Number(req.params.id), madrasaId, expelled);
+
+    return res.json({
+      success: true,
+      message: expelled ? "Student expelled" : "Student expulsion reverted",
+    });
+  } catch (error) {
+    return respondWithError(res, error, "EXPEL STUDENT ERROR:");
+  }
+};
+
+/* =========================================================
    ADMISSION APPROVAL WORKFLOW
 ========================================================= */
 

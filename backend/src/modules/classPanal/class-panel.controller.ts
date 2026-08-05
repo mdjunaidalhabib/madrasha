@@ -27,6 +27,15 @@ export const getDivisions = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteDivision = async (req: Request, res: Response) => {
+  try {
+    await classPanelService.deleteDivision(req.tenant?.madrasa_id, Number(req.params.id));
+    res.json({ message: "Division removed from madrasa" });
+  } catch (error) {
+    respondError(res, error, "❌ Delete division error:", "Failed to delete division");
+  }
+};
+
 /* =========================================================
    CLASSES
 ========================================================= */
@@ -66,6 +75,15 @@ export const deleteClass = async (req: Request, res: Response) => {
     res.json({ message: "Class removed from madrasa" });
   } catch (error) {
     respondError(res, error, "❌ Delete class error:", "Failed to delete class");
+  }
+};
+
+export const reorderClasses = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.reorderClasses(req.tenant?.madrasa_id, req.body);
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Reorder classes error:", "Failed to reorder classes");
   }
 };
 
@@ -135,11 +153,7 @@ export const getSubjectDeleteInfo = async (req: Request, res: Response) => {
 
 export const deleteSubject = async (req: Request, res: Response) => {
   try {
-    await classPanelService.deleteSubject(
-      req.tenant?.madrasa_id,
-      Number(req.params.id),
-      req.query.confirm_marks === "true",
-    );
+    await classPanelService.deleteSubject(req.tenant?.madrasa_id, Number(req.params.id));
     res.json({ message: "Subject removed and affected results recalculated" });
   } catch (error) {
     respondError(res, error, "❌ Delete subject error:", "Failed to delete subject");

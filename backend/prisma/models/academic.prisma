@@ -21,17 +21,20 @@ model Division {
 }
 
 model MadrasaDivision {
-  id         Int      @id @default(autoincrement())
-  madrasaId  Int      @map("madrasa_id")
-  divisionId Int      @map("division_id")
-  isActive   Int?     @default(1) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  id         Int       @id @default(autoincrement())
+  madrasaId  Int       @map("madrasa_id")
+  divisionId Int       @map("division_id")
+  isActive   Int?      @default(1) @map("is_active")
+  sortOrder  Int       @default(0) @map("sort_order")
+  deletedAt  DateTime? @map("deleted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
 
   madrasa  Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, divisionId], map: "uniq_madrasa_division")
+  @@index([madrasaId, deletedAt], map: "idx_madrasa_divisions_deleted")
   @@map("madrasa_divisions")
 }
 
@@ -80,36 +83,41 @@ model Book {
 }
 
 model MadrasaClass {
-  id        Int      @id @default(autoincrement())
-  madrasaId Int      @map("madrasa_id")
-  classId   Int      @map("class_id")
-  isActive  Int?     @default(1) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id        Int       @id @default(autoincrement())
+  madrasaId Int       @map("madrasa_id")
+  classId   Int       @map("class_id")
+  isActive  Int?      @default(1) @map("is_active")
+  sortOrder Int       @default(0) @map("sort_order")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, classId], map: "uniq_madrasa_class")
+  @@index([madrasaId, deletedAt], map: "idx_madrasa_classes_deleted")
   @@map("madrasa_classes")
 }
 
 model MadrasaBook {
-  id        Int      @id @default(autoincrement())
-  madrasaId Int      @map("madrasa_id")
-  bookId    Int      @map("book_id")
-  isActive  Int?     @default(1) @map("is_active")
-  isMiyari  Boolean  @default(false) @map("is_miyari")
-  fullMark  Int      @default(100) @map("full_mark")
-  sortOrder Int      @default(0) @map("sort_order")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id        Int       @id @default(autoincrement())
+  madrasaId Int       @map("madrasa_id")
+  bookId    Int       @map("book_id")
+  isActive  Int?      @default(1) @map("is_active")
+  isMiyari  Boolean   @default(false) @map("is_miyari")
+  fullMark  Int       @default(100) @map("full_mark")
+  sortOrder Int       @default(0) @map("sort_order")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, bookId], map: "uniq_madrasa_book")
   @@index([madrasaId, isMiyari], map: "idx_madrasa_books_miyari")
+  @@index([madrasaId, deletedAt], map: "idx_madrasa_books_deleted")
   @@map("madrasa_books")
 }
 

@@ -637,6 +637,7 @@ async function main() {
     { keyName: "students.create", name: "Create Students" },
     { keyName: "students.update", name: "Update Students" },
     { keyName: "students.delete", name: "Delete Students" },
+    { keyName: "students.expel", name: "Expel Student" },
     { keyName: "students.approve_admission", name: "Approve/Reject Admissions" },
     { keyName: "students.promote", name: "Promote Students" },
 

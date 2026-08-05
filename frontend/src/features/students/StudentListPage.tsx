@@ -7,6 +7,9 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { StudentFullRecord } from "../../types/student";
+import { useConfirmStore } from "../../store/confirmStore";
+import { useToastStore } from "../../store/toastStore";
+import { toBanglaDigits } from "../../utils/reportUtils";
 
 type Division = {
   division_id: number;
@@ -32,6 +35,7 @@ type Student = {
   current_class?: string;
   class_name?: string;
   class?: string;
+  is_active?: number;
 };
 
 const StudentListPage = () => {
@@ -47,6 +51,8 @@ const StudentListPage = () => {
   const [classLoading, setClassLoading] = useState(false);
   const [error, setError] = useState("");
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
@@ -162,6 +168,72 @@ const StudentListPage = () => {
       return matchSearch && matchDivision && matchClass && matchAcademicYear;
     });
   }, [students, search, selectedDivision, selectedClass, selectedAcademicYear]);
+
+  // ফিল্টার বদলালে আগের সিলেকশন (অন্য ভিউয়ের) যেন থেকে না যায়।
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, selectedDivision, selectedClass, selectedAcademicYear]);
+
+  const allFilteredSelected =
+    filteredStudents.length > 0 &&
+    filteredStudents.every((student) => selectedIds.has(String(student.id)));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(
+      allFilteredSelected ? new Set() : new Set(filteredStudents.map((s) => String(s.id))),
+    );
+  };
+
+  const toggleSelectOne = (id: string | number) => {
+    const key = String(id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const statusBadge = (isActive?: number) => {
+    const expelled = Number(isActive) === 0;
+    return (
+      <span
+        className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+          expelled
+            ? "border-red-300 bg-red-100 text-red-700"
+            : "border-green-300 bg-green-100 text-green-700"
+        }`}
+      >
+        {expelled ? "বহিষ্কৃত" : "সক্রিয়"}
+      </span>
+    );
+  };
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    useConfirmStore.getState().show({
+      title: "নির্বাচিত শিক্ষার্থীদের ট্র্যাশে পাঠাবেন?",
+      message: `${toBanglaDigits(ids.length)} জন শিক্ষার্থীকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।`,
+      confirmText: "ট্র্যাশে পাঠান",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          setBulkBusy(true);
+          await api.delete("/students/bulk", { data: { ids: ids.map(Number) } });
+          useToastStore.getState().show("ট্র্যাশে পাঠানো হয়েছে", "success");
+          setStudents((prev) => prev.filter((s) => !selectedIds.has(String(s.id))));
+          setSelectedIds(new Set());
+        } catch (err) {
+          logger.error("BULK DELETE STUDENTS ERROR:", err);
+          useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
 
   const exportStudents = useMemo(() => {
     return filteredStudents.map((student) => ({
@@ -294,6 +366,22 @@ const StudentListPage = () => {
           </div>
         </div>
 
+        {selectedIds.size > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+            <p className="text-sm font-medium text-red-700">
+              {toBanglaDigits(selectedIds.size)} জন নির্বাচিত হয়েছে
+            </p>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={bulkBusy}
+              className="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {bulkBusy ? "পাঠানো হচ্ছে..." : "ট্র্যাশে পাঠান"}
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             {error}
@@ -302,7 +390,7 @@ const StudentListPage = () => {
 
         {/* Loading state */}
         {loading ? (
-          <SkeletonTable rows={8} columns={9} />
+          <SkeletonTable rows={8} columns={11} />
         ) : filteredStudents.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
             কোন ছাত্র পাওয়া যায়নি
@@ -317,13 +405,22 @@ const StudentListPage = () => {
                   className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                 >
                   <div className="mb-3 flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
-                    <div>
-                      <p className="text-base font-semibold text-gray-800">
-                        {student.name_bn || student.name || "নেই"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        রেজিস্ট্রেশন: {student.registration_no || "নেই"}
-                      </p>
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(String(student.id))}
+                        onChange={() => toggleSelectOne(student.id)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300"
+                      />
+                      <div>
+                        <p className="text-base font-semibold text-gray-800">
+                          {student.name_bn || student.name || "নেই"}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          রেজিস্ট্রেশন: {student.registration_no || "নেই"}
+                        </p>
+                        <div className="mt-1">{statusBadge(student.is_active)}</div>
+                      </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
                       রোল {student.roll || "নেই"}
@@ -375,6 +472,14 @@ const StudentListPage = () => {
                 <table className="w-full min-w-[900px] border-collapse text-center">
                   <thead className="bg-blue-800 text-sm text-white">
                     <tr>
+                      <th className="border p-2.5">
+                        <input
+                          type="checkbox"
+                          checked={allFilteredSelected}
+                          onChange={toggleSelectAll}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </th>
                       <th className="border p-2.5">রোল নম্বর</th>
                       <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
                       <th className="border p-2.5">নাম</th>
@@ -383,6 +488,7 @@ const StudentListPage = () => {
                       <th className="border p-2.5">শিক্ষাবর্ষ</th>
                       <th className="border p-2.5">বিভাগ</th>
                       <th className="border p-2.5">বর্তমান শ্রেণি</th>
+                      <th className="border p-2.5">স্ট্যাটাস</th>
                       <th className="border p-2.5">একশন</th>
                     </tr>
                   </thead>
@@ -390,6 +496,15 @@ const StudentListPage = () => {
                   <tbody className="text-sm">
                     {filteredStudents.map((student) => (
                       <tr key={student.id} className="border-t transition hover:bg-gray-50">
+                        <td className="border p-2.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(String(student.id))}
+                            onChange={() => toggleSelectOne(student.id)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </td>
+
                         <td className="border p-2.5">{student.roll || "নেই"}</td>
 
                         <td className="border p-2.5">{student.registration_no || "নেই"}</td>
@@ -410,6 +525,8 @@ const StudentListPage = () => {
                             student.current_class || student.class_name || student.class,
                           )}
                         </td>
+
+                        <td className="border p-2.5">{statusBadge(student.is_active)}</td>
 
                         <td className="border p-2.5">
                           <button

@@ -26,6 +26,41 @@ export class TrashRepository {
     });
   }
 
+  findTrashedDivisions(madrasaId: number) {
+    return prisma.madrasaDivision.findMany({
+      where: { madrasaId, deletedAt: { not: null } },
+      include: { division: { select: { nameBn: true, name: true } } },
+      orderBy: { deletedAt: "desc" },
+    });
+  }
+
+  findTrashedClasses(madrasaId: number) {
+    return prisma.madrasaClass.findMany({
+      where: { madrasaId, deletedAt: { not: null } },
+      include: { class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } } },
+      orderBy: { deletedAt: "desc" },
+    });
+  }
+
+  findTrashedBooks(madrasaId: number) {
+    return prisma.madrasaBook.findMany({
+      where: { madrasaId, deletedAt: { not: null } },
+      include: { book: { select: { nameBn: true, name: true } } },
+      orderBy: { deletedAt: "desc" },
+    });
+  }
+
+  findTrashedResults(madrasaId: number) {
+    return prisma.resultMaster.findMany({
+      where: { madrasaId, deletedAt: { not: null } },
+      include: {
+        exam: { select: { name: true, year: true } },
+        class: { select: { nameBn: true, name: true } },
+      },
+      orderBy: { deletedAt: "desc" },
+    });
+  }
+
   /* ================= RESTORE ================= */
 
   restoreStudent(id: number, madrasaId: number) {
@@ -44,6 +79,34 @@ export class TrashRepository {
 
   restoreExam(id: number, madrasaId: number) {
     return prisma.exam.updateMany({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
+  }
+
+  restoreDivision(id: number, madrasaId: number) {
+    return prisma.madrasaDivision.updateMany({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      data: { deletedAt: null, isActive: 1 },
+    });
+  }
+
+  restoreClass(id: number, madrasaId: number) {
+    return prisma.madrasaClass.updateMany({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      data: { deletedAt: null, isActive: 1 },
+    });
+  }
+
+  restoreBook(id: number, madrasaId: number) {
+    return prisma.madrasaBook.updateMany({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      data: { deletedAt: null, isActive: 1 },
+    });
+  }
+
+  restoreResult(id: number, madrasaId: number) {
+    return prisma.resultMaster.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
       data: { deletedAt: null },
     });
@@ -83,17 +146,77 @@ export class TrashRepository {
     return 1;
   }
 
+  // Division/Class are global-catalog join rows with no FK-dependent
+  // children of their own (Mark/ResultMaster reference the global
+  // Class/Book directly, not these join tables) — a plain delete is safe
+  // and never touches the shared catalog row other tenants still use.
+  permanentDeleteDivision(id: number, madrasaId: number) {
+    return prisma.madrasaDivision.deleteMany({ where: { id, madrasaId, deletedAt: { not: null } } });
+  }
+
+  permanentDeleteClass(id: number, madrasaId: number) {
+    return prisma.madrasaClass.deleteMany({ where: { id, madrasaId, deletedAt: { not: null } } });
+  }
+
+  /** Book/MadrasaBook is the one join row with real dependent data. Its
+   * Marks are deliberately preserved while the book sits in Trash, so only
+   * now — permanent delete — are they actually removed. */
+  async permanentDeleteBook(id: number, madrasaId: number): Promise<number> {
+    const link = await prisma.madrasaBook.findFirst({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      select: { bookId: true },
+    });
+    if (!link) return 0;
+
+    await prisma.$transaction([
+      prisma.mark.deleteMany({ where: { madrasaId, bookId: link.bookId } }),
+      prisma.madrasaBook.delete({ where: { id } }),
+    ]);
+    return 1;
+  }
+
+  /** Reuses the exact transaction that used to run synchronously on the
+   * normal "delete result" button — now deferred until permanent delete. */
+  async permanentDeleteResult(id: number, madrasaId: number): Promise<number> {
+    const master = await prisma.resultMaster.findFirst({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      select: { id: true },
+    });
+    if (!master) return 0;
+
+    await prisma.$transaction([
+      prisma.mark.deleteMany({ where: { resultMasterId: id } }),
+      prisma.resultSummary.deleteMany({ where: { resultMasterId: id } }),
+      prisma.resultMaster.delete({ where: { id } }),
+    ]);
+    return 1;
+  }
+
   /** Background sweep (not tenant-scoped) — permanently removes anything
    * left untouched in Trash past the retention cutoff, across every
    * madrasa. Reuses the same cascade-safe ordering as the manual delete. */
-  async purgeExpired(
-    cutoff: Date,
-  ): Promise<{ students: number; teachers: number; exams: number }> {
-    const [expiredStudents, expiredTeachers, expiredExams] = await Promise.all([
-      prisma.student.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
-      prisma.teacher.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
-      prisma.exam.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
-    ]);
+  async purgeExpired(cutoff: Date): Promise<{
+    students: number;
+    teachers: number;
+    exams: number;
+    divisions: number;
+    classes: number;
+    books: number;
+    results: number;
+  }> {
+    const [expiredStudents, expiredTeachers, expiredExams, expiredDivisions, expiredClasses, expiredBooks, expiredResults] =
+      await Promise.all([
+        prisma.student.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+        prisma.teacher.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+        prisma.exam.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+        prisma.madrasaDivision.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+        prisma.madrasaClass.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+        prisma.madrasaBook.findMany({
+          where: { deletedAt: { lt: cutoff } },
+          select: { id: true, bookId: true, madrasaId: true },
+        }),
+        prisma.resultMaster.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true } }),
+      ]);
 
     if (expiredStudents.length) {
       await prisma.student.deleteMany({
@@ -114,11 +237,41 @@ export class TrashRepository {
         prisma.exam.deleteMany({ where: { id: { in: examIds } } }),
       ]);
     }
+    if (expiredDivisions.length) {
+      await prisma.madrasaDivision.deleteMany({
+        where: { id: { in: expiredDivisions.map((d) => d.id) } },
+      });
+    }
+    if (expiredClasses.length) {
+      await prisma.madrasaClass.deleteMany({
+        where: { id: { in: expiredClasses.map((c) => c.id) } },
+      });
+    }
+    if (expiredBooks.length) {
+      await prisma.$transaction([
+        prisma.mark.deleteMany({
+          where: { OR: expiredBooks.map((b) => ({ madrasaId: b.madrasaId, bookId: b.bookId })) },
+        }),
+        prisma.madrasaBook.deleteMany({ where: { id: { in: expiredBooks.map((b) => b.id) } } }),
+      ]);
+    }
+    if (expiredResults.length) {
+      const resultIds = expiredResults.map((r) => r.id);
+      await prisma.$transaction([
+        prisma.mark.deleteMany({ where: { resultMasterId: { in: resultIds } } }),
+        prisma.resultSummary.deleteMany({ where: { resultMasterId: { in: resultIds } } }),
+        prisma.resultMaster.deleteMany({ where: { id: { in: resultIds } } }),
+      ]);
+    }
 
     return {
       students: expiredStudents.length,
       teachers: expiredTeachers.length,
       exams: expiredExams.length,
+      divisions: expiredDivisions.length,
+      classes: expiredClasses.length,
+      books: expiredBooks.length,
+      results: expiredResults.length,
     };
   }
 }

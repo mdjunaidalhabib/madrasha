@@ -43,6 +43,7 @@ interface SummaryMark {
 interface SummaryItem {
   result_master_id: number;
   student_id: number;
+  registration_no: number;
   name_bn: string;
   total: number;
   average: number;

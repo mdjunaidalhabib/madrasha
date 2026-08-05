@@ -25,9 +25,8 @@ const TRASH_PURGE_INITIAL_DELAY_MS = 30 * 1000;
 const runTrashPurge = async (): Promise<void> => {
   try {
     const result = await trashService.purgeExpired();
-    if (result.students || result.teachers || result.exams) {
-      logger.info("Trash auto-purge complete", result);
-    }
+    const total = Object.values(result).reduce((sum, count) => sum + count, 0);
+    if (total) logger.info("Trash auto-purge complete", result);
   } catch (error) {
     logger.error("Trash auto-purge failed", error);
   }

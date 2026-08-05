@@ -80,6 +80,22 @@ export class StudentRepository {
     });
   }
 
+  // Bulk soft delete — moves many students to Trash at once (Student List bulk action).
+  softDeleteManyByIds(madrasaId: number, ids: number[]) {
+    return prisma.student.updateMany({
+      where: { madrasaId, id: { in: ids }, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  /** Flips the Expel status (`isActive`) without moving the record to Trash. */
+  setActiveStatus(id: number, madrasaId: number, isActive: number) {
+    return prisma.student.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { isActive },
+    });
+  }
+
   /* ---- transaction-scoped helpers used by the bulk-admission flow ---- */
 
   findByIdForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {

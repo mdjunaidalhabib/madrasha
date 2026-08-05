@@ -28,6 +28,7 @@ const StudentProfilePage = () => {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [expelBusy, setExpelBusy] = useState(false);
 
   const fetchStudent = useCallback(async () => {
     if (!id) return;
@@ -124,6 +125,37 @@ const StudentProfilePage = () => {
     });
   };
 
+  const isExpelled = Number(student?.is_active) === 0;
+
+  const handleExpelToggle = () => {
+    const expelling = !isExpelled;
+
+    useConfirmStore.getState().show({
+      title: expelling ? "শিক্ষার্থীকে বহিষ্কার করবেন?" : "বহিষ্কার বাতিল করবেন?",
+      message: expelling
+        ? "এই শিক্ষার্থীকে বহিষ্কার করা হবে। রেকর্ড ট্র্যাশে যাবে না, পরে চাইলে বহিষ্কার বাতিল করা যাবে।"
+        : "এই শিক্ষার্থীর বহিষ্কার অবস্থা বাতিল করে আবার সক্রিয় করতে চান?",
+      confirmText: expelling ? "বহিষ্কার করুন" : "সক্রিয় করুন",
+      danger: expelling,
+      onConfirm: async () => {
+        try {
+          setExpelBusy(true);
+          await api.patch(`/students/${id}/expel`, { expelled: expelling });
+          setStudent((prev: any) => ({ ...prev, is_active: expelling ? 0 : 1 }));
+          setOriginal((prev: any) => ({ ...prev, is_active: expelling ? 0 : 1 }));
+          useToastStore
+            .getState()
+            .show(expelling ? "বহিষ্কার করা হয়েছে" : "বহিষ্কার বাতিল করা হয়েছে", "success");
+        } catch (error) {
+          logger.error("EXPEL STUDENT ERROR:", error);
+          useToastStore.getState().show("করা যায়নি", "error");
+        } finally {
+          setExpelBusy(false);
+        }
+      },
+    });
+  };
+
   if (loading)
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
@@ -136,7 +168,18 @@ const StudentProfilePage = () => {
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold sm:text-3xl">Student Profile</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold sm:text-3xl">Student Profile</h1>
+          <span
+            className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${
+              isExpelled
+                ? "border-red-300 bg-red-100 text-red-700"
+                : "border-green-300 bg-green-100 text-green-700"
+            }`}
+          >
+            {isExpelled ? "বহিষ্কৃত" : "সক্রিয়"}
+          </span>
+        </div>
 
         <div className="flex flex-wrap gap-3">
           {!isEditMode ? (
@@ -175,6 +218,16 @@ const StudentProfilePage = () => {
             row={student}
             className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
           />
+
+          <button
+            onClick={handleExpelToggle}
+            disabled={expelBusy}
+            className={`rounded px-4 py-2 text-white disabled:opacity-60 ${
+              isExpelled ? "bg-amber-500" : "bg-orange-600"
+            }`}
+          >
+            {isExpelled ? "বহিষ্কার বাতিল করুন" : "বহিষ্কার করুন"}
+          </button>
 
           <button onClick={handleDelete} className="rounded bg-red-500 px-4 py-2 text-white">
             Delete

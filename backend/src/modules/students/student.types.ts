@@ -57,6 +57,8 @@ export interface StudentApiDto {
   admission_status: "PENDING" | "APPROVED" | "REJECTED";
   admission_type: "NEW" | "RE_ADMISSION";
   rejection_reason: string | null;
+  /** 1 = সক্রিয় (active), 0 = বহিষ্কৃত (expelled). */
+  is_active: number;
 }
 
 export type StudentListItem = StudentApiDto;

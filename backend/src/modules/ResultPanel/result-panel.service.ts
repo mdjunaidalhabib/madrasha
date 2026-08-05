@@ -580,9 +580,12 @@ export class ResultPanelService {
     const master = await this.repository.findResultMasterById(id, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
 
-    await this.repository.deleteResultInTransaction(id);
+    // Soft-delete only — moves the result to Trash. Marks/summary rows are
+    // preserved until it's permanently deleted from there (see
+    // trash.repository.ts#permanentDeleteResult).
+    await this.repository.softDeleteResultMaster(id, madrasaId);
 
-    return { message: "Result deleted successfully" };
+    return { message: "Result moved to trash" };
   }
 
   async getFullResultView(
@@ -666,6 +669,7 @@ export class ResultPanelService {
       return {
         result_master_id: row.resultMasterId,
         student_id: row.student.id,
+        registration_no: row.student.registrationNo,
         name_bn: row.student.nameBn,
         total: Number(row.total || 0),
         average: Number(row.average || 0),

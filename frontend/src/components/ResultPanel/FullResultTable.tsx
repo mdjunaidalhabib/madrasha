@@ -2,6 +2,7 @@
 
 import { useConfirmStore } from "../../store/confirmStore";
 import { SkeletonTable } from "../ui/Skeleton";
+import { toBanglaDigits, formatReportValue } from "../../utils/reportUtils";
 
 interface SummaryMark {
   book_id: number;
@@ -13,6 +14,7 @@ interface SummaryMark {
 interface Summary {
   result_master_id?: number;
   student_id: number;
+  registration_no: number;
   name_bn: string;
   total: number;
   average: number;
@@ -82,7 +84,7 @@ export default function FullResultTable({
   const getMark = (student: Summary, bookId: number) => {
     const found = student.marks?.find((m) => m.book_id === bookId);
     if (!found) return "-";
-    return found.is_absent ? "অনু" : found.mark;
+    return found.is_absent ? "অনু" : toBanglaDigits(found.mark);
   };
 
   return (
@@ -166,8 +168,8 @@ export default function FullResultTable({
         </colgroup>
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-2 py-2 text-center">ID</th>
-            <th className="border px-2 py-2 text-center">Name</th>
+            <th className="border px-2 py-2 text-center">রেজিঃ নম্বর</th>
+            <th className="border px-2 py-2 text-center">শিক্ষার্থীর নাম</th>
 
             {subjectList.map((b) => (
               <th key={b.book_id} className="border px-2 py-2 text-center">
@@ -179,13 +181,13 @@ export default function FullResultTable({
               </th>
             ))}
 
-            <th className="border px-2 py-2 text-center">Total</th>
-            <th className="border px-2 py-2 text-center">Avg</th>
-            <th className="border px-2 py-2 text-center">General Grade</th>
-            <th className="border px-2 py-2 text-center">Madrasa Grade</th>
-            <th className="border px-2 py-2 text-center">Status</th>
-            <th className="border px-2 py-2 text-center">Rank</th>
-            <th className="border px-2 py-2 text-center">Action</th>
+            <th className="border px-2 py-2 text-center">মোট</th>
+            <th className="border px-2 py-2 text-center">গড়</th>
+            <th className="border px-2 py-2 text-center">সাধারণ গ্রেড</th>
+            <th className="border px-2 py-2 text-center">মাদরাসা গ্রেড</th>
+            <th className="border px-2 py-2 text-center">অবস্থা</th>
+            <th className="border px-2 py-2 text-center">মেধাক্রম</th>
+            <th className="border px-2 py-2 text-center">কার্যক্রম</th>
           </tr>
         </thead>
 
@@ -211,7 +213,9 @@ export default function FullResultTable({
                       : "hover:bg-gray-50"
                 }
               >
-                <td className="border px-2 py-2 text-center break-words">{s.student_id}</td>
+                <td className="border px-2 py-2 text-center break-words">
+                  {toBanglaDigits(s.registration_no)}
+                </td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>
 
                 {subjectList.map((b) => (
@@ -221,10 +225,10 @@ export default function FullResultTable({
                 ))}
 
                 <td className="border px-2 py-2 text-blue-600 text-center break-words">
-                  {s.total}
+                  {toBanglaDigits(s.total)}
                 </td>
                 <td className="border px-2 py-2 text-green-600 text-center break-words">
-                  {Number(s.average).toFixed(2)}
+                  {toBanglaDigits(Number(s.average).toFixed(2))}
                 </td>
                 <td className="border px-2 py-2 text-center break-words">
                   {s.general_grade || "-"}
@@ -232,9 +236,11 @@ export default function FullResultTable({
                 <td className="border px-2 py-2 text-center break-words">
                   {s.madrasa_grade || "-"}
                 </td>
-                <td className="border px-2 py-2 text-center break-words">{s.status}</td>
+                <td className="border px-2 py-2 text-center break-words">
+                  {formatReportValue(s.status)}
+                </td>
                 <td className="border px-2 py-2 text-center font-bold break-words">
-                  #{s.rank_no}
+                  {toBanglaDigits(s.rank_no)}
                 </td>
 
                 <td className="border px-2 py-2 text-center break-words">

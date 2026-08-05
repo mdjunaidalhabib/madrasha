@@ -762,6 +762,24 @@ export class StudentService {
     return result.count;
   }
 
+  /** Bulk soft delete — moves many students to Trash at once (Student List bulk action). */
+  async bulkDeleteStudents(madrasaId: number | undefined, ids: number[]) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    if (!ids.length) throw new BadRequestError("ids is required");
+
+    const result = await this.repository.softDeleteManyByIds(madrasaId, ids);
+    return result.count;
+  }
+
+  /** Flips the Expel status without touching Trash. */
+  async setExpelStatus(id: number, madrasaId: number | undefined, expelled: boolean) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const result = await this.repository.setActiveStatus(id, madrasaId, expelled ? 0 : 1);
+    if (result.count === 0) throw new StudentNotFoundError();
+    return result.count;
+  }
+
   /* ================= ADMISSION APPROVAL WORKFLOW ================= */
 
   /** Admission requests still waiting for admin review. */

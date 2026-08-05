@@ -59,5 +59,6 @@ export const toStudentApiDto = (row: Record<string, any>): StudentApiDto => {
     admission_status: s.admissionStatus ?? "APPROVED",
     admission_type: s.admissionType ?? "NEW",
     rejection_reason: s.rejectionReason ?? null,
+    is_active: s.isActive ?? 1,
   };
 };

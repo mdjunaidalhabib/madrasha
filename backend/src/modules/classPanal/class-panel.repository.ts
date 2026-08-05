@@ -11,8 +11,8 @@ export class ClassPanelRepository {
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, class: { divisionId } },
-      select: { class: { select: { id: true, nameBn: true, divisionId: true, sortOrder: true } } },
-      orderBy: { class: { sortOrder: "asc" } },
+      select: { id: true, sortOrder: true, class: { select: { id: true, nameBn: true, divisionId: true } } },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
@@ -24,13 +24,21 @@ export class ClassPanelRepository {
   }
 
   createClass(nameBn: string, divisionId: number) {
-    // Custom, madrasha-added classes sort after the seeded master list
-    // (which uses low sortOrder numbers) unless reordered later.
-    return prisma.class.create({ data: { nameBn, divisionId, isActive: true, sortOrder: 9999 } });
+    return prisma.class.create({ data: { nameBn, divisionId, isActive: true } });
   }
 
-  linkClassToMadrasa(madrasaId: number, classId: number) {
-    return prisma.madrasaClass.create({ data: { madrasaId, classId } });
+  async linkClassToMadrasa(madrasaId: number, classId: number, divisionId: number) {
+    // Class order is per-tenant (like books), so a newly linked class sorts
+    // after this madrasa's current last class in the division, not the
+    // shared global catalogue order.
+    const last = await prisma.madrasaClass.findFirst({
+      where: { madrasaId, isActive: 1, class: { divisionId } },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    return prisma.madrasaClass.create({
+      data: { madrasaId, classId, sortOrder: (last?.sortOrder ?? -1) + 1 },
+    });
   }
 
   updateClass(id: number, nameBn: string) {
@@ -40,8 +48,26 @@ export class ClassPanelRepository {
   deactivateMadrasaClass(madrasaId: number, classId: number) {
     return prisma.madrasaClass.updateMany({
       where: { classId, madrasaId },
-      data: { isActive: 0 },
+      data: { isActive: 0, deletedAt: new Date() },
     });
+  }
+
+  deactivateMadrasaDivision(madrasaId: number, divisionId: number) {
+    return prisma.madrasaDivision.updateMany({
+      where: { divisionId, madrasaId },
+      data: { isActive: 0, deletedAt: new Date() },
+    });
+  }
+
+  async reorderClasses(madrasaId: number, orderedClassIds: number[]) {
+    await prisma.$transaction(
+      orderedClassIds.map((classId, index) =>
+        prisma.madrasaClass.updateMany({
+          where: { madrasaId, classId, isActive: 1 },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
   }
 
   findActiveSubjectsByClass(madrasaId: number, classId: number) {
@@ -173,14 +199,14 @@ export class ClassPanelRepository {
     });
   }
 
-  deactivateSubjectAndRemoveMarks(madrasaId: number, bookId: number) {
-    return prisma.$transaction([
-      prisma.mark.deleteMany({ where: { madrasaId, bookId } }),
-      prisma.madrasaBook.updateMany({
-        where: { bookId, madrasaId },
-        data: { isActive: 0 },
-      }),
-    ]);
+  // Marks are deliberately preserved here — deleting a subject only moves it
+  // to Trash. Marks are only ever hard-deleted if the book is permanently
+  // deleted from Trash (see trash.repository.ts#permanentDeleteBook).
+  deactivateSubject(madrasaId: number, bookId: number) {
+    return prisma.madrasaBook.updateMany({
+      where: { bookId, madrasaId },
+      data: { isActive: 0, deletedAt: new Date() },
+    });
   }
 }
 

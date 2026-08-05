@@ -6,7 +6,7 @@ import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { toBanglaDigits } from "../../utils/reportUtils";
 
-type TabKey = "students" | "teachers" | "exams";
+type TabKey = "students" | "teachers" | "exams" | "divisions" | "classes" | "books" | "results";
 
 interface TrashStudentRow {
   id: number | string;
@@ -36,13 +36,81 @@ interface TrashExamRow {
   days_remaining: number;
 }
 
-type TrashRow = TrashStudentRow | TrashTeacherRow | TrashExamRow;
+interface TrashDivisionRow {
+  id: number | string;
+  name_bn?: string | null;
+  name?: string | null;
+  deleted_at?: string | null;
+  days_remaining: number;
+}
+
+interface TrashClassRow {
+  id: number | string;
+  class_name_bn?: string | null;
+  class_name?: string | null;
+  division_name_bn?: string | null;
+  deleted_at?: string | null;
+  days_remaining: number;
+}
+
+interface TrashBookRow {
+  id: number | string;
+  book_name_bn?: string | null;
+  book_name?: string | null;
+  deleted_at?: string | null;
+  days_remaining: number;
+}
+
+interface TrashResultRow {
+  id: number | string;
+  exam_name?: string | null;
+  exam_year?: string | null;
+  class_name_bn?: string | null;
+  class_name?: string | null;
+  status?: string | null;
+  deleted_at?: string | null;
+  days_remaining: number;
+}
+
+type TrashRow =
+  | TrashStudentRow
+  | TrashTeacherRow
+  | TrashExamRow
+  | TrashDivisionRow
+  | TrashClassRow
+  | TrashBookRow
+  | TrashResultRow;
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "students", label: "শিক্ষার্থী" },
   { key: "teachers", label: "শিক্ষক" },
   { key: "exams", label: "পরীক্ষা" },
+  { key: "divisions", label: "বিভাগ" },
+  { key: "classes", label: "শ্রেণি" },
+  { key: "books", label: "কিতাব" },
+  { key: "results", label: "রেজাল্ট" },
 ];
+
+// Different tabs key their display name under different fields (results
+// don't have a single "name" at all — they're identified by exam + class).
+const getRowName = (tab: TabKey, row: TrashRow): string => {
+  switch (tab) {
+    case "exams":
+      return (row as TrashExamRow).name || "";
+    case "divisions":
+      return (row as TrashDivisionRow).name_bn || "";
+    case "classes":
+      return (row as TrashClassRow).class_name_bn || "";
+    case "books":
+      return (row as TrashBookRow).book_name_bn || "";
+    case "results": {
+      const r = row as TrashResultRow;
+      return [r.exam_name, r.class_name_bn].filter(Boolean).join(" - ");
+    }
+    default:
+      return (row as TrashStudentRow | TrashTeacherRow).name_bn || "";
+  }
+};
 
 const extractArray = (res: any): any[] => {
   const data = res?.data?.data ?? res?.data ?? [];
@@ -77,6 +145,10 @@ export default function TrashPage() {
     students: [],
     teachers: [],
     exams: [],
+    divisions: [],
+    classes: [],
+    books: [],
+    results: [],
   });
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | number | null>(null);
@@ -87,15 +159,23 @@ export default function TrashPage() {
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
-      const [students, teachers, exams] = await Promise.all([
+      const [students, teachers, exams, divisions, classes, books, results] = await Promise.all([
         api.get("/trash/students"),
         api.get("/trash/teachers"),
         api.get("/trash/exams"),
+        api.get("/trash/divisions"),
+        api.get("/trash/classes"),
+        api.get("/trash/books"),
+        api.get("/trash/results"),
       ]);
       setRowsByTab({
         students: extractArray(students),
         teachers: extractArray(teachers),
         exams: extractArray(exams),
+        divisions: extractArray(divisions),
+        classes: extractArray(classes),
+        books: extractArray(books),
+        results: extractArray(results),
       });
     } catch (err) {
       logger.error("LOAD TRASH ERROR:", err);
@@ -117,7 +197,7 @@ export default function TrashPage() {
   };
 
   const handleRestore = (tab: TabKey, row: TrashRow) => {
-    const name = "name_bn" in row ? row.name_bn : (row as TrashExamRow).name;
+    const name = getRowName(tab, row);
     useConfirmStore.getState().show({
       title: "ফিরিয়ে আনবেন?",
       message: `"${name || ""}" ট্র্যাশ থেকে ফিরিয়ে আনতে চান? এটি আগের মতোই সক্রিয় হয়ে যাবে।`,
@@ -140,7 +220,7 @@ export default function TrashPage() {
   };
 
   const handlePermanentDelete = (tab: TabKey, row: TrashRow) => {
-    const name = "name_bn" in row ? row.name_bn : (row as TrashExamRow).name;
+    const name = getRowName(tab, row);
     useConfirmStore.getState().show({
       title: "স্থায়ীভাবে মুছবেন?",
       message: `"${name || ""}" স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি আর ফিরিয়ে আনা যাবে না — সম্পর্কিত সব তথ্য (রেজাল্ট, মার্কস ইত্যাদি) একসাথে মুছে যাবে।`,
@@ -171,8 +251,8 @@ export default function TrashPage() {
         <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">🗑️ ট্র্যাশ</h1>
           <p className="mt-1 text-sm text-gray-500">
-            মুছে ফেলা শিক্ষার্থী, শিক্ষক ও পরীক্ষা এখানে ৭ দিন থাকে — এর মধ্যে ফিরিয়ে আনতে না
-            পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।
+            মুছে ফেলা শিক্ষার্থী, শিক্ষক, পরীক্ষা, বিভাগ, শ্রেণি, কিতাব ও রেজাল্ট এখানে ৭ দিন থাকে
+            — এর মধ্যে ফিরিয়ে আনতে না পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।
           </p>
         </div>
 
@@ -214,9 +294,7 @@ export default function TrashPage() {
                 {rows.map((row) => (
                   <div key={row.id} className="rounded-lg border border-gray-200 p-3 shadow-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-gray-800">
-                        {"name_bn" in row ? row.name_bn : (row as TrashExamRow).name}
-                      </span>
+                      <span className="font-semibold text-gray-800">{getRowName(activeTab, row)}</span>
                       {daysBadge(row.days_remaining)}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
@@ -233,6 +311,15 @@ export default function TrashPage() {
                         </>
                       )}
                       {activeTab === "exams" && <>সাল: {(row as TrashExamRow).year || "নেই"}</>}
+                      {activeTab === "classes" && (
+                        <>বিভাগ: {(row as TrashClassRow).division_name_bn || "নেই"}</>
+                      )}
+                      {activeTab === "results" && (
+                        <>
+                          সাল: {(row as TrashResultRow).exam_year || "নেই"} | অবস্থা:{" "}
+                          {(row as TrashResultRow).status || "নেই"}
+                        </>
+                      )}
                     </div>
                     <div className="mt-1 text-xs text-gray-400">
                       মুছে ফেলা হয়েছে: {formatDate(row.deleted_at)}
@@ -278,6 +365,13 @@ export default function TrashPage() {
                         </>
                       )}
                       {activeTab === "exams" && <th className="px-3 py-2">সাল</th>}
+                      {activeTab === "classes" && <th className="px-3 py-2">বিভাগ</th>}
+                      {activeTab === "results" && (
+                        <>
+                          <th className="px-3 py-2">সাল</th>
+                          <th className="px-3 py-2">অবস্থা</th>
+                        </>
+                      )}
                       <th className="px-3 py-2">মুছে ফেলা হয়েছে</th>
                       <th className="px-3 py-2">মেয়াদ</th>
                       <th className="px-3 py-2 text-right">অ্যাকশন</th>
@@ -287,7 +381,7 @@ export default function TrashPage() {
                     {rows.map((row) => (
                       <tr key={row.id} className="border-b border-gray-100">
                         <td className="px-3 py-2 font-medium text-gray-800">
-                          {"name_bn" in row ? row.name_bn : (row as TrashExamRow).name}
+                          {getRowName(activeTab, row)}
                         </td>
                         {activeTab === "students" && (
                           <>
@@ -307,6 +401,15 @@ export default function TrashPage() {
                         )}
                         {activeTab === "exams" && (
                           <td className="px-3 py-2">{(row as TrashExamRow).year || "নেই"}</td>
+                        )}
+                        {activeTab === "classes" && (
+                          <td className="px-3 py-2">{(row as TrashClassRow).division_name_bn || "নেই"}</td>
+                        )}
+                        {activeTab === "results" && (
+                          <>
+                            <td className="px-3 py-2">{(row as TrashResultRow).exam_year || "নেই"}</td>
+                            <td className="px-3 py-2">{(row as TrashResultRow).status || "নেই"}</td>
+                          </>
                         )}
                         <td className="px-3 py-2 text-gray-500">{formatDate(row.deleted_at)}</td>
                         <td className="px-3 py-2">{daysBadge(row.days_remaining)}</td>
