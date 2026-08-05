@@ -19,6 +19,13 @@ export default function ClassPanel() {
   const [miyariBookIds, setMiyariBookIds] = useState<number[]>([]);
   const [savingMiyari, setSavingMiyari] = useState(false);
 
+  // DIVISION
+  const [editingDivisionId, setEditingDivisionId] = useState<number | null>(null);
+  const [editingDivisionName, setEditingDivisionName] = useState("");
+  const [editingDivisionOriginalName, setEditingDivisionOriginalName] = useState("");
+  const [dragDivisionId, setDragDivisionId] = useState<number | null>(null);
+  const [savingDivisionOrder, setSavingDivisionOrder] = useState(false);
+
   // CLASS
   const [className, setClassName] = useState("");
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
@@ -64,6 +71,74 @@ export default function ClassPanel() {
         loadDivisions();
       },
     });
+  };
+
+  const saveDivisionEdit = async () => {
+    const trimmed = editingDivisionName.trim();
+    if (!trimmed || trimmed === editingDivisionOriginalName.trim()) {
+      setEditingDivisionId(null);
+      return;
+    }
+
+    const id = editingDivisionId;
+    setEditingDivisionId(null);
+    await api.put(`/madrasa-divisions/${id}`, {
+      name_bn: trimmed,
+    });
+
+    loadDivisions();
+  };
+
+  /* ================= DIVISION ORDER (drag & drop) ================= */
+
+  const reorderDivisionsLocally = (targetDivisionId: number) => {
+    if (dragDivisionId === null || dragDivisionId === targetDivisionId) return;
+
+    setDivisions((prev) => {
+      const from = prev.findIndex((d: any) => d.division_id === dragDivisionId);
+      const to = prev.findIndex((d: any) => d.division_id === targetDivisionId);
+      if (from === -1 || to === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const persistDivisionOrder = async (orderedDivisions: any[]) => {
+    setSavingDivisionOrder(true);
+    try {
+      await api.put("/madrasa-divisions/reorder", {
+        division_ids: orderedDivisions.map((d) => d.division_id),
+      });
+    } catch (err: any) {
+      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      loadDivisions();
+    } finally {
+      setSavingDivisionOrder(false);
+    }
+  };
+
+  const handleDivisionHandlePointerDown = (targetDivisionId: number) => (event: React.PointerEvent) => {
+    if (savingDivisionOrder) return;
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    setDragDivisionId(targetDivisionId);
+  };
+
+  const handleDivisionHandlePointerMove = (event: React.PointerEvent) => {
+    if (dragDivisionId === null) return;
+    const hovered = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+    const card = hovered?.closest<HTMLElement>("[data-division-id]");
+    const targetDivisionId = Number(card?.dataset.divisionId);
+    if (!targetDivisionId) return;
+    reorderDivisionsLocally(targetDivisionId);
+  };
+
+  const handleDivisionHandlePointerEnd = () => {
+    if (dragDivisionId === null) return;
+    setDragDivisionId(null);
+    persistDivisionOrder(divisions);
   };
 
   const loadClasses = useCallback(async () => {
@@ -350,36 +425,101 @@ export default function ClassPanel() {
         subtitle="প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।"
       />
 
-      <SectionCard title="বিভাগ">
+      <SectionCard title="বিভাগ" hint="টেনে (drag) বিভাগের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।">
         <div className="flex flex-wrap gap-2">
           {divisions.map((division) => {
             const isActiveDivision = divisionId === String(division.division_id);
+            const isEditingThis = editingDivisionId === division.division_id;
             return (
               <div
                 key={division.division_id}
+                data-division-id={division.division_id}
                 className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
-                  isActiveDivision ? "border-blue-600 bg-blue-600" : "border-gray-200 bg-white"
-                }`}
+                  isEditingThis
+                    ? "border-blue-300 bg-blue-50/40"
+                    : isActiveDivision
+                      ? "border-blue-600 bg-blue-600"
+                      : "border-gray-200 bg-white"
+                } ${dragDivisionId === division.division_id ? "opacity-50" : ""}`}
               >
-                <button
-                  onClick={() => setDivisionId(String(division.division_id))}
-                  className={`touch-manipulation rounded-md px-2.5 py-1.5 text-sm font-medium transition ${
-                    isActiveDivision ? "text-white" : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {division.division_name_bn}
-                </button>
-                <button
-                  onClick={() => removeDivision(division.division_id)}
-                  aria-label="বিভাগ ডিলিট করুন"
-                  className={`touch-manipulation rounded-md p-1.5 ${
-                    isActiveDivision
-                      ? "text-blue-100 hover:bg-blue-700"
-                      : "text-gray-400 hover:bg-red-50 hover:text-red-600"
-                  }`}
-                >
-                  <Trash2 size={14} />
-                </button>
+                {isEditingThis ? (
+                  <>
+                    <Input
+                      value={editingDivisionName}
+                      onChange={(event) => setEditingDivisionName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") saveDivisionEdit();
+                        if (event.key === "Escape") setEditingDivisionId(null);
+                      }}
+                      className="h-8 w-36 min-w-0 sm:w-48"
+                      autoFocus
+                    />
+                    <button
+                      onClick={saveDivisionEdit}
+                      aria-label="সংরক্ষণ করুন"
+                      className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => setEditingDivisionId(null)}
+                      aria-label="বাতিল"
+                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      onPointerDown={handleDivisionHandlePointerDown(division.division_id)}
+                      onPointerMove={handleDivisionHandlePointerMove}
+                      onPointerUp={handleDivisionHandlePointerEnd}
+                      onPointerCancel={handleDivisionHandlePointerEnd}
+                      className={`shrink-0 cursor-grab select-none rounded p-1 active:cursor-grabbing ${
+                        isActiveDivision ? "text-blue-100 active:bg-blue-700" : "text-gray-400 active:bg-gray-100"
+                      }`}
+                      style={{ touchAction: "none" }}
+                      aria-label="বিভাগ সরান"
+                    >
+                      <GripVertical size={14} />
+                    </span>
+                    <button
+                      onClick={() => setDivisionId(String(division.division_id))}
+                      className={`touch-manipulation rounded-md px-2.5 py-1.5 text-sm font-medium transition ${
+                        isActiveDivision ? "text-white" : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {division.division_name_bn}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingDivisionId(division.division_id);
+                        setEditingDivisionName(division.division_name_bn);
+                        setEditingDivisionOriginalName(division.division_name_bn);
+                      }}
+                      aria-label="বিভাগ এডিট করুন"
+                      className={`touch-manipulation rounded-md p-1.5 ${
+                        isActiveDivision
+                          ? "text-blue-100 hover:bg-blue-700"
+                          : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                      }`}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => removeDivision(division.division_id)}
+                      aria-label="বিভাগ ডিলিট করুন"
+                      className={`touch-manipulation rounded-md p-1.5 ${
+                        isActiveDivision
+                          ? "text-blue-100 hover:bg-blue-700"
+                          : "text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
               </div>
             );
           })}

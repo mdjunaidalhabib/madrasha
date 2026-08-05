@@ -10,6 +10,8 @@ import {
   UpdateMiyariSubjectsRequestDto,
   ReorderSubjectsRequestDto,
   ReorderClassesRequestDto,
+  UpdateDivisionRequestDto,
+  ReorderDivisionsRequestDto,
 } from "./class-panel.dto";
 
 export class ClassPanelService {
@@ -60,6 +62,34 @@ export class ClassPanelService {
   async deleteDivision(madrasaId: number | undefined, id: number) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
     await this.repository.deactivateMadrasaDivision(madrasaId, id);
+  }
+
+  async updateDivision(id: number, dto: UpdateDivisionRequestDto) {
+    if (!dto.name_bn) throw new BadRequestError("name_bn required");
+    await this.repository.updateDivision(id, dto.name_bn);
+  }
+
+  async reorderDivisions(madrasaId: number | undefined, dto: ReorderDivisionsRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const orderedDivisionIds = (Array.isArray(dto.division_ids) ? dto.division_ids : []).map(Number);
+    if (orderedDivisionIds.some((id) => !id)) {
+      throw new BadRequestError("division_ids must be valid ids");
+    }
+
+    const rows = await this.repository.findActiveDivisions(madrasaId);
+    const activeDivisionIds = rows.map((row) => row.division.id);
+
+    const sameSet =
+      activeDivisionIds.length === orderedDivisionIds.length &&
+      activeDivisionIds.every((id) => orderedDivisionIds.includes(id));
+    if (!sameSet) {
+      throw new BadRequestError("division_ids must match this madrasa's active divisions exactly");
+    }
+
+    await this.repository.reorderDivisions(madrasaId, orderedDivisionIds);
+
+    return { message: "বিভাগের ক্রম সংরক্ষণ করা হয়েছে" };
   }
 
   async reorderClasses(madrasaId: number | undefined, dto: ReorderClassesRequestDto) {

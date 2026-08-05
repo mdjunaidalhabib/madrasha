@@ -36,6 +36,24 @@ export const deleteDivision = async (req: Request, res: Response) => {
   }
 };
 
+export const updateDivision = async (req: Request, res: Response) => {
+  try {
+    await classPanelService.updateDivision(Number(req.params.id), req.body);
+    res.json({ message: "Division updated successfully" });
+  } catch (error) {
+    respondError(res, error, "❌ Update division error:", "Failed to update division");
+  }
+};
+
+export const reorderDivisions = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.reorderDivisions(req.tenant?.madrasa_id, req.body);
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Reorder divisions error:", "Failed to reorder divisions");
+  }
+};
+
 /* =========================================================
    CLASSES
 ========================================================= */

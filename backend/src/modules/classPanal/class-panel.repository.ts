@@ -4,8 +4,24 @@ export class ClassPanelRepository {
   findActiveDivisions(madrasaId: number) {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { division: { select: { id: true, nameBn: true } } },
+      select: { id: true, sortOrder: true, division: { select: { id: true, nameBn: true } } },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
+  }
+
+  updateDivision(id: number, nameBn: string) {
+    return prisma.division.update({ where: { id }, data: { nameBn } });
+  }
+
+  async reorderDivisions(madrasaId: number, orderedDivisionIds: number[]) {
+    await prisma.$transaction(
+      orderedDivisionIds.map((divisionId, index) =>
+        prisma.madrasaDivision.updateMany({
+          where: { madrasaId, divisionId, isActive: 1 },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
   }
 
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {

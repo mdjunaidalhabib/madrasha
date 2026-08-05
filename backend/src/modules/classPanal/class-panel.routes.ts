@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   getDivisions,
   deleteDivision,
+  updateDivision,
+  reorderDivisions,
   getClasses,
   addClass,
   updateClass,
@@ -25,6 +27,10 @@ const router = Router();
    DIVISIONS
 ========================= */
 router.get("/madrasa-divisions", tenantMiddleware, authMiddleware, getDivisions);
+
+router.put("/madrasa-divisions/reorder", tenantMiddleware, authMiddleware, reorderDivisions);
+
+router.put("/madrasa-divisions/:id", tenantMiddleware, authMiddleware, updateDivision);
 
 router.delete("/madrasa-divisions/:id", tenantMiddleware, authMiddleware, deleteDivision);
 

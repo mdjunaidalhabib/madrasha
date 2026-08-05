@@ -31,3 +31,11 @@ export interface ReorderClassesRequestDto {
   division_id: number | string;
   class_ids: Array<number | string>;
 }
+
+export interface UpdateDivisionRequestDto {
+  name_bn: string;
+}
+
+export interface ReorderDivisionsRequestDto {
+  division_ids: Array<number | string>;
+}

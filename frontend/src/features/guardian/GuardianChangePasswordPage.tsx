@@ -35,7 +35,7 @@ export default function GuardianChangePasswordPage() {
       toast.push("success", "পাসওয়ার্ড পরিবর্তন হয়েছে");
       nav(`${base}/dashboard`);
     } catch {
-      // handled by guardianApi interceptor
+      // handled by guardianApi interceptor 
     } finally {
       setLoading(false);
     }
