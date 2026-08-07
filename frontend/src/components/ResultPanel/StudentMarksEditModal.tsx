@@ -83,7 +83,7 @@ export default function StudentMarksEditModal({
 
   // Same pass/fail color logic as the bulk entry table, so single-student
   // edit visually matches full-class entry. A subject's own pass_mark
-  // (per-subject override) takes priority over the shared fallback.
+  // (per-subject override) takes priority over the shared fallback
   const getCellStyle = (value: number | undefined, book: Book) => {
     if (value === undefined) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
