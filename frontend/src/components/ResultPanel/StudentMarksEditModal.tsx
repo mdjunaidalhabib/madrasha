@@ -19,6 +19,7 @@ interface Book {
   book_name_bn?: string;
   name_bn?: string;
   full_marks?: number;
+  pass_mark?: number | null;
 }
 
 interface Student {
@@ -81,8 +82,9 @@ export default function StudentMarksEditModal({
     b.book_name_bn || b.name_bn || b.book_name || `Book ${b.book_id}`;
 
   // Same pass/fail color logic as the bulk entry table, so single-student
-  // edit visually matches full-class entry.
-  const getCellStyle = (value: number | undefined, max: number) => {
+  // edit visually matches full-class entry. A subject's own pass_mark
+  // (per-subject override) takes priority over the shared fallback.
+  const getCellStyle = (value: number | undefined, book: Book) => {
     if (value === undefined) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
     }
@@ -91,9 +93,9 @@ export default function StudentMarksEditModal({
       return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400";
     }
 
-    const pct = max > 0 ? (value / max) * 100 : 0;
+    const threshold = book.pass_mark ?? failMark;
 
-    if (pct < failMark) {
+    if (value < threshold) {
       return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400";
     }
 
@@ -136,7 +138,17 @@ export default function StudentMarksEditModal({
                 <tr key={b.book_id} className="hover:bg-gray-50 transition">
                   <td className="border px-3 py-2 font-medium text-gray-700">
                     <div className="flex flex-col">
-                      <span>{bookLabel(b)}</span>
+                      <span>
+                        {bookLabel(b)}
+                        {b.pass_mark != null ? (
+                          <span
+                            className="ml-1 text-[10px] font-semibold text-sky-700"
+                            title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                          >
+                            (পাস {b.pass_mark})
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="text-xs text-gray-400">/ {max}</span>
                     </div>
                   </td>
@@ -149,7 +161,7 @@ export default function StudentMarksEditModal({
                       className={`w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
                         saving
                           ? "bg-gray-100 cursor-not-allowed text-gray-400"
-                          : getCellStyle(value, max)
+                          : getCellStyle(value, b)
                       }`}
                       value={
                         value === ABSENT_MARK

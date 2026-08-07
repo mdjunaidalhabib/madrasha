@@ -15,6 +15,9 @@ export interface AddSubjectRequestDto {
 export interface UpdateSubjectRequestDto {
   name_bn: string;
   full_marks?: number | string;
+  /** Per-subject pass mark override. Send `null` (or an empty string) to
+   * clear the override and fall back to the madrasa's global fail mark. */
+  pass_mark?: number | string | null;
 }
 
 export interface UpdateMiyariSubjectsRequestDto {

@@ -42,6 +42,8 @@ export default function ClassPanel() {
   const [editingOriginalName, setEditingOriginalName] = useState("");
   const [editingFullMarks, setEditingFullMarks] = useState("");
   const [editingOriginalFullMarks, setEditingOriginalFullMarks] = useState("");
+  const [editingPassMark, setEditingPassMark] = useState("");
+  const [editingOriginalPassMark, setEditingOriginalPassMark] = useState("");
   const [showBookInput, setShowBookInput] = useState(false);
   const [dragBookId, setDragBookId] = useState<number | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -301,9 +303,11 @@ export default function ClassPanel() {
     const trimmed = editingName.trim();
     const fullMarksTrimmed = editingFullMarks.trim();
     const fullMarksChanged = fullMarksTrimmed !== editingOriginalFullMarks.trim();
+    const passMarkTrimmed = editingPassMark.trim();
+    const passMarkChanged = passMarkTrimmed !== editingOriginalPassMark.trim();
     const nameChanged = Boolean(trimmed) && trimmed !== editingOriginalName.trim();
 
-    if (!nameChanged && !fullMarksChanged) {
+    if (!nameChanged && !fullMarksChanged && !passMarkChanged) {
       setEditingId(null);
       return;
     }
@@ -314,13 +318,32 @@ export default function ClassPanel() {
     const payload: Record<string, unknown> = {
       name_bn: nameChanged ? trimmed : editingOriginalName,
     };
+
+    let fullMarks: number | null = null;
     if (fullMarksChanged) {
-      const fullMarks = Number(fullMarksTrimmed);
+      fullMarks = Number(fullMarksTrimmed);
       if (!fullMarksTrimmed || !Number.isFinite(fullMarks) || fullMarks <= 0) {
         useToastStore.getState().push("error", "পূর্ণমান সঠিক সংখ্যা হতে হবে");
         return;
       }
       payload.full_marks = fullMarks;
+    }
+
+    if (passMarkChanged) {
+      if (passMarkTrimmed === "") {
+        // Empty = clear the override, fall back to the global fail mark.
+        payload.pass_mark = null;
+      } else {
+        const passMark = Number(passMarkTrimmed);
+        const maxAllowed = fullMarks ?? Number(fullMarksTrimmed || 100);
+        if (!Number.isFinite(passMark) || passMark < 0 || passMark > maxAllowed) {
+          useToastStore
+            .getState()
+            .push("error", "পাস মার্ক ০ থেকে পূর্ণমানের মধ্যে হতে হবে");
+          return;
+        }
+        payload.pass_mark = passMark;
+      }
     }
 
     await api.put(`/madrasa-books/${id}`, payload);
@@ -333,6 +356,9 @@ export default function ClassPanel() {
     setEditingOriginalName(book.book_name_bn);
     setEditingFullMarks(String(book.full_marks ?? 100));
     setEditingOriginalFullMarks(String(book.full_marks ?? 100));
+    const passMark = book.pass_mark ?? "";
+    setEditingPassMark(String(passMark));
+    setEditingOriginalPassMark(String(passMark));
   };
 
   /* ================= BOOK ORDER (drag & drop) ================= */
@@ -706,6 +732,24 @@ export default function ClassPanel() {
                           className="h-8 w-20"
                         />
                       </label>
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                        পাস মার্ক
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="গ্লোবাল"
+                          value={editingPassMark}
+                          onChange={(event) => setEditingPassMark(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") saveEdit();
+                            if (event.key === "Escape") setEditingId(null);
+                          }}
+                          className="h-8 w-20"
+                        />
+                      </label>
+                      <p className="text-[11px] leading-tight text-gray-400">
+                        খালি রাখলে মাদ্রাসার গ্লোবাল ফেল মার্ক প্রযোজ্য হবে
+                      </p>
                     </div>
                   ) : (
                     <div className="flex items-start justify-between gap-2">
@@ -748,6 +792,14 @@ export default function ClassPanel() {
                       <span className="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
                         পূর্ণমান {book.full_marks ?? 100}
                       </span>
+                      {book.pass_mark != null && (
+                        <span
+                          className="w-fit rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700"
+                          title="এই কিতাবের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                        >
+                          পাস {book.pass_mark}
+                        </span>
+                      )}
                     </div>
                   )}
 

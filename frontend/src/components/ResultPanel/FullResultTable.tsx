@@ -33,6 +33,7 @@ interface Book {
   name_bn?: string;
   is_miyari?: boolean;
   full_marks?: number;
+  pass_mark?: number | null;
 }
 
 interface Props {
@@ -176,6 +177,14 @@ export default function FullResultTable({
                 <span>
                   {b.book_name || b.book_name_bn || b.name_bn || `Book ${b.book_id}`}
                   {b.is_miyari ? <span className="ml-1 text-[10px] font-semibold text-amber-700">(মিয়ারি)</span> : null}
+                  {b.pass_mark != null ? (
+                    <span
+                      className="ml-1 text-[10px] font-semibold text-sky-700"
+                      title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                    >
+                      (পাস {b.pass_mark})
+                    </span>
+                  ) : null}
                   <span className="ml-1 text-[10px] text-gray-400">/{b.full_marks ?? 100}</span>
                 </span>
               </th>

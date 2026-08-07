@@ -41,6 +41,7 @@ interface Book {
   book_name?: string;
   full_marks?: number;
   is_miyari?: boolean;
+  pass_mark?: number | null;
 }
 
 const extractArray = (res: any) => {

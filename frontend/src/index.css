@@ -226,21 +226,30 @@ input[type="number"]::-webkit-inner-spin-button {
 .report-brand-header,
 .report-content-body {
   position: relative;
+}
+
+.report-content-body {
   z-index: 1;
 }
 
 .report-brand-header {
+  /* Above .report-content-body (a later DOM sibling at the same stacking
+     level would otherwise paint over the logo when it overflows past the
+     header's own box, since the header's height is driven by the name/
+     address text only, not the absolutely-positioned logo). */
+  z-index: 2;
   margin-bottom: 10px;
   gap: 2px;
 }
 
 .report-brand-logo {
   position: absolute;
-  left: 0;
-  top: 50%;
+  left: 28px;
+  top: 74%;
   transform: translateY(-50%);
-  width: 66px;
-  height: 66px;
+  z-index: 2;
+  width: 95px;
+  height: 95px;
 }
 
 .report-brand-name {
@@ -600,8 +609,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-logo {
-  width: 52px;
-  height: 52px;
+  width: 84px;
+  height: 84px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-name {
@@ -620,8 +629,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-logo {
-  width: 44px;
-  height: 44px;
+  width: 70px;
+  height: 70px;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-name {
@@ -637,8 +646,8 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-logo {
-  width: 36px;
-  height: 36px;
+  width: 58px;
+  height: 58px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-name {
@@ -1123,7 +1132,14 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   .report-brand-header,
   .report-content-body {
     position: relative !important;
+  }
+
+  .report-content-body {
     z-index: 1 !important;
+  }
+
+  .report-brand-header {
+    z-index: 2 !important;
   }
 
   html[data-print-size="a4"][data-print-orientation="portrait"] .print-page-preview {

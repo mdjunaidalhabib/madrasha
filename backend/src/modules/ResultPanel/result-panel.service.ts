@@ -173,16 +173,26 @@ export class ResultPanelService {
       .filter((subject) => subject.book)
       .reduce((sum, subject) => sum + Number(subject.fullMark || 100), 0);
 
-    const miyariBookIds = activeSubjects
-      .filter((subject) => subject.isMiyari && subject.book)
-      .map((subject) => Number(subject.book!.id));
+    // Each miyari subject fails a student individually if their mark is
+    // below that subject's own pass mark — or, when the subject has no
+    // override set, the madrasa's global fail mark. Without this per-subject
+    // resolution, a 50-mark subject would incorrectly be checked against a
+    // global fail mark tuned for 100-mark subjects (e.g. 35), effectively
+    // demanding 70%.
+    const miyariBookPassMarks = new Map<number, number>(
+      activeSubjects
+        .filter((subject) => subject.isMiyari && subject.book)
+        .map((subject) => [
+          Number(subject.book!.id),
+          subject.passMark ?? config.failMark,
+        ]),
+    );
     const failedMiyariRows = await this.repository.findStudentsFailingMiyariSubjects(
       madrasaId,
       examId,
       classId,
       resultMasterId,
-      miyariBookIds,
-      config.failMark,
+      miyariBookPassMarks,
     );
     const studentsFailingMiyari = new Set(
       failedMiyariRows.map((row) => Number(row.studentId)),
@@ -622,7 +632,13 @@ export class ResultPanelService {
 
     const booksMap = new Map<
       number,
-      { book_id: number; book_name: string; is_miyari: boolean; full_marks: number }
+      {
+        book_id: number;
+        book_name: string;
+        is_miyari: boolean;
+        full_marks: number;
+        pass_mark: number | null;
+      }
     >();
 
     // Seed with every subject currently assigned to the class, even ones
@@ -636,13 +652,16 @@ export class ResultPanelService {
         madrasaId,
         resolvedClassId,
       );
-      classSubjects.forEach(({ book, isMiyari, fullMark }) => {
+      classSubjects.forEach(({ book, isMiyari, fullMark, passMark }) => {
         if (!book) return;
         booksMap.set(book.id, {
           book_id: book.id,
           book_name: book.nameBn || book.name || `Book ${book.id}`,
           is_miyari: isMiyari,
           full_marks: fullMark,
+          // null here means "no override" — the frontend can fall back to
+          // showing the madrasa's global fail mark for this subject.
+          pass_mark: passMark,
         });
       });
     }
@@ -656,6 +675,7 @@ export class ResultPanelService {
             book_name: bookName,
             is_miyari: false,
             full_marks: 100,
+            pass_mark: null,
           });
         }
         return {

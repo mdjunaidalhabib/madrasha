@@ -345,6 +345,7 @@ export class ResultPanelRepository {
     {
       isMiyari: boolean;
       fullMark: number;
+      passMark: number | null;
       book: { id: number; nameBn: string | null; name: string | null } | null;
     }[]
   > {
@@ -353,30 +354,35 @@ export class ResultPanelRepository {
       select: {
         isMiyari: true,
         fullMark: true,
+        passMark: true,
         book: { select: { id: true, nameBn: true, name: true } },
       },
       orderBy: { book: { id: "asc" } },
     });
   }
 
-  findStudentsFailingMiyariSubjects(
+  /** Each miyari (must-pass-individually) subject can have its own pass
+   * threshold (subjects with a smaller fullMark, e.g. 50, commonly pass at
+   * 20 or 25 rather than the madrasa's global fail mark). `bookPassMarks`
+   * maps bookId -> the effective threshold already resolved by the service
+   * (subject's own passMark, or the global fail mark as fallback). A mark
+   * strictly below its subject's threshold fails that subject. */
+  async findStudentsFailingMiyariSubjects(
     madrasaId: number,
     examId: number,
     classId: number,
     resultMasterId: number,
-    miyariBookIds: number[],
-    failMark: number,
+    bookPassMarks: Map<number, number>,
   ) {
-    if (!miyariBookIds.length) return Promise.resolve([] as { studentId: number }[]);
+    if (!bookPassMarks.size) return [] as { studentId: number }[];
 
-    return prisma.mark.findMany({
+    const rows = await prisma.mark.findMany({
       where: {
         madrasaId,
         examId,
         classId,
         resultMasterId,
-        bookId: { in: miyariBookIds },
-        mark: { lt: failMark },
+        bookId: { in: Array.from(bookPassMarks.keys()) },
         student: {
           madrasaId,
           classId,
@@ -384,9 +390,18 @@ export class ResultPanelRepository {
           isActive: 1,
         },
       },
-      select: { studentId: true },
-      distinct: ["studentId"],
+      select: { studentId: true, bookId: true, mark: true },
     });
+
+    const failingStudentIds = new Set<number>();
+    for (const row of rows) {
+      const threshold = bookPassMarks.get(row.bookId);
+      if (threshold !== undefined && Number(row.mark) < threshold) {
+        failingStudentIds.add(row.studentId);
+      }
+    }
+
+    return Array.from(failingStudentIds, (studentId) => ({ studentId }));
   }
 
   findFullResultSummaries(madrasaId: number, resultMasterId: number) {

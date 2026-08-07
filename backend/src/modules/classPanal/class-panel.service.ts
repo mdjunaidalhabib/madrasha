@@ -129,6 +129,8 @@ export class ClassPanelService {
       class_id: r.book.classId,
       is_miyari: r.isMiyari,
       full_marks: r.fullMark,
+      // null = no override; this subject follows the madrasa's global fail mark.
+      pass_mark: r.passMark,
     }));
   }
 
@@ -212,17 +214,42 @@ export class ClassPanelService {
     const updated = await this.repository.updateSubjectForMadrasa(madrasaId, id, dto.name_bn);
     if (!updated) throw new NotFoundError("Subject not found");
 
+    // `updated.id` — not the route's `id` — because a shared seeded subject
+    // may have just been copy-on-write'd to a new private Book (see
+    // updateSubjectForMadrasa), which repoints this madrasa's madrasa_books
+    // row at that new book id. Both full_marks and pass_mark must target it.
+    let effectiveFullMark = linkedSubject.fullMark;
+    let resultsNeedRefresh = false;
+
     if (dto.full_marks !== undefined) {
       const fullMark = Number(dto.full_marks);
       if (!Number.isFinite(fullMark) || fullMark <= 0) {
         throw new BadRequestError("full_marks must be a positive number");
       }
+      effectiveFullMark = Math.round(fullMark);
 
-      // `updated.id` — not the route's `id` — because a shared seeded
-      // subject may have just been copy-on-write'd to a new private Book
-      // (see updateSubjectForMadrasa), which repoints this madrasa's
-      // madrasa_books row at that new book id.
-      await this.repository.updateSubjectFullMark(madrasaId, updated.id, Math.round(fullMark));
+      await this.repository.updateSubjectFullMark(madrasaId, updated.id, effectiveFullMark);
+      resultsNeedRefresh = true;
+    }
+
+    if (dto.pass_mark !== undefined) {
+      const passMarkRaw = typeof dto.pass_mark === "string" ? dto.pass_mark.trim() : dto.pass_mark;
+
+      if (passMarkRaw === null || passMarkRaw === "") {
+        // Clear the override — this subject falls back to the madrasa's
+        // global fail mark setting again.
+        await this.repository.updateSubjectPassMark(madrasaId, updated.id, null);
+      } else {
+        const passMark = Number(passMarkRaw);
+        if (!Number.isFinite(passMark) || passMark < 0 || passMark > effectiveFullMark) {
+          throw new BadRequestError("pass_mark must be between 0 and the subject's full marks");
+        }
+        await this.repository.updateSubjectPassMark(madrasaId, updated.id, Math.round(passMark));
+      }
+      resultsNeedRefresh = true;
+    }
+
+    if (resultsNeedRefresh) {
       await this.results.reprocessClassResults(madrasaId, linkedSubject.book.classId);
     }
   }

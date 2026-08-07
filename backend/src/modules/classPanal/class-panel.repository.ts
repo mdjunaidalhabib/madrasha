@@ -93,6 +93,7 @@ export class ClassPanelRepository {
         id: true,
         isMiyari: true,
         fullMark: true,
+        passMark: true,
         sortOrder: true,
         book: { select: { id: true, nameBn: true, classId: true } },
       },
@@ -104,6 +105,15 @@ export class ClassPanelRepository {
     return prisma.madrasaBook.updateMany({
       where: { madrasaId, bookId, isActive: 1 },
       data: { fullMark },
+    });
+  }
+
+  /** `passMark: null` clears the override so this subject falls back to the
+   * madrasa's global fail mark setting. */
+  updateSubjectPassMark(madrasaId: number, bookId: number, passMark: number | null) {
+    return prisma.madrasaBook.updateMany({
+      where: { madrasaId, bookId, isActive: 1 },
+      data: { passMark },
     });
   }
 
@@ -155,7 +165,11 @@ export class ClassPanelRepository {
   findSubjectForMadrasa(madrasaId: number, bookId: number) {
     return prisma.madrasaBook.findFirst({
       where: { madrasaId, bookId, isActive: 1 },
-      select: { book: { select: { id: true, classId: true, nameBn: true } } },
+      select: {
+        fullMark: true,
+        passMark: true,
+        book: { select: { id: true, classId: true, nameBn: true } },
+      },
     });
   }
 

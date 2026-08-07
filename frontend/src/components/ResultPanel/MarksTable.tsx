@@ -22,6 +22,7 @@ interface Book {
   name_bn?: string;
   full_marks?: number;
   is_miyari?: boolean;
+  pass_mark?: number | null;
 }
 
 interface Props {
@@ -30,7 +31,10 @@ interface Props {
   marks: Record<number, Record<number, number | null>>;
   setMarks: React.Dispatch<React.SetStateAction<Record<number, Record<number, number | null>>>>;
   disabled?: boolean;
-  /** Pass mark threshold as a percentage (0-100). Defaults to 33 (common fail-mark). */
+  /** Fallback pass-mark threshold for subjects without their own override
+   * (Book.pass_mark). Compared directly against the raw mark — not scaled
+   * by full_marks — matching the backend's fail-mark semantics. Defaults to
+   * 33 (a common global fail mark). */
   failMark?: number;
   /** Called when the user commits a cell (Enter / moves to next field) so the
    * parent can trigger an autosave. */
@@ -171,7 +175,7 @@ export default function MarksTable({
     return { filled: filledCells, total: totalCells };
   }, [students, books, marks, rowCount, colCount]);
 
-  const getCellStyle = (value: number | null | undefined, max: number) => {
+  const getCellStyle = (value: number | null | undefined, book: Book) => {
     if (value == null) {
       return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
     }
@@ -180,9 +184,13 @@ export default function MarksTable({
       return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400";
     }
 
-    const pct = max > 0 ? (value / max) * 100 : 0;
+    // A subject's own pass mark (set per-subject, e.g. 20 on a 50-mark
+    // হেফজ subject) takes priority over the madrasa's global fail mark —
+    // otherwise every subject would be checked against a threshold tuned
+    // for 100-mark subjects, regardless of what it's actually out of.
+    const threshold = book.pass_mark ?? failMark;
 
-    if (pct < failMark) {
+    if (value < threshold) {
       // Failing mark — red
       return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400";
     }
@@ -264,6 +272,14 @@ export default function MarksTable({
                           মিয়ারি
                         </span>
                       ) : null}
+                      {b.pass_mark != null && (
+                        <span
+                          className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
+                          title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                        >
+                          পাস {toBanglaDigits(b.pass_mark)}
+                        </span>
+                      )}
                       <span className="text-xs text-gray-400">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
                     </div>
                   </th>
@@ -331,7 +347,7 @@ export default function MarksTable({
                           className={`w-16 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
                             disabled
                               ? "bg-gray-100 cursor-not-allowed text-gray-400"
-                              : getCellStyle(value, max)
+                              : getCellStyle(value, b)
                           }`}
                           value={
                             value === ABSENT_MARK

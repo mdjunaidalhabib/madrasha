@@ -58,6 +58,8 @@ interface Book {
   book_id: number;
   book_name?: string;
   full_marks?: number;
+  is_miyari?: boolean;
+  pass_mark?: number | null;
 }
 interface GradeItem {
   id: string | number;
