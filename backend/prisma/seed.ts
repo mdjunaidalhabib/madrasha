@@ -582,6 +582,7 @@ async function main() {
       { keyName: "expense", name: "Expense", nameBn: "ব্যয়/ভাউচার তৈরী", sortOrder: 2 },
       { keyName: "report", name: "Report", nameBn: "আয় ব্যয় রিপোর্ট", sortOrder: 3 },
       { keyName: "payroll", name: "Payroll", nameBn: "শিক্ষক বেতন (পেরোল)", sortOrder: 4 },
+      { keyName: "transactions", name: "Transactions", nameBn: "সকল লেনদেন", sortOrder: 5 },
     ],
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },

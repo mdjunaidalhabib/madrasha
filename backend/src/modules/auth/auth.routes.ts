@@ -1,10 +1,25 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { login, unlockScreen, forgotPassword, resetPassword } from "./auth.controller";
+import {
+  login,
+  unlockScreen,
+  forgotPassword,
+  resetPassword,
+  getMe,
+  updateMe,
+  changeMyPassword,
+} from "./auth.controller";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
-import { loginSchema, unlockSchema, forgotPasswordSchema, resetPasswordSchema } from "./auth.validation";
+import {
+  loginSchema,
+  unlockSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  updateMeSchema,
+  changeMyPasswordSchema,
+} from "./auth.validation";
 
 const router = Router();
 
@@ -48,6 +63,19 @@ router.post(
   tenantMiddleware,
   validate(resetPasswordSchema),
   resetPassword,
+);
+
+/* MY PROFILE - any authenticated user manages their own account here,
+   deliberately without rbacMiddleware("users.*") since that permission
+   only covers admins managing OTHER users (see users module). */
+router.get("/me", tenantMiddleware, authMiddleware, getMe);
+router.patch("/me", tenantMiddleware, authMiddleware, validate(updateMeSchema), updateMe);
+router.post(
+  "/change-password",
+  tenantMiddleware,
+  authMiddleware,
+  validate(changeMyPasswordSchema),
+  changeMyPassword,
 );
 
 export default router;

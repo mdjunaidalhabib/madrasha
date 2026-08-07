@@ -26,6 +26,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "accounts/report": () => import("../features/accounts/ReportPage"),
   "accounts/income": () => import("../features/accounts/IncomePage"),
   "accounts/expense": () => import("../features/accounts/ExpensePage"),
+  "accounts/transactions": () => import("../features/accounts/AccountListPage"),
   "settings/branding": () => import("../features/admin/settings/BrandingSettingsPage"),
   "settings/website": () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
   activity: () => import("../features/activity/ActivityPage"),

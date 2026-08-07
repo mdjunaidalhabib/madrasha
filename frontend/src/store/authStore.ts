@@ -8,6 +8,8 @@ export type AuthUser = {
   email?: string;
   role?: string;
   role_key?: string;
+  mobile?: string | null;
+  photo_url?: string | null;
 };
 
 export type AuthPayload = {
@@ -23,6 +25,7 @@ type AuthState = {
   permissions: string[];
   modules: string[];
   setAuth: (data: AuthPayload) => void;
+  updateUser: (patch: Partial<AuthUser>) => void;
   logout: () => void;
 };
 
@@ -44,6 +47,10 @@ export const useAuthStore = create<AuthState>()(
           permissions: data.permissions || [],
           modules: data.modules || [],
         });
+      },
+
+      updateUser: (patch) => {
+        set((state) => ({ user: state.user ? { ...state.user, ...patch } : state.user }));
       },
 
       logout: () => {

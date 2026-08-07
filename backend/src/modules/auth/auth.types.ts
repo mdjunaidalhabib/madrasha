@@ -16,6 +16,8 @@ export interface AuthenticatedUserSummary {
   email: string;
   role_id: number;
   role_key: string;
+  mobile?: string | null;
+  photo_url?: string | null;
 }
 
 export interface LoginResult {
@@ -23,4 +25,20 @@ export interface LoginResult {
   user: AuthenticatedUserSummary;
   permissions: string[];
   modules: string[];
+}
+
+export interface MyProfile {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string | null;
+  photo_url: string | null;
+  role_key: string;
+  role_label: string;
+}
+
+export interface UpdateMyProfileInput {
+  name?: string;
+  mobile?: string;
+  photo_url?: string;
 }

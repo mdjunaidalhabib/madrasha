@@ -6,9 +6,6 @@ import Button from "../../components/ui/Button";
 import { useToastStore } from "../../store/toastStore";
 import { incomeFunds, paymentMethods } from "./accountingData";
 
-const nowDate = () => new Date().toISOString().slice(0, 10);
-const nowTime = () => new Date().toTimeString().slice(0, 5);
-
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700">
     {children} {required && <span className="text-rose-600">*</span>}
@@ -18,14 +15,10 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 export default function IncomePage() {
   const toast = useToastStore();
   const [form, setForm] = useState({
-    entry_date: nowDate(),
-    entry_time: nowTime(),
-    receipt_no: "",
     fund: incomeFunds[0].name,
     category: incomeFunds[0].categories[0],
     donor_name: "",
     address: "",
-    mobile: "",
     amount: "",
     payment_method: paymentMethods[0],
   });
@@ -48,12 +41,8 @@ export default function IncomePage() {
     toast.push("success", "আয়/রশিদ জমা সংরক্ষণ হয়েছে");
     setForm((prev) => ({
       ...prev,
-      entry_date: nowDate(),
-      entry_time: nowTime(),
-      receipt_no: "",
       donor_name: "",
       address: "",
-      mobile: "",
       amount: "",
     }));
   };
@@ -66,30 +55,6 @@ export default function IncomePage() {
       />
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <FieldLabel>তারিখ</FieldLabel>
-            <Input
-              type="date"
-              value={form.entry_date}
-              onChange={(e) => setField("entry_date", e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>সময়</FieldLabel>
-            <Input
-              type="time"
-              value={form.entry_time}
-              onChange={(e) => setField("entry_time", e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>রশিদ নম্বর</FieldLabel>
-            <Input
-              placeholder="রশিদ নম্বর"
-              value={form.receipt_no}
-              onChange={(e) => setField("receipt_no", e.target.value)}
-            />
-          </div>
           <div>
             <FieldLabel>ফান্ড</FieldLabel>
             <select
@@ -129,14 +94,6 @@ export default function IncomePage() {
               placeholder="ঠিকানা"
               value={form.address}
               onChange={(e) => setField("address", e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>মোবাইল নম্বর</FieldLabel>
-            <Input
-              placeholder="মোবাইল নম্বর"
-              value={form.mobile}
-              onChange={(e) => setField("mobile", e.target.value)}
             />
           </div>
           <div>

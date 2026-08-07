@@ -58,6 +58,7 @@ const DocumentsReportPage = lazy(() => import("../features/reports/DocumentsRepo
 const ReportPage = lazy(() => import("../features/accounts/ReportPage"));
 const IncomePage = lazy(() => import("../features/accounts/IncomePage"));
 const ExpensePage = lazy(() => import("../features/accounts/ExpensePage"));
+const AccountListPage = lazy(() => import("../features/accounts/AccountListPage"));
 
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
 const ClassPanel = lazy(() => import("../features/talimat/ClassPanel"));
@@ -71,6 +72,7 @@ const AdminWebsiteSettingsPage = lazy(
   () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
 );
 const BrandingSettingsPage = lazy(() => import("../features/admin/settings/BrandingSettingsPage"));
+const ProfileSettingsPage = lazy(() => import("../features/admin/settings/ProfileSettingsPage"));
 const TrashPage = lazy(() => import("../features/admin/TrashPage"));
 
 const SuperAdminDashboardPage = lazy(
@@ -98,7 +100,9 @@ const UnauthorizedPage = lazy(() => import("../features/common/UnauthorizedPage"
 // Wraps a lazy-loaded page element in its own <Suspense> boundary so each
 // route shows the lightweight PageLoader while its chunk downloads, without
 // blocking or being blocked by any other route's chunk.
-const withSuspense = (element: JSX.Element) => <Suspense fallback={<PageLoader />}>{element}</Suspense>;
+const withSuspense = (element: JSX.Element) => (
+  <Suspense fallback={<PageLoader />}>{element}</Suspense>
+);
 
 const madrasaAdminChildren = [
   { index: true, element: <Navigate to="dashboard" replace /> },
@@ -106,102 +110,70 @@ const madrasaAdminChildren = [
 
   {
     path: "dashboard",
-    element: (
-      <ModuleGuard module="dashboard">{withSuspense(<DashboardPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="dashboard">{withSuspense(<DashboardPage />)}</ModuleGuard>,
   },
 
   {
     path: "ihtemam/teacher_admission",
-    element: (
-      <ModuleGuard module="ihtemam">{withSuspense(<TeacherAdmissionPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherAdmissionPage />)}</ModuleGuard>,
   },
   {
     path: "ihtemam/all_teacher",
-    element: (
-      <ModuleGuard module="ihtemam">{withSuspense(<TeacherListPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherListPage />)}</ModuleGuard>,
   },
   {
     path: "ihtemam/pending",
-    element: (
-      <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
   },
   {
     path: "ihtemam/:id",
-    element: (
-      <ModuleGuard module="ihtemam">{withSuspense(<TeacherProfilePage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherProfilePage />)}</ModuleGuard>,
   },
 
   {
     path: "reports/academic-report",
-    element: (
-      <ModuleGuard module="reports">{withSuspense(<AcademicReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="reports">{withSuspense(<AcademicReportPage />)}</ModuleGuard>,
   },
   {
     path: "reports/student_report",
-    element: (
-      <ModuleGuard module="reports">{withSuspense(<StudentReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="reports">{withSuspense(<StudentReportPage />)}</ModuleGuard>,
   },
   {
     path: "reports/exam_report",
-    element: (
-      <ModuleGuard module="reports">{withSuspense(<ExamReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="reports">{withSuspense(<ExamReportPage />)}</ModuleGuard>,
   },
   {
     path: "reports/teacher_report",
-    element: (
-      <ModuleGuard module="reports">{withSuspense(<TeacherReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="reports">{withSuspense(<TeacherReportPage />)}</ModuleGuard>,
   },
   {
     path: "reports/documents",
-    element: (
-      <ModuleGuard module="reports">{withSuspense(<DocumentsReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="reports">{withSuspense(<DocumentsReportPage />)}</ModuleGuard>,
   },
 
   {
     path: "talimat/class_panel",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<ClassPanel />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<ClassPanel />)}</ModuleGuard>,
   },
   {
     path: "talimat/teacher_assignment",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<TeacherAssignmentPanel />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<TeacherAssignmentPanel />)}</ModuleGuard>,
   },
   {
     path: "talimat/exam_panel",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<ExamPanel />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<ExamPanel />)}</ModuleGuard>,
   },
   {
     path: "talimat/results",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<ResultPreviewPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<ResultPreviewPage />)}</ModuleGuard>,
   },
   {
     path: "talimat/results/entry",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<ResultEntryPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<ResultEntryPage />)}</ModuleGuard>,
   },
   {
     path: "talimat/documents",
-    element: (
-      <ModuleGuard module="talimat">{withSuspense(<TalimatDocumentsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="talimat">{withSuspense(<TalimatDocumentsPage />)}</ModuleGuard>,
   },
   // NOTE: id_card / admit_card / certificate / testimonial / transfer_letter
   // used to be 5 separate routes that all rendered the exact same page.
@@ -215,84 +187,66 @@ const madrasaAdminChildren = [
 
   {
     path: "students/new_admission",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<AdmissionPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<AdmissionPage />)}</ModuleGuard>,
   },
   {
     path: "students/admissions/pending",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
   },
   {
     path: "students/list",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<StudentListPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<StudentListPage />)}</ModuleGuard>,
   },
   {
     path: "attendance/mark",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>,
   },
   {
     path: "students/promotion",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
   },
   {
     path: "routine",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<ClassExamRoutinePage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<ClassExamRoutinePage />)}</ModuleGuard>,
   },
   {
     path: "fee-management",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<FeeManagementPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<FeeManagementPage />)}</ModuleGuard>,
   },
   {
     path: "students/statement",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<StudentStatementPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<StudentStatementPage />)}</ModuleGuard>,
   },
   {
     path: "payroll",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<PayrollPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<PayrollPage />)}</ModuleGuard>,
   },
   {
     path: "students/:id",
-    element: (
-      <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>,
   },
 
   {
     path: "accounts/report",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<ReportPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<ReportPage />)}</ModuleGuard>,
   },
   {
     path: "accounts/income",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<IncomePage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<IncomePage />)}</ModuleGuard>,
   },
   {
     path: "accounts/expense",
-    element: (
-      <ModuleGuard module="accounts">{withSuspense(<ExpensePage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="accounts">{withSuspense(<ExpensePage />)}</ModuleGuard>,
+  },
+  {
+    path: "accounts/transactions",
+    element: <ModuleGuard module="accounts">{withSuspense(<AccountListPage />)}</ModuleGuard>,
   },
 
+  {
+    path: "settings/profile",
+    element: withSuspense(<ProfileSettingsPage />),
+  },
   {
     path: "settings/website",
     element: (
@@ -301,9 +255,7 @@ const madrasaAdminChildren = [
   },
   {
     path: "settings/branding",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<BrandingSettingsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="settings">{withSuspense(<BrandingSettingsPage />)}</ModuleGuard>,
   },
   {
     path: "settings/payment-methods",
@@ -313,34 +265,24 @@ const madrasaAdminChildren = [
   },
   {
     path: "settings/roles",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<RolesPermissionsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="settings">{withSuspense(<RolesPermissionsPage />)}</ModuleGuard>,
   },
   {
     path: "settings/users",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<UsersPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="settings">{withSuspense(<UsersPage />)}</ModuleGuard>,
   },
   {
     path: "settings/trash",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>,
   },
   {
     path: "notifications",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<NotificationsPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="settings">{withSuspense(<NotificationsPage />)}</ModuleGuard>,
   },
 
   {
     path: "activity",
-    element: (
-      <ModuleGuard module="activity">{withSuspense(<ActivityPage />)}</ModuleGuard>
-    ),
+    element: <ModuleGuard module="activity">{withSuspense(<ActivityPage />)}</ModuleGuard>,
   },
 
   { path: "*", element: withSuspense(<NotFoundPage />) },

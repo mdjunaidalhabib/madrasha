@@ -41,3 +41,35 @@ export const getReport = asyncHandler(async (req: Request, res: Response) => {
   const rows = await accountService.getReport(madrasa_id, type, groupBy);
   res.json(rows);
 });
+
+export const listAccounts = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const rows = await accountService.list(madrasa_id, req.query);
+  res.json(rows);
+});
+
+export const updateAccount = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.update(madrasa_id, req.user!.id, Number(req.params.id), req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.remove(madrasa_id, req.user!.id, Number(req.params.id));
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});

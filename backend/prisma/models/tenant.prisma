@@ -201,6 +201,8 @@ model User {
   madrasaId           Int       @map("madrasa_id")
   name                String    @db.VarChar(200)
   email               String    @db.VarChar(200)
+  mobile              String?   @db.VarChar(20)
+  photoUrl            String?   @map("photo_url") @db.VarChar(500)
   passwordHash        String    @map("password_hash") @db.VarChar(255)
   roleId              Int       @map("role_id")
   isActive            Int?      @default(1) @map("is_active")

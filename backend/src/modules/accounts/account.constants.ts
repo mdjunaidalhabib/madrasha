@@ -42,6 +42,12 @@ export const INCOME_VALIDATION_MESSAGE = "নাম, ফান্ড, খাত,
 export const EXPENSE_VALIDATION_MESSAGE = "নাম, ফান্ড, ব্যয়ের খাত, পরিমাণ ও পেমেন্ট মাধ্যম বাধ্যতামূলক";
 export const INCOME_SUCCESS_MESSAGE = "আয় এন্ট্রি সফল হয়েছে";
 export const EXPENSE_SUCCESS_MESSAGE = "ব্যয় এন্ট্রি সফল হয়েছে";
+export const ACCOUNT_UPDATE_SUCCESS_MESSAGE = "এন্ট্রি আপডেট হয়েছে";
+export const ACCOUNT_DELETE_SUCCESS_MESSAGE = "এন্ট্রি মুছে ফেলা হয়েছে";
+export const ACCOUNT_NOT_FOUND_MESSAGE = "এন্ট্রি খুঁজে পাওয়া যায়নি";
 
 export const ACCOUNT_ACTIVITY_ENTITY = { INCOME: "INCOME", EXPENSE: "EXPENSE" } as const;
 export const REPORT_ROW_LIMIT = 365;
+export const ACCOUNT_LIST_ROW_LIMIT = 500;
+export const RECEIPT_NO_PREFIX = "RC";
+export const VOUCHER_NO_PREFIX = "VC";

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 
 export class AuthRepository {
@@ -71,7 +72,12 @@ export class AuthRepository {
     });
   }
 
-  createResetToken(data: { madrasaId: number; userId: number; tokenHash: string; expiresAt: Date }) {
+  createResetToken(data: {
+    madrasaId: number;
+    userId: number;
+    tokenHash: string;
+    expiresAt: Date;
+  }) {
     return prisma.passwordResetToken.create({ data });
   }
 
@@ -87,6 +93,33 @@ export class AuthRepository {
 
   updateUserPasswordHash(userId: number, passwordHash: string) {
     return prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
+  /* ================= MY PROFILE ================= */
+
+  findMyProfile(userId: number, madrasaId: number) {
+    return prisma.user.findFirst({
+      where: { id: userId, madrasaId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        photoUrl: true,
+        role: { select: { keyName: true, nameBn: true } },
+      },
+    });
+  }
+
+  findPasswordHashById(userId: number, madrasaId: number) {
+    return prisma.user.findFirst({
+      where: { id: userId, madrasaId },
+      select: { passwordHash: true },
+    });
+  }
+
+  updateMyProfile(userId: number, madrasaId: number, data: Prisma.UserUncheckedUpdateInput) {
+    return prisma.user.updateMany({ where: { id: userId, madrasaId }, data });
   }
 }
 

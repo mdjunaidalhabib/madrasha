@@ -6,7 +6,13 @@ import { logger } from "../../shared/logger/logger";
 import { env } from "../../shared/config/env";
 import { emailService } from "../../shared/notifications/email.service";
 import { authRepository, AuthRepository } from "./auth.repository";
-import { LoginCredentials, LoginResult, UnlockCredentials } from "./auth.types";
+import {
+  LoginCredentials,
+  LoginResult,
+  MyProfile,
+  UnlockCredentials,
+  UpdateMyProfileInput,
+} from "./auth.types";
 import {
   MUHTAMIM_ROLE_KEYS,
   TALIMAT_ROLE_KEYS,
@@ -35,9 +41,7 @@ export class AuthService {
 
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-      throw new BadRequestError(
-        `Too many failed attempts. Try again in ${minutesLeft} minute(s).`,
-      );
+      throw new BadRequestError(`Too many failed attempts. Try again in ${minutesLeft} minute(s).`);
     }
 
     const [role, validPassword] = await Promise.all([
@@ -84,6 +88,8 @@ export class AuthService {
         email: user.email,
         role_id: user.roleId,
         role_key: roleKey,
+        mobile: user.mobile,
+        photo_url: user.photoUrl,
       },
       permissions,
       modules,
@@ -181,7 +187,10 @@ export class AuthService {
       // Don't leak the failure to the caller (still return the generic
       // message) - but log it loudly so an admin/dev notices SMTP is
       // broken rather than guardians silently never getting the email.
-      logger.error(`Failed to send password-reset email to ${user.email}`, emailResult.errorMessage);
+      logger.error(
+        `Failed to send password-reset email to ${user.email}`,
+        emailResult.errorMessage,
+      );
     }
 
     if (env.nodeEnv !== "production") {
@@ -200,6 +209,54 @@ export class AuthService {
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updateUserPasswordHash(resetToken.userId, passwordHash);
     await this.repository.markResetTokenUsed(resetToken.id);
+  }
+
+  /* ================= MY PROFILE ================= */
+
+  async getMe(userId: number, madrasaId: number): Promise<MyProfile> {
+    const user = await this.repository.findMyProfile(userId, madrasaId);
+    if (!user) throw new NotFoundError("User not found");
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      photo_url: user.photoUrl,
+      role_key: normalizeRoleKey(user.role?.keyName || user.role?.nameBn),
+      role_label: user.role?.nameBn || "",
+    };
+  }
+
+  async updateMe(userId: number, madrasaId: number, dto: UpdateMyProfileInput): Promise<void> {
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) {
+      if (!dto.name.trim()) throw new BadRequestError("Name is required");
+      data.name = dto.name.trim();
+    }
+    if (dto.mobile !== undefined) data.mobile = dto.mobile.trim() || null;
+    if (dto.photo_url !== undefined) data.photoUrl = dto.photo_url.trim() || null;
+
+    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+
+    const result = await this.repository.updateMyProfile(userId, madrasaId, data as any);
+    if (!result.count) throw new NotFoundError("User not found");
+  }
+
+  async changeMyPassword(
+    userId: number,
+    madrasaId: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.repository.findPasswordHashById(userId, madrasaId);
+    if (!user) throw new NotFoundError("User not found");
+
+    const validPassword = await comparePassword(currentPassword, user.passwordHash);
+    if (!validPassword) throw new BadRequestError("Current password is incorrect");
+
+    const passwordHash = await hashPassword(newPassword);
+    await this.repository.updateUserPasswordHash(userId, passwordHash);
   }
 }
 

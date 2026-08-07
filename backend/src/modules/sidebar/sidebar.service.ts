@@ -34,7 +34,9 @@ export class SidebarService {
     // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.
     // Filter it here so existing databases stop showing it immediately, even
     // before the seed is run again.
-    let modules = madrasaModules.map((mm) => mm.module).filter((module) => module.keyName !== "admission");
+    let modules = madrasaModules
+      .map((mm) => mm.module)
+      .filter((module) => module.keyName !== "admission");
 
     // `website` now lives inside the Settings hub (সেটিংস > ওয়েবসাইট সেটিংস)
     // instead of its own top-level sidebar entry. Only fold it in when the
@@ -158,6 +160,19 @@ export class SidebarService {
         });
       }
 
+      // Same reasoning as payroll above - surfaces সকল লেনদেন (the income/expense
+      // list with edit & delete) under হিসাব in installations seeded before
+      // this feature existed.
+      if (mod.keyName === "accounts" && !children.some((child) => child.key === "transactions")) {
+        children.push({
+          id: -5005,
+          key: "transactions",
+          label: "সকল লেনদেন",
+          sort_order: 5,
+          disabled,
+        });
+      }
+
       // "settings" has no other real sidebar children in the DB yet - its
       // sub-pages only exist as cards on the settings hub page (see
       // SettingsPage.tsx). Same reasoning as reports/ihtemam/talimat/students
@@ -166,6 +181,7 @@ export class SidebarService {
       // require going back through the hub page every time.
       if (mod.keyName === "settings") {
         const fallbackSettingsChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "profile", label: "প্রোফাইল সেটিংস", sortOrder: -1 },
           { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 0 },
           { key: "branding", label: "রিপোর্ট ব্র্যান্ডিং", sortOrder: 1 },
           { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 2 },

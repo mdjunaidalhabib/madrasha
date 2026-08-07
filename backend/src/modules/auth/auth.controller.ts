@@ -87,3 +87,51 @@ export const resetPassword = async (req: Request, res: Response) => {
     });
   }
 };
+
+/* =========================================================
+   MY PROFILE
+========================================================= */
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const profile = await authService.getMe(req.user!.id, req.tenant!.madrasa_id);
+    res.json(profile);
+  } catch (err) {
+    if (err instanceof ApiError) {
+      res.status(err.statusCode).json({ message: err.message });
+      return;
+    }
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: (err as Error)?.message });
+  }
+};
+
+export const updateMe = async (req: Request, res: Response) => {
+  try {
+    await authService.updateMe(req.user!.id, req.tenant!.madrasa_id, req.body);
+    res.json({ message: "Updated" });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      res.status(err.statusCode).json({ message: err.message });
+      return;
+    }
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: (err as Error)?.message });
+  }
+};
+
+export const changeMyPassword = async (req: Request, res: Response) => {
+  try {
+    const { current_password, new_password } = req.body;
+    await authService.changeMyPassword(
+      req.user!.id,
+      req.tenant!.madrasa_id,
+      current_password,
+      new_password,
+    );
+    res.json({ message: "Password changed" });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      res.status(err.statusCode).json({ message: err.message });
+      return;
+    }
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: (err as Error)?.message });
+  }
+};

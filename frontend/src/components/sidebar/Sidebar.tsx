@@ -1,7 +1,8 @@
-import { NavLink, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, useLocation, useParams } from "react-router-dom";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useUIStore } from "../../store/uiStore";
-import Button from "../ui/Button";
+import { useAuthStore } from "../../store/authStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 
@@ -14,6 +15,11 @@ import {
   Settings,
   ClipboardList,
   Lock,
+  ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  UserCog,
+  LogOut,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -79,28 +85,130 @@ const disabledChildClass = "block cursor-not-allowed py-1.5 text-[15px] text-sla
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   const sidebar = useSidebarStore((s) => s.items);
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { madrasaSlug = "" } = useParams();
+  const location = useLocation();
   const adminBase = getTenantAdminBase(madrasaSlug);
   const collapsed = closeSidebar ? false : sidebarCollapsed;
   const handleClick = () => {
     if (closeSidebar) closeSidebar();
   };
 
+  // Accordion: only one module's submenu open at a time, click its header to
+  // toggle. Whichever module the current route belongs to is auto-expanded
+  // so refreshing/deep-linking into a page never hides its own submenu.
+  const [openModuleKey, setOpenModuleKey] = useState<string | null>(null);
+  useEffect(() => {
+    const active = sidebar.find(
+      (m) =>
+        m.children?.length && location.pathname.startsWith(`${adminBase}/${modulePath(m.key)}`),
+    );
+    if (active) setOpenModuleKey(active.key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, sidebar]);
+  const toggleModule = (key: string) => {
+    setOpenModuleKey((prev) => (prev === key ? null : key));
+  };
+
+  const avatarLetter = (user?.name || "ম").trim().charAt(0).toUpperCase();
+
+  // Account dropdown - click the avatar card to reveal প্রোফাইল সেটিংস/লগআউট
+  // instead of the card itself being a direct link (a single, unlabeled
+  // click straight into a settings page reads as accidental, not a
+  // deliberate action).
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div
       className={`flex h-screen flex-col border-r bg-white transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
     >
-      <div className="flex items-center justify-between border-b p-4">
-        {!collapsed && <div className="text-lg font-bold text-blue-600">Madrasa</div>}
-        <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-1 border-b p-2 ${collapsed ? "justify-center" : ""}`}>
+        {!collapsed && (
+          <div ref={accountMenuRef} className="relative min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((v) => !v)}
+              title="অ্যাকাউন্ট মেনু"
+              className={`flex w-full items-center gap-2 rounded-lg p-1 transition hover:bg-gray-50 ${accountMenuOpen ? "bg-gray-50" : ""}`}
+            >
+              {user?.photo_url ? (
+                <img
+                  src={user.photo_url}
+                  alt={user.name}
+                  className="h-9 w-9 shrink-0 rounded-full border border-gray-200 object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
+                  {avatarLetter}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 text-left leading-tight">
+                <span className="block truncate text-sm font-semibold text-gray-900">
+                  {user?.name || "Madrasa"}
+                </span>
+                <span className="block truncate text-xs text-gray-500">
+                  {user?.mobile || user?.email || ""}
+                </span>
+              </span>
+            </button>
+
+            {accountMenuOpen && (
+              <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-xl border border-gray-100 bg-white py-1.5 shadow-lg">
+                <NavLink
+                  to={`${adminBase}/settings/profile`}
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleClick();
+                  }}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
+                >
+                  <UserCog size={16} className="text-gray-400" />
+                  প্রোফাইল সেটিংস
+                </NavLink>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    logout();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
+                >
+                  <LogOut size={16} />
+                  লগআউট
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex shrink-0 items-center gap-1">
           {closeSidebar && (
-            <button className="text-lg md:hidden" onClick={closeSidebar}>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-gray-500 hover:bg-gray-100 md:hidden"
+              onClick={closeSidebar}
+            >
               ✕
             </button>
           )}
-          <Button variant="ghost" onClick={toggleSidebar} className="hidden md:block">
-            {collapsed ? "»" : "«"}
-          </Button>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
+            className="hidden h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 md:flex"
+          >
+            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          </button>
         </div>
       </div>
 
@@ -138,17 +246,33 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             );
           }
 
+          const isOpen = !collapsed && openModuleKey === module.key;
+
           return (
             <div key={module.key} className={moduleDisabled ? "opacity-70" : ""}>
-              <div
-                className={`flex items-center gap-2 px-3 py-2 text-base font-semibold ${moduleDisabled ? "text-slate-300" : "text-gray-700"}`}
+              <button
+                type="button"
+                onClick={() => toggleModule(module.key)}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold transition ${
+                  moduleDisabled ? "text-slate-300" : "text-gray-700 hover:bg-gray-50"
+                }`}
               >
                 <Icon size={18} />
-                {!collapsed && <span>{module.label}</span>}
-                {moduleDisabled && !collapsed && <Lock size={13} className="ml-auto" />}
-              </div>
-              {!collapsed && (
-                <div className="ml-6 space-y-1 border-l border-gray-200 pl-3">
+                {!collapsed && <span className="flex-1 text-left">{module.label}</span>}
+                {moduleDisabled && !collapsed && <Lock size={13} />}
+                {!collapsed && !moduleDisabled && (
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  />
+                )}
+              </button>
+              <div
+                className={`grid transition-all duration-200 ease-in-out ${
+                  isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="ml-6 space-y-1 overflow-hidden border-l border-gray-200 pl-3">
                   {module.children.map((child) => {
                     const childDisabled = moduleDisabled || Boolean(child.disabled);
                     return childDisabled ? (
@@ -162,7 +286,9 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                         onClick={handleClick}
                         onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
                         onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                        className={({ isActive }) => `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`}
+                        className={({ isActive }) =>
+                          `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`
+                        }
                       >
                         <span>{child.label}</span>
                         {Boolean(child.count) && (
@@ -174,7 +300,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                     );
                   })}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

@@ -34,7 +34,14 @@ export const notificationApi = {
 
 /* ================= IMAGE / FILE STORAGE (Cloudinary) ================= */
 
-export type UploadFolder = "students" | "teachers" | "branding" | "gallery" | "certificates" | "misc";
+export type UploadFolder =
+  | "students"
+  | "teachers"
+  | "branding"
+  | "gallery"
+  | "certificates"
+  | "profile"
+  | "misc";
 
 export interface UploadImageResponse {
   uploaded: boolean;
@@ -50,5 +57,6 @@ export const uploadApi = {
   uploadImage: (image: string, folder: UploadFolder = "misc") =>
     api.post<{ success: boolean; data: UploadImageResponse }>("/uploads/image", { image, folder }),
 
-  deleteImage: (publicId: string) => api.delete("/uploads/image", { data: { public_id: publicId } }),
+  deleteImage: (publicId: string) =>
+    api.delete("/uploads/image", { data: { public_id: publicId } }),
 };

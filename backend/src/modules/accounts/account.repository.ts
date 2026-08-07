@@ -12,6 +12,30 @@ export class AccountRepository {
     return prisma.account.create({ data });
   }
 
+  countByType(madrasaId: number, type: "income" | "expense") {
+    return prisma.account.count({ where: { madrasaId, type } });
+  }
+
+  findMany(madrasaId: number, where: Prisma.AccountWhereInput, take: number) {
+    return prisma.account.findMany({
+      where: { madrasaId, deletedAt: null, ...where },
+      orderBy: [{ entryDate: "desc" }, { entryTime: "desc" }, { id: "desc" }],
+      take,
+    });
+  }
+
+  findForTenant(id: number, madrasaId: number) {
+    return prisma.account.findFirst({ where: { id, madrasaId, deletedAt: null } });
+  }
+
+  update(id: number, data: Prisma.AccountUpdateInput) {
+    return prisma.account.update({ where: { id }, data });
+  }
+
+  softDelete(id: number) {
+    return prisma.account.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
   findReportByFund(madrasaId: number) {
     return prisma.$queryRaw<ReportRow[]>`
       SELECT fund AS period,
