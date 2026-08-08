@@ -1,0 +1,114 @@
+// ============================================================
+// DOCUMENT TEMPLATES — background-overlay document designer.
+// SYSTEM templates (tenantId null) are authored by Super Admin and can be
+// published for every tenant to see/clone. TENANT templates (tenantId set)
+// are private to one madrasa. Layer/background layout data is stored as
+// JSON on a versioned row rather than as relational child rows: no feature
+// needs to query into individual layers, and a JSON blob makes cloning and
+// publishing an atomic copy instead of re-keying N child rows (same spirit
+// as the point-in-time snapshot fields already used elsewhere, e.g.
+// ResultSummary.roll, PayrollRecord.basicSalary).
+// ============================================================
+
+enum DocumentType {
+  ID_CARD
+  ADMIT_CARD
+  CERTIFICATE
+  CLEARANCE_CERTIFICATE
+  TESTIMONIAL
+  MARKSHEET
+  FEE_RECEIPT
+  SALARY_SLIP
+}
+
+enum DocumentTemplateScope {
+  SYSTEM
+  TENANT
+}
+
+enum DocumentTemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model DocumentTemplate {
+  id                    Int                   @id @default(autoincrement())
+  scope                 DocumentTemplateScope
+  /// Null for SYSTEM-scope templates. Set for TENANT-scope templates.
+  /// Same nullable-for-global pattern as Role.madrasaId.
+  tenantId              Int?                  @map("tenant_id")
+  type                  DocumentType
+  name                  String                @db.VarChar(150)
+  description           String?               @db.Text
+  /// Points at the DocumentTemplate this one was cloned from, if any.
+  /// No relation attribute (self-relation kept simple/manual, mirrors the
+  /// currentVersionId/publishedVersionId pointers below) — cloning must
+  /// never let edits flow back to the source template.
+  clonedFromId          Int?                  @map("cloned_from_id")
+  /// "SUPER_ADMIN" | "TENANT_USER" — discriminates which of the two
+  /// mutually-exclusive creator columns below is populated.
+  createdByRole         String                @db.VarChar(20)
+  /// No relation constraint on purpose (same as ActivityLog.userId /
+  /// createdBySuperAdminId): a template must survive the creator's account
+  /// being deleted later.
+  createdByUserId       Int?                  @map("created_by_user_id")
+  createdBySuperAdminId Int?                  @map("created_by_super_admin_id")
+  isPublished           Boolean               @default(false) @map("is_published")
+  isActive              Boolean               @default(true) @map("is_active")
+  /// SYSTEM-scope only: Super Admin's suggested starting template for this
+  /// type. Distinct from a tenant's own active default (TenantDocumentDefault).
+  isSystemDefault       Boolean               @default(false) @map("is_system_default")
+  /// Working-copy pointer (usually the latest DRAFT version). No relation
+  /// attribute to avoid a circular FK with DocumentTemplateVersion.templateId;
+  /// resolved manually in the repository layer.
+  currentVersionId      Int?                  @map("current_version_id")
+  /// Last PUBLISHED version pointer — what tenants/renderers actually use.
+  publishedVersionId    Int?                  @map("published_version_id")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  tenant                 Madrasa?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions               DocumentTemplateVersion[] @relation("TemplateVersions")
+  tenantDocumentDefaults TenantDocumentDefault[]
+
+  @@index([tenantId, type], map: "idx_doc_templates_tenant_type")
+  @@index([scope, type, isActive], map: "idx_doc_templates_scope_type_active")
+  @@map("document_templates")
+}
+
+model DocumentTemplateVersion {
+  id          Int                           @id @default(autoincrement())
+  templateId  Int                           @map("template_id")
+  versionNo   Int                           @map("version_no")
+  width       Int
+  height      Int
+  background  Json?
+  layers      Json
+  status      DocumentTemplateVersionStatus @default(DRAFT)
+  publishedAt DateTime?                     @map("published_at")
+  createdAt   DateTime                      @default(now()) @map("created_at")
+
+  template DocumentTemplate @relation("TemplateVersions", fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, versionNo], map: "uniq_template_version_no")
+  @@index([templateId, status], map: "idx_doc_template_versions_status")
+  @@map("document_template_versions")
+}
+
+/// At most one active default template per (madrasa, document type). A join
+/// table rather than an isTenantDefault boolean on DocumentTemplate, since
+/// Prisma can't express a uniqueness constraint conditioned on scope=TENANT,
+/// and this lets deleting a template cleanly cascade the pointer away.
+model TenantDocumentDefault {
+  id         Int          @id @default(autoincrement())
+  madrasaId  Int          @map("madrasa_id")
+  type       DocumentType
+  templateId Int          @map("template_id")
+  updatedAt  DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa          @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, type], map: "uniq_tenant_doc_default")
+  @@map("tenant_document_defaults")
+}

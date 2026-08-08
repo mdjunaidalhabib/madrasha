@@ -40,6 +40,7 @@ export type UploadFolder =
   | "branding"
   | "gallery"
   | "certificates"
+  | "document-templates"
   | "profile"
   | "misc";
 

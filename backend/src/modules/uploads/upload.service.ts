@@ -4,7 +4,15 @@ import { decryptSecret } from "../../shared/utils/crypto.util";
 import { cloudinaryService, CloudinaryCredentials } from "../../shared/storage/cloudinary.service";
 import { UploadImageRequestDto, DeleteImageRequestDto } from "./upload.dto";
 
-const ALLOWED_FOLDERS = ["students", "teachers", "branding", "gallery", "certificates", "misc"];
+const ALLOWED_FOLDERS = [
+  "students",
+  "teachers",
+  "branding",
+  "gallery",
+  "certificates",
+  "document-templates",
+  "misc",
+];
 
 export class UploadService {
   /** Each madrasa has its own Cloudinary account, set up by the super admin. */

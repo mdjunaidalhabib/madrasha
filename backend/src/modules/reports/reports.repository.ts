@@ -2,6 +2,40 @@ import { prisma } from "../../shared/database/prisma";
 import { MISSING_TABLE_OR_COLUMN_CODES, REPORT_MISSING_TABLE_WARNING } from "./reports.constants";
 import { OptionalQueryResult } from "./reports.types";
 
+/** Optional narrowing filters accepted by roster-shaped queries (id cards,
+ * admit cards) so document-templates.service.ts can generate for a single
+ * class or a hand-picked set of students instead of always the whole
+ * active roster. All fields optional and backward compatible - existing
+ * callers that pass nothing behave exactly as before. */
+export interface RosterFilters {
+  classId?: number;
+  divisionId?: number;
+  studentIds?: number[];
+}
+
+/** Builds the extra `AND ...` SQL fragment + positional params (starting
+ * after $1 = madrasaId) for RosterFilters, shared by every roster query
+ * that accepts them. */
+function buildRosterFilterSql(madrasaId: number, filters: RosterFilters, alias = "s") {
+  const params: any[] = [madrasaId];
+  const clauses: string[] = [];
+
+  if (filters.classId !== undefined) {
+    params.push(filters.classId);
+    clauses.push(`AND ${alias}.class_id = $${params.length}`);
+  }
+  if (filters.divisionId !== undefined) {
+    params.push(filters.divisionId);
+    clauses.push(`AND ${alias}.division_id = $${params.length}`);
+  }
+  if (filters.studentIds !== undefined && filters.studentIds.length > 0) {
+    params.push(filters.studentIds);
+    clauses.push(`AND ${alias}.id = ANY($${params.length}::int[])`);
+  }
+
+  return { conditions: clauses.join("\n        "), params };
+}
+
 const isMissingTableOrColumn = (error: any) => {
   const codes = [error?.code, error?.meta?.code, error?.meta?.dbCode].filter(Boolean);
   return codes.some((code) => MISSING_TABLE_OR_COLUMN_CODES.includes(String(code)));
@@ -34,7 +68,8 @@ export class ReportsRepository {
     }
   }
 
-  private findActiveStudentRoster(madrasaId: number) {
+  private findActiveStudentRoster(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runQuery(
       `
       SELECT
@@ -58,9 +93,10 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
-      [madrasaId],
+      params,
     );
   }
 
@@ -635,8 +671,8 @@ export class ReportsRepository {
 
   /* ================= STUDENT ================= */
 
-  findStudentIdCards(madrasaId: number) {
-    return this.findActiveStudentRoster(madrasaId);
+  findStudentIdCards(madrasaId: number, filters: RosterFilters = {}) {
+    return this.findActiveStudentRoster(madrasaId, filters);
   }
 
   async findStudentMarksheets(madrasaId: number): Promise<OptionalQueryResult<any>> {
@@ -714,7 +750,8 @@ export class ReportsRepository {
     );
   }
 
-  findStudentAdmitCards(madrasaId: number) {
+  findStudentAdmitCards(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runOptionalQuery(
       `
       SELECT
@@ -746,9 +783,10 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 

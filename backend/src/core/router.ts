@@ -9,6 +9,7 @@ import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import userRoutes from "../modules/users/user.routes";
 import settingsRoutes from "../modules/settings/settings.routes";
+import documentTemplateRoutes from "../modules/document-templates/document-templates.routes";
 import activityRoutes from "../modules/activity/activity.routes";
 import sidebarRoutes from "../modules/sidebar/sidebar.routes";
 
@@ -108,6 +109,7 @@ router.use("/guardian", guardianRoutes);
 
 router.use("/users", userRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/document-templates", documentTemplateRoutes);
 router.use("/activity", activityRoutes);
 
 /* =========================

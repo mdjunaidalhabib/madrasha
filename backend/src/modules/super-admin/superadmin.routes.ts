@@ -47,6 +47,30 @@ import {
 ========================= */
 import { listDivisions, listClasses, listBooks, listModules } from "./meta.controller";
 
+/* =========================
+   Document template handlers
+========================= */
+import {
+  listSystemTemplates,
+  getSystemTemplate,
+  createSystemTemplate,
+  saveSystemDraft,
+  publishSystemTemplate,
+  updateSystemTemplateMeta,
+  deleteSystemTemplate,
+  setSystemDefaultTemplate,
+  uploadSystemTemplateBackground,
+} from "./document-templates.controller";
+
+/* =========================
+   Platform settings handlers
+========================= */
+import {
+  getPlatformCloudinaryConfig,
+  savePlatformCloudinaryConfig,
+  deletePlatformCloudinaryConfig,
+} from "./platform-settings.controller";
+
 const router = Router();
 
 /* =====================================================
@@ -144,5 +168,29 @@ router.get("/classes", superAdminMiddleware, listClasses);
 router.get("/books", superAdminMiddleware, listBooks);
 
 router.get("/modules", superAdminMiddleware, listModules);
+
+/* =====================================================
+   DOCUMENT TEMPLATES (System Template Library)
+   Base: /api/super/document-templates
+===================================================== */
+
+router.get("/document-templates", superAdminMiddleware, listSystemTemplates);
+router.post("/document-templates", superAdminMiddleware, createSystemTemplate);
+router.post("/document-templates/upload-background", superAdminMiddleware, uploadSystemTemplateBackground);
+router.put("/document-templates/:id/draft", superAdminMiddleware, saveSystemDraft);
+router.post("/document-templates/:id/publish", superAdminMiddleware, publishSystemTemplate);
+router.post("/document-templates/:id/set-system-default", superAdminMiddleware, setSystemDefaultTemplate);
+router.put("/document-templates/:id", superAdminMiddleware, updateSystemTemplateMeta);
+router.delete("/document-templates/:id", superAdminMiddleware, deleteSystemTemplate);
+router.get("/document-templates/:id", superAdminMiddleware, getSystemTemplate);
+
+/* =====================================================
+   PLATFORM SETTINGS (Super Admin's own account-level config)
+   Base: /api/super/platform-settings
+===================================================== */
+
+router.get("/platform-settings/cloudinary", superAdminMiddleware, getPlatformCloudinaryConfig);
+router.put("/platform-settings/cloudinary", superAdminMiddleware, savePlatformCloudinaryConfig);
+router.delete("/platform-settings/cloudinary", superAdminMiddleware, deletePlatformCloudinaryConfig);
 
 export default router;

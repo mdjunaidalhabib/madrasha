@@ -2,6 +2,7 @@ import { Router } from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { subscriptionCheck } from "../../shared/middleware/subscription.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getDivisions,
   getClassesByDivision,
@@ -33,10 +34,22 @@ router.get("/document-templates", tenantMiddleware, authMiddleware, getDocumentT
 router.put("/document-templates", tenantMiddleware, authMiddleware, updateDocumentTemplates);
 
 router.get("/id-card-design", tenantMiddleware, authMiddleware, getIdCardDesign);
-router.put("/id-card-design", tenantMiddleware, authMiddleware, updateIdCardDesign);
+router.put(
+  "/id-card-design",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateIdCardDesign,
+);
 
 router.get("/admit-card-design", tenantMiddleware, authMiddleware, getAdmitCardDesign);
-router.put("/admit-card-design", tenantMiddleware, authMiddleware, updateAdmitCardDesign);
+router.put(
+  "/admit-card-design",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateAdmitCardDesign,
+);
 
 router.get("/letter-design", tenantMiddleware, authMiddleware, getLetterDesign);
 router.put("/letter-design", tenantMiddleware, authMiddleware, updateLetterDesign);

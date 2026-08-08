@@ -26,6 +26,7 @@ import BookLabelMinimal from "../../components/Report/documents/book-label-desig
 import BookLabelArch from "../../components/Report/documents/book-label-designs/BookLabelArch";
 import BookLabelCustom from "../../components/Report/documents/book-label-designs/BookLabelCustom";
 import LetterDocument from "../../components/Report/documents/engine/LetterDocument";
+import TenantDocumentTemplateLibrary from "./TenantDocumentTemplateLibrary";
 import {
   ADMIT_CARD_RULE_TOKENS,
   DEFAULT_ADMIT_CARD_RULES,
@@ -595,6 +596,42 @@ export default function TalimatDocumentsPage() {
 
   if (loading) {
     return <SkeletonCard lines={5} />;
+  }
+
+  // ID Card / Admit Card now go through the real Document Template
+  // Designer (system+tenant template library, drag/resize/rotate layers,
+  // QR codes, versioning) instead of the old fixed classic/minimal/arch/
+  // custom preset picker below. Certificate/testimonial/transfer/book-label
+  // are untouched in this pass and keep falling through to the original
+  // render path further down.
+  if (active.key === "id-card" || active.key === "admit-card") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="ডকুমেন্ট টেমপ্লেট"
+          subtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেলের লেখা ও ডিজাইন এখান থেকে সাজান"
+        />
+
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {docTypes.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveKey(item.key)}
+              className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200"}`}
+            >
+              <span className="block font-bold">{item.title}</span>
+              <span className="mt-1 block text-xs text-slate-500">{item.subtitle}</span>
+            </button>
+          ))}
+        </div>
+
+        <TenantDocumentTemplateLibrary
+          type={active.key === "id-card" ? "ID_CARD" : "ADMIT_CARD"}
+          title={active.title}
+        />
+      </div>
+    );
   }
 
   const isAdmitCard = active.key === "admit-card";

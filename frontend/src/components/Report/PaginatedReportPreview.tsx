@@ -8,6 +8,7 @@ import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getPagePaddingMm } fro
 import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks";
 import { splitTextToFit } from "./pagination/splitTextToFit";
 import { getPrintableConfig } from "./pagination/printableConfig";
+import { useDocumentTemplateDefaultStore } from "../../store/documentTemplateDefaultStore";
 
 type PaginatedReportPreviewProps = {
   loading: boolean;
@@ -363,6 +364,16 @@ const PaginatedReportPreview = ({
   const [previewScale, setPreviewScale] = useState(1);
   const [resolvedPages, setResolvedPages] = useState<ResolvedPage[] | null>(null);
 
+  // IdCardGrid/AdmitCardGrid resolve their template asynchronously (from
+  // documentTemplateDefaultStore), so the very first off-screen measurement
+  // pass below can run before that data arrives and see an empty grid.
+  // Subscribing here and including it in the measurement effect's deps
+  // makes that effect re-run (and correctly re-measure) the moment the
+  // template finishes loading - same pattern as the document.fonts.ready
+  // re-measurement a few lines down.
+  const idCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ID_CARD);
+  const admitCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ADMIT_CARD);
+
   const config = getPrintableConfig(report);
   const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
 
@@ -571,7 +582,19 @@ const PaginatedReportPreview = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll, measureTargets]);
+  }, [
+    loading,
+    rows,
+    report,
+    paperSize,
+    orientation,
+    groups,
+    config.kind,
+    showBrandAtAll,
+    measureTargets,
+    idCardTemplateLoaded,
+    admitCardTemplateLoaded,
+  ]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;

@@ -66,6 +66,7 @@ const ExamPanel = lazy(() => import("../features/talimat/ExamPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
 const TalimatDocumentsPage = lazy(() => import("../features/talimat/TalimatDocumentsPage"));
+const TenantDocumentDesignerPage = lazy(() => import("../features/talimat/TenantDocumentDesignerPage"));
 
 const ActivityPage = lazy(() => import("../features/activity/ActivityPage"));
 const AdminWebsiteSettingsPage = lazy(
@@ -89,6 +90,15 @@ const SuperAdminPlansPage = lazy(
 );
 const SuperAdminWebsiteControlPage = lazy(
   () => import("../features/super-admin/website-control/SuperAdminWebsiteControlPage"),
+);
+const SuperAdminDocumentTemplatesPage = lazy(
+  () => import("../features/super-admin/document-templates/SuperAdminDocumentTemplatesPage"),
+);
+const SuperAdminDocumentTemplateEditorPage = lazy(
+  () => import("../features/super-admin/document-templates/SuperAdminDocumentTemplateEditorPage"),
+);
+const SuperAdminSettingsPage = lazy(
+  () => import("../features/super-admin/settings/SuperAdminSettingsPage"),
 );
 
 const PublicWebsitePage = lazy(() => import("../features/public/website/PublicWebsitePage"));
@@ -174,6 +184,10 @@ const madrasaAdminChildren = [
   {
     path: "talimat/documents",
     element: <ModuleGuard module="talimat">{withSuspense(<TalimatDocumentsPage />)}</ModuleGuard>,
+  },
+  {
+    path: "talimat/documents/:type/:id/edit",
+    element: <ModuleGuard module="talimat">{withSuspense(<TenantDocumentDesignerPage />)}</ModuleGuard>,
   },
   // NOTE: id_card / admit_card / certificate / testimonial / transfer_letter
   // used to be 5 separate routes that all rendered the exact same page.
@@ -302,7 +316,13 @@ export const router = createBrowserRouter([
       { path: "madrasas", element: withSuspense(<SuperAdminMadrasasPage />) },
       { path: "madrasas/trash", element: withSuspense(<SuperAdminMadrasasTrashPage />) },
       { path: "plans", element: withSuspense(<SuperAdminPlansPage />) },
+      { path: "document-templates", element: withSuspense(<SuperAdminDocumentTemplatesPage />) },
+      {
+        path: "document-templates/:id/edit",
+        element: withSuspense(<SuperAdminDocumentTemplateEditorPage />),
+      },
       { path: "websites", element: withSuspense(<SuperAdminWebsiteControlPage />) },
+      { path: "settings", element: withSuspense(<SuperAdminSettingsPage />) },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],
   },

@@ -1,61 +1,45 @@
 import { useEffect } from "react";
-import { useBrandingStore } from "../../../store/brandingStore";
-import { useAdmitCardDesignStore } from "../../../store/admitCardDesignStore";
-import { useDocumentTemplate } from "./engine/useDocumentTemplate";
-import { DEFAULT_ADMIT_CARD_RULES } from "../../../utils/documentTemplates";
-import AdmitCardClassic from "./admit-card-designs/AdmitCardClassic";
-import AdmitCardMinimal from "./admit-card-designs/AdmitCardMinimal";
-import AdmitCardArch from "./admit-card-designs/AdmitCardArch";
-import AdmitCardCustom from "./admit-card-designs/AdmitCardCustom";
+import DocumentPreview from "../../DocumentDesigner/DocumentPreview";
+import { useDocumentTemplateDefaultStore } from "../../../store/documentTemplateDefaultStore";
 
 type AdmitCardGridProps = {
   rows: Record<string, any>[];
 };
 
+/**
+ * Renders each row through the tenant's effective ADMIT_CARD template,
+ * same reasoning/pattern as IdCardGrid.tsx (including why it reads from
+ * the shared documentTemplateDefaultStore instead of a local fetch).
+ */
 const AdmitCardGrid = ({ rows }: AdmitCardGridProps) => {
-  const rulesTemplate = useDocumentTemplate("admit_card_rules", DEFAULT_ADMIT_CARD_RULES);
-
-  const branding = useBrandingStore((s) => s.branding);
-  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
-  const design = useAdmitCardDesignStore((s) => s.design);
-  const fetchDesign = useAdmitCardDesignStore((s) => s.fetchDesign);
+  const template = useDocumentTemplateDefaultStore((s) => s.defaults.ADMIT_CARD);
+  const fetchDefault = useDocumentTemplateDefaultStore((s) => s.fetchDefault);
 
   useEffect(() => {
-    fetchBranding();
-    fetchDesign();
-  }, [fetchBranding, fetchDesign]);
+    fetchDefault("ADMIT_CARD");
+  }, [fetchDefault]);
 
-  const madrasaName = branding?.name || "";
-  const designKey = design?.admit_card_design || "classic";
-  const backgroundImage = design?.admit_card_background_image;
+  const version = template?.published || template?.draft;
+  if (!version) return null;
 
   return (
     <div className="report-admit-card-grid grid gap-4">
       {rows.map((row, index) => {
         const key = `admit-card-${row.id || index}`;
-
-        if (designKey === "minimal") {
-          return (
-            <AdmitCardMinimal key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
-          );
-        }
-        if (designKey === "arch") {
-          return (
-            <AdmitCardArch key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
-          );
-        }
-        if (designKey === "custom" && backgroundImage) {
-          return (
-            <AdmitCardCustom
-              key={key}
-              row={row}
-              rulesTemplate={rulesTemplate}
-              backgroundImage={backgroundImage}
-            />
-          );
-        }
         return (
-          <AdmitCardClassic key={key} row={row} madrasaName={madrasaName} rulesTemplate={rulesTemplate} />
+          <DocumentPreview
+            key={key}
+            className="print-page-break"
+            layout={{
+              id: String(template!.id),
+              kind: "admit-card",
+              width: version.width,
+              height: version.height,
+              background: version.background || undefined,
+              layers: version.layers,
+            }}
+            row={row}
+          />
         );
       })}
     </div>

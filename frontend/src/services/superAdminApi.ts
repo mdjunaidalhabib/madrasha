@@ -164,6 +164,37 @@ export async function deleteMadrasaCloudinaryConfig(id: number) {
 }
 
 /* =========================
+   PLATFORM SETTINGS (Super Admin's own account-level config,
+   not tied to any one madrasa - e.g. the Cloudinary account System
+   Template backgrounds get uploaded to)
+========================= */
+
+export type PlatformCloudinaryConfig = {
+  configured: boolean;
+  cloud_name: string | null;
+  api_key: string | null;
+};
+
+export async function getPlatformCloudinaryConfig() {
+  const res = await cachedGet("/super/platform-settings/cloudinary");
+  return res.data.data as PlatformCloudinaryConfig;
+}
+
+export async function savePlatformCloudinaryConfig(payload: {
+  cloud_name: string;
+  api_key: string;
+  api_secret: string;
+}) {
+  const res = await api.put("/super/platform-settings/cloudinary", payload);
+  return res.data;
+}
+
+export async function deletePlatformCloudinaryConfig() {
+  const res = await api.delete("/super/platform-settings/cloudinary");
+  return res.data;
+}
+
+/* =========================
    TRASH MADRASAS
 ========================= */
 

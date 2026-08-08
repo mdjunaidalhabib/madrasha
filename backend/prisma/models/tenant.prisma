@@ -104,6 +104,8 @@ model Madrasa {
   notificationLogs             NotificationLog[]
   guardians                    Guardian[]
   cloudinaryConfig             MadrasaCloudinaryConfig?
+  documentTemplates            DocumentTemplate[]
+  tenantDocumentDefaults       TenantDocumentDefault[]
 
   @@index([isActive, deletedAt], map: "idx_madrasas_active")
   @@index([planStatus], map: "idx_madrasas_plan_status")

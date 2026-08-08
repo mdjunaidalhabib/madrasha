@@ -1,6 +1,14 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DEFAULT_CANVAS_SIZE_PX } from "../src/modules/document-templates/document-templates.constants";
+import {
+  buildAdmitCardBackground,
+  buildAdmitCardLayers,
+  buildIdCardBackground,
+  buildIdCardLayers,
+  PresetKey,
+} from "../src/modules/document-templates/preset-layer-builders";
 
 const prisma = new PrismaClient();
 
@@ -78,7 +86,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(superAdminPassword, 10);
 
-  await prisma.superAdmin.upsert({
+  const superAdminRow = await prisma.superAdmin.upsert({
     where: { email: superAdminEmail },
     update: {
       name: superAdminName,
@@ -93,6 +101,72 @@ async function main() {
       isActive: 1,
     },
   });
+
+  /* ============== SYSTEM DOCUMENT TEMPLATES ==============
+     Starter templates Super Admin can immediately publish/clone for
+     ID_CARD and ADMIT_CARD - the 2 document types fully wired end-to-end
+     in this pass (see backend/src/modules/document-templates). Reuses the
+     same preset-layer-builder functions the lazy tenant-migration path
+     uses (legacy-template-migration.service.ts), so a system starter and
+     an auto-migrated tenant's own version of the same preset look alike.
+     Seeded once by name, not re-synced every run - unlike the catalog
+     lists above, re-running seed.ts must never silently discard an
+     admin's post-seed edits to these rows. "custom" isn't seeded here: a
+     blank background isn't a meaningful starting preset. */
+  const SYSTEM_TEMPLATE_PRESETS: Array<{ type: "ID_CARD" | "ADMIT_CARD"; preset: PresetKey; name: string }> = [
+    { type: "ID_CARD", preset: "classic", name: "আইডি কার্ড - ধ্রুপদী" },
+    { type: "ID_CARD", preset: "minimal", name: "আইডি কার্ড - মিনিমাল" },
+    { type: "ID_CARD", preset: "arch", name: "আইডি কার্ড - খিলান" },
+    { type: "ADMIT_CARD", preset: "classic", name: "প্রবেশপত্র - ধ্রুপদী" },
+    { type: "ADMIT_CARD", preset: "minimal", name: "প্রবেশপত্র - মিনিমাল" },
+    { type: "ADMIT_CARD", preset: "arch", name: "প্রবেশপত্র - খিলান" },
+  ];
+
+  for (const spec of SYSTEM_TEMPLATE_PRESETS) {
+    const existing = await prisma.documentTemplate.findFirst({
+      where: { scope: "SYSTEM", type: spec.type, name: spec.name },
+    });
+    if (existing) continue;
+
+    const { width, height } = DEFAULT_CANVAS_SIZE_PX[spec.type];
+    const layers = spec.type === "ID_CARD" ? buildIdCardLayers(spec.preset) : buildAdmitCardLayers(spec.preset);
+    const background =
+      spec.type === "ID_CARD" ? buildIdCardBackground(spec.preset) : buildAdmitCardBackground(spec.preset);
+
+    const template = await prisma.documentTemplate.create({
+      data: {
+        scope: "SYSTEM",
+        tenantId: null,
+        type: spec.type,
+        name: spec.name,
+        description: "সিস্টেম স্টার্টার টেমপ্লেট",
+        createdByRole: "SUPER_ADMIN",
+        createdBySuperAdminId: superAdminRow.id,
+        isPublished: true,
+        isSystemDefault: spec.preset === "classic",
+      },
+    });
+
+    const version = await prisma.documentTemplateVersion.create({
+      data: {
+        templateId: template.id,
+        versionNo: 1,
+        width,
+        height,
+        background: background as any,
+        layers: layers as any,
+        status: "PUBLISHED",
+        publishedAt: new Date(),
+      },
+    });
+
+    await prisma.documentTemplate.update({
+      where: { id: template.id },
+      data: { currentVersionId: version.id, publishedVersionId: version.id },
+    });
+
+    console.log(`   ✅ Seeded system template: ${spec.name}`);
+  }
 
   /* ============== NEW-MADRASA DEFAULT TEMPLATES ==============
      These are platform-level templates only. prisma seed does NOT create a
@@ -680,6 +754,8 @@ async function main() {
     { keyName: "reports.read", name: "View Reports" },
     { keyName: "activity.read", name: "View Activity Log" },
     { keyName: "settings.manage", name: "Manage Settings" },
+    { keyName: "document_templates.read", name: "View Document Templates" },
+    { keyName: "document_templates.manage", name: "Manage Document Templates" },
     { keyName: "website.manage", name: "Manage Public Website" },
     { keyName: "notifications.read", name: "View Notification History" },
     { keyName: "notifications.send", name: "Send SMS/Email Notifications" },

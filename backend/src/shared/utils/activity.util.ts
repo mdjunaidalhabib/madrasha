@@ -1,8 +1,14 @@
 import { prisma } from "../database/prisma";
 
 export const logActivity = async (args: {
-  madrasa_id: number;
-  user_id: number;
+  // Nullable so platform-level (non-tenant) actions - e.g. Super Admin
+  // managing a SYSTEM-scope DocumentTemplate - can still be logged; the
+  // ActivityLog.madrasaId column has always allowed null.
+  madrasa_id: number | null;
+  // Nullable for system-triggered actions with no acting user (e.g. lazy
+  // legacy-template migration, run on whichever request happens to need
+  // the default first). ActivityLog.userId has no FK, so this is safe.
+  user_id: number | null;
   action: string;
   entity: string;
   entity_id?: number | null;

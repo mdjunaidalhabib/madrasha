@@ -26,7 +26,8 @@ export const isTalimatPermission = (permission: string) =>
   permission.startsWith("result.") ||
   permission.startsWith("attendance.") ||
   permission.startsWith("routine.") ||
-  permission.startsWith("notifications.");
+  permission.startsWith("notifications.") ||
+  permission.startsWith("document_templates.");
 
 export const isAccountsPermission = (permission: string) =>
   permission.startsWith("accounts.") ||
