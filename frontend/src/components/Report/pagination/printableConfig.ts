@@ -67,7 +67,7 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
     return { kind: "table", hasHeading: true, hasFooter: false, getGroupKey: noGrouping };
   }
 
-  if (printable === "id-card" || printable === "admit-card") {
+  if (printable === "id-card" || printable === "admit-card" || printable === "book-label") {
     return { kind: "grid", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
   }
 

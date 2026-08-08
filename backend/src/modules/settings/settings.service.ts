@@ -7,6 +7,7 @@ import {
   IdCardDesignData,
   AdmitCardDesignData,
   LetterDesignData,
+  BookLabelDesignData,
 } from "./settings.types";
 import {
   UpdateBrandingRequestDto,
@@ -14,6 +15,7 @@ import {
   UpdateIdCardDesignRequestDto,
   UpdateAdmitCardDesignRequestDto,
   UpdateLetterDesignRequestDto,
+  UpdateBookLabelDesignRequestDto,
 } from "./settings.dto";
 import {
   TEMPLATE_TOKENS,
@@ -261,6 +263,43 @@ export class SettingsService {
               letter_background_image === null
                 ? null
                 : storageProvider.persistImage(letter_background_image),
+          }
+        : {}),
+    });
+  }
+
+  async getBookLabelDesign(madrasaId: number): Promise<BookLabelDesignData> {
+    const madrasa = await this.repository.findBookLabelDesign(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    return {
+      book_label_design: madrasa.bookLabelDesign || DEFAULT_DOCUMENT_DESIGN,
+      book_label_background_image: madrasa.bookLabelBackgroundImage,
+    };
+  }
+
+  async updateBookLabelDesign(madrasaId: number, body: UpdateBookLabelDesignRequestDto) {
+    const { book_label_design, book_label_background_image } = body;
+
+    if (book_label_design !== undefined && !isValidDesignKey(book_label_design)) {
+      throw new BadRequestError("Invalid book label design");
+    }
+
+    if (
+      book_label_background_image !== undefined &&
+      !storageProvider.isValidImage(book_label_background_image)
+    ) {
+      throw new BadRequestError("Invalid image for book_label_background_image");
+    }
+
+    await this.repository.updateBookLabelDesign(madrasaId, {
+      ...(book_label_design !== undefined ? { bookLabelDesign: book_label_design } : {}),
+      ...(book_label_background_image !== undefined
+        ? {
+            bookLabelBackgroundImage:
+              book_label_background_image === null
+                ? null
+                : storageProvider.persistImage(book_label_background_image),
           }
         : {}),
     });

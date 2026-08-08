@@ -115,6 +115,23 @@ const getOptionalExamId = (req: Request) => {
   return Number.isInteger(examId) && examId > 0 ? examId : undefined;
 };
 
+export const getPrizeBookLabelsReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const mumtazOnly = req.query.mumtaz_only === "true";
+    const rows = await academicReportService.getPrizeBookLabels(
+      madrasaId,
+      getOptionalExamId(req),
+      mumtazOnly,
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 export const getExamSignatureSheetReport = async (req: Request, res: Response) => {
   const madrasaId = requireTenant(req, res);
   if (!madrasaId) return;

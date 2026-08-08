@@ -27,6 +27,10 @@ export class AcademicReportService {
     return this.repository.findGuardianPhones(madrasaId);
   }
 
+  getPrizeBookLabels(madrasaId: number, examId?: number, mumtazOnly?: boolean) {
+    return this.repository.findPrizeBookLabels(madrasaId, examId, mumtazOnly);
+  }
+
   getExamSignatureSheet(madrasaId: number, examId?: number) {
     return this.repository.findExamSignatureSheet(madrasaId, examId);
   }

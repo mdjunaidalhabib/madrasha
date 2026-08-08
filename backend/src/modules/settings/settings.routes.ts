@@ -16,6 +16,8 @@ import {
   updateAdmitCardDesign,
   getLetterDesign,
   updateLetterDesign,
+  getBookLabelDesign,
+  updateBookLabelDesign,
 } from "./settings.controller";
 
 const router = Router();
@@ -38,5 +40,8 @@ router.put("/admit-card-design", tenantMiddleware, authMiddleware, updateAdmitCa
 
 router.get("/letter-design", tenantMiddleware, authMiddleware, getLetterDesign);
 router.put("/letter-design", tenantMiddleware, authMiddleware, updateLetterDesign);
+
+router.get("/book-label-design", tenantMiddleware, authMiddleware, getBookLabelDesign);
+router.put("/book-label-design", tenantMiddleware, authMiddleware, updateBookLabelDesign);
 
 export default router;

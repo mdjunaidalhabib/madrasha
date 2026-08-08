@@ -46,4 +46,3 @@ export const expenseGroups = [
 ];
 
 export const paymentMethods = ["নগদ টাকা", "ব্যাংক / মোবাইল ব্যাংকিং"];
-export const fundNames = incomeFunds.map((fund) => fund.name);

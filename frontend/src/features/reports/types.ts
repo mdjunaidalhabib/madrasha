@@ -13,6 +13,11 @@ export type ReportMenuItem = {
   groupTitle?: string;
   requiresExam?: boolean;
   defaultOrientation?: "portrait" | "landscape";
+  // Extra static query params merged into the endpoint request alongside
+  // exam_id (e.g. distinguishing two menu entries that hit the same
+  // endpoint with a different filter flag, like the plain-rank vs.
+  // rank+mumtaz prize book label reports).
+  extraParams?: Record<string, string>;
   printable?:
     | "table"
     | "marksheet"
@@ -32,7 +37,8 @@ export type ReportMenuItem = {
     | "teacher-list"
     | "teacher-phone-list"
     | "exam-signature-sheet"
-    | "exam-number-sheet";
+    | "exam-number-sheet"
+    | "book-label";
 };
 
 export type Division = {

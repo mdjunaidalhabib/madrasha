@@ -4,7 +4,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useToastStore } from "../../store/toastStore";
-import { expenseGroups, fundNames, paymentMethods } from "./accountingData";
+import { expenseGroups, paymentMethods } from "./accountingData";
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700">
@@ -16,7 +16,6 @@ export default function ExpensePage() {
   const toast = useToastStore();
   const [groupName, setGroupName] = useState(expenseGroups[0].name);
   const [form, setForm] = useState({
-    fund: fundNames[0],
     category: expenseGroups[0].categories[0],
     amount: "",
     payment_method: paymentMethods[0],
@@ -36,7 +35,7 @@ export default function ExpensePage() {
   const handleSubmit = async () => {
     if (!form.receiver_name.trim()) return toast.push("error", "নাম দিন");
     if (!form.amount || Number(form.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
-    await api.post("/accounts/expense", form);
+    await api.post("/accounts/expense", { ...form, fund: groupName });
     toast.push("success", "ব্যয়/ভাউচার সংরক্ষণ হয়েছে");
     setForm((prev) => ({
       ...prev,
@@ -74,18 +73,6 @@ export default function ExpensePage() {
             >
               {selectedGroup.categories.map((category) => (
                 <option key={category}>{category}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <FieldLabel>ফান্ড</FieldLabel>
-            <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
-              value={form.fund}
-              onChange={(e) => setField("fund", e.target.value)}
-            >
-              {fundNames.map((fund) => (
-                <option key={fund}>{fund}</option>
               ))}
             </select>
           </div>

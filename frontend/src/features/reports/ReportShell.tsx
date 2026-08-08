@@ -73,8 +73,13 @@ const ReportShell = ({
         return;
       }
 
-      const query = activeReport.requiresExam ? `?exam_id=${selectedExam}` : "";
-      const res = await cachedGet(`${activeReport.endpoint}${query}`);
+      const params = new URLSearchParams();
+      if (activeReport.requiresExam) params.set("exam_id", selectedExam);
+      if (activeReport.extraParams) {
+        Object.entries(activeReport.extraParams).forEach(([key, value]) => params.set(key, value));
+      }
+      const query = params.toString();
+      const res = await cachedGet(`${activeReport.endpoint}${query ? `?${query}` : ""}`);
       const data =
         res.data?.data || res.data?.students || res.data?.teachers || res.data?.result || [];
 

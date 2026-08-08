@@ -134,3 +134,23 @@ export const updateLetterDesign = async (req: Request, res: Response) => {
     respondError(res, error);
   }
 };
+
+export const getBookLabelDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getBookLabelDesign(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateBookLabelDesign = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    await settingsService.updateBookLabelDesign(madrasa_id, req.body);
+    res.json({ message: "পুরস্কার লেবেল ডিজাইন সেভ হয়েছে" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};

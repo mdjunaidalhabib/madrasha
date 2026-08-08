@@ -28,3 +28,8 @@ export interface UpdateLetterDesignRequestDto {
   letter_design?: string;
   letter_background_image?: string | null;
 }
+
+export interface UpdateBookLabelDesignRequestDto {
+  book_label_design?: string;
+  book_label_background_image?: string | null;
+}

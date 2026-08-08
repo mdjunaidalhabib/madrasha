@@ -7,6 +7,7 @@ import DigitalAttendancePrint from "./academic/DigitalAttendancePrint";
 import ResidentialAttendancePrint from "./academic/ResidentialAttendancePrint";
 import ResultNoticeList from "./academic/ResultNoticeList";
 import AdmitCardGrid from "./documents/AdmitCardGrid";
+import BookLabelGrid from "./documents/BookLabelGrid";
 import IdCardGrid from "./documents/IdCardGrid";
 import SanadList from "./documents/SanadList";
 import TestimonialList from "./documents/TestimonialList";
@@ -82,6 +83,7 @@ const ReportContent = ({
   }
   if (report.printable === "id-card") return <IdCardGrid rows={rows} />;
   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} />;
+  if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
   if (report.printable === "certificate") {
     return (
       <SanadList

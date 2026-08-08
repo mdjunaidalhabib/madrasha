@@ -88,6 +88,17 @@ export class SettingsRepository {
   updateLetterDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
+
+  findBookLabelDesign(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { bookLabelDesign: true, bookLabelBackgroundImage: true },
+    });
+  }
+
+  updateBookLabelDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
+    return prisma.madrasa.update({ where: { id: madrasaId }, data });
+  }
 }
 
 export const settingsRepository = new SettingsRepository();

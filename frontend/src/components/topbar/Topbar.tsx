@@ -12,17 +12,27 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="h-14 bg-white shadow flex items-center justify-between px-3 md:px-4">
+    <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-4">
       {/* Left */}
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
         {/* Mobile menu */}
-        <button onClick={openSidebar} className="md:hidden text-xl p-1">
+        <button
+          onClick={openSidebar}
+          className="md:hidden text-xl p-1 rounded-lg text-slate-600 hover:bg-slate-100"
+        >
           ☰
         </button>
 
         {/* User greeting */}
-        <div className="text-sm text-gray-700 truncate max-w-[160px]">
-          {user ? `Hello, ${user.name}` : ""}
+        <div className="text-sm text-slate-600 truncate max-w-[160px]">
+          {user ? (
+            <>
+              <span className="text-slate-400">Hello,</span>{" "}
+              <span className="font-medium text-slate-800">{user.name}</span>
+            </>
+          ) : (
+            ""
+          )}
         </div>
       </div>
 

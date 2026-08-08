@@ -361,6 +361,64 @@ export class ReportsRepository {
     );
   }
 
+  /** Rank 1-3 winners for a single exam, used to auto-generate prize book
+   * labels. When mumtazOnly is set, further restricts to students holding
+   * the madrasa's top grade band (highest min_mark) - matched dynamically
+   * instead of a hardcoded grade name, since grade names are per-madrasa
+   * configurable (see MadrasaGrade). */
+  findPrizeBookLabels(madrasaId: number, examId?: number, mumtazOnly?: boolean) {
+    return this.runQuery(
+      `
+      WITH selected_exam AS (
+        SELECT e.id, e.name, e.year
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
+        LIMIT 1
+      ),
+      top_grade AS (
+        SELECT name FROM madrasa_grades WHERE madrasa_id = $1 ORDER BY min_mark DESC LIMIT 1
+      )
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.registration_no,
+        COALESCE(rs.roll, s.roll) AS roll,
+        s.division_id,
+        s.class_id,
+        s.name_bn AS student_name,
+        s.father_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.id AS exam_id,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        rs.total,
+        rs.average,
+        rs.madrasa_grade,
+        rs.general_grade,
+        rs.rank_no
+      FROM results_summary rs
+      INNER JOIN students s ON s.id = rs.student_id
+      INNER JOIN results_master rm ON rm.id = rs.result_master_id
+      CROSS JOIN selected_exam e
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+        AND rm.status = 'PUBLISHED'
+        AND rm.exam_id = e.id
+        AND rs.rank_no IN (1, 2, 3)
+        AND ($3::boolean IS NOT TRUE OR rs.madrasa_grade = (SELECT name FROM top_grade))
+      ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC
+      `,
+      [madrasaId, examId || null, !!mumtazOnly],
+    );
+  }
+
   findExamSignatureSheet(madrasaId: number, examId?: number) {
     return this.runQuery(
       `

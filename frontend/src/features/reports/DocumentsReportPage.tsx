@@ -1,5 +1,16 @@
 import ReportShell, { ReportMenuItem } from "./ReportShell";
 
+const PRIZE_BOOK_LABEL_COLUMNS = [
+  { header: "মেধাক্রম", key: "rank_no" },
+  { header: "শিক্ষার্থীর নাম", key: "student_name" },
+  { header: "রোল", key: "roll" },
+  { header: "শ্রেণি", key: "class_name" },
+  { header: "বিভাগ", key: "division_name" },
+  { header: "গ্রেড", key: "madrasa_grade" },
+  { header: "পরীক্ষা", key: "exam_name" },
+  { header: "সেশন", key: "exam_year" },
+];
+
 const reports: ReportMenuItem[] = [
   {
     key: "student-id-cards",
@@ -83,14 +94,34 @@ const reports: ReportMenuItem[] = [
       { header: "সেশন", key: "academic_year" },
     ],
   },
+  {
+    key: "prize-book-labels-rank",
+    title: "পুরস্কার বই-লেবেল (মেধাক্রম ১-৩)",
+    subtitle: "নির্বাচিত পরীক্ষায় ১ম, ২য়, ৩য় স্থান অধিকারীদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
+    endpoint: "/reports/academic/prize-book-labels",
+    printable: "book-label",
+    requiresExam: true,
+    columns: PRIZE_BOOK_LABEL_COLUMNS,
+  },
+  {
+    key: "prize-book-labels-mumtaz",
+    title: "পুরস্কার বই-লেবেল (১-৩ + মুমতাজ)",
+    subtitle: "নির্বাচিত পরীক্ষায় মেধাক্রম ১ম-৩য় এবং মুমতাজ গ্রেডপ্রাপ্তদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
+    endpoint: "/reports/academic/prize-book-labels",
+    printable: "book-label",
+    requiresExam: true,
+    extraParams: { mumtaz_only: "true" },
+    columns: PRIZE_BOOK_LABEL_COLUMNS,
+  },
 ];
 
 const DocumentsReportPage = () => (
   <ReportShell
     pageTitle="ডকুমেন্ট সমূহ"
-    pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র ও ছাড়পত্র — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
+    pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
     accentTitle="Documents"
     reports={reports}
+    hideBrandHeader
   />
 );
 

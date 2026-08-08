@@ -10,7 +10,7 @@ import { SkeletonList } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { logger } from "../../utils/logger";
-import { incomeFunds, expenseGroups, fundNames, paymentMethods } from "./accountingData";
+import { incomeFunds, expenseGroups, paymentMethods } from "./accountingData";
 import { AccountRow, AccountType, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
 import AccountReceiptModal from "./AccountReceiptModal";
 
@@ -25,6 +25,7 @@ type EditForm = {
   entry_time: string;
   no: string;
   fund: string;
+  group: string;
   category: string;
   name: string;
   address: string;
@@ -37,12 +38,16 @@ const emptyEditForm: EditForm = {
   entry_time: "",
   no: "",
   fund: "",
+  group: "",
   category: "",
   name: "",
   address: "",
   amount: "",
   payment_method: "",
 };
+
+const findExpenseGroup = (category: string) =>
+  expenseGroups.find((group) => group.categories.includes(category)) || expenseGroups[0];
 
 export default function AccountListPage() {
   const toast = useToastStore();
@@ -106,18 +111,13 @@ export default function AccountListPage() {
     setCategoryFilter("");
   };
 
-  const fundOptions = useMemo(
-    () => (editing?.type === "income" ? incomeFunds.map((f) => f.name) : fundNames),
-    [editing],
-  );
   const categoryOptions = useMemo(() => {
     if (!editing) return [];
     if (editing.type === "income") {
       return incomeFunds.find((f) => f.name === editForm.fund)?.categories || [];
     }
-    return expenseGroups.find((g) => g.categories.includes(editForm.category))?.categories
-      || expenseGroups.flatMap((g) => g.categories);
-  }, [editing, editForm.fund, editForm.category]);
+    return expenseGroups.find((g) => g.name === editForm.group)?.categories || [];
+  }, [editing, editForm.fund, editForm.group]);
 
   const openEdit = (row: AccountRow) => {
     setEditing(row);
@@ -126,6 +126,7 @@ export default function AccountListPage() {
       entry_time: toTimeInput(row.entryTime),
       no: (row.type === "income" ? row.receiptNo : row.voucherNo) || "",
       fund: row.fund || "",
+      group: row.type === "expense" ? findExpenseGroup(row.category || "").name : "",
       category: row.category || "",
       name: partyName(row) === "-" ? "" : partyName(row),
       address: row.address || "",
@@ -143,12 +144,13 @@ export default function AccountListPage() {
     setEditForm((prev) => ({ ...prev, [key]: value }));
 
   const handleFundChange = (fundName: string) => {
-    if (editing?.type === "income") {
-      const fund = incomeFunds.find((f) => f.name === fundName);
-      setEditForm((prev) => ({ ...prev, fund: fundName, category: fund?.categories[0] || "" }));
-    } else {
-      setEditForm((prev) => ({ ...prev, fund: fundName }));
-    }
+    const fund = incomeFunds.find((f) => f.name === fundName);
+    setEditForm((prev) => ({ ...prev, fund: fundName, category: fund?.categories[0] || "" }));
+  };
+
+  const handleGroupChange = (groupName: string) => {
+    const group = expenseGroups.find((g) => g.name === groupName) || expenseGroups[0];
+    setEditForm((prev) => ({ ...prev, group: group.name, category: group.categories[0] }));
   };
 
   const handleSave = async () => {
@@ -159,7 +161,7 @@ export default function AccountListPage() {
     const payload: Record<string, string> = {
       entry_date: editForm.entry_date,
       entry_time: editForm.entry_time,
-      fund: editForm.fund,
+      fund: editing.type === "income" ? editForm.fund : editForm.group,
       category: editForm.category,
       amount: editForm.amount,
       payment_method: editForm.payment_method,
@@ -365,16 +367,28 @@ export default function AccountListPage() {
               <Input value={editForm.no} onChange={(e) => setField("no", e.target.value)} />
             </div>
             <div>
-              <FieldLabel>ফান্ড</FieldLabel>
-              <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
-                value={editForm.fund}
-                onChange={(e) => handleFundChange(e.target.value)}
-              >
-                {fundOptions.map((fund) => (
-                  <option key={fund}>{fund}</option>
-                ))}
-              </select>
+              <FieldLabel>{editing.type === "income" ? "ফান্ড" : "ব্যয় বিভাগ"}</FieldLabel>
+              {editing.type === "income" ? (
+                <select
+                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                  value={editForm.fund}
+                  onChange={(e) => handleFundChange(e.target.value)}
+                >
+                  {incomeFunds.map((fund) => (
+                    <option key={fund.name}>{fund.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                  value={editForm.group}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                >
+                  {expenseGroups.map((group) => (
+                    <option key={group.name}>{group.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <FieldLabel>খাত</FieldLabel>

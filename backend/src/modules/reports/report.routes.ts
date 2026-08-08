@@ -12,6 +12,7 @@ import {
   getExamNumberSheetReport,
   getExamSignatureSheetReport,
   getGuardianPhoneReport,
+  getPrizeBookLabelsReport,
   getResidentialAttendanceReport,
 } from "./controllers/academic-report.controller";
 import {
@@ -35,6 +36,7 @@ router.use(authMiddleware);
 router.get("/academic/results", getAcademicResultsReport);
 router.get("/academic/results-by-rank", getAcademicResultsByRankReport);
 router.get("/academic/result-notice", getAcademicResultNoticeReport);
+router.get("/academic/prize-book-labels", getPrizeBookLabelsReport);
 router.get("/academic/routines", getAcademicRoutineReport);
 router.get("/academic/admissions", getAcademicAdmissionReport);
 router.get("/academic/guardian-phones", getGuardianPhoneReport);

@@ -63,6 +63,9 @@ model Madrasa {
   letterDesign             String? @map("letter_design") @db.VarChar(20)
   letterBackgroundImage    String? @map("letter_background_image") @db.Text
 
+  bookLabelDesign          String? @map("book_label_design") @db.VarChar(20)
+  bookLabelBackgroundImage String? @map("book_label_background_image") @db.Text
+
   subscriptions                MadrasaSubscription[]
   subscriptionPayments         SubscriptionPayment[]
   madrasaDivisions             MadrasaDivision[]

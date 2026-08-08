@@ -39,10 +39,10 @@ export default function LockScreen() {
             <img
               src={user.photo_url}
               alt={user.name}
-              className="mb-3 h-16 w-16 rounded-full border-2 border-blue-100 object-cover"
+              className="mb-3 h-16 w-16 rounded-full border-2 border-indigo-100 object-cover"
             />
           ) : (
-            <span className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-600">
+            <span className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-2xl font-bold text-white">
               {avatarLetter}
             </span>
           )}

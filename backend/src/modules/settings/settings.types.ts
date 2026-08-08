@@ -29,3 +29,8 @@ export interface LetterDesignData {
   letter_design: string;
   letter_background_image: string | null;
 }
+
+export interface BookLabelDesignData {
+  book_label_design: string;
+  book_label_background_image: string | null;
+}

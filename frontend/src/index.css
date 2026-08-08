@@ -461,6 +461,13 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Prize book label is a fixed physical bookplate-sticker size (92mm x
+   58mm) so printed sheets can be cut and pasted onto the inside cover of
+   the prize book; column count is however many fit the page width. */
+.report-book-label-grid {
+  grid-template-columns: repeat(auto-fill, 92mm);
+}
+
 html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -1363,7 +1370,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .app-sidebar-nav:hover {
-  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
 
 .app-sidebar-nav::-webkit-scrollbar {
@@ -1380,7 +1387,7 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .app-sidebar-nav:hover::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.45);
 }
 
 .report-sidebar {
