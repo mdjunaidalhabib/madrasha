@@ -81,6 +81,10 @@ const FeeManagementPage = () => {
   const [generateForm, setGenerateForm] = useState(emptyGenerateForm);
   const [generating, setGenerating] = useState(false);
 
+  const [editTarget, setEditTarget] = useState<FeeStructureRow | null>(null);
+  const [editForm, setEditForm] = useState(emptyStructureForm);
+  const [editSaving, setEditSaving] = useState(false);
+
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
   const [invoicesLoading, setInvoicesLoading] = useState(false);
@@ -191,6 +195,41 @@ const FeeManagementPage = () => {
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEditModal = (structure: FeeStructureRow) => {
+    setEditTarget(structure);
+    setEditForm({
+      name: structure.name,
+      amount: String(structure.amount),
+      frequency: structure.frequency,
+      academic_year: structure.academicYear,
+    });
+  };
+
+  const handleUpdateStructure = async () => {
+    if (!editTarget) return;
+    if (!editForm.name.trim() || !editForm.amount || !editForm.academic_year) {
+      useToastStore.getState().show("নাম, পরিমাণ ও শিক্ষাবর্ষ দিন", "error");
+      return;
+    }
+    try {
+      setEditSaving(true);
+      await feeStructureApi.update(editTarget.id, {
+        name: editForm.name.trim(),
+        amount: Number(editForm.amount),
+        frequency: editForm.frequency,
+        academic_year: editForm.academic_year,
+      });
+      useToastStore.getState().show("ফি কাঠামো আপডেট হয়েছে", "success");
+      setEditTarget(null);
+      loadStructures();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "ফি কাঠামো আপডেট করতে সমস্যা হয়েছে";
+      useToastStore.getState().show(msg, "error");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -435,6 +474,13 @@ const FeeManagementPage = () => {
                         </button>
                         <button
                           type="button"
+                          onClick={() => openEditModal(row)}
+                          className="h-8 rounded-md border border-blue-300 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        >
+                          এডিট
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleDeleteStructure(row.id)}
                           className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
                         >
@@ -515,6 +561,74 @@ const FeeManagementPage = () => {
           </>
         )}
       </div>
+
+      {/* Edit fee structure modal */}
+      <Modal
+        open={!!editTarget}
+        title={`ফি কাঠামো এডিট করুন — ${editTarget?.name || ""}`}
+        onClose={() => setEditTarget(null)}
+      >
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">নাম</label>
+            <input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
+            <input
+              type="number"
+              value={editForm.amount}
+              onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">ফ্রিকোয়েন্সি</label>
+            <select
+              value={editForm.frequency}
+              onChange={(e) => setEditForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            >
+              {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
+                <option key={f} value={f}>
+                  {FREQUENCY_LABELS[f]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">শিক্ষাবর্ষ</label>
+            <input
+              type="text"
+              value={editForm.academic_year}
+              onChange={(e) => setEditForm((p) => ({ ...p, academic_year: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setEditTarget(null)}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={editSaving}
+            onClick={handleUpdateStructure}
+            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          </button>
+        </div>
+      </Modal>
 
       {/* Generate invoices modal */}
       <Modal

@@ -18,12 +18,12 @@ import {
 type Plan = {
   id: number;
   name: string;
-  student_limit: number;
-  user_limit: number;
-  duration_days: number;
+  studentLimit: number;
+  userLimit: number;
+  durationDays: number;
   price: number;
-  is_active: number | boolean;
-  deleted_at?: string | null;
+  isActive: number | boolean;
+  deletedAt?: string | null;
 };
 
 type PlanForm = {
@@ -180,11 +180,11 @@ export default function SuperAdminPlansPage() {
     setEditing(p);
     setForm({
       name: p.name ?? "",
-      student_limit: Number(p.student_limit ?? 0),
-      user_limit: Number(p.user_limit ?? 0),
-      duration_days: Number(p.duration_days ?? 0),
+      student_limit: Number(p.studentLimit ?? 0),
+      user_limit: Number(p.userLimit ?? 0),
+      duration_days: Number(p.durationDays ?? 0),
       price: Number(p.price ?? 0),
-      is_active: p.is_active ? 1 : 0,
+      is_active: p.isActive ? 1 : 0,
     });
     setPriceText(String(Number(p.price ?? 0)));
     setOpen(true);
@@ -424,19 +424,19 @@ export default function SuperAdminPlansPage() {
                   <div className="font-medium text-gray-900">
                     #{p.id} — {p.name}
                   </div>
-                  <div className="text-xs text-gray-500">Duration: {p.duration_days} days</div>
+                  <div className="text-xs text-gray-500">Duration: {p.durationDays} days</div>
                 </div>
-                <Badge active={!!p.is_active} />
+                <Badge active={!!p.isActive} />
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
                 <div>
                   <div className="text-xs text-gray-500">Students</div>
-                  {p.student_limit}
+                  {p.studentLimit}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Users</div>
-                  {p.user_limit}
+                  {p.userLimit}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
@@ -478,20 +478,20 @@ export default function SuperAdminPlansPage() {
                     #{p.id} — {p.name}
                   </div>
                   <div className="text-xs text-gray-500">
-                    Deleted: {p.deleted_at ? new Date(p.deleted_at).toLocaleString() : "-"}
+                    Deleted: {p.deletedAt ? new Date(p.deletedAt).toLocaleString() : "-"}
                   </div>
                 </div>
-                <Badge active={!!p.is_active} />
+                <Badge active={!!p.isActive} />
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
                 <div>
                   <div className="text-xs text-gray-500">Students</div>
-                  {p.student_limit}
+                  {p.studentLimit}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Users</div>
-                  {p.user_limit}
+                  {p.userLimit}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
@@ -541,14 +541,14 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3 text-gray-700">{p.id}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{p.name}</div>
-                      <div className="text-xs text-gray-500">Duration: {p.duration_days} days</div>
+                      <div className="text-xs text-gray-500">Duration: {p.durationDays} days</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{p.student_limit}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.user_limit}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.duration_days}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
                     <td className="px-4 py-3">
-                      <Badge active={!!p.is_active} />
+                      <Badge active={!!p.isActive} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
@@ -579,15 +579,15 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{p.name}</div>
                       <div className="text-xs text-gray-500">
-                        Deleted: {p.deleted_at ? new Date(p.deleted_at).toLocaleString() : "-"}
+                        Deleted: {p.deletedAt ? new Date(p.deletedAt).toLocaleString() : "-"}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{p.student_limit}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.user_limit}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.duration_days}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
                     <td className="px-4 py-3">
-                      <Badge active={!!p.is_active} />
+                      <Badge active={!!p.isActive} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">

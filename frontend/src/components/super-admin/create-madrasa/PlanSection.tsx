@@ -5,6 +5,7 @@ type Props = {
   plan_id: string;
   student_limit: number;
   user_limit: number;
+  duration_days: number;
   locked: boolean;
   onPlanChange: (id: string) => void;
 };
@@ -14,6 +15,7 @@ export default function PlanSection({
   plan_id,
   student_limit,
   user_limit,
+  duration_days,
   locked,
   onPlanChange,
 }: Props) {
@@ -38,6 +40,7 @@ export default function PlanSection({
 
       <LimitField label="Student Limit" value={student_limit} disabled={locked} />
       <LimitField label="User Limit" value={user_limit} disabled={locked} />
+      <LimitField label="Duration (Days)" value={duration_days} disabled={locked} />
     </div>
   );
 }

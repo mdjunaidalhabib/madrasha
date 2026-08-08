@@ -1,13 +1,18 @@
-import { useRef } from "react";
-import { ZoomIn, ZoomOut, Image as ImageIcon, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { ZoomIn, ZoomOut, Image as ImageIcon, X, RectangleVertical, RectangleHorizontal } from "lucide-react";
 import Button from "../ui/Button";
 import type { CanvasBackground } from "./types";
+import { detectPageSize, pageSizePx, pxToMm, mmToPx, PAGE_SIZE_LABELS_BN, type PageSizeId } from "./pageSizes";
 
 export interface ToolbarProps {
   name: string;
   onChangeName: (name: string) => void;
   zoom: number;
   onChangeZoom: (zoom: number) => void;
+  /** Current canvas size in design-time px. */
+  width: number;
+  height: number;
+  onChangeSize: (width: number, height: number) => void;
   background: CanvasBackground | undefined;
   onChangeBackground: (background: CanvasBackground | undefined) => void;
   /** Uploads a background image file and resolves to a usable URL/data URI.
@@ -29,6 +34,9 @@ const Toolbar = ({
   onChangeName,
   zoom,
   onChangeZoom,
+  width,
+  height,
+  onChangeSize,
   background,
   onChangeBackground,
   onUploadBackgroundImage,
@@ -40,6 +48,25 @@ const Toolbar = ({
   saveError,
 }: ToolbarProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  // Detected from the actual size by default; "কাস্টম" is a user override so
+  // picking it stays selected even when the current mm exactly matches a
+  // preset (detectPageSize would otherwise snap it straight back to A4/A5).
+  const [forceCustom, setForceCustom] = useState(false);
+  const detected = detectPageSize(width, height);
+  const pageSizeId: PageSizeId = forceCustom ? "CUSTOM" : detected.id;
+  const orientation = detected.orientation;
+
+  const handlePresetChange = (id: PageSizeId) => {
+    if (id === "CUSTOM") {
+      setForceCustom(true);
+      return;
+    }
+    setForceCustom(false);
+    const size = pageSizePx(id, orientation);
+    onChangeSize(size.width, size.height);
+  };
+
+  const toggleOrientation = () => onChangeSize(height, width);
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -66,6 +93,57 @@ const Toolbar = ({
         >
           <ZoomIn size={16} />
         </button>
+      </div>
+
+      <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1">
+        <select
+          value={pageSizeId}
+          onChange={(e) => handlePresetChange(e.target.value as PageSizeId)}
+          className="rounded-md border-none bg-transparent py-1 text-xs font-medium text-slate-700 outline-none"
+          title="পেজ সাইজ"
+        >
+          {(Object.keys(PAGE_SIZE_LABELS_BN) as PageSizeId[]).map((id) => (
+            <option key={id} value={id}>
+              {PAGE_SIZE_LABELS_BN[id]}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={toggleOrientation}
+          title={orientation === "portrait" ? "উলম্ব (Portrait)" : "অনুভূমিক (Landscape)"}
+          className="rounded p-1 text-slate-600 hover:bg-slate-100"
+        >
+          {orientation === "portrait" ? <RectangleVertical size={16} /> : <RectangleHorizontal size={16} />}
+        </button>
+        {pageSizeId === "CUSTOM" && (
+          <div className="flex items-center gap-1 text-xs text-slate-500">
+            <input
+              type="number"
+              min={1}
+              value={pxToMm(width)}
+              onChange={(e) => {
+                const mm = Number(e.target.value);
+                if (Number.isFinite(mm) && mm > 0) onChangeSize(mmToPx(mm), height);
+              }}
+              className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-xs"
+              title="প্রস্থ (mm)"
+            />
+            <span>×</span>
+            <input
+              type="number"
+              min={1}
+              value={pxToMm(height)}
+              onChange={(e) => {
+                const mm = Number(e.target.value);
+                if (Number.isFinite(mm) && mm > 0) onChangeSize(width, mmToPx(mm));
+              }}
+              className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-xs"
+              title="উচ্চতা (mm)"
+            />
+            <span>mm</span>
+          </div>
+        )}
       </div>
 
       <input

@@ -41,8 +41,9 @@ export type Madrasa = {
 export type Plan = {
   id: number;
   name: string;
-  student_limit: number;
-  user_limit: number;
+  studentLimit: number;
+  userLimit: number;
+  durationDays: number;
   website_status?: string;
   address?: string | null;
   phone?: string | null;

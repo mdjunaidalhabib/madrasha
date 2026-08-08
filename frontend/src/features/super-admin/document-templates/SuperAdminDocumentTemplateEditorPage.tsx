@@ -137,6 +137,9 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         onChangeName={setName}
         zoom={zoom}
         onChangeZoom={setZoom}
+        width={designer.state.width}
+        height={designer.state.height}
+        onChangeSize={designer.setCanvasSize}
         background={designer.state.background}
         onChangeBackground={designer.setBackground}
         onUploadBackgroundImage={async (file) => {

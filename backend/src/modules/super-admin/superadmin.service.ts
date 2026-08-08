@@ -229,9 +229,11 @@ export class SuperAdminService {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
         if (!plan) throw new InvalidPlanError("Invalid plan_id");
 
+        const durationDays = Number(dto.duration_days) > 0 ? Number(dto.duration_days) : plan.durationDays || 0;
+
         const startDate = new Date(new Date().toDateString());
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + (plan.durationDays || 0));
+        endDate.setDate(endDate.getDate() + durationDays);
 
         await this.repository.createSubscriptionOnTx(tx, madrasaId, plan.id, startDate, endDate);
         await this.repository.updateMadrasaLimitsOnTx(tx, madrasaId, plan.studentLimit, plan.userLimit);

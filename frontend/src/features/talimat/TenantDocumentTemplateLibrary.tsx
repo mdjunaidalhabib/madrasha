@@ -4,6 +4,7 @@ import { Star, Copy, Pencil, Trash2, Plus, CheckCircle2 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import DocumentPreview from "../../components/DocumentDesigner/DocumentPreview";
+import CreateTemplateModal from "../../components/DocumentDesigner/CreateTemplateModal";
 import {
   DOCUMENT_TYPE_TO_KIND,
   documentTypeToUrlSlug,
@@ -23,7 +24,12 @@ import {
 } from "../../services/documentTemplateLibraryApi";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
-const THUMB_SCALE = 0.32;
+// Previews are fit into this box (aspect-ratio preserved) instead of a fixed
+// scale, so every document type — a tiny ID card or a full A4 page — reads
+// clearly at a consistent, larger card size.
+const THUMB_MAX_WIDTH = 300;
+const THUMB_MAX_HEIGHT = 380;
+const thumbScale = (width: number, height: number) => Math.min(THUMB_MAX_WIDTH / width, THUMB_MAX_HEIGHT / height);
 
 export default function TenantDocumentTemplateLibrary({
   type,
@@ -42,6 +48,8 @@ export default function TenantDocumentTemplateLibrary({
   const [previewRow, setPreviewRow] = useState<Record<string, any> | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -76,13 +84,15 @@ export default function TenantDocumentTemplateLibrary({
 
   const openInDesigner = (id: number) => navigate(`${adminBase}/talimat/documents/${documentTypeToUrlSlug(type)}/${id}/edit`);
 
-  const handleCreateBlank = async () => {
+  const handleCreate = async (name: string) => {
     setBusyId(-1);
+    setCreateError("");
     try {
-      const detail = await createTemplate({ type, name: `নতুন ${title}` });
+      const detail = await createTemplate({ type, name });
       openInDesigner(detail.id);
+      setCreateOpen(false);
     } catch {
-      setError("নতুন টেমপ্লেট তৈরি করা যায়নি");
+      setCreateError("নতুন টেমপ্লেট তৈরি করা যায়নি, আবার চেষ্টা করুন");
     } finally {
       setBusyId(null);
     }
@@ -134,10 +144,25 @@ export default function TenantDocumentTemplateLibrary({
           <h2 className="text-lg font-bold text-slate-900">{title} — টেমপ্লেট লাইব্রেরি</h2>
           <p className="text-xs text-slate-500">সিস্টেম টেমপ্লেট ব্যবহার করুন, কাস্টমাইজ করুন, অথবা নিজের টেমপ্লেট তৈরি করুন</p>
         </div>
-        <Button type="button" onClick={handleCreateBlank} disabled={busyId === -1}>
+        <Button
+          type="button"
+          onClick={() => {
+            setCreateError("");
+            setCreateOpen(true);
+          }}
+        >
           <Plus size={15} className="mr-1.5" /> নতুন টেমপ্লেট
         </Button>
       </div>
+
+      <CreateTemplateModal
+        open={createOpen}
+        defaultName={`নতুন ${title}`}
+        busy={busyId === -1}
+        error={createError}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={handleCreate}
+      />
 
       {error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
@@ -151,29 +176,29 @@ export default function TenantDocumentTemplateLibrary({
             const detail = details[item.id];
             const version = detail?.published || detail?.draft;
             const isTenantOwned = item.scope === "TENANT";
+            const scale = version ? thumbScale(version.width, version.height) : 1;
 
             return (
               <div key={item.id} className="rounded-xl border border-slate-200 p-3">
                 <div
-                  className="mx-auto mb-3 overflow-hidden rounded-lg border border-slate-100 bg-slate-50"
-                  style={{
-                    width: version ? version.width * THUMB_SCALE : 140,
-                    height: version ? version.height * THUMB_SCALE : 160,
-                  }}
+                  className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
+                  style={{ width: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
                 >
                   {version && (
-                    <DocumentPreview
-                      layout={{
-                        id: String(item.id),
-                        kind: DOCUMENT_TYPE_TO_KIND[type],
-                        width: version.width,
-                        height: version.height,
-                        background: version.background || undefined,
-                        layers: version.layers,
-                      }}
-                      row={previewRow || {}}
-                      zoom={THUMB_SCALE}
-                    />
+                    <div style={{ width: version.width * scale, height: version.height * scale, overflow: "hidden" }}>
+                      <DocumentPreview
+                        layout={{
+                          id: String(item.id),
+                          kind: DOCUMENT_TYPE_TO_KIND[type],
+                          width: version.width,
+                          height: version.height,
+                          background: version.background || undefined,
+                          layers: version.layers,
+                        }}
+                        row={previewRow || {}}
+                        zoom={scale}
+                      />
+                    </div>
                   )}
                 </div>
 

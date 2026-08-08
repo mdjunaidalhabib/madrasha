@@ -50,16 +50,23 @@ export class PlansService {
     const exist = await this.repository.findActiveByName(name);
     if (exist) throw new PlanConflictError("এই নামে plan ইতিমধ্যে আছে");
 
-    const created = await this.repository.create({
-      name,
-      studentLimit: student_limit,
-      userLimit: user_limit,
-      durationDays: duration_days,
-      price,
-      isActive: is_active,
-    });
+    try {
+      const created = await this.repository.create({
+        name,
+        studentLimit: student_limit,
+        userLimit: user_limit,
+        durationDays: duration_days,
+        price,
+        isActive: is_active,
+      });
 
-    return created.id;
+      return created.id;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new PlanConflictError("এই নামে plan আগে ব্যবহার হয়েছে (trash-এও থাকতে পারে), অন্য নাম দিন");
+      }
+      throw err;
+    }
   }
 
   async updatePlan(id: number, dto: CreatePlanRequestDto) {
@@ -74,14 +81,25 @@ export class PlansService {
 
     validatePlanFields(name, student_limit, user_limit, duration_days, price);
 
-    const result = await this.repository.updateActiveById(id, {
-      name,
-      studentLimit: student_limit,
-      userLimit: user_limit,
-      durationDays: duration_days,
-      price,
-      isActive: is_active,
-    });
+    const exist = await this.repository.findActiveByNameExcludingId(name, id);
+    if (exist) throw new PlanConflictError("এই নামে plan ইতিমধ্যে আছে");
+
+    let result;
+    try {
+      result = await this.repository.updateActiveById(id, {
+        name,
+        studentLimit: student_limit,
+        userLimit: user_limit,
+        durationDays: duration_days,
+        price,
+        isActive: is_active,
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new PlanConflictError("এই নামে plan আগে ব্যবহার হয়েছে (trash-এও থাকতে পারে), অন্য নাম দিন");
+      }
+      throw err;
+    }
 
     if (result.count === 0) throw new PlanNotFoundError("Plan পাওয়া যায়নি / trash এ আছে");
   }

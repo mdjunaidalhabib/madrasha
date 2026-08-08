@@ -6,6 +6,7 @@ export interface CreateMadrasaRequestDto {
   plan_id?: number | string;
   student_limit?: number | string;
   user_limit?: number | string;
+  duration_days?: number | string;
   divisions?: unknown;
   modules?: unknown;
   classes?: unknown;

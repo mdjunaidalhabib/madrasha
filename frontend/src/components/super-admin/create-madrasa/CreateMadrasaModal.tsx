@@ -44,6 +44,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   const [planId, setPlanId] = useState("");
   const [studentLimit, setStudentLimit] = useState(100);
   const [userLimit, setUserLimit] = useState(5);
+  const [durationDays, setDurationDays] = useState(365);
 
   // ===== master data =====
   const [divisionItems, setDivisionItems] = useState<Item[]>([]);
@@ -201,8 +202,9 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
       const plan = plans.find((p) => String(p.id) === id);
       if (!plan) return;
 
-      setStudentLimit(plan.student_limit);
-      setUserLimit(plan.user_limit);
+      setStudentLimit(plan.studentLimit);
+      setUserLimit(plan.userLimit);
+      setDurationDays(plan.durationDays);
     },
     [plans]
   );
@@ -255,6 +257,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
         plan_id: Number(planId),
         student_limit: studentLimit,
         user_limit: userLimit,
+        duration_days: durationDays,
 
         divisions: divisions.map(Number),
         classes: classes.map(Number),
@@ -290,6 +293,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           plan_id={planId}
           student_limit={studentLimit}
           user_limit={userLimit}
+          duration_days={durationDays}
           locked={!!planId}
           onPlanChange={handlePlanChange}
         />

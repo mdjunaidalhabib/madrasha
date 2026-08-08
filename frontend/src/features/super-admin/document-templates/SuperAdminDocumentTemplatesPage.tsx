@@ -5,6 +5,7 @@ import PageHeader from "../../../components/ui/PageHeader";
 import Button from "../../../components/ui/Button";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import DocumentPreview from "../../../components/DocumentDesigner/DocumentPreview";
+import CreateTemplateModal from "../../../components/DocumentDesigner/CreateTemplateModal";
 import {
   DOCUMENT_TYPE_TO_KIND,
   DOCUMENT_TYPE_LABELS_BN,
@@ -30,7 +31,12 @@ const ALL_TYPES: BackendDocumentType[] = [
   "SALARY_SLIP",
 ];
 
-const THUMB_SCALE = 0.3;
+// Previews are fit into this box (aspect-ratio preserved) instead of a fixed
+// scale, so every document type — a tiny ID card or a full A4 page — reads
+// clearly at a consistent, larger card size.
+const THUMB_MAX_WIDTH = 300;
+const THUMB_MAX_HEIGHT = 380;
+const thumbScale = (width: number, height: number) => Math.min(THUMB_MAX_WIDTH / width, THUMB_MAX_HEIGHT / height);
 
 const PLACEHOLDER_ROW: Record<string, any> = {
   student_name: "Md Abdullah",
@@ -52,6 +58,8 @@ export default function SuperAdminDocumentTemplatesPage() {
   const [details, setDetails] = useState<Record<number, TemplateDetailDto>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -75,13 +83,15 @@ export default function SuperAdminDocumentTemplatesPage() {
 
   const openInDesigner = (id: number) => navigate(`/super-admin/document-templates/${id}/edit`);
 
-  const handleCreate = async () => {
+  const handleCreate = async (name: string) => {
     setBusyId(-1);
+    setCreateError("");
     try {
-      const detail = await createSystemTemplate({ type, name: `নতুন ${DOCUMENT_TYPE_LABELS_BN[type]}` });
+      const detail = await createSystemTemplate({ type, name });
       openInDesigner(detail.id);
+      setCreateOpen(false);
     } catch {
-      setError("তৈরি করা যায়নি");
+      setCreateError("নতুন টেমপ্লেট তৈরি করা যায়নি, আবার চেষ্টা করুন");
     } finally {
       setBusyId(null);
     }
@@ -118,10 +128,25 @@ export default function SuperAdminDocumentTemplatesPage() {
         title="Document Templates"
         subtitle="Manage system-wide template library for ID Card, Admit Card and other documents"
         actions={
-          <Button type="button" onClick={handleCreate} disabled={busyId === -1}>
+          <Button
+            type="button"
+            onClick={() => {
+              setCreateError("");
+              setCreateOpen(true);
+            }}
+          >
             <Plus size={15} className="mr-1.5" /> New Template
           </Button>
         }
+      />
+
+      <CreateTemplateModal
+        open={createOpen}
+        defaultName={`নতুন ${DOCUMENT_TYPE_LABELS_BN[type]}`}
+        busy={busyId === -1}
+        error={createError}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={handleCreate}
       />
 
       <div className="flex flex-wrap gap-2">
@@ -148,33 +173,33 @@ export default function SuperAdminDocumentTemplatesPage() {
           এই ধরনের কোনো সিস্টেম টেমপ্লেট নেই। একটি নতুন টেমপ্লেট তৈরি করুন।
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const detail = details[item.id];
             const version = detail?.published || detail?.draft;
+            const scale = version ? thumbScale(version.width, version.height) : 1;
 
             return (
               <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
                 <div
-                  className="mx-auto mb-3 overflow-hidden rounded-lg border border-slate-100 bg-slate-50"
-                  style={{
-                    width: version ? version.width * THUMB_SCALE : 140,
-                    height: version ? version.height * THUMB_SCALE : 160,
-                  }}
+                  className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
+                  style={{ width: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
                 >
                   {version && (
-                    <DocumentPreview
-                      layout={{
-                        id: String(item.id),
-                        kind: DOCUMENT_TYPE_TO_KIND[type],
-                        width: version.width,
-                        height: version.height,
-                        background: version.background || undefined,
-                        layers: version.layers,
-                      }}
-                      row={PLACEHOLDER_ROW}
-                      zoom={THUMB_SCALE}
-                    />
+                    <div style={{ width: version.width * scale, height: version.height * scale, overflow: "hidden" }}>
+                      <DocumentPreview
+                        layout={{
+                          id: String(item.id),
+                          kind: DOCUMENT_TYPE_TO_KIND[type],
+                          width: version.width,
+                          height: version.height,
+                          background: version.background || undefined,
+                          layers: version.layers,
+                        }}
+                        row={PLACEHOLDER_ROW}
+                        zoom={scale}
+                      />
+                    </div>
                   )}
                 </div>
 

@@ -100,7 +100,7 @@ export class SuperAdminRepository {
       FROM activity_logs a
       LEFT JOIN madrasas m ON m.id = a.madrasa_id
       LEFT JOIN users u ON u.id = a.user_id
-      AND (a.action LIKE 'SUPER_ADMIN%' OR a.action IN ('MADRASA_CREATED','PLAN_CREATED','PLAN_UPDATED','PLAN_DELETED'))
+      WHERE (a.action LIKE 'SUPER_ADMIN%' OR a.action IN ('MADRASA_CREATED','PLAN_CREATED','PLAN_UPDATED','PLAN_DELETED'))
       ORDER BY a.created_at DESC
       LIMIT 15
     `;

@@ -21,6 +21,7 @@ export type CreateMadrasaPayload = {
   plan_id: number;
   student_limit: number;
   user_limit: number;
+  duration_days: number;
 
   /* ========================
   System Setup

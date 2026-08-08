@@ -43,6 +43,13 @@ export class PlansRepository {
     return prisma.plan.findFirst({ where: { name, deletedAt: null }, select: { id: true } });
   }
 
+  findActiveByNameExcludingId(name: string, excludeId: number) {
+    return prisma.plan.findFirst({
+      where: { name, deletedAt: null, id: { not: excludeId } },
+      select: { id: true },
+    });
+  }
+
   create(data: Prisma.PlanUncheckedCreateInput) {
     return prisma.plan.create({ data });
   }
