@@ -224,6 +224,24 @@ export class SuperAdminService {
       await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
       await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
+      /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
+         Optional, unlike the templates above - an empty set never blocks
+         madrasa creation. Only copies class-specific templates for classes
+         this madrasa actually activated (classIds); generic ones
+         (classId null) always copy. */
+      const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
+      const relevantFeeStructures = defaultFeeStructures.filter(
+        (s) => s.classId === null || classIds.includes(s.classId),
+      );
+      if (relevantFeeStructures.length) {
+        await this.repository.createDefaultFeeStructuresOnTx(
+          tx,
+          madrasaId,
+          relevantFeeStructures,
+          String(new Date().getFullYear()),
+        );
+      }
+
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));

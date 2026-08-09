@@ -152,3 +152,27 @@ model DefaultSetting {
 
   @@map("default_settings")
 }
+
+/// Global fee-structure template, managed by Super Admin (unlike the other
+/// Default* templates above, this one also gets a full CRUD UI - see
+/// meta.* vs default-fee-structure.* modules). Active rows are copied into
+/// a new madrasa's own FeeStructure rows at creation time (same "snapshot
+/// once, never touched again" rule as the templates above), not kept in
+/// sync afterward - editing this later only affects future madrasas.
+model DefaultFeeStructure {
+  id        Int          @id @default(autoincrement())
+  keyName   String       @unique @map("key_name") @db.VarChar(80)
+  /// null = applies to every class, matching FeeStructure.classId semantics.
+  classId   Int?         @map("class_id")
+  name      String       @db.VarChar(150)
+  amount    Decimal      @db.Decimal(10, 2)
+  frequency FeeFrequency
+  sortOrder Int          @default(0) @map("sort_order")
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  class Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@map("default_fee_structures")
+}

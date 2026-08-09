@@ -45,7 +45,35 @@ import {
 /* =========================
    Meta handlers
 ========================= */
-import { listDivisions, listClasses, listBooks, listModules } from "./meta.controller";
+import {
+  listDivisions,
+  createDivision,
+  updateDivision,
+  deleteDivision,
+  reorderDivisions,
+  listClasses,
+  createClass,
+  updateClass,
+  toggleClassActive,
+  deleteClass,
+  reorderClasses,
+  listBooks,
+  createBook,
+  updateBook,
+  deleteBook,
+  reorderBooks,
+  listModules,
+} from "./meta.controller";
+
+/* =========================
+   Default fee structure template handlers
+========================= */
+import {
+  listDefaultFeeStructures,
+  createDefaultFeeStructure,
+  updateDefaultFeeStructure,
+  deleteDefaultFeeStructure,
+} from "./default-fee-structure.controller";
 
 /* =========================
    Document template handlers
@@ -164,10 +192,36 @@ router.get("/dashboard-stats", superAdminMiddleware, getSuperAdminStats);
 ===================================================== */
 
 router.get("/divisions", superAdminMiddleware, listDivisions);
+router.post("/divisions", superAdminMiddleware, createDivision);
+// NOTE: kept before "/divisions/:id" so "reorder" doesn't get matched as :id
+router.put("/divisions/reorder", superAdminMiddleware, reorderDivisions);
+router.put("/divisions/:id", superAdminMiddleware, updateDivision);
+router.delete("/divisions/:id", superAdminMiddleware, deleteDivision);
+
 router.get("/classes", superAdminMiddleware, listClasses);
+router.post("/classes", superAdminMiddleware, createClass);
+router.put("/classes/reorder", superAdminMiddleware, reorderClasses);
+router.put("/classes/:id", superAdminMiddleware, updateClass);
+router.patch("/classes/:id/toggle", superAdminMiddleware, toggleClassActive);
+router.delete("/classes/:id", superAdminMiddleware, deleteClass);
+
 router.get("/books", superAdminMiddleware, listBooks);
+router.post("/books", superAdminMiddleware, createBook);
+router.put("/books/reorder", superAdminMiddleware, reorderBooks);
+router.put("/books/:id", superAdminMiddleware, updateBook);
+router.delete("/books/:id", superAdminMiddleware, deleteBook);
 
 router.get("/modules", superAdminMiddleware, listModules);
+
+/* =====================================================
+   DEFAULT FEE STRUCTURE TEMPLATES
+   Base: /api/super/default-fee-structures
+===================================================== */
+
+router.get("/default-fee-structures", superAdminMiddleware, listDefaultFeeStructures);
+router.post("/default-fee-structures", superAdminMiddleware, createDefaultFeeStructure);
+router.put("/default-fee-structures/:id", superAdminMiddleware, updateDefaultFeeStructure);
+router.delete("/default-fee-structures/:id", superAdminMiddleware, deleteDefaultFeeStructure);
 
 /* =====================================================
    DOCUMENT TEMPLATES (System Template Library)

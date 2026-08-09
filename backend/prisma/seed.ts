@@ -73,6 +73,26 @@ async function syncDelete(
   }
 }
 
+/** Division/Class/Book now also have a Super Admin CRUD UI (add/edit/
+ * delete the global catalog directly), so seed.ts can no longer safely
+ * upsert-and-sync them - re-running seed would silently revert admin edits
+ * (upsert's `update` clause) or delete/deactivate admin-added rows
+ * (syncDelete / the old isActive:false sweep). Instead this only ensures
+ * the baseline list exists on the very first run; anything that already
+ * exists - whether seeded or created through the UI - is left untouched
+ * on every later run. */
+async function createIfMissing<T extends { id: number }>(
+  label: string,
+  find: () => Promise<T | null>,
+  create: () => Promise<T>,
+): Promise<T> {
+  const existing = await find();
+  if (existing) return existing;
+  const created = await create();
+  console.log(`   ✅ Seeded ${label}`);
+  return created;
+}
+
 async function main() {
   /* ============== SUPER ADMIN ==============
      Credentials are intentionally read from .env, never from seed defaults. */
@@ -281,19 +301,13 @@ async function main() {
   ];
   const divisionIds: Record<string, number> = {};
   for (const d of divisions) {
-    const row = await prisma.division.upsert({
-      where: { keyName: d.keyName },
-      update: { name: d.name, nameBn: d.nameBn },
-      create: d,
-    });
+    const row = await createIfMissing(
+      `division: ${d.nameBn}`,
+      () => prisma.division.findUnique({ where: { keyName: d.keyName } }),
+      () => prisma.division.create({ data: d }),
+    );
     divisionIds[d.keyName] = row.id;
   }
-  await syncDelete(
-    "division",
-    await prisma.division.findMany({ select: { id: true } }),
-    Object.values(divisionIds),
-    (id) => prisma.division.delete({ where: { id } }),
-  );
 
   /* ============== CLASSES ============== */
   const classesByDivision: Record<string, { name: string; nameBn: string }[]> = {
@@ -335,26 +349,14 @@ async function main() {
     if (!divisionId) continue; // division was removed above / not found
     for (const c of classes) {
       classSortOrder += 1;
-      const row = await prisma.class.upsert({
-        where: { divisionId_name: { divisionId, name: c.name } },
-        update: { nameBn: c.nameBn, isActive: true, sortOrder: classSortOrder },
-        create: { ...c, divisionId, isActive: true, sortOrder: classSortOrder },
-      });
+      const row = await createIfMissing(
+        `class: ${c.nameBn}`,
+        () => prisma.class.findUnique({ where: { divisionId_name: { divisionId, name: c.name } } }),
+        () => prisma.class.create({ data: { ...c, divisionId, isActive: true, sortOrder: classSortOrder } }),
+      );
       classIds[`${divisionKey}/${c.name}`] = row.id;
     }
   }
-  // ⚠️ Classes are never hard-deleted here on purpose. Once a class exists,
-  // madrashas may have assigned it (madrasa_classes) and students may
-  // reference it (students.class_id, onDelete: Restrict). Hard-deleting and
-  // re-creating on the next seed run would silently drop those assignments
-  // and shuffle every class's id. Instead, classes removed from
-  // `classesByDivision` above are just deactivated — their id and any
-  // existing assignments/students stay intact, they just stop being
-  // offered for new assignments.
-  await prisma.class.updateMany({
-    where: { id: { notIn: Object.values(classIds) } },
-    data: { isActive: false },
-  });
 
   /* ============== BOOKS ============== */
   const booksByClass: Record<string, { name: string; nameBn: string }[]> = {
@@ -518,22 +520,19 @@ async function main() {
     ],
   };
 
-  const bookIds: number[] = [];
+  const bookIds: Record<string, number> = {}; // key: "division/className/bookName"
   for (const [classKey, books] of Object.entries(booksByClass)) {
     const classId = classIds[classKey];
     if (!classId) continue; // class was removed above / not found
     for (const b of books) {
-      const row = await prisma.book.upsert({
-        where: { classId_name: { classId, name: b.name } },
-        update: { nameBn: b.nameBn },
-        create: { ...b, classId },
-      });
-      bookIds.push(row.id);
+      const row = await createIfMissing(
+        `book: ${b.nameBn}`,
+        () => prisma.book.findUnique({ where: { classId_name: { classId, name: b.name } } }),
+        () => prisma.book.create({ data: { ...b, classId } }),
+      );
+      bookIds[`${classKey}/${b.name}`] = row.id;
     }
   }
-  await syncDelete("book", await prisma.book.findMany({ select: { id: true } }), bookIds, (id) =>
-    prisma.book.delete({ where: { id } }),
-  );
 
   /* ============== MODULES ============== */
   const modules = [
@@ -775,6 +774,45 @@ async function main() {
     permissionIds,
     (id) => prisma.permission.delete({ where: { id } }),
   );
+
+  /* ============== DEFAULT FEE STRUCTURE TEMPLATES ==============
+     Platform-level only (like the exam/grade/setting templates above) -
+     active rows are copied into a new madrasa's own fee_structures at
+     creation time. One admission fee + one monthly tuition per class
+     (demo amounts, roughly scaled by division tier) so a freshly created
+     madrasa already has a realistic per-class fee list instead of an
+     empty one; Super Admin can freely edit/delete/add more through the
+     new Fee Templates UI. Uses the same create-if-missing semantics as
+     Division/Class/Book above, keyed on keyName - never touches rows
+     edited/added through that UI. */
+  const feeTierByDivision: Record<string, { admission: number; tuition: number }> = {
+    nurani: { admission: 300, tuition: 200 },
+    nazera_hifz: { admission: 500, tuition: 300 },
+    kitab: { admission: 700, tuition: 400 },
+    takhassus: { admission: 1000, tuition: 600 },
+  };
+  for (const [classKey, classId] of Object.entries(classIds)) {
+    const [divisionKey] = classKey.split("/");
+    const tier = feeTierByDivision[divisionKey];
+    if (!tier) continue;
+
+    const safeKey = classKey.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    const feeSpecs: { keyName: string; name: string; amount: number; frequency: "ONE_TIME" | "MONTHLY" }[] = [
+      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME" },
+      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY" },
+    ];
+
+    for (const f of feeSpecs) {
+      await createIfMissing(
+        `default fee structure: ${f.name} (${classKey})`,
+        () => prisma.defaultFeeStructure.findUnique({ where: { keyName: f.keyName } }),
+        () =>
+          prisma.defaultFeeStructure.create({
+            data: { keyName: f.keyName, classId, name: f.name, amount: f.amount, frequency: f.frequency },
+          }),
+      );
+    }
+  }
 
   console.log("✅ Seed complete (catalog and new-madrasa templates synced with seed.ts).");
   console.log(`   Super Admin account synced from env: ${superAdminEmail}`);

@@ -448,11 +448,12 @@ export default function ClassPanel() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা"
-        subtitle="প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে।"
+        subtitle="প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে। টেনে (drag) যেকোনো কলামের ক্রম সাজানো যায়।"
       />
 
-      <SectionCard title="বিভাগ" hint="টেনে (drag) বিভাগের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।">
-        <div className="flex flex-wrap gap-2">
+      <div className="grid gap-4 lg:grid-cols-3">
+      <SectionCard title="বিভাগ">
+        <div className="flex flex-col gap-1.5">
           {divisions.map((division) => {
             const isActiveDivision = divisionId === String(division.division_id);
             const isEditingThis = editingDivisionId === division.division_id;
@@ -460,13 +461,13 @@ export default function ClassPanel() {
               <div
                 key={division.division_id}
                 data-division-id={division.division_id}
-                className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
+                className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
                   isEditingThis
                     ? "border-blue-300 bg-blue-50/40"
                     : isActiveDivision
-                      ? "border-blue-600 bg-blue-600"
-                      : "border-gray-200 bg-white"
-                } ${dragDivisionId === division.division_id ? "opacity-50" : ""}`}
+                      ? "border-blue-400 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-200"
+                } ${dragDivisionId === division.division_id ? "opacity-40" : ""}`}
               >
                 {isEditingThis ? (
                   <>
@@ -477,7 +478,7 @@ export default function ClassPanel() {
                         if (event.key === "Enter") saveDivisionEdit();
                         if (event.key === "Escape") setEditingDivisionId(null);
                       }}
-                      className="h-8 w-36 min-w-0 sm:w-48"
+                      className="h-8 w-full min-w-0"
                       autoFocus
                     />
                     <button
@@ -502,9 +503,7 @@ export default function ClassPanel() {
                       onPointerMove={handleDivisionHandlePointerMove}
                       onPointerUp={handleDivisionHandlePointerEnd}
                       onPointerCancel={handleDivisionHandlePointerEnd}
-                      className={`shrink-0 cursor-grab select-none rounded p-1 active:cursor-grabbing ${
-                        isActiveDivision ? "text-blue-100 active:bg-blue-700" : "text-gray-400 active:bg-gray-100"
-                      }`}
+                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100"
                       style={{ touchAction: "none" }}
                       aria-label="বিভাগ সরান"
                     >
@@ -512,8 +511,8 @@ export default function ClassPanel() {
                     </span>
                     <button
                       onClick={() => setDivisionId(String(division.division_id))}
-                      className={`touch-manipulation rounded-md px-2.5 py-1.5 text-sm font-medium transition ${
-                        isActiveDivision ? "text-white" : "text-gray-700 hover:bg-gray-50"
+                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
+                        isActiveDivision ? "text-blue-800" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       {division.division_name_bn}
@@ -525,22 +524,14 @@ export default function ClassPanel() {
                         setEditingDivisionOriginalName(division.division_name_bn);
                       }}
                       aria-label="বিভাগ এডিট করুন"
-                      className={`touch-manipulation rounded-md p-1.5 ${
-                        isActiveDivision
-                          ? "text-blue-100 hover:bg-blue-700"
-                          : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"
-                      }`}
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeDivision(division.division_id)}
                       aria-label="বিভাগ ডিলিট করুন"
-                      className={`touch-manipulation rounded-md p-1.5 ${
-                        isActiveDivision
-                          ? "text-blue-100 hover:bg-blue-700"
-                          : "text-gray-400 hover:bg-red-50 hover:text-red-600"
-                      }`}
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -552,17 +543,21 @@ export default function ClassPanel() {
         </div>
       </SectionCard>
 
-      <SectionCard title="শ্রেণি" hint="টেনে (drag) শ্রেণির ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।">
-        <div className="flex flex-wrap gap-2">
+      <SectionCard title="শ্রেণি">
+        <div className="flex flex-col gap-1.5">
           {classes.map((classItem) => {
             const isEditingThis = editingClassId === classItem.class_id;
             return (
               <div
                 key={classItem.class_id}
                 data-class-id={classItem.class_id}
-                className={`flex items-center gap-0.5 rounded-lg border p-1 transition ${
-                  isEditingThis ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-white"
-                } ${dragClassId === classItem.class_id ? "opacity-50" : ""}`}
+                className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
+                  isEditingThis
+                    ? "border-blue-300 bg-blue-50/40"
+                    : classId === String(classItem.class_id)
+                      ? "border-emerald-400 bg-emerald-50"
+                      : "border-gray-200 bg-white hover:border-blue-200"
+                } ${dragClassId === classItem.class_id ? "opacity-40" : ""}`}
               >
                 {isEditingThis ? (
                   <>
@@ -573,7 +568,7 @@ export default function ClassPanel() {
                         if (event.key === "Enter") saveClassEdit();
                         if (event.key === "Escape") setEditingClassId(null);
                       }}
-                      className="h-8 w-36 min-w-0 sm:w-48"
+                      className="h-8 w-full min-w-0"
                       autoFocus
                     />
                     <button
@@ -598,7 +593,7 @@ export default function ClassPanel() {
                       onPointerMove={handleClassHandlePointerMove}
                       onPointerUp={handleClassHandlePointerEnd}
                       onPointerCancel={handleClassHandlePointerEnd}
-                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-400 active:cursor-grabbing active:bg-gray-100"
+                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100"
                       style={{ touchAction: "none" }}
                       aria-label="শ্রেণি সরান"
                     >
@@ -606,10 +601,8 @@ export default function ClassPanel() {
                     </span>
                     <button
                       onClick={() => setClassId(String(classItem.class_id))}
-                      className={`touch-manipulation rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                        classId === String(classItem.class_id)
-                          ? "bg-emerald-600 text-white"
-                          : "text-gray-700 hover:bg-gray-50"
+                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
+                        classId === String(classItem.class_id) ? "text-emerald-800" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       {classItem.class_name_bn}
@@ -621,14 +614,14 @@ export default function ClassPanel() {
                         setEditingClassOriginalName(classItem.class_name_bn);
                       }}
                       aria-label="শ্রেণি এডিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeClass(classItem.class_id)}
                       aria-label="শ্রেণি ডিলিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -647,11 +640,11 @@ export default function ClassPanel() {
                 শ্রেণি যোগ করুন
               </button>
             ) : (
-              <div className="flex w-full gap-2 sm:w-auto">
+              <div className="flex w-full gap-2">
                 <Input
                   value={className}
                   onChange={(event) => setClassName(event.target.value)}
-                  className="w-full min-w-0 sm:w-auto"
+                  className="w-full min-w-0"
                   placeholder="শ্রেণির নাম"
                   autoFocus
                 />
@@ -663,10 +656,10 @@ export default function ClassPanel() {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="কিতাবসমূহ"
-        hint="মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। অন্য কিতাবে ফেল করলে গড় পাস থাকলে PASS হবে। টেনে (drag) কিতাবের ক্রম যেভাবে ইচ্ছা সাজিয়ে নিন।"
-      >
+      <SectionCard title="কিতাবসমূহ">
+        <p className="-mt-2 mb-3 text-xs text-gray-500">
+          মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। টেনে (drag) কিতাবের ক্রম সাজানো যায়।
+        </p>
         <div className="mb-3 flex justify-end">
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
             নির্বাচিত মিয়ারি: {miyariBookIds.length}টি
@@ -676,20 +669,20 @@ export default function ClassPanel() {
         {books.length === 0 ? (
           <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-2">
             {books.map((book) => {
               const isMiyari = miyariBookIds.includes(Number(book.book_id));
               return (
                 <div
                   key={book.book_id}
                   data-book-id={book.book_id}
-                  className={`flex w-auto max-w-full shrink-0 flex-col gap-2 rounded-xl border px-3 py-2.5 transition ${
+                  className={`flex w-full flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
                     editingId === book.book_id
                       ? "border-blue-200 bg-blue-50/40"
                       : isMiyari
                         ? "border-amber-300 bg-amber-50"
-                        : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/60"
-                  } ${dragBookId === book.book_id ? "opacity-50" : ""}`}
+                        : "border-gray-200 bg-white hover:border-blue-200"
+                  } ${dragBookId === book.book_id ? "opacity-40" : ""}`}
                 >
                   {editingId === book.book_id ? (
                     <div className="flex flex-col gap-1.5">
@@ -844,6 +837,7 @@ export default function ClassPanel() {
           )}
         </div>
       </SectionCard>
+      </div>
     </div>
   );
 }

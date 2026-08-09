@@ -9,6 +9,10 @@ model Division {
   keyName   String?  @unique @map("key_name") @db.VarChar(50)
   name      String?  @db.VarChar(100)
   nameBn    String?  @map("name_bn") @db.VarChar(100)
+  /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
+  /// from MadrasaDivision.sortOrder, which is each tenant's own re-ordering
+  /// of their activated subset.
+  sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -60,6 +64,7 @@ model Class {
   classRoutines      ClassRoutine[]
   examRoutines       ExamRoutine[]
   feeStructures      FeeStructure[]
+  defaultFeeStructures DefaultFeeStructure[]
 
   @@unique([divisionId, name], map: "uniq_division_class")
   @@map("classes")
@@ -70,6 +75,9 @@ model Book {
   classId   Int      @map("class_id")
   name      String?  @db.VarChar(150)
   nameBn    String?  @map("name_bn") @db.VarChar(150)
+  /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
+  /// from MadrasaBook.sortOrder, which is each tenant's own re-ordering.
+  sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

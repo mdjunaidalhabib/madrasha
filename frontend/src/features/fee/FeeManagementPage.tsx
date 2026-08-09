@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pencil, Receipt, Trash2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   feeStructureApi,
@@ -25,7 +26,7 @@ type FeeStructureRow = {
   academicYear: string;
   isActive: boolean;
   classId?: number | null;
-  class?: { nameBn?: string } | null;
+  class?: { nameBn?: string; division?: { nameBn?: string } | null } | null;
 };
 
 type InvoiceRow = {
@@ -320,6 +321,51 @@ const FeeManagementPage = () => {
     return Number(payTarget.amount) - Number(payTarget.paidAmount);
   }, [payTarget]);
 
+  // Grouped division → class so a long flat list (one row per fee, per
+  // class, across every division) reads as sections instead — "সাধারণ" (no
+  // class, applies to every class) always pinned first as its own section,
+  // then each division's classes alphabetical inside that division.
+  const groupedStructures = useMemo(() => {
+    type ClassGroup = { key: string; label: string; items: FeeStructureRow[] };
+    type DivisionGroup = { key: string; label: string; classGroups: ClassGroup[] };
+
+    const genericItems = structures.filter((r) => !r.classId);
+    const divisionMap = new Map<string, { label: string; classMap: Map<string, ClassGroup> }>();
+
+    for (const row of structures) {
+      if (!row.classId) continue;
+      const divisionLabel = row.class?.division?.nameBn || "অন্যান্য";
+      if (!divisionMap.has(divisionLabel)) {
+        divisionMap.set(divisionLabel, { label: divisionLabel, classMap: new Map() });
+      }
+      const division = divisionMap.get(divisionLabel)!;
+      const classKey = String(row.classId);
+      const classLabel = row.class?.nameBn || `শ্রেণি #${row.classId}`;
+      if (!division.classMap.has(classKey)) {
+        division.classMap.set(classKey, { key: classKey, label: classLabel, items: [] });
+      }
+      division.classMap.get(classKey)!.items.push(row);
+    }
+
+    const divisionGroups: DivisionGroup[] = Array.from(divisionMap.entries())
+      .map(([key, v]) => ({
+        key,
+        label: v.label,
+        classGroups: Array.from(v.classMap.values()).sort((a, b) => a.label.localeCompare(b.label, "bn")),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "bn"));
+
+    const result: DivisionGroup[] = [];
+    if (genericItems.length) {
+      result.push({
+        key: "generic",
+        label: "সাধারণ (সব শ্রেণির জন্য)",
+        classGroups: [{ key: "generic-items", label: "সাধারণ", items: genericItems }],
+      });
+    }
+    return [...result, ...divisionGroups];
+  }, [structures]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
@@ -442,50 +488,76 @@ const FeeManagementPage = () => {
               {structures.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">কোনো ফি কাঠামো নেই</div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {structures.map((row) => (
-                    <div
-                      key={row.id}
-                      className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="text-sm">
-                        <span className="font-semibold text-gray-800">{row.name}</span>{" "}
-                        <span className="text-gray-600">৳{row.amount}</span>{" "}
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                          {FREQUENCY_LABELS[row.frequency]}
-                        </span>{" "}
-                        <span className="text-gray-500">{row.academicYear}</span>{" "}
-                        {row.class?.nameBn && (
-                          <span className="text-gray-500"> · {row.class.nameBn}</span>
-                        )}
-                        {!row.isActive && (
-                          <span className="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                            নিষ্ক্রিয়
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openGenerateModal(row)}
-                          className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700"
-                        >
-                          ইনভয়েস জেনারেট করুন
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(row)}
-                          className="h-8 rounded-md border border-blue-300 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
-                        >
-                          এডিট
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStructure(row.id)}
-                          className="h-8 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                        >
-                          মুছুন
-                        </button>
+                <div className="space-y-5">
+                  {groupedStructures.map((division) => (
+                    <div key={division.key}>
+                      {division.key !== "generic" && (
+                        <h3 className="mb-2 text-sm font-bold text-gray-700">{division.label}</h3>
+                      )}
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {division.classGroups.map((group) => (
+                          <div key={group.key} className="rounded-xl border border-gray-200 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <h4 className="truncate text-sm font-semibold text-gray-800">{group.label}</h4>
+                              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                                {group.items.length}টি
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              {group.items.map((row) => (
+                          <div
+                            key={row.id}
+                            className="flex items-center gap-1 rounded-lg border border-gray-100 px-2.5 py-2 text-sm transition hover:border-blue-200"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium text-gray-800">
+                                {row.name} <span className="font-normal text-gray-500">৳{row.amount}</span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
+                                  {FREQUENCY_LABELS[row.frequency]}
+                                </span>
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                                  {row.academicYear}
+                                </span>
+                                {!row.isActive && (
+                                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                    নিষ্ক্রিয়
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 gap-0.5">
+                              <button
+                                type="button"
+                                title="ইনভয়েস জেনারেট করুন"
+                                onClick={() => openGenerateModal(row)}
+                                className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50"
+                              >
+                                <Receipt size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                title="এডিট"
+                                onClick={() => openEditModal(row)}
+                                className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                title="মুছুন"
+                                onClick={() => handleDeleteStructure(row.id)}
+                                className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}

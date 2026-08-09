@@ -100,6 +100,12 @@ const SuperAdminDocumentTemplateEditorPage = lazy(
 const SuperAdminSettingsPage = lazy(
   () => import("../features/super-admin/settings/SuperAdminSettingsPage"),
 );
+const SuperAdminCatalogPage = lazy(
+  () => import("../features/super-admin/catalog/SuperAdminCatalogPage"),
+);
+const SuperAdminDefaultFeeStructuresPage = lazy(
+  () => import("../features/super-admin/fee/SuperAdminDefaultFeeStructuresPage"),
+);
 
 const PublicWebsitePage = lazy(() => import("../features/public/website/PublicWebsitePage"));
 const AdmissionApplyPage = lazy(() => import("../features/public/website/AdmissionApplyPage"));
@@ -322,6 +328,8 @@ export const router = createBrowserRouter([
         element: withSuspense(<SuperAdminDocumentTemplateEditorPage />),
       },
       { path: "websites", element: withSuspense(<SuperAdminWebsiteControlPage />) },
+      { path: "catalog", element: withSuspense(<SuperAdminCatalogPage />) },
+      { path: "fee-structure-templates", element: withSuspense(<SuperAdminDefaultFeeStructuresPage />) },
       { path: "settings", element: withSuspense(<SuperAdminSettingsPage />) },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],

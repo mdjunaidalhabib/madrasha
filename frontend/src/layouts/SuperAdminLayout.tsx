@@ -15,6 +15,8 @@ import {
   ChevronsRight,
   FileStack,
   Settings,
+  Layers,
+  Wallet,
 } from "lucide-react";
 
 type NavItem = {
@@ -61,6 +63,16 @@ export default function SuperAdminLayout() {
         to: "/super-admin/document-templates",
         label: "Document Templates",
         icon: <FileStack size={18} />,
+      },
+      {
+        to: "/super-admin/catalog",
+        label: "Academic Catalog",
+        icon: <Layers size={18} />,
+      },
+      {
+        to: "/super-admin/fee-structure-templates",
+        label: "Fee Templates",
+        icon: <Wallet size={18} />,
       },
       {
         to: "/super-admin/websites",

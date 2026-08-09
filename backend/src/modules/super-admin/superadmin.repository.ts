@@ -380,6 +380,32 @@ export class SuperAdminRepository {
     });
   }
 
+  findDefaultFeeStructuresOnTx(tx: TransactionClient) {
+    return tx.defaultFeeStructure.findMany({
+      where: { isActive: true },
+      select: { classId: true, name: true, amount: true, frequency: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  createDefaultFeeStructuresOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    structures: { classId: number | null; name: string; amount: Prisma.Decimal; frequency: string }[],
+    academicYear: string,
+  ) {
+    return tx.feeStructure.createMany({
+      data: structures.map((s) => ({
+        madrasaId,
+        classId: s.classId,
+        name: s.name,
+        amount: s.amount,
+        frequency: s.frequency as any,
+        academicYear,
+      })),
+    });
+  }
+
   /* ================= MADRASA DETAIL (for edit prefill) ================= */
 
   findMadrasaDetail(id: number) {

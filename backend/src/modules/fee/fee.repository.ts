@@ -13,7 +13,9 @@ export class FeeRepository {
         ...(academicYear ? { academicYear } : {}),
       },
       orderBy: { id: "desc" },
-      include: { class: { select: { nameBn: true, name: true } } },
+      include: {
+        class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } },
+      },
     });
   }
 
