@@ -16,6 +16,15 @@ const rawValue = (row: Record<string, any>, keys: string[]) => {
   return "";
 };
 
+// A student can have up to 3 mobile numbers on file (primary/alternate
+// guardian phone, plus a separate alternate guardian's phone) - only the
+// ones actually filled in are shown, stacked one per line.
+const getPhoneNumbers = (row: Record<string, any>) =>
+  ["guardian_phone", "guardian_phone_2", "alt_guardian_phone"]
+    .map((key) => row?.[key])
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+    .map((value) => formatReportValue(value));
+
 const GuardianPhoneListPrint = ({
   rows,
   selectedDivisionName = "",
@@ -39,21 +48,9 @@ const GuardianPhoneListPrint = ({
       <>
       <div className="student-report-heading report-block-heading mb-3 text-center">
         <h1 className="student-report-title text-xl font-bold">অভিভাবক মোবাইল নম্বর তালিকা</h1>
-        <p className="student-report-subtitle mt-1 text-sm font-semibold text-slate-600">
+        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
           {contextLine}
         </p>
-      </div>
-
-      <div className="mb-3 grid grid-cols-3 text-[13px]">
-        <div className="flex min-h-9 items-center border border-black px-2">
-          <b className="mr-1">বিভাগ:</b> {divisionName}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">শ্রেণি:</b> {className}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">শিক্ষাবর্ষ:</b> {academicYear}
-        </div>
       </div>
       </>
       )}
@@ -73,21 +70,27 @@ const GuardianPhoneListPrint = ({
         </thead>
         )}
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`guardian-phone-${startIndex + index}-${row.id || row.student_id || index}`}>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
-              <td className="h-8 border border-black px-1 text-left font-semibold text-base">
-                {cellValue(row, "student_name")}
-              </td>
-              <td className="h-8 border border-black px-1 text-left text-base">
-                {cellValue(row, "father_name")}
-              </td>
-              <td className="h-8 border border-black px-1 font-semibold text-base">
-                {cellValue(row, "guardian_phone")}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row, index) => {
+            const phoneNumbers = getPhoneNumbers(row);
+
+            return (
+              <tr key={`guardian-phone-${startIndex + index}-${row.id || row.student_id || index}`}>
+                <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
+                <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
+                <td className="h-8 border border-black px-1 text-left font-semibold text-base">
+                  {cellValue(row, "student_name")}
+                </td>
+                <td className="h-8 border border-black px-1 text-left text-base">
+                  {cellValue(row, "father_name")}
+                </td>
+                <td className="h-8 border border-black px-1 font-semibold text-base">
+                  {phoneNumbers.length
+                    ? phoneNumbers.map((phone, phoneIndex) => <div key={phoneIndex}>{phone}</div>)
+                    : "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -30,6 +30,10 @@ export interface RecordPaymentRequestDto {
   transaction_ref?: string;
   /// Which admin-configured manual payment method was used (optional).
   payment_method_setting_id?: number | string;
+  note?: string;
+  /// Backdate the payment (e.g. cash collected yesterday, entered today).
+  /// Defaults to now when omitted.
+  paid_at?: string;
 }
 
 /* ================= MANUAL PAYMENT METHOD SETUP ================= */

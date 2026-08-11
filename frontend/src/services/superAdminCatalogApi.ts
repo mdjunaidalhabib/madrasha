@@ -33,6 +33,8 @@ export interface DefaultFeeStructureDto {
   id: number;
   class_id: number | null;
   class_label: string | null;
+  division_label: string | null;
+  class_name: string | null;
   name: string;
   amount: string | number;
   frequency: DefaultFeeFrequency;

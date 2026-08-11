@@ -114,6 +114,80 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* =========================
+   Public website: gallery reveal + float + lightbox
+========================= */
+
+@keyframes galleryFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes lightboxBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lightboxImageIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gallery-item {
+  opacity: 0;
+  transform: translateY(28px) scale(0.94);
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gallery-grid.in-view .gallery-item {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.gallery-grid.in-view .gallery-item .gallery-img-wrap {
+  animation: galleryFloat 4.5s ease-in-out infinite;
+}
+
+.animate-lightboxBackdrop {
+  animation: lightboxBackdropIn 0.25s ease-out both;
+}
+
+.animate-lightboxImage {
+  animation: lightboxImageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .gallery-grid.in-view .gallery-item .gallery-img-wrap {
+    animation: none;
+  }
+  .animate-lightboxBackdrop,
+  .animate-lightboxImage {
+    animation: none;
+  }
+}
+
+/* =========================
    Screen Print Preview
 ========================= */
 
@@ -665,6 +739,24 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
   font-size: 13px;
 }
 
+/* exam-signature-number-sheet-2col: this letterhead renders before every
+   class block (each one repeats it since a column can stack several
+   classes and any of them might end up cut apart from the others - see
+   PaginatedReportPreview's per-chunk ReportBrandHeader) at roughly half the
+   normal page width - the logo is dropped entirely there (see
+   ReportBrandHeader's hideLogo) to give the name more room. The name's
+   font-size is computed in JS (ReportBrandHeader's compactMaxWidthPx) so it
+   always stays on one line; this is only the pre-measurement fallback size.
+   Placed after the a4/a5/orientation rules above so it wins regardless of
+   paper size - this report is inherently a narrow-column layout either way. */
+.print-page-preview[data-report="exam-signature-number-sheet-2col"] .report-brand-name {
+  font-size: 20px;
+}
+
+.print-page-preview[data-report="exam-signature-number-sheet-2col"] .report-brand-address {
+  font-size: 14px;
+}
+
 .print-page-preview[data-paper-size="a5"] .report-page-footer {
   right: 2mm;
   /* Same reasoning as the base rule, scaled to A5's 7mm padding band. */
@@ -960,7 +1052,9 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="result-notice"] .result-notice-signature {
-  margin-top: 24px;
+  /* Same fixed gap as .academic-result-signature (see its comment) - padding-top,
+     not margin-top, so the blank signing space never collapses away. */
+  padding-top: 48px;
   font-size: 11px;
 }
 
@@ -990,7 +1084,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 
 .print-page-preview[data-report="result-notice"][data-orientation="landscape"]
   .result-notice-signature {
-  margin-top: 14px;
   font-size: 9px;
 }
 
@@ -1025,7 +1118,6 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 .print-page-preview[data-report="result-notice"][data-paper-size="a5"] .result-notice-signature {
-  margin-top: 10px;
   font-size: 8px;
 }
 
@@ -1187,51 +1279,205 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
 }
 
 /* Student report list headings: use the same compact title + context system as result notice. */
-.print-page-preview[data-report="student-admission-list"] .student-report-heading,
-.print-page-preview[data-report="guardian-phone-list"] .student-report-heading {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )
+  .student-report-heading {
   margin-bottom: 10px;
 }
 
-.print-page-preview[data-report="student-admission-list"] .student-report-title,
-.print-page-preview[data-report="guardian-phone-list"] .student-report-title {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )
+  .student-report-title {
   font-size: 20px;
   line-height: 1.15;
 }
 
-.print-page-preview[data-report="student-admission-list"] .student-report-subtitle,
-.print-page-preview[data-report="guardian-phone-list"] .student-report-subtitle {
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-heading,
-.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-heading {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-orientation="landscape"]
+  .student-report-heading {
   margin-bottom: 6px;
 }
 
-.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-title,
-.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-title {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-orientation="landscape"]
+  .student-report-title {
   font-size: 16px;
 }
 
-.print-page-preview[data-report="student-admission-list"][data-orientation="landscape"] .student-report-subtitle,
-.print-page-preview[data-report="guardian-phone-list"][data-orientation="landscape"] .student-report-subtitle {
-  font-size: 9px;
-}
-
-.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-heading,
-.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-heading {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"]
+  .student-report-heading {
   margin-bottom: 5px;
 }
 
-.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-title,
-.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-title {
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"]
+  .student-report-title {
   font-size: 14px;
 }
 
-.print-page-preview[data-report="student-admission-list"][data-paper-size="a5"] .student-report-subtitle,
-.print-page-preview[data-report="guardian-phone-list"][data-paper-size="a5"] .student-report-subtitle {
-  font-size: 8px;
+/* Subtitle now matches .academic-result-subtitle: bold black text-base by
+   default, only shrinking on the cramped a5 paper size. */
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"]
+  .student-report-subtitle {
+  font-size: 10px;
+}
+
+.print-page-preview:is(
+    [data-report="student-admission-list"],
+    [data-report="guardian-phone-list"],
+    [data-report="teacher-list"],
+    [data-report="teacher-phone-list"],
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"][data-orientation="landscape"]
+  .student-report-subtitle {
+  font-size: 9px;
+}
+
+/* exam_report signature block (exam-signature-sheet, exam-number-sheet,
+   exam-signature-number-sheet): same fixed gap as .academic-result-signature
+   - see its comment for why padding-top instead of margin-top. */
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )
+  .exam-report-signature {
+  padding-top: 48px;
+  font-size: 11px;
+}
+
+/* Exam-report title/table font sizes match .academic-result-title /
+   .academic-result-table exactly (same effective size at every paper
+   size/orientation combo) - the shared .student-report-title block above
+   sets slightly different numbers for the other report types it also
+   covers, so these override just the three exam-report types, later in the
+   cascade at equal selector specificity. */
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )
+  .student-report-title {
+  font-size: 21px;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-orientation="landscape"]
+  .student-report-title {
+  font-size: 18px;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"]
+  .student-report-title {
+  font-size: 14px;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"][data-orientation="landscape"]
+  .student-report-title {
+  font-size: 12px;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )
+  .exam-report-table {
+  font-size: 11.5px;
+}
+
+/* Matches .academic-result-table td's weight too - at this size, the
+   default body weight (500) reads noticeably thinner than academic-result's
+   roll/reg/name cells, which is what "still looks thin" was pointing at
+   even after the font-size fix above. */
+.exam-report-table td {
+  font-weight: 600;
+}
+
+.exam-report-table th {
+  font-weight: 700;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"]
+  .exam-report-table {
+  font-size: 8.5px;
+}
+
+.print-page-preview:is(
+    [data-report="exam-signature-sheet"],
+    [data-report="exam-number-sheet"],
+    [data-report="exam-signature-number-sheet"]
+  )[data-paper-size="a5"][data-orientation="landscape"]
+  .exam-report-table {
+  font-size: 7px;
 }
 
 
@@ -1361,6 +1607,12 @@ html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card
      silently shrink to nothing. */
   padding-top: 48px;
   padding-right: 8px;
+  font-size: 11px;
+}
+
+.print-page-preview[data-report="marksheet"] .marksheet-signature {
+  /* Same fixed gap as .academic-result-signature - see its comment. */
+  padding-top: 48px;
   font-size: 11px;
 }
 

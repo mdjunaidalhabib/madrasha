@@ -85,6 +85,9 @@ model Payment {
   /// the setting later never changes historical payment records.
   methodSettingId Int?     @map("method_setting_id")
   methodLabel     String?  @map("method_label") @db.VarChar(150)
+  /// Free-text note the office can attach to a payment (e.g. "আংশিক, বাকিটা
+  /// পরের মাসে দেবে").
+  note            String?  @db.VarChar(300)
   /// Links back to the auto-created ledger entry (see accounts module) so
   /// a fee payment always shows up in the existing income/expense report.
   accountEntryId  Int?     @map("account_entry_id")

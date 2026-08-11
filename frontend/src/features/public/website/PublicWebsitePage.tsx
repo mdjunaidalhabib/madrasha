@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Bell,
@@ -123,6 +123,8 @@ export default function PublicWebsitePage() {
   const [showTop, setShowTop] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [galleryInView, setGalleryInView] = useState(false);
+  const galleryGridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -203,6 +205,22 @@ export default function PublicWebsitePage() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const el = galleryGridRef.current;
+    if (!el || !gallery.length || galleryInView) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setGalleryInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [gallery.length, galleryInView]);
 
   if (loading) {
     return (
@@ -319,7 +337,7 @@ export default function PublicWebsitePage() {
         </nav>
 
         {settings.show_notice_bar !== 0 && (
-          <NoticeMarquee text={settings.notice_bar_text} accentSolid={accentSolid} onAccent={onAccent} />
+          <NoticeMarquee text={settings.notice_bar_text} />
         )}
       </header>
 
@@ -709,19 +727,30 @@ export default function PublicWebsitePage() {
                   onAccent={onAccent}
                 />
                 {gallery.length ? (
-                  <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {gallery.map((item: any) => (
+                  <div
+                    ref={galleryGridRef}
+                    className={`gallery-grid mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 ${
+                      galleryInView ? "in-view" : ""
+                    }`}
+                  >
+                    {gallery.map((item: any, idx: number) => (
                       <button
                         type="button"
                         key={item.id || item.image_url}
                         onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
-                        className="group relative aspect-square overflow-hidden rounded-2xl"
+                        className="gallery-item group relative aspect-square overflow-hidden rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-xl"
+                        style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
                       >
-                        <img
-                          src={item.image_url}
-                          alt={item.title || "Gallery"}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
-                        />
+                        <div
+                          className="gallery-img-wrap h-full w-full"
+                          style={{ animationDelay: `${(idx % 4) * 0.6}s` }}
+                        >
+                          <img
+                            src={item.image_url}
+                            alt={item.title || "Gallery"}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
+                          />
+                        </div>
                         <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/30" />
                       </button>
                     ))}
@@ -1036,7 +1065,7 @@ export default function PublicWebsitePage() {
       {/* Lightbox */}
       {lightbox && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          className="animate-lightboxBackdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
         >
           <button
@@ -1050,7 +1079,7 @@ export default function PublicWebsitePage() {
           <img
             src={lightbox.url}
             alt={lightbox.title}
-            className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl"
+            className="animate-lightboxImage max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

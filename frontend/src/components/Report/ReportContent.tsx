@@ -13,6 +13,7 @@ import SanadList from "./documents/SanadList";
 import TestimonialList from "./documents/TestimonialList";
 import TransferLetterList from "./documents/TransferLetterList";
 import ExamNumberSheet from "./exam/ExamNumberSheet";
+import ExamSignatureNumberSheet from "./exam/ExamSignatureNumberSheet";
 import ExamSignatureSheet from "./exam/ExamSignatureSheet";
 import GuardianPhoneListPrint from "./student/GuardianPhoneListPrint";
 import MarksheetList from "./student/MarksheetList";
@@ -50,7 +51,7 @@ const ReportContent = ({
 }: ReportContentProps) => {
   if (loading) {
     return (
-      <div className="border border-black bg-white p-4">
+      <div className="bg-white p-4">
         <SkeletonTable rows={8} columns={6} className="border-0 shadow-none" />
       </div>
     );
@@ -247,6 +248,23 @@ const ReportContent = ({
         columns={report.columns}
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
+      />
+    );
+  }
+
+  if (
+    report.printable === "exam-signature-number-sheet" ||
+    report.printable === "exam-signature-number-sheet-2col"
+  ) {
+    return (
+      <ExamSignatureNumberSheet
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+        isFirstPage={isFirstPage}
+        isLastPage={isLastPage}
+        hideRegistrationColumn={report.printable === "exam-signature-number-sheet-2col"}
       />
     );
   }

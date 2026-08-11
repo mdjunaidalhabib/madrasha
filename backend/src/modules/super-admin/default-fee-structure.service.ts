@@ -29,6 +29,8 @@ export class DefaultFeeStructureService {
       id: r.id,
       class_id: r.classId,
       class_label: r.class ? `${r.class.division?.nameBn ?? ""} - ${r.class.nameBn}`.replace(/^ - /, "") : null,
+      division_label: r.class?.division?.nameBn ?? null,
+      class_name: r.class?.nameBn ?? null,
       name: r.name,
       amount: r.amount,
       frequency: r.frequency,

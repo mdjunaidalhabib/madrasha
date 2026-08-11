@@ -157,11 +157,22 @@ const ReportShell = ({
     const rowDivisionId = String(getRowDivisionId(row));
     const rowClassId = String(getRowClassId(row));
 
-    const searchableText = [
+    // Kept as two separate buckets instead of one joined string - id/roll
+    // are plain English-digit numbers, so a Bangla name search must never
+    // accidentally match them (or vice versa) just because they happened to
+    // sit next to each other in a combined string.
+    const idFields = [
       row.id,
       row.student_id,
       row.roll,
       row.teacher_id,
+      row.registration_no,
+      row.exam_year,
+    ]
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .map((value) => String(value).toLowerCase());
+
+    const searchableText = [
       row.name,
       row.name_bn,
       row.student_name,
@@ -174,19 +185,29 @@ const ReportShell = ({
       row.class_name,
       row.division_name,
       row.exam_name,
-      row.exam_year,
       row.status,
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
 
+    const matchesKeyword =
+      !keyword ||
+      searchableText.includes(keyword) ||
+      idFields.some((value) => value.includes(keyword));
+
     return (
-      (!keyword || searchableText.includes(keyword)) &&
+      matchesKeyword &&
       (!selectedDivision || rowDivisionId === String(selectedDivision)) &&
       (!selectedClass || rowClassId === String(selectedClass))
     );
   });
+
+  if (activeReport.printable === "teacher-list" || activeReport.printable === "teacher-phone-list") {
+    filteredRows.sort(
+      (a, b) => (Number(a.registration_no) || 0) - (Number(b.registration_no) || 0),
+    );
+  }
 
   const selectedDivisionName =
     divisions.find((division) => String(division.division_id) === String(selectedDivision))

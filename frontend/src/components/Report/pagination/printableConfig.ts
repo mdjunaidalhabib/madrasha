@@ -14,6 +14,12 @@ export type PrintableConfig = {
   // Group key builder: rows sharing the same key paginate together and
   // start a fresh first page. Returning a constant means "one flat group".
   getGroupKey: (row: Record<string, any>) => string;
+  // exam-signature-number-sheet-2col only: physical pages render this many
+  // logical column-pages side by side. Each column is still paginated
+  // exactly like a normal single page with its own height budget, so a new
+  // group (class/subject) always starts a fresh column - it never shares a
+  // column with the previous group's leftover space.
+  columnsPerPage?: 2;
 };
 
 const noGrouping = () => "__all__";
@@ -57,6 +63,21 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
 
   if (printable === "exam-signature-sheet" || printable === "exam-number-sheet") {
     return { kind: "table", hasHeading: true, hasFooter: true, getGroupKey: examContextGroupKey(true) };
+  }
+
+  if (printable === "exam-signature-number-sheet" || printable === "exam-signature-number-sheet-2col") {
+    // One extra grouping level on top of the usual exam context: rows are
+    // pre-expanded to one-row-per-student-per-subject (see
+    // expandRowsBySubject in PaginatedReportPreview), so folding the subject
+    // name into the group key gives each subject its own heading + table +
+    // pagination, exactly like a fresh exam context would.
+    return {
+      kind: "table",
+      hasHeading: true,
+      hasFooter: true,
+      getGroupKey: (row) => `${examContextGroupKey(true)(row)}|${row.__subject_name || ""}`,
+      columnsPerPage: printable === "exam-signature-number-sheet-2col" ? 2 : undefined,
+    };
   }
 
   if (printable === "digital-attendance") {

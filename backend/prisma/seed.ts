@@ -785,11 +785,14 @@ async function main() {
      new Fee Templates UI. Uses the same create-if-missing semantics as
      Division/Class/Book above, keyed on keyName - never touches rows
      edited/added through that UI. */
-  const feeTierByDivision: Record<string, { admission: number; tuition: number }> = {
-    nurani: { admission: 300, tuition: 200 },
-    nazera_hifz: { admission: 500, tuition: 300 },
-    kitab: { admission: 700, tuition: 400 },
-    takhassus: { admission: 1000, tuition: 600 },
+  const feeTierByDivision: Record<
+    string,
+    { admission: number; tuition: number; exam: number; boarding: number }
+  > = {
+    nurani: { admission: 300, tuition: 200, exam: 150, boarding: 500 },
+    nazera_hifz: { admission: 500, tuition: 300, exam: 200, boarding: 600 },
+    kitab: { admission: 700, tuition: 400, exam: 300, boarding: 800 },
+    takhassus: { admission: 1000, tuition: 600, exam: 400, boarding: 1000 },
   };
   for (const [classKey, classId] of Object.entries(classIds)) {
     const [divisionKey] = classKey.split("/");
@@ -797,9 +800,16 @@ async function main() {
     if (!tier) continue;
 
     const safeKey = classKey.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const feeSpecs: { keyName: string; name: string; amount: number; frequency: "ONE_TIME" | "MONTHLY" }[] = [
+    const feeSpecs: {
+      keyName: string;
+      name: string;
+      amount: number;
+      frequency: "ONE_TIME" | "MONTHLY" | "YEARLY";
+    }[] = [
       { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME" },
       { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY" },
+      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY" },
+      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY" },
     ];
 
     for (const f of feeSpecs) {

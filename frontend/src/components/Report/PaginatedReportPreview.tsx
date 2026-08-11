@@ -44,6 +44,10 @@ type ResolvedPage = {
   // academic-result only: pass/fail/absent counts for the WHOLE group (this
   // class's this exam), not just this physical page's row slice.
   resultStats?: ResultStats;
+  // columnsPerPage:2 only: true when this chunk starts a fresh column
+  // rather than continuing to pack below the previous chunk in the same
+  // column - see packColumnsAcrossGroups.
+  startsNewColumn?: boolean;
 };
 
 // Kept unused on purpose (a sliver of every page's budget) so the last row
@@ -54,6 +58,16 @@ const SAFETY_MARGIN_RATIO = 0.01;
 // margin every print component adds in its place (Tailwind `mt-6` = 24px),
 // applied uniformly whenever `isFirstPage` is false.
 const CONTINUATION_TOP_OFFSET_PX = 24;
+// Horizontal space reserved between the two columns of a columnsPerPage:2
+// report (exam-signature-number-sheet-2col) - a thin divider line renders
+// centered in this gap so cutting straight down the middle leaves an equal
+// blank margin on both halves instead of shaving one side's content close.
+const TWO_COLUMN_GAP_PX = 48;
+// Vertical space reserved between two classes stacked in the same column of
+// a columnsPerPage:2 report - a thin divider line renders centered in this
+// gap too, matching TWO_COLUMN_GAP_PX's vertical-cut divider, so there's
+// blank paper to cut through between classes as well as between columns.
+const COLUMN_CLASS_GAP_PX = 40;
 
 const getPaperWidthPx = (paperSize: PaperSize, orientation: Orientation) =>
   getPaperWidthMm(paperSize, orientation) * MM_TO_CSS_PX;
@@ -70,6 +84,27 @@ const parseSubjects = (row: Record<string, any>) => {
   } catch {
     return [];
   }
+};
+
+// One student row per subject, tagged with __subject_name so
+// printableConfig's exam-signature-number-sheet group key can split them
+// into one heading+table per subject (see the comment where this is called).
+const expandRowsBySubject = (allRows: Record<string, any>[]) => {
+  const expanded: Record<string, any>[] = [];
+  allRows.forEach((row) => {
+    const subjects = parseSubjects(row);
+    if (!subjects.length) {
+      expanded.push(row);
+      return;
+    }
+    subjects.forEach((subject: Record<string, any>, index: number) => {
+      expanded.push({
+        ...row,
+        __subject_name: subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`,
+      });
+    });
+  });
+  return expanded;
 };
 
 const getEffectiveColumnCount = (report: ReportMenuItem, rows: Record<string, any>[]) => {
@@ -203,6 +238,88 @@ const paginateTableGroup = (
   });
 
   return pageIdGroups.map((ids) => ids.map((id) => groupRowsData[Number(id)]));
+};
+
+// ---- columnsPerPage:2 measurement (exam-signature-number-sheet-2col): a
+// continuous top-to-bottom packer across ALL groups combined, not one
+// column per group. A class starts wherever the current column still has
+// room left - several small classes share a column instead of each one
+// wasting the rest of a column - and only moves to a fresh column when it
+// genuinely doesn't fit what's left. A class too big for one column still
+// spills into the next; every chunk (first or spillover) repeats its own
+// full heading+footer because each column is cut apart from its neighbour
+// after printing and must stand alone. ----
+
+type ColumnChunk = {
+  groupIndex: number;
+  rows: Record<string, any>[];
+  startsNewColumn: boolean;
+};
+
+const packColumnsAcrossGroups = (
+  groups: Record<string, any>[][],
+  measurements: TableGroupMeasurement[],
+  availableHeightPx: number,
+): ColumnChunk[] => {
+  const safetyPx = availableHeightPx * SAFETY_MARGIN_RATIO;
+  const freshColumnBudgetPx = availableHeightPx - safetyPx;
+  const chunks: ColumnChunk[] = [];
+  let remainingPx = freshColumnBudgetPx;
+  let isFirstChunkOfColumn = true;
+
+  groups.forEach((groupRowsData, groupIndex) => {
+    const measurement = measurements[groupIndex];
+    const overheadPx = measurement.firstRowOffsetPx + measurement.footerReservePx;
+
+    let rowIndex = 0;
+    while (rowIndex < groupRowsData.length) {
+      // A class only ever splits across columns when it's too big for one
+      // column on its own - never just to top off a little leftover space
+      // below a previous class. So before packing anything, check whether
+      // the REST of this class (not just its next row) fits in what's left
+      // here; if it doesn't, hop to a fresh column first (where it either
+      // fits whole, or - if it's genuinely bigger than a full column - at
+      // least starts filling from a clean top instead of a cramped corner).
+      if (!isFirstChunkOfColumn) {
+        const remainingRowsHeightPx = measurement.rowHeightsPx
+          .slice(rowIndex)
+          .reduce((sum, h) => sum + h, 0);
+        const budgetHerePx = remainingPx - COLUMN_CLASS_GAP_PX - overheadPx;
+
+        if (remainingRowsHeightPx > budgetHerePx) {
+          remainingPx = freshColumnBudgetPx;
+          isFirstChunkOfColumn = true;
+        }
+      }
+
+      // Between two classes sharing a column, reserve a visible gap (see
+      // COLUMN_CLASS_GAP_PX) so there's blank paper to cut through between
+      // them, not just between the two side-by-side columns.
+      const gapPx = isFirstChunkOfColumn ? 0 : COLUMN_CLASS_GAP_PX;
+      const rowBudgetPx = remainingPx - gapPx - overheadPx;
+
+      // If this is a fresh column and even the budget above doesn't cover
+      // one row (a class bigger than a whole column), there's nothing more
+      // to do here - the `chunkRows.length > 0` guard below still forces at
+      // least one row through regardless, so this always makes progress.
+
+      const chunkRows: Record<string, any>[] = [];
+      let usedPx = 0;
+      while (rowIndex < groupRowsData.length) {
+        const heightPx = measurement.rowHeightsPx[rowIndex];
+        if (chunkRows.length > 0 && usedPx + heightPx > rowBudgetPx) break;
+        chunkRows.push(groupRowsData[rowIndex]);
+        usedPx += heightPx;
+        rowIndex += 1;
+      }
+
+      chunks.push({ groupIndex, rows: chunkRows, startsNewColumn: isFirstChunkOfColumn });
+      remainingPx -= gapPx + overheadPx + usedPx;
+      isFirstChunkOfColumn = false;
+    }
+  });
+
+  return chunks;
 };
 
 // ---- grid-kind measurement (id-card, admit-card) ----
@@ -352,7 +469,7 @@ const measureAndSplitRecord = (
 const PaginatedReportPreview = ({
   loading,
   report,
-  rows,
+  rows: rawRows,
   selectedDivisionName = "",
   selectedClassName = "",
   hideBrandHeader = false,
@@ -363,6 +480,20 @@ const PaginatedReportPreview = ({
   const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [previewScale, setPreviewScale] = useState(1);
   const [resolvedPages, setResolvedPages] = useState<ResolvedPage[] | null>(null);
+
+  // exam-signature-number-sheet prints one table PER SUBJECT (signature +
+  // hand-written mark column for that subject alone), not one wide table
+  // with a subject column each - so each incoming student row is expanded
+  // into one row per subject before grouping/pagination ever sees it. Every
+  // other printable type passes rows through untouched.
+  const rows = useMemo(
+    () =>
+      report.printable === "exam-signature-number-sheet" ||
+      report.printable === "exam-signature-number-sheet-2col"
+        ? expandRowsBySubject(rawRows)
+        : rawRows,
+    [rawRows, report.printable],
+  );
 
   // IdCardGrid/AdmitCardGrid resolve their template asynchronously (from
   // documentTemplateDefaultStore), so the very first off-screen measurement
@@ -376,6 +507,21 @@ const PaginatedReportPreview = ({
 
   const config = getPrintableConfig(report);
   const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
+  const columnsPerPage = config.columnsPerPage ?? 1;
+  const pagePaddingPx = getPagePaddingMm(paperSize) * MM_TO_CSS_PX;
+  // Content width of ONE column in a columnsPerPage:2 report - the page's
+  // full content width (paper width minus its own left/right padding) split
+  // in half around the divider gap. Off-screen measurement below renders at
+  // this width (not the full page width) so wrapped student names measure
+  // the same row height they'll actually take up in the narrower column.
+  const columnContentWidthPx =
+    columnsPerPage === 2
+      ? (getPaperWidthPx(paperSize, orientation) - pagePaddingPx * 2 - TWO_COLUMN_GAP_PX) / 2
+      : null;
+  const measurementWidthPx =
+    columnsPerPage === 2 && columnContentWidthPx !== null
+      ? columnContentWidthPx + pagePaddingPx * 2
+      : getPaperWidthPx(paperSize, orientation);
 
   const groups = useMemo(() => {
     if (config.kind !== "table" || !rows.length) return [];
@@ -466,7 +612,35 @@ const PaginatedReportPreview = ({
       let globalStartIndex = 0;
       let isVeryFirstPage = true;
 
-      if (config.kind === "table") {
+      if (config.kind === "table" && columnsPerPage === 2) {
+        const measurements = groups.map((_, groupIndex) => {
+          const container = measureRefs.current.get(`table-${groupIndex}`);
+          return container ? measureTableGroupContainer(container, paddingPx) : null;
+        });
+
+        if (measurements.every((m): m is TableGroupMeasurement => m !== null)) {
+          const chunks = packColumnsAcrossGroups(groups, measurements, availableHeightPx);
+
+          chunks.forEach((chunk, chunkIndex) => {
+            const groupRowsData = groups[chunk.groupIndex];
+            const resultStats =
+              report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
+
+            nextPages.push({
+              key: `${report.key}-table-${chunk.groupIndex}-${chunkIndex}`,
+              rows: chunk.rows,
+              startIndex: globalStartIndex,
+              isFirstPageOfGroup: true,
+              isFirstPage: true,
+              isLastPage: true,
+              density: getDensity(report, groupRowsData, paperSize, orientation),
+              resultStats,
+              startsNewColumn: chunk.startsNewColumn,
+            });
+            globalStartIndex += chunk.rows.length;
+          });
+        }
+      } else if (config.kind === "table") {
         const probeContainer = measureRefs.current.get(CONTINUATION_PROBE_KEY);
         const continuationOffsetPx = probeContainer
           ? measureTableGroupContainer(probeContainer, paddingPx).firstRowOffsetPx
@@ -477,12 +651,7 @@ const PaginatedReportPreview = ({
           if (!container) return;
 
           const measurement = measureTableGroupContainer(container, paddingPx);
-          const producedPages = paginateTableGroup(
-            measurement,
-            groupRowsData,
-            availableHeightPx,
-            continuationOffsetPx,
-          );
+          const producedPages = paginateTableGroup(measurement, groupRowsData, availableHeightPx, continuationOffsetPx);
           const resultStats =
             report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
 
@@ -647,6 +816,19 @@ const PaginatedReportPreview = ({
 
   const pages = loading || !rows.length ? [statusPage] : resolvedPages ?? fallbackPages;
 
+  // columnsPerPage:2 only: fold the flat chunk sequence back into columns
+  // (a column can hold several stacked chunks when classes packed together -
+  // see packColumnsAcrossGroups) so each one renders as a vertical stack
+  // inside its own column div, sharing a single letterhead at the top.
+  const twoColColumns =
+    columnsPerPage === 2
+      ? pages.reduce<ResolvedPage[][]>((columns, page) => {
+          if (page.startsNewColumn || columns.length === 0) columns.push([page]);
+          else columns[columns.length - 1].push(page);
+          return columns;
+        }, [])
+      : null;
+
   return (
     <>
       {measureTargets.length > 0 && (
@@ -664,13 +846,18 @@ const PaginatedReportPreview = ({
               data-orientation={orientation}
               data-density={target.density}
               style={{
-                width: `${getPaperWidthPx(paperSize, orientation)}px`,
+                width: `${measurementWidthPx}px`,
                 padding: `${getPagePaddingMm(paperSize)}mm`,
                 height: "auto",
                 overflow: "visible",
               }}
             >
-              {target.showBrand && <ReportBrandHeader />}
+              {target.showBrand && (
+                <ReportBrandHeader
+                  compactMaxWidthPx={columnsPerPage === 2 ? columnContentWidthPx ?? undefined : undefined}
+                  hideLogo={columnsPerPage === 2}
+                />
+              )}
               <div className="report-content-body">
                 <ReportContent
                   loading={false}
@@ -691,44 +878,136 @@ const PaginatedReportPreview = ({
 
       <div ref={viewportRef} className="print-preview-viewport">
         <div className="print-area print-pages" style={scaleStyle}>
-          {pages.map((page, pageIndex) => {
-            const showsBrandHeader = showBrandAtAll && page.isFirstPageOfGroup;
+          {columnsPerPage === 2 && twoColColumns
+            ? Array.from({ length: Math.ceil(twoColColumns.length / 2) }, (_, physicalIndex) => {
+                const left = twoColColumns[physicalIndex * 2];
+                const right = twoColColumns[physicalIndex * 2 + 1];
+                const physicalPageCount = Math.ceil(twoColColumns.length / 2);
 
-            return (
-              <section
-                key={page.key}
-                className="print-page-preview report-print-page bg-white"
-                data-report={report.printable || "table"}
-                data-paper-size={paperSize}
-                data-orientation={orientation}
-                data-density={page.density}
-              >
-                <ReportBackground />
-                <ReportWatermark />
-                {showsBrandHeader && <ReportBrandHeader />}
-                <div className="report-page-footer">
-                  <span className="report-page-footer-label">পৃষ্ঠা:</span>
-                  <span className="report-page-footer-number">
-                    {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
-                  </span>
-                </div>
-                <div className="report-content-body">
-                  <ReportContent
-                    loading={loading}
-                    report={report}
-                    rows={page.rows}
-                    selectedDivisionName={selectedDivisionName}
-                    selectedClassName={selectedClassName}
-                    startIndex={page.startIndex}
-                    isFirstPage={page.isFirstPage}
-                    isLastPage={page.isLastPage}
-                    bodyTextOverride={page.bodyTextOverride}
-                    resultStats={page.resultStats}
-                  />
-                </div>
-              </section>
-            );
-          })}
+                return (
+                  <section
+                    key={left?.[0]?.key ?? `${report.key}-2col-${physicalIndex}`}
+                    className="print-page-preview report-print-page bg-white"
+                    data-report={report.printable || "table"}
+                    data-paper-size={paperSize}
+                    data-orientation={orientation}
+                    data-density={left?.[0]?.density ?? right?.[0]?.density ?? "comfortable"}
+                  >
+                    <ReportBackground />
+                    <ReportWatermark />
+                    <div className="report-page-footer">
+                      <span className="report-page-footer-label">পৃষ্ঠা:</span>
+                      <span className="report-page-footer-number">
+                        {toBanglaDigits(physicalIndex + 1)}/{toBanglaDigits(physicalPageCount)}
+                      </span>
+                    </div>
+                    <div className="report-content-body flex">
+                      <div style={{ width: columnContentWidthPx ?? undefined, flex: "none" }}>
+                        {left?.map((chunk, chunkIndex) => (
+                          <div key={chunk.key}>
+                            {chunkIndex > 0 && (
+                              <div
+                                aria-hidden="true"
+                                style={{ height: COLUMN_CLASS_GAP_PX, display: "flex", alignItems: "center" }}
+                              >
+                                <div style={{ width: "100%", height: 1, background: "#94a3b8" }} />
+                              </div>
+                            )}
+                            {showBrandAtAll && (
+                              <ReportBrandHeader compactMaxWidthPx={columnContentWidthPx ?? undefined} hideLogo />
+                            )}
+                            <ReportContent
+                              loading={loading}
+                              report={report}
+                              rows={chunk.rows}
+                              selectedDivisionName={selectedDivisionName}
+                              selectedClassName={selectedClassName}
+                              startIndex={chunk.startIndex}
+                              isFirstPage={chunk.isFirstPage}
+                              isLastPage={chunk.isLastPage}
+                              bodyTextOverride={chunk.bodyTextOverride}
+                              resultStats={chunk.resultStats}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div
+                        aria-hidden="true"
+                        style={{ width: TWO_COLUMN_GAP_PX, flex: "none", display: "flex", justifyContent: "center" }}
+                      >
+                        <div style={{ width: 1, alignSelf: "stretch", background: "#94a3b8" }} />
+                      </div>
+                      <div style={{ width: columnContentWidthPx ?? undefined, flex: "none" }}>
+                        {right?.map((chunk, chunkIndex) => (
+                          <div key={chunk.key}>
+                            {chunkIndex > 0 && (
+                              <div
+                                aria-hidden="true"
+                                style={{ height: COLUMN_CLASS_GAP_PX, display: "flex", alignItems: "center" }}
+                              >
+                                <div style={{ width: "100%", height: 1, background: "#94a3b8" }} />
+                              </div>
+                            )}
+                            {showBrandAtAll && (
+                              <ReportBrandHeader compactMaxWidthPx={columnContentWidthPx ?? undefined} hideLogo />
+                            )}
+                            <ReportContent
+                              loading={loading}
+                              report={report}
+                              rows={chunk.rows}
+                              selectedDivisionName={selectedDivisionName}
+                              selectedClassName={selectedClassName}
+                              startIndex={chunk.startIndex}
+                              isFirstPage={chunk.isFirstPage}
+                              isLastPage={chunk.isLastPage}
+                              bodyTextOverride={chunk.bodyTextOverride}
+                              resultStats={chunk.resultStats}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                );
+              })
+            : pages.map((page, pageIndex) => {
+                const showsBrandHeader = showBrandAtAll && page.isFirstPageOfGroup;
+
+                return (
+                  <section
+                    key={page.key}
+                    className="print-page-preview report-print-page bg-white"
+                    data-report={report.printable || "table"}
+                    data-paper-size={paperSize}
+                    data-orientation={orientation}
+                    data-density={page.density}
+                  >
+                    <ReportBackground />
+                    <ReportWatermark />
+                    {showsBrandHeader && <ReportBrandHeader />}
+                    <div className="report-page-footer">
+                      <span className="report-page-footer-label">পৃষ্ঠা:</span>
+                      <span className="report-page-footer-number">
+                        {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
+                      </span>
+                    </div>
+                    <div className="report-content-body">
+                      <ReportContent
+                        loading={loading}
+                        report={report}
+                        rows={page.rows}
+                        selectedDivisionName={selectedDivisionName}
+                        selectedClassName={selectedClassName}
+                        startIndex={page.startIndex}
+                        isFirstPage={page.isFirstPage}
+                        isLastPage={page.isLastPage}
+                        bodyTextOverride={page.bodyTextOverride}
+                        resultStats={page.resultStats}
+                      />
+                    </div>
+                  </section>
+                );
+              })}
         </div>
       </div>
     </>

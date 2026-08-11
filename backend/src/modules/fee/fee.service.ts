@@ -193,6 +193,14 @@ export class FeeService {
     }
     const paymentAmount = toAmount(dto.amount, "amount");
 
+    let paidAt = new Date();
+    if (!isEmpty(dto.paid_at)) {
+      const parsed = new Date(String(dto.paid_at));
+      if (Number.isNaN(parsed.getTime())) throw new BadRequestError("paid_at is invalid");
+      if (parsed.getTime() > Date.now() + 60_000) throw new BadRequestError("paid_at cannot be in the future");
+      paidAt = parsed;
+    }
+
     let methodLabel: string | null = null;
     if (dto.payment_method_setting_id) {
       const setting = await this.repository.findPaymentMethodSettingForTenant(
@@ -235,7 +243,7 @@ export class FeeService {
             fund: FEE_ACCOUNT_FUND,
             description: `Invoice #${invoiceId}: ${invoice.title}`,
             paymentMethod: methodLabel || dto.method,
-            entryDate: new Date(),
+            entryDate: paidAt,
             createdBy: receivedById ?? null,
           },
         });
@@ -245,10 +253,12 @@ export class FeeService {
           invoiceId,
           amount: paymentAmount,
           method: String(dto.method).toUpperCase(),
+          paidAt,
           receivedById: receivedById ?? null,
           transactionRef: dto.transaction_ref?.trim() || null,
           methodSettingId: dto.payment_method_setting_id ? Number(dto.payment_method_setting_id) : null,
           methodLabel,
+          note: dto.note?.trim() || null,
           accountEntryId: ledgerEntry.id,
         });
 

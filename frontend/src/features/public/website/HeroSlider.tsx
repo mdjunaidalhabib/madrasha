@@ -10,45 +10,21 @@ export type PublicSlide = {
 };
 
 const AUTOPLAY_MS = 5500;
-const TRANSITION_MS = 900;
+const TRANSITION_MS = 1000;
 
-// Fixed height per breakpoint so every slide image (whatever its native
-// size) fills exactly the same box via object-cover — consistent framing
-// on phones, tablets and desktops instead of height following text length.
-const HERO_HEIGHT = "h-[380px] sm:h-[440px] md:h-[500px] lg:h-[560px] xl:h-[620px]";
+// Fixed height per breakpoint, sized for object-contain (the full photo
+// always visible, never cropped) rather than object-cover — a shorter box
+// on phones keeps a landscape photo from leaving tall empty margins.
+const HERO_HEIGHT = "h-[300px] sm:h-[400px] md:h-[480px] lg:h-[560px] xl:h-[620px]";
 
-// A different look each time the photo changes — cycled randomly (never
-// repeating the same one twice in a row) instead of always the same fade.
-const EFFECTS = ["fade", "slide-left", "slide-right", "zoom-in", "zoom-out"] as const;
-type Effect = (typeof EFFECTS)[number];
-
-const ENTER_FROM: Record<Effect, string> = {
-  fade: "none",
-  "slide-left": "translateX(5%)",
-  "slide-right": "translateX(-5%)",
-  "zoom-in": "scale(1.12)",
-  "zoom-out": "scale(0.88)",
-};
-
-const LEAVE_TO: Record<Effect, string> = {
-  fade: "none",
-  "slide-left": "translateX(-5%)",
-  "slide-right": "translateX(5%)",
-  "zoom-in": "scale(0.92)",
-  "zoom-out": "scale(1.08)",
-};
-
+// One consistent crossfade + gentle scale-in every time a slide changes —
+// a mix of different effects (slide/zoom-in/zoom-out) read as jumpy when
+// cycled randomly, so every transition now uses the same calm motion.
 type SliderState = {
   active: number;
   prevActive: number | null;
-  effect: Effect;
   phase: "start" | "end";
 };
-
-function pickEffect(last: Effect): Effect {
-  const options = EFFECTS.filter((e) => e !== last);
-  return options[Math.floor(Math.random() * options.length)];
-}
 
 export default function HeroSlider({
   slides,
@@ -66,7 +42,6 @@ export default function HeroSlider({
   const [state, setState] = useState<SliderState>({
     active: 0,
     prevActive: null,
-    effect: "fade",
     phase: "end",
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -77,7 +52,7 @@ export default function HeroSlider({
       if (!slides.length) return s;
       const next = ((compute(s.active) % slides.length) + slides.length) % slides.length;
       if (next === s.active) return s;
-      return { active: next, prevActive: s.active, effect: pickEffect(s.effect), phase: "start" };
+      return { active: next, prevActive: s.active, phase: "start" };
     });
   };
 
@@ -140,11 +115,10 @@ export default function HeroSlider({
 
             if (isEntering) {
               opacity = atStart ? 0 : 1;
-              transform = atStart ? ENTER_FROM[state.effect] : "none";
+              transform = atStart ? "scale(1.04)" : "none";
               transitionDuration = atStart ? "0ms" : `${TRANSITION_MS}ms`;
             } else if (isLeaving) {
               opacity = atStart ? 1 : 0;
-              transform = atStart ? "none" : LEAVE_TO[state.effect];
               transitionDuration = `${TRANSITION_MS}ms`;
             }
 
@@ -154,14 +128,23 @@ export default function HeroSlider({
                 className="absolute inset-0 ease-out"
                 style={{ opacity, transform, transitionProperty: "opacity, transform", transitionDuration }}
               >
+                {/* Blurred, cropped copy fills the box edge-to-edge behind the
+                    real photo — so object-contain below can show the whole
+                    image, on any device, without ever leaving bare gaps. */}
                 <img
                   src={slide.image_url}
-                  alt={slide.title || "Slide"}
-                  className="h-full w-full object-cover"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
                   style={{
                     animation:
                       isEntering && !atStart ? "heroKenBurns 9s ease-in-out infinite alternate" : undefined,
                   }}
+                />
+                <img
+                  src={slide.image_url}
+                  alt={slide.title || "Slide"}
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
             );

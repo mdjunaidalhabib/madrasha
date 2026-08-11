@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Receipt, Trash2 } from "lucide-react";
+import { Pencil, Receipt, Trash2, Search, Wallet, CircleCheck, X } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   feeStructureApi,
@@ -63,7 +63,16 @@ const normalizeArray = (payload: any) => {
 
 const emptyStructureForm = { name: "", amount: "", frequency: "MONTHLY" as FeeFrequency, academic_year: String(new Date().getFullYear()) };
 const emptyGenerateForm = { due_date: "", month: "" };
-const emptyPayForm = { amount: "", method: "CASH" as PaymentMethod, transaction_ref: "" };
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const emptyPayCommon = {
+  method: "CASH" as PaymentMethod,
+  payment_method_setting_id: "",
+  transaction_ref: "",
+  note: "",
+  paid_at: todayIso(),
+};
+type PayLine = { selected: boolean; amount: string };
 
 const FeeManagementPage = () => {
   const [tab, setTab] = useState<"structures" | "invoices">("structures");
@@ -88,10 +97,13 @@ const FeeManagementPage = () => {
 
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoicesLoading, setInvoicesLoading] = useState(false);
 
-  const [payTarget, setPayTarget] = useState<InvoiceRow | null>(null);
-  const [payForm, setPayForm] = useState({ ...emptyPayForm, payment_method_setting_id: "" });
+  const [payTarget, setPayTarget] = useState<InvoiceRow[] | null>(null);
+  const [payStudentLabel, setPayStudentLabel] = useState("");
+  const [payLines, setPayLines] = useState<Record<number, PayLine>>({});
+  const [payCommon, setPayCommon] = useState(emptyPayCommon);
   const [paying, setPaying] = useState(false);
   const [configuredMethods, setConfiguredMethods] = useState<PaymentMethodSetting[]>([]);
 
@@ -284,42 +296,89 @@ const FeeManagementPage = () => {
     }
   };
 
-  const openPayModal = (invoice: InvoiceRow) => {
-    setPayTarget(invoice);
-    const remaining = Number(invoice.amount) - Number(invoice.paidAmount);
-    setPayForm({ amount: String(remaining), method: "CASH", transaction_ref: "", payment_method_setting_id: "" });
+  // Opens the payment modal for one or many invoices at once (single "পেমেন্ট
+  // নিন" click passes one invoice; "সব বকেয়া ফি নিন" passes every unpaid
+  // invoice for that student) so both flows share one form and one API loop.
+  const openPayModal = (targetInvoices: InvoiceRow[], studentLabel: string) => {
+    const lines: Record<number, PayLine> = {};
+    targetInvoices.forEach((inv) => {
+      const remaining = Number(inv.amount) - Number(inv.paidAmount);
+      lines[inv.id] = { selected: true, amount: remaining > 0 ? String(remaining) : "0" };
+    });
+    setPayTarget(targetInvoices);
+    setPayStudentLabel(studentLabel);
+    setPayLines(lines);
+    setPayCommon(emptyPayCommon);
   };
 
+  const togglePayLine = (invoiceId: number) => {
+    setPayLines((prev) => ({
+      ...prev,
+      [invoiceId]: { ...prev[invoiceId], selected: !prev[invoiceId].selected },
+    }));
+  };
+
+  const setPayLineAmount = (invoiceId: number, amount: string) => {
+    setPayLines((prev) => ({ ...prev, [invoiceId]: { ...prev[invoiceId], amount } }));
+  };
+
+  const selectedPayTotal = useMemo(
+    () =>
+      Object.values(payLines).reduce(
+        (sum, line) => (line.selected ? sum + (Number(line.amount) || 0) : sum),
+        0,
+      ),
+    [payLines],
+  );
+
   const handlePay = async () => {
-    if (!payTarget || !payForm.amount) {
-      useToastStore.getState().show("পরিমাণ দিন", "error");
+    if (!payTarget) return;
+    const selected = Object.entries(payLines).filter(
+      ([, line]) => line.selected && Number(line.amount) > 0,
+    );
+    if (selected.length === 0) {
+      useToastStore.getState().show("অন্তত একটি ফি নির্বাচন করে পরিমাণ দিন", "error");
       return;
     }
+
     try {
       setPaying(true);
-      await invoiceApi.pay(payTarget.id, {
-        amount: Number(payForm.amount),
-        method: payForm.method,
-        transaction_ref: payForm.transaction_ref.trim() || undefined,
-        payment_method_setting_id: payForm.payment_method_setting_id
-          ? Number(payForm.payment_method_setting_id)
-          : undefined,
-      });
-      useToastStore.getState().show("পেমেন্ট রেকর্ড করা হয়েছে", "success");
-      setPayTarget(null);
+      let success = 0;
+      let failed = 0;
+      for (const [invoiceIdStr, line] of selected) {
+        try {
+          await invoiceApi.pay(Number(invoiceIdStr), {
+            amount: Number(line.amount),
+            method: payCommon.method,
+            transaction_ref: payCommon.transaction_ref.trim() || undefined,
+            payment_method_setting_id: payCommon.payment_method_setting_id
+              ? Number(payCommon.payment_method_setting_id)
+              : undefined,
+            note: payCommon.note.trim() || undefined,
+            paid_at: payCommon.paid_at || undefined,
+          });
+          success += 1;
+        } catch (err) {
+          failed += 1;
+          logger.error("PAY INVOICE ERROR:", err);
+        }
+      }
+
+      if (failed === 0) {
+        useToastStore
+          .getState()
+          .show(success > 1 ? `${success}টি ফি একসাথে পরিশোধ রেকর্ড হয়েছে` : "পেমেন্ট রেকর্ড করা হয়েছে", "success");
+        setPayTarget(null);
+      } else {
+        useToastStore
+          .getState()
+          .show(`${success}টি পরিশোধ হয়েছে, ${failed}টি ব্যর্থ হয়েছে — আবার চেষ্টা করুন`, "error");
+      }
       loadInvoices();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "পেমেন্ট রেকর্ড করতে সমস্যা হয়েছে";
-      useToastStore.getState().show(msg, "error");
     } finally {
       setPaying(false);
     }
   };
-
-  const remainingForPayTarget = useMemo(() => {
-    if (!payTarget) return 0;
-    return Number(payTarget.amount) - Number(payTarget.paidAmount);
-  }, [payTarget]);
 
   // Grouped division → class so a long flat list (one row per fee, per
   // class, across every division) reads as sections instead — "সাধারণ" (no
@@ -365,6 +424,61 @@ const FeeManagementPage = () => {
     }
     return [...result, ...divisionGroups];
   }, [structures]);
+
+  // Client-side search over the already-loaded invoice page — matches
+  // student name, roll number, or fee title so office staff can find a
+  // student instantly instead of scanning a flat invoice list.
+  const filteredInvoices = useMemo(() => {
+    const q = invoiceSearch.trim().toLowerCase();
+    if (!q) return invoices;
+    return invoices.filter((inv) => {
+      const name = (inv.student?.nameBn || "").toLowerCase();
+      const roll = String(inv.student?.roll ?? "");
+      return name.includes(q) || roll.includes(q) || inv.title.toLowerCase().includes(q);
+    });
+  }, [invoices, invoiceSearch]);
+
+  type StudentGroup = {
+    studentId: number;
+    label: string;
+    roll: number | string;
+    invoices: InvoiceRow[];
+    totalDue: number;
+  };
+
+  // One card per student instead of one row per fee, with students owing
+  // the most shown first — so collecting fees is "find the student, pay
+  // everything they owe in one go" instead of hunting invoice-by-invoice.
+  const studentGroups = useMemo(() => {
+    const map = new Map<number, StudentGroup>();
+    for (const inv of filteredInvoices) {
+      if (!map.has(inv.studentId)) {
+        map.set(inv.studentId, {
+          studentId: inv.studentId,
+          label: inv.student?.nameBn || `ছাত্র #${inv.studentId}`,
+          roll: inv.student?.roll ?? "-",
+          invoices: [],
+          totalDue: 0,
+        });
+      }
+      const group = map.get(inv.studentId)!;
+      group.invoices.push(inv);
+      if (inv.status !== "PAID") group.totalDue += Number(inv.amount) - Number(inv.paidAmount);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => b.totalDue - a.totalDue || a.label.localeCompare(b.label, "bn"),
+    );
+  }, [filteredInvoices]);
+
+  const invoiceSummary = useMemo(() => {
+    let totalDue = 0;
+    let totalCollected = 0;
+    for (const inv of filteredInvoices) {
+      totalCollected += Number(inv.paidAmount);
+      if (inv.status !== "PAID") totalDue += Number(inv.amount) - Number(inv.paidAmount);
+    }
+    return { totalDue, totalCollected, studentCount: studentGroups.length };
+  }, [filteredInvoices, studentGroups]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
@@ -567,63 +681,138 @@ const FeeManagementPage = () => {
           </>
         ) : (
           <>
+            {/* Search + status filter */}
             <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-              <select
-                value={invoiceStatusFilter}
-                onChange={(event) => setInvoiceStatusFilter(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[200px]"
-              >
-                <option value="">সব স্ট্যাটাস</option>
-                {(Object.keys(STATUS_LABELS) as InvoiceStatus[]).map((status) => (
-                  <option key={status} value={status}>
-                    {STATUS_LABELS[status].label}
-                  </option>
-                ))}
-              </select>
+              <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                <div className="relative w-full sm:w-[260px]">
+                  <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={invoiceSearch}
+                    onChange={(e) => setInvoiceSearch(e.target.value)}
+                    placeholder="ছাত্রের নাম বা রোল দিয়ে খুঁজুন"
+                    className="h-9 w-full rounded-md border border-gray-300 pl-8 pr-7 text-sm outline-none focus:border-blue-400"
+                  />
+                  {invoiceSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceSearch("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      title="মুছুন"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={invoiceStatusFilter}
+                  onChange={(event) => setInvoiceStatusFilter(event.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[180px]"
+                >
+                  <option value="">সব স্ট্যাটাস</option>
+                  {(Object.keys(STATUS_LABELS) as InvoiceStatus[]).map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_LABELS[status].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
+            {/* Summary stats */}
+            {!invoicesLoading && invoices.length > 0 && (
+              <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+                  <div className="text-[11px] text-gray-500 sm:text-xs">মোট বকেয়া</div>
+                  <div className="mt-0.5 text-base font-bold text-rose-600 sm:text-lg">
+                    ৳{invoiceSummary.totalDue.toLocaleString("bn-BD")}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+                  <div className="text-[11px] text-gray-500 sm:text-xs">সংগৃহীত</div>
+                  <div className="mt-0.5 text-base font-bold text-emerald-600 sm:text-lg">
+                    ৳{invoiceSummary.totalCollected.toLocaleString("bn-BD")}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+                  <div className="text-[11px] text-gray-500 sm:text-xs">ছাত্র</div>
+                  <div className="mt-0.5 text-base font-bold text-gray-800 sm:text-lg">
+                    {invoiceSummary.studentCount.toLocaleString("bn-BD")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Student-grouped invoice cards */}
             <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
               {invoicesLoading ? (
                 <SkeletonList items={6} />
               ) : invoices.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">কোনো ইনভয়েস নেই</div>
+              ) : studentGroups.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-500">কোনো ছাত্র পাওয়া যায়নি</div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {invoices.map((invoice) => {
-                    const remaining = Number(invoice.amount) - Number(invoice.paidAmount);
+                <div className="flex flex-col gap-3">
+                  {studentGroups.map((group) => {
+                    const unpaid = group.invoices.filter((inv) => inv.status !== "PAID");
                     return (
-                      <div
-                        key={invoice.id}
-                        className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="text-sm">
-                          <span className="font-semibold text-gray-800">
-                            {invoice.student?.nameBn || `ছাত্র #${invoice.studentId}`}
-                          </span>{" "}
-                          <span className="text-gray-500">
-                            (রোল {invoice.student?.roll ?? "-"})
-                          </span>{" "}
-                          — <span>{invoice.title}</span>{" "}
-                          <span className="text-gray-600">৳{invoice.amount}</span>{" "}
-                          <span
-                            className={`rounded px-2 py-0.5 text-xs ${STATUS_LABELS[invoice.status].className}`}
-                          >
-                            {STATUS_LABELS[invoice.status].label}
-                          </span>
-                          {remaining > 0 && (
-                            <span className="text-gray-500"> · বাকি ৳{remaining}</span>
+                      <div key={group.studentId} className="rounded-xl border border-gray-200 p-3">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm">
+                            <span className="font-semibold text-gray-800">{group.label}</span>{" "}
+                            <span className="text-gray-500">(রোল {group.roll})</span>
+                          </div>
+                          {group.totalDue > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => openPayModal(unpaid, group.label)}
+                              className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition hover:bg-blue-700"
+                            >
+                              <Wallet size={13} />
+                              সব বকেয়া ফি নিন (৳{group.totalDue.toLocaleString("bn-BD")})
+                            </button>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-medium text-green-700">
+                              <CircleCheck size={12} />
+                              সব পরিশোধিত
+                            </span>
                           )}
                         </div>
 
-                        {invoice.status !== "PAID" && (
-                          <button
-                            type="button"
-                            onClick={() => openPayModal(invoice)}
-                            className="h-8 w-full rounded-md bg-blue-600 px-4 text-xs font-medium text-white transition hover:bg-blue-700 sm:w-auto"
-                          >
-                            পেমেন্ট নিন
-                          </button>
-                        )}
+                        <div className="flex flex-col gap-1.5">
+                          {group.invoices.map((invoice) => {
+                            const remaining = Number(invoice.amount) - Number(invoice.paidAmount);
+                            return (
+                              <div
+                                key={invoice.id}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 px-2.5 py-1.5 text-sm"
+                              >
+                                <div className="min-w-0">
+                                  <span className="text-gray-800">{invoice.title}</span>{" "}
+                                  <span className="text-gray-500">৳{invoice.amount}</span>{" "}
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_LABELS[invoice.status].className}`}
+                                  >
+                                    {STATUS_LABELS[invoice.status].label}
+                                  </span>
+                                  {remaining > 0 && (
+                                    <span className="text-gray-500"> · বাকি ৳{remaining}</span>
+                                  )}
+                                </div>
+
+                                {invoice.status !== "PAID" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openPayModal([invoice], group.label)}
+                                    className="h-7 shrink-0 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                  >
+                                    শুধু এটি নিন
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
@@ -757,36 +946,89 @@ const FeeManagementPage = () => {
         </div>
       </Modal>
 
-      {/* Pay invoice modal */}
+      {/* Pay invoice(s) modal — handles both a single "পেমেন্ট নিন" click and
+          "সব বকেয়া ফি নিন" (every unpaid fee for one student at once) */}
       <Modal
         open={!!payTarget}
-        title={`পেমেন্ট রেকর্ড করুন — ${payTarget?.student?.nameBn || ""}`}
+        title={`পেমেন্ট রেকর্ড করুন — ${payStudentLabel}`}
         onClose={() => setPayTarget(null)}
+        maxWidthClassName="max-w-lg"
       >
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-gray-500">বাকি আছে: ৳{remainingForPayTarget}</p>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
-            <input
-              type="number"
-              value={payForm.amount}
-              onChange={(e) => setPayForm((p) => ({ ...p, amount: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">পদ্ধতি</label>
-            <select
-              value={payForm.method}
-              onChange={(e) => setPayForm((p) => ({ ...p, method: e.target.value as PaymentMethod }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-            >
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {method}
-                </option>
-              ))}
-            </select>
+        <div className="flex flex-col gap-4">
+          {payTarget && payTarget.length > 1 && (
+            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5">
+              {payTarget.map((invoice) => {
+                const remaining = Number(invoice.amount) - Number(invoice.paidAmount);
+                const line = payLines[invoice.id];
+                if (!line) return null;
+                return (
+                  <div key={invoice.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={line.selected}
+                      onChange={() => togglePayLine(invoice.id)}
+                      className="h-4 w-4 shrink-0 rounded border-gray-300"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-gray-700">
+                      {invoice.title} <span className="text-gray-400">(বাকি ৳{remaining})</span>
+                    </span>
+                    <input
+                      type="number"
+                      value={line.amount}
+                      disabled={!line.selected}
+                      onChange={(e) => setPayLineAmount(invoice.id, e.target.value)}
+                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    />
+                  </div>
+                );
+              })}
+              <div className="mt-1 flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm font-semibold text-gray-800">
+                <span>মোট নেওয়া হবে</span>
+                <span>৳{selectedPayTotal.toLocaleString("bn-BD")}</span>
+              </div>
+            </div>
+          )}
+
+          {payTarget && payTarget.length === 1 && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
+              <input
+                type="number"
+                value={payLines[payTarget[0].id]?.amount ?? ""}
+                onChange={(e) => setPayLineAmount(payTarget[0].id, e.target.value)}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                বাকি আছে: ৳{Number(payTarget[0].amount) - Number(payTarget[0].paidAmount)}
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">পদ্ধতি</label>
+              <select
+                value={payCommon.method}
+                onChange={(e) => setPayCommon((p) => ({ ...p, method: e.target.value as PaymentMethod }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              >
+                {PAYMENT_METHODS.map((method) => (
+                  <option key={method} value={method}>
+                    {method}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">তারিখ</label>
+              <input
+                type="date"
+                value={payCommon.paid_at}
+                max={todayIso()}
+                onChange={(e) => setPayCommon((p) => ({ ...p, paid_at: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              />
+            </div>
           </div>
 
           {configuredMethods.length > 0 && (
@@ -795,9 +1037,9 @@ const FeeManagementPage = () => {
                 কোন চ্যানেলে টাকা পাওয়া গেছে (ঐচ্ছিক)
               </label>
               <select
-                value={payForm.payment_method_setting_id}
+                value={payCommon.payment_method_setting_id}
                 onChange={(e) =>
-                  setPayForm((p) => ({ ...p, payment_method_setting_id: e.target.value }))
+                  setPayCommon((p) => ({ ...p, payment_method_setting_id: e.target.value }))
                 }
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
               >
@@ -818,9 +1060,20 @@ const FeeManagementPage = () => {
             </label>
             <input
               type="text"
-              value={payForm.transaction_ref}
-              onChange={(e) => setPayForm((p) => ({ ...p, transaction_ref: e.target.value }))}
+              value={payCommon.transaction_ref}
+              onChange={(e) => setPayCommon((p) => ({ ...p, transaction_ref: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">নোট (ঐচ্ছিক)</label>
+            <textarea
+              value={payCommon.note}
+              onChange={(e) => setPayCommon((p) => ({ ...p, note: e.target.value }))}
+              rows={2}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none"
+              placeholder="যেমন: আংশিক পরিশোধ, বাকিটা পরের মাসে দেবে"
             />
           </div>
         </div>
@@ -834,11 +1087,11 @@ const FeeManagementPage = () => {
           </button>
           <button
             type="button"
-            disabled={paying}
+            disabled={paying || selectedPayTotal <= 0}
             onClick={handlePay}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {paying ? "সংরক্ষণ হচ্ছে..." : "পেমেন্ট নিশ্চিত করুন"}
+            {paying ? "সংরক্ষণ হচ্ছে..." : `৳${selectedPayTotal.toLocaleString("bn-BD")} পেমেন্ট নিশ্চিত করুন`}
           </button>
         </div>
       </Modal>

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { Check, Globe2, Pencil, Plus, Trash2, X } from "lucide-react";
-import PageHeader from "../../../components/ui/PageHeader";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import Modal from "../../../components/ui/Modal";
 import { SkeletonList } from "../../../components/ui/Skeleton";
 import { useToastStore } from "../../../store/toastStore";
 import {
@@ -20,246 +20,129 @@ const FREQUENCY_LABELS: Record<DefaultFeeFrequency, string> = {
   YEARLY: "বাৎসরিক",
 };
 
-type Selection = { type: "generic" } | { type: "class"; classId: number };
-
 type FeeFormValues = { name: string; amount: string; frequency: DefaultFeeFrequency };
 const emptyFeeForm: FeeFormValues = { name: "", amount: "", frequency: "MONTHLY" };
-
-/** Inline add row for a fee item — three fields (name/amount/frequency)
- * instead of the single-field AddRow used on the Academic Catalog page,
- * but same "+ add" reveal-on-click interaction. */
-function FeeAddRow({ onAdd }: { onAdd: (values: FeeFormValues) => Promise<void> }) {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<FeeFormValues>(emptyFeeForm);
-  const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    if (!form.name.trim() || !form.amount || saving) return;
-    setSaving(true);
-    try {
-      await onAdd(form);
-      setForm(emptyFeeForm);
-      setOpen(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-600"
-      >
-        <Plus size={14} /> নতুন ফি টেমপ্লেট যোগ করুন
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 p-2">
-      <input
-        autoFocus
-        value={form.name}
-        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-        placeholder="নাম (যেমন: মাসিক বেতন)"
-        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-      />
-      <div className="flex items-center gap-1.5">
-        <input
-          type="number"
-          value={form.amount}
-          onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
-          placeholder="পরিমাণ (৳)"
-          className="w-full min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-        />
-        <select
-          value={form.frequency}
-          onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
-          className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-        >
-          {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
-            <option key={f} value={f}>
-              {FREQUENCY_LABELS[f]}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={submit} disabled={saving} className="shrink-0 rounded p-1.5 text-emerald-600 hover:bg-emerald-100">
-          <Check size={15} />
-        </button>
-        <button type="button" onClick={() => setOpen(false)} className="shrink-0 rounded p-1.5 text-slate-500 hover:bg-slate-100">
-          <X size={15} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FeeRow({
-  item,
-  onSave,
-  onDelete,
-}: {
-  item: DefaultFeeStructureDto;
-  onSave: (values: FeeFormValues) => Promise<void>;
-  onDelete: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<FeeFormValues>({ name: item.name, amount: String(item.amount), frequency: item.frequency });
-  const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    if (!form.name.trim() || !form.amount || saving) return;
-    setSaving(true);
-    try {
-      await onSave(form);
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (editing) {
-    return (
-      <div className="flex flex-col gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 p-2">
-        <input
-          autoFocus
-          value={form.name}
-          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-        />
-        <div className="flex items-center gap-1.5">
-          <input
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
-            className="w-full min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-          />
-          <select
-            value={form.frequency}
-            onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
-            className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
-          >
-            {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
-              <option key={f} value={f}>
-                {FREQUENCY_LABELS[f]}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={submit} disabled={saving} className="shrink-0 rounded p-1.5 text-emerald-600 hover:bg-emerald-100">
-            <Check size={15} />
-          </button>
-          <button type="button" onClick={() => setEditing(false)} className="shrink-0 rounded p-1.5 text-slate-500 hover:bg-slate-100">
-            <X size={15} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="group flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-blue-200">
-      <div className="min-w-0 flex-1">
-        <span className="font-medium text-slate-800">{item.name}</span>{" "}
-        <span className="text-slate-500">৳{item.amount}</span>{" "}
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{FREQUENCY_LABELS[item.frequency]}</span>
-      </div>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700"
-      >
-        <Pencil size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-600"
-      >
-        <Trash2 size={13} />
-      </button>
-    </div>
-  );
-}
 
 export default function SuperAdminDefaultFeeStructuresPage() {
   const { show } = useToastStore();
 
   const [divisions, setDivisions] = useState<CatalogDivisionDto[]>([]);
-  const [divisionId, setDivisionId] = useState<number | null>(null);
-  const [loadingDivisions, setLoadingDivisions] = useState(true);
-
+  const [division, setDivision] = useState("");
   const [classes, setClasses] = useState<CatalogClassDto[]>([]);
-  const [loadingClasses, setLoadingClasses] = useState(false);
-
-  const [selection, setSelection] = useState<Selection>({ type: "generic" });
+  const [classId, setClassId] = useState("");
+  const [classLoading, setClassLoading] = useState(false);
 
   const [items, setItems] = useState<DefaultFeeStructureDto[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
+
+  const [addForm, setAddForm] = useState<FeeFormValues>(emptyFeeForm);
+  const [saving, setSaving] = useState(false);
+
+  const [editTarget, setEditTarget] = useState<DefaultFeeStructureDto | null>(null);
+  const [editForm, setEditForm] = useState<FeeFormValues>(emptyFeeForm);
+  const [editSaving, setEditSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<DefaultFeeStructureDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const loadDivisions = useCallback(async () => {
-    setLoadingDivisions(true);
     try {
       const res = await catalogDivisionApi.list();
-      const rows = res.data?.data || [];
-      setDivisions(rows);
-      setDivisionId((prev) => prev ?? rows[0]?.id ?? null);
+      setDivisions(res.data?.data || []);
     } catch {
       show("বিভাগ লোড করা যায়নি", "error");
-    } finally {
-      setLoadingDivisions(false);
     }
   }, [show]);
-
-  const loadClasses = useCallback(
-    async (divId: number) => {
-      setLoadingClasses(true);
-      try {
-        const res = await catalogClassApi.list(divId, false);
-        setClasses(res.data?.data || []);
-      } catch {
-        show("শ্রেণি লোড করা যায়নি", "error");
-      } finally {
-        setLoadingClasses(false);
-      }
-    },
-    [show],
-  );
-
-  const loadItems = useCallback(
-    async (sel: Selection) => {
-      setLoadingItems(true);
-      try {
-        const res = await defaultFeeStructureApi.list(sel.type === "class" ? sel.classId : undefined);
-        const rows = res.data?.data || [];
-        setItems(sel.type === "generic" ? rows.filter((r) => r.class_id === null) : rows);
-      } catch {
-        show("ফি টেমপ্লেট লোড করা যায়নি", "error");
-      } finally {
-        setLoadingItems(false);
-      }
-    },
-    [show],
-  );
 
   useEffect(() => {
     loadDivisions();
   }, [loadDivisions]);
 
-  useEffect(() => {
-    if (divisionId) loadClasses(divisionId);
-    else setClasses([]);
-  }, [divisionId, loadClasses]);
+  const loadClasses = async (divisionId: string) => {
+    setClassId("");
+    if (!divisionId) {
+      setClasses([]);
+      return;
+    }
+    try {
+      setClassLoading(true);
+      const res = await catalogClassApi.list(Number(divisionId), false);
+      setClasses(res.data?.data || []);
+    } catch {
+      show("শ্রেণি লোড করা যায়নি", "error");
+      setClasses([]);
+    } finally {
+      setClassLoading(false);
+    }
+  };
+
+  const loadItems = useCallback(async () => {
+    setLoadingItems(true);
+    try {
+      const res = await defaultFeeStructureApi.list();
+      setItems(res.data?.data || []);
+    } catch {
+      show("ফি টেমপ্লেট লোড করা যায়নি", "error");
+      setItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  }, [show]);
 
   useEffect(() => {
-    loadItems(selection);
-  }, [selection, loadItems]);
+    loadItems();
+  }, [loadItems]);
 
-  const refreshItems = () => loadItems(selection);
+  const handleAdd = async () => {
+    if (!addForm.name.trim() || !addForm.amount) {
+      show("নাম ও পরিমাণ দিন", "error");
+      return;
+    }
+    try {
+      setSaving(true);
+      await defaultFeeStructureApi.create({
+        class_id: classId ? Number(classId) : null,
+        name: addForm.name.trim(),
+        amount: Number(addForm.amount),
+        frequency: addForm.frequency,
+      });
+      show("ফি টেমপ্লেট তৈরি হয়েছে", "success");
+      setAddForm(emptyFeeForm);
+      await loadItems();
+    } catch (err: any) {
+      show(err?.response?.data?.message || "ফি টেমপ্লেট তৈরি করতে সমস্যা হয়েছে", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditModal = (item: DefaultFeeStructureDto) => {
+    setEditTarget(item);
+    setEditForm({ name: item.name, amount: String(item.amount), frequency: item.frequency });
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    if (!editForm.name.trim() || !editForm.amount) {
+      show("নাম ও পরিমাণ দিন", "error");
+      return;
+    }
+    try {
+      setEditSaving(true);
+      await defaultFeeStructureApi.update(editTarget.id, {
+        name: editForm.name.trim(),
+        amount: Number(editForm.amount),
+        frequency: editForm.frequency,
+      });
+      show("ফি টেমপ্লেট আপডেট হয়েছে", "success");
+      setEditTarget(null);
+      await loadItems();
+    } catch (err: any) {
+      show(err?.response?.data?.message || "ফি টেমপ্লেট আপডেট করতে সমস্যা হয়েছে", "error");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -268,7 +151,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
       await defaultFeeStructureApi.remove(deleteTarget.id);
       show("ফি টেমপ্লেট মুছে ফেলা হয়েছে", "success");
       setDeleteTarget(null);
-      await refreshItems();
+      setItems((prev) => prev.filter((row) => row.id !== deleteTarget.id));
     } catch (err: any) {
       show(err?.response?.data?.message || "মুছে ফেলা যায়নি", "error");
     } finally {
@@ -276,121 +159,261 @@ export default function SuperAdminDefaultFeeStructuresPage() {
     }
   };
 
-  const selectedClassLabel =
-    selection.type === "generic" ? "সাধারণ (সব শ্রেণির জন্য)" : classes.find((c) => c.id === selection.classId)?.label || "";
+  // Grouped division → class so every template shows at once instead of
+  // one class at a time — mirrors the admin panel's ছাত্র ফি ব্যবস্থাপনা
+  // page. "সাধারণ" (no class, applies to every class) is pinned first as
+  // its own section, then each division's classes alphabetically.
+  const groupedItems = useMemo(() => {
+    type ClassGroup = { key: string; label: string; items: DefaultFeeStructureDto[] };
+    type DivisionGroup = { key: string; label: string; classGroups: ClassGroup[] };
+
+    const genericItems = items.filter((r) => !r.class_id);
+    const divisionMap = new Map<string, { label: string; classMap: Map<string, ClassGroup> }>();
+
+    for (const row of items) {
+      if (!row.class_id) continue;
+      const divisionLabel = row.division_label || "অন্যান্য";
+      if (!divisionMap.has(divisionLabel)) {
+        divisionMap.set(divisionLabel, { label: divisionLabel, classMap: new Map() });
+      }
+      const div = divisionMap.get(divisionLabel)!;
+      const classKey = String(row.class_id);
+      const classLabel = row.class_name || `শ্রেণি #${row.class_id}`;
+      if (!div.classMap.has(classKey)) {
+        div.classMap.set(classKey, { key: classKey, label: classLabel, items: [] });
+      }
+      div.classMap.get(classKey)!.items.push(row);
+    }
+
+    const divisionGroups: DivisionGroup[] = Array.from(divisionMap.entries())
+      .map(([key, v]) => ({
+        key,
+        label: v.label,
+        classGroups: Array.from(v.classMap.values()).sort((a, b) => a.label.localeCompare(b.label, "bn")),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "bn"));
+
+    const result: DivisionGroup[] = [];
+    if (genericItems.length) {
+      result.push({
+        key: "generic",
+        label: "সাধারণ (সব শ্রেণির জন্য)",
+        classGroups: [{ key: "generic-items", label: "সাধারণ", items: genericItems }],
+      });
+    }
+    return [...result, ...divisionGroups];
+  }, [items]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="ফি টেমপ্লেট"
-        subtitle="নতুন মাদ্রাসা তৈরির সময় এই ফি কাঠামোগুলো স্বয়ংক্রিয়ভাবে কপি হয়ে যায়। টেনে নয়, ক্লিক করে ক্লাস বেছে নিন।"
-      />
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ফি টেমপ্লেট</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            নতুন মাদ্রাসা তৈরির সময় এই ফি কাঠামোগুলো স্বয়ংক্রিয়ভাবে কপি হয়ে যায়
+          </p>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* DIVISIONS */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">বিভাগ</h2>
-          <button
-            type="button"
-            onClick={() => setSelection({ type: "generic" })}
-            className={`mb-2 flex w-full items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-              selection.type === "generic" ? "border-blue-400 bg-blue-50 text-blue-800" : "border-slate-200 bg-white hover:border-blue-200"
-            }`}
-          >
-            <Globe2 size={14} /> সাধারণ (সব শ্রেণির জন্য)
-          </button>
-          {loadingDivisions ? (
-            <SkeletonList items={4} />
-          ) : (
-            <div className="space-y-1.5">
+        {/* Division/Class picker */}
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <select
+              value={division}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDivision(value);
+                loadClasses(value);
+              }}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+            >
+              <option value="">বিভাগ (ফিল্টার)</option>
               {divisions.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setDivisionId(d.id)}
-                  className={`flex w-full items-center rounded-lg border px-3 py-2 text-left text-sm transition ${
-                    divisionId === d.id && selection.type !== "generic"
-                      ? "border-blue-400 bg-blue-50 text-blue-800"
-                      : "border-slate-200 bg-white hover:border-blue-200"
-                  }`}
-                >
+                <option key={d.id} value={d.id}>
                   {d.label || d.name}
-                </button>
+                </option>
               ))}
-              {!divisions.length && <p className="py-2 text-center text-xs text-slate-400">কোনো বিভাগ নেই</p>}
-            </div>
-          )}
-        </div>
-
-        {/* CLASSES */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">শ্রেণি</h2>
-          {!divisionId ? (
-            <p className="py-6 text-center text-xs text-slate-400">প্রথমে একটি বিভাগ নির্বাচন করুন</p>
-          ) : loadingClasses ? (
-            <SkeletonList items={4} />
-          ) : (
-            <div className="space-y-1.5">
+            </select>
+            <select
+              value={classId}
+              onChange={(event) => setClassId(event.target.value)}
+              disabled={!division || classLoading}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 sm:w-[180px]"
+            >
+              <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি (ফিল্টার)"}</option>
               {classes.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelection({ type: "class", classId: c.id })}
-                  className={`flex w-full items-center rounded-lg border px-3 py-2 text-left text-sm transition ${
-                    selection.type === "class" && selection.classId === c.id
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-800"
-                      : "border-slate-200 bg-white hover:border-blue-200"
-                  }`}
-                >
+                <option key={c.id} value={c.id}>
                   {c.label || c.name}
-                </button>
+                </option>
               ))}
-              {!classes.length && <p className="py-2 text-center text-xs text-slate-400">কোনো শ্রেণি নেই</p>}
-              <p className="pt-1 text-[11px] text-slate-400">শ্রেণি অ্যাড/এডিট করতে হলে একাডেমিক ক্যাটালগ পেজে যান।</p>
-            </div>
-          )}
+            </select>
+          </div>
         </div>
 
-        {/* FEE ITEMS */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">ফি — {selectedClassLabel}</h2>
-          {loadingItems ? (
-            <SkeletonList items={4} />
-          ) : (
-            <div className="space-y-1.5">
-              {items.map((item) => (
-                <FeeRow
-                  key={item.id}
-                  item={item}
-                  onSave={async (values) => {
-                    await defaultFeeStructureApi.update(item.id, {
-                      name: values.name.trim(),
-                      amount: Number(values.amount),
-                      frequency: values.frequency,
-                    });
-                    show("ফি টেমপ্লেট আপডেট হয়েছে", "success");
-                    await refreshItems();
-                  }}
-                  onDelete={() => setDeleteTarget(item)}
-                />
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">
+            নতুন ফি টেমপ্লেট তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
+          </h2>
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <input
+              type="text"
+              placeholder="নাম (যেমন: মাসিক বেতন)"
+              value={addForm.name}
+              onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[200px]"
+            />
+            <input
+              type="number"
+              placeholder="পরিমাণ (৳)"
+              value={addForm.amount}
+              onChange={(e) => setAddForm((p) => ({ ...p, amount: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[130px]"
+            />
+            <select
+              value={addForm.frequency}
+              onChange={(e) => setAddForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[130px]"
+            >
+              {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
+                <option key={f} value={f}>
+                  {FREQUENCY_LABELS[f]}
+                </option>
               ))}
-              {!items.length && <p className="py-2 text-center text-xs text-slate-400">কোনো ফি টেমপ্লেট নেই</p>}
-              <FeeAddRow
-                onAdd={async (values) => {
-                  await defaultFeeStructureApi.create({
-                    class_id: selection.type === "class" ? selection.classId : null,
-                    name: values.name.trim(),
-                    amount: Number(values.amount),
-                    frequency: values.frequency,
-                  });
-                  show("ফি টেমপ্লেট তৈরি হয়েছে", "success");
-                  await refreshItems();
-                }}
-              />
+            </select>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleAdd}
+              className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+            >
+              তৈরি করুন
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+          {loadingItems ? (
+            <SkeletonList items={6} />
+          ) : items.length === 0 ? (
+            <div className="py-10 text-center text-sm text-gray-500">কোনো ফি টেমপ্লেট নেই</div>
+          ) : (
+            <div className="space-y-5">
+              {groupedItems.map((div) => (
+                <div key={div.key}>
+                  {div.key !== "generic" && <h3 className="mb-2 text-sm font-bold text-gray-700">{div.label}</h3>}
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {div.classGroups.map((group) => (
+                      <div key={group.key} className="rounded-xl border border-gray-200 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <h4 className="truncate text-sm font-semibold text-gray-800">{group.label}</h4>
+                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                            {group.items.length}টি
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center gap-1 rounded-lg border border-gray-100 px-2.5 py-2 text-sm transition hover:border-blue-200"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium text-gray-800">
+                                  {item.name} <span className="font-normal text-gray-500">৳{item.amount}</span>
+                                </div>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
+                                    {FREQUENCY_LABELS[item.frequency]}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 gap-0.5">
+                                <button
+                                  type="button"
+                                  title="এডিট"
+                                  onClick={() => openEditModal(item)}
+                                  className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="মুছুন"
+                                  onClick={() => setDeleteTarget(item)}
+                                  className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Edit fee template modal */}
+      <Modal
+        open={!!editTarget}
+        title={`ফি টেমপ্লেট এডিট করুন — ${editTarget?.name || ""}`}
+        onClose={() => setEditTarget(null)}
+      >
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">নাম</label>
+            <input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
+            <input
+              type="number"
+              value={editForm.amount}
+              onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">ফ্রিকোয়েন্সি</label>
+            <select
+              value={editForm.frequency}
+              onChange={(e) => setEditForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            >
+              {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
+                <option key={f} value={f}>
+                  {FREQUENCY_LABELS[f]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setEditTarget(null)}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={editSaving}
+            onClick={handleUpdate}
+            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          </button>
+        </div>
+      </Modal>
 
       <ConfirmModal
         open={!!deleteTarget}

@@ -43,6 +43,8 @@ export const invoiceApi = {
       method: PaymentMethod;
       transaction_ref?: string;
       payment_method_setting_id?: number;
+      note?: string;
+      paid_at?: string;
     },
   ) => api.post(`/invoices/${invoiceId}/pay`, payload),
 };

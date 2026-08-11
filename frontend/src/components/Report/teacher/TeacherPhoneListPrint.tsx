@@ -1,4 +1,4 @@
-import { cellValue, toBanglaDigits } from "../../../utils/reportUtils";
+import { cellValue } from "../../../utils/reportUtils";
 
 type TeacherPhoneListPrintProps = {
   rows: Record<string, any>[];
@@ -16,17 +16,11 @@ const TeacherPhoneListPrint = ({
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
-      <div className="report-block-heading">
-      <h1 className="mb-3 text-center text-xl font-bold">শিক্ষকদের মোবাইল নম্বর তালিকা</h1>
-
-      <div className="mb-3 grid grid-cols-2 text-[13px]">
-        <div className="flex min-h-9 items-center border border-black px-2">
-          <b className="mr-1">বিভাগ:</b> {selectedDivisionName || "সকল বিভাগ"}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">এই পৃষ্ঠায় শিক্ষক:</b> {toBanglaDigits(rows.length)}
-        </div>
-      </div>
+      <div className="student-report-heading report-block-heading mb-3 text-center">
+        <h1 className="student-report-title text-xl font-bold">শিক্ষকদের মোবাইল নম্বর তালিকা</h1>
+        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+          {selectedDivisionName || "সকল বিভাগ"}
+        </p>
       </div>
       )}
 
@@ -39,7 +33,6 @@ const TeacherPhoneListPrint = ({
             <th className="w-24 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
             <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষকের নাম</th>
             <th className="w-28 border border-black px-1 py-2 text-base font-bold">পদবি</th>
-            <th className="w-28 border border-black px-1 py-2 text-base font-bold">বিভাগ</th>
             <th className="w-32 border border-black px-1 py-2 text-base font-bold">মোবাইল নম্বর</th>
             <th className="w-32 border border-black px-1 py-2 text-base font-bold">জরুরি মোবাইল</th>
           </tr>
@@ -53,7 +46,6 @@ const TeacherPhoneListPrint = ({
                 {cellValue(row, "teacher_name")}
               </td>
               <td className="h-9 border border-black px-1 text-base">{cellValue(row, "designation")}</td>
-              <td className="h-9 border border-black px-1 text-base">{cellValue(row, "division_name")}</td>
               <td className="h-9 border border-black px-1 font-semibold text-base">
                 {cellValue(row, "phone")}
               </td>

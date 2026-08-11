@@ -149,8 +149,10 @@ const ResultNoticeList = ({
       </table>
 
       {isLastPage && (
-        <div className="result-notice-signature report-block-signature mt-10 text-right text-sm font-semibold">
-          প্রধান শিক্ষকের স্বাক্ষর ও সীল
+        <div className="result-notice-signature report-block-signature flex justify-end">
+          <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
+            মুহতামিমের স্বাক্ষর
+          </div>
         </div>
       )}
     </div>

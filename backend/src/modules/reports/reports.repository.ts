@@ -84,6 +84,7 @@ export class ReportsRepository {
         s.father_name,
         s.mother_name,
         s.guardian_phone,
+        s.dob AS date_of_birth,
         s.image,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name
@@ -689,6 +690,7 @@ export class ReportsRepository {
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
+        s.dob AS date_of_birth,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
         e.name AS exam_name,
@@ -699,17 +701,66 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
-        rm.status AS publish_status
+        rm.status AS publish_status,
+        COALESCE(
+          jsonb_agg(
+            jsonb_build_object(
+              'book_id', b.id,
+              'subject_name', COALESCE(b.name_bn, b.name),
+              'full_marks', COALESCE(mb.full_mark, 100),
+              'mark', m.mark,
+              'is_absent', COALESCE(m.is_absent, false)
+            )
+            ORDER BY COALESCE(mb.sort_order, 0), b.id
+          ) FILTER (WHERE b.id IS NOT NULL),
+          '[]'::jsonb
+        ) AS subjects
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
       LEFT JOIN exams e ON e.id = rm.exam_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
+      LEFT JOIN madrasa_books mb
+        ON mb.madrasa_id = s.madrasa_id
+        AND COALESCE(mb.is_active, 1) = 1
+      LEFT JOIN books b
+        ON b.id = mb.book_id
+        AND b.class_id = s.class_id
+      LEFT JOIN marks m
+        ON m.result_master_id = rm.id
+        AND m.student_id = s.id
+        AND m.book_id = b.id
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         AND rm.status = 'PUBLISHED'
+      GROUP BY
+        s.id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn,
+        s.father_name,
+        s.guardian_phone,
+        s.dob,
+        c.name_bn,
+        c.name,
+        d.name_bn,
+        d.name,
+        e.name,
+        e.year,
+        rs.roll,
+        rs.total,
+        rs.average,
+        rs.general_grade,
+        rs.madrasa_grade,
+        rs.status,
+        rs.rank_no,
+        rm.status,
+        rm.id
       ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
       [madrasaId],

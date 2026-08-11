@@ -43,7 +43,6 @@ const parseSubjects = (row: Record<string, any>): SubjectMark[] => {
 
 const ExamNumberSheet = ({
   rows,
-  selectedDivisionName = "",
   selectedClassName = "",
   startIndex = 0,
   columns = [],
@@ -56,8 +55,6 @@ const ExamNumberSheet = ({
   const firstRow = rows[0] || {};
   const examName = value(firstRow, ["exam_name"], "........................");
   const examYear = value(firstRow, ["exam_year", "academic_year"], "........................");
-  const divisionName =
-    selectedDivisionName || value(firstRow, ["division_name", "division_name_bn"], "সকল বিভাগ");
   const className =
     selectedClassName || value(firstRow, ["class_name", "class_name_bn"], "সকল শ্রেণি");
 
@@ -65,7 +62,7 @@ const ExamNumberSheet = ({
   rows.forEach((row) => {
     parseSubjects(row).forEach((subject, index) => {
       const key = String(subject.book_id ?? subject.subject_name ?? index);
-      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`);
+      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`);
     });
   });
   const subjects = Array.from(subjectMap.entries());
@@ -73,94 +70,59 @@ const ExamNumberSheet = ({
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
-      <div className="report-block-heading">
-      <h1 className="mb-3 text-center text-xl font-bold">পরীক্ষার নম্বরপত্র</h1>
-
-      <div className="mb-3 grid grid-cols-4 text-[12px]">
-        <div className="flex min-h-9 items-center border border-black px-2">
-          <b className="mr-1">পরীক্ষা:</b> {examName}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">বিভাগ:</b> {divisionName}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">শ্রেণি:</b> {className}
-        </div>
-        <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-          <b className="mr-1">শিক্ষাবর্ষ:</b> {examYear}
-        </div>
-      </div>
+      <div className="student-report-heading report-block-heading mb-3 text-center">
+        <h1 className="student-report-title text-xl font-bold">পরীক্ষার নম্বরপত্র</h1>
+        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+          {examName} - {examYear}
+        </p>
+        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+          জামাতঃ {className}
+        </p>
       </div>
       )}
 
       <table
-        className={`w-full table-fixed border-collapse border border-black text-center text-[9px] ${isFirstPage ? "" : "mt-6"}`}
+        className={`exam-report-table w-full table-fixed border-collapse border border-black text-center ${isFirstPage ? "" : "mt-6"}`}
       >
         {isFirstPage && (
         <thead>
           <tr>
-            <th className="w-10 border border-black px-0.5 py-2">{label("roll", "রোল")}</th>
-            <th className="w-16 border border-black px-0.5 py-2">{label("registration_no", "রেজিঃ")}</th>
-            <th className="w-28 border border-black px-1 py-2">{label("student_name", "শিক্ষার্থীর নাম")}</th>
+            <th className="w-10 border border-black px-0.5 py-2 text-base">{label("roll", "রোল")}</th>
+            <th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", "রেজিঃ")}</th>
+            <th className="w-28 border border-black px-1 py-2 text-base">{label("student_name", "শিক্ষার্থীর নাম")}</th>
             {subjects.map(([key, subjectLabel]) => (
-              <th key={key} className="border border-black px-0.5 py-2 leading-tight">
+              <th key={key} className="border border-black px-0.5 py-2 text-base leading-tight">
                 {subjectLabel}
               </th>
             ))}
-            <th className="w-12 border border-black px-0.5 py-2">{label("total", "মোট")}</th>
-            <th className="w-12 border border-black px-0.5 py-2">{label("average", "গড়")}</th>
-            <th className="w-16 border border-black px-0.5 py-2">{label("remarks", "মন্তব্য")}</th>
           </tr>
         </thead>
         )}
         <tbody>
-          {rows.map((row, index) => {
-            const rowSubjects = parseSubjects(row);
-            const rowSubjectMap = new Map(
-              rowSubjects.map((subject, subjectIndex) => [
-                String(subject.book_id ?? subject.subject_name ?? subjectIndex),
-                subject.mark,
-              ]),
-            );
-
-            return (
-              <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
-                <td className="h-8 border border-black px-0.5">{cellValue(row, "roll")}</td>
-                <td className="h-8 border border-black px-0.5">
-                  {cellValue(row, "registration_no")}
-                </td>
-                <td className="h-8 border border-black px-1 text-left font-semibold">
-                  {cellValue(row, "student_name")}
-                </td>
-                {subjects.map(([key]) => {
-                  const mark = rowSubjectMap.get(key);
-                  return (
-                    <td
-                      key={`${row.id || index}-${key}`}
-                      className="h-8 border border-black px-0.5"
-                    >
-                      {mark === null || mark === undefined || mark === "" ? "" : formatReportValue(mark)}
-                    </td>
-                  );
-                })}
-                <td className="h-8 border border-black px-0.5">
-                  {row.total === null || row.total === undefined ? "" : formatReportValue(row.total)}
-                </td>
-                <td className="h-8 border border-black px-0.5">
-                  {row.average === null || row.average === undefined ? "" : formatReportValue(row.average)}
-                </td>
-                <td className="h-8 border border-black px-0.5" />
-              </tr>
-            );
-          })}
+          {rows.map((row, index) => (
+            <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
+              <td className="h-8 border border-black px-0.5 text-base">{cellValue(row, "roll")}</td>
+              <td className="h-8 border border-black px-0.5 text-base">
+                {cellValue(row, "registration_no")}
+              </td>
+              <td className="h-8 border border-black px-1 text-left text-base font-semibold">
+                {cellValue(row, "student_name")}
+              </td>
+              {subjects.map(([key]) => (
+                // Blank on purpose - the examiner writes the mark by hand
+                // during grading, this sheet never pre-fills a stored mark.
+                <td key={`${row.id || index}-${key}`} className="h-8 border border-black px-0.5" />
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
 
       {isLastPage && (
-      <div className="report-block-signature mt-10 grid grid-cols-3 gap-12 text-center text-[12px]">
-        <div className="border-t border-black pt-1">বিষয় শিক্ষকের স্বাক্ষর</div>
-        <div className="border-t border-black pt-1">শ্রেণি শিক্ষকের স্বাক্ষর</div>
-        <div className="border-t border-black pt-1">পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</div>
+      <div className="exam-report-signature report-block-signature flex justify-end">
+        <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
+          পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর
+        </div>
       </div>
       )}
     </div>

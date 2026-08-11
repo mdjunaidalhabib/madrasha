@@ -38,6 +38,8 @@ export type ReportMenuItem = {
     | "teacher-phone-list"
     | "exam-signature-sheet"
     | "exam-number-sheet"
+    | "exam-signature-number-sheet"
+    | "exam-signature-number-sheet-2col"
     | "book-label";
 };
 
