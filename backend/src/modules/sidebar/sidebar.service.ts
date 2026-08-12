@@ -131,9 +131,10 @@ export class SidebarService {
       if (mod.keyName === "students") {
         const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "statement", label: "হিসাব বিবরণী", sortOrder: 3 },
-          { key: "fee_management", label: "ফি ব্যবস্থাপনা", sortOrder: 4 },
-          { key: "notifications", label: "SMS/ইমেইল পাঠান", sortOrder: 5 },
-          { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 6 },
+          { key: "fee_management", label: "ফি সেটাপ", sortOrder: 4 },
+          { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 5 },
+          { key: "notifications", label: "SMS/ইমেইল পাঠান", sortOrder: 6 },
+          { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 7 },
         ];
         for (const fallback of fallbackStudentChildren) {
           if (!children.some((child) => child.key === fallback.key)) {
@@ -146,6 +147,13 @@ export class SidebarService {
             });
           }
         }
+
+        // fee_management used to cover both "ফি কাঠামো" and payment
+        // collection in one page/label. Now that fee_collection is its own
+        // entry, relabel the already-seeded row so installs from before this
+        // split stop showing the old "ফি ব্যবস্থাপনা" wording.
+        const feeManagementChild = children.find((child) => child.key === "fee_management");
+        if (feeManagementChild) feeManagementChild.label = "ফি সেটাপ";
       }
 
       // Same reasoning as talimat/students above - surfaces শিক্ষক বেতন (পেরোল)

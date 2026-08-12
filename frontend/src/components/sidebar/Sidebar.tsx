@@ -59,6 +59,7 @@ const FEATURE_PATHS: Record<string, string> = {
 // — these need the full path, not module/childKey.
 const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   fee_management: "fee-management",
+  fee_collection: "fee-collection",
   notifications: "notifications",
   routine: "routine",
   promotion: "students/promotion",

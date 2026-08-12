@@ -663,21 +663,27 @@ async function main() {
       { keyName: "statement", name: "Statement", nameBn: "হিসাব বিবরণী", sortOrder: 3 },
       {
         keyName: "fee_management",
-        name: "Fee Management",
-        nameBn: "ফি ব্যবস্থাপনা",
+        name: "Fee Setup",
+        nameBn: "ফি সেটাপ",
         sortOrder: 4,
+      },
+      {
+        keyName: "fee_collection",
+        name: "Fee Collection",
+        nameBn: "ফি গ্রহণ",
+        sortOrder: 5,
       },
       {
         keyName: "notifications",
         name: "SMS/Email",
         nameBn: "SMS/ইমেইল পাঠান",
-        sortOrder: 5,
+        sortOrder: 6,
       },
       {
         keyName: "attendance_mark",
         name: "Attendance",
         nameBn: "উপস্থিতি নিন",
-        sortOrder: 6,
+        sortOrder: 7,
       },
     ],
   };
