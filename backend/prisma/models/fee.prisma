@@ -13,6 +13,7 @@ enum InvoiceStatus {
   PARTIALLY_PAID
   PAID
   OVERDUE
+  WAIVED
 }
 
 /// A reusable fee definition (e.g. "মাসিক বেতন", "ভর্তি ফি") that invoices
@@ -52,6 +53,13 @@ model Invoice {
   /// Populated only for MONTHLY fee invoices, e.g. "2026-08" — used to
   /// stop the same month's fee being generated twice for one student.
   month          String?       @db.VarChar(10)
+  /// How much of `amount` a Muhtamim has forgiven (full or partial). Kept
+  /// separate from paidAmount so reports can tell "collected" from
+  /// "forgiven" even though both reduce the outstanding due.
+  waivedAmount   Decimal       @default(0) @map("waived_amount") @db.Decimal(10, 2)
+  waiveReason    String?       @map("waive_reason") @db.VarChar(300)
+  waivedById     Int?          @map("waived_by")
+  waivedAt       DateTime?     @map("waived_at")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
 

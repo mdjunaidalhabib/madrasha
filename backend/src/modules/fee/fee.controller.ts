@@ -46,6 +46,13 @@ export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
+  const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
+  const academicYear = req.body.academic_year ? String(req.body.academic_year) : undefined;
+  const data = await feeService.backfillInvoicesForAllStudents(getMadrasaId(req), classId, academicYear);
+  return ApiResponse.success(res, { message: "Invoices backfilled successfully", data });
+});
+
 export const payInvoice = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.recordPayment(
     Number(req.params.id),
@@ -54,6 +61,16 @@ export const payInvoice = asyncHandler(async (req: Request, res: Response) => {
     req.body,
   );
   return ApiResponse.success(res, { message: "Payment recorded successfully", data });
+});
+
+export const waiveInvoice = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.waiveInvoice(
+    Number(req.params.id),
+    getMadrasaId(req),
+    req.user?.id,
+    req.body,
+  );
+  return ApiResponse.success(res, { message: "Invoice waived successfully", data });
 });
 
 /* ================= STUDENT ACCOUNT STATEMENT ================= */

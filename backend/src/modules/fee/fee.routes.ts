@@ -9,7 +9,9 @@ import {
   deleteFeeStructure,
   generateInvoices,
   getInvoices,
+  backfillInvoices,
   payInvoice,
+  waiveInvoice,
   getStudentStatement,
   getPaymentMethodSettings,
   createPaymentMethodSetting,
@@ -33,8 +35,18 @@ router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStru
 
 /* ================= INVOICES ================= */
 router.post("/invoices/generate", rbacMiddleware("fee.manage"), generateInvoices);
+// Bulk version of generate: runs auto-billing for every currently-enrolled
+// student instead of one class/month at a time - for backfilling students
+// admitted before auto-billing-at-admission existed.
+router.post("/invoices/backfill", rbacMiddleware("fee.manage"), backfillInvoices);
 router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
 router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
+// Deliberately named "invoice.waive", NOT "fee.waive" - isAccountsPermission()
+// in rbac-policy.ts grants every "fee.*" permission wholesale to ACCOUNTANT,
+// which would defeat the point. With no fee.* prefix and nothing seeded for
+// this key, only MUHTAMIM/SUPER_ADMIN (who bypass rbacMiddleware entirely)
+// can waive a fee.
+router.post("/invoices/:id/waive", rbacMiddleware("invoice.waive"), waiveInvoice);
 
 /* ================= STUDENT ACCOUNT STATEMENT ================= */
 router.get("/students/:id/statement", rbacMiddleware("fee.read"), getStudentStatement);

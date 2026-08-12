@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Receipt, Trash2, Search, Wallet, CircleCheck, X } from "lucide-react";
+import { Pencil, Receipt, Trash2, Search, Wallet, CircleCheck, X, HandCoins, Printer } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   feeStructureApi,
@@ -11,9 +11,11 @@ import {
   type PaymentMethodSetting,
 } from "../../services/phase2Api";
 import { useToastStore } from "../../store/toastStore";
+import { useAuthStore } from "../../store/authStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
+import InvoicePrintModal from "./InvoicePrintModal";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -35,11 +37,15 @@ type InvoiceRow = {
   title: string;
   amount: string | number;
   paidAmount: string | number;
+  waivedAmount: string | number;
   dueDate: string;
   status: InvoiceStatus;
   month?: string | null;
   student?: { nameBn?: string; roll?: number } | null;
 };
+
+const remainingDue = (inv: { amount: string | number; paidAmount: string | number; waivedAmount?: string | number }) =>
+  Number(inv.amount) - Number(inv.paidAmount) - Number(inv.waivedAmount || 0);
 
 const FREQUENCY_LABELS: Record<FeeFrequency, string> = {
   ONE_TIME: "একবার",
@@ -52,6 +58,7 @@ const STATUS_LABELS: Record<InvoiceStatus, { label: string; className: string }>
   PARTIALLY_PAID: { label: "আংশিক পরিশোধিত", className: "bg-amber-100 text-amber-700" },
   PAID: { label: "পরিশোধিত", className: "bg-green-100 text-green-700" },
   OVERDUE: { label: "মেয়াদোত্তীর্ণ", className: "bg-gray-200 text-gray-700" },
+  WAIVED: { label: "মাফকৃত", className: "bg-purple-100 text-purple-700" },
 };
 
 const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"];
@@ -106,6 +113,16 @@ const FeeManagementPage = () => {
   const [payCommon, setPayCommon] = useState(emptyPayCommon);
   const [paying, setPaying] = useState(false);
   const [configuredMethods, setConfiguredMethods] = useState<PaymentMethodSetting[]>([]);
+
+  const role = useAuthStore((s) => s.user?.role);
+  const isMuhtamim = role === "MUHTAMIM" || role === "মুহতামিম";
+
+  const [waiveTarget, setWaiveTarget] = useState<InvoiceRow | null>(null);
+  const [waiveAmount, setWaiveAmount] = useState("");
+  const [waiveReason, setWaiveReason] = useState("");
+  const [waiving, setWaiving] = useState(false);
+
+  const [printTarget, setPrintTarget] = useState<InvoiceRow | null>(null);
 
   const loadConfiguredMethods = useCallback(async () => {
     try {
@@ -302,7 +319,7 @@ const FeeManagementPage = () => {
   const openPayModal = (targetInvoices: InvoiceRow[], studentLabel: string) => {
     const lines: Record<number, PayLine> = {};
     targetInvoices.forEach((inv) => {
-      const remaining = Number(inv.amount) - Number(inv.paidAmount);
+      const remaining = remainingDue(inv);
       lines[inv.id] = { selected: true, amount: remaining > 0 ? String(remaining) : "0" };
     });
     setPayTarget(targetInvoices);
@@ -377,6 +394,40 @@ const FeeManagementPage = () => {
       loadInvoices();
     } finally {
       setPaying(false);
+    }
+  };
+
+  const openWaiveModal = (invoice: InvoiceRow) => {
+    setWaiveTarget(invoice);
+    setWaiveAmount(String(remainingDue(invoice)));
+    setWaiveReason("");
+  };
+
+  const handleWaive = async () => {
+    if (!waiveTarget) return;
+    if (!waiveAmount || Number(waiveAmount) <= 0) {
+      useToastStore.getState().show("মাফের পরিমাণ দিন", "error");
+      return;
+    }
+    if (!waiveReason.trim()) {
+      useToastStore.getState().show("মাফের কারণ লিখুন", "error");
+      return;
+    }
+
+    try {
+      setWaiving(true);
+      await invoiceApi.waive(waiveTarget.id, {
+        amount: Number(waiveAmount),
+        reason: waiveReason.trim(),
+      });
+      useToastStore.getState().show("কিস্তি মাফ করা হয়েছে", "success");
+      setWaiveTarget(null);
+      loadInvoices();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "মাফ করতে সমস্যা হয়েছে";
+      useToastStore.getState().show(msg, "error");
+    } finally {
+      setWaiving(false);
     }
   };
 
@@ -463,7 +514,7 @@ const FeeManagementPage = () => {
       }
       const group = map.get(inv.studentId)!;
       group.invoices.push(inv);
-      if (inv.status !== "PAID") group.totalDue += Number(inv.amount) - Number(inv.paidAmount);
+      if (inv.status !== "PAID" && inv.status !== "WAIVED") group.totalDue += remainingDue(inv);
     }
     return Array.from(map.values()).sort(
       (a, b) => b.totalDue - a.totalDue || a.label.localeCompare(b.label, "bn"),
@@ -475,7 +526,7 @@ const FeeManagementPage = () => {
     let totalCollected = 0;
     for (const inv of filteredInvoices) {
       totalCollected += Number(inv.paidAmount);
-      if (inv.status !== "PAID") totalDue += Number(inv.amount) - Number(inv.paidAmount);
+      if (inv.status !== "PAID" && inv.status !== "WAIVED") totalDue += remainingDue(inv);
     }
     return { totalDue, totalCollected, studentCount: studentGroups.length };
   }, [filteredInvoices, studentGroups]);
@@ -754,7 +805,9 @@ const FeeManagementPage = () => {
               ) : (
                 <div className="flex flex-col gap-3">
                   {studentGroups.map((group) => {
-                    const unpaid = group.invoices.filter((inv) => inv.status !== "PAID");
+                    const unpaid = group.invoices.filter(
+                      (inv) => inv.status !== "PAID" && inv.status !== "WAIVED",
+                    );
                     return (
                       <div key={group.studentId} className="rounded-xl border border-gray-200 p-3">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -781,7 +834,8 @@ const FeeManagementPage = () => {
 
                         <div className="flex flex-col gap-1.5">
                           {group.invoices.map((invoice) => {
-                            const remaining = Number(invoice.amount) - Number(invoice.paidAmount);
+                            const remaining = remainingDue(invoice);
+                            const canAct = invoice.status !== "PAID" && invoice.status !== "WAIVED";
                             return (
                               <div
                                 key={invoice.id}
@@ -798,17 +852,40 @@ const FeeManagementPage = () => {
                                   {remaining > 0 && (
                                     <span className="text-gray-500"> · বাকি ৳{remaining}</span>
                                   )}
+                                  {Number(invoice.waivedAmount) > 0 && (
+                                    <span className="text-purple-600"> · মাফ ৳{invoice.waivedAmount}</span>
+                                  )}
                                 </div>
 
-                                {invoice.status !== "PAID" && (
+                                <div className="flex shrink-0 gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() => openPayModal([invoice], group.label)}
-                                    className="h-7 shrink-0 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                    title="প্রিন্ট"
+                                    onClick={() => setPrintTarget(invoice)}
+                                    className="flex h-7 items-center rounded-md border border-gray-200 px-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
                                   >
-                                    শুধু এটি নিন
+                                    <Printer size={13} />
                                   </button>
-                                )}
+                                  {canAct && isMuhtamim && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openWaiveModal(invoice)}
+                                      className="flex h-7 items-center gap-1 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50"
+                                    >
+                                      <HandCoins size={13} />
+                                      মাফ করুন
+                                    </button>
+                                  )}
+                                  {canAct && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openPayModal([invoice], group.label)}
+                                      className="h-7 shrink-0 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                    >
+                                      শুধু এটি নিন
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -999,7 +1076,7 @@ const FeeManagementPage = () => {
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
               />
               <p className="mt-1 text-xs text-gray-500">
-                বাকি আছে: ৳{Number(payTarget[0].amount) - Number(payTarget[0].paidAmount)}
+                বাকি আছে: ৳{remainingDue(payTarget[0])}
               </p>
             </div>
           )}
@@ -1095,6 +1172,76 @@ const FeeManagementPage = () => {
           </button>
         </div>
       </Modal>
+
+      {/* Waive (partial/full forgiveness) modal — Muhtamim only */}
+      <Modal
+        open={!!waiveTarget}
+        title={`কিস্তি মাফ করুন — ${waiveTarget?.title || ""}`}
+        onClose={() => setWaiveTarget(null)}
+      >
+        {waiveTarget && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-gray-500">
+              বাকি আছে: ৳{remainingDue(waiveTarget)}
+            </p>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">মাফের পরিমাণ (৳)</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={waiveAmount}
+                  onChange={(e) => setWaiveAmount(e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setWaiveAmount(String(remainingDue(waiveTarget)))}
+                  className="h-9 shrink-0 rounded-md border border-purple-200 px-3 text-xs font-medium text-purple-700 hover:bg-purple-50"
+                >
+                  সম্পূর্ণ মাফ করুন
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">কারণ</label>
+              <textarea
+                value={waiveReason}
+                onChange={(e) => setWaiveReason(e.target.value)}
+                rows={2}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none"
+                placeholder="যেমন: এতিম ছাত্র, আর্থিক অসচ্ছলতা"
+              />
+            </div>
+          </div>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setWaiveTarget(null)}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={waiving}
+            onClick={handleWaive}
+            className="h-9 rounded-md bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+          >
+            {waiving ? "সংরক্ষণ হচ্ছে..." : "মাফ নিশ্চিত করুন"}
+          </button>
+        </div>
+      </Modal>
+
+      <InvoicePrintModal
+        invoice={printTarget}
+        studentLabel={
+          printTarget
+            ? `${printTarget.student?.nameBn || ""}${printTarget.student?.roll ? ` (রোল ${printTarget.student.roll})` : ""}`
+            : ""
+        }
+        onClose={() => setPrintTarget(null)}
+      />
     </div>
   );
 };

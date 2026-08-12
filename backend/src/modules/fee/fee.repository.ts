@@ -44,6 +44,38 @@ export class FeeRepository {
     });
   }
 
+  /** Every currently-enrolled student, for the "বিদ্যমান সব ছাত্রের ফি সেট
+   * করুন" backfill action - covers students admitted before auto-billing
+   * existed, or promoted into a new academic year without a fresh
+   * admission record. */
+  findAllActiveStudents(madrasaId: number, classId?: number, academicYear?: string) {
+    return prisma.student.findMany({
+      where: {
+        madrasaId,
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        ...(classId ? { classId } : {}),
+        ...(academicYear ? { academicYear } : {}),
+      },
+      select: { id: true, classId: true, academicYear: true, admissionDate: true },
+    });
+  }
+
+  /** Every active fee structure that applies to a student in this class +
+   * academic year (classId null on the structure means "every class"),
+   * used to auto-bill a single student right at admission. */
+  findActiveStructuresForBilling(madrasaId: number, classId: number, academicYear: string) {
+    return prisma.feeStructure.findMany({
+      where: {
+        madrasaId,
+        academicYear,
+        isActive: true,
+        OR: [{ classId }, { classId: null }],
+      },
+    });
+  }
+
   /** Creates one invoice per student, silently skipping any student who
    * already has an invoice for this fee-structure+month (unique constraint
    * makes re-running this safe). */

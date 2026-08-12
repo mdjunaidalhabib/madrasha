@@ -6,7 +6,7 @@ import api from "./api";
  */
 
 export type FeeFrequency = "ONE_TIME" | "MONTHLY" | "YEARLY";
-export type InvoiceStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE";
+export type InvoiceStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "WAIVED";
 export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "ONLINE";
 
 export const feeStructureApi = {
@@ -36,6 +36,9 @@ export const invoiceApi = {
   list: (params: { student_id?: number; status?: InvoiceStatus; month?: string }) =>
     api.get("/invoices", { params }),
 
+  backfill: (payload?: { class_id?: number; academic_year?: string }) =>
+    api.post("/invoices/backfill", payload || {}),
+
   pay: (
     invoiceId: number,
     payload: {
@@ -47,6 +50,9 @@ export const invoiceApi = {
       paid_at?: string;
     },
   ) => api.post(`/invoices/${invoiceId}/pay`, payload),
+
+  waive: (invoiceId: number, payload: { amount: number; reason: string }) =>
+    api.post(`/invoices/${invoiceId}/waive`, payload),
 };
 
 /* ================= MANUAL PAYMENT METHOD SETUP (admin panel) ================= */

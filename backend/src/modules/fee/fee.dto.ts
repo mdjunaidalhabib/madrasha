@@ -24,6 +24,11 @@ export interface InvoiceQueryDto {
   month?: string;
 }
 
+export interface WaiveInvoiceRequestDto {
+  amount: number | string;
+  reason: string;
+}
+
 export interface RecordPaymentRequestDto {
   amount: number | string;
   method: string;

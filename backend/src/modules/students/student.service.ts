@@ -19,6 +19,8 @@ import {
 import { toStudentApiDto } from "./student.mapper";
 import { StudentAdmissionRequestDto, StudentBulkUpdateRowDto } from "./student.dto";
 import { guardianService } from "../guardian/guardian.service";
+import { feeService } from "../fee/fee.service";
+import { logger } from "../../shared/logger/logger";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
   return STUDENT_REQUIRED_FIELDS.filter((field) => {
@@ -251,6 +253,21 @@ export class StudentService {
       body.father_name || body.mother_name,
     );
 
+    // Same reasoning as guardian provisioning: bill the student for the
+    // rest of the academic year right now instead of waiting for a manual
+    // "generate invoices" click. A billing failure must not fail admission.
+    try {
+      await feeService.autoGenerateInvoicesForStudent(
+        madrasaId,
+        result.studentId,
+        classId,
+        academicYear,
+        body.admission_date ? new Date(body.admission_date) : new Date(),
+      );
+    } catch (err) {
+      logger.error("AUTO-GENERATE INVOICES ON ADMISSION ERROR:", err);
+    }
+
     return result;
   }
 
@@ -439,6 +456,18 @@ export class StudentService {
         source.guardian_phone,
         source.father_name || source.mother_name,
       );
+
+      try {
+        await feeService.autoGenerateInvoicesForStudent(
+          madrasaId,
+          row.id,
+          prepared[row.row - 1].classId,
+          row.academicYear,
+          source.admission_date ? new Date(source.admission_date) : new Date(),
+        );
+      } catch (err) {
+        logger.error("AUTO-GENERATE INVOICES ON BULK ADMISSION ERROR:", err);
+      }
     }
 
     return result;
@@ -815,6 +844,20 @@ export class StudentService {
       existing.guardianPhone,
       existing.fatherName || existing.motherName,
     );
+
+    // A PENDING (public) application only gets billed once a Muhtamim
+    // approves it - see the forcePending branch in admitStudent().
+    try {
+      await feeService.autoGenerateInvoicesForStudent(
+        madrasaId,
+        id,
+        existing.classId!,
+        existing.academicYear!,
+        existing.admissionDate ?? new Date(),
+      );
+    } catch (err) {
+      logger.error("AUTO-GENERATE INVOICES ON ADMISSION APPROVAL ERROR:", err);
+    }
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather
