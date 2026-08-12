@@ -87,19 +87,14 @@ const MarksheetList = ({ rows, isFirstPage = true }: MarksheetListProps) => {
       {isFirstPage && (
         <div className="report-block-heading">
           <div className="border-b-2 border-black pb-3 text-center text-black">
-            <h2 className="text-2xl font-bold tracking-wide text-black">মার্কশিট</h2>
+            <h2 className="text-2xl font-bold text-black">মার্কশিট</h2>
+            <p className="mt-1 text-sm font-semibold text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
             <p className="mt-1 text-sm font-semibold text-black">
               {cellValue(row, "exam_name")} - {cellValue(row, "exam_year")} ইং
             </p>
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <span className="rounded-full bg-black px-6 py-1.5 text-sm font-bold tracking-wide text-white">
-              শ্রেণিঃ {cellValue(row, "class_name")}
-            </span>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 border-y border-black py-3 text-sm text-black md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-3 gap-x-6 gap-y-2 py-3 text-sm text-black">
             {INFO_FIELDS(row).map((field) => (
               <p key={field.label}>
                 <b>{field.label}:</b> {field.value}
