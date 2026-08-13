@@ -21,6 +21,7 @@ export interface StudentFullRecord {
   division_id: number | string | null;
   class_id: number | string | null;
   academic_year: string;
+  session_id: number | null;
   previous_class_id: number | null;
   previous_institution: string | null;
   previous_result: string | null;

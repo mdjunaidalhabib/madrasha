@@ -32,6 +32,14 @@ export class StudentRepository {
     });
   }
 
+  findSessionForTenant(madrasaId: number, id: number) {
+    return prisma.session.findFirst({ where: { id, madrasaId } });
+  }
+
+  findSessionByNameForTenant(madrasaId: number, name: string) {
+    return prisma.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
+  }
+
   create(data: Prisma.StudentUncheckedCreateInput) {
     return prisma.student.create({ data });
   }
@@ -121,6 +129,18 @@ export class StudentRepository {
       where: { madrasaId, nid, deletedAt: null },
       orderBy: { id: "desc" },
     });
+  }
+
+  findSessionForTenantOnTx(tx: TransactionClient, madrasaId: number, id: number) {
+    return tx.session.findFirst({ where: { id, madrasaId } });
+  }
+
+  findSessionByNameForTenantOnTx(tx: TransactionClient, madrasaId: number, name: string) {
+    return tx.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
+  }
+
+  createSessionHistoryOnTx(tx: TransactionClient, data: Record<string, unknown>) {
+    return tx.studentSessionHistory.create({ data: data as any });
   }
 
   /**

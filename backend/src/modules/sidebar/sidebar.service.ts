@@ -130,6 +130,7 @@ export class SidebarService {
       // surface them immediately in installations seeded before this change.
       if (mod.keyName === "students") {
         const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "sessions", label: "সেশন সেটাপ", sortOrder: 2 },
           { key: "statement", label: "হিসাব বিবরণী", sortOrder: 3 },
           { key: "fee_management", label: "ফি সেটাপ", sortOrder: 4 },
           { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 5 },

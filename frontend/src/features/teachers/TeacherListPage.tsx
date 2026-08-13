@@ -2,11 +2,31 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
+import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
 import BulkUpdateModal from "../../components/teachers/BulkUpdateModal";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { TeacherFullRecord } from "../../types/teacher";
+import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
+
+type TeacherColumnKey =
+  | "registration"
+  | "phone"
+  | "gender"
+  | "designation"
+  | "academicDivision"
+  | "qualification";
+
+const TEACHER_COLUMNS: ColumnOption<TeacherColumnKey>[] = [
+  { key: "registration", label: "রেজিস্ট্রেশন নং" },
+  { key: "phone", label: "মোবাইল" },
+  { key: "gender", label: "লিঙ্গ" },
+  { key: "designation", label: "পদবি" },
+  { key: "academicDivision", label: "একাডেমিক বিভাগ" },
+  { key: "qualification", label: "যোগ্যতা" },
+];
+const TEACHER_COLUMN_KEYS = TEACHER_COLUMNS.map((c) => c.key);
 
 type Division = {
   division_id: number | string;
@@ -43,6 +63,13 @@ const TeacherListPage = () => {
   const [search, setSearch] = useState("");
   const [selectedGender, setSelectedGender] = useState("");
   const [selectedAcademicDivision, setSelectedAcademicDivision] = useState("");
+
+  const {
+    visible: visibleColumns,
+    toggle: toggleColumn,
+    reset: resetColumns,
+    isVisible: isColumnVisible,
+  } = useColumnVisibility<TeacherColumnKey>(`teacher-list-columns:${madrasaSlug}`, TEACHER_COLUMN_KEYS);
 
   const normalizeArray = (payload: any) => {
     const data =
@@ -219,6 +246,13 @@ const TeacherListPage = () => {
                 বাল্ক আপডেট
               </button>
 
+              <ColumnVisibilityMenu
+                columns={TEACHER_COLUMNS}
+                visible={visibleColumns}
+                onToggle={toggleColumn}
+                onReset={resetColumns}
+              />
+
               <DataExportPrintActions
                 title="শিক্ষক তালিকা"
                 fileName="teacher-list"
@@ -237,19 +271,25 @@ const TeacherListPage = () => {
 
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {loading ? (
-            <SkeletonTable rows={8} columns={8} />
+            <SkeletonTable rows={8} columns={2 + visibleColumns.size} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[950px] border-collapse text-center">
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
-                    <th className="border p-2.5">রেজিস্ট্রেশন নং</th>
+                    {isColumnVisible("registration") && (
+                      <th className="border p-2.5">রেজিস্ট্রেশন নং</th>
+                    )}
                     <th className="border p-2.5">নাম</th>
-                    <th className="border p-2.5">মোবাইল</th>
-                    <th className="border p-2.5">লিঙ্গ</th>
-                    <th className="border p-2.5">পদবি</th>
-                    <th className="border p-2.5">একাডেমিক বিভাগ</th>
-                    <th className="border p-2.5">যোগ্যতা</th>
+                    {isColumnVisible("phone") && <th className="border p-2.5">মোবাইল</th>}
+                    {isColumnVisible("gender") && <th className="border p-2.5">লিঙ্গ</th>}
+                    {isColumnVisible("designation") && <th className="border p-2.5">পদবি</th>}
+                    {isColumnVisible("academicDivision") && (
+                      <th className="border p-2.5">একাডেমিক বিভাগ</th>
+                    )}
+                    {isColumnVisible("qualification") && (
+                      <th className="border p-2.5">যোগ্যতা</th>
+                    )}
                     <th className="border p-2.5">একশন</th>
                   </tr>
                 </thead>
@@ -257,28 +297,40 @@ const TeacherListPage = () => {
                 <tbody className="text-sm">
                   {filteredTeachers.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-6 text-center text-gray-500">
+                      <td colSpan={2 + visibleColumns.size} className="p-6 text-center text-gray-500">
                         কোন শিক্ষক পাওয়া যায়নি
                       </td>
                     </tr>
                   ) : (
                     filteredTeachers.map((teacher) => (
                       <tr key={teacher.id} className="border-t transition hover:bg-gray-50">
-                        <td className="border p-2.5">{teacher.registration_no ?? "নেই"}</td>
+                        {isColumnVisible("registration") && (
+                          <td className="border p-2.5">{teacher.registration_no ?? "নেই"}</td>
+                        )}
 
                         <td className="border p-2.5">{teacher.name_bn || teacher.name || "নেই"}</td>
 
-                        <td className="border p-2.5">{teacher.phone || "নেই"}</td>
+                        {isColumnVisible("phone") && (
+                          <td className="border p-2.5">{teacher.phone || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">{getGenderName(teacher.gender)}</td>
+                        {isColumnVisible("gender") && (
+                          <td className="border p-2.5">{getGenderName(teacher.gender)}</td>
+                        )}
 
-                        <td className="border p-2.5">{teacher.designation || "নেই"}</td>
+                        {isColumnVisible("designation") && (
+                          <td className="border p-2.5">{teacher.designation || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">
-                          {getDivisionName(getAcademicDivisionId(teacher))}
-                        </td>
+                        {isColumnVisible("academicDivision") && (
+                          <td className="border p-2.5">
+                            {getDivisionName(getAcademicDivisionId(teacher))}
+                          </td>
+                        )}
 
-                        <td className="border p-2.5">{teacher.qualification || "নেই"}</td>
+                        {isColumnVisible("qualification") && (
+                          <td className="border p-2.5">{teacher.qualification || "নেই"}</td>
+                        )}
 
                         <td className="border p-2.5">
                           <button

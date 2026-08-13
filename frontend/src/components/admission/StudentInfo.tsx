@@ -24,13 +24,17 @@ interface ClassItem {
   class_name_bn: string;
 }
 
-const CURRENT_YEAR = new Date().getFullYear();
-const ACADEMIC_YEARS = Array.from({ length: 8 }, (_, index) => String(CURRENT_YEAR - 4 + index));
+interface SessionItem {
+  id: number;
+  name: string;
+  isCurrent: boolean;
+}
 
 const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors, isReturning }) => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
 
   const inputClass = (field: keyof AdmissionFormData) =>
     `border rounded-lg px-3 py-2 outline-none focus:ring-2 ${
@@ -122,6 +126,33 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
     };
 
     fetchDivisions();
+  }, []);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const res = await cachedGet("/sessions?active_only=true");
+        const data = extractData(res);
+        const list: SessionItem[] = Array.isArray(data) ? data : [];
+        setSessions(list);
+
+        // Default-select the current session once, so admin doesn't have to
+        // pick it manually every admission - but never override a value the
+        // form already has (e.g. re-admission prefill, edit-in-progress).
+        if (!formData.academicYear) {
+          const current = list.find((s) => s.isCurrent);
+          if (current) {
+            setFormData((prev) => ({ ...prev, academicYear: current.name }));
+          }
+        }
+      } catch (err) {
+        logger.error("Session load error:", err);
+        setSessions([]);
+      }
+    };
+
+    fetchSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -297,9 +328,10 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             className={inputClass("academicYear")}
           >
             <option value="">নির্বাচন করুন</option>
-            {ACADEMIC_YEARS.map((year) => (
-              <option key={year} value={year}>
-                {year}
+            {sessions.map((session) => (
+              <option key={session.id} value={session.name}>
+                {session.name}
+                {session.isCurrent ? " (চলমান)" : ""}
               </option>
             ))}
           </select>

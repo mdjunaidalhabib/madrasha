@@ -23,3 +23,13 @@ export const studentExpelSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
   body: z.object({ expelled: z.boolean() }),
 });
+
+/** Body shape for directly transferring a student into a different session. */
+export const studentTransferSessionSchema = z.object({
+  params: z.object({ id: z.coerce.number().int().positive() }),
+  body: z.object({
+    session_id: z.coerce.number().int().positive(),
+    roll: z.coerce.number().int().positive().optional(),
+    reason: z.string().trim().max(300).optional(),
+  }),
+});

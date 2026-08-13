@@ -14,13 +14,19 @@ import {
   rejectAdmission,
   bulkDeleteStudents,
   expelStudent,
+  transferStudentSession,
 } from "./student.controller";
 
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
-import { studentIdParamSchema, studentBulkDeleteSchema, studentExpelSchema } from "./student.validation";
+import {
+  studentIdParamSchema,
+  studentBulkDeleteSchema,
+  studentExpelSchema,
+  studentTransferSessionSchema,
+} from "./student.validation";
 
 const router = express.Router();
 
@@ -93,6 +99,16 @@ router.patch(
   rbacMiddleware("students.expel"),
   validate(studentExpelSchema),
   expelStudent,
+);
+
+// SESSION TRANSFER - direct reassignment into a different session.
+router.patch(
+  "/:id/transfer-session",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.transfer_session"),
+  validate(studentTransferSessionSchema),
+  transferStudentSession,
 );
 
 // GET ALL

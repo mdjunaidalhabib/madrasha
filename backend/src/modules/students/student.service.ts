@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { TransactionClient } from "../../shared/database/transaction";
 import { studentRepository, StudentRepository } from "./student.repository";
 import { isValidDate, clean, toNumber, toGenderNumber, toDateOrNull } from "../../shared/utils/parse.util";
 import { BadRequestError } from "../../shared/errors";
@@ -65,7 +66,9 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
 
   divisionId: toNumber(body.division_id),
   classId: toNumber(body.class_id),
-  academicYear: String(body.academic_year || new Date().getFullYear()),
+  // sessionId + academicYear are set by the caller after resolving the
+  // target Session (see StudentService.resolveSession) - not derivable
+  // from body alone since session_id takes priority over academic_year.
   previousClassId: toNumber(body.previous_class_id),
   previousInstitution: clean(body.previous_institution),
   previousResult: clean(body.previous_result),
@@ -99,6 +102,41 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
 export class StudentService {
   constructor(private readonly repository: StudentRepository = studentRepository) {}
 
+  /** Resolves the Session a request refers to: session_id takes priority
+   * (the forward-looking, authoritative field); academic_year is accepted
+   * as a fallback for any caller still on the legacy free-text field, by
+   * matching it against an existing Session's name. Never auto-creates a
+   * session - admins manage sessions explicitly via the Session page. */
+  private async resolveSession(madrasaId: number, body: Record<string, any>) {
+    const sessionId = toNumber(body.session_id);
+    if (sessionId) {
+      const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
+      if (!session) throw new BadRequestError("Selected session not found");
+      return session;
+    }
+    const academicYear = clean(body.academic_year) as string | null;
+    if (academicYear) {
+      const session = await this.repository.findSessionByNameForTenant(madrasaId, academicYear);
+      if (session) return session;
+    }
+    throw new BadRequestError("session_id is required");
+  }
+
+  private async resolveSessionOnTx(tx: TransactionClient, madrasaId: number, body: Record<string, any>) {
+    const sessionId = toNumber(body.session_id);
+    if (sessionId) {
+      const session = await this.repository.findSessionForTenantOnTx(tx, madrasaId, sessionId);
+      if (!session) throw new BadRequestError("Selected session not found");
+      return session;
+    }
+    const academicYear = clean(body.academic_year) as string | null;
+    if (academicYear) {
+      const session = await this.repository.findSessionByNameForTenantOnTx(tx, madrasaId, academicYear);
+      if (session) return session;
+    }
+    throw new BadRequestError("session_id is required");
+  }
+
   async listStudents(
     madrasaId: number | undefined,
     filters: StudentListFilters,
@@ -109,6 +147,7 @@ export class StudentService {
     if (filters.divisionId !== undefined) where.divisionId = filters.divisionId;
     if (filters.classId !== undefined) where.classId = filters.classId;
     if (filters.academicYear !== undefined) where.academicYear = filters.academicYear;
+    if (filters.sessionId !== undefined) where.sessionId = filters.sessionId;
 
     const rows = await this.repository.findMany(where);
 
@@ -142,10 +181,8 @@ export class StudentService {
   async admitStudent(
     body: StudentAdmissionRequestDto,
     madrasaId: number | undefined,
-    options?: { forcePending?: boolean },
   ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
-    const forcePending = options?.forcePending === true;
 
     if (!body || Object.keys(body).length === 0) {
       throw new BadRequestError("Empty request body (Check express.json())");
@@ -162,9 +199,10 @@ export class StudentService {
 
     assertRollIsServerManaged(body);
     const classId = toNumber(body.class_id);
-    const academicYear = String(body.academic_year || new Date().getFullYear());
-
     if (!classId) throw new BadRequestError("class_id is required");
+
+    const session = await this.resolveSession(madrasaId, body);
+    const academicYear = session.name;
 
     const result = await this.repository.runTransaction(async (tx) => {
       const nid = clean(body.nid) as string | null;
@@ -180,17 +218,16 @@ export class StudentService {
       }
 
       const data = makeStudentData(body, madrasaId) as Record<string, any>;
+      data.sessionId = session.id;
+      data.academicYear = academicYear;
 
       // Auto-derived, never a manual client input (see AdmissionType doc-comment
       // on the Prisma model): a matching NID lookup means this is a returning
       // student being re-admitted, not a brand new one.
       data.admissionType = existing ? "RE_ADMISSION" : "NEW";
-      if (forcePending) {
-        // Public/online submissions always land as PENDING regardless of
-        // whether they match an existing (already-approved) student, so a
-        // Muhtamim reviews every public application before it takes effect.
-        data.admissionStatus = "PENDING";
-      }
+      // Every admission - admin panel or public site - lands PENDING and
+      // waits on a Muhtamim to review the fee + approve (see approveAdmission).
+      data.admissionStatus = "PENDING";
 
       if (
         existing &&
@@ -239,36 +276,34 @@ export class StudentService {
 
     // A PENDING admission isn't a real enrolled student yet - guardian
     // provisioning happens in approveAdmission() once a Muhtamim approves it.
-    if (forcePending) {
-      return result;
-    }
 
-    // Outside the transaction (and its lock ordering) - a direct admin
-    // admission is always APPROVED (see makeStudentData), so the guardian
-    // account is provisioned right away.
-    await guardianService.ensureGuardianForStudent(
-      madrasaId,
-      result.studentId,
-      body.guardian_phone,
-      body.father_name || body.mother_name,
-    );
-
-    // Same reasoning as guardian provisioning: bill the student for the
-    // rest of the academic year right now instead of waiting for a manual
-    // "generate invoices" click. A billing failure must not fail admission.
+    // Bill the student for the class's default fees right away instead of
+    // waiting for Muhtamim approval, so the office (or the applicant, on the
+    // public site) can see/pay the admission fee while the application sits
+    // PENDING. A billing failure must not fail the admission itself.
+    let invoices: AdmissionResult["invoices"] = [];
     try {
       await feeService.autoGenerateInvoicesForStudent(
         madrasaId,
         result.studentId,
         classId,
-        academicYear,
+        session.id,
         body.admission_date ? new Date(body.admission_date) : new Date(),
       );
+      const billed = await feeService.listInvoices(madrasaId, { student_id: String(result.studentId) });
+      invoices = billed.map((inv: any) => ({
+        id: inv.id,
+        title: inv.title,
+        amount: Number(inv.amount),
+        paidAmount: Number(inv.paidAmount),
+        waivedAmount: Number(inv.waivedAmount),
+        status: inv.status,
+      }));
     } catch (err) {
       logger.error("AUTO-GENERATE INVOICES ON ADMISSION ERROR:", err);
     }
 
-    return result;
+    return { ...result, admissionStatus: "PENDING", invoices };
   }
 
   async admitStudentsBulk(
@@ -281,7 +316,10 @@ export class StudentService {
       throw new BadRequestError("Students array is required");
     }
 
-    const prepared = students.map((student, index) => {
+    const prepared: { student: StudentAdmissionRequestDto; classId: number; academicYear: string; sessionId: number }[] =
+      [];
+    for (let index = 0; index < students.length; index++) {
+      const student = students[index];
       const missing = validateRequiredFields(student);
       if (missing.length > 0) {
         throw new BadRequestError(
@@ -297,12 +335,10 @@ export class StudentService {
       const classId = toNumber(student.class_id);
       if (!classId) throw new BadRequestError(`Row ${index + 1}: class_id is required`);
 
-      return {
-        student,
-        classId,
-        academicYear: String(student.academic_year || new Date().getFullYear()),
-      };
-    });
+      const session = await this.resolveSession(madrasaId, student);
+
+      prepared.push({ student, classId, academicYear: session.name, sessionId: session.id });
+    }
 
     const result = await this.repository.runTransaction(async (tx) => {
       // Use one consistent lock order across all student write flows:
@@ -362,10 +398,12 @@ export class StudentService {
       const rollCounters = new Map<string, number>();
 
       for (let index = 0; index < prepared.length; index++) {
-        const { student, classId, academicYear } = prepared[index];
+        const { student, classId, academicYear, sessionId } = prepared[index];
         const nid = clean(student.nid) as string | null;
         const existing = nid ? existingByNid.get(nid) || null : null;
         const data = makeStudentData(student, madrasaId) as Record<string, any>;
+        data.sessionId = sessionId;
+        data.academicYear = academicYear;
         data.admissionType = existing ? "RE_ADMISSION" : "NEW";
 
         if (
@@ -462,7 +500,7 @@ export class StudentService {
           madrasaId,
           row.id,
           prepared[row.row - 1].classId,
-          row.academicYear,
+          prepared[row.row - 1].sessionId,
           source.admission_date ? new Date(source.admission_date) : new Date(),
         );
       } catch (err) {
@@ -708,8 +746,10 @@ export class StudentService {
 
       const data: Record<string, any> = {};
       for (const key of Object.keys(body)) {
-        // Roll is immutable from the client and is assigned only when its scope changes.
-        if (key === "roll" || key === "manual_roll_override") continue;
+        // Roll is immutable from the client and is assigned only when its scope
+        // changes. academic_year/session_id are resolved together below (must
+        // stay mirrored - sessionId is authoritative, academicYear is derived).
+        if (key === "roll" || key === "manual_roll_override" || key === "academic_year") continue;
 
         const field = STUDENT_FIELD_MAP[key];
         if (!field) continue;
@@ -733,10 +773,18 @@ export class StudentService {
         }
       }
 
+      let targetSessionId = existing.sessionId;
+      let targetAcademicYear = existing.academicYear;
+      if (body.session_id !== undefined || body.academic_year !== undefined) {
+        const session = await this.resolveSessionOnTx(tx, madrasaId, body);
+        targetSessionId = session.id;
+        targetAcademicYear = session.name;
+        data.sessionId = session.id;
+        data.academicYear = session.name;
+      }
+
       const targetClassId = Number(data.classId ?? existing.classId);
-      const targetAcademicYear = String(data.academicYear ?? existing.academicYear);
-      const scopeChanged =
-        targetClassId !== existing.classId || targetAcademicYear !== existing.academicYear;
+      const scopeChanged = targetClassId !== existing.classId || targetSessionId !== existing.sessionId;
 
       if (scopeChanged) {
         await this.repository.lockRollScopeOnTx(tx, madrasaId, targetClassId, targetAcademicYear);
@@ -812,10 +860,31 @@ export class StudentService {
   /* ================= ADMISSION APPROVAL WORKFLOW ================= */
 
   /** Admission requests still waiting for admin review. */
+  /** Pending admissions plus each applicant's admission-fee status, so the
+   * Muhtamim's review queue can badge/gate on it (see approveAdmission).
+   * One statement lookup per row instead of duplicating the due-calculation
+   * formula here - this list is bounded by real pending-admission volume, so
+   * the N+1 is cheap. */
   async listPendingAdmissions(madrasaId: number | undefined) {
     if (!madrasaId) throw new TenantNotResolvedError();
     const rows = await this.repository.findPendingForTenant(madrasaId);
-    return rows.map(toStudentApiDto);
+
+    return Promise.all(
+      rows.map(async (row) => {
+        const { summary } = await feeService.getStudentStatement(madrasaId, row.id);
+        const feeDue = summary.totalDue;
+        const feeStatus =
+          summary.totalBilled === 0
+            ? ("NONE" as const)
+            : feeDue > 0.01
+              ? ("DUE" as const)
+              : summary.totalWaived > 0
+                ? ("WAIVED" as const)
+                : ("PAID" as const);
+
+        return { ...toStudentApiDto(row), fee_due: feeDue, fee_status: feeStatus };
+      }),
+    );
   }
 
   /** Approves a pending admission. Roll/registration number were already
@@ -828,6 +897,15 @@ export class StudentService {
     if (!existing) throw new StudentNotFoundError();
     if (existing.admissionStatus === "APPROVED") {
       throw new BadRequestError("This admission is already approved");
+    }
+
+    // The class's default fees are already billed at submission time (see
+    // admitStudent) - a Muhtamim must pay them off or waive them before the
+    // admission can be approved. Server-side enforcement, not just a
+    // disabled frontend button.
+    const statement = await feeService.getStudentStatement(madrasaId, id);
+    if (statement.summary.totalDue > 0.01) {
+      throw new BadRequestError("এই ছাত্রের ভর্তি ফি এখনও বাকি — আগে ফি পরিশোধ বা মাফ করুন");
     }
 
     const result = await this.repository.updateManyForTenant(id, madrasaId, {
@@ -844,20 +922,6 @@ export class StudentService {
       existing.guardianPhone,
       existing.fatherName || existing.motherName,
     );
-
-    // A PENDING (public) application only gets billed once a Muhtamim
-    // approves it - see the forcePending branch in admitStudent().
-    try {
-      await feeService.autoGenerateInvoicesForStudent(
-        madrasaId,
-        id,
-        existing.classId!,
-        existing.academicYear!,
-        existing.admissionDate ?? new Date(),
-      );
-    } catch (err) {
-      logger.error("AUTO-GENERATE INVOICES ON ADMISSION APPROVAL ERROR:", err);
-    }
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather
@@ -884,6 +948,83 @@ export class StudentService {
       rejectionReason: reason.trim(),
     });
     if (!result.count) throw new StudentNotFoundError();
+  }
+
+  /* ================= SESSION TRANSFER ================= */
+
+  /** Directly reassigns a student to a different session (সেশন ট্রান্সফার).
+   * Unlike PromotionRecord's audit-only TRANSFERRED status, this actually
+   * moves the student: roll is re-resolved within the new session's scope
+   * and a StudentSessionHistory row records the change. Fee generation for
+   * the new session is triggered afterward, billing forward from today
+   * only - invoices already generated under the old session are never
+   * touched (waive/delete them manually via the existing invoice endpoints
+   * if needed). */
+  async transferSession(
+    id: number,
+    madrasaId: number | undefined,
+    transferredById: number | undefined,
+    dto: { session_id?: number | string; roll?: number | string; reason?: string },
+  ) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const targetSessionId = toNumber(dto.session_id);
+    if (!targetSessionId) throw new BadRequestError("session_id is required");
+
+    const result = await this.repository.runTransaction(async (tx) => {
+      await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
+      const existing = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
+      if (!existing) throw new StudentNotFoundError();
+
+      const targetSession = await this.repository.findSessionForTenantOnTx(tx, madrasaId, targetSessionId);
+      if (!targetSession) throw new BadRequestError("Selected session not found");
+      if (!targetSession.isActive) throw new BadRequestError("Cannot transfer into an inactive session");
+      if (existing.sessionId === targetSessionId) {
+        throw new BadRequestError("Student is already in this session");
+      }
+
+      await this.repository.lockRollScopeOnTx(tx, madrasaId, existing.classId, targetSession.name);
+
+      const requestedRoll = toNumber(dto.roll);
+      let newRoll: number;
+      if (requestedRoll) {
+        const rollTaken = await tx.student.findFirst({
+          where: { madrasaId, classId: existing.classId, sessionId: targetSessionId, roll: requestedRoll },
+          select: { id: true },
+        });
+        if (rollTaken) throw new BadRequestError(`Roll ${requestedRoll} is already taken in the target session`);
+        newRoll = requestedRoll;
+      } else {
+        newRoll =
+          (await this.repository.getMaxRollOnTx(tx, madrasaId, existing.classId, targetSession.name)) + 1;
+      }
+
+      await this.repository.updateOnTx(tx, id, {
+        sessionId: targetSessionId,
+        academicYear: targetSession.name,
+        roll: newRoll,
+      });
+
+      await this.repository.createSessionHistoryOnTx(tx, {
+        madrasaId,
+        studentId: id,
+        fromSessionId: existing.sessionId,
+        toSessionId: targetSessionId,
+        fromRoll: existing.roll,
+        toRoll: newRoll,
+        reason: dto.reason?.trim() || null,
+        transferredById: transferredById ?? null,
+      });
+
+      return { classId: existing.classId, newRoll };
+    });
+
+    try {
+      await feeService.autoGenerateInvoicesForStudent(madrasaId, id, result.classId, targetSessionId, new Date());
+    } catch (err) {
+      logger.error("AUTO-GENERATE INVOICES ON SESSION TRANSFER ERROR:", err);
+    }
+
+    return { roll: result.newRoll };
   }
 }
 

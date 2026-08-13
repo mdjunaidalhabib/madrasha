@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Receipt, Trash2, Users } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import { feeStructureApi, invoiceApi, type FeeFrequency } from "../../services/phase2Api";
+import { type Session } from "../../services/sessionApi";
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
@@ -15,6 +16,7 @@ type FeeStructureRow = {
   amount: string | number;
   frequency: FeeFrequency;
   academicYear: string;
+  sessionId?: number | null;
   isActive: boolean;
   classId?: number | null;
   class?: { nameBn?: string; division?: { nameBn?: string } | null } | null;
@@ -31,7 +33,7 @@ const normalizeArray = (payload: any) => {
   return Array.isArray(data) ? data : [];
 };
 
-const emptyStructureForm = { name: "", amount: "", frequency: "MONTHLY" as FeeFrequency, academic_year: String(new Date().getFullYear()) };
+const emptyStructureForm = { name: "", amount: "", frequency: "MONTHLY" as FeeFrequency, session_id: "" };
 const emptyGenerateForm = { due_date: "", month: "" };
 
 const FeeStructurePage = () => {
@@ -40,6 +42,8 @@ const FeeStructurePage = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
   const [classLoading, setClassLoading] = useState(false);
+
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   const [structures, setStructures] = useState<FeeStructureRow[]>([]);
   const [structureForm, setStructureForm] = useState(emptyStructureForm);
@@ -68,6 +72,24 @@ const FeeStructurePage = () => {
   useEffect(() => {
     loadDivisions();
   }, [loadDivisions]);
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const res = await cachedGet("/sessions?active_only=true");
+        const list = normalizeArray(res) as unknown as Session[];
+        setSessions(list);
+        const current = list.find((s) => s.isCurrent);
+        if (current) {
+          setStructureForm((prev) => (prev.session_id ? prev : { ...prev, session_id: String(current.id) }));
+        }
+      } catch (err) {
+        logger.error("LOAD SESSIONS ERROR:", err);
+        setSessions([]);
+      }
+    };
+    loadSessions();
+  }, []);
 
   const loadClasses = async (divisionId: string) => {
     setClassId("");
@@ -102,8 +124,8 @@ const FeeStructurePage = () => {
   }, [loadStructures]);
 
   const handleCreateStructure = async () => {
-    if (!structureForm.name.trim() || !structureForm.amount || !structureForm.academic_year) {
-      useToastStore.getState().show("নাম, পরিমাণ ও শিক্ষাবর্ষ দিন", "error");
+    if (!structureForm.name.trim() || !structureForm.amount || !structureForm.session_id) {
+      useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
       return;
     }
     try {
@@ -113,7 +135,7 @@ const FeeStructurePage = () => {
         name: structureForm.name.trim(),
         amount: Number(structureForm.amount),
         frequency: structureForm.frequency,
-        academic_year: structureForm.academic_year,
+        session_id: Number(structureForm.session_id),
       });
       useToastStore.getState().show("ফি কাঠামো তৈরি হয়েছে", "success");
       setStructureForm(emptyStructureForm);
@@ -132,14 +154,14 @@ const FeeStructurePage = () => {
       name: structure.name,
       amount: String(structure.amount),
       frequency: structure.frequency,
-      academic_year: structure.academicYear,
+      session_id: structure.sessionId ? String(structure.sessionId) : "",
     });
   };
 
   const handleUpdateStructure = async () => {
     if (!editTarget) return;
-    if (!editForm.name.trim() || !editForm.amount || !editForm.academic_year) {
-      useToastStore.getState().show("নাম, পরিমাণ ও শিক্ষাবর্ষ দিন", "error");
+    if (!editForm.name.trim() || !editForm.amount || !editForm.session_id) {
+      useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
       return;
     }
     try {
@@ -148,7 +170,7 @@ const FeeStructurePage = () => {
         name: editForm.name.trim(),
         amount: Number(editForm.amount),
         frequency: editForm.frequency,
-        academic_year: editForm.academic_year,
+        session_id: Number(editForm.session_id),
       });
       useToastStore.getState().show("ফি কাঠামো আপডেট হয়েছে", "success");
       setEditTarget(null);
@@ -378,13 +400,19 @@ const FeeStructurePage = () => {
                 </option>
               ))}
             </select>
-            <input
-              type="text"
-              placeholder="শিক্ষাবর্ষ"
-              value={structureForm.academic_year}
-              onChange={(e) => setStructureForm((p) => ({ ...p, academic_year: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
-            />
+            <select
+              value={structureForm.session_id}
+              onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[140px]"
+            >
+              <option value="">সেশন</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.isCurrent ? " (চলমান)" : ""}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               disabled={saving}
@@ -518,13 +546,20 @@ const FeeStructurePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">শিক্ষাবর্ষ</label>
-            <input
-              type="text"
-              value={editForm.academic_year}
-              onChange={(e) => setEditForm((p) => ({ ...p, academic_year: e.target.value }))}
+            <label className="mb-1 block text-xs font-medium text-gray-600">সেশন</label>
+            <select
+              value={editForm.session_id}
+              onChange={(e) => setEditForm((p) => ({ ...p, session_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
-            />
+            >
+              <option value="">সেশন নির্বাচন করুন</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.isCurrent ? " (চলমান)" : ""}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">

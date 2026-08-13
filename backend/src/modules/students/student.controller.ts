@@ -45,12 +45,13 @@ const respondWithError = (res: Response, error: unknown, logTag: string) => {
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const { class_id, division_id, academic_year } = req.query;
+    const { class_id, division_id, academic_year, session_id } = req.query;
 
     const data = await studentService.listStudents(madrasaId, {
       classId: class_id ? Number(class_id) : undefined,
       divisionId: division_id ? Number(division_id) : undefined,
       academicYear: academic_year ? String(academic_year) : undefined,
+      sessionId: session_id ? Number(session_id) : undefined,
     });
 
     return res.json({ success: true, data });
@@ -131,6 +132,8 @@ export const createStudent = async (req: Request, res: Response) => {
       previousAcademicYear: result.previousAcademicYear,
       roll: result.roll,
       registrationNo: result.registrationNo,
+      admissionStatus: result.admissionStatus,
+      invoices: result.invoices,
     });
   } catch (error) {
     return respondWithError(res, error, "🔥 CREATE STUDENT ERROR:");
@@ -249,6 +252,25 @@ export const expelStudent = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return respondWithError(res, error, "EXPEL STUDENT ERROR:");
+  }
+};
+
+/* =========================================================
+   SESSION TRANSFER (সেশন ট্রান্সফার) - direct reassignment, distinct
+   from the audit-only TRANSFERRED status in the Promotion feature.
+========================================================= */
+export const transferStudentSession = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.transferSession(Number(req.params.id), madrasaId, req.user?.id, req.body);
+
+    return res.json({
+      success: true,
+      message: "Student transferred to the new session successfully",
+      data,
+    });
+  } catch (error) {
+    return respondWithError(res, error, "TRANSFER STUDENT SESSION ERROR:");
   }
 };
 

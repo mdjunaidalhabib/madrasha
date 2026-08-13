@@ -1,7 +1,7 @@
 import { ReportMenuItem } from "../../../features/reports/types";
 import { cellValue } from "../../../utils/reportUtils";
 
-export type PrintableKind = "table" | "grid" | "blocks";
+export type PrintableKind = "table" | "grid" | "blocks" | "single";
 
 export type PrintableConfig = {
   kind: PrintableKind;
@@ -90,6 +90,13 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
 
   if (printable === "id-card" || printable === "admit-card" || printable === "book-label") {
     return { kind: "grid", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
+  }
+
+  if (printable === "admit-card-with-rules") {
+    // Always exactly one page - the exam rules/নিয়মাবলী notice - regardless
+    // of how many students matched the filters, unlike every other
+    // printable type here which renders once per row/group.
+    return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
   }
 
   if (

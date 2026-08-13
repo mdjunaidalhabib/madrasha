@@ -95,6 +95,8 @@ model Madrasa {
   classRoutines                ClassRoutine[]
   examRoutines                 ExamRoutine[]
   promotionBatches             PromotionBatch[]
+  sessions                     Session[]
+  studentSessionHistories      StudentSessionHistory[]
   feeStructures                FeeStructure[]
   invoices                     Invoice[]
   payments                     Payment[]

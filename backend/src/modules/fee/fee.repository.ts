@@ -5,22 +5,32 @@ import { TransactionClient } from "../../shared/database/transaction";
 export class FeeRepository {
   /* ================= FEE STRUCTURE ================= */
 
-  findStructures(madrasaId: number, classId?: number, academicYear?: string) {
+  findStructures(madrasaId: number, classId?: number, sessionId?: number, academicYear?: string) {
     return prisma.feeStructure.findMany({
       where: {
         madrasaId,
         ...(classId ? { classId } : {}),
+        ...(sessionId ? { sessionId } : {}),
         ...(academicYear ? { academicYear } : {}),
       },
       orderBy: { id: "desc" },
       include: {
         class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } },
+        sessionRef: { select: { name: true, startDate: true, endDate: true } },
       },
     });
   }
 
   findStructureForTenant(id: number, madrasaId: number) {
     return prisma.feeStructure.findFirst({ where: { id, madrasaId } });
+  }
+
+  findSessionForTenant(madrasaId: number, id: number) {
+    return prisma.session.findFirst({ where: { id, madrasaId } });
+  }
+
+  findSessionByNameForTenant(madrasaId: number, name: string) {
+    return prisma.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
   }
 
   createStructure(madrasaId: number, data: Record<string, unknown>) {
@@ -37,18 +47,18 @@ export class FeeRepository {
 
   /* ================= INVOICES ================= */
 
-  findStudentsForBilling(madrasaId: number, classId: number, academicYear: string) {
+  findStudentsForBilling(madrasaId: number, classId: number, sessionId: number) {
     return prisma.student.findMany({
-      where: { madrasaId, classId, academicYear, isActive: 1, deletedAt: null },
+      where: { madrasaId, classId, sessionId, isActive: 1, deletedAt: null },
       select: { id: true },
     });
   }
 
   /** Every currently-enrolled student, for the "বিদ্যমান সব ছাত্রের ফি সেট
    * করুন" backfill action - covers students admitted before auto-billing
-   * existed, or promoted into a new academic year without a fresh
+   * existed, or transferred/promoted into a new session without a fresh
    * admission record. */
-  findAllActiveStudents(madrasaId: number, classId?: number, academicYear?: string) {
+  findAllActiveStudents(madrasaId: number, classId?: number, sessionId?: number) {
     return prisma.student.findMany({
       where: {
         madrasaId,
@@ -56,20 +66,20 @@ export class FeeRepository {
         deletedAt: null,
         admissionStatus: "APPROVED",
         ...(classId ? { classId } : {}),
-        ...(academicYear ? { academicYear } : {}),
+        ...(sessionId ? { sessionId } : {}),
       },
-      select: { id: true, classId: true, academicYear: true, admissionDate: true },
+      select: { id: true, classId: true, sessionId: true, admissionDate: true },
     });
   }
 
   /** Every active fee structure that applies to a student in this class +
-   * academic year (classId null on the structure means "every class"),
-   * used to auto-bill a single student right at admission. */
-  findActiveStructuresForBilling(madrasaId: number, classId: number, academicYear: string) {
+   * session (classId null on the structure means "every class"), used to
+   * auto-bill a single student right at admission/transfer time. */
+  findActiveStructuresForBilling(madrasaId: number, classId: number, sessionId: number) {
     return prisma.feeStructure.findMany({
       where: {
         madrasaId,
-        academicYear,
+        sessionId,
         isActive: true,
         OR: [{ classId }, { classId: null }],
       },

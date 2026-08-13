@@ -36,6 +36,7 @@ const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
 const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
+const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
 const FeeInvoicesPage = lazy(() => import("../features/fee/FeeInvoicesPage"));
@@ -225,6 +226,10 @@ const madrasaAdminChildren = [
   {
     path: "students/promotion",
     element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
+  },
+  {
+    path: "students/sessions",
+    element: <ModuleGuard module="students">{withSuspense(<SessionPage />)}</ModuleGuard>,
   },
   {
     path: "routine",

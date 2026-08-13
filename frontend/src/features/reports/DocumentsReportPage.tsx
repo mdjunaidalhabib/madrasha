@@ -45,6 +45,22 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
+    key: "student-admit-cards-with-rules",
+    title: "পরীক্ষার নিয়মাবলী",
+    subtitle: "প্রবেশপত্রের সাথে দেওয়ার জন্য পরীক্ষার নিয়মাবলীর একটি মাত্র নোটিশ পৃষ্ঠা তৈরি ও প্রিন্ট",
+    endpoint: "/reports/student/admit-cards",
+    printable: "admit-card-with-rules",
+    columns: [
+      { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
+      { header: "শিক্ষার্থীর নাম", key: "student_name" },
+      { header: "শ্রেণি", key: "class_name" },
+      { header: "বিভাগ", key: "division_name" },
+      { header: "পরীক্ষা", key: "exam_name" },
+      { header: "সেশন", key: "academic_year" },
+    ],
+  },
+  {
     key: "student-sanads",
     title: "সনদ / সার্টিফিকেট",
     subtitle: "শিক্ষার্থীদের শিক্ষাগত সনদ তৈরি ও প্রিন্ট",

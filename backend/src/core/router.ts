@@ -39,6 +39,7 @@ import websiteRoutes from "../modules/public-website/website.routes";
 import attendanceRoutes from "../modules/attendance/attendance.routes";
 import routineRoutes from "../modules/routine/routine.routes";
 import promotionRoutes from "../modules/promotion/promotion.routes";
+import sessionRoutes from "../modules/session/session.routes";
 
 // 💰 Phase 2: Fee Management
 import feeRoutes from "../modules/fee/fee.routes";
@@ -137,6 +138,7 @@ router.use("/reports", reportsRoutes);
    ACADEMIC STRUCTURE
 ========================= */
 router.use("/", classPanalRoutes);
+router.use("/sessions", sessionRoutes);
 
 /* =========================
    PHASE 1: ATTENDANCE, ROUTINE, PROMOTION

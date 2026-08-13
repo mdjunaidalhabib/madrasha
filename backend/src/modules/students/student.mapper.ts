@@ -33,6 +33,7 @@ export const toStudentApiDto = (row: Record<string, any>): StudentApiDto => {
     division_id: s.divisionId ?? null,
     class_id: s.classId ?? null,
     academic_year: s.academicYear,
+    session_id: s.sessionId ?? null,
     previous_class_id: s.previousClassId ?? null,
     previous_institution: s.previousInstitution ?? null,
     previous_result: s.previousResult ?? null,

@@ -12,6 +12,8 @@ import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
+import Modal from "../../components/ui/Modal";
+import { sessionApi, type Session } from "../../services/sessionApi";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -29,6 +31,13 @@ const StudentProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expelBusy, setExpelBusy] = useState(false);
+
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [transferSessionId, setTransferSessionId] = useState("");
+  const [transferRoll, setTransferRoll] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferBusy, setTransferBusy] = useState(false);
 
   const fetchStudent = useCallback(async () => {
     if (!id) return;
@@ -156,6 +165,45 @@ const StudentProfilePage = () => {
     });
   };
 
+  const openTransferModal = async () => {
+    setTransferSessionId("");
+    setTransferRoll("");
+    setTransferReason("");
+    setTransferModalOpen(true);
+    try {
+      const res = await sessionApi.list(true);
+      const data = (res.data as any)?.data || [];
+      setSessions((Array.isArray(data) ? data : []).filter((s: Session) => s.id !== student?.session_id));
+    } catch (error) {
+      logger.error("LOAD SESSIONS ERROR:", error);
+      setSessions([]);
+    }
+  };
+
+  const handleTransferSession = async () => {
+    if (!transferSessionId) {
+      useToastStore.getState().show("সেশন নির্বাচন করুন", "error");
+      return;
+    }
+    try {
+      setTransferBusy(true);
+      const res = await api.patch(`/students/${id}/transfer-session`, {
+        session_id: Number(transferSessionId),
+        roll: transferRoll ? Number(transferRoll) : undefined,
+        reason: transferReason.trim() || undefined,
+      });
+      const newRoll = (res.data as any)?.data?.roll;
+      useToastStore.getState().show(`সেশন ট্রান্সফার সফল হয়েছে (নতুন রোল: ${newRoll ?? "-"})`, "success");
+      setTransferModalOpen(false);
+      fetchStudent();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "সেশন ট্রান্সফার করা যায়নি";
+      useToastStore.getState().show(msg, "error");
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
   if (loading)
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
@@ -220,6 +268,13 @@ const StudentProfilePage = () => {
           />
 
           <button
+            onClick={openTransferModal}
+            className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+          >
+            সেশন ট্রান্সফার
+          </button>
+
+          <button
             onClick={handleExpelToggle}
             disabled={expelBusy}
             className={`rounded px-4 py-2 text-white disabled:opacity-60 ${
@@ -261,6 +316,67 @@ const StudentProfilePage = () => {
         setEditableField={setEditableField}
         isEditMode={isEditMode}
       />
+
+      <Modal open={transferModalOpen} title="সেশন ট্রান্সফার" onClose={() => setTransferModalOpen(false)}>
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-gray-500">
+            বর্তমান সেশন: <span className="font-medium text-gray-700">{student.academic_year}</span> — এই
+            শিক্ষার্থীকে সরাসরি নতুন সেশনে নিয়ে যাওয়া হবে, রোল স্বয়ংক্রিয়ভাবে নতুন করে বসবে।
+          </p>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">নতুন সেশন</label>
+            <select
+              value={transferSessionId}
+              onChange={(e) => setTransferSessionId(e.target.value)}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            >
+              <option value="">নির্বাচন করুন</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.isCurrent ? " (চলমান)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">রোল নম্বর (ঐচ্ছিক)</label>
+            <input
+              type="number"
+              placeholder="খালি রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী রোল বসবে"
+              value={transferRoll}
+              onChange={(e) => setTransferRoll(e.target.value)}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">কারণ (ঐচ্ছিক)</label>
+            <input
+              type="text"
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setTransferModalOpen(false)}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={transferBusy}
+            onClick={handleTransferSession}
+            className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {transferBusy ? "ট্রান্সফার হচ্ছে..." : "ট্রান্সফার করুন"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

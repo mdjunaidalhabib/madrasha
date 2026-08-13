@@ -12,8 +12,10 @@ import BulkAdmissionModal, {
   ExcelAdmissionRow,
 } from "../../components/admission/BulkAdmissionModal";
 import api, { cachedGet } from "../../services/api";
+import { invoiceApi, type PaymentMethod } from "../../services/phase2Api";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
+import Modal from "../../components/ui/Modal";
 
 export interface AdmissionFormData {
   name: string;
@@ -55,6 +57,23 @@ export interface AdmissionFormData {
 }
 
 export type AdmissionFormErrors = Partial<Record<keyof AdmissionFormData, string>>;
+
+type AdmissionInvoice = {
+  id: number;
+  title: string;
+  amount: number;
+  paidAmount: number;
+  waivedAmount: number;
+  status: string;
+};
+
+// Shown right after a successful submit — the admission is now PENDING and
+// billed for the class's default fees; office staff can collect payment here
+// in the same flow instead of navigating to the Fee Collection page.
+type FeeStep = {
+  studentLabel: string;
+  invoices: AdmissionInvoice[];
+};
 
 interface PreviousStudentData {
   id: number;
@@ -171,6 +190,11 @@ const AdmissionPage = () => {
   const [previousStudent, setPreviousStudent] = useState<PreviousStudentData | null>(null);
   const [nidLookupLoading, setNidLookupLoading] = useState(false);
   const lookupAbortRef = useRef<AbortController | null>(null);
+
+  const [feeStep, setFeeStep] = useState<FeeStep | null>(null);
+  const [feePayAmounts, setFeePayAmounts] = useState<Record<number, string>>({});
+  const [feePayMethod, setFeePayMethod] = useState<PaymentMethod>("CASH");
+  const [feePaying, setFeePaying] = useState(false);
 
   const extractData = (res: any) => res?.data?.data || res?.data?.result || res?.data || [];
 
@@ -620,25 +644,87 @@ const AdmissionPage = () => {
         useToastStore
           .getState()
           .show(
-            `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear}) | রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"}`,
+            `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear}) | রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"} — মুহতামিমের অনুমোদনের অপেক্ষায়`,
             "success",
           );
       } else {
         useToastStore
           .getState()
           .show(
-            `Admission Successful ✅ রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"}`,
+            `Admission Successful ✅ রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"} — মুহতামিমের অনুমোদনের অপেক্ষায়`,
             "success",
           );
       }
 
-      setFormData(initialState);
-      setErrors({});
-      setPreviousStudent(null);
+      // Every admission now lands PENDING and is billed for the class's
+      // default fees right away (see admitStudent on the backend) - offer to
+      // collect that payment inline instead of resetting the form straight
+      // away. Skips straight to reset when there's nothing to collect (e.g.
+      // the class has no fee structures configured).
+      const invoices: AdmissionInvoice[] = res.data?.invoices || [];
+      if (invoices.length > 0) {
+        setFeeStep({ studentLabel: formData.name, invoices });
+        const amounts: Record<number, string> = {};
+        invoices.forEach((inv) => {
+          const remaining = inv.amount - inv.paidAmount - inv.waivedAmount;
+          amounts[inv.id] = remaining > 0 ? String(remaining) : "0";
+        });
+        setFeePayAmounts(amounts);
+        setFeePayMethod("CASH");
+      } else {
+        setFormData(initialState);
+        setErrors({});
+        setPreviousStudent(null);
+      }
     } catch (err: any) {
       useToastStore.getState().show(err?.response?.data?.message || "Failed ❌", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const closeFeeStep = () => {
+    setFeeStep(null);
+    setFormData(initialState);
+    setErrors({});
+    setPreviousStudent(null);
+  };
+
+  const handleRecordFee = async () => {
+    if (!feeStep) return;
+    const lines = feeStep.invoices
+      .map((inv) => ({ id: inv.id, amount: Number(feePayAmounts[inv.id] || 0) }))
+      .filter((line) => line.amount > 0);
+
+    if (lines.length === 0) {
+      useToastStore.getState().show("অন্তত একটি ফি-র জন্য পরিমাণ দিন", "error");
+      return;
+    }
+
+    try {
+      setFeePaying(true);
+      let success = 0;
+      let failed = 0;
+      for (const line of lines) {
+        try {
+          await invoiceApi.pay(line.id, { amount: line.amount, method: feePayMethod });
+          success += 1;
+        } catch (err) {
+          failed += 1;
+          logger.error("ADMISSION FEE PAY ERROR:", err);
+        }
+      }
+      useToastStore
+        .getState()
+        .show(
+          failed === 0
+            ? "ফি পরিশোধ রেকর্ড করা হয়েছে"
+            : `${success}টি সফল, ${failed}টি ব্যর্থ হয়েছে — বাকিটা পরে Fee Collection পেজ থেকে নেওয়া যাবে`,
+          failed === 0 ? "success" : "error",
+        );
+    } finally {
+      setFeePaying(false);
+      closeFeeStep();
     }
   };
 
@@ -707,6 +793,80 @@ const AdmissionPage = () => {
         onSubmit={handleExcelSubmit}
         onDownloadTemplate={downloadTemplate}
       />
+
+      {/* Right after a successful submit — the admission is PENDING and
+          already billed for the class's default fees; office can collect
+          that payment here in the same flow, or skip and do it later from
+          Fee Collection. */}
+      <Modal
+        open={!!feeStep}
+        title={`ভর্তি ফি — ${feeStep?.studentLabel || ""}`}
+        onClose={closeFeeStep}
+        maxWidthClassName="max-w-lg"
+      >
+        {feeStep && (
+          <div className="flex flex-col gap-4">
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              ভর্তি আবেদনটি মুহতামিমের অনুমোদনের অপেক্ষায় আছে। ফি এখন নিতে না চাইলে "পরে নেব" চেপে
+              এগিয়ে যান — পরে Fee Collection পেজ থেকেও নেওয়া যাবে।
+            </p>
+
+            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5">
+              {feeStep.invoices.map((inv) => {
+                const remaining = inv.amount - inv.paidAmount - inv.waivedAmount;
+                return (
+                  <div key={inv.id} className="flex items-center gap-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-gray-700">
+                      {inv.title} <span className="text-gray-400">(বাকি ৳{remaining})</span>
+                    </span>
+                    <input
+                      type="number"
+                      value={feePayAmounts[inv.id] ?? ""}
+                      disabled={remaining <= 0}
+                      onChange={(e) =>
+                        setFeePayAmounts((prev) => ({ ...prev, [inv.id]: e.target.value }))
+                      }
+                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">পদ্ধতি</label>
+              <select
+                value={feePayMethod}
+                onChange={(e) => setFeePayMethod(e.target.value as PaymentMethod)}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              >
+                {(["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"] as PaymentMethod[]).map((method) => (
+                  <option key={method} value={method}>
+                    {method}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeFeeStep}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            পরে নেব
+          </button>
+          <button
+            type="button"
+            disabled={feePaying}
+            onClick={handleRecordFee}
+            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {feePaying ? "সংরক্ষণ হচ্ছে..." : "পেমেন্ট রেকর্ড করুন"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

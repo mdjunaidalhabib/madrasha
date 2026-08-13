@@ -26,7 +26,11 @@ model Student {
 
   divisionId          Int     @map("division_id")
   classId             Int     @map("class_id")
+  /// Mirrored display string derived from `sessionRef.name` - not
+  /// authoritative once `sessionId` is set. Kept for backward compatibility
+  /// with existing reports/filters/indexes.
   academicYear        String  @default("2025") @map("academic_year") @db.VarChar(10)
+  sessionId           Int     @map("session_id")
   previousClassId     Int?    @map("previous_class_id")
   previousInstitution String? @map("previous_institution") @db.VarChar(200)
   previousResult      String? @map("previous_result") @db.VarChar(100)
@@ -108,14 +112,16 @@ model Student {
   divisionRef   Division @relation(fields: [divisionId], references: [id], onDelete: Restrict)
   classRef      Class    @relation("StudentClass", fields: [classId], references: [id], onDelete: Restrict)
   previousClass Class?   @relation("StudentPreviousClass", fields: [previousClassId], references: [id], onDelete: SetNull)
+  sessionRef    Session  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
 
   resultsSummary   ResultSummary[]
   marks            Mark[]
   promotionRecords PromotionRecord[]
   invoices         Invoice[]
   guardianLinks    GuardianStudent[]
+  sessionHistories StudentSessionHistory[]
 
-  @@unique([madrasaId, classId, academicYear, roll], map: "unique_roll_per_class_year")
+  @@unique([madrasaId, classId, sessionId, roll], map: "unique_roll_per_class_session")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
   @@index([madrasaId], map: "idx_students_madrasa")
   @@index([classId], map: "idx_students_class")
@@ -124,6 +130,7 @@ model Student {
   @@index([madrasaId, classId], map: "idx_students_madrasa_class")
   @@index([madrasaId, isActive], map: "idx_students_madrasa_active")
   @@index([madrasaId, academicYear], map: "idx_students_madrasa_year")
+  @@index([madrasaId, sessionId], map: "idx_students_madrasa_session")
   @@index([madrasaId, admissionStatus], map: "idx_students_madrasa_admission_status")
   @@map("students")
 }

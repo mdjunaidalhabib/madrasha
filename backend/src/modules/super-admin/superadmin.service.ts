@@ -224,6 +224,13 @@ export class SuperAdminService {
       await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
       await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
+      /* ================= DEFAULT SESSION =================
+         Every madrasa needs at least one Session before students can be
+         admitted or fee structures attached - seed "the current calendar
+         year" and mark it current. */
+      const currentYear = String(new Date().getFullYear());
+      const defaultSession = await this.repository.createDefaultSessionOnTx(tx, madrasaId, currentYear);
+
       /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
          Optional, unlike the templates above - an empty set never blocks
          madrasa creation. Only copies class-specific templates for classes
@@ -238,7 +245,8 @@ export class SuperAdminService {
           tx,
           madrasaId,
           relevantFeeStructures,
-          String(new Date().getFullYear()),
+          currentYear,
+          defaultSession.id,
         );
       }
 

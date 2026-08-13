@@ -52,18 +52,18 @@ model Class {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
-  division           Division?           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
-  books              Book[]
-  madrasaClasses     MadrasaClass[]
-  students           Student[]           @relation("StudentClass")
-  studentsPrevious   Student[]           @relation("StudentPreviousClass")
-  teacherAssignments TeacherAssignment[]
-  resultsMaster      ResultMaster[]
-  marks              Mark[]
-  attendances        Attendance[]
-  classRoutines      ClassRoutine[]
-  examRoutines       ExamRoutine[]
-  feeStructures      FeeStructure[]
+  division             Division?             @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  books                Book[]
+  madrasaClasses       MadrasaClass[]
+  students             Student[]             @relation("StudentClass")
+  studentsPrevious     Student[]             @relation("StudentPreviousClass")
+  teacherAssignments   TeacherAssignment[]
+  resultsMaster        ResultMaster[]
+  marks                Mark[]
+  attendances          Attendance[]
+  classRoutines        ClassRoutine[]
+  examRoutines         ExamRoutine[]
+  feeStructures        FeeStructure[]
   defaultFeeStructures DefaultFeeStructure[]
 
   @@unique([divisionId, name], map: "uniq_division_class")

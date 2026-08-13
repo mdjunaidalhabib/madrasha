@@ -44,17 +44,40 @@ const deriveStatus = (
   return "UNPAID";
 };
 
-const MONTH_NAMES_LENGTH = 12;
+/** Every {year, month} pair from startDate through endDate, inclusive,
+ * walked in UTC (Session.startDate/endDate are DATE columns - no time
+ * component - so UTC accessors avoid local-timezone drift). Naturally
+ * yields an empty list when startDate is after endDate. */
+const monthsInRange = (startDate: Date, endDate: Date): Array<{ year: number; month: number }> => {
+  const months: Array<{ year: number; month: number }> = [];
+  let year = startDate.getUTCFullYear();
+  let month = startDate.getUTCMonth() + 1;
+  const endYear = endDate.getUTCFullYear();
+  const endMonth = endDate.getUTCMonth() + 1;
+
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    months.push({ year, month });
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return months;
+};
 
 /** Builds the invoice rows for one student from every active fee structure
- * that applies to their class + academic year, for use at admission time.
- * MONTHLY structures fan out into one invoice per month from the admission
- * month through December of that academic year. */
+ * that applies to their class + session, for use at admission/transfer
+ * time. MONTHLY structures fan out into one invoice per month across the
+ * session's actual start-end range (which need not be a calendar Jan-Dec
+ * year), clamped to never bill before the student's admission/transfer
+ * date - so a mid-session transfer never re-bills months the old session
+ * already covered. */
 const buildAutoInvoiceRows = (
   madrasaId: number,
   studentId: number,
   structures: Array<{ id: number; name: string; amount: any; frequency: string }>,
-  academicYear: string,
+  session: { startDate: Date; endDate: Date },
   admissionDate: Date,
 ) => {
   const rows: Array<{
@@ -67,14 +90,7 @@ const buildAutoInvoiceRows = (
     month: string | null;
   }> = [];
 
-  const yearNum = Number(academicYear);
-  const validYear = Number.isInteger(yearNum) && String(yearNum) === academicYear.trim();
-  // The admission date only makes sense as a due date when it actually
-  // falls inside the academic year being billed. A student admitted in a
-  // prior year (backfilled later, or promoted forward) would otherwise get
-  // a due date years in the past and show up permanently overdue.
-  const admissionInYear = validYear && admissionDate.getFullYear() === yearNum;
-  const fallbackDueDate = validYear ? new Date(yearNum, 0, 10) : admissionDate;
+  const effectiveStart = admissionDate > session.startDate ? admissionDate : session.startDate;
 
   for (const structure of structures) {
     if (structure.frequency !== "MONTHLY") {
@@ -84,31 +100,17 @@ const buildAutoInvoiceRows = (
         feeStructureId: structure.id,
         title: structure.name,
         amount: structure.amount,
-        dueDate: admissionInYear ? admissionDate : fallbackDueDate,
+        dueDate: effectiveStart,
         month: null,
       });
       continue;
     }
 
-    if (!validYear) {
-      // Can't safely compute "rest of the academic year" - just bill the
-      // admission month so the student isn't left with zero invoices.
-      rows.push({
-        madrasaId,
-        studentId,
-        feeStructureId: structure.id,
-        title: structure.name,
-        amount: structure.amount,
-        dueDate: admissionDate,
-        month: `${academicYear}-${String(admissionDate.getMonth() + 1).padStart(2, "0")}`,
-      });
-      continue;
-    }
-
-    const startMonth = admissionInYear ? admissionDate.getMonth() + 1 : 1;
-    for (let m = startMonth; m <= MONTH_NAMES_LENGTH; m++) {
-      const monthStr = `${yearNum}-${String(m).padStart(2, "0")}`;
-      const dueDate = m === startMonth && admissionInYear ? admissionDate : new Date(yearNum, m - 1, 10);
+    const months = monthsInRange(effectiveStart, session.endDate);
+    for (const { year, month } of months) {
+      const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+      const isFirstMonth = year === effectiveStart.getUTCFullYear() && month === effectiveStart.getUTCMonth() + 1;
+      const dueDate = isFirstMonth ? effectiveStart : new Date(Date.UTC(year, month - 1, 10));
       rows.push({
         madrasaId,
         studentId,
@@ -127,24 +129,41 @@ const buildAutoInvoiceRows = (
 export class FeeService {
   constructor(private readonly repository: FeeRepository = feeRepository) {}
 
+  /** Resolves the Session a request refers to: session_id takes priority;
+   * academic_year is accepted as a legacy fallback, matched against an
+   * existing Session's name. Mirrors StudentService.resolveSession. */
+  private async resolveSession(madrasaId: number, dto: { session_id?: number | string; academic_year?: string }) {
+    if (!isEmpty(dto.session_id)) {
+      const session = await this.repository.findSessionForTenant(madrasaId, Number(dto.session_id));
+      if (!session) throw new BadRequestError("Selected session not found");
+      return session;
+    }
+    if (!isEmpty(dto.academic_year)) {
+      const session = await this.repository.findSessionByNameForTenant(madrasaId, String(dto.academic_year));
+      if (session) return session;
+    }
+    throw new BadRequestError("session_id is required");
+  }
+
   /* ================= FEE STRUCTURE ================= */
 
-  async listStructures(madrasaId: number, classId?: number, academicYear?: string) {
+  async listStructures(madrasaId: number, classId?: number, sessionId?: number, academicYear?: string) {
     try {
-      return await this.repository.findStructures(madrasaId, classId, academicYear);
+      return await this.repository.findStructures(madrasaId, classId, sessionId, academicYear);
     } catch (err) {
       return friendlyFailure("listFeeStructures error:", err, "Failed to load fee structures");
     }
   }
 
   async createStructure(madrasaId: number, dto: CreateFeeStructureRequestDto) {
-    if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency) || isEmpty(dto.academic_year)) {
-      throw new BadRequestError("name, amount, frequency and academic_year are required");
+    if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency)) {
+      throw new BadRequestError("name, amount and frequency are required");
     }
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
       throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
     }
     const amount = toAmount(dto.amount, "amount");
+    const session = await this.resolveSession(madrasaId, dto);
 
     try {
       await this.repository.createStructure(madrasaId, {
@@ -152,7 +171,8 @@ export class FeeService {
         name: String(dto.name).trim(),
         amount,
         frequency: dto.frequency,
-        academicYear: String(dto.academic_year),
+        sessionId: session.id,
+        academicYear: session.name,
       });
     } catch (err) {
       return friendlyFailure("createFeeStructure error:", err, "Failed to create fee structure");
@@ -164,13 +184,17 @@ export class FeeService {
     if (dto.name !== undefined) data.name = String(dto.name).trim();
     if (dto.amount !== undefined) data.amount = toAmount(dto.amount, "amount");
     if (dto.class_id !== undefined) data.classId = dto.class_id ? Number(dto.class_id) : null;
-    if (dto.academic_year !== undefined) data.academicYear = String(dto.academic_year);
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
     if (dto.frequency !== undefined) {
       if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
         throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
       }
       data.frequency = dto.frequency;
+    }
+    if (dto.session_id !== undefined || dto.academic_year !== undefined) {
+      const session = await this.resolveSession(madrasaId, dto);
+      data.sessionId = session.id;
+      data.academicYear = session.name;
     }
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
 
@@ -217,13 +241,15 @@ export class FeeService {
         "This fee structure applies to no specific class; pass class_id to generate invoices for one",
       );
     }
-    const academicYear = dto.academic_year ? String(dto.academic_year) : structure.academicYear;
+    const sessionId = !isEmpty(dto.session_id) || !isEmpty(dto.academic_year)
+      ? (await this.resolveSession(madrasaId, dto)).id
+      : structure.sessionId;
 
     const dueDate = new Date(dto.due_date);
     if (Number.isNaN(dueDate.getTime())) throw new BadRequestError("due_date is invalid");
 
     try {
-      const students = await this.repository.findStudentsForBilling(madrasaId, classId, academicYear);
+      const students = await this.repository.findStudentsForBilling(madrasaId, classId, sessionId);
       if (students.length === 0) return { created: 0, skipped: 0, totalStudents: 0 };
 
       const rows = students.map((student) => ({
@@ -246,30 +272,29 @@ export class FeeService {
     }
   }
 
-  /** Auto-bills a single student right at admission: every active fee
-   * structure for their class + academic year is turned into invoice(s)
-   * immediately, so office staff no longer has to run "generate" by hand
-   * for a newly admitted student. Safe to call more than once for the same
-   * student (e.g. re-admission) - the same unique constraint that protects
+  /** Auto-bills a single student right at admission/transfer: every active
+   * fee structure for their class + session is turned into invoice(s)
+   * immediately, so office staff no longer has to run "generate" by hand.
+   * Safe to call more than once for the same student (e.g. re-admission,
+   * session transfer) - the same unique constraint that protects
    * generateInvoices() silently skips anything already billed. Never
-   * throws: a billing hiccup must not block admission, so failures are
-   * logged and swallowed by the caller-side convention already used for
-   * guardian provisioning. */
+   * throws: a billing hiccup must not block admission/transfer, so
+   * failures are logged and swallowed by the caller-side convention
+   * already used for guardian provisioning. */
   async autoGenerateInvoicesForStudent(
     madrasaId: number,
     studentId: number,
     classId: number,
-    academicYear: string,
+    sessionId: number,
     admissionDate: Date,
   ) {
-    const structures = await this.repository.findActiveStructuresForBilling(
-      madrasaId,
-      classId,
-      academicYear,
-    );
+    const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
+    if (!session) return { created: 0 };
+
+    const structures = await this.repository.findActiveStructuresForBilling(madrasaId, classId, sessionId);
     if (structures.length === 0) return { created: 0 };
 
-    const rows = buildAutoInvoiceRows(madrasaId, studentId, structures, academicYear, admissionDate);
+    const rows = buildAutoInvoiceRows(madrasaId, studentId, structures, session, admissionDate);
     if (rows.length === 0) return { created: 0 };
 
     const created = await this.repository.runTransaction((tx) =>
@@ -281,11 +306,11 @@ export class FeeService {
   /** "বিদ্যমান সব ছাত্রের ফি সেট করুন" - runs autoGenerateInvoicesForStudent
    * for every currently-enrolled student instead of just newly admitted
    * ones, so installations that already had students before auto-billing
-   * existed (or a class promoted into a new academic year) can be backfilled
+   * existed (or transferred/promoted into a new session) can be backfilled
    * in one click. Per-student failures are counted, not thrown, so one bad
    * student record can't abort billing for the rest of the class. */
-  async backfillInvoicesForAllStudents(madrasaId: number, classId?: number, academicYear?: string) {
-    const students = await this.repository.findAllActiveStudents(madrasaId, classId, academicYear);
+  async backfillInvoicesForAllStudents(madrasaId: number, classId?: number, sessionId?: number) {
+    const students = await this.repository.findAllActiveStudents(madrasaId, classId, sessionId);
 
     let studentsProcessed = 0;
     let invoicesCreated = 0;
@@ -297,7 +322,7 @@ export class FeeService {
           madrasaId,
           student.id,
           student.classId,
-          student.academicYear,
+          student.sessionId,
           student.admissionDate ?? new Date(),
         );
         invoicesCreated += result.created;

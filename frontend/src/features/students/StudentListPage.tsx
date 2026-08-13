@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
+import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
 import BulkUpdateModal from "../../components/students/BulkUpdateModal";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
@@ -10,6 +11,30 @@ import { StudentFullRecord } from "../../types/student";
 import { useConfirmStore } from "../../store/confirmStore";
 import { useToastStore } from "../../store/toastStore";
 import { toBanglaDigits } from "../../utils/reportUtils";
+import { type Session } from "../../services/sessionApi";
+import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
+
+type StudentColumnKey =
+  | "roll"
+  | "registration"
+  | "fatherName"
+  | "phone"
+  | "academicYear"
+  | "division"
+  | "currentClass"
+  | "status";
+
+const STUDENT_COLUMNS: ColumnOption<StudentColumnKey>[] = [
+  { key: "roll", label: "রোল নম্বর" },
+  { key: "registration", label: "রেজিস্ট্রেশন নম্বর" },
+  { key: "fatherName", label: "বাবার নাম" },
+  { key: "phone", label: "ফোন" },
+  { key: "academicYear", label: "শিক্ষাবর্ষ" },
+  { key: "division", label: "বিভাগ" },
+  { key: "currentClass", label: "বর্তমান শ্রেণি" },
+  { key: "status", label: "স্ট্যাটাস" },
+];
+const STUDENT_COLUMN_KEYS = STUDENT_COLUMNS.map((c) => c.key);
 
 type Division = {
   division_id: number;
@@ -47,7 +72,10 @@ const StudentListPage = () => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  // Starts true — the initial student fetch waits on the session lookup
+  // (selectedSessionId === null) before firing, so the skeleton should stay
+  // up through that gap instead of flashing "কোন ছাত্র পাওয়া যায়নি".
+  const [loading, setLoading] = useState(true);
   const [classLoading, setClassLoading] = useState(false);
   const [error, setError] = useState("");
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
@@ -57,11 +85,22 @@ const StudentListPage = () => {
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState(
-    String(new Date().getFullYear()),
-  );
 
-  const ACADEMIC_YEARS = ["2022", "2023", "2024", "2025", "2026", "2027"];
+  // Defaults to the madrasa's current session so the list opens scoped to
+  // "এই বছরের ছাত্র" instead of dumping every session's students (promoted,
+  // passed-out, transferred) into one huge table. "" = সব সেশন (no filter).
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const {
+    visible: visibleColumns,
+    toggle: toggleColumn,
+    reset: resetColumns,
+    isVisible: isColumnVisible,
+  } = useColumnVisibility<StudentColumnKey>(`student-list-columns:${madrasaSlug}`, STUDENT_COLUMN_KEYS);
 
   const normalizeArray = (payload: any) => {
     const data =
@@ -74,12 +113,16 @@ const StudentListPage = () => {
     return Array.isArray(data) ? data : [];
   };
 
+  // Waits for selectedSessionId to be resolved (null = sessions still
+  // loading) so the very first fetch is already session-scoped instead of
+  // pulling every student and then narrowing client-side.
   const loadStudents = useCallback(async () => {
+    if (selectedSessionId === null) return;
     try {
       setLoading(true);
       setError("");
 
-      const res = await cachedGet("/students");
+      const res = await cachedGet(selectedSessionId ? `/students?session_id=${selectedSessionId}` : "/students");
       setStudents(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD STUDENTS ERROR:", err);
@@ -88,7 +131,7 @@ const StudentListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedSessionId]);
 
   const loadDivisions = useCallback(async () => {
     try {
@@ -98,6 +141,25 @@ const StudentListPage = () => {
       logger.error("DIVISION LOAD ERROR:", err);
       setDivisions([]);
     }
+  }, []);
+
+  // All sessions (not just active ones) so the office can still switch back
+  // to a past session's roster; defaults the filter to whichever session is
+  // marked current, or "সব সেশন" (no filter) if none is.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await cachedGet("/sessions");
+        const list = normalizeArray(res) as unknown as Session[];
+        setSessions(list);
+        const current = list.find((s) => s.isCurrent);
+        setSelectedSessionId(current ? String(current.id) : "");
+      } catch (err) {
+        logger.error("LOAD SESSIONS ERROR:", err);
+        setSessions([]);
+        setSelectedSessionId("");
+      }
+    })();
   }, []);
 
   const loadClassesByDivision = async (divisionId: string) => {
@@ -162,17 +224,36 @@ const StudentListPage = () => {
 
       const matchClass = !selectedClass || String(student.class_id) === String(selectedClass);
 
-      const matchAcademicYear =
-        !selectedAcademicYear || String(student.academic_year) === String(selectedAcademicYear);
-
-      return matchSearch && matchDivision && matchClass && matchAcademicYear;
+      return matchSearch && matchDivision && matchClass;
     });
-  }, [students, search, selectedDivision, selectedClass, selectedAcademicYear]);
+  }, [students, search, selectedDivision, selectedClass]);
 
   // ফিল্টার বদলালে আগের সিলেকশন (অন্য ভিউয়ের) যেন থেকে না যায়।
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [search, selectedDivision, selectedClass, selectedAcademicYear]);
+  }, [search, selectedDivision, selectedClass, selectedSessionId]);
+
+  // ফিল্টার বা পেজ সাইজ বদলালে ১ নম্বর পাতায় ফিরে যাবে, নাহলে ফিল্টার করার পর
+  // খালি পাতায় আটকে থাকতে পারে।
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedDivision, selectedClass, selectedSessionId, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+
+  // ফলাফল সংখ্যা কমে গেলে (যেমন বাল্ক ডিলিট) বর্তমান পাতা সীমার বাইরে চলে
+  // যেতে পারে — শেষ বৈধ পাতায় নামিয়ে আনা হয়।
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const paginatedStudents = useMemo(
+    () => filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredStudents, currentPage, pageSize],
+  );
+
+  const rangeStart = filteredStudents.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filteredStudents.length);
 
   const allFilteredSelected =
     filteredStudents.length > 0 &&
@@ -293,16 +374,17 @@ const StudentListPage = () => {
                 className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[240px]"
               />
 
-              {/* শিক্ষাবর্ষ ফিল্টার */}
+              {/* সেশন ফিল্টার — ডিফল্টে চলমান সেশন নির্বাচিত থাকে */}
               <select
-                value={selectedAcademicYear}
-                onChange={(event) => setSelectedAcademicYear(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[130px]"
+                value={selectedSessionId ?? ""}
+                onChange={(event) => setSelectedSessionId(event.target.value)}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
               >
-                <option value="">সব শিক্ষাবর্ষ</option>
-                {ACADEMIC_YEARS.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
+                <option value="">সব সেশন</option>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.isCurrent ? " (চলমান)" : ""}
                   </option>
                 ))}
               </select>
@@ -356,6 +438,13 @@ const StudentListPage = () => {
                 বাল্ক আপডেট
               </button>
 
+              <ColumnVisibilityMenu
+                columns={STUDENT_COLUMNS}
+                visible={visibleColumns}
+                onToggle={toggleColumn}
+                onReset={resetColumns}
+              />
+
               <DataExportPrintActions
                 title="ছাত্র তালিকা"
                 fileName="student-list"
@@ -390,7 +479,7 @@ const StudentListPage = () => {
 
         {/* Loading state */}
         {loading ? (
-          <SkeletonTable rows={8} columns={11} />
+          <SkeletonTable rows={8} columns={3 + visibleColumns.size} />
         ) : filteredStudents.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
             কোন ছাত্র পাওয়া যায়নি
@@ -399,7 +488,7 @@ const StudentListPage = () => {
           <>
             {/* Mobile / tablet: card list (below md) */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
-              {filteredStudents.map((student) => (
+              {paginatedStudents.map((student) => (
                 <div
                   key={student.id}
                   className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -480,21 +569,27 @@ const StudentListPage = () => {
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </th>
-                      <th className="border p-2.5">রোল নম্বর</th>
-                      <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
+                      {isColumnVisible("roll") && <th className="border p-2.5">রোল নম্বর</th>}
+                      {isColumnVisible("registration") && (
+                        <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
+                      )}
                       <th className="border p-2.5">নাম</th>
-                      <th className="border p-2.5">বাবার নাম</th>
-                      <th className="border p-2.5">ফোন</th>
-                      <th className="border p-2.5">শিক্ষাবর্ষ</th>
-                      <th className="border p-2.5">বিভাগ</th>
-                      <th className="border p-2.5">বর্তমান শ্রেণি</th>
-                      <th className="border p-2.5">স্ট্যাটাস</th>
+                      {isColumnVisible("fatherName") && <th className="border p-2.5">বাবার নাম</th>}
+                      {isColumnVisible("phone") && <th className="border p-2.5">ফোন</th>}
+                      {isColumnVisible("academicYear") && (
+                        <th className="border p-2.5">শিক্ষাবর্ষ</th>
+                      )}
+                      {isColumnVisible("division") && <th className="border p-2.5">বিভাগ</th>}
+                      {isColumnVisible("currentClass") && (
+                        <th className="border p-2.5">বর্তমান শ্রেণি</th>
+                      )}
+                      {isColumnVisible("status") && <th className="border p-2.5">স্ট্যাটাস</th>}
                       <th className="border p-2.5">একশন</th>
                     </tr>
                   </thead>
 
                   <tbody className="text-sm">
-                    {filteredStudents.map((student) => (
+                    {paginatedStudents.map((student) => (
                       <tr key={student.id} className="border-t transition hover:bg-gray-50">
                         <td className="border p-2.5">
                           <input
@@ -505,28 +600,44 @@ const StudentListPage = () => {
                           />
                         </td>
 
-                        <td className="border p-2.5">{student.roll || "নেই"}</td>
+                        {isColumnVisible("roll") && (
+                          <td className="border p-2.5">{student.roll || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">{student.registration_no || "নেই"}</td>
+                        {isColumnVisible("registration") && (
+                          <td className="border p-2.5">{student.registration_no || "নেই"}</td>
+                        )}
 
                         <td className="border p-2.5">{student.name_bn || student.name || "নেই"}</td>
 
-                        <td className="border p-2.5">{student.father_name || "নেই"}</td>
+                        {isColumnVisible("fatherName") && (
+                          <td className="border p-2.5">{student.father_name || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">{student.guardian_phone || "নেই"}</td>
+                        {isColumnVisible("phone") && (
+                          <td className="border p-2.5">{student.guardian_phone || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">{student.academic_year || "নেই"}</td>
+                        {isColumnVisible("academicYear") && (
+                          <td className="border p-2.5">{student.academic_year || "নেই"}</td>
+                        )}
 
-                        <td className="border p-2.5">{getDivisionName(student.division_id)}</td>
+                        {isColumnVisible("division") && (
+                          <td className="border p-2.5">{getDivisionName(student.division_id)}</td>
+                        )}
 
-                        <td className="border p-2.5">
-                          {getClassName(
-                            student.class_id,
-                            student.current_class || student.class_name || student.class,
-                          )}
-                        </td>
+                        {isColumnVisible("currentClass") && (
+                          <td className="border p-2.5">
+                            {getClassName(
+                              student.class_id,
+                              student.current_class || student.class_name || student.class,
+                            )}
+                          </td>
+                        )}
 
-                        <td className="border p-2.5">{statusBadge(student.is_active)}</td>
+                        {isColumnVisible("status") && (
+                          <td className="border p-2.5">{statusBadge(student.is_active)}</td>
+                        )}
 
                         <td className="border p-2.5">
                           <button
@@ -541,6 +652,49 @@ const StudentListPage = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Pagination — ২০/৫০/১০০ জন করে পাতায় দেখায়, বাকিরা Prev/Next দিয়ে */}
+            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm sm:flex-row">
+              <div className="flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
+                <span>
+                  দেখাচ্ছে {toBanglaDigits(rangeStart)}–{toBanglaDigits(rangeEnd)}, মোট{" "}
+                  {toBanglaDigits(filteredStudents.length)} জন
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                  className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none sm:text-sm"
+                >
+                  {[20, 50, 100].map((size) => (
+                    <option key={size} value={size}>
+                      পাতায় {toBanglaDigits(size)} জন
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 sm:text-sm"
+                >
+                  আগের
+                </button>
+                <span className="text-xs text-gray-600 sm:text-sm">
+                  পাতা {toBanglaDigits(currentPage)} / {toBanglaDigits(totalPages)}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 sm:text-sm"
+                >
+                  পরের
+                </button>
               </div>
             </div>
           </>

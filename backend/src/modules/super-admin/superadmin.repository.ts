@@ -380,6 +380,24 @@ export class SuperAdminRepository {
     });
   }
 
+  /** Every new madrasa needs at least one Session to admit students /
+   * attach fee structures into - creates "the current calendar year"
+   * (Jan 1 - Dec 31), marked current, exactly mirroring what
+   * prisma/backfill-sessions.ts does for pre-existing madrasas. */
+  createDefaultSessionOnTx(tx: TransactionClient, madrasaId: number, year: string) {
+    const yearNum = Number(year);
+    return tx.session.create({
+      data: {
+        madrasaId,
+        name: year,
+        startDate: new Date(Date.UTC(yearNum, 0, 1)),
+        endDate: new Date(Date.UTC(yearNum, 11, 31)),
+        isCurrent: true,
+        isActive: true,
+      },
+    });
+  }
+
   findDefaultFeeStructuresOnTx(tx: TransactionClient) {
     return tx.defaultFeeStructure.findMany({
       where: { isActive: true },
@@ -393,6 +411,7 @@ export class SuperAdminRepository {
     madrasaId: number,
     structures: { classId: number | null; name: string; amount: Prisma.Decimal; frequency: string }[],
     academicYear: string,
+    sessionId: number,
   ) {
     return tx.feeStructure.createMany({
       data: structures.map((s) => ({
@@ -402,6 +421,7 @@ export class SuperAdminRepository {
         amount: s.amount,
         frequency: s.frequency as any,
         academicYear,
+        sessionId,
       })),
     });
   }

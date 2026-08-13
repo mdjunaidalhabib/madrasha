@@ -3,7 +3,9 @@ export interface CreateFeeStructureRequestDto {
   name: string;
   amount: number | string;
   frequency: string;
-  academic_year: string;
+  session_id?: number | string;
+  /** @deprecated legacy fallback - resolved to a Session by matching name when session_id is absent. */
+  academic_year?: string;
 }
 
 export type UpdateFeeStructureRequestDto = Partial<CreateFeeStructureRequestDto> & {
@@ -15,7 +17,9 @@ export interface GenerateInvoicesRequestDto {
   due_date: string;
   month?: string; // required when the fee structure is MONTHLY, "YYYY-MM"
   class_id?: number | string; // overrides the fee structure's class if given
-  academic_year?: string; // which students to bill; defaults to the fee structure's year
+  session_id?: number | string; // which students to bill; defaults to the fee structure's session
+  /** @deprecated legacy fallback - resolved to a Session by matching name when session_id is absent. */
+  academic_year?: string;
 }
 
 export interface InvoiceQueryDto {

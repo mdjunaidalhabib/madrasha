@@ -14,8 +14,9 @@ const getMadrasaId = (req: Request): number => {
 
 export const getFeeStructures = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.query.class_id ? Number(req.query.class_id) : undefined;
+  const sessionId = req.query.session_id ? Number(req.query.session_id) : undefined;
   const academicYear = req.query.academic_year ? String(req.query.academic_year) : undefined;
-  const data = await feeService.listStructures(getMadrasaId(req), classId, academicYear);
+  const data = await feeService.listStructures(getMadrasaId(req), classId, sessionId, academicYear);
   res.json({ success: true, data });
 });
 
@@ -48,8 +49,8 @@ export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
 
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
-  const academicYear = req.body.academic_year ? String(req.body.academic_year) : undefined;
-  const data = await feeService.backfillInvoicesForAllStudents(getMadrasaId(req), classId, academicYear);
+  const sessionId = req.body.session_id ? Number(req.body.session_id) : undefined;
+  const data = await feeService.backfillInvoicesForAllStudents(getMadrasaId(req), classId, sessionId);
   return ApiResponse.success(res, { message: "Invoices backfilled successfully", data });
 });
 

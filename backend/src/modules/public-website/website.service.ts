@@ -346,7 +346,8 @@ export class WebsiteService {
   /**
    * Full admission form submitted from the public website - mirrors the
    * admin admission form field set and creates a real (PENDING) `Student`
-   * row via studentService.admitStudent, so a Muhtamim can review/approve it
+   * row via studentService.admitStudent (every admission lands PENDING now,
+   * admin panel or public site alike), so a Muhtamim can review/approve it
    * through the same pending-admissions workflow as any other admission.
    */
   async submitFullAdmissionApplication(slug: string, body: SubmitFullAdmissionRequestDto) {
@@ -356,7 +357,7 @@ export class WebsiteService {
       throw new ForbiddenError("This website is currently disabled");
     }
 
-    return studentService.admitStudent(body as any, madrasa.id, { forcePending: true });
+    return studentService.admitStudent(body as any, madrasa.id);
   }
 
   async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {

@@ -1,0 +1,61 @@
+// ============================================================
+// ACADEMIC SESSION
+// A session is the real-world academic term a student is enrolled in for
+// billing/roll purposes (e.g. "সেশন ২০২৬", Jan-Dec, or a non-calendar term
+// like Apr-Mar). `academicYear` on Student/FeeStructure is kept as a
+// mirrored display string derived from Session.name - sessionId is now the
+// authoritative link.
+// ============================================================
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  name      String   @db.VarChar(50)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  /// Exactly one session per madrasa should be current at a time -
+  /// enforced in the service layer (unset the old one inside the same
+  /// transaction as setting the new one), not at the DB level.
+  isCurrent Boolean @default(false) @map("is_current")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa       Madrasa                 @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  students      Student[]
+  feeStructures FeeStructure[]
+  historyFrom   StudentSessionHistory[] @relation("SessionHistoryFrom")
+  historyTo     StudentSessionHistory[] @relation("SessionHistoryTo")
+
+  @@unique([madrasaId, name], map: "uniq_session_madrasa_name")
+  @@index([madrasaId, isCurrent], map: "idx_session_madrasa_current")
+  @@index([madrasaId, isActive], map: "idx_session_madrasa_active")
+  @@map("sessions")
+}
+
+/// Audit trail for direct session-to-session student transfers (distinct
+/// from PromotionRecord, which only logs class promotion decisions and
+/// never moves the student). One row per transfer action.
+model StudentSessionHistory {
+  id              Int      @id @default(autoincrement())
+  madrasaId       Int      @map("madrasa_id")
+  studentId       Int      @map("student_id")
+  fromSessionId   Int?     @map("from_session_id")
+  toSessionId     Int      @map("to_session_id")
+  fromRoll        Int?     @map("from_roll")
+  toRoll          Int      @map("to_roll")
+  reason          String?  @db.VarChar(300)
+  transferredById Int?     @map("transferred_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  madrasa     Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fromSession Session? @relation("SessionHistoryFrom", fields: [fromSessionId], references: [id], onDelete: SetNull)
+  toSession   Session  @relation("SessionHistoryTo", fields: [toSessionId], references: [id], onDelete: Restrict)
+
+  @@index([studentId], map: "idx_session_history_student")
+  @@index([madrasaId], map: "idx_session_history_madrasa")
+  @@map("student_session_histories")
+}

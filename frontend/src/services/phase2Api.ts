@@ -10,14 +10,14 @@ export type InvoiceStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "
 export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "ONLINE";
 
 export const feeStructureApi = {
-  list: (params?: { class_id?: number; academic_year?: string }) =>
+  list: (params?: { class_id?: number; session_id?: number; academic_year?: string }) =>
     api.get("/fee-structures", { params }),
   create: (payload: {
     class_id?: number;
     name: string;
     amount: number;
     frequency: FeeFrequency;
-    academic_year: string;
+    session_id: number;
   }) => api.post("/fee-structures", payload),
   update: (id: number, payload: Record<string, unknown>) =>
     api.put(`/fee-structures/${id}`, payload),
@@ -30,13 +30,13 @@ export const invoiceApi = {
     due_date: string;
     month?: string;
     class_id?: number;
-    academic_year?: string;
+    session_id?: number;
   }) => api.post("/invoices/generate", payload),
 
   list: (params: { student_id?: number; status?: InvoiceStatus; month?: string }) =>
     api.get("/invoices", { params }),
 
-  backfill: (payload?: { class_id?: number; academic_year?: string }) =>
+  backfill: (payload?: { class_id?: number; session_id?: number }) =>
     api.post("/invoices/backfill", payload || {}),
 
   pay: (

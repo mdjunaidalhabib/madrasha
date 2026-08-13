@@ -566,8 +566,13 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   grid-template-columns: repeat(auto-fill, 54mm);
 }
 
+/* Each admit card is sized (see AdmitCardGrid.tsx) to fill the page width
+   and sit at roughly half the A4 content height, so exactly two stack top-
+   to-bottom per sheet, landscape-A5-style, ready to cut in half - one
+   column rather than the old side-by-side layout, which overflowed since
+   the card's own width already fills the page. */
 .report-admit-card-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Prize book label is a fixed physical bookplate-sticker size (92mm x
@@ -575,10 +580,6 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
    the prize book; column count is however many fit the page width. */
 .report-book-label-grid {
   grid-template-columns: repeat(auto-fill, 92mm);
-}
-
-html[data-print-size="a5"][data-print-orientation="portrait"] .report-admit-card-grid {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 /* =========================

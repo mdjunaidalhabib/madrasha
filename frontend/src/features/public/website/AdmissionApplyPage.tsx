@@ -65,6 +65,10 @@ export default function AdmissionApplyPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  // The class's default fees, billed immediately on submit (see admitStudent
+  // on the backend) - shown as info only, since there's no online payment
+  // gateway here; the applicant pays in person at the madrasa office.
+  const [submittedInvoices, setSubmittedInvoices] = useState<Array<{ title: string; amount: number }>>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -138,7 +142,7 @@ export default function AdmissionApplyPage() {
 
     setSubmitting(true);
     try {
-      await submitFullAdmissionApplication(slug, {
+      const res = await submitFullAdmissionApplication(slug, {
         name_bn: form.name_bn.trim(),
         arabic_name: form.arabic_name || null,
         nid: form.nid || null,
@@ -173,6 +177,8 @@ export default function AdmissionApplyPage() {
         village: form.village || null,
         image: form.image || null,
       });
+      const invoices = res?.data?.invoices || [];
+      setSubmittedInvoices(invoices.map((inv: any) => ({ title: inv.title, amount: Number(inv.amount) })));
       setSuccess(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || "আবেদন জমা দেওয়া যায়নি, আবার চেষ্টা করুন।");
@@ -236,6 +242,29 @@ export default function AdmissionApplyPage() {
               আপনার আবেদনটি পর্যালোচনার অপেক্ষায় আছে। মাদ্রাসা কর্তৃপক্ষ অনুমোদন করলে আপনার দেওয়া
               ফোন নম্বরে যোগাযোগ করা হবে।
             </p>
+
+            {submittedInvoices.length > 0 && (
+              <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-green-200 bg-white p-4 text-left shadow-sm">
+                <h3 className="text-sm font-bold text-slate-700">প্রযোজ্য ভর্তি ফি</h3>
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {submittedInvoices.map((inv, index) => (
+                    <li key={index} className="flex items-center justify-between gap-2">
+                      <span>{inv.title}</span>
+                      <span className="font-semibold text-slate-800">৳{inv.amount}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-bold text-slate-800">
+                  <span>মোট</span>
+                  <span>৳{submittedInvoices.reduce((sum, inv) => sum + inv.amount, 0)}</span>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  অনুগ্রহ করে এই ফি মাদ্রাসা অফিসে সরাসরি গিয়ে জমা দিন। অনুমোদনের আগে ফি জমা না
+                  হলে ভর্তি প্রক্রিয়া সম্পন্ন হবে না।
+                </p>
+              </div>
+            )}
+
             <Link
               to=".."
               relative="path"

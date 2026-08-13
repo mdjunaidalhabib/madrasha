@@ -495,15 +495,15 @@ const PaginatedReportPreview = ({
     [rawRows, report.printable],
   );
 
-  // IdCardGrid/AdmitCardGrid resolve their template asynchronously (from
+  // IdCardGrid resolves its template asynchronously (from
   // documentTemplateDefaultStore), so the very first off-screen measurement
   // pass below can run before that data arrives and see an empty grid.
   // Subscribing here and including it in the measurement effect's deps
   // makes that effect re-run (and correctly re-measure) the moment the
   // template finishes loading - same pattern as the document.fonts.ready
-  // re-measurement a few lines down.
+  // re-measurement a few lines down. AdmitCardGrid is a plain fixed layout
+  // (no async template), so it needs no such subscription.
   const idCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ID_CARD);
-  const admitCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ADMIT_CARD);
 
   const config = getPrintableConfig(report);
   const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
@@ -583,6 +583,11 @@ const PaginatedReportPreview = ({
     if (config.kind === "grid") {
       return [{ key: "grid", rows, showBrand: showBrandAtAll, density: "comfortable" }];
     }
+
+    // "single" always renders as exactly one page from the full row set (see
+    // the runMeasurement effect below) with no per-row/per-group height
+    // measurement needed to decide that.
+    if (config.kind === "single") return [];
 
     return rows.map((row, i) => ({
       key: `blocks-${i}`,
@@ -687,6 +692,19 @@ const PaginatedReportPreview = ({
             });
           });
         }
+      } else if (config.kind === "single") {
+        // admit-card-with-rules: always exactly one page (the exam rules
+        // notice), never one page per student - see ReportContent's routing
+        // for this printable and AdmitCardRulesPage.
+        nextPages.push({
+          key: `${report.key}-single`,
+          rows,
+          startIndex: 0,
+          isFirstPageOfGroup: true,
+          isFirstPage: true,
+          isLastPage: true,
+          density: "comfortable",
+        });
       } else {
         const continuationBudgetPx = availableHeightPx - CONTINUATION_TOP_OFFSET_PX;
         const firstContainer = measureRefs.current.get("blocks-0");
@@ -762,7 +780,6 @@ const PaginatedReportPreview = ({
     showBrandAtAll,
     measureTargets,
     idCardTemplateLoaded,
-    admitCardTemplateLoaded,
   ]);
 
   useLayoutEffect(() => {

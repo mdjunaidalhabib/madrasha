@@ -7,6 +7,7 @@ export interface StudentListFilters {
   classId?: number;
   divisionId?: number;
   academicYear?: string;
+  sessionId?: number;
 }
 
 /**
@@ -31,6 +32,7 @@ export interface StudentApiDto {
   division_id: number | null;
   class_id: number | null;
   academic_year: string;
+  session_id: number | null;
   previous_class_id: number | null;
   previous_institution: string | null;
   previous_result: string | null;
@@ -72,6 +74,21 @@ export interface AdmissionResult {
   previousAcademicYear?: string;
   roll: number;
   registrationNo: number;
+  /** Every admission now lands PENDING and waits on Muhtamim approval -
+   * always "PENDING" today, but returned explicitly so callers don't have
+   * to hardcode that assumption. */
+  admissionStatus: "PENDING";
+  /** The class's default fees, billed immediately at submission time (see
+   * admitStudent) - surfaced so the admin-panel form can offer to collect
+   * payment right away, and the public site can show what's due. */
+  invoices: Array<{
+    id: number;
+    title: string;
+    amount: number;
+    paidAmount: number;
+    waivedAmount: number;
+    status: string;
+  }>;
 }
 
 /** Shape returned to the frontend when it looks up a student by NID before
