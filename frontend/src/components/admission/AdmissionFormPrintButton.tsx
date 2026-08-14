@@ -10,7 +10,7 @@ type Props = {
  * Drops a "প্রিন্ট ভর্তি ফরম" button next to a student record. The document
  * itself is kept in the DOM at all times but hidden on screen (`hidden
  * print:block`) - on print, index.css's `.print-area` rule makes it the only
- * visible content, so window.print() alone is enough to produce a clean page
+ * visible content, so window.print() alone is enough to produce a clean page 
  */
 const AdmissionFormPrintButton = ({ row, madrasaName, className }: Props) => (
   <>
