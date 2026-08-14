@@ -24,12 +24,14 @@ const TeacherInfo: React.FC<Props> = ({
   divisions = [],
 }) => {
   const inputClass = (field: keyof TeacherFormData) =>
-    `border rounded-lg px-3 py-2 outline-none focus:ring-2 ${
-      errors[field] ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-green-500"
+    `border rounded-lg px-3 py-2 outline-none focus:ring-2 dark:bg-slate-800 dark:text-slate-100 ${
+      errors[field]
+        ? "border-red-500 focus:ring-red-500"
+        : "border-gray-300 focus:ring-green-500 dark:border-slate-700"
     }`;
 
   const ErrorText = ({ field }: { field: keyof TeacherFormData }) =>
-    errors[field] ? <p className="text-red-500 text-xs mt-1">{errors[field]}</p> : null;
+    errors[field] ? <p className="text-red-500 text-xs mt-1 dark:text-red-400">{errors[field]}</p> : null;
 
   const clearError = (field: keyof TeacherFormData) => {
     if (!setErrors) return;
@@ -71,13 +73,13 @@ const TeacherInfo: React.FC<Props> = ({
   }, [formData.dob, setFormData]);
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200">
-      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">শিক্ষক তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-100 dark:border-slate-700">শিক্ষক তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* নাম (বাংলা) */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             নাম (বাংলা) <span className="text-red-500">*</span>
           </label>
           <input
@@ -91,7 +93,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* নাম (আরবি) */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">নাম (আরবি)</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">নাম (আরবি)</label>
           <input
             name="name_ar"
             value={formData.name_ar || ""}
@@ -102,7 +104,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* NID */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">NID</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID</label>
           <input
             name="nid"
             value={formData.nid || ""}
@@ -113,7 +115,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* লিঙ্গ */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">লিঙ্গ</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">লিঙ্গ</label>
           <select
             name="gender"
             value={formData.gender ?? ""}
@@ -140,17 +142,17 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* বয়স */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">বয়স</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বয়স</label>
           <input
             value={formData.age ?? ""}
             readOnly
-            className="border rounded-lg px-3 py-2 bg-gray-100"
+            className="border rounded-lg px-3 py-2 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           />
         </div>
 
         {/* মোবাইল */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">মোবাইল</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মোবাইল</label>
           <input
             name="phone"
             value={formData.phone || ""}
@@ -162,7 +164,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* ইমেইল */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">ইমেইল</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">ইমেইল</label>
           <input
             name="email"
             value={formData.email || ""}
@@ -173,7 +175,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* পদবি */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পদবি</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পদবি</label>
           <input
             name="designation"
             value={formData.designation || ""}
@@ -184,7 +186,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* ACADEMIC DIVISION */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             একাডেমিক বিভাগ <span className="text-red-500">*</span>
           </label>
           <select
@@ -205,7 +207,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* যোগ্যতা */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">শিক্ষাগত যোগ্যতা</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">শিক্ষাগত যোগ্যতা</label>
           <input
             name="qualification"
             value={formData.qualification || ""}
@@ -242,7 +244,7 @@ const TeacherInfo: React.FC<Props> = ({
 
         {/* বেতন */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">বেতন</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বেতন</label>
           <input
             name="salary"
             value={formData.salary || ""}

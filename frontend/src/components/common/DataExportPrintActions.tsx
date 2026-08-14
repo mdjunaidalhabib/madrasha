@@ -148,7 +148,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <select
         value={paperSize}
         onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
-        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-auto"
+        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
       >
         <option value="a4">A4</option>
         <option value="a5">A5</option>
@@ -157,7 +157,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       <select
         value={orientation}
         onChange={(e) => updateOrientation(e.target.value as Orientation)}
-        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-auto"
+        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
       >
         <option value="portrait">Portrait</option>
         <option value="landscape">Landscape</option>

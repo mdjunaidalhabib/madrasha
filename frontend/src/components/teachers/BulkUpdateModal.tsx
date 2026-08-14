@@ -299,11 +299,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+      <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">বাল্ক আপডেট (Excel)</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">বাল্ক আপডেট (Excel)</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               বিদ্যমান শিক্ষকদের তথ্য একসাথে এক্সেল দিয়ে আপডেট করুন।
             </p>
           </div>
@@ -311,7 +311,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
           <button
             type="button"
             onClick={handleClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-red-50 hover:text-red-600"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
           >
             ×
           </button>
@@ -322,11 +322,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <div>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">বাল্ক আপডেট সম্পন্ন হয়েছে</h3>
-                  <p className="text-sm text-slate-500">
-                    আপডেট: <span className="font-semibold text-emerald-700">{result.updated}</span> |
-                    অপরিবর্তিত: <span className="font-semibold text-slate-600">{result.unchanged}</span> |
-                    বাদ পড়েছে: <span className="font-semibold text-red-700">{result.skipped}</span>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">বাল্ক আপডেট সম্পন্ন হয়েছে</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    আপডেট: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{result.updated}</span> |
+                    অপরিবর্তিত: <span className="font-semibold text-slate-600 dark:text-slate-400">{result.unchanged}</span> |
+                    বাদ পড়েছে: <span className="font-semibold text-red-700 dark:text-red-400">{result.skipped}</span>
                   </p>
                 </div>
 
@@ -339,59 +339,59 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="max-h-[420px] overflow-auto">
                   <table className="min-w-[900px] w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-slate-100">
+                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">SL</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">নাম</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">id</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">অবস্থা</th>
-                        <th className="border-b px-3 py-3 text-left font-bold text-slate-700">পরিবর্তন / নোট</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
+                        <th className="border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তন / নোট</th>
                       </tr>
                     </thead>
                     <tbody>
                       {result.preview.map((row) => (
-                        <tr key={row.row} className="border-b align-top transition hover:bg-slate-50">
+                        <tr key={row.row} className="border-b align-top transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
                           <td className="whitespace-nowrap px-3 py-3">{row.row}</td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">{row.name || "-"}</td>
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">{row.name || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">{row.id || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.status === "updated" && (
-                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
                                 আপডেট হয়েছে
                               </span>
                             )}
                             {row.status === "unchanged" && (
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                                 পরিবর্তন নেই
                               </span>
                             )}
                             {row.status === "skipped" && (
-                              <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
+                              <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-400">
                                 বাদ পড়েছে
                               </span>
                             )}
                           </td>
                           <td className="px-3 py-3">
                             {row.changes.length > 0 && (
-                              <ul className="space-y-0.5 text-xs text-slate-600">
+                              <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                                 {row.changes.map((c, i) => (
                                   <li key={i}>
-                                    <span className="font-medium text-slate-700">{c.field}:</span>{" "}
-                                    <span className="text-slate-400 line-through">{String(c.old ?? "-")}</span> →{" "}
-                                    <span className="font-medium text-slate-800">{String(c.new ?? "-")}</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{c.field}:</span>{" "}
+                                    <span className="text-slate-400 line-through dark:text-slate-500">{String(c.old ?? "-")}</span> →{" "}
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">{String(c.new ?? "-")}</span>
                                   </li>
                                 ))}
                               </ul>
                             )}
                             {row.notes.map((n, i) => (
-                              <p key={i} className="text-xs text-amber-700">
+                              <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
                                 ⚠ {n}
                               </p>
                             ))}
-                            {row.error && <p className="text-xs text-red-700">{row.error}</p>}
+                            {row.error && <p className="text-xs text-red-700 dark:text-red-400">{row.error}</p>}
                           </td>
                         </tr>
                       ))}
@@ -406,12 +406,12 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-800">এক্সেল এক্সপোর্ট / আপলোড</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">এক্সেল এক্সপোর্ট / আপলোড</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     বর্তমান ফিল্টার অনুযায়ী তালিকাভুক্ত {teachers.length} জন শিক্ষকের তথ্য এক্সপোর্ট
                     হবে।
                   </p>
-                  <p className="text-xs text-slate-500">ধূসর কলাম (id, registration_no) লক করা - সম্পাদনা করা যাবে না।</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">ধূসর কলাম (id, registration_no) লক করা - সম্পাদনা করা যাবে না।</p>
                 </div>
 
                 <button
@@ -436,8 +436,8 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <div>
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">প্রিভিউ</h3>
-                  <p className="text-sm text-slate-500">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">প্রিভিউ</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     মোট {excelRows.length} সারি — এর মধ্যে {submitCount} সারিতে পরিবর্তন পাওয়া গেছে
                   </p>
                 </div>
@@ -445,58 +445,58 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                 <button
                   type="button"
                   onClick={reset}
-                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
                   Clear Uploaded Data
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="max-h-[420px] overflow-auto">
                   <table className="min-w-[900px] w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-slate-100">
+                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">SL</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">id</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">নাম</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">অবস্থা</th>
-                        <th className="border-b px-3 py-3 text-left font-bold text-slate-700">পরিবর্তিত ফিল্ড</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
+                        <th className="border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তিত ফিল্ড</th>
                       </tr>
                     </thead>
                     <tbody>
                       {previewRows.map((row) => (
                         <tr
                           key={row.index}
-                          className={`border-b align-top transition hover:bg-slate-50 ${
+                          className={`border-b align-top transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${
                             !row.willSubmit ? "opacity-50" : ""
                           }`}
                         >
                           <td className="whitespace-nowrap px-3 py-3">{row.rowNumber}</td>
                           <td className="whitespace-nowrap px-3 py-3">{row.id ?? "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">{row.name || "-"}</td>
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">{row.name || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">
                             {!row.matched ? (
-                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
                                 id পাওয়া যায়নি (তবুও পাঠানো হবে)
                               </span>
                             ) : row.willSubmit ? (
-                              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
                                 পরিবর্তন হবে
                               </span>
                             ) : (
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                                 কোনো পরিবর্তন নেই
                               </span>
                             )}
                           </td>
                           <td className="px-3 py-3">
                             {row.changes.length > 0 && (
-                              <ul className="space-y-0.5 text-xs text-slate-600">
+                              <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                                 {row.changes.map((c, i) => (
                                   <li key={i}>
-                                    <span className="font-medium text-slate-700">{c.label}:</span>{" "}
-                                    <span className="text-slate-400 line-through">{c.oldValue || "-"}</span> →{" "}
-                                    <span className="font-medium text-slate-800">{c.newValue || "-"}</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{c.label}:</span>{" "}
+                                    <span className="text-slate-400 line-through dark:text-slate-500">{c.oldValue || "-"}</span> →{" "}
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">{c.newValue || "-"}</span>
                                   </li>
                                 ))}
                               </ul>

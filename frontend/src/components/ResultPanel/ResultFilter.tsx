@@ -39,7 +39,7 @@ export default function ResultFilter({
   setClassId,
 }: Props) {
   return (
-    <div className="bg-white shadow-md rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+    <div className="bg-white shadow-md rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 dark:bg-slate-900">
       {/* DIVISION */}
       <select
         value={divisionId}
@@ -47,7 +47,7 @@ export default function ResultFilter({
           setDivisionId(e.target.value);
           setClassId("");
         }}
-        className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm"
+        className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       >
         <option value="">বিভাগ</option>
         {divisions.map((d) => (
@@ -61,7 +61,7 @@ export default function ResultFilter({
       <select
         value={examId}
         onChange={(e) => setExamId(e.target.value)}
-        className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm"
+        className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       >
         <option value="">পরীক্ষা</option>
         {exams.map((e) => (
@@ -76,7 +76,7 @@ export default function ResultFilter({
         value={classId}
         onChange={(e) => setClassId(e.target.value)}
         disabled={!divisionId}
-        className="w-full border p-2.5 sm:p-2 rounded disabled:bg-gray-100 text-base sm:text-sm"
+        className="w-full border p-2.5 sm:p-2 rounded disabled:bg-gray-100 text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800"
       >
         <option value="">শ্রেণি</option>
         {classes.map((c) => (

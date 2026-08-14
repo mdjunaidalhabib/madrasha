@@ -7,8 +7,8 @@ import { useToastStore } from "../../store/toastStore";
 import { expenseGroups, paymentMethods } from "./accountingData";
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
-  <label className="mb-1 block text-sm font-semibold text-slate-700">
-    {children} {required && <span className="text-rose-600">*</span>}
+  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+    {children} {required && <span className="text-rose-600 dark:text-rose-400">*</span>}
   </label>
 );
 
@@ -50,12 +50,12 @@ export default function ExpensePage() {
         title="ভাউচার তৈরি / ব্যয় এন্ট্রি"
         subtitle="ফান্ডভিত্তিক ভাউচার ও ব্যয় সংরক্ষণ"
       />
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <FieldLabel>ব্যয় বিভাগ</FieldLabel>
             <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={groupName}
               onChange={(e) => handleGroupChange(e.target.value)}
             >
@@ -67,7 +67,7 @@ export default function ExpensePage() {
           <div>
             <FieldLabel>ব্যয়ের খাত</FieldLabel>
             <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.category}
               onChange={(e) => setField("category", e.target.value)}
             >
@@ -99,7 +99,7 @@ export default function ExpensePage() {
           <div>
             <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
             <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.payment_method}
               onChange={(e) => setField("payment_method", e.target.value)}
             >

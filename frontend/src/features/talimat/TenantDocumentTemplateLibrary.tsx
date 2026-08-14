@@ -138,11 +138,11 @@ export default function TenantDocumentTemplateLibrary({
   if (loading) return <SkeletonCard lines={6} />;
 
   return (
-    <section className="rounded-2xl border bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">{title} — টেমপ্লেট লাইব্রেরি</h2>
-          <p className="text-xs text-slate-500">সিস্টেম টেমপ্লেট ব্যবহার করুন, কাস্টমাইজ করুন, অথবা নিজের টেমপ্লেট তৈরি করুন</p>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title} — টেমপ্লেট লাইব্রেরি</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">সিস্টেম টেমপ্লেট ব্যবহার করুন, কাস্টমাইজ করুন, অথবা নিজের টেমপ্লেট তৈরি করুন</p>
         </div>
         <Button
           type="button"
@@ -164,10 +164,10 @@ export default function TenantDocumentTemplateLibrary({
         onSubmit={handleCreate}
       />
 
-      {error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
           কোনো টেমপ্লেট পাওয়া যায়নি। একটি নতুন টেমপ্লেট তৈরি করুন।
         </div>
       ) : (
@@ -179,7 +179,8 @@ export default function TenantDocumentTemplateLibrary({
             const scale = version ? thumbScale(version.width, version.height) : 1;
 
             return (
-              <div key={item.id} className="rounded-xl border border-slate-200 p-3">
+              <div key={item.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                {/* Thumbnail swatch intentionally stays light — it's the paper backdrop behind an actual document render, same as the report print-preview-wrap. */}
                 <div
                   className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
                   style={{ width: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
@@ -203,7 +204,7 @@ export default function TenantDocumentTemplateLibrary({
                 </div>
 
                 <div className="mb-2 flex items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold text-slate-800">{item.name}</span>
+                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
                   {item.is_tenant_default && (
                     <span title="আপনার ডিফল্ট" className="text-amber-500">
                       <CheckCircle2 size={14} />
@@ -213,18 +214,20 @@ export default function TenantDocumentTemplateLibrary({
                 <div className="mb-3 flex flex-wrap gap-1">
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      item.scope === "SYSTEM" ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"
+                      item.scope === "SYSTEM"
+                        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400"
+                        : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
                     }`}
                   >
                     {item.scope === "SYSTEM" ? "সিস্টেম" : "আমার টেমপ্লেট"}
                   </span>
                   {!item.is_published && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                       খসড়া
                     </span>
                   )}
                   {item.is_system_default && (
-                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
                       সিস্টেম ডিফল্ট
                     </span>
                   )}
@@ -235,7 +238,7 @@ export default function TenantDocumentTemplateLibrary({
                     <button
                       type="button"
                       onClick={() => openInDesigner(item.id)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <Pencil size={12} /> এডিট
                     </button>
@@ -245,7 +248,7 @@ export default function TenantDocumentTemplateLibrary({
                       type="button"
                       disabled={busyId === item.id}
                       onClick={() => handleClone(item)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <Copy size={12} /> কাস্টমাইজ করুন
                     </button>
@@ -255,7 +258,7 @@ export default function TenantDocumentTemplateLibrary({
                       type="button"
                       disabled={busyId === item.id}
                       onClick={() => handleSetDefault(item)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <Star size={12} /> ডিফল্ট করুন
                     </button>
@@ -265,7 +268,7 @@ export default function TenantDocumentTemplateLibrary({
                       type="button"
                       disabled={busyId === item.id}
                       onClick={() => handleDelete(item)}
-                      className="flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                      className="flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/40"
                     >
                       <Trash2 size={12} /> মুছুন
                     </button>

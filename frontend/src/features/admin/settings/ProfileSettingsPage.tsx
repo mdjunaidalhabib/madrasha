@@ -136,10 +136,10 @@ export default function ProfileSettingsPage() {
             required
             onSave={(v) => patchProfile({ name: v })}
           />
-          <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3">
+          <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-500">ইমেইল</p>
-              <p className="mt-0.5 text-sm text-gray-900">{profile.email}</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">ইমেইল</p>
+              <p className="mt-0.5 text-sm text-gray-900 dark:text-slate-100">{profile.email}</p>
             </div>
           </div>
           <InlineTextField
@@ -148,10 +148,10 @@ export default function ProfileSettingsPage() {
             placeholder="যেমন: 01xxxxxxxxx"
             onSave={(v) => patchProfile({ mobile: v })}
           />
-          <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3">
+          <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-500">রোল</p>
-              <p className="mt-0.5 text-sm text-gray-900">
+              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">রোল</p>
+              <p className="mt-0.5 text-sm text-gray-900 dark:text-slate-100">
                 {profile.role_label || profile.role_key}
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function ProfileSettingsPage() {
       >
         <div className="max-w-sm space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
               বর্তমান পাসওয়ার্ড
             </label>
             <Input
@@ -175,7 +175,7 @@ export default function ProfileSettingsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">নতুন পাসওয়ার্ড</label>
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">নতুন পাসওয়ার্ড</label>
             <Input
               type="password"
               value={newPassword}
@@ -183,7 +183,7 @@ export default function ProfileSettingsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
               নতুন পাসওয়ার্ড আবার লিখুন
             </label>
             <Input

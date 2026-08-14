@@ -18,6 +18,7 @@ import {
   assignPlanToMadrasa,
   getMadrasaDeleteStats,
   getSuperAdminStats,
+  getSuperAdminDashboardTrends,
   getMadrasaDetail,
   listMadrasaRoles,
   listMadrasaUsers,
@@ -185,6 +186,7 @@ router.delete("/plans/:id/permanent", superAdminMiddleware, permanentDeletePlanA
 ===================================================== */
 
 router.get("/dashboard-stats", superAdminMiddleware, getSuperAdminStats);
+router.get("/dashboard-trends", superAdminMiddleware, getSuperAdminDashboardTrends);
 
 /* =====================================================
    META CONFIG

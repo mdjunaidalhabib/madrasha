@@ -78,9 +78,9 @@ export default function SuperAdminDocumentTemplateEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
-  if (!templateId) return <div className="p-6 text-sm text-rose-600">অবৈধ ঠিকানা</div>;
+  if (!templateId) return <div className="p-6 text-sm text-rose-600 dark:text-rose-400">অবৈধ ঠিকানা</div>;
   if (loading) return <SkeletonCard lines={8} />;
-  if (notFound || !type) return <div className="p-6 text-sm text-rose-600">টেমপ্লেট পাওয়া যায়নি</div>;
+  if (notFound || !type) return <div className="p-6 text-sm text-rose-600 dark:text-rose-400">টেমপ্লেট পাওয়া যায়নি</div>;
 
   const selectedLayer = designer.state.layers.find((l) => l.id === designer.state.selectedLayerId) || null;
   const fieldBindings = FIELD_BINDINGS[type];
@@ -127,7 +127,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
       <button
         type="button"
         onClick={() => navigate("/super-admin/document-templates")}
-        className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
+        className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
         <ArrowLeft size={15} /> Back to Document Templates
       </button>
@@ -160,7 +160,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         saveError={saveError}
       />
 
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
         Editing a <b>{DOCUMENT_TYPE_LABELS_BN[type]}</b> system template. Preview uses sample data — never
         real student data.
       </div>
@@ -178,7 +178,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
           onMove={designer.moveLayer}
         />
 
-        <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-8">
+        <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-8 dark:border-slate-700 dark:bg-slate-800">
           <EditableCanvas
             width={designer.state.width}
             height={designer.state.height}

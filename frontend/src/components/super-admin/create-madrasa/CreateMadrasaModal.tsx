@@ -281,7 +281,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white w-full max-w-2xl rounded-xl shadow-xl p-6 space-y-6 max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:text-slate-100">
         <BasicInfoSection
           data={form}
           errors={errors}
@@ -327,6 +327,12 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           </Button>
         </div>
       </div>
+
+      {saving && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/30 backdrop-blur-sm dark:bg-slate-950/40">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        </div>
+      )}
     </div>
   );
 }

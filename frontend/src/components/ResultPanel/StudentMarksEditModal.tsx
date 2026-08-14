@@ -86,35 +86,35 @@ export default function StudentMarksEditModal({
   // (per-subject override) takes priority over the shared fallback
   const getCellStyle = (value: number | undefined, book: Book) => {
     if (value === undefined) {
-      return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400";
+      return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
     }
 
     if (value === ABSENT_MARK) {
-      return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400";
+      return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
     }
 
     const threshold = book.pass_mark ?? failMark;
 
     if (value < threshold) {
-      return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400";
+      return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400 dark:border-red-700 dark:bg-red-950/40 dark:text-red-400";
     }
 
-    return "border-green-400 bg-green-50 text-green-700 focus:ring-green-400";
+    return "border-green-400 bg-green-50 text-green-700 focus:ring-green-400 dark:border-green-700 dark:bg-green-950/40 dark:text-green-400";
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col p-4">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col p-4 dark:bg-slate-900">
         <div className="flex justify-between items-start mb-3 shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-100">
               ✏️ শুধুমাত্র এর নাম্বার এডিট
             </h3>
-            <p className="text-sm text-gray-500">{student.name_bn}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{student.name_bn}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none dark:text-slate-500 dark:hover:text-slate-300"
             aria-label="Close"
           >
             ×
@@ -122,11 +122,11 @@ export default function StudentMarksEditModal({
         </div>
 
         <div className="overflow-y-auto">
-        <table className="w-full border text-sm">
-          <thead className="bg-gray-100">
+        <table className="w-full border text-sm dark:border-slate-700">
+          <thead className="bg-gray-100 dark:bg-slate-800">
             <tr>
-              <th className="border px-3 py-2 text-left">বিষয়</th>
-              <th className="border px-3 py-2">নাম্বার</th>
+              <th className="border px-3 py-2 text-left dark:border-slate-700">বিষয়</th>
+              <th className="border px-3 py-2 dark:border-slate-700">নাম্বার</th>
             </tr>
           </thead>
           <tbody>
@@ -135,24 +135,24 @@ export default function StudentMarksEditModal({
               const value = values[b.book_id];
 
               return (
-                <tr key={b.book_id} className="hover:bg-gray-50 transition">
-                  <td className="border px-3 py-2 font-medium text-gray-700">
+                <tr key={b.book_id} className="hover:bg-gray-50 transition dark:hover:bg-slate-800">
+                  <td className="border px-3 py-2 font-medium text-gray-700 dark:border-slate-700 dark:text-slate-300">
                     <div className="flex flex-col">
                       <span>
                         {bookLabel(b)}
                         {b.pass_mark != null ? (
                           <span
-                            className="ml-1 text-[10px] font-semibold text-sky-700"
+                            className="ml-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
                             title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
                           >
                             (পাস {b.pass_mark})
                           </span>
                         ) : null}
                       </span>
-                      <span className="text-xs text-gray-400">/ {max}</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">/ {max}</span>
                     </div>
                   </td>
-                  <td className="border px-2 py-1">
+                  <td className="border px-2 py-1 dark:border-slate-700">
                     <input
                       type="text"
                       inputMode="numeric"
@@ -160,7 +160,7 @@ export default function StudentMarksEditModal({
                       disabled={saving}
                       className={`w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
                         saving
-                          ? "bg-gray-100 cursor-not-allowed text-gray-400"
+                          ? "bg-gray-100 cursor-not-allowed text-gray-400 dark:bg-slate-800 dark:text-slate-600"
                           : getCellStyle(value, b)
                       }`}
                       value={
@@ -181,15 +181,15 @@ export default function StudentMarksEditModal({
         </table>
         </div>
 
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 shrink-0">
+        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 shrink-0 dark:text-slate-400">
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block" /> Fail
+            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> Fail
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block" /> Pass
+            <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block dark:bg-green-950/40 dark:border-green-700" /> Pass
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block" />{" "}
+            <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
             অনুপস্থিত ("-" চাপুন)
           </span>
         </div>
@@ -198,14 +198,14 @@ export default function StudentMarksEditModal({
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+            className="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             বাতিল
           </button>
           <button
             onClick={() => onSave(values)}
             disabled={saving}
-            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-slate-600"
           >
             {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
           </button>

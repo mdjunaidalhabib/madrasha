@@ -38,18 +38,18 @@ export default function ToggleSection<T extends string>({
 
   if (!allItems.length) {
     return (
-      <div className="border rounded-lg p-4">
-        <h4 className="font-semibold">{title}</h4>
-        <p className="text-sm text-gray-500 mt-2">No data found</p>
+      <div className="border rounded-lg p-4 dark:border-slate-700">
+        <h4 className="font-semibold dark:text-slate-200">{title}</h4>
+        <p className="text-sm text-gray-500 mt-2 dark:text-slate-400">No data found</p>
       </div>
     );
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-4">
+    <div className="border rounded-lg p-4 space-y-4 dark:border-slate-700">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h4 className="font-semibold">{title}</h4>
+        <h4 className="font-semibold dark:text-slate-200">{title}</h4>
         <ToggleSwitch checked={isOn} onChange={toggleAll} />
       </div>
 
@@ -57,11 +57,11 @@ export default function ToggleSection<T extends string>({
       {groups.length > 0 ? (
         groups.map((group) => (
           <div key={group.title}>
-            <h5 className="text-sm font-semibold text-gray-600 mb-2">{group.title}</h5>
+            <h5 className="text-sm font-semibold text-gray-600 mb-2 dark:text-slate-400">{group.title}</h5>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {group.items.map((i) => (
-                <label key={i.key} className="flex items-center gap-2 cursor-pointer">
+                <label key={i.key} className="flex items-center gap-2 cursor-pointer dark:text-slate-200">
                   <input
                     type="checkbox"
                     checked={selected.includes(i.key)}
@@ -76,7 +76,7 @@ export default function ToggleSection<T extends string>({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {items.map((i) => (
-            <label key={i.key} className="flex items-center gap-2 cursor-pointer">
+            <label key={i.key} className="flex items-center gap-2 cursor-pointer dark:text-slate-200">
               <input
                 type="checkbox"
                 checked={selected.includes(i.key)}
@@ -97,7 +97,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
       type="button"
       onClick={onChange}
       className={`w-12 h-6 flex items-center rounded-full p-1 transition ${
-        checked ? "bg-green-500" : "bg-gray-300"
+        checked ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"
       }`}
     >
       <div

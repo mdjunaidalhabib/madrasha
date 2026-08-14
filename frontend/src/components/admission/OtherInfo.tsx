@@ -17,17 +17,17 @@ const OtherInfo: React.FC<Props> = ({ formData, setFormData }) => {
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6">
-      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">অন্যান্য তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-200 dark:border-slate-700">অন্যান্য তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">রক্তের গ্রুপ</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">রক্তের গ্রুপ</label>
           <select
             name="bloodGroup"
             value={formData.bloodGroup || ""}
             onChange={handleChange}
-            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="">নির্বাচন করুন</option>
             {BLOOD_GROUPS.map((bg) => (
@@ -39,12 +39,12 @@ const OtherInfo: React.FC<Props> = ({ formData, setFormData }) => {
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">আবাসিক/অনাবাসিক</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">আবাসিক/অনাবাসিক</label>
           <select
             name="residencyType"
             value={formData.residencyType ?? ""}
             onChange={handleChange}
-            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="">নির্বাচন করুন</option>
             <option value={1}>আবাসিক</option>
@@ -53,14 +53,14 @@ const OtherInfo: React.FC<Props> = ({ formData, setFormData }) => {
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">এতিম শিক্ষার্থী</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">এতিম শিক্ষার্থী</label>
           <select
             name="isOrphan"
             value={formData.isOrphan ? "yes" : "no"}
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, isOrphan: e.target.value === "yes" }))
             }
-            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="no">না</option>
             <option value="yes">হ্যাঁ</option>

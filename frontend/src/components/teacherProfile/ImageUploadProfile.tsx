@@ -80,8 +80,8 @@ const ImageUploadProfile: React.FC<Props> = ({
       {/* IMAGE BOX */}
       <div
         onClick={() => isEditMode && fileRef.current?.click()}
-        className={`w-40 h-40 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden transition relative
-          ${isEditMode ? "hover:bg-gray-100" : "cursor-default"}
+        className={`w-40 h-40 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden transition relative dark:border-slate-700 dark:bg-slate-800
+          ${isEditMode ? "hover:bg-gray-100 dark:hover:bg-slate-700" : "cursor-default"}
         `}
         style={{
           backgroundImage: preview ? `url(${preview})` : "none",
@@ -90,7 +90,7 @@ const ImageUploadProfile: React.FC<Props> = ({
         }}
       >
         {!preview && (
-          <div className="text-center text-gray-500 text-sm">
+          <div className="text-center text-gray-500 text-sm dark:text-slate-400">
             <p>No Image</p>
             {isEditMode && <p>Click to Upload</p>}
           </div>

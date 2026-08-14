@@ -15,8 +15,8 @@ import { AccountRow, AccountType, money, partyName, toDateInput, toTimeInput } f
 import AccountReceiptModal from "./AccountReceiptModal";
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
-  <label className="mb-1 block text-sm font-semibold text-slate-700">
-    {children} {required && <span className="text-rose-600">*</span>}
+  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+    {children} {required && <span className="text-rose-600 dark:text-rose-400">*</span>}
   </label>
 );
 
@@ -212,11 +212,11 @@ export default function AccountListPage() {
     <div className="space-y-6">
       <PageHeader title="সকল লেনদেন" subtitle="সব আয় ও ব্যয় এন্ট্রি — এডিট ও ডিলিট করুন" />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div>
           <FieldLabel>ধরন</FieldLabel>
           <select
-            className="h-10 w-40 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+            className="h-10 w-40 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={typeFilter}
             onChange={(e) => handleTypeFilterChange(e.target.value as "" | AccountType)}
           >
@@ -228,7 +228,7 @@ export default function AccountListPage() {
         <div>
           <FieldLabel>খাত</FieldLabel>
           <select
-            className="h-10 w-48 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+            className="h-10 w-48 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
@@ -249,16 +249,16 @@ export default function AccountListPage() {
           <Input type="date" className="h-10 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <div className="ml-auto flex flex-wrap gap-3 text-sm">
-          <span className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700">
+          <span className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
             মোট আয়: {money(totals.income)}
           </span>
-          <span className="rounded-lg bg-rose-50 px-3 py-2 font-semibold text-rose-700">
+          <span className="rounded-lg bg-rose-50 px-3 py-2 font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
             মোট ব্যয়: {money(totals.expense)}
           </span>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {loading ? (
           <div className="p-4">
             <SkeletonList items={6} />
@@ -268,7 +268,7 @@ export default function AccountListPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3">তারিখ</th>
                   <th className="px-4 py-3">নং</th>
@@ -282,40 +282,40 @@ export default function AccountListPage() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-t hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      {toDateInput(row.entryDate)} <span className="text-slate-400">{toTimeInput(row.entryTime)}</span>
+                  <tr key={row.id} className="border-t hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
+                      {toDateInput(row.entryDate)} <span className="text-slate-400 dark:text-slate-500">{toTimeInput(row.entryTime)}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                       {(row.type === "income" ? row.receiptNo : row.voucherNo) || "-"}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          row.type === "income" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                          row.type === "income" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
                         }`}
                       >
                         {row.type === "income" ? "আয়" : "ব্যয়"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {row.fund} <span className="text-slate-400">/ {row.category}</span>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                      {row.fund} <span className="text-slate-400 dark:text-slate-500">/ {row.category}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-800">{partyName(row)}</td>
+                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{partyName(row)}</td>
                     <td
                       className={`px-4 py-3 font-semibold ${
-                        row.type === "income" ? "text-emerald-700" : "text-rose-700"
+                        row.type === "income" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
                       }`}
                     >
                       {money(row.amount)}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{row.paymentMethod}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{row.paymentMethod}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setPrintingRow(row)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-500 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
                           title={row.type === "income" ? "রশিদ প্রিন্ট" : "ভাউচার প্রিন্ট"}
                         >
                           <Printer size={16} />
@@ -323,7 +323,7 @@ export default function AccountListPage() {
                         <button
                           type="button"
                           onClick={() => openEdit(row)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                           title="এডিট"
                         >
                           <Pencil size={16} />
@@ -331,7 +331,7 @@ export default function AccountListPage() {
                         <button
                           type="button"
                           onClick={() => handleDelete(row)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                           title="মুছুন"
                         >
                           <Trash2 size={16} />
@@ -370,7 +370,7 @@ export default function AccountListPage() {
               <FieldLabel>{editing.type === "income" ? "ফান্ড" : "ব্যয় বিভাগ"}</FieldLabel>
               {editing.type === "income" ? (
                 <select
-                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   value={editForm.fund}
                   onChange={(e) => handleFundChange(e.target.value)}
                 >
@@ -380,7 +380,7 @@ export default function AccountListPage() {
                 </select>
               ) : (
                 <select
-                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   value={editForm.group}
                   onChange={(e) => handleGroupChange(e.target.value)}
                 >
@@ -393,7 +393,7 @@ export default function AccountListPage() {
             <div>
               <FieldLabel>খাত</FieldLabel>
               <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={editForm.category}
                 onChange={(e) => setField("category", e.target.value)}
               >
@@ -425,7 +425,7 @@ export default function AccountListPage() {
             <div>
               <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
               <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300"
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={editForm.payment_method}
                 onChange={(e) => setField("payment_method", e.target.value)}
               >

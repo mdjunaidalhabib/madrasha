@@ -37,21 +37,21 @@ interface Props {
 
 const getBadge = (s?: StatusItem) => {
   if (!s) {
-    return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300" };
+    return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
   }
   if (s.publish_status === "PUBLISHED") {
-    return { label: "✅ প্রকাশিত", classes: "bg-green-100 text-green-700 border-green-300" };
+    return { label: "✅ প্রকাশিত", classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
   }
   if (s.entered_students > 0 && s.total_students > 0 && s.entered_students >= s.total_students) {
-    return { label: "🟢 এন্ট্রি সম্পন্ন", classes: "bg-blue-100 text-blue-700 border-blue-300" };
+    return { label: "🟢 এন্ট্রি সম্পন্ন", classes: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800" };
   }
   if (s.entered_students > 0) {
     return {
       label: `🟡 আংশিক (${s.entered_students}/${s.total_students})`,
-      classes: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      classes: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-800",
     };
   }
-  return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300" };
+  return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
 };
 
 export default function OverviewGrid({
@@ -68,7 +68,7 @@ export default function OverviewGrid({
 
   if (exams.length === 0 || divisions.length === 0) {
     return (
-      <div className="bg-white shadow-md rounded-xl p-6 text-center text-gray-500">
+      <div className="bg-white shadow-md rounded-xl p-6 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
         কোনো পরীক্ষা বা বিভাগ পাওয়া যায়নি। প্রথমে পরীক্ষা ও বিভাগ যোগ করুন।
       </div>
     );
@@ -80,8 +80,8 @@ export default function OverviewGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
       {exams.map((exam) => (
-        <div key={exam.id} className="bg-white shadow-md rounded-xl p-4">
-          <h2 className="text-base font-bold text-gray-800 mb-3">📝 {exam.name}</h2>
+        <div key={exam.id} className="bg-white shadow-md rounded-xl p-4 dark:bg-slate-900">
+          <h2 className="text-base font-bold text-gray-800 mb-3 dark:text-slate-100">📝 {exam.name}</h2>
 
           <div className="space-y-4">
             {divisions.map((div) => {
@@ -90,7 +90,7 @@ export default function OverviewGrid({
 
               return (
                 <div key={div.division_id}>
-                  <h3 className="text-sm font-semibold text-gray-600 mb-2">
+                  <h3 className="text-sm font-semibold text-gray-600 mb-2 dark:text-slate-400">
                     📂 {div.division_name_bn}
                   </h3>
 
@@ -103,9 +103,9 @@ export default function OverviewGrid({
                         <button
                           key={c.class_id}
                           onClick={() => onSelect(exam.id, c.class_id)}
-                          className="text-left border border-gray-200 rounded-lg p-3 transition hover:shadow-md hover:border-blue-300"
+                          className="text-left border border-gray-200 rounded-lg p-3 transition hover:shadow-md hover:border-blue-300 dark:border-slate-700 dark:hover:border-blue-700"
                         >
-                          <div className="font-medium text-gray-800">{c.class_name_bn}</div>
+                          <div className="font-medium text-gray-800 dark:text-slate-100">{c.class_name_bn}</div>
                           <span
                             className={`inline-block mt-2 text-xs px-2 py-1 rounded-full border ${badge.classes}`}
                           >

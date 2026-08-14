@@ -5,7 +5,7 @@ import Input from "../ui/Input";
 import { useToastStore } from "../../store/toastStore";
 
 export const textAreaClass =
-  "w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100";
+  "w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
 /**
  * Read-only by default; click the pencil to edit that one field in place and
@@ -61,27 +61,27 @@ export default function InlineTextField({
 
   if (!editing) {
     return (
-      <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60">
+      <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500">{label}</p>
+          <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
           {type === "color" ? (
             <span className="mt-1 inline-flex items-center gap-2">
               <span
-                className="h-5 w-5 rounded border border-gray-200"
+                className="h-5 w-5 rounded border border-gray-200 dark:border-slate-600"
                 style={{ backgroundColor: value || "#2563eb" }}
               />
-              <span className="text-sm text-gray-900">{value || "#2563eb"}</span>
+              <span className="text-sm text-gray-900 dark:text-slate-100">{value || "#2563eb"}</span>
             </span>
           ) : (
-            <p className="mt-0.5 whitespace-pre-line break-words text-sm text-gray-900">
-              {value?.trim() ? value : <span className="text-gray-400">যোগ করা হয়নি</span>}
+            <p className="mt-0.5 whitespace-pre-line break-words text-sm text-gray-900 dark:text-slate-100">
+              {value?.trim() ? value : <span className="text-gray-400 dark:text-slate-500">যোগ করা হয়নি</span>}
             </p>
           )}
         </div>
         <button
           type="button"
           onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
           title="সম্পাদনা"
         >
           <Pencil size={14} />
@@ -91,9 +91,9 @@ export default function InlineTextField({
   }
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
-      <p className="mb-1.5 text-xs font-medium text-gray-500">{label}</p>
-      {hint && <p className="mb-2 text-xs text-gray-500">{hint}</p>}
+    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+      <p className="mb-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
+      {hint && <p className="mb-2 text-xs text-gray-500 dark:text-slate-400">{hint}</p>}
       {multiline ? (
         <textarea
           autoFocus
@@ -109,7 +109,7 @@ export default function InlineTextField({
           autoFocus
           value={draft || "#2563eb"}
           onChange={(e) => setDraft(e.target.value)}
-          className="h-10 w-24 cursor-pointer rounded-lg border border-gray-300 p-1"
+          className="h-10 w-24 cursor-pointer rounded-lg border border-gray-300 p-1 dark:border-slate-700"
         />
       ) : (
         <Input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={placeholder} />

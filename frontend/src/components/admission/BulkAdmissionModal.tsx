@@ -133,11 +133,11 @@ const BulkAdmissionModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+      <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Bulk Admission Upload</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Bulk Admission Upload</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Excel file upload করে একসাথে student admission করুন
             </p>
           </div>
@@ -145,7 +145,7 @@ const BulkAdmissionModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-red-50 hover:text-red-600"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
           >
             ×
           </button>
@@ -156,14 +156,14 @@ const BulkAdmissionModal = ({
             <div>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                     Bulk Admission সম্পন্ন হয়েছে
                   </h3>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     নতুন ভর্তি:{" "}
-                    <span className="font-semibold text-emerald-700">{result.inserted}</span> | সেশন
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">{result.inserted}</span> | সেশন
                     আপডেট (পুনঃভর্তি):{" "}
-                    <span className="font-semibold text-amber-700">{result.updated}</span>
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">{result.updated}</span>
                   </p>
                 </div>
 
@@ -176,30 +176,30 @@ const BulkAdmissionModal = ({
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="max-h-[420px] overflow-auto">
                   <table className="min-w-[700px] w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-slate-100">
+                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           SL
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           Name
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           রেজিস্ট্রেশন
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           NID
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           অবস্থা
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           সেশন
                         </th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700">
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                           রোল
                         </th>
                       </tr>
@@ -207,22 +207,22 @@ const BulkAdmissionModal = ({
 
                     <tbody>
                       {result.preview.map((row) => (
-                        <tr key={row.row} className="border-b transition hover:bg-slate-50">
+                        <tr key={row.row} className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
                           <td className="whitespace-nowrap px-3 py-3">{row.row}</td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">
                             {row.name || "-"}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700">
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 dark:text-slate-300">
                             {row.registrationNo || "-"}
                           </td>
                           <td className="whitespace-nowrap px-3 py-3">{row.nid || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.action === "update" ? (
-                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
                                 সেশন আপডেট (পুনঃভর্তি)
                               </span>
                             ) : (
-                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
                                 নতুন ভর্তি
                               </span>
                             )}
@@ -230,7 +230,7 @@ const BulkAdmissionModal = ({
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.action === "update" && row.previousAcademicYear ? (
                               <>
-                                <span className="text-slate-400 line-through">
+                                <span className="text-slate-400 line-through dark:text-slate-500">
                                   {row.previousAcademicYear}
                                 </span>{" "}
                                 → <span className="font-semibold">{row.academicYear}</span>
@@ -239,7 +239,7 @@ const BulkAdmissionModal = ({
                               <span className="font-semibold">{row.academicYear}</span>
                             )}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700">
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700 dark:text-blue-400">
                             {row.roll}
                           </td>
                         </tr>
@@ -255,12 +255,12 @@ const BulkAdmissionModal = ({
             <>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-800">Upload Excel Sheet</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">Upload Excel Sheet</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Required fields template-এ red color এবং * mark থাকবে
                   </p>
-                  <p className="text-xs text-slate-500">Gender: 1 = ছেলে, 2 = মেয়ে</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Gender: 1 = ছেলে, 2 = মেয়ে</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     academic_division/current_class/previous_class এ ID দিতে হবে, preview-তে নাম
                     দেখা যাবে
                   </p>
@@ -288,8 +288,8 @@ const BulkAdmissionModal = ({
             <div>
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Preview Students</h3>
-                  <p className="text-sm text-slate-500">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Preview Students</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Total {excelStudents.length} student found
                   </p>
                 </div>
@@ -297,21 +297,21 @@ const BulkAdmissionModal = ({
                 <button
                   type="button"
                   onClick={onClear}
-                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
                   Clear Uploaded Data
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="max-h-[420px] overflow-auto">
                   <table className="min-w-[1800px] w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-slate-100">
+                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
                         {previewColumns.map((head) => (
                           <th
                             key={head}
-                            className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700"
+                            className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
                           >
                             {head}
                           </th>
@@ -324,10 +324,10 @@ const BulkAdmissionModal = ({
                         const currentClassId = student.class_id || student.current_class;
 
                         return (
-                          <tr key={index} className="border-b transition hover:bg-slate-50">
+                          <tr key={index} className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
                             <td className="whitespace-nowrap px-3 py-3">{index + 1}</td>
 
-                            <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">
+                            <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">
                               {student.name_bn || student.name || "-"}
                             </td>
 

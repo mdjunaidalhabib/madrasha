@@ -42,6 +42,34 @@ export interface UpcomingExamRow {
   endTime: string;
 }
 
+export interface IncomeExpenseTrendRow {
+  period: string;
+  total_income: number | null;
+  total_expense: number | null;
+}
+
+export interface AttendanceTrendRow {
+  period: string;
+  present: number;
+  total: number;
+}
+
+export interface IncomeExpenseTrendPoint {
+  period: string;
+  total_income: number;
+  total_expense: number;
+}
+
+export interface AttendanceTrendPoint {
+  period: string;
+  percentage: number;
+}
+
+export interface DashboardTrends {
+  incomeExpense: IncomeExpenseTrendPoint[];
+  attendance: AttendanceTrendPoint[];
+}
+
 export interface DashboardSummary {
   students: number;
   teachers: number;

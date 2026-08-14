@@ -95,18 +95,20 @@ export default function MadrasaCloudinaryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Cloudinary Settings</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Cloudinary Settings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {madrasa.name}'s own image storage account — configured here only, tenant staff can't
               see or edit it.
             </p>
           </div>
           <span
             className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
-              configured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+              configured
+                ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
             }`}
           >
             {loading ? "..." : configured ? "Configured" : "Not configured"}
@@ -114,37 +116,37 @@ export default function MadrasaCloudinaryModal({
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Loading...</p>
         ) : (
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-semibold">Cloud Name</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Cloud Name</label>
               <input
-                className="w-full rounded border px-3 py-2"
+                className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={cloudName}
                 onChange={(e) => setCloudName(e.target.value)}
                 placeholder="e.g. my-cloud-name"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold">API Key</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Key</label>
               <input
-                className="w-full rounded border px-3 py-2"
+                className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={configured ? "•••••••••• (enter to replace)" : ""}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold">API Secret</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Secret</label>
               <input
                 type="password"
-                className="w-full rounded border px-3 py-2"
+                className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={apiSecret}
                 onChange={(e) => setApiSecret(e.target.value)}
                 placeholder={configured ? "•••••••••• (enter to replace)" : ""}
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                 Never shown again after saving — re-enter it here any time you need to change it.
               </p>
             </div>

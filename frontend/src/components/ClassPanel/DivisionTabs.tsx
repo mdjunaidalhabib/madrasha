@@ -7,16 +7,16 @@ export default function DivisionTabs({
 }: any) {
   return (
     <div>
-      <h2 className="mb-2 font-medium">Divisions</h2>
+      <h2 className="mb-2 font-medium dark:text-slate-100">Divisions</h2>
       <div className="flex gap-2 flex-wrap">
         {divisions.map((d: any) => (
           <button
             key={d.division_id}
             onClick={() => setDivisionId(String(d.division_id))}
-            className={`px-3 py-2 border rounded ${
+            className={`px-3 py-2 border rounded dark:border-slate-700 ${
               divisionId === String(d.division_id)
                 ? "bg-blue-500 text-white"
-                : "bg-white"
+                : "bg-white dark:bg-slate-900 dark:text-slate-200"
             }`}
           >
             {d.division_name_bn}

@@ -806,18 +806,18 @@ const AdmissionPage = () => {
       >
         {feeStep && (
           <div className="flex flex-col gap-4">
-            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
               ভর্তি আবেদনটি মুহতামিমের অনুমোদনের অপেক্ষায় আছে। ফি এখন নিতে না চাইলে "পরে নেব" চেপে
               এগিয়ে যান — পরে Fee Collection পেজ থেকেও নেওয়া যাবে।
             </p>
 
-            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5">
+            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5 dark:bg-slate-800">
               {feeStep.invoices.map((inv) => {
                 const remaining = inv.amount - inv.paidAmount - inv.waivedAmount;
                 return (
                   <div key={inv.id} className="flex items-center gap-2 text-sm">
-                    <span className="min-w-0 flex-1 truncate text-gray-700">
-                      {inv.title} <span className="text-gray-400">(বাকি ৳{remaining})</span>
+                    <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-slate-300">
+                      {inv.title} <span className="text-gray-400 dark:text-slate-500">(বাকি ৳{remaining})</span>
                     </span>
                     <input
                       type="number"
@@ -826,7 +826,7 @@ const AdmissionPage = () => {
                       onChange={(e) =>
                         setFeePayAmounts((prev) => ({ ...prev, [inv.id]: e.target.value }))
                       }
-                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800/60"
                     />
                   </div>
                 );
@@ -834,11 +834,11 @@ const AdmissionPage = () => {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">পদ্ধতি</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পদ্ধতি</label>
               <select
                 value={feePayMethod}
                 onChange={(e) => setFeePayMethod(e.target.value as PaymentMethod)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 {(["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"] as PaymentMethod[]).map((method) => (
                   <option key={method} value={method}>
@@ -853,7 +853,7 @@ const AdmissionPage = () => {
           <button
             type="button"
             onClick={closeFeeStep}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             পরে নেব
           </button>

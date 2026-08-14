@@ -7,3 +7,10 @@ export const getDashboard = asyncHandler(async (req: Request, res: Response) => 
   const summary = await dashboardService.getSummary(madrasa_id);
   res.json(summary);
 });
+
+export const getDashboardTrends = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const groupBy = String(req.query.groupBy || "monthly");
+  const trends = await dashboardService.getTrends(madrasa_id, groupBy);
+  res.json(trends);
+});

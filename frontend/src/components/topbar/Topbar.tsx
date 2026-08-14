@@ -1,6 +1,7 @@
 import { useAuthStore } from "../../store/authStore";
 import LockButton from "../lock/LockButton";
 import Button from "../ui/Button";
+import ThemeToggle from "../ui/ThemeToggle";
 import { LogOut } from "lucide-react";
 
 type TopbarProps = {
@@ -12,23 +13,23 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-4">
+    <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-4 dark:bg-slate-900 dark:border-slate-800">
       {/* Left */}
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
         {/* Mobile menu */}
         <button
           onClick={openSidebar}
-          className="md:hidden text-xl p-1 rounded-lg text-slate-600 hover:bg-slate-100"
+          className="md:hidden text-xl p-1 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           ☰
         </button>
 
         {/* User greeting */}
-        <div className="text-sm text-slate-600 truncate max-w-[160px]">
+        <div className="text-sm text-slate-600 truncate max-w-[160px] dark:text-slate-300">
           {user ? (
             <>
-              <span className="text-slate-400">Hello,</span>{" "}
-              <span className="font-medium text-slate-800">{user.name}</span>
+              <span className="text-slate-400 dark:text-slate-500">Hello,</span>{" "}
+              <span className="font-medium text-slate-800 dark:text-slate-100">{user.name}</span>
             </>
           ) : (
             ""
@@ -38,6 +39,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
       {/* Right */}
       <div className="flex items-center gap-1 md:gap-2">
+        <ThemeToggle />
         <LockButton />
 
         <Button

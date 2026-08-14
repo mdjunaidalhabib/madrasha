@@ -47,7 +47,7 @@ function AddRow({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-600"
+        className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-blue-700 dark:hover:text-blue-400"
       >
         <Plus size={14} /> {placeholder}
       </button>
@@ -55,7 +55,7 @@ function AddRow({
   }
 
   return (
-    <div className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 px-2 py-1.5">
+    <div className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 px-2 py-1.5 dark:border-blue-800 dark:bg-blue-950/40">
       <input
         autoFocus
         value={value}
@@ -65,12 +65,12 @@ function AddRow({
           if (e.key === "Escape") setOpen(false);
         }}
         placeholder={placeholder}
-        className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+        className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
       />
-      <button type="button" onClick={submit} disabled={saving} className="rounded p-1 text-emerald-600 hover:bg-emerald-100">
+      <button type="button" onClick={submit} disabled={saving} className="rounded p-1 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
         <Check size={15} />
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100">
+      <button type="button" onClick={() => setOpen(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
         <X size={15} />
       </button>
     </div>
@@ -131,7 +131,7 @@ function Row({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 px-2 py-1.5">
+      <div className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/40 px-2 py-1.5 dark:border-blue-800 dark:bg-blue-950/40">
         <input
           autoFocus
           value={value}
@@ -140,12 +140,12 @@ function Row({
             if (e.key === "Enter") submit();
             if (e.key === "Escape") setEditing(false);
           }}
-          className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+          className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
         />
-        <button type="button" onClick={submit} disabled={saving} className="rounded p-1 text-emerald-600 hover:bg-emerald-100">
+        <button type="button" onClick={submit} disabled={saving} className="rounded p-1 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
           <Check size={15} />
         </button>
-        <button type="button" onClick={() => setEditing(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100">
+        <button type="button" onClick={() => setEditing(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
           <X size={15} />
         </button>
       </div>
@@ -156,7 +156,9 @@ function Row({
     <div
       data-row-id={id}
       className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 text-sm transition ${
-        selected ? "border-blue-400 bg-blue-50 text-blue-800" : "border-slate-200 bg-white hover:border-blue-200"
+        selected
+          ? "border-blue-400 bg-blue-50 text-blue-800 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+          : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
       } ${inactive ? "opacity-50" : ""} ${dragging ? "opacity-40" : ""}`}
     >
       <span
@@ -164,7 +166,7 @@ function Row({
         onPointerMove={onDragHandlePointerMove}
         onPointerUp={onDragHandlePointerEnd}
         onPointerCancel={onDragHandlePointerEnd}
-        className="shrink-0 cursor-grab select-none rounded p-1 text-slate-300 active:cursor-grabbing active:bg-slate-100"
+        className="shrink-0 cursor-grab select-none rounded p-1 text-slate-300 active:cursor-grabbing active:bg-slate-100 dark:text-slate-600 dark:active:bg-slate-800"
         style={{ touchAction: "none" }}
         aria-label="সরান"
       >
@@ -172,20 +174,20 @@ function Row({
       </span>
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate px-1 text-left">
         {label}
-        {inactive && <span className="ml-1.5 text-[10px] text-slate-400">(নিষ্ক্রিয়)</span>}
+        {inactive && <span className="ml-1.5 text-[10px] text-slate-400 dark:text-slate-500">(নিষ্ক্রিয়)</span>}
       </button>
       {trailing}
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700"
+        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
       >
         <Pencil size={13} />
       </button>
       <button
         type="button"
         onClick={onDelete}
-        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-600"
+        className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400"
       >
         <Trash2 size={13} />
       </button>
@@ -388,8 +390,8 @@ export default function SuperAdminCatalogPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* DIVISIONS */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">বিভাগ</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">বিভাগ</h2>
           {loadingDivisions ? (
             <SkeletonList items={4} />
           ) : (
@@ -413,7 +415,7 @@ export default function SuperAdminCatalogPage() {
                   onDelete={() => setConfirmTarget({ kind: "division", id: d.id, label: d.label || d.name || "" })}
                 />
               ))}
-              {!divisions.length && <p className="py-2 text-center text-xs text-slate-400">কোনো বিভাগ নেই</p>}
+              {!divisions.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো বিভাগ নেই</p>}
               <AddRow
                 placeholder="নতুন বিভাগ যোগ করুন"
                 onAdd={async (name) => {
@@ -427,10 +429,10 @@ export default function SuperAdminCatalogPage() {
         </div>
 
         {/* CLASSES */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">শ্রেণি</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">শ্রেণি</h2>
           {!divisionId ? (
-            <p className="py-6 text-center text-xs text-slate-400">প্রথমে একটি বিভাগ নির্বাচন করুন</p>
+            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">প্রথমে একটি বিভাগ নির্বাচন করুন</p>
           ) : loadingClasses ? (
             <SkeletonList items={4} />
           ) : (
@@ -463,7 +465,9 @@ export default function SuperAdminCatalogPage() {
                         if (divisionId) await loadClasses(divisionId);
                       }}
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        c.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+                        c.is_active
+                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                       }`}
                     >
                       {c.is_active ? "সক্রিয়" : "নিষ্ক্রিয়"}
@@ -471,7 +475,7 @@ export default function SuperAdminCatalogPage() {
                   }
                 />
               ))}
-              {!classes.length && <p className="py-2 text-center text-xs text-slate-400">কোনো শ্রেণি নেই</p>}
+              {!classes.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো শ্রেণি নেই</p>}
               <AddRow
                 placeholder="নতুন শ্রেণি যোগ করুন"
                 onAdd={async (name) => {
@@ -485,10 +489,10 @@ export default function SuperAdminCatalogPage() {
         </div>
 
         {/* BOOKS */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">কিতাব</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">কিতাব</h2>
           {!classId ? (
-            <p className="py-6 text-center text-xs text-slate-400">প্রথমে একটি শ্রেণি নির্বাচন করুন</p>
+            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">প্রথমে একটি শ্রেণি নির্বাচন করুন</p>
           ) : loadingBooks ? (
             <SkeletonList items={4} />
           ) : (
@@ -510,7 +514,7 @@ export default function SuperAdminCatalogPage() {
                   onDelete={() => setConfirmTarget({ kind: "book", id: b.id, label: b.label || b.name || "" })}
                 />
               ))}
-              {!books.length && <p className="py-2 text-center text-xs text-slate-400">কোনো কিতাব নেই</p>}
+              {!books.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো কিতাব নেই</p>}
               <AddRow
                 placeholder="নতুন কিতাব যোগ করুন"
                 onAdd={async (name) => {

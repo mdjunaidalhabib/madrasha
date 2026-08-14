@@ -92,10 +92,10 @@ export default function GeneralGradeList({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center gap-2">
-        <BarChart3 className="text-blue-600" size={20} />
-        <h2 className="text-lg font-bold text-slate-900">সাধারণ গ্রেড</h2>
+        <BarChart3 className="text-blue-600 dark:text-blue-400" size={20} />
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">সাধারণ গ্রেড</h2>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -122,7 +122,7 @@ export default function GeneralGradeList({
       </div>
 
       {gradeGaps.length > 0 && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
           ⚠️ গ্রেড রেঞ্জের মাঝে ফাঁক আছে:{" "}
           {gradeGaps.map((g) => (g.from === g.to ? `${g.from}` : `${g.from}-${g.to}`)).join(", ")}
           {" "}— এই নম্বর পেলে সঠিক গ্রেড বসবে না।
@@ -139,17 +139,17 @@ export default function GeneralGradeList({
             return (
               <div
                 key={g.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
               >
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
                   {g.name}{" "}
-                  <span className="font-normal text-slate-500">
+                  <span className="font-normal text-slate-500 dark:text-slate-400">
                     ({minMark ?? "-"} - {maxMark ?? "-"})
                   </span>
                 </span>
                 <button
                   onClick={() => del(g.id, g.name)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
                   aria-label="মুছে ফেলুন"
                   title="মুছে ফেলুন"
                 >

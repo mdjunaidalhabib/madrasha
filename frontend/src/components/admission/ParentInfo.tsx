@@ -9,12 +9,14 @@ interface Props {
 
 const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors }) => {
   const inputClass = (field: keyof AdmissionFormData) =>
-    `border rounded-lg px-3 py-2 outline-none focus:ring-2 ${
-      errors[field] ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-green-500"
+    `border rounded-lg px-3 py-2 outline-none focus:ring-2 dark:bg-slate-800 dark:text-slate-100 ${
+      errors[field]
+        ? "border-red-500 focus:ring-red-500 dark:border-red-600"
+        : "border-gray-300 focus:ring-green-500 dark:border-slate-700"
     }`;
 
   const ErrorText = ({ field }: { field: keyof AdmissionFormData }) =>
-    errors[field] ? <p className="text-red-500 text-xs mt-1">{errors[field]}</p> : null;
+    errors[field] ? <p className="text-red-500 text-xs mt-1 dark:text-red-400">{errors[field]}</p> : null;
 
   const clearError = (field: keyof AdmissionFormData) => {
     setErrors((prev) => {
@@ -36,12 +38,12 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6">
-      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">অভিভাবকের তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-200 dark:border-slate-700">অভিভাবকের তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পিতার নাম</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম</label>
           <input
             name="fatherName"
             value={formData.fatherName || ""}
@@ -53,7 +55,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পিতার আরবি নাম</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার আরবি নাম</label>
           <input
             name="fatherArabicName"
             value={formData.fatherArabicName || ""}
@@ -65,7 +67,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পিতার NID</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার NID</label>
           <input
             name="fatherNid"
             value={formData.fatherNid || ""}
@@ -77,7 +79,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পিতার পেশা</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার পেশা</label>
           <input
             name="fatherOccupation"
             value={formData.fatherOccupation || ""}
@@ -89,7 +91,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">মাতার নাম</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম</label>
           <input
             name="motherName"
             value={formData.motherName || ""}
@@ -101,7 +103,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">মাতার NID</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার NID</label>
           <input
             name="motherNid"
             value={formData.motherNid || ""}
@@ -113,7 +115,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">মাতার পেশা</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার পেশা</label>
           <input
             name="motherOccupation"
             value={formData.motherOccupation || ""}
@@ -125,7 +127,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">অভিভাবকের মোবাইল নম্বর</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের মোবাইল নম্বর</label>
           <input
             name="parentPhone"
             value={formData.parentPhone || ""}
@@ -137,7 +139,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             অভিভাবকের বিকল্প মোবাইল নম্বর
           </label>
           <input

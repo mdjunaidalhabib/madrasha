@@ -128,24 +128,24 @@ export default function ReportPage() {
       </div>
 
       <div className="no-print grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">মোট আয়</p>
-          <p className="mt-2 text-2xl font-bold text-emerald-600">{money(totals.income)}</p>
+        <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">মোট আয়</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{money(totals.income)}</p>
         </div>
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">মোট ব্যয়</p>
-          <p className="mt-2 text-2xl font-bold text-rose-600">{money(totals.expense)}</p>
+        <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">মোট ব্যয়</p>
+          <p className="mt-2 text-2xl font-bold text-rose-600 dark:text-rose-400">{money(totals.expense)}</p>
         </div>
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">ব্যালেন্স</p>
-          <p className="mt-2 text-2xl font-bold text-blue-700">
+        <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">ব্যালেন্স</p>
+          <p className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-400">
             {money(totals.income - totals.expense)}
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="no-print rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center text-rose-600">
+        <div className="no-print rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-400">
           {error}
         </div>
       )}

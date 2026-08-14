@@ -40,16 +40,16 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Default Users</h3>
+      <h3 className="text-lg font-semibold dark:text-slate-100">Default Users</h3>
 
       {defaultUsers.map((user, index) => (
-        <div key={user.role} className="border rounded-lg p-4 space-y-3 bg-gray-50">
+        <div key={user.role} className="border rounded-lg p-4 space-y-3 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between">
-            <span className="font-medium">{roleLabel(user.role)}</span>
+            <span className="font-medium dark:text-slate-200">{roleLabel(user.role)}</span>
 
             {/* Muhtamim always enabled */}
             {user.role === "muhtamim" ? (
-              <span className="text-green-600 text-sm font-medium">Required</span>
+              <span className="text-green-600 text-sm font-medium dark:text-green-400">Required</span>
             ) : (
               <ToggleSwitch
                 checked={user.enabled}
@@ -66,11 +66,11 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
               value={user.email}
               disabled={!user.enabled}
               onChange={(e) => updateUser(index, "email", e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
 
             {errors[user.role + "_email"] && (
-              <p className="text-red-500 text-sm">{errors[user.role + "_email"]}</p>
+              <p className="text-red-500 text-sm dark:text-red-400">{errors[user.role + "_email"]}</p>
             )}
           </div>
 
@@ -83,14 +83,14 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
                 value={user.password}
                 disabled={!user.enabled}
                 onChange={(e) => updateUser(index, "password", e.target.value)}
-                className="w-full border rounded px-3 py-2 pr-10"
+                className="w-full border rounded px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
 
               <button
                 type="button"
                 onClick={() => toggleVisible(user.role)}
                 disabled={!user.enabled}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 disabled:opacity-40"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={visibleRoles[user.role] ? "Hide password" : "Show password"}
                 tabIndex={-1}
               >
@@ -99,7 +99,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
             </div>
 
             {errors[user.role + "_password"] && (
-              <p className="text-red-500 text-sm">{errors[user.role + "_password"]}</p>
+              <p className="text-red-500 text-sm dark:text-red-400">{errors[user.role + "_password"]}</p>
             )}
           </div>
         </div>
@@ -123,7 +123,7 @@ function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
       type="button"
       onClick={onChange}
       className={`w-12 h-6 flex items-center rounded-full p-1 transition ${
-        checked ? "bg-green-500" : "bg-gray-300"
+        checked ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"
       }`}
     >
       <div

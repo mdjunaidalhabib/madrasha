@@ -35,26 +35,26 @@ export default function CreateTemplateModal({
     <Modal open={open} title="নতুন টেমপ্লেট তৈরি করুন" onClose={onClose} maxWidthClassName="max-w-md">
       <form onSubmit={handleSubmit} className="grid gap-4">
         <div className="grid gap-2">
-          <label className="text-xs font-medium text-slate-600">টেমপ্লেটের নাম</label>
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">টেমপ্লেটের নাম</label>
           <input
             autoFocus
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             placeholder="যেমন: হিফজ বিভাগের আইডি কার্ড"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
             নাম দিয়ে "তৈরি করুন" চাপলে খালি ডিজাইনার খুলবে — সেখানে ব্যাকগ্রাউন্ড, ফিল্ড ও লেআউট সাজানো যাবে।
           </p>
         </div>
 
-        {error && <div className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
+        {error && <div className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>

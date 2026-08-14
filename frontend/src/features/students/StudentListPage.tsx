@@ -281,8 +281,8 @@ const StudentListPage = () => {
       <span
         className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
           expelled
-            ? "border-red-300 bg-red-100 text-red-700"
-            : "border-green-300 bg-green-100 text-green-700"
+            ? "border-red-300 bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
+            : "border-green-300 bg-green-100 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400"
         }`}
       >
         {expelled ? "বহিষ্কৃত" : "সক্রিয়"}
@@ -344,13 +344,13 @@ const StudentListPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ছাত্র তালিকা</h1>
-            <p className="mt-1 text-sm text-gray-500">মোট ছাত্র: {filteredStudents.length} জন</p>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছাত্র তালিকা</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">মোট ছাত্র: {filteredStudents.length} জন</p>
           </div>
 
           <button
@@ -363,7 +363,7 @@ const StudentListPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
               <input
@@ -371,14 +371,14 @@ const StudentListPage = () => {
                 placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[240px]"
+                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[240px]"
               />
 
               {/* সেশন ফিল্টার — ডিফল্টে চলমান সেশন নির্বাচিত থাকে */}
               <select
                 value={selectedSessionId ?? ""}
                 onChange={(event) => setSelectedSessionId(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
               >
                 <option value="">সব সেশন</option>
                 {sessions.map((s) => (
@@ -396,7 +396,7 @@ const StudentListPage = () => {
                   setSelectedDivision(value);
                   loadClassesByDivision(value);
                 }}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
               >
                 <option value="">সব বিভাগ</option>
 
@@ -411,7 +411,7 @@ const StudentListPage = () => {
                 value={selectedClass}
                 onChange={(event) => setSelectedClass(event.target.value)}
                 disabled={!selectedDivision || classLoading}
-                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 sm:col-auto sm:w-[180px]"
+                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:col-auto sm:w-[180px]"
               >
                 <option value="">
                   {classLoading
@@ -433,7 +433,7 @@ const StudentListPage = () => {
               <button
                 type="button"
                 onClick={() => setBulkUpdateOpen(true)}
-                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
               >
                 বাল্ক আপডেট
               </button>
@@ -456,8 +456,8 @@ const StudentListPage = () => {
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
-            <p className="text-sm font-medium text-red-700">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
               {toBanglaDigits(selectedIds.size)} জন নির্বাচিত হয়েছে
             </p>
             <button
@@ -472,7 +472,7 @@ const StudentListPage = () => {
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
             {error}
           </div>
         )}
@@ -481,7 +481,7 @@ const StudentListPage = () => {
         {loading ? (
           <SkeletonTable rows={8} columns={3 + visibleColumns.size} />
         ) : filteredStudents.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             কোন ছাত্র পাওয়া যায়নি
           </div>
         ) : (
@@ -491,51 +491,51 @@ const StudentListPage = () => {
               {paginatedStudents.map((student) => (
                 <div
                   key={student.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
                 >
-                  <div className="mb-3 flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+                  <div className="mb-3 flex items-start justify-between gap-2 border-b border-gray-100 pb-3 dark:border-slate-800">
                     <div className="flex items-start gap-2">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(String(student.id))}
                         onChange={() => toggleSelectOne(student.id)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300"
+                        className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                       />
                       <div>
-                        <p className="text-base font-semibold text-gray-800">
+                        <p className="text-base font-semibold text-gray-800 dark:text-slate-100">
                           {student.name_bn || student.name || "নেই"}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
                           রেজিস্ট্রেশন: {student.registration_no || "নেই"}
                         </p>
                         <div className="mt-1">{statusBadge(student.is_active)}</div>
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
                       রোল {student.roll || "নেই"}
                     </span>
                   </div>
 
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     <div>
-                      <dt className="text-xs text-gray-400">বাবার নাম</dt>
-                      <dd className="text-gray-700">{student.father_name || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">বাবার নাম</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.father_name || "নেই"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400">ফোন</dt>
-                      <dd className="text-gray-700">{student.guardian_phone || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">ফোন</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.guardian_phone || "নেই"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400">শিক্ষাবর্ষ</dt>
-                      <dd className="text-gray-700">{student.academic_year || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">শিক্ষাবর্ষ</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.academic_year || "নেই"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400">বিভাগ</dt>
-                      <dd className="text-gray-700">{getDivisionName(student.division_id)}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">বিভাগ</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{getDivisionName(student.division_id)}</dd>
                     </div>
                     <div className="col-span-2">
-                      <dt className="text-xs text-gray-400">বর্তমান শ্রেণি</dt>
-                      <dd className="text-gray-700">
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">বর্তমান শ্রেণি</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">
                         {getClassName(
                           student.class_id,
                           student.current_class || student.class_name || student.class,
@@ -556,78 +556,78 @@ const StudentListPage = () => {
             </div>
 
             {/* Desktop / large tablet: table (md and up) */}
-            <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+            <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 md:block">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] border-collapse text-center">
                   <thead className="bg-blue-800 text-sm text-white">
                     <tr>
-                      <th className="border p-2.5">
+                      <th className="border p-2.5 dark:border-slate-700">
                         <input
                           type="checkbox"
                           checked={allFilteredSelected}
                           onChange={toggleSelectAll}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         />
                       </th>
-                      {isColumnVisible("roll") && <th className="border p-2.5">রোল নম্বর</th>}
+                      {isColumnVisible("roll") && <th className="border p-2.5 dark:border-slate-700">রোল নম্বর</th>}
                       {isColumnVisible("registration") && (
-                        <th className="border p-2.5">রেজিস্ট্রেশন নম্বর</th>
+                        <th className="border p-2.5 dark:border-slate-700">রেজিস্ট্রেশন নম্বর</th>
                       )}
-                      <th className="border p-2.5">নাম</th>
-                      {isColumnVisible("fatherName") && <th className="border p-2.5">বাবার নাম</th>}
-                      {isColumnVisible("phone") && <th className="border p-2.5">ফোন</th>}
+                      <th className="border p-2.5 dark:border-slate-700">নাম</th>
+                      {isColumnVisible("fatherName") && <th className="border p-2.5 dark:border-slate-700">বাবার নাম</th>}
+                      {isColumnVisible("phone") && <th className="border p-2.5 dark:border-slate-700">ফোন</th>}
                       {isColumnVisible("academicYear") && (
-                        <th className="border p-2.5">শিক্ষাবর্ষ</th>
+                        <th className="border p-2.5 dark:border-slate-700">শিক্ষাবর্ষ</th>
                       )}
-                      {isColumnVisible("division") && <th className="border p-2.5">বিভাগ</th>}
+                      {isColumnVisible("division") && <th className="border p-2.5 dark:border-slate-700">বিভাগ</th>}
                       {isColumnVisible("currentClass") && (
-                        <th className="border p-2.5">বর্তমান শ্রেণি</th>
+                        <th className="border p-2.5 dark:border-slate-700">বর্তমান শ্রেণি</th>
                       )}
-                      {isColumnVisible("status") && <th className="border p-2.5">স্ট্যাটাস</th>}
-                      <th className="border p-2.5">একশন</th>
+                      {isColumnVisible("status") && <th className="border p-2.5 dark:border-slate-700">স্ট্যাটাস</th>}
+                      <th className="border p-2.5 dark:border-slate-700">একশন</th>
                     </tr>
                   </thead>
 
                   <tbody className="text-sm">
                     {paginatedStudents.map((student) => (
-                      <tr key={student.id} className="border-t transition hover:bg-gray-50">
-                        <td className="border p-2.5">
+                      <tr key={student.id} className="border-t transition hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                        <td className="border p-2.5 dark:border-slate-700">
                           <input
                             type="checkbox"
                             checked={selectedIds.has(String(student.id))}
                             onChange={() => toggleSelectOne(student.id)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                           />
                         </td>
 
                         {isColumnVisible("roll") && (
-                          <td className="border p-2.5">{student.roll || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{student.roll || "নেই"}</td>
                         )}
 
                         {isColumnVisible("registration") && (
-                          <td className="border p-2.5">{student.registration_no || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{student.registration_no || "নেই"}</td>
                         )}
 
-                        <td className="border p-2.5">{student.name_bn || student.name || "নেই"}</td>
+                        <td className="border p-2.5 dark:border-slate-700">{student.name_bn || student.name || "নেই"}</td>
 
                         {isColumnVisible("fatherName") && (
-                          <td className="border p-2.5">{student.father_name || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{student.father_name || "নেই"}</td>
                         )}
 
                         {isColumnVisible("phone") && (
-                          <td className="border p-2.5">{student.guardian_phone || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{student.guardian_phone || "নেই"}</td>
                         )}
 
                         {isColumnVisible("academicYear") && (
-                          <td className="border p-2.5">{student.academic_year || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{student.academic_year || "নেই"}</td>
                         )}
 
                         {isColumnVisible("division") && (
-                          <td className="border p-2.5">{getDivisionName(student.division_id)}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{getDivisionName(student.division_id)}</td>
                         )}
 
                         {isColumnVisible("currentClass") && (
-                          <td className="border p-2.5">
+                          <td className="border p-2.5 dark:border-slate-700">
                             {getClassName(
                               student.class_id,
                               student.current_class || student.class_name || student.class,
@@ -636,10 +636,10 @@ const StudentListPage = () => {
                         )}
 
                         {isColumnVisible("status") && (
-                          <td className="border p-2.5">{statusBadge(student.is_active)}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{statusBadge(student.is_active)}</td>
                         )}
 
-                        <td className="border p-2.5">
+                        <td className="border p-2.5 dark:border-slate-700">
                           <button
                             type="button"
                             onClick={() => navigate(`${adminBase}/students/${student.id}`)}
@@ -656,8 +656,8 @@ const StudentListPage = () => {
             </div>
 
             {/* Pagination — ২০/৫০/১০০ জন করে পাতায় দেখায়, বাকিরা Prev/Next দিয়ে */}
-            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm sm:flex-row">
-              <div className="flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
+            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:flex-row">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 sm:text-sm">
                 <span>
                   দেখাচ্ছে {toBanglaDigits(rangeStart)}–{toBanglaDigits(rangeEnd)}, মোট{" "}
                   {toBanglaDigits(filteredStudents.length)} জন
@@ -665,7 +665,7 @@ const StudentListPage = () => {
                 <select
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none sm:text-sm"
+                  className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:text-sm"
                 >
                   {[20, 50, 100].map((size) => (
                     <option key={size} value={size}>
@@ -680,18 +680,18 @@ const StudentListPage = () => {
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 sm:text-sm"
+                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
                 >
                   আগের
                 </button>
-                <span className="text-xs text-gray-600 sm:text-sm">
+                <span className="text-xs text-gray-600 dark:text-slate-400 sm:text-sm">
                   পাতা {toBanglaDigits(currentPage)} / {toBanglaDigits(totalPages)}
                 </span>
                 <button
                   type="button"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 sm:text-sm"
+                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
                 >
                   পরের
                 </button>

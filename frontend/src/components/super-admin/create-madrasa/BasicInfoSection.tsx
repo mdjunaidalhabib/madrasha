@@ -18,7 +18,7 @@ export default function BasicInfoSection({ data, errors, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <h4 className="font-semibold text-gray-700">Basic Information</h4>
+      <h4 className="font-semibold text-gray-700 dark:text-slate-200">Basic Information</h4>
 
       <Field label="Madrasa Name *" error={errors.name}>
         <Input
@@ -62,11 +62,11 @@ type FieldProps = {
 function Field({ label, children, error }: FieldProps) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
+      <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">{label}</label>
 
       {children}
 
-      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+      {error && <p className="text-xs text-red-600 mt-1 dark:text-red-400">{error}</p>}
     </div>
   );
 }

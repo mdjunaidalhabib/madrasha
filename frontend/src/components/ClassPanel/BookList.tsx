@@ -18,16 +18,16 @@ export default function BookList({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium text-gray-700">বই নির্বাচন করুন</h2>
+        <h2 className="font-medium text-gray-700 dark:text-slate-100">বই নির্বাচন করুন</h2>
         {books.length > 0 && (
-          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
             {selectedBooks.length} / {books.length} নির্বাচিত
           </span>
         )}
       </div>
 
       {books.length === 0 ? (
-        <p className="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400">
+        <p className="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
           কোনো বই পাওয়া যায়নি
         </p>
       ) : (
@@ -45,12 +45,12 @@ export default function BookList({
                   ${
                     active
                       ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-slate-800"
                   }`}
               >
                 <span
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px]
-                    ${active ? "border-white/80 bg-white/20" : "border-gray-300 group-hover:border-blue-400"}`}
+                    ${active ? "border-white/80 bg-white/20" : "border-gray-300 group-hover:border-blue-400 dark:border-slate-600"}`}
                 >
                   {active && "✓"}
                 </span>

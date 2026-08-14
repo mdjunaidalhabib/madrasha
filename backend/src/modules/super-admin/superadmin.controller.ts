@@ -145,6 +145,17 @@ export const getSuperAdminStats = async (_req: Request, res: Response) => {
   }
 };
 
+/* ================= SUPER ADMIN DASHBOARD TRENDS ================= */
+export const getSuperAdminDashboardTrends = async (req: Request, res: Response) => {
+  try {
+    const groupBy = String(req.query.groupBy || "monthly");
+    const trends = await superAdminService.getDashboardTrends(groupBy);
+    res.json(trends);
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 /* ================= MADRASA ROLES (for user setup dropdown) ================= */
 export const listMadrasaRoles = async (req: Request, res: Response) => {
   try {

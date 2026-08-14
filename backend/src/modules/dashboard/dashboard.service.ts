@@ -1,5 +1,10 @@
+import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { dashboardRepository, DashboardRepository } from "./dashboard.repository";
-import { DashboardSummary } from "./dashboard.types";
+import { DASHBOARD_TREND_DEFAULT_LIMIT, DASHBOARD_TREND_ROW_LIMIT } from "./dashboard.constants";
+import { DashboardSummary, DashboardTrends } from "./dashboard.types";
+
+const ACCOUNTS_DATE_COLUMN = "COALESCE(entry_date, CAST(created_at AS DATE))";
+const ATTENDANCE_DATE_COLUMN = "date";
 
 export class DashboardService {
   constructor(private readonly repository: DashboardRepository = dashboardRepository) {}
@@ -71,6 +76,37 @@ export class DashboardService {
         totalDue: overdueTotalDue,
       },
       upcomingExams,
+    };
+  }
+
+  async getTrends(madrasaId: number, groupBy: string): Promise<DashboardTrends> {
+    const limit = DASHBOARD_TREND_ROW_LIMIT[groupBy] ?? DASHBOARD_TREND_DEFAULT_LIMIT;
+    const accountsPeriodExpr = buildPeriodExpr(groupBy, ACCOUNTS_DATE_COLUMN);
+    const attendancePeriodExpr = buildPeriodExpr(groupBy, ATTENDANCE_DATE_COLUMN);
+
+    const [incomeExpenseRows, attendanceRows] = await Promise.all([
+      this.repository.findIncomeExpenseTrend(madrasaId, accountsPeriodExpr, limit),
+      this.repository.findAttendanceRateTrend(madrasaId, attendancePeriodExpr, limit),
+    ]);
+
+    return {
+      incomeExpense: incomeExpenseRows
+        .map((row) => ({
+          period: String(row.period),
+          total_income: Number(row.total_income || 0),
+          total_expense: Number(row.total_expense || 0),
+        }))
+        .reverse(),
+      attendance: attendanceRows
+        .map((row) => {
+          const total = Number(row.total || 0);
+          const present = Number(row.present || 0);
+          return {
+            period: String(row.period),
+            percentage: total > 0 ? Math.round((present / total) * 1000) / 10 : 0,
+          };
+        })
+        .reverse(),
     };
   }
 }

@@ -23,7 +23,7 @@ export default function ClassesSection({ groups, classes, setClasses }: Props) {
 
   return (
     <div>
-      <p className="text-xs text-gray-500 mb-2">Total Classes: {total}</p>
+      <p className="text-xs text-gray-500 mb-2 dark:text-slate-400">Total Classes: {total}</p>
 
       <ToggleSection title="Classes" groups={groups} selected={classes} setSelected={setClasses} />
     </div>

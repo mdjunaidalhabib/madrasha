@@ -139,10 +139,10 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center gap-2">
         <GraduationCap className="text-blue-600" size={20} />
-        <h2 className="text-lg font-bold text-slate-900">পরীক্ষাসমূহ</h2>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষাসমূহ</h2>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -168,7 +168,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
       ) : (
         <div className="space-y-2">
           {items.length > 1 && (
-            <p className="text-xs text-slate-400">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
           )}
 
           {items.map((e) => {
@@ -184,12 +184,12 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                 onDragEnd={handleDragEnd}
                 className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
                   draggingId === e.id
-                    ? "border-blue-300 bg-blue-50 opacity-60"
+                    ? "border-blue-300 bg-blue-50 opacity-60 dark:border-blue-800 dark:bg-blue-950/40"
                     : dragOverId === e.id
-                      ? "border-blue-300 bg-blue-50"
+                      ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40"
                       : isEditing
-                        ? "border-blue-300 bg-blue-50"
-                        : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                        ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 }`}
               >
                 {isEditing ? (
@@ -213,7 +213,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                       <button
                         onClick={() => saveEdit(e.id)}
                         disabled={saving}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-950/40"
                         aria-label="সংরক্ষণ করুন"
                         title="সংরক্ষণ করুন"
                       >
@@ -222,7 +222,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                       <button
                         onClick={cancelEdit}
                         disabled={saving}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
                         aria-label="বাতিল করুন"
                         title="বাতিল করুন"
                       >
@@ -234,22 +234,22 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                   <>
                     <div className="flex items-center gap-2.5">
                       <span
-                        className="cursor-grab text-slate-400 active:cursor-grabbing"
+                        className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
                         title="টেনে সরান"
                       >
                         <GripVertical size={18} />
                       </span>
 
                       <div>
-                        <p className="font-semibold text-slate-800">{e.name}</p>
-                        <p className="text-xs text-slate-500">{e.year}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{e.year}</p>
                       </div>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => startEdit(e)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
                         aria-label="সম্পাদনা করুন"
                         title="সম্পাদনা করুন"
                       >
@@ -257,7 +257,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                       </button>
                       <button
                         onClick={() => deleteExam(e.id, e.name)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
                         aria-label="মুছে ফেলুন"
                         title="মুছে ফেলুন"
                       >

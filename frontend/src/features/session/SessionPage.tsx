@@ -129,37 +129,37 @@ const SessionPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">সেশন সেটাপ</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">সেশন সেটাপ</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             শিক্ষাবর্ষ/সেশন তৈরি করুন — প্রতিটি সেশনের শুরু ও শেষের তারিখ অনুযায়ী মাসিক ফি
             স্বয়ংক্রিয়ভাবে হিসাব হবে
           </p>
         </div>
 
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">নতুন সেশন তৈরি করুন</h2>
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">নতুন সেশন তৈরি করুন</h2>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <input
               type="text"
               placeholder="সেশনের নাম (যেমন: ২০২৬)"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[180px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[180px]"
             />
             <input
               type="date"
               value={form.start_date}
               onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             />
             <input
               type="date"
               value={form.end_date}
               onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             />
             <button
               type="button"
@@ -172,31 +172,31 @@ const SessionPage = () => {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {sessions.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">কোনো সেশন নেই</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো সেশন নেই</div>
           ) : (
             <div className="flex flex-col gap-2">
               {sessions.map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-sm transition hover:border-blue-200"
+                  className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-sm transition hover:border-blue-200 dark:border-slate-800 dark:hover:border-blue-800"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-medium text-gray-800">{session.name}</span>
+                      <span className="font-medium text-gray-800 dark:text-slate-200">{session.name}</span>
                       {session.isCurrent && (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                           চলমান
                         </span>
                       )}
                       {!session.isActive && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                           নিষ্ক্রিয়
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 text-xs text-gray-500">
+                    <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
                       {formatDate(session.startDate)} – {formatDate(session.endDate)}
                     </div>
                   </div>
@@ -206,7 +206,7 @@ const SessionPage = () => {
                         type="button"
                         title="চলমান সেশন হিসেবে সেট করুন"
                         onClick={() => handleSetCurrent(session)}
-                        className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50"
+                        className="rounded-md p-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
                       >
                         <Star size={14} />
                       </button>
@@ -215,7 +215,7 @@ const SessionPage = () => {
                       type="button"
                       title="এডিট"
                       onClick={() => openEditModal(session)}
-                      className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50"
+                      className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                     >
                       <Pencil size={14} />
                     </button>
@@ -223,7 +223,7 @@ const SessionPage = () => {
                       type="button"
                       title="মুছুন"
                       onClick={() => handleDelete(session)}
-                      className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                      className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -238,30 +238,30 @@ const SessionPage = () => {
       <Modal open={!!editTarget} title={`সেশন এডিট করুন — ${editTarget?.name || ""}`} onClose={() => setEditTarget(null)}>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">নাম</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নাম</label>
             <input
               type="text"
               value={editForm.name}
               onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">শুরুর তারিখ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শুরুর তারিখ</label>
             <input
               type="date"
               value={editForm.start_date}
               onChange={(e) => setEditForm((p) => ({ ...p, start_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">শেষের তারিখ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শেষের তারিখ</label>
             <input
               type="date"
               value={editForm.end_date}
               onChange={(e) => setEditForm((p) => ({ ...p, end_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
         </div>
@@ -269,7 +269,7 @@ const SessionPage = () => {
           <button
             type="button"
             onClick={() => setEditTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>

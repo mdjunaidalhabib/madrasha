@@ -10,10 +10,10 @@ export default function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded bg-white p-8 text-center shadow">
+    <div className="rounded bg-white p-8 text-center shadow dark:bg-slate-900">
       <div className="text-2xl">📭</div>
-      <h3 className="mt-2 text-lg font-semibold">{title}</h3>
-      {hint && <p className="mt-1 text-sm text-gray-600">{hint}</p>}
+      <h3 className="mt-2 text-lg font-semibold dark:text-slate-100">{title}</h3>
+      {hint && <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">{hint}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );

@@ -17,7 +17,7 @@ export function ToggleSwitch({
       title={title}
       aria-pressed={checked}
       className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition ${
-        checked ? "bg-blue-600" : "bg-gray-300"
+        checked ? "bg-blue-600" : "bg-gray-300 dark:bg-slate-700"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       <span
@@ -37,7 +37,7 @@ export function PublishToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
       <ToggleSwitch checked={checked} onChange={onChange} />
       প্রকাশ করুন
     </label>

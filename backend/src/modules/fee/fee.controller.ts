@@ -74,13 +74,6 @@ export const waiveInvoice = asyncHandler(async (req: Request, res: Response) => 
   return ApiResponse.success(res, { message: "Invoice waived successfully", data });
 });
 
-/* ================= STUDENT ACCOUNT STATEMENT ================= */
-
-export const getStudentStatement = asyncHandler(async (req: Request, res: Response) => {
-  const data = await feeService.getStudentStatement(getMadrasaId(req), Number(req.params.id));
-  res.json({ success: true, data });
-});
-
 /* ================= MANUAL PAYMENT METHOD SETUP ================= */
 
 export const getPaymentMethodSettings = asyncHandler(async (req: Request, res: Response) => {

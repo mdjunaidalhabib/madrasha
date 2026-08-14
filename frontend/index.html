@@ -9,6 +9,17 @@
       content="QMS হলো কওমি মাদ্রাসার জন্য একটি সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Student, Teacher, Admission, Attendance, Examination, Accounts ও Reports এক প্ল্যাটফর্মে। Powered by Hikmah IT."
     />
     <meta name="theme-color" content="#059669" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var isDark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isDark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,7 +35,7 @@
       />
     </noscript>
   </head>
-  <body class="bg-gray-100">
+  <body class="bg-gray-100 dark:bg-slate-950">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

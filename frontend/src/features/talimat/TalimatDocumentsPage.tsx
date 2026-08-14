@@ -618,10 +618,10 @@ export default function TalimatDocumentsPage() {
               key={item.key}
               type="button"
               onClick={() => setActiveKey(item.key)}
-              className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200"}`}
+              className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
             >
               <span className="block font-bold">{item.title}</span>
-              <span className="mt-1 block text-xs text-slate-500">{item.subtitle}</span>
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>
             </button>
           ))}
         </div>
@@ -707,15 +707,15 @@ export default function TalimatDocumentsPage() {
             key={item.key}
             type="button"
             onClick={() => setActiveKey(item.key)}
-            className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200"}`}
+            className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
           >
             <span className="block font-bold">{item.title}</span>
-            <span className="mt-1 block text-xs text-slate-500">{item.subtitle}</span>
+            <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>
           </button>
         ))}
       </div>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
         নাম, পিতা, রেজিস্ট্রেশন নম্বর, রোল, শ্রেণি, বিভাগ, সেশন, পরীক্ষার নাম — এই তথ্যগুলো সবসময়
         শিক্ষার্থীর প্রকৃত তথ্য থেকে স্বয়ংক্রিয়ভাবে বসবে, এখানে হাতে লিখে পরিবর্তন করা যাবে না।
         নিচে শুধু চারপাশের লেখা (বাক্য/নিয়ম-কানুন) এডিট করা যাবে, আর সেভ করলে সেটি প্রকৃত প্রিন্টেও
@@ -723,43 +723,43 @@ export default function TalimatDocumentsPage() {
       </div>
 
       {designMessage && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{designMessage}</div>
+        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{designMessage}</div>
       )}
-      {designError && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{designError}</div>}
+      {designError && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{designError}</div>}
       {admitDesignMessage && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{admitDesignMessage}</div>
+        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{admitDesignMessage}</div>
       )}
       {admitDesignError && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{admitDesignError}</div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{admitDesignError}</div>
       )}
       {letterDesignMessage && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{letterDesignMessage}</div>
+        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{letterDesignMessage}</div>
       )}
       {letterDesignError && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{letterDesignError}</div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{letterDesignError}</div>
       )}
       {bookLabelDesignMessage && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{bookLabelDesignMessage}</div>
+        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{bookLabelDesignMessage}</div>
       )}
       {bookLabelDesignError && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{bookLabelDesignError}</div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{bookLabelDesignError}</div>
       )}
-      {message && <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div>}
-      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {message && <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{message}</div>}
+      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
-        <section className="rounded-2xl border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">{active.title} — টেমপ্লেট এডিট</h2>
+        <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{active.title} — টেমপ্লেট এডিট</h2>
 
           <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold text-slate-500">
+            <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
               এই ডকুমেন্টে যেসব তথ্য স্বয়ংক্রিয়ভাবে বসে:
             </p>
             <div className="flex flex-wrap gap-2">
               {active.dataFields.map((label) => (
                 <span
                   key={label}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
                 >
                   {label}
                 </span>
@@ -769,7 +769,7 @@ export default function TalimatDocumentsPage() {
 
           {active.key === "id-card" && (
             <div className="mt-5 space-y-4">
-              <p className="text-sm font-medium text-gray-700">ডিজাইন বেছে নিন</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {ID_CARD_PRESETS.map((preset) => (
@@ -777,7 +777,7 @@ export default function TalimatDocumentsPage() {
                     key={preset.key}
                     type="button"
                     onClick={() => setDesignKey(preset.key)}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${designKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200"}`}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${designKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"}`}
                   >
                     <IdCardThumb>
                       {preset.key === "classic" && (
@@ -788,12 +788,12 @@ export default function TalimatDocumentsPage() {
                       )}
                       {preset.key === "arch" && <IdCardArch row={PREVIEW_ROW} madrasaName={madrasaName} />}
                     </IdCardThumb>
-                    <span className="text-xs font-semibold text-slate-700">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
                   </button>
                 ))}
 
                 <div
-                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${designKey === "custom" ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${designKey === "custom" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}
                 >
                   {customBg ? (
                     <button type="button" onClick={() => setDesignKey("custom")}>
@@ -806,12 +806,12 @@ export default function TalimatDocumentsPage() {
                       type="button"
                       onClick={() => fileRef.current?.click()}
                       style={{ width: `${54 * CARD_THUMB_SCALE}mm`, height: `${85.6 * CARD_THUMB_SCALE}mm` }}
-                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100"
+                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
                       নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
@@ -840,7 +840,7 @@ export default function TalimatDocumentsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 কাস্টম ডিজাইনে তুমি নিজের বানানো ব্যাকগ্রাউন্ড ছবি (Canva/Photoshop-এ ডিজাইন করা)
                 আপলোড করলে তার উপর শিক্ষার্থীর ছবি, নাম, রোল ইত্যাদি স্বয়ংক্রিয়ভাবে বসে যাবে।
               </p>
@@ -853,7 +853,7 @@ export default function TalimatDocumentsPage() {
 
           {isAdmitCard && (
             <div className="mt-5 space-y-4 border-b pb-6">
-              <p className="text-sm font-medium text-gray-700">ডিজাইন বেছে নিন</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {PRESET_LABELS.map((preset) => (
@@ -861,7 +861,7 @@ export default function TalimatDocumentsPage() {
                     key={preset.key}
                     type="button"
                     onClick={() => setAdmitDesignKey(preset.key)}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${admitDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200"}`}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${admitDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"}`}
                   >
                     <AdmitThumb>
                       {preset.key === "classic" && (
@@ -874,12 +874,12 @@ export default function TalimatDocumentsPage() {
                         <AdmitCardArch row={PREVIEW_ROW} madrasaName={madrasaName} rulesTemplate={admitRulesTemplate} />
                       )}
                     </AdmitThumb>
-                    <span className="text-xs font-semibold text-slate-700">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
                   </button>
                 ))}
 
                 <div
-                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${admitDesignKey === "custom" ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${admitDesignKey === "custom" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}
                 >
                   {admitCustomBg ? (
                     <button type="button" onClick={() => setAdmitDesignKey("custom")}>
@@ -892,12 +892,12 @@ export default function TalimatDocumentsPage() {
                       type="button"
                       onClick={() => admitFileRef.current?.click()}
                       style={{ width: ADMIT_THUMB_BASE * ADMIT_THUMB_SCALE, height: 150 }}
-                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100"
+                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
                       নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
@@ -935,8 +935,8 @@ export default function TalimatDocumentsPage() {
           {isLetterDoc && (
             <div className="mt-5 space-y-4 border-b pb-6">
               <div>
-                <p className="text-sm font-medium text-gray-700">ডিজাইন বেছে নিন</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   এই ডিজাইন সনদ, প্রত্যয়ন পত্র ও ছাড়পত্র — তিনটাতেই একসাথে প্রযোজ্য হবে।
                 </p>
               </div>
@@ -947,7 +947,7 @@ export default function TalimatDocumentsPage() {
                     key={preset.key}
                     type="button"
                     onClick={() => setLetterDesignKey(preset.key)}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${letterDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200"}`}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${letterDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"}`}
                   >
                     <LetterThumb>
                       <LetterDocument
@@ -961,12 +961,12 @@ export default function TalimatDocumentsPage() {
                         design={preset.key}
                       />
                     </LetterThumb>
-                    <span className="text-xs font-semibold text-slate-700">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
                   </button>
                 ))}
 
                 <div
-                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${letterDesignKey === "custom" ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${letterDesignKey === "custom" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}
                 >
                   {letterCustomBg ? (
                     <button type="button" onClick={() => setLetterDesignKey("custom")}>
@@ -989,12 +989,12 @@ export default function TalimatDocumentsPage() {
                       type="button"
                       onClick={() => letterFileRef.current?.click()}
                       style={{ width: LETTER_THUMB_BASE * LETTER_THUMB_SCALE, height: 220 }}
-                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100"
+                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
                       নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
@@ -1031,7 +1031,7 @@ export default function TalimatDocumentsPage() {
 
           {active.key === "book-label" && (
             <div className="mt-5 space-y-4">
-              <p className="text-sm font-medium text-gray-700">ডিজাইন বেছে নিন</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {PRESET_LABELS.map((preset) => (
@@ -1039,7 +1039,7 @@ export default function TalimatDocumentsPage() {
                     key={preset.key}
                     type="button"
                     onClick={() => setBookLabelDesignKey(preset.key)}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200"}`}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"}`}
                   >
                     <BookLabelThumb>
                       {preset.key === "classic" && (
@@ -1052,12 +1052,12 @@ export default function TalimatDocumentsPage() {
                         <BookLabelArch row={PREVIEW_ROW} madrasaName={madrasaName} />
                       )}
                     </BookLabelThumb>
-                    <span className="text-xs font-semibold text-slate-700">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
                   </button>
                 ))}
 
                 <div
-                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === "custom" ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === "custom" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}
                 >
                   {bookLabelCustomBg ? (
                     <button type="button" onClick={() => setBookLabelDesignKey("custom")}>
@@ -1070,12 +1070,12 @@ export default function TalimatDocumentsPage() {
                       type="button"
                       onClick={() => bookLabelFileRef.current?.click()}
                       style={{ width: `${92 * BOOK_LABEL_THUMB_SCALE}mm`, height: `${58 * BOOK_LABEL_THUMB_SCALE}mm` }}
-                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100"
+                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
                       নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
@@ -1104,7 +1104,7 @@ export default function TalimatDocumentsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 কাস্টম ডিজাইনে তুমি নিজের বানানো ব্যাকগ্রাউন্ড ছবি (Canva/Photoshop-এ ডিজাইন করা)
                 আপলোড করলে তার উপর শিক্ষার্থীর নাম, মেধাক্রম, রোল ইত্যাদি স্বয়ংক্রিয়ভাবে বসে যাবে।
               </p>
@@ -1118,7 +1118,7 @@ export default function TalimatDocumentsPage() {
           {active.templateKey ? (
             <div className="mt-5 space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   লেখার মধ্যে যোগ করুন (এগুলো নিজে থেকে সঠিক তথ্য দিয়ে পূরণ হবে)
                 </label>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -1127,7 +1127,7 @@ export default function TalimatDocumentsPage() {
                       key={t.key}
                       type="button"
                       onClick={() => insertToken(t.key)}
-                      className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                      className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-950/60"
                     >
                       + {t.label}
                     </button>
@@ -1141,7 +1141,7 @@ export default function TalimatDocumentsPage() {
                   setValues((prev) => ({ ...prev, [active.templateKey as string]: e.target.value }))
                 }
                 rows={9}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm leading-6 focus:border-blue-400 focus:outline-none"
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm leading-6 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
 
               <div className="flex flex-wrap items-center gap-3">
@@ -1151,7 +1151,7 @@ export default function TalimatDocumentsPage() {
                 <button
                   type="button"
                   onClick={resetToDefault}
-                  className="text-xs font-medium text-gray-500 underline hover:text-gray-700"
+                  className="text-xs font-medium text-gray-500 underline hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   ডিফল্ট লেখায় ফিরিয়ে নিন
                 </button>
@@ -1160,15 +1160,15 @@ export default function TalimatDocumentsPage() {
           ) : (
             active.key !== "id-card" &&
             active.key !== "book-label" && (
-              <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+              <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 এই ডকুমেন্টে এডিট করার মতো কোনো বাক্য নেই — এটি শুধু শিক্ষার্থীর তথ্য দেখায়।
               </div>
             )
           )}
         </section>
 
-        <section className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             প্রিভিউ (নমুনা তথ্য দিয়ে)
           </p>
 

@@ -326,9 +326,9 @@ export default function ResultPreviewPage() {
   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
 
   return (
-    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-3 sm:p-4 rounded-xl shadow">
-        <h1 className="text-lg sm:text-2xl font-bold">🎓 Result Preview</h1>
+    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 dark:bg-slate-950 min-h-screen">
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl shadow">
+        <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-slate-100">🎓 Result Preview</h1>
 
         <button
           onClick={goToEntry}
@@ -340,13 +340,13 @@ export default function ResultPreviewPage() {
 
       {examId && classId ? (
         <>
-          <div className="flex flex-wrap gap-2 items-center justify-between bg-white p-3 rounded-xl shadow">
-            <p className="text-sm text-gray-600 break-words">
+          <div className="flex flex-wrap gap-2 items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl shadow">
+            <p className="text-sm text-gray-600 dark:text-slate-400 break-words">
               📌 {selectedExamName} — {selectedClassName}
             </p>
             <button
               onClick={handleClearSelection}
-              className="text-sm text-blue-600 hover:underline shrink-0"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline shrink-0"
             >
               ← সব দেখুন
             </button>

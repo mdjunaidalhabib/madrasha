@@ -38,10 +38,10 @@ const ExperiencePicker: React.FC<Props> = ({
   return (
     <div ref={wrapperRef} className="flex flex-col">
       {/* 🔥 Label + Display */}
-      <label className="text-sm font-medium text-gray-600 mb-1 flex justify-between">
+      <label className="text-sm font-medium text-gray-600 mb-1 flex justify-between dark:text-slate-400">
         <span>{label}</span>
         {display && (
-          <span className="text-green-600 text-xs font-semibold">
+          <span className="text-green-600 text-xs font-semibold dark:text-green-400">
             {display}
           </span>
         )}
@@ -52,11 +52,11 @@ const ExperiencePicker: React.FC<Props> = ({
         <div className="w-full relative">
           <div
             onClick={() => setOpenField(openField === "year" ? null : "year")}
-            className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between"
+            className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between dark:border-slate-700 dark:bg-slate-800"
           >
             <div>
-              <p className="text-xs text-gray-500">বছর</p>
-              <p className="text-sm font-semibold">{year || "Select"}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">বছর</p>
+              <p className="text-sm font-semibold dark:text-slate-100">{year || "Select"}</p>
             </div>
             <ChevronDown
               size={18}
@@ -67,7 +67,7 @@ const ExperiencePicker: React.FC<Props> = ({
           </div>
 
           {openField === "year" && (
-            <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow-lg">
+            <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow-lg dark:bg-slate-800 dark:border-slate-700">
               {years.map((y) => (
                 <div
                   key={y}
@@ -75,7 +75,7 @@ const ExperiencePicker: React.FC<Props> = ({
                     onChange(String(y), month);
                     setOpenField(null);
                   }}
-                  className="px-3 py-2 hover:bg-green-50 cursor-pointer"
+                  className="px-3 py-2 hover:bg-green-50 cursor-pointer dark:text-slate-200 dark:hover:bg-green-950/40"
                 >
                   {y}
                 </div>
@@ -88,11 +88,11 @@ const ExperiencePicker: React.FC<Props> = ({
         <div className="w-full relative">
           <div
             onClick={() => setOpenField(openField === "month" ? null : "month")}
-            className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between"
+            className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between dark:border-slate-700 dark:bg-slate-800"
           >
             <div>
-              <p className="text-xs text-gray-500">মাস</p>
-              <p className="text-sm font-semibold">{month || "Select"}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">মাস</p>
+              <p className="text-sm font-semibold dark:text-slate-100">{month || "Select"}</p>
             </div>
             <ChevronDown
               size={18}
@@ -103,7 +103,7 @@ const ExperiencePicker: React.FC<Props> = ({
           </div>
 
           {openField === "month" && (
-            <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow-lg">
+            <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow-lg dark:bg-slate-800 dark:border-slate-700">
               {months.map((m) => (
                 <div
                   key={m}
@@ -111,7 +111,7 @@ const ExperiencePicker: React.FC<Props> = ({
                     onChange(year, String(m));
                     setOpenField(null);
                   }}
-                  className="px-3 py-2 hover:bg-green-50 cursor-pointer"
+                  className="px-3 py-2 hover:bg-green-50 cursor-pointer dark:text-slate-200 dark:hover:bg-green-950/40"
                 >
                   {m}
                 </div>

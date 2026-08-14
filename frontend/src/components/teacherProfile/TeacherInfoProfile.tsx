@@ -68,8 +68,8 @@ const TeacherInfoProfile = ({
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6">
-      <h2 className="text-xl mb-4 font-semibold text-gray-700 border-b pb-2">শিক্ষকের তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl mb-4 font-semibold text-gray-700 border-b pb-2 dark:text-slate-200 dark:border-slate-700">শিক্ষকের তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* NAME BN */}

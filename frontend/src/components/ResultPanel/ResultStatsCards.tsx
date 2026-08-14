@@ -45,28 +45,28 @@ export default function ResultStatsCards({
       value: toBanglaDigits(total),
       sub: null,
       icon: Users,
-      className: "border-blue-200 bg-blue-50 text-blue-700",
+      className: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-400",
     },
     {
       label: "পাশ",
       value: toBanglaDigits(pass),
       sub: `${formatPercent(pass, total)}%`,
       icon: CheckCircle2,
-      className: "border-green-200 bg-green-50 text-green-700",
+      className: "border-green-200 bg-green-50 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400",
     },
     {
       label: "ফেল",
       value: toBanglaDigits(fail),
       sub: `${formatPercent(fail, total)}%`,
       icon: XCircle,
-      className: "border-red-200 bg-red-50 text-red-700",
+      className: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400",
     },
     {
       label: "অনুপস্থিত",
       value: toBanglaDigits(absent),
       sub: `${formatPercent(absent, total)}%`,
       icon: UserX,
-      className: "border-amber-200 bg-amber-50 text-amber-700",
+      className: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400",
     },
   ];
 
@@ -94,8 +94,8 @@ export default function ResultStatsCards({
       </div>
 
       {(sortedGeneral.length > 0 || sortedMadrasa.length > 0) && (
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-slate-700">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <Award size={16} />
             <p className="text-xs font-semibold">গ্রেড স্কেল — কোন গ্রেড কত নম্বরে</p>
           </div>
@@ -119,13 +119,13 @@ function GradeChipRow({ label, grades }: { label: string; grades: GradeItem[] })
   return (
     <div className="overflow-x-auto">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="shrink-0 text-[11px] font-medium text-slate-400">{label}:</span>
+        <span className="shrink-0 text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}:</span>
         {grades.map((g) => {
           const { min, max } = getGradeRange(g);
           return (
             <span
               key={g.id}
-              className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+              className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
             >
               {g.name} ({toBanglaDigits(min ?? "-")}-{toBanglaDigits(max ?? "-")})
             </span>

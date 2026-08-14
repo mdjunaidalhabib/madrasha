@@ -41,17 +41,17 @@ export default function Modal({
       onMouseDown={onClose} // overlay click
     >
       <div
-        className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col rounded-2xl bg-white shadow-xl`}
+        className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col rounded-2xl bg-white shadow-xl dark:bg-slate-900`}
         onMouseDown={(e) => e.stopPropagation()} // prevent overlay close
       >
-        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{title}</h3>
 
           {!hideCloseButton && (
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              className="rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               aria-label="Close"
               title="Close"
             >

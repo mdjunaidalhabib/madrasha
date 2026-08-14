@@ -4,12 +4,12 @@ type StatTileVariant = "count" | "currency" | "percentage";
 type StatTileTone = "blue" | "indigo" | "emerald" | "rose" | "amber" | "slate";
 
 const TONE_CLASSES: Record<StatTileTone, { bg: string; text: string }> = {
-  blue: { bg: "bg-blue-50", text: "text-blue-700" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-700" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-700" },
-  rose: { bg: "bg-rose-50", text: "text-rose-700" },
-  amber: { bg: "bg-amber-50", text: "text-amber-700" },
-  slate: { bg: "bg-slate-50", text: "text-slate-900" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-700 dark:text-blue-400" },
+  indigo: { bg: "bg-indigo-50 dark:bg-indigo-950/40", text: "text-indigo-700 dark:text-indigo-400" },
+  emerald: { bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-400" },
+  rose: { bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-700 dark:text-rose-400" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-400" },
+  slate: { bg: "bg-slate-50 dark:bg-slate-800", text: "text-slate-900 dark:text-slate-100" },
 };
 
 const formatValue = (value: number | string, variant: StatTileVariant) => {
@@ -45,22 +45,22 @@ export default function StatTile({
 
   if (loading) {
     return (
-      <div className={`rounded-2xl border border-slate-200 ${bg} p-5 shadow-sm`}>
-        <div className="h-4 w-24 animate-pulse rounded bg-slate-200/70" />
-        <div className="mt-3 h-7 w-16 animate-pulse rounded bg-slate-200/70" />
+      <div className={`rounded-2xl border border-slate-200 dark:border-slate-700 ${bg} p-5 shadow-sm`}>
+        <div className="h-4 w-24 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
+        <div className="mt-3 h-7 w-16 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
       </div>
     );
   }
 
   const content = (
     <>
-      <p className="text-sm text-slate-500">{label}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-2 text-2xl font-bold ${text}`}>{formatValue(value, variant)}</p>
-      {subLabel && <p className="mt-1 text-xs text-slate-400">{subLabel}</p>}
+      {subLabel && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subLabel}</p>}
     </>
   );
 
-  const className = `block rounded-2xl border border-slate-200 ${bg} p-5 shadow-sm ${
+  const className = `block rounded-2xl border border-slate-200 dark:border-slate-700 ${bg} p-5 shadow-sm ${
     to ? "transition hover:shadow-md" : ""
   }`;
 

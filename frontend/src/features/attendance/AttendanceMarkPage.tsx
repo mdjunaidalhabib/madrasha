@@ -238,24 +238,24 @@ const AttendanceMarkPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ছাত্র উপস্থিতি</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছাত্র উপস্থিতি</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             শ্রেণি ও তারিখ নির্বাচন করে একসাথে সবার উপস্থিতি সংরক্ষণ করুন
           </p>
         </div>
 
         {/* Filters */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <input
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             />
 
             <select
@@ -265,7 +265,7 @@ const AttendanceMarkPage = () => {
                 setSelectedDivision(value);
                 loadClassesByDivision(value);
               }}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
               <option value="">বিভাগ নির্বাচন করুন</option>
               {divisions.map((division) => (
@@ -279,7 +279,7 @@ const AttendanceMarkPage = () => {
               value={selectedClass}
               onChange={(event) => setSelectedClass(event.target.value)}
               disabled={!selectedDivision || classLoading}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 sm:w-[180px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
             >
               <option value="">
                 {classLoading ? "শ্রেণি লোড হচ্ছে..." : "শ্রেণি নির্বাচন করুন"}
@@ -295,7 +295,7 @@ const AttendanceMarkPage = () => {
               <button
                 type="button"
                 onClick={markAllPresent}
-                className="h-9 w-full rounded-md border border-green-300 bg-green-50 px-3 text-sm font-medium text-green-700 transition hover:bg-green-100 sm:w-auto"
+                className="h-9 w-full rounded-md border border-green-300 bg-green-50 px-3 text-sm font-medium text-green-700 transition hover:bg-green-100 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 sm:w-auto"
               >
                 সবাইকে উপস্থিত করুন
               </button>
@@ -303,31 +303,31 @@ const AttendanceMarkPage = () => {
           </div>
 
           {selectedClass && (
-            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-slate-400">
               <span>মোট: {studentsInClass.length}</span>
-              <span className="text-green-700">উপস্থিত: {summary.PRESENT}</span>
-              <span className="text-red-700">অনুপস্থিত: {summary.ABSENT}</span>
-              <span className="text-amber-700">দেরি: {summary.LATE}</span>
-              <span className="text-blue-700">ছুটি: {summary.LEAVE}</span>
+              <span className="text-green-700 dark:text-green-400">উপস্থিত: {summary.PRESENT}</span>
+              <span className="text-red-700 dark:text-red-400">অনুপস্থিত: {summary.ABSENT}</span>
+              <span className="text-amber-700 dark:text-amber-400">দেরি: {summary.LATE}</span>
+              <span className="text-blue-700 dark:text-blue-400">ছুটি: {summary.LEAVE}</span>
             </div>
           )}
         </div>
 
         {/* Student list */}
         {!selectedClass ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
+          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
             উপস্থিতি নেওয়ার জন্য প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
           </div>
         ) : studentsLoading ? (
-          <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+          <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
             <SkeletonList items={6} />
           </div>
         ) : studentsInClass.length === 0 ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
+          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
             এই শ্রেণিতে {academicYear} শিক্ষাবর্ষে কোনো ছাত্র নেই
           </div>
         ) : (
-          <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+          <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
             <div className="flex flex-col gap-2">
               {studentsInClass
                 .slice()
@@ -339,19 +339,19 @@ const AttendanceMarkPage = () => {
                   return (
                     <div
                       key={student.id}
-                      className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="w-10 shrink-0 text-sm font-semibold text-gray-500">
+                        <span className="w-10 shrink-0 text-sm font-semibold text-gray-500 dark:text-slate-400">
                           {student.roll ?? "-"}
                         </span>
-                        <span className="text-sm font-medium text-gray-800">
+                        <span className="text-sm font-medium text-gray-800 dark:text-slate-200">
                           {student.name_bn || "নাম নেই"}
                         </span>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex overflow-hidden rounded-md border border-gray-300">
+                        <div className="flex overflow-hidden rounded-md border border-gray-300 dark:border-slate-600">
                           {STATUS_OPTIONS.map((option) => (
                             <button
                               key={option.value}
@@ -360,7 +360,7 @@ const AttendanceMarkPage = () => {
                               className={`h-8 px-3 text-xs font-medium transition ${
                                 row.status === option.value
                                   ? option.activeClass
-                                  : "bg-white text-gray-600 hover:bg-gray-50"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                               }`}
                             >
                               {option.label}
@@ -373,7 +373,7 @@ const AttendanceMarkPage = () => {
                           value={row.remarks}
                           onChange={(event) => setRemarks(student.id, event.target.value)}
                           placeholder="মন্তব্য (ঐচ্ছিক)"
-                          className="h-8 w-full max-w-[160px] rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+                          className="h-8 w-full max-w-[160px] rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
                       </div>
                     </div>

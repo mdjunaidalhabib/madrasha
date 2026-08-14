@@ -221,8 +221,8 @@ const StudentProfilePage = () => {
           <span
             className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${
               isExpelled
-                ? "border-red-300 bg-red-100 text-red-700"
-                : "border-green-300 bg-green-100 text-green-700"
+                ? "border-red-300 bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
+                : "border-green-300 bg-green-100 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400"
             }`}
           >
             {isExpelled ? "বহিষ্কৃত" : "সক্রিয়"}
@@ -264,7 +264,7 @@ const StudentProfilePage = () => {
 
           <AdmissionFormPrintButton
             row={student}
-            className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+            className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           />
 
           <button
@@ -319,16 +319,16 @@ const StudentProfilePage = () => {
 
       <Modal open={transferModalOpen} title="সেশন ট্রান্সফার" onClose={() => setTransferModalOpen(false)}>
         <div className="flex flex-col gap-3">
-          <p className="text-xs text-gray-500">
-            বর্তমান সেশন: <span className="font-medium text-gray-700">{student.academic_year}</span> — এই
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            বর্তমান সেশন: <span className="font-medium text-gray-700 dark:text-slate-300">{student.academic_year}</span> — এই
             শিক্ষার্থীকে সরাসরি নতুন সেশনে নিয়ে যাওয়া হবে, রোল স্বয়ংক্রিয়ভাবে নতুন করে বসবে।
           </p>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">নতুন সেশন</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নতুন সেশন</label>
             <select
               value={transferSessionId}
               onChange={(e) => setTransferSessionId(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">নির্বাচন করুন</option>
               {sessions.map((s) => (
@@ -340,22 +340,22 @@ const StudentProfilePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">রোল নম্বর (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">রোল নম্বর (ঐচ্ছিক)</label>
             <input
               type="number"
               placeholder="খালি রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী রোল বসবে"
               value={transferRoll}
               onChange={(e) => setTransferRoll(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">কারণ (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">কারণ (ঐচ্ছিক)</label>
             <input
               type="text"
               value={transferReason}
               onChange={(e) => setTransferReason(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
         </div>
@@ -363,7 +363,7 @@ const StudentProfilePage = () => {
           <button
             type="button"
             onClick={() => setTransferModalOpen(false)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>

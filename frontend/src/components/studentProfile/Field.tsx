@@ -16,7 +16,7 @@ const Field = ({
 
   return (
     <div className="flex flex-col relative">
-      <label className="text-sm mb-1">{label}</label>
+      <label className="text-sm mb-1 dark:text-slate-300">{label}</label>
 
       {/* 🔥 SELECT FIELD (DIRECT EDIT MODE) */}
       {type === "select" ? (
@@ -25,7 +25,7 @@ const Field = ({
             name={name}
             value={value ?? ""}
             onChange={onChange}
-            className={`border rounded-lg px-3 py-2
+            className={`border rounded-lg px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
               ${error ? "border-red-500" : ""}
             `}
           >
@@ -37,7 +37,7 @@ const Field = ({
             ))}
           </select>
         ) : (
-          <p className="border rounded-lg px-3 py-2 bg-gray-100">
+          <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
             {options.find((o: any) => o.value == value)?.label || "N/A"}
           </p>
         )
@@ -51,17 +51,17 @@ const Field = ({
             value={value || ""}
             onChange={onChange}
             disabled={!isEditMode || !isEditing}
-            className={`border rounded-lg px-3 py-2 pr-10
+            className={`border rounded-lg px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
               ${error ? "border-red-500" : ""}
-              ${!isEditMode ? "bg-gray-100" : ""}
-              ${isEditing ? "border-blue-500 bg-white" : ""}
+              ${!isEditMode ? "bg-gray-100 dark:bg-slate-800" : ""}
+              ${isEditing ? "border-blue-500 bg-white dark:bg-slate-900" : ""}
             `}
           />
 
           {/* ✏️ EDIT ICON (ONLY INPUT FIELD) */}
           {isEditMode && (
             <FaEdit
-              className="absolute right-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600"
+              className="absolute right-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
               onClick={() => setEditableField(name)}
             />
           )}

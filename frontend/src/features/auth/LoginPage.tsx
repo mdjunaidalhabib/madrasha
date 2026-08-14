@@ -40,10 +40,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm rounded bg-white p-6 shadow space-y-4">
-        <h2 className="text-xl font-bold">Madrasa Admin Login</h2>
-        <p className="text-xs text-gray-500">
+    <div className="flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+      <div className="w-full max-w-sm rounded bg-white p-6 shadow space-y-4 dark:bg-slate-900">
+        <h2 className="text-xl font-bold dark:text-slate-100">Madrasa Admin Login</h2>
+        <p className="text-xs text-gray-500 dark:text-slate-400">
           Tenant: <b>{madrasaSlug || "demo-madrasa"}</b>
         </p>
 
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
             aria-label={showPassword ? "Hide password" : "Show password"}
             tabIndex={-1}
           >
@@ -76,7 +76,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={() => nav(`${getTenantAdminBase(madrasaSlug)}/forgot-password`)}
-          className="w-full text-center text-xs text-blue-600 hover:underline"
+          className="w-full text-center text-xs text-blue-600 hover:underline dark:text-blue-400"
         >
           পাসওয়ার্ড ভুলে গেছেন?
         </button>

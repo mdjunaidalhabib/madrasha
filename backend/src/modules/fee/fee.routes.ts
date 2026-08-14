@@ -12,7 +12,6 @@ import {
   backfillInvoices,
   payInvoice,
   waiveInvoice,
-  getStudentStatement,
   getPaymentMethodSettings,
   createPaymentMethodSetting,
   updatePaymentMethodSetting,
@@ -47,9 +46,6 @@ router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoi
 // this key, only MUHTAMIM/SUPER_ADMIN (who bypass rbacMiddleware entirely)
 // can waive a fee.
 router.post("/invoices/:id/waive", rbacMiddleware("invoice.waive"), waiveInvoice);
-
-/* ================= STUDENT ACCOUNT STATEMENT ================= */
-router.get("/students/:id/statement", rbacMiddleware("fee.read"), getStudentStatement);
 
 /* ================= MANUAL PAYMENT METHOD SETUP ================= */
 router.get("/payment-methods", rbacMiddleware("fee.read"), getPaymentMethodSettings);

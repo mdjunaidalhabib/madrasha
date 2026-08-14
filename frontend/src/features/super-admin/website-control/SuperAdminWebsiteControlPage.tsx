@@ -58,12 +58,12 @@ export default function SuperAdminWebsiteControlPage() {
 
       <form
         onSubmit={submit}
-        className="max-w-3xl rounded-2xl border bg-white p-6 shadow-sm space-y-5"
+        className="max-w-3xl rounded-2xl border bg-white p-6 shadow-sm space-y-5 dark:border-slate-700 dark:bg-slate-900"
       >
         <div>
-          <label className="text-sm font-semibold text-slate-700">Active Madrasa</label>
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Active Madrasa</label>
           <select
-            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={madrasaId}
             onChange={(e) => onSelect(e.target.value)}
             disabled={loading}
@@ -79,18 +79,18 @@ export default function SuperAdminWebsiteControlPage() {
         </div>
 
         {selected && (
-          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm md:grid-cols-3">
+          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800 md:grid-cols-3">
             <div>
-              <span className="text-slate-500">ID</span>
-              <p className="font-bold text-slate-900">{selected.id}</p>
+              <span className="text-slate-500 dark:text-slate-400">ID</span>
+              <p className="font-bold text-slate-900 dark:text-slate-100">{selected.id}</p>
             </div>
             <div>
-              <span className="text-slate-500">Name</span>
-              <p className="font-bold text-slate-900">{selected.name}</p>
+              <span className="text-slate-500 dark:text-slate-400">Name</span>
+              <p className="font-bold text-slate-900 dark:text-slate-100">{selected.name}</p>
             </div>
             <div>
-              <span className="text-slate-500">Current Status</span>
-              <p className="font-bold capitalize text-blue-700">
+              <span className="text-slate-500 dark:text-slate-400">Current Status</span>
+              <p className="font-bold capitalize text-blue-700 dark:text-blue-400">
                 {selected.website_status || "active"}
               </p>
             </div>
@@ -98,9 +98,9 @@ export default function SuperAdminWebsiteControlPage() {
         )}
 
         <div>
-          <label className="text-sm font-semibold text-slate-700">Website status</label>
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Website status</label>
           <select
-            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={status}
             onChange={(e) => setStatus(e.target.value as WebsiteStatus)}
           >
@@ -111,7 +111,7 @@ export default function SuperAdminWebsiteControlPage() {
         </div>
         <Button disabled={!madrasaId || loading}>Update status</Button>
         {message && (
-          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{message}</p>
+          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">{message}</p>
         )}
       </form>
     </div>

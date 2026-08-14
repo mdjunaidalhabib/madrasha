@@ -21,12 +21,12 @@ export default function PlanSection({
 }: Props) {
   return (
     <div className="space-y-4">
-      <h4 className="font-semibold text-gray-700">Plan & Limits</h4>
+      <h4 className="font-semibold text-gray-700 dark:text-slate-200">Plan & Limits</h4>
 
       <div>
-        <label className="text-sm font-medium text-gray-600 block mb-1">Plan</label>
+        <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">Plan</label>
         <select
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           value={plan_id}
           onChange={(e) => onPlanChange(e.target.value)}
         >
@@ -48,13 +48,13 @@ export default function PlanSection({
 function LimitField({ label, value, disabled }: any) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
+      <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">{label}</label>
       <input
         type="number"
         value={value}
         disabled={disabled}
         readOnly={disabled}
-        className="w-full border rounded px-3 py-2 bg-gray-50"
+        className="w-full border rounded px-3 py-2 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       />
     </div>
   );

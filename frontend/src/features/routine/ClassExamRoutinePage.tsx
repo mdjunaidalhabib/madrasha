@@ -269,11 +269,11 @@ const ClassExamRoutinePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ক্লাস ও পরীক্ষার রুটিন</h1>
-          <p className="mt-1 text-sm text-gray-500">সাপ্তাহিক ক্লাস রুটিন ও পরীক্ষার সময়সূচি তৈরি করুন</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ক্লাস ও পরীক্ষার রুটিন</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">সাপ্তাহিক ক্লাস রুটিন ও পরীক্ষার সময়সূচি তৈরি করুন</p>
         </div>
 
         {/* Tabs */}
@@ -282,7 +282,7 @@ const ClassExamRoutinePage = () => {
             type="button"
             onClick={() => setTab("class")}
             className={`h-9 rounded-md px-4 text-sm font-medium transition ${
-              tab === "class" ? "bg-blue-600 text-white" : "bg-white text-gray-600 shadow-sm"
+              tab === "class" ? "bg-blue-600 text-white" : "bg-white text-gray-600 shadow-sm dark:bg-slate-900 dark:text-slate-400"
             }`}
           >
             ক্লাস রুটিন
@@ -291,7 +291,7 @@ const ClassExamRoutinePage = () => {
             type="button"
             onClick={() => setTab("exam")}
             className={`h-9 rounded-md px-4 text-sm font-medium transition ${
-              tab === "exam" ? "bg-blue-600 text-white" : "bg-white text-gray-600 shadow-sm"
+              tab === "exam" ? "bg-blue-600 text-white" : "bg-white text-gray-600 shadow-sm dark:bg-slate-900 dark:text-slate-400"
             }`}
           >
             পরীক্ষার রুটিন
@@ -299,7 +299,7 @@ const ClassExamRoutinePage = () => {
         </div>
 
         {/* Division/Class picker (shared) */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <select
               value={division}
@@ -308,7 +308,7 @@ const ClassExamRoutinePage = () => {
                 setDivision(value);
                 loadClasses(value);
               }}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
               <option value="">বিভাগ নির্বাচন করুন</option>
               {divisions.map((d) => (
@@ -322,7 +322,7 @@ const ClassExamRoutinePage = () => {
               value={classId}
               onChange={(event) => setClassId(event.target.value)}
               disabled={!division || classLoading}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 sm:w-[180px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
             >
               <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি নির্বাচন করুন"}</option>
               {classes.map((c) => (
@@ -336,7 +336,7 @@ const ClassExamRoutinePage = () => {
               <select
                 value={selectedExamId}
                 onChange={(event) => setSelectedExamId(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[200px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
               >
                 <option value="">পরীক্ষা নির্বাচন করুন</option>
                 {exams.map((exam) => (
@@ -353,13 +353,13 @@ const ClassExamRoutinePage = () => {
           <>
             {/* Add class routine form */}
             {classId && (
-              <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-                <h2 className="mb-3 text-sm font-semibold text-gray-700">নতুন ক্লাস রুটিন যোগ করুন</h2>
+              <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
+                <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">নতুন ক্লাস রুটিন যোগ করুন</h2>
                 <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
                   <select
                     value={classForm.day_of_week}
                     onChange={(e) => setClassForm((p) => ({ ...p, day_of_week: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
                   >
                     {DAY_LABELS.map((label, index) => (
                       <option key={index} value={index}>
@@ -373,13 +373,13 @@ const ClassExamRoutinePage = () => {
                     placeholder="বিষয়"
                     value={classForm.subject}
                     onChange={(e) => setClassForm((p) => ({ ...p, subject: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
                   />
 
                   <select
                     value={classForm.teacher_id}
                     onChange={(e) => setClassForm((p) => ({ ...p, teacher_id: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
                   >
                     <option value="">শিক্ষক (ঐচ্ছিক)</option>
                     {teachers.map((t) => (
@@ -393,13 +393,13 @@ const ClassExamRoutinePage = () => {
                     type="time"
                     value={classForm.start_time}
                     onChange={(e) => setClassForm((p) => ({ ...p, start_time: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
                   />
                   <input
                     type="time"
                     value={classForm.end_time}
                     onChange={(e) => setClassForm((p) => ({ ...p, end_time: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
                   />
 
                   <button
@@ -415,15 +415,15 @@ const ClassExamRoutinePage = () => {
             )}
 
             {/* List */}
-            <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+            <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
               {!classId ? (
-                <div className="py-10 text-center text-sm text-gray-500">
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                   রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedClassRoutines.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                   এই শ্রেণিতে এখনো কোনো রুটিন যোগ করা হয়নি
                 </div>
               ) : (
@@ -431,24 +431,24 @@ const ClassExamRoutinePage = () => {
                   {sortedClassRoutines.map((row) => (
                     <div
                       key={row.id}
-                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
                     >
                       <div className="text-sm">
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-gray-800 dark:text-slate-100">
                           {DAY_LABELS[row.dayOfWeek]}বার
                         </span>{" "}
-                        <span className="text-gray-600">
+                        <span className="text-gray-600 dark:text-slate-400">
                           {row.startTime}–{row.endTime}
                         </span>{" "}
-                        <span className="font-medium text-gray-800">{row.subject}</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{row.subject}</span>
                         {row.teacher?.nameBn && (
-                          <span className="text-gray-500"> · {row.teacher.nameBn}</span>
+                          <span className="text-gray-500 dark:text-slate-400"> · {row.teacher.nameBn}</span>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteClassRoutine(row.id)}
-                        className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 sm:w-auto"
+                        className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
                       >
                         মুছুন
                       </button>
@@ -462,8 +462,8 @@ const ClassExamRoutinePage = () => {
           <>
             {/* Add exam routine form */}
             {selectedExamId && classId && (
-              <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-                <h2 className="mb-3 text-sm font-semibold text-gray-700">
+              <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
+                <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
                   নতুন পরীক্ষার রুটিন যোগ করুন
                 </h2>
                 <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -472,32 +472,32 @@ const ClassExamRoutinePage = () => {
                     placeholder="বিষয়"
                     value={examForm.subject}
                     onChange={(e) => setExamForm((p) => ({ ...p, subject: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
                   />
                   <input
                     type="date"
                     value={examForm.exam_date}
                     onChange={(e) => setExamForm((p) => ({ ...p, exam_date: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[150px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[150px]"
                   />
                   <input
                     type="time"
                     value={examForm.start_time}
                     onChange={(e) => setExamForm((p) => ({ ...p, start_time: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
                   />
                   <input
                     type="time"
                     value={examForm.end_time}
                     onChange={(e) => setExamForm((p) => ({ ...p, end_time: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[110px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
                   />
                   <input
                     type="text"
                     placeholder="রুম নং (ঐচ্ছিক)"
                     value={examForm.room_no}
                     onChange={(e) => setExamForm((p) => ({ ...p, room_no: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[120px]"
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[120px]"
                   />
 
                   <button
@@ -513,15 +513,15 @@ const ClassExamRoutinePage = () => {
             )}
 
             {/* List */}
-            <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+            <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
               {!selectedExamId && !classId ? (
-                <div className="py-10 text-center text-sm text-gray-500">
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                   রুটিন দেখতে প্রথমে পরীক্ষা এবং/অথবা শ্রেণি নির্বাচন করুন
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedExamRoutines.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                   এখনো কোনো পরীক্ষার রুটিন যোগ করা হয়নি
                 </div>
               ) : (
@@ -529,25 +529,25 @@ const ClassExamRoutinePage = () => {
                   {sortedExamRoutines.map((row) => (
                     <div
                       key={row.id}
-                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
                     >
                       <div className="text-sm">
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-gray-800 dark:text-slate-100">
                           {String(row.examDate).slice(0, 10)}
                         </span>{" "}
-                        <span className="text-gray-600">
+                        <span className="text-gray-600 dark:text-slate-400">
                           {row.startTime}–{row.endTime}
                         </span>{" "}
-                        <span className="font-medium text-gray-800">{row.subject}</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{row.subject}</span>
                         {row.class?.nameBn && (
-                          <span className="text-gray-500"> · {row.class.nameBn}</span>
+                          <span className="text-gray-500 dark:text-slate-400"> · {row.class.nameBn}</span>
                         )}
-                        {row.roomNo && <span className="text-gray-500"> · রুম {row.roomNo}</span>}
+                        {row.roomNo && <span className="text-gray-500 dark:text-slate-400"> · রুম {row.roomNo}</span>}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteExamRoutine(row.id)}
-                        className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 sm:w-auto"
+                        className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
                       >
                         মুছুন
                       </button>

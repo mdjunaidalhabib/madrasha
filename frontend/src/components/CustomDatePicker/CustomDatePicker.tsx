@@ -91,7 +91,7 @@ const CustomDatePicker: React.FC<Props> = ({
 
   return (
     <div ref={wrapperRef} className="flex flex-col">
-      <label className="text-sm font-medium text-gray-600 mb-1">{label}</label>
+      <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{label}</label>
 
       {isEditMode ? (
         <div className="flex gap-2">
@@ -99,10 +99,10 @@ const CustomDatePicker: React.FC<Props> = ({
           <div className="w-full relative">
             <div
               onClick={() => setOpenField(openField === "day" ? null : "day")}
-              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between"
+              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500">Day</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Day</p>
                 <p className="text-sm font-semibold">{selectedDay}</p>
               </div>
               <ChevronDown
@@ -112,7 +112,7 @@ const CustomDatePicker: React.FC<Props> = ({
             </div>
 
             {openField === "day" && (
-              <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow">
+              <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow dark:bg-slate-900 dark:border-slate-700">
                 {days.map((d) => (
                   <div
                     key={d}
@@ -120,10 +120,10 @@ const CustomDatePicker: React.FC<Props> = ({
                       onChange(buildDate(selectedYear, selectedMonth, d));
                       setOpenField(null);
                     }}
-                    className={`px-3 py-2 text-sm cursor-pointer ${
+                    className={`px-3 py-2 text-sm cursor-pointer dark:text-slate-100 ${
                       selectedDay === d
-                        ? "bg-green-100 font-semibold"
-                        : "hover:bg-green-50"
+                        ? "bg-green-100 font-semibold dark:bg-green-900/40"
+                        : "hover:bg-green-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     {d}
@@ -139,10 +139,10 @@ const CustomDatePicker: React.FC<Props> = ({
               onClick={() =>
                 setOpenField(openField === "month" ? null : "month")
               }
-              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between"
+              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500">Month</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Month</p>
                 <p className="text-sm font-semibold">
                   {months[selectedMonth - 1]}
                 </p>
@@ -154,7 +154,7 @@ const CustomDatePicker: React.FC<Props> = ({
             </div>
 
             {openField === "month" && (
-              <div className="absolute z-20 mt-2 w-72 max-w-[85vw] right-0 sm:right-auto grid grid-cols-3 gap-2 bg-white border rounded-lg shadow p-2">
+              <div className="absolute z-20 mt-2 w-72 max-w-[85vw] right-0 sm:right-auto grid grid-cols-3 gap-2 bg-white border rounded-lg shadow p-2 dark:bg-slate-900 dark:border-slate-700">
                 {months.map((m, i) => (
                   <div
                     key={m}
@@ -162,10 +162,10 @@ const CustomDatePicker: React.FC<Props> = ({
                       onChange(buildDate(selectedYear, i + 1, selectedDay));
                       setOpenField(null);
                     }}
-                    className={`p-2 text-center text-sm cursor-pointer rounded ${
+                    className={`p-2 text-center text-sm cursor-pointer rounded dark:text-slate-100 ${
                       selectedMonth === i + 1
-                        ? "bg-green-100 font-semibold"
-                        : "hover:bg-green-50"
+                        ? "bg-green-100 font-semibold dark:bg-green-900/40"
+                        : "hover:bg-green-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     {m}
@@ -179,10 +179,10 @@ const CustomDatePicker: React.FC<Props> = ({
           <div className="w-full relative">
             <div
               onClick={() => setOpenField(openField === "year" ? null : "year")}
-              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between"
+              className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500">Year</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Year</p>
                 <p className="text-sm font-semibold">{selectedYear}</p>
               </div>
               <ChevronDown
@@ -192,7 +192,7 @@ const CustomDatePicker: React.FC<Props> = ({
             </div>
 
             {openField === "year" && (
-              <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow">
+              <div className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto bg-white border rounded-lg shadow dark:bg-slate-900 dark:border-slate-700">
                 {years.map((y) => (
                   <div
                     key={y}
@@ -200,10 +200,10 @@ const CustomDatePicker: React.FC<Props> = ({
                       onChange(buildDate(y, selectedMonth, selectedDay));
                       setOpenField(null);
                     }}
-                    className={`px-3 py-2 text-sm cursor-pointer ${
+                    className={`px-3 py-2 text-sm cursor-pointer dark:text-slate-100 ${
                       selectedYear === y
-                        ? "bg-green-100 font-semibold"
-                        : "hover:bg-green-50"
+                        ? "bg-green-100 font-semibold dark:bg-green-900/40"
+                        : "hover:bg-green-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     {y}
@@ -214,7 +214,7 @@ const CustomDatePicker: React.FC<Props> = ({
           </div>
         </div>
       ) : (
-        <div className="border rounded-lg px-3 py-2 bg-gray-100 text-sm">
+        <div className="border rounded-lg px-3 py-2 bg-gray-100 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
           {value ? formatDate(value) : "N/A"}
         </div>
       )}

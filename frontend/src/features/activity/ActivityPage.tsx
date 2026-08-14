@@ -27,10 +27,10 @@ export default function ActivityPage() {
       {loading ? (
         <TableSkeleton rows={10} />
       ) : (
-        <div className="bg-white rounded shadow overflow-x-auto">
+        <div className="bg-white rounded shadow overflow-x-auto dark:bg-slate-900">
           <table className="w-full min-w-[640px]">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-sm text-gray-600">
+            <thead className="bg-gray-50 dark:bg-slate-800">
+              <tr className="text-left text-sm text-gray-600 dark:text-slate-400">
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Action</th>
                 <th className="px-4 py-3">Entity</th>
@@ -38,9 +38,9 @@ export default function ActivityPage() {
                 <th className="px-4 py-3">Time</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody className="text-sm dark:text-slate-300">
               {rows.map((r) => (
-                <tr key={r.id} className="border-t">
+                <tr key={r.id} className="border-t dark:border-slate-700">
                   <td className="px-4 py-3">{r.name}</td>
                   <td className="px-4 py-3">{r.action}</td>
                   <td className="px-4 py-3">{r.entity}</td>

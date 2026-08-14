@@ -156,7 +156,7 @@ export default function SuperAdminDocumentTemplatesPage() {
             type="button"
             onClick={() => setType(t)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-              type === t ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
+              type === t ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-800"
             }`}
           >
             {DOCUMENT_TYPE_LABELS_BN[t]}
@@ -164,12 +164,12 @@ export default function SuperAdminDocumentTemplatesPage() {
         ))}
       </div>
 
-      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
 
       {loading ? (
         <SkeletonCard lines={6} />
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           এই ধরনের কোনো সিস্টেম টেমপ্লেট নেই। একটি নতুন টেমপ্লেট তৈরি করুন।
         </div>
       ) : (
@@ -180,9 +180,9 @@ export default function SuperAdminDocumentTemplatesPage() {
             const scale = version ? thumbScale(version.width, version.height) : 1;
 
             return (
-              <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
+              <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                 <div
-                  className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
+                  className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800"
                   style={{ width: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
                 >
                   {version && (
@@ -204,21 +204,21 @@ export default function SuperAdminDocumentTemplatesPage() {
                 </div>
 
                 <div className="mb-2 flex items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold text-slate-800">{item.name}</span>
+                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                   {item.is_system_default && (
-                    <span title="System Default" className="text-amber-500">
+                    <span title="System Default" className="text-amber-500 dark:text-amber-400">
                       <CheckCircle2 size={14} />
                     </span>
                   )}
                 </div>
                 <div className="mb-3">
                   {!item.is_published && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                       Draft
                     </span>
                   )}
                   {item.is_published && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
                       Published
                     </span>
                   )}
@@ -228,7 +228,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                   <button
                     type="button"
                     onClick={() => openInDesigner(item.id)}
-                    className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     <Pencil size={12} /> Edit
                   </button>
@@ -237,7 +237,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                       type="button"
                       disabled={busyId === item.id}
                       onClick={() => handleSetDefault(item)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <Star size={12} /> Set Default
                     </button>
@@ -247,7 +247,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                       type="button"
                       disabled={busyId === item.id}
                       onClick={() => handleDelete(item)}
-                      className="flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                      className="flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                     >
                       <Trash2 size={12} /> Delete
                     </button>

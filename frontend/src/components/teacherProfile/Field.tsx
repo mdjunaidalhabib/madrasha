@@ -32,7 +32,7 @@ const Field: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col relative">
-      <label className="text-sm mb-1">{label}</label>
+      <label className="text-sm mb-1 dark:text-slate-300">{label}</label>
 
       {/* SELECT */}
       {type === "select" ? (
@@ -41,7 +41,7 @@ const Field: React.FC<Props> = ({
           value={value || ""}
           onChange={onChange}
           disabled={!isEditMode}
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
           <option value="">Select</option>
           {options?.map((opt) => (
@@ -57,9 +57,9 @@ const Field: React.FC<Props> = ({
           value={value || ""}
           onChange={onChange}
           disabled={!isEditMode || !isEditing}
-          className={`border rounded-lg px-3 py-2 pr-10
-            ${!isEditMode ? "bg-gray-100" : ""}
-            ${isEditing ? "border-blue-500 bg-white" : ""}
+          className={`border rounded-lg px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
+            ${!isEditMode ? "bg-gray-100 dark:bg-slate-800" : ""}
+            ${isEditing ? "border-blue-500 bg-white dark:bg-slate-900" : ""}
           `}
         />
       )}
@@ -67,12 +67,12 @@ const Field: React.FC<Props> = ({
       {/* EDIT ICON */}
       {isEditMode && setEditableField && (
         <FaEdit
-          className="absolute right-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600"
+          className="absolute right-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
           onClick={() => setEditableField(name)}
         />
       )}
 
-      {error && <span className="text-red-500 text-xs">{error}</span>}
+      {error && <span className="text-red-500 text-xs dark:text-red-400">{error}</span>}
     </div>
   );
 };

@@ -119,11 +119,11 @@ const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
 
 type TabKey = "general" | "notices" | "gallery" | "slider" | "committee";
 
-const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700";
+const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-slate-400";
 
 const badgeCount = (n: number) =>
   n > 0 && (
-    <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[11px] font-bold text-amber-700">
+    <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
       {n}
     </span>
   );
@@ -657,40 +657,40 @@ export default function AdminWebsiteSettingsPage() {
       <div
         className={`flex items-center justify-between gap-4 rounded-2xl border-2 p-5 shadow-sm transition ${
           (form.is_published as number) !== 0
-            ? "border-green-200 bg-green-50/60"
-            : "border-red-200 bg-red-50/60"
+            ? "border-green-200 bg-green-50/60 dark:border-green-900/50 dark:bg-green-950/20"
+            : "border-red-200 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20"
         }`}
       >
         <div className="flex items-start gap-3">
           <span
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
               (form.is_published as number) !== 0
-                ? "bg-green-100 text-green-600"
-                : "bg-red-100 text-red-600"
+                ? "bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400"
+                : "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400"
             }`}
           >
             <Globe size={20} />
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-gray-900">ওয়েবসাইট প্রকাশিত</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-slate-100">ওয়েবসাইট প্রকাশিত</span>
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
                   (form.is_published as number) !== 0
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
+                    ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
+                    : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
                 }`}
               >
                 {(form.is_published as number) !== 0 ? "লাইভ আছে" : "বন্ধ আছে"}
               </span>
             </div>
-            <p className="mt-1 text-xs text-gray-600">
+            <p className="mt-1 text-xs text-gray-600 dark:text-slate-400">
               এটি মাস্টার সুইচ — বন্ধ করলে পুরো পাবলিক ওয়েবসাইট (সব ট্যাবের সব সেকশনসহ) সবার কাছে অদৃশ্য হয়ে যাবে।
             </p>
           </div>
         </div>
         {savingToggle === "is_published" ? (
-          <span className="shrink-0 text-xs text-gray-400">সংরক্ষণ হচ্ছে...</span>
+          <span className="shrink-0 text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
         ) : (
           <ToggleSwitch
             checked={(form.is_published as number) !== 0}
@@ -700,14 +700,14 @@ export default function AdminWebsiteSettingsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+      <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {tabs.map(({ key, label, icon: Icon, badge }) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
             className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-              tab === key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"
+              tab === key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
             }`}
           >
             <Icon size={15} />
@@ -763,9 +763,9 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard title="লোগো">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               ওয়েবসাইটের লোগো এখন{" "}
-              <span className="font-semibold text-slate-800">ব্র্যান্ডিং সেটিংস</span>{" "}
+              <span className="font-semibold text-slate-800 dark:text-slate-100">ব্র্যান্ডিং সেটিংস</span>{" "}
               থেকে নেওয়া হয়, যাতে একটি লোগোই ওয়েবসাইট ও আইডি কার্ড/মার্কশিটের মতো সব রিপোর্টে
               একইরকম দেখায়।
             </p>
@@ -879,14 +879,14 @@ export default function AdminWebsiteSettingsPage() {
               {toggleFields.map(([key, label, hint]) => (
                 <div
                   key={String(key)}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4"
+                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-slate-700"
                 >
                   <span>
-                    <span className="block text-sm font-semibold text-gray-900">{label}</span>
-                    <span className="text-xs text-gray-500">{hint}</span>
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-slate-100">{label}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">{hint}</span>
                   </span>
                   {savingToggle === String(key) ? (
-                    <span className="text-xs text-gray-400">সংরক্ষণ হচ্ছে...</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
                   ) : (
                     <ToggleSwitch
                       checked={(form[key] as number) !== 0}
@@ -902,7 +902,7 @@ export default function AdminWebsiteSettingsPage() {
             <div className="space-y-3">
               {pages.map((page, index) =>
                 editingPageIndex === index && pageDraft ? (
-                  <div key={page.page_key} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                  <div key={page.page_key} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
                     <Input
                       value={pageDraft.title}
                       onChange={(e) =>
@@ -943,23 +943,23 @@ export default function AdminWebsiteSettingsPage() {
                 ) : (
                   <div
                     key={page.page_key}
-                    className="group rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60"
+                    className="group rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <h3 className="font-semibold text-gray-900">{page.title}</h3>
+                          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{page.title}</h3>
                           {page.is_published === 0 && (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                               অপ্রকাশিত
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-600">
+                        <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-600 dark:text-slate-400">
                           {page.content?.trim() ? (
                             page.content
                           ) : (
-                            <span className="text-gray-400">কোনো কন্টেন্ট যোগ করা হয়নি</span>
+                            <span className="text-gray-400 dark:text-slate-500">কোনো কন্টেন্ট যোগ করা হয়নি</span>
                           )}
                         </p>
                       </div>
@@ -967,7 +967,7 @@ export default function AdminWebsiteSettingsPage() {
                         <button
                           type="button"
                           onClick={() => startEditPage(index)}
-                          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                           title="সম্পাদনা"
                         >
                           <Pencil size={14} />
@@ -1016,7 +1016,7 @@ export default function AdminWebsiteSettingsPage() {
               <div className="space-y-3">
                 {notices.map((notice) =>
                   editingNoticeId === notice.id && noticeEditDraft ? (
-                    <div key={notice.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                    <div key={notice.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <Input
                         value={noticeEditDraft.title || ""}
                         onChange={(e) =>
@@ -1058,26 +1058,26 @@ export default function AdminWebsiteSettingsPage() {
                   ) : (
                     <div
                       key={notice.id}
-                      className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60"
+                      className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <h3 className="font-semibold text-gray-900">{notice.title}</h3>
+                          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{notice.title}</h3>
                           {notice.is_published === 0 && (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                               খসড়া / অপ্রকাশিত
                             </span>
                           )}
                         </div>
                         {notice.content && (
-                          <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{notice.content}</p>
+                          <p className="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-slate-400">{notice.content}</p>
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
                           onClick={() => startEditNotice(notice)}
-                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                           title="সম্পাদনা"
                         >
                           <Pencil size={14} />
@@ -1085,7 +1085,7 @@ export default function AdminWebsiteSettingsPage() {
                         <button
                           type="button"
                           onClick={() => removeNotice(notice)}
-                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                           title="মুছুন"
                         >
                           <Trash2 size={14} />
@@ -1155,7 +1155,7 @@ export default function AdminWebsiteSettingsPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((item) =>
                   editingGalleryId === item.id && galleryEditDraft ? (
-                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3">
+                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <div className="max-w-xs">
                         <BrandImageBox
                           label="ছবি"
@@ -1203,7 +1203,7 @@ export default function AdminWebsiteSettingsPage() {
                   ) : (
                     <div
                       key={item.id}
-                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
+                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                     >
                       <img
                         src={item.image_url}
@@ -1212,14 +1212,14 @@ export default function AdminWebsiteSettingsPage() {
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900">{item.title || "গ্যালারি ছবি"}</p>
-                          {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || "গ্যালারি ছবি"}</p>
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditGalleryItem(item)}
-                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                             title="সম্পাদনা"
                           >
                             <Pencil size={14} />
@@ -1227,7 +1227,7 @@ export default function AdminWebsiteSettingsPage() {
                           <button
                             type="button"
                             onClick={() => removeGalleryItem(item)}
-                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                             title="মুছুন"
                           >
                             <Trash2 size={14} />
@@ -1248,7 +1248,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "slider" && (
         <div className="space-y-6">
           <SectionCard title="নতুন স্লাইড যোগ করুন">
-            <p className="-mt-2 mb-3 text-xs text-gray-500">
+            <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
               প্রস্তাবিত ছবির সাইজ: 1600 x 900px (16:9, landscape) — সব ডিভাইসে ঠিকভাবে ফিট হবে।
             </p>
             <form onSubmit={submitSlide} className="space-y-3">
@@ -1308,7 +1308,7 @@ export default function AdminWebsiteSettingsPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {slides.map((item) =>
                   editingSlideId === item.id && slideEditDraft ? (
-                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3">
+                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <div className="max-w-xs">
                         <BrandImageBox
                           label="স্লাইড ছবি"
@@ -1368,7 +1368,7 @@ export default function AdminWebsiteSettingsPage() {
                   ) : (
                     <div
                       key={item.id}
-                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
+                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                     >
                       <img
                         src={item.image_url}
@@ -1377,17 +1377,17 @@ export default function AdminWebsiteSettingsPage() {
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900">
+                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
                             {item.title || "শিরোনামহীন স্লাইড"}
                           </p>
-                          {item.subtitle && <p className="truncate text-xs text-gray-500">{item.subtitle}</p>}
-                          {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                          {item.subtitle && <p className="truncate text-xs text-gray-500 dark:text-slate-400">{item.subtitle}</p>}
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditSlide(item)}
-                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                             title="সম্পাদনা"
                           >
                             <Pencil size={14} />
@@ -1395,7 +1395,7 @@ export default function AdminWebsiteSettingsPage() {
                           <button
                             type="button"
                             onClick={() => removeSlide(item)}
-                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                             title="মুছুন"
                           >
                             <Trash2 size={14} />
@@ -1474,7 +1474,7 @@ export default function AdminWebsiteSettingsPage() {
                   editingCommitteeId === item.id && committeeEditDraft ? (
                     <div
                       key={item.id}
-                      className="sm:col-span-2 lg:col-span-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4"
+                      className="sm:col-span-2 lg:col-span-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20"
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="max-w-[9rem]">
@@ -1550,7 +1550,7 @@ export default function AdminWebsiteSettingsPage() {
                   ) : (
                     <div
                       key={item.id}
-                      className="group flex items-center gap-3 rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60"
+                      className="group flex items-center gap-3 rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                     >
                       {item.photo_url ? (
                         <img
@@ -1559,20 +1559,20 @@ export default function AdminWebsiteSettingsPage() {
                           className="h-14 w-14 shrink-0 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                           {item.name?.[0] || "?"}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-gray-900">{item.name}</p>
-                        <p className="truncate text-xs text-gray-500">{item.designation}</p>
-                        {item.is_published === 0 && <p className="text-xs text-amber-600">অপ্রকাশিত</p>}
+                        <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.name}</p>
+                        <p className="truncate text-xs text-gray-500 dark:text-slate-400">{item.designation}</p>
+                        {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
                           onClick={() => startEditCommitteeMember(item)}
-                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                           title="সম্পাদনা"
                         >
                           <Pencil size={14} />
@@ -1580,7 +1580,7 @@ export default function AdminWebsiteSettingsPage() {
                         <button
                           type="button"
                           onClick={() => removeCommitteeMember(item)}
-                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                           title="মুছুন"
                         >
                           <Trash2 size={14} />

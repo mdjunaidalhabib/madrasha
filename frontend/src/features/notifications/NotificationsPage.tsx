@@ -10,9 +10,9 @@ import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
 
 const STATUS_LABELS: Record<NotificationStatus, { label: string; className: string }> = {
-  PENDING: { label: "প্রক্রিয়াধীন", className: "bg-gray-100 text-gray-600" },
-  SENT: { label: "পাঠানো হয়েছে", className: "bg-green-100 text-green-700" },
-  FAILED: { label: "ব্যর্থ", className: "bg-red-100 text-red-700" },
+  PENDING: { label: "প্রক্রিয়াধীন", className: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400" },
+  SENT: { label: "পাঠানো হয়েছে", className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
+  FAILED: { label: "ব্যর্থ", className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
 };
 
 const normalizeArray = (payload: any) => {
@@ -98,23 +98,23 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">SMS / ইমেইল নোটিফিকেশন</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">SMS / ইমেইল নোটিফিকেশন</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             অভিভাবক বা স্টাফদের কাছে একসাথে SMS বা ইমেইল পাঠান
           </p>
         </div>
 
         {/* Send form */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="mb-3 flex gap-2">
             <button
               type="button"
               onClick={() => setChannel("SMS")}
               className={`h-9 rounded-md px-4 text-sm font-medium transition ${
-                channel === "SMS" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"
+                channel === "SMS" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
               }`}
             >
               SMS
@@ -123,7 +123,7 @@ const NotificationsPage = () => {
               type="button"
               onClick={() => setChannel("EMAIL")}
               className={`h-9 rounded-md px-4 text-sm font-medium transition ${
-                channel === "EMAIL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"
+                channel === "EMAIL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
               }`}
             >
               ইমেইল
@@ -132,38 +132,38 @@ const NotificationsPage = () => {
 
           <div className="flex flex-col gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 প্রাপক ({channel === "SMS" ? "ফোন নম্বর" : "ইমেইল"}, কমা বা নতুন লাইন দিয়ে আলাদা করুন)
-                {recipientCount > 0 && <span className="text-gray-400"> — {recipientCount} জন</span>}
+                {recipientCount > 0 && <span className="text-gray-400 dark:text-slate-500"> — {recipientCount} জন</span>}
               </label>
               <textarea
                 value={recipientsRaw}
                 onChange={(e) => setRecipientsRaw(e.target.value)}
                 rows={3}
                 placeholder={channel === "SMS" ? "01711xxxxxx, 01911xxxxxx" : "guardian1@email.com, guardian2@email.com"}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
             {channel === "EMAIL" && (
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">সাবজেক্ট</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সাবজেক্ট</label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">মেসেজ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">মেসেজ</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -179,13 +179,13 @@ const NotificationsPage = () => {
         </div>
 
         {/* History */}
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">পাঠানোর ইতিহাস</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">পাঠানোর ইতিহাস</h2>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none"
+              className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">সব স্ট্যাটাস</option>
               <option value="SENT">পাঠানো হয়েছে</option>
@@ -196,13 +196,13 @@ const NotificationsPage = () => {
           {loading ? (
             <SkeletonList items={6} />
           ) : logs.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-500">কোনো ইতিহাস নেই</div>
+            <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">কোনো ইতিহাস নেই</div>
           ) : (
             <div className="flex flex-col gap-2">
               {logs.map((log) => (
-                <div key={log.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+                <div key={log.id} className="rounded-lg border border-gray-200 p-3 text-sm dark:border-slate-700">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium text-gray-800">
+                    <span className="font-medium text-gray-800 dark:text-slate-200">
                       {log.channel === "SMS" ? "SMS" : "ইমেইল"} → {log.recipient}
                     </span>
                     <span
@@ -211,10 +211,10 @@ const NotificationsPage = () => {
                       {STATUS_LABELS[log.status].label}
                     </span>
                   </div>
-                  {log.subject && <p className="mt-1 text-xs text-gray-500">বিষয়: {log.subject}</p>}
-                  <p className="mt-1 truncate text-xs text-gray-500">{log.message}</p>
+                  {log.subject && <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">বিষয়: {log.subject}</p>}
+                  <p className="mt-1 truncate text-xs text-gray-500 dark:text-slate-400">{log.message}</p>
                   {log.errorMessage && (
-                    <p className="mt-1 text-xs text-red-600">ত্রুটি: {log.errorMessage}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">ত্রুটি: {log.errorMessage}</p>
                   )}
                 </div>
               ))}

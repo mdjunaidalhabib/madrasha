@@ -94,15 +94,15 @@ function CloudinarySettingsCard() {
   };
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="rounded-xl bg-blue-50 p-2 text-blue-600">
+          <span className="rounded-xl bg-blue-50 p-2 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
             <Cloud size={20} />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Cloudinary (Platform Storage)</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Cloudinary (Platform Storage)</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Super Admin যখন System Document Template-এর ব্যাকগ্রাউন্ড ছবি আপলোড করেন, সেটি এই
               অ্যাকাউন্টে জমা হয় — কোনো নির্দিষ্ট মাদ্রাসার অ্যাকাউন্ট নয়।
             </p>
@@ -110,7 +110,7 @@ function CloudinarySettingsCard() {
         </div>
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
-            configured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            configured ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
           }`}
         >
           {loading ? "..." : configured ? "কনফিগার করা আছে" : "কনফিগার করা নেই"}
@@ -118,32 +118,32 @@ function CloudinarySettingsCard() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">লোড হচ্ছে...</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-semibold">Cloud Name</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Cloud Name</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={cloudName}
               onChange={(e) => setCloudName(e.target.value)}
               placeholder="e.g. my-cloud-name"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">API Key</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Key</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={configured ? "•••••••••• (পরিবর্তনে নতুন মান দিন)" : ""}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">API Secret</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Secret</label>
             <input
               type="password"
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
               placeholder={configured ? "•••••••••• (পরিবর্তনে নতুন মান দিন)" : ""}
@@ -152,7 +152,7 @@ function CloudinarySettingsCard() {
         </div>
       )}
       {!loading && (
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
           সেভ করার পর Secret আর কখনো দেখানো হয় না — পরিবর্তন করতে হলে আবার নতুন করে লিখুন।
         </p>
       )}

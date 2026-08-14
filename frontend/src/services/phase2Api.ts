@@ -88,10 +88,6 @@ export const paymentMethodSettingApi = {
   remove: (id: number) => api.delete(`/payment-methods/${id}`),
 };
 
-export const studentStatementApi = {
-  get: (studentId: number) => api.get(`/students/${studentId}/statement`),
-};
-
 /* ================= SALARY & PAYROLL ================= */
 
 export type PayrollStatus = "PENDING" | "PAID";

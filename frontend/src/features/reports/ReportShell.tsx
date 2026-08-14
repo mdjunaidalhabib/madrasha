@@ -269,30 +269,30 @@ const ReportShell = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f8fb] p-2 sm:p-4 lg:p-6">
-      <div className="no-print mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:mb-5 sm:p-5">
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
+    <div className="min-h-screen bg-[#f6f8fb] p-2 dark:bg-slate-950 sm:p-4 lg:p-6">
+      <div className="no-print mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:mb-5 sm:p-5">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-400">
           {accentTitle}
         </div>
-        <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">{pageTitle}</h1>
-        <p className="mt-1 text-sm text-slate-500">{pageSubtitle}</p>
+        <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">{pageTitle}</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{pageSubtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5">
         <ReportSidebar reports={reports} activeKey={activeReport.key} onChange={setActiveKey} />
 
-        <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="no-print border-b border-slate-200 bg-white p-3 sm:p-5">
+        <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="no-print border-b border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-5">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 sm:text-xl">
                   {activeReport.title}
                 </h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">{activeReport.subtitle}</p>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{activeReport.subtitle}</p>
               </div>
 
-              <div className="w-fit shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 sm:px-4">
-                মোট <span className="font-bold text-slate-900">{filteredRows.length}</span> টি
+              <div className="w-fit shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:px-4">
+                মোট <span className="font-bold text-slate-900 dark:text-slate-100">{filteredRows.length}</span> টি
                 রেকর্ড
               </div>
             </div>
@@ -323,7 +323,7 @@ const ReportShell = ({
             />
 
             {warning && (
-              <div className="mt-4 border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              <div className="mt-4 border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400">
                 {warning}
               </div>
             )}

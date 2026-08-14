@@ -129,9 +129,15 @@ export class SidebarService {
       // of sidebar entries. Same reasoning as exam_report/pending above -
       // surface them immediately in installations seeded before this change.
       if (mod.keyName === "students") {
+        // "হিসাব বিবরণী" duplicated "ফি গ্রহণ" (student invoice/payment/waive
+        // view) and was removed. Filter any already-seeded DB row here so
+        // existing installations stop showing it immediately, even before
+        // the seed is run again.
+        const statementIndex = children.findIndex((child) => child.key === "statement");
+        if (statementIndex !== -1) children.splice(statementIndex, 1);
+
         const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "sessions", label: "সেশন সেটাপ", sortOrder: 2 },
-          { key: "statement", label: "হিসাব বিবরণী", sortOrder: 3 },
           { key: "fee_management", label: "ফি সেটাপ", sortOrder: 4 },
           { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 5 },
           { key: "notifications", label: "SMS/ইমেইল পাঠান", sortOrder: 6 },

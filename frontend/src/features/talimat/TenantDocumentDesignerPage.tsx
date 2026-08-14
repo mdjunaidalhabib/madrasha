@@ -111,7 +111,7 @@ export default function TenantDocumentDesignerPage() {
       <button
         type="button"
         onClick={() => navigate(`${adminBase}/talimat/documents`)}
-        className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
+        className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
         <ArrowLeft size={15} /> ডকুমেন্ট টেমপ্লেট তালিকায় ফিরে যান
       </button>
@@ -144,9 +144,9 @@ export default function TenantDocumentDesignerPage() {
         saveError={saveError}
       />
 
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
         <span>{DOCUMENT_TYPE_LABELS_BN[type]} টেমপ্লেট এডিট করছেন</span>
-        {!name.trim() && <span className="text-amber-600">টেমপ্লেটের একটি নাম দিন</span>}
+        {!name.trim() && <span className="text-amber-600 dark:text-amber-400">টেমপ্লেটের একটি নাম দিন</span>}
       </div>
 
       <div className="flex items-start gap-4 overflow-x-auto pb-6">
@@ -183,7 +183,7 @@ export default function TenantDocumentDesignerPage() {
       </div>
 
       {!previewRow && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
           প্রিভিউ দেখানোর জন্য কোনো সক্রিয় শিক্ষার্থীর তথ্য পাওয়া যায়নি — অন্তত একজন শিক্ষার্থী যোগ করলে
           এখানে প্রকৃত তথ্য দিয়ে প্রিভিউ দেখা যাবে।
         </div>

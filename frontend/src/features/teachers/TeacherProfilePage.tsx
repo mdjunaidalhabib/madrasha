@@ -159,14 +159,14 @@ const TeacherProfilePage = () => {
       </div>
     );
 
-  if (!teacher) return <p className="p-6">No teacher found</p>;
+  if (!teacher) return <p className="p-6 text-gray-900 dark:text-slate-100">No teacher found</p>;
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
       {/* HEADER */}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold sm:text-3xl">Teacher Profile</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl text-gray-900 dark:text-slate-100">Teacher Profile</h1>
 
         <div className="flex flex-wrap gap-3">
           {!isEditMode ? (

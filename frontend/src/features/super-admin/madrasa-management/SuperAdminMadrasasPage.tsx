@@ -82,6 +82,9 @@ export default function SuperAdminMadrasasPage() {
   const [editing, setEditing] = useState<Madrasa | null>(null);
   const [cloudinaryFor, setCloudinaryFor] = useState<Madrasa | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   /* ==============================
      Pagination
   ============================== */
@@ -123,6 +126,11 @@ export default function SuperAdminMadrasasPage() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Selection is page/search scoped — clear it whenever the visible set changes.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [dq, page]);
 
   /* ==============================
      FETCH PLANS
@@ -236,6 +244,51 @@ export default function SuperAdminMadrasasPage() {
   };
 
   /* ==============================
+     SELECTION + BULK TRASH
+  ============================== */
+
+  const toggleOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const allSelected = items.length > 0 && items.every((m) => prev.has(m.id));
+      return allSelected ? new Set() : new Set(items.map((m) => m.id));
+    });
+  };
+
+  const onBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+
+    useConfirmStore.getState().show({
+      title: "Move to Trash",
+      message: `Move ${ids.length}টি মাদ্রাসা Trash-এ পাঠাবেন?`,
+      confirmText: "Move to Trash",
+      danger: true,
+      onConfirm: async () => {
+        setBulkBusy(true);
+
+        try {
+          await Promise.allSettled(ids.map((id) => trashMadrasa(id)));
+          setSelectedIds(new Set());
+          await fetchAll();
+        } catch (err) {
+          logger.error("Bulk delete failed:", err);
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
+
+  /* ==============================
      PAGINATION CONTROL
   ============================== */
 
@@ -251,8 +304,8 @@ export default function SuperAdminMadrasasPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">All Madrasas</h1>
-          <p className="text-sm text-gray-600">Platform-wide madrasa list</p>
+          <h1 className="text-2xl font-bold dark:text-slate-100">All Madrasas</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">Platform-wide madrasa list</p>
         </div>
 
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -288,6 +341,34 @@ export default function SuperAdminMadrasasPage() {
         next={() => setPage((p) => p + 1)}
       />
 
+      {/* Bulk actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900 dark:bg-indigo-950/40">
+          <span className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
+            {selectedIds.size}টি মাদ্রাসা নির্বাচিত
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkBusy}
+            >
+              Clear
+            </Button>
+            <Button variant="danger" onClick={onBulkDelete} disabled={bulkBusy}>
+              {bulkBusy ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                `Move ${selectedIds.size} to Trash`
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <MadrasasTable
         loading={loading}
@@ -299,6 +380,9 @@ export default function SuperAdminMadrasasPage() {
         onDelete={onDelete}
         onEdit={setEditing}
         onCloudinary={setCloudinaryFor}
+        selectedIds={selectedIds}
+        onToggleOne={toggleOne}
+        onToggleAll={toggleAll}
       />
 
       {editing && (
@@ -446,42 +530,42 @@ function EditMadrasaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:p-6">
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-slate-900">Edit Madrasa</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Edit Madrasa</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             মাদ্রাসার basic info, limit, status, website status এবং plan update করুন।
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-semibold">Name</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Name</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Slug</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Slug</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.slug}
               onChange={(e) => update("slug", e.target.value)}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Phone</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Phone</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.phone || ""}
               onChange={(e) => update("phone", e.target.value)}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Plan</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Plan</label>
             <select
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.plan_id}
               onChange={(e) => update("plan_id", e.target.value)}
             >
@@ -494,27 +578,27 @@ function EditMadrasaModal({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Student Limit</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
             <input
               type="number"
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.student_limit}
               onChange={(e) => update("student_limit", Number(e.target.value))}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">User Limit</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">User Limit</label>
             <input
               type="number"
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.user_limit}
               onChange={(e) => update("user_limit", Number(e.target.value))}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Madrasa Status</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Madrasa Status</label>
             <select
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.is_active}
               onChange={(e) => update("is_active", Number(e.target.value))}
             >
@@ -523,9 +607,9 @@ function EditMadrasaModal({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold">Website Status</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Website Status</label>
             <select
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.website_status}
               onChange={(e) => update("website_status", e.target.value)}
             >
@@ -535,9 +619,9 @@ function EditMadrasaModal({
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-semibold">Address</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Address</label>
             <input
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.address || ""}
               onChange={(e) => update("address", e.target.value)}
             />
@@ -547,7 +631,7 @@ function EditMadrasaModal({
         {/* System Setup — same as Create Madrasa (Classes/Books stay hidden and auto-derive) */}
         <div className="mt-6 space-y-4">
           {loadingSetup ? (
-            <p className="text-sm text-gray-500">Loading divisions & modules...</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Loading divisions & modules...</p>
           ) : (
             <>
               <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />

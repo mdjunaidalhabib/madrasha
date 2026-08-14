@@ -18,12 +18,12 @@ const NumberField = ({
   onChange: (value: number) => void;
 }) => (
   <label className="block">
-    <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+    <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
     <input
       type="number"
       value={Number.isFinite(value) ? Math.round(value) : 0}
       onChange={(e) => onChange(Number(e.target.value) || 0)}
-      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
     />
   </label>
 );
@@ -39,7 +39,7 @@ const style = (layer: DocumentLayer): CSSProperties => (layer.style as CSSProper
 const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspectorProps) => {
   if (!layer) {
     return (
-      <div className="w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-400">
+      <div className="w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
         কোনো এলিমেন্ট নির্বাচিত নেই — ক্যানভাসে কোনো এলিমেন্টে ক্লিক করুন
       </div>
     );
@@ -54,9 +54,9 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
   const textBindings = fieldBindings.filter((f) => !f.isImage);
 
   return (
-    <div className="w-72 shrink-0 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4">
+    <div className="w-72 shrink-0 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <div>
-        <p className="mb-2 text-xs font-semibold text-slate-500">অবস্থান ও আকার</p>
+        <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">অবস্থান ও আকার</p>
         <div className="grid grid-cols-2 gap-2">
           <NumberField label="X" value={layer.x} onChange={(v) => onChange({ x: v })} />
           <NumberField label="Y" value={layer.y} onChange={(v) => onChange({ y: v })} />
@@ -68,16 +68,16 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
 
       {layer.type === "text" && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500">টেক্সট</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">টেক্সট</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">ফিল্ড বাইন্ড করুন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল্ড বাইন্ড করুন</span>
             <select
               value={"__custom__"}
               onChange={(e) => {
                 if (e.target.value === "__custom__") return;
                 updateContent({ template: `{{${e.target.value}}}`, text: undefined });
               }}
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="__custom__">— নির্বাচন করুন —</option>
               {textBindings.map((f) => (
@@ -88,7 +88,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
               লেখা (স্ট্যাটিক অথবা {"{{ফিল্ড}}"} সহ)
             </span>
             <textarea
@@ -99,7 +99,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
                 else updateContent({ text: value, template: undefined });
               }}
               rows={3}
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -109,16 +109,16 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               onChange={(v) => updateStyle({ fontSize: v })}
             />
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">রং</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">রং</span>
               <input
                 type="color"
                 value={String(style(layer).color || "#0f172a")}
                 onChange={(e) => updateStyle({ color: e.target.value })}
-                className="h-9 w-full rounded-lg border border-slate-200"
+                className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700"
               />
             </label>
           </div>
-          <label className="flex items-center gap-2 text-xs text-slate-600">
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
             <input
               type="checkbox"
               checked={style(layer).fontWeight === 700 || style(layer).fontWeight === "700"}
@@ -131,13 +131,13 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
 
       {isImageLike && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500">ছবি</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">ছবি</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">ফিল্ড বাইন্ড করুন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল্ড বাইন্ড করুন</span>
             <select
               value={content.field || ""}
               onChange={(e) => updateContent({ field: e.target.value || undefined })}
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">— স্ট্যাটিক ছবি —</option>
               {imageBindings.map((f) => (
@@ -149,7 +149,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
           </label>
           {!content.field && (
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">ছবি আপলোড করুন</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ছবি আপলোড করুন</span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -169,15 +169,15 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
 
       {(layer.type === "qrcode" || layer.type === "barcode") && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {layer.type === "qrcode" ? "কিউআর কোড" : "বারকোড"}
           </p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">কোন ফিল্ডের মান এনকোড হবে</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">কোন ফিল্ডের মান এনকোড হবে</span>
             <select
               value={content.field || ""}
               onChange={(e) => updateContent({ field: e.target.value || undefined })}
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">— নির্বাচন করুন —</option>
               {textBindings.map((f) => (
@@ -192,13 +192,13 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
 
       {layer.type === "shape" && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500">শেপ</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">শেপ</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">ধরন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ধরন</span>
             <select
               value={content.shape || "rectangle"}
               onChange={(e) => updateContent({ shape: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="rectangle">আয়তক্ষেত্র</option>
               <option value="circle">বৃত্ত</option>
@@ -206,7 +206,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">ফিল রং</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল রং</span>
             <input
               type="color"
               value={content.fill || "#e2e8f0"}
@@ -217,7 +217,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-xs text-slate-600">
+      <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
         <input
           type="checkbox"
           checked={layer.visible !== false}

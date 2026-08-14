@@ -38,7 +38,7 @@ export default function SearchPaginationBar({
       </div>
 
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-600">
+        <span className="text-gray-600 dark:text-slate-400">
           Page <b>{page}</b> / <b>{totalPages}</b>
           {total ? (
             <span>

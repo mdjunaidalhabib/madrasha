@@ -79,9 +79,9 @@ export default function BrandImageBox({
   const ratioLabel = shape === "wide" ? "অনুপাত ১৬:৯" : "অনুপাত ১:১";
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <p className="font-semibold text-gray-900">{label}</p>
-      {hint && <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{hint}</p>}
+    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+      <p className="font-semibold text-gray-900 dark:text-slate-100">{label}</p>
+      {hint && <p className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">{hint}</p>}
 
       <div
         onClick={() => fileRef.current?.click()}
@@ -90,7 +90,7 @@ export default function BrandImageBox({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
         }}
-        className={`group relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-400 hover:bg-blue-50/40 ${
+        className={`group relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-400 hover:bg-blue-50/40 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30 ${
           shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
@@ -101,10 +101,10 @@ export default function BrandImageBox({
         }}
       >
         {!value && (
-          <span className="flex flex-col items-center gap-1 px-2 text-center text-xs text-gray-400">
-            <ImageUp size={22} className="text-gray-300 transition group-hover:text-blue-400" />
+          <span className="flex flex-col items-center gap-1 px-2 text-center text-xs text-gray-400 dark:text-slate-500">
+            <ImageUp size={22} className="text-gray-300 transition group-hover:text-blue-400 dark:text-slate-600 dark:group-hover:text-blue-400" />
             <span>ছবি আপলোড করুন</span>
-            <span className="text-[10px] text-gray-300">{ratioLabel}</span>
+            <span className="text-[10px] text-gray-300 dark:text-slate-600">{ratioLabel}</span>
           </span>
         )}
 
@@ -123,7 +123,7 @@ export default function BrandImageBox({
                 e.stopPropagation();
                 onRemove();
               }}
-              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100"
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 dark:bg-slate-800/90 dark:hover:bg-red-950/40 sm:opacity-0 sm:group-hover:opacity-100"
               title="মুছুন"
             >
               <X size={14} />

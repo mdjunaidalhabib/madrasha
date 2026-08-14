@@ -39,21 +39,21 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow">
-        <h2 className="text-xl font-bold">পাসওয়ার্ড ভুলে গেছেন?</h2>
-        <p className="text-xs text-gray-500">
+    <div className="flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+      <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
+        <h2 className="text-xl font-bold dark:text-slate-100">পাসওয়ার্ড ভুলে গেছেন?</h2>
+        <p className="text-xs text-gray-500 dark:text-slate-400">
           আপনার অ্যাকাউন্টের ইমেইল দিন — একটা রিসেট লিংক পাঠানো হবে।
         </p>
 
         {submitted ? (
           <div className="space-y-3">
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-green-700 dark:text-green-400">
               যদি এই ইমেইলে অ্যাকাউন্ট থাকে, একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে।
             </p>
 
             {devResetToken && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 <p className="mb-1 font-medium">
                   ডেভ মোড (এখনো ইমেইল সার্ভিস সেটআপ করা হয়নি):
                 </p>
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
                   onClick={() =>
                     nav(`${adminBase}/reset-password?token=${devResetToken}`)
                   }
-                  className="break-all text-left text-blue-600 underline"
+                  className="break-all text-left text-blue-600 underline dark:text-blue-400"
                 >
                   রিসেট লিংকে যেতে ক্লিক করুন
                 </button>
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
             <button
               type="button"
               onClick={() => nav(`${adminBase}/login`)}
-              className="w-full text-center text-xs text-blue-600 hover:underline"
+              className="w-full text-center text-xs text-blue-600 hover:underline dark:text-blue-400"
             >
               লগইন পেজে ফিরে যান
             </button>
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
             <button
               type="button"
               onClick={() => nav(`${adminBase}/login`)}
-              className="w-full text-center text-xs text-gray-500 hover:underline"
+              className="w-full text-center text-xs text-gray-500 hover:underline dark:text-slate-400"
             >
               লগইন পেজে ফিরে যান
             </button>

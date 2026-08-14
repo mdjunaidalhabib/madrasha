@@ -52,7 +52,7 @@ const TeacherImageUpload: React.FC<Props> = ({ formData, setFormData }) => {
   return (
     <div className="flex justify-center">
       <div
-        className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-400 flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition overflow-hidden relative"
+        className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-400 flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition overflow-hidden relative dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
         onClick={() => fileRef.current?.click()}
         style={{
           backgroundImage: preview ? `url(${preview})` : "none",
@@ -60,7 +60,7 @@ const TeacherImageUpload: React.FC<Props> = ({ formData, setFormData }) => {
           backgroundPosition: "center",
         }}
       >
-        {!preview && <span className="text-gray-500 text-sm">Upload Photo</span>}
+        {!preview && <span className="text-gray-500 text-sm dark:text-slate-400">Upload Photo</span>}
         {uploading && (
           <span className="absolute bottom-1 right-1 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
             আপলোড হচ্ছে...

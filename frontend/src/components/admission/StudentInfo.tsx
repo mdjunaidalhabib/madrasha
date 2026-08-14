@@ -37,12 +37,14 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
   const [sessions, setSessions] = useState<SessionItem[]>([]);
 
   const inputClass = (field: keyof AdmissionFormData) =>
-    `border rounded-lg px-3 py-2 outline-none focus:ring-2 ${
-      errors[field] ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-green-500"
+    `border rounded-lg px-3 py-2 outline-none focus:ring-2 dark:bg-slate-800 dark:text-slate-100 ${
+      errors[field]
+        ? "border-red-500 focus:ring-red-500"
+        : "border-gray-300 focus:ring-green-500 dark:border-slate-700"
     }`;
 
   const ErrorText = ({ field }: { field: keyof AdmissionFormData }) =>
-    errors[field] ? <p className="text-red-500 text-xs mt-1">{errors[field]}</p> : null;
+    errors[field] ? <p className="text-red-500 text-xs mt-1 dark:text-red-400">{errors[field]}</p> : null;
 
   const clearError = (field: keyof AdmissionFormData) => {
     setErrors((prev) => {
@@ -189,13 +191,13 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
   }, [formData.academicDivision]);
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200">
-      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">ছাত্রের তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-100 dark:border-slate-700">ছাত্রের তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
-            ছাত্রের নাম <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            ছাত্রের নাম <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <input
             name="name"
@@ -207,7 +209,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">আরবি নাম</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">আরবি নাম</label>
           <input
             name="arabicName"
             value={formData.arabicName || ""}
@@ -217,7 +219,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">NID/জন্ম নিবন্ধন নম্বর</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID/জন্ম নিবন্ধন নম্বর</label>
           <input
             name="nid"
             value={formData.nid || ""}
@@ -228,8 +230,8 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600">রোল নম্বর</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">রোল নম্বর</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
               স্বয়ংক্রিয়
             </span>
           </div>
@@ -240,14 +242,14 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             placeholder="শ্রেণি নির্বাচন করলে সম্ভাব্য রোল দেখা যাবে"
             readOnly
             aria-readonly="true"
-            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700`}
+            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
           />
         </div>
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600">ভর্তির ধরন</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির ধরন</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
               স্বয়ংক্রিয়
             </span>
           </div>
@@ -256,14 +258,14 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             value={isReturning ? "পুনঃভর্তি (পুরাতন)" : "নতুন"}
             readOnly
             aria-readonly="true"
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
           />
         </div>
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600">ভর্তির তারিখ</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির তারিখ</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
               স্বয়ংক্রিয়
             </span>
           </div>
@@ -272,12 +274,12 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             value={formatAdmissionDate(formData.admissionDate)}
             readOnly
             aria-readonly="true"
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">লিঙ্গ</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">লিঙ্গ</label>
           <select
             name="gender"
             value={formData.gender ?? ""}
@@ -307,19 +309,19 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">বয়স</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বয়স</label>
           <input
             name="age"
             value={formData.age || ""}
             readOnly
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-500"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           />
         </div>
 
         {/* শিক্ষাবর্ষ */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
-            শিক্ষাবর্ষ <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            শিক্ষাবর্ষ <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <select
             name="academicYear"
@@ -339,8 +341,8 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
-            বিভাগ <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            বিভাগ <span className="text-red-500 dark:text-red-400">*</span>
           </label>
 
           <select
@@ -361,8 +363,8 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">
-            বর্তমান শ্রেণি <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            বর্তমান শ্রেণি <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <select
             name="currentClass"
@@ -382,7 +384,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পূর্বের শ্রেণি</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্বের শ্রেণি</label>
           <select
             name="previousClass"
             value={formData.previousClass || ""}
@@ -400,7 +402,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পূর্ববর্তী প্রতিষ্ঠান</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্ববর্তী প্রতিষ্ঠান</label>
           <input
             name="previousInstitution"
             value={formData.previousInstitution || ""}
@@ -411,7 +413,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1">পূর্বের ফলাফল</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্বের ফলাফল</label>
           <input
             name="previousResult"
             value={formData.previousResult || ""}

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
+import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { accountRepository, AccountRepository } from "./account.repository";
 import {
   CreateExpenseRequestDto,
@@ -152,12 +153,7 @@ export class AccountService {
       return this.repository.findReportByCategory(madrasaId);
     }
 
-    const periodExpr =
-      type === "daily"
-        ? `CAST(${dateColumn} AS DATE)`
-        : type === "yearly"
-          ? `EXTRACT(YEAR FROM ${dateColumn})`
-          : `TO_CHAR(${dateColumn}, 'YYYY-MM')`;
+    const periodExpr = buildPeriodExpr(type, dateColumn);
 
     return this.repository.findReportByPeriod(madrasaId, periodExpr);
   }

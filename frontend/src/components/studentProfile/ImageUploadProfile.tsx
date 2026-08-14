@@ -37,7 +37,7 @@ const ImageUploadProfile = ({ student, setStudent }: any) => {
     <div className="flex justify-center mb-6">
       <div
         onClick={() => ref.current?.click()}
-        className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-400 flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition overflow-hidden relative"
+        className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-400 flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition overflow-hidden relative dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
         style={{
           backgroundImage: `url(${student.image || ""})`,
           backgroundSize: "cover",
@@ -45,8 +45,8 @@ const ImageUploadProfile = ({ student, setStudent }: any) => {
       >
         {!student.image && (
           <div>
-            <p className="text-gray-500 text-sm">Image Not Set</p>
-            <p className="text-gray-500 text-sm">Upload Photo</p>
+            <p className="text-gray-500 text-sm dark:text-slate-400">Image Not Set</p>
+            <p className="text-gray-500 text-sm dark:text-slate-400">Upload Photo</p>
           </div>
         )}
         {uploading && (

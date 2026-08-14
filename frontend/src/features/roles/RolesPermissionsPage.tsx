@@ -175,18 +175,18 @@ const RolesPermissionsPage = () => {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between"
+                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0 text-sm">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-semibold text-gray-900">{role.name_bn}</span>
+                    <span className="font-semibold text-gray-900 dark:text-slate-100">{role.name_bn}</span>
                     {role.is_protected && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                         ডিফল্ট রোল
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
                     {role.permission_keys.length} টি পারমিশন · {role.user_count} জন ইউজার
                   </p>
                 </div>
@@ -195,7 +195,7 @@ const RolesPermissionsPage = () => {
                   <button
                     type="button"
                     onClick={() => openEditModal(role)}
-                    className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                    className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
                   >
                     <Pencil size={12} />
                     পারমিশন সেট করুন
@@ -206,7 +206,7 @@ const RolesPermissionsPage = () => {
                       disabled={role.user_count > 0}
                       onClick={() => handleDelete(role)}
                       title={role.user_count > 0 ? "এই রোলে ইউজার আছে বলে মুছা যাবে না" : "মুছুন"}
-                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 sm:disabled:opacity-0"
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 sm:disabled:opacity-0 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -230,27 +230,27 @@ const RolesPermissionsPage = () => {
               const moduleKeys = modulePermissions.map((p) => p.keyName);
               const allSelected = moduleKeys.every((k) => selectedKeys.has(k));
               return (
-                <div key={moduleName} className="rounded-lg border border-gray-200 p-3">
+                <div key={moduleName} className="rounded-lg border border-gray-200 p-3 dark:border-slate-700">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold capitalize text-gray-800">
+                    <span className="text-sm font-semibold capitalize text-gray-800 dark:text-slate-200">
                       {moduleName}
                     </span>
                     <button
                       type="button"
                       onClick={() => toggleModuleAll(moduleKeys, allSelected)}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-blue-600 hover:underline dark:text-blue-400"
                     >
                       {allSelected ? "সব বাদ দিন" : "সব সিলেক্ট করুন"}
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {modulePermissions.map((permission) => (
-                      <label key={permission.id} className="flex items-center gap-2 text-xs text-gray-700">
+                      <label key={permission.id} className="flex items-center gap-2 text-xs text-gray-700 dark:text-slate-300">
                         <input
                           type="checkbox"
                           checked={selectedKeys.has(permission.keyName)}
                           onChange={() => toggleKey(permission.keyName)}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         />
                         {permission.name}
                       </label>

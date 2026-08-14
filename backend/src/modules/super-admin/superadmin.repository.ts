@@ -3,8 +3,15 @@ import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 
 export class SuperAdminRepository {
+  // createMadrasa/updateMadrasa/permanentDeleteMadrasa run many sequential
+  // queries inside one transaction (roles, users, division/module/class/book
+  // seeding, default templates, session, fee structures...). Prisma's
+  // default interactive-transaction timeout is only 5s, which a cold DB
+  // connection can blow through on the very first call of a session -
+  // failing with a red error toast even though a retry (warm connection)
+  // succeeds. Give these transactions real headroom instead.
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
-    return prisma.$transaction(fn);
+    return prisma.$transaction(fn, { timeout: 30000, maxWait: 10000 });
   }
 
   /* ================= SLUG ================= */
@@ -144,6 +151,26 @@ export class SuperAdminRepository {
       ORDER BY s.end_date ASC
       LIMIT 50
     `;
+  }
+
+  // `periodExpr` is server-built (buildPeriodExpr, a fixed 3-branch
+  // ternary), never user input, so it is safe to interpolate directly.
+  // Platform-wide aggregates (no madrasa_id filter), so no query params
+  // are needed.
+  findMadrasaGrowthTrend(periodExpr: string, limit: number) {
+    return prisma.$queryRawUnsafe<{ period: string; count: number }[]>(
+      `SELECT ${periodExpr} AS period, COUNT(*) AS count
+       FROM madrasas WHERE deleted_at IS NULL
+       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
+    );
+  }
+
+  findRevenueTrend(periodExpr: string, limit: number) {
+    return prisma.$queryRawUnsafe<{ period: string; total: number }[]>(
+      `SELECT ${periodExpr} AS period, SUM(amount) AS total
+       FROM subscription_payments WHERE status = 'paid'
+       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
+    );
   }
 
   /* ================= SINGLE MADRASA (non-tx) ================= */

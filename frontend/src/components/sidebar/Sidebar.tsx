@@ -5,6 +5,7 @@ import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
+import AdminSidebarShell from "../shell/AdminSidebarShell";
 
 import {
   LayoutDashboard,
@@ -74,14 +75,14 @@ function childPath(moduleKey: string, childKey: string) {
   return `${modulePath(moduleKey)}/${FEATURE_PATHS[childKey] || childKey}`;
 }
 function navItemClass(isActive: boolean) {
-  return `flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 text-base font-medium transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`;
+  return `flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 text-base font-medium transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`;
 }
 function childItemClass(isActive: boolean) {
-  return `block py-1.5 text-[15px] transition ${isActive ? "font-semibold text-indigo-600" : "text-slate-500 hover:text-slate-900"}`;
+  return `block py-1.5 text-[15px] transition ${isActive ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"}`;
 }
 const disabledClass =
-  "flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-base font-medium text-slate-300";
-const disabledChildClass = "block cursor-not-allowed py-1.5 text-[15px] text-slate-300";
+  "flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-base font-medium text-slate-300 dark:text-slate-600";
+const disabledChildClass = "block cursor-not-allowed py-1.5 text-[15px] text-slate-300 dark:text-slate-600";
 
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   const sidebar = useSidebarStore((s) => s.items);
@@ -130,24 +131,21 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  return (
-    <div
-      className={`flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
-    >
-      <div className={`flex items-center gap-1 border-b border-slate-100 p-2 ${collapsed ? "justify-center" : ""}`}>
+  const header = (
+    <div className={`flex items-center gap-1 border-b border-slate-100 p-2 dark:border-slate-800 ${collapsed ? "justify-center" : ""}`}>
         {!collapsed && (
           <div ref={accountMenuRef} className="relative min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setAccountMenuOpen((v) => !v)}
               title="অ্যাকাউন্ট মেনু"
-              className={`flex w-full items-center gap-2 rounded-lg p-1 transition hover:bg-slate-100 ${accountMenuOpen ? "bg-slate-100" : ""}`}
+              className={`flex w-full items-center gap-2 rounded-lg p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800 ${accountMenuOpen ? "bg-slate-100 dark:bg-slate-800" : ""}`}
             >
               {user?.photo_url ? (
                 <img
                   src={user.photo_url}
                   alt={user.name}
-                  className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover"
+                  className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover dark:border-slate-700"
                 />
               ) : (
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white">
@@ -155,26 +153,26 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 </span>
               )}
               <span className="min-w-0 flex-1 text-left leading-tight">
-                <span className="block truncate text-sm font-semibold text-slate-800">
+                <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {user?.name || "Madrasa"}
                 </span>
-                <span className="block truncate text-xs text-slate-400">
+                <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
                   {user?.mobile || user?.email || ""}
                 </span>
               </span>
             </button>
 
             {accountMenuOpen && (
-              <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg">
+              <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 <NavLink
                   to={`${adminBase}/settings/profile`}
                   onClick={() => {
                     setAccountMenuOpen(false);
                     handleClick();
                   }}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
-                  <UserCog size={16} className="text-slate-400" />
+                  <UserCog size={16} className="text-slate-400 dark:text-slate-500" />
                   প্রোফাইল সেটিংস
                 </NavLink>
                 <button
@@ -183,7 +181,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                     setAccountMenuOpen(false);
                     logout();
                   }}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 >
                   <LogOut size={16} />
                   লগআউট
@@ -196,7 +194,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
         <div className="flex shrink-0 items-center gap-1">
           {closeSidebar && (
             <button
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:hidden"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden"
               onClick={closeSidebar}
             >
               ✕
@@ -206,15 +204,17 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             type="button"
             onClick={toggleSidebar}
             title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
-            className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 md:flex"
+            className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
           >
             {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
           </button>
         </div>
       </div>
+  );
 
-      <nav className="app-sidebar-nav flex-1 space-y-2 overflow-y-auto p-2">
-        {sidebar.map((module) => {
+  return (
+    <AdminSidebarShell collapsed={collapsed} header={header}>
+      {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
           const moduleDisabled = Boolean(module.disabled);
 
@@ -255,7 +255,9 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 type="button"
                 onClick={() => toggleModule(module.key)}
                 className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold transition ${
-                  moduleDisabled ? "text-slate-300" : "text-slate-700 hover:bg-slate-100"
+                  moduleDisabled
+                    ? "text-slate-300 dark:text-slate-600"
+                    : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
               >
                 <Icon size={18} />
@@ -264,7 +266,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 {!collapsed && !moduleDisabled && (
                   <ChevronDown
                     size={16}
-                    className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    className={`text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
                   />
                 )}
               </button>
@@ -273,7 +275,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                <div className="ml-6 space-y-1 overflow-hidden border-l border-slate-200 pl-3">
+                <div className="ml-6 space-y-1 overflow-hidden border-l border-slate-200 pl-3 dark:border-slate-700">
                   {module.children.map((child) => {
                     const childDisabled = moduleDisabled || Boolean(child.disabled);
                     return childDisabled ? (
@@ -305,7 +307,6 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             </div>
           );
         })}
-      </nav>
-    </div>
+    </AdminSidebarShell>
   );
 }

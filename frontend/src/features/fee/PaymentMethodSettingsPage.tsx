@@ -85,7 +85,7 @@ const toPayload = (form: MethodForm) => ({
   instructions: form.instructions.trim() || undefined,
 });
 
-const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600";
+const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400";
 
 function MethodFormFields({
   form,
@@ -101,7 +101,7 @@ function MethodFormFields({
         <select
           value={form.method_type}
           onChange={(e) => onChange({ method_type: e.target.value as PaymentMethodType })}
-          className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
           {(Object.keys(METHOD_TYPE_LABELS) as PaymentMethodType[]).map((type) => (
             <option key={type} value={type}>
@@ -169,7 +169,7 @@ function MethodFormFields({
           onChange={(e) => onChange({ instructions: e.target.value })}
           rows={2}
           placeholder="যেমন: Send Money করুন, তারপর ট্রানজেকশন আইডি অফিসে জানান"
-          className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
     </div>
@@ -299,7 +299,7 @@ const PaymentMethodSettingsPage = () => {
 
       <SectionCard title="নতুন পেমেন্ট পদ্ধতি যোগ করুন">
         <MethodFormFields form={form} onChange={(patch) => setForm((p) => ({ ...p, ...patch }))} />
-        <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
+        <div className="mt-4 flex justify-end border-t border-gray-100 pt-4 dark:border-slate-800">
           <Button disabled={creating} onClick={handleCreate} className="gap-1.5">
             {!creating && <Plus size={15} />}
             {creating ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
@@ -320,7 +320,7 @@ const PaymentMethodSettingsPage = () => {
             {methods.map((method) => {
               if (editingId === method.id && editForm) {
                 return (
-                  <div key={method.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                  <div key={method.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
                     <MethodFormFields
                       form={editForm}
                       onChange={(patch) => setEditForm((p) => (p ? { ...p, ...patch } : p))}
@@ -341,7 +341,7 @@ const PaymentMethodSettingsPage = () => {
               return (
                 <div
                   key={method.id}
-                  className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60"
+                  className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     <span
@@ -351,25 +351,25 @@ const PaymentMethodSettingsPage = () => {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-semibold text-gray-900">{method.label}</span>
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                        <span className="font-semibold text-gray-900 dark:text-slate-100">{method.label}</span>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                           {METHOD_TYPE_LABELS[method.methodType]}
                         </span>
                         {!method.isActive && (
-                          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-300">
                             নিষ্ক্রিয়
                           </span>
                         )}
                       </div>
                       {(method.accountNumber || method.accountName) && (
-                        <p className="mt-0.5 text-sm text-gray-600">
+                        <p className="mt-0.5 text-sm text-gray-600 dark:text-slate-400">
                           {method.accountNumber}
                           {method.accountNumber && method.accountName && " · "}
                           {method.accountName}
                         </p>
                       )}
                       {method.instructions && (
-                        <p className="mt-1 text-xs text-gray-500">{method.instructions}</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{method.instructions}</p>
                       )}
                     </div>
                   </div>
@@ -379,7 +379,7 @@ const PaymentMethodSettingsPage = () => {
                     <button
                       type="button"
                       onClick={() => startEdit(method)}
-                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
                       title="সম্পাদনা"
                     >
                       <Pencil size={14} />
@@ -387,7 +387,7 @@ const PaymentMethodSettingsPage = () => {
                     <button
                       type="button"
                       onClick={() => handleDelete(method)}
-                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                       title="মুছুন"
                     >
                       <Trash2 size={14} />

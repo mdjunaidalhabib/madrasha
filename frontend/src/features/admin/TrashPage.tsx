@@ -246,17 +246,17 @@ export default function TrashPage() {
   const rows = rowsByTab[activeTab];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">🗑️ ট্র্যাশ</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">🗑️ ট্র্যাশ</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             মুছে ফেলা শিক্ষার্থী, শিক্ষক, পরীক্ষা, বিভাগ, শ্রেণি, কিতাব ও রেজাল্ট এখানে ৭ দিন থাকে
             — এর মধ্যে ফিরিয়ে আনতে না পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।
           </p>
         </div>
 
-        <div className="mb-4 flex gap-2 border-b border-gray-200">
+        <div className="mb-4 flex gap-2 border-b border-gray-200 dark:border-slate-800">
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -264,16 +264,16 @@ export default function TrashPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
                 activeTab === tab.key
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
               {tab.label}
               <span
                 className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${
                   rowsByTab[tab.key].length > 0
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-500"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                    : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}
               >
                 {toBanglaDigits(rowsByTab[tab.key].length)}
@@ -282,22 +282,22 @@ export default function TrashPage() {
           ))}
         </div>
 
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {loading ? (
             <SkeletonTable rows={5} columns={4} />
           ) : rows.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">ট্র্যাশ খালি আছে</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">ট্র্যাশ খালি আছে</div>
           ) : (
             <>
               {/* Mobile cards */}
               <div className="flex flex-col gap-3 sm:hidden">
                 {rows.map((row) => (
-                  <div key={row.id} className="rounded-lg border border-gray-200 p-3 shadow-sm">
+                  <div key={row.id} className="rounded-lg border border-gray-200 p-3 shadow-sm dark:border-slate-700">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-gray-800">{getRowName(activeTab, row)}</span>
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">{getRowName(activeTab, row)}</span>
                       {daysBadge(row.days_remaining)}
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       {activeTab === "students" && (
                         <>
                           রোল: {(row as TrashStudentRow).roll ?? "নেই"} | শ্রেণি:{" "}
@@ -321,7 +321,7 @@ export default function TrashPage() {
                         </>
                       )}
                     </div>
-                    <div className="mt-1 text-xs text-gray-400">
+                    <div className="mt-1 text-xs text-gray-400 dark:text-slate-500">
                       মুছে ফেলা হয়েছে: {formatDate(row.deleted_at)}
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -350,7 +350,7 @@ export default function TrashPage() {
               <div className="hidden overflow-x-auto sm:block">
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-xs uppercase text-gray-500">
+                    <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-800 dark:text-slate-400">
                       <th className="px-3 py-2">নাম</th>
                       {activeTab === "students" && (
                         <>
@@ -379,8 +379,8 @@ export default function TrashPage() {
                   </thead>
                   <tbody>
                     {rows.map((row) => (
-                      <tr key={row.id} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-medium text-gray-800">
+                      <tr key={row.id} className="border-b border-gray-100 dark:border-slate-800">
+                        <td className="px-3 py-2 font-medium text-gray-800 dark:text-slate-100">
                           {getRowName(activeTab, row)}
                         </td>
                         {activeTab === "students" && (
@@ -411,7 +411,7 @@ export default function TrashPage() {
                             <td className="px-3 py-2">{(row as TrashResultRow).status || "নেই"}</td>
                           </>
                         )}
-                        <td className="px-3 py-2 text-gray-500">{formatDate(row.deleted_at)}</td>
+                        <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{formatDate(row.deleted_at)}</td>
                         <td className="px-3 py-2">{daysBadge(row.days_remaining)}</td>
                         <td className="px-3 py-2">
                           <div className="flex justify-end gap-2">

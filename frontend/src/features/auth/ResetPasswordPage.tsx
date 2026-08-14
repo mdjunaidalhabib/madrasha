@@ -49,17 +49,17 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow">
-        <h2 className="text-xl font-bold">নতুন পাসওয়ার্ড সেট করুন</h2>
+    <div className="flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+      <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
+        <h2 className="text-xl font-bold dark:text-slate-100">নতুন পাসওয়ার্ড সেট করুন</h2>
 
         {!token ? (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-red-600 dark:text-red-400">
             এই লিংকটি সঠিক নয়। আবার "পাসওয়ার্ড ভুলে গেছেন" থেকে চেষ্টা করুন।
           </p>
         ) : done ? (
           <div className="space-y-3">
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-green-700 dark:text-green-400">
               আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে। এখন লগইন করুন।
             </p>
             <Button onClick={() => nav(`${adminBase}/login`)} className="w-full">
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

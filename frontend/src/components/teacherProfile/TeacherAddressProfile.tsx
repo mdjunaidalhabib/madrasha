@@ -8,8 +8,8 @@ const TeacherAddressProfile = ({
   isEditMode,
 }: any) => {
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6">
-      <h2 className="text-xl mb-4">ঠিকানার তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl mb-4 dark:text-slate-100">ঠিকানার তথ্য</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field

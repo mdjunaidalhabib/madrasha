@@ -93,17 +93,17 @@ const ExcelUpload = <T,>({
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-blue-50/40 p-8 text-center transition hover:border-blue-500 hover:shadow-md">
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-blue-50/40 p-8 text-center transition hover:border-blue-500 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/40">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-3xl text-white shadow-sm">
           📄
         </div>
 
-        <h3 className="mb-1 text-lg font-bold text-slate-900">Upload Excel File</h3>
+        <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">Upload Excel File</h3>
 
-        <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-slate-500">
+        <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
           Select admission Excel file. Required columns marked with{" "}
-          <span className="font-bold text-red-600">*</span> will be detected automatically.
+          <span className="font-bold text-red-600 dark:text-red-400">*</span> will be detected automatically.
         </p>
 
         <label
@@ -124,15 +124,15 @@ const ExcelUpload = <T,>({
           />
         </label>
 
-        <p className="mt-4 text-xs font-medium text-slate-500">Supported file: .xlsx, .xls, .csv</p>
+        <p className="mt-4 text-xs font-medium text-slate-500 dark:text-slate-400">Supported file: .xlsx, .xls, .csv</p>
       </div>
 
       {requiredColumns.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/40">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h4 className="font-bold text-red-900">Required Template Columns</h4>
-              <p className="text-xs text-red-700">
+              <h4 className="font-bold text-red-900 dark:text-red-400">Required Template Columns</h4>
+              <p className="text-xs text-red-700 dark:text-red-400">
                 Template-এ এই columns red color এবং * mark থাকবে
               </p>
             </div>
@@ -146,7 +146,7 @@ const ExcelUpload = <T,>({
             {requiredColumns.map((column) => (
               <span
                 key={column}
-                className="rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700"
+                className="rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-slate-900 dark:text-red-400"
               >
                 * {column}
               </span>

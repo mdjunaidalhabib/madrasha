@@ -18,7 +18,7 @@ const normalizeArray = (payload: any) => {
 };
 
 const emptyForm = { name: "", email: "", password: "", role_id: "" };
-const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600";
+const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400";
 
 const UsersPage = () => {
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -168,7 +168,7 @@ const UsersPage = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                 tabIndex={-1}
               >
@@ -182,7 +182,7 @@ const UsersPage = () => {
             <select
               value={form.role_id}
               onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
-              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">রোল নির্বাচন করুন</option>
               {assignableRoles.map((role) => (
@@ -194,8 +194,8 @@ const UsersPage = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4">
-          <p className="text-xs text-gray-400">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4 dark:border-slate-800">
+          <p className="text-xs text-gray-400 dark:text-slate-500">
             মুহতামিম রোল এখান থেকে দেওয়া যায় না — প্রতিটি মাদ্রাসার একজনই ডিফল্ট মুহতামিম থাকতে পারেন।
           </p>
           <Button disabled={creating} onClick={handleCreate} className="gap-1.5">
@@ -215,22 +215,22 @@ const UsersPage = () => {
             {users.map((user) => (
               <div
                 key={user.id}
-                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between"
+                className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0 text-sm">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-semibold text-gray-900">{user.name}</span>
-                    <span className="text-gray-500">({user.email})</span>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                    <span className="font-semibold text-gray-900 dark:text-slate-100">{user.name}</span>
+                    <span className="text-gray-500 dark:text-slate-400">({user.email})</span>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-800 dark:text-slate-300">
                       {roleName(user.roleId)}
                     </span>
                     {user.isMuhtamim && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                         ডিফল্ট মুহতামিম
                       </span>
                     )}
                     {!user.isActive && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-950/40 dark:text-red-400">
                         নিষ্ক্রিয়
                       </span>
                     )}
@@ -243,7 +243,7 @@ const UsersPage = () => {
                     onChange={(e) => handleRoleChange(user, Number(e.target.value))}
                     disabled={user.isMuhtamim}
                     title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
-                    className="h-9 rounded-lg border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                    className="h-9 rounded-lg border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
                   >
                     {/* মুহতামিমের নিজের রোলটা তালিকায় না থাকলে select-এ ভুল
                         value দেখাবে, তাই এই একটা ক্ষেত্রেই সেটাকে যোগ করা হচ্ছে। */}
@@ -274,7 +274,7 @@ const UsersPage = () => {
                     <button
                       type="button"
                       onClick={() => handleDelete(user)}
-                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                       title="মুছুন"
                     >
                       <Trash2 size={16} />

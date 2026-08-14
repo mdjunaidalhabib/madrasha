@@ -158,13 +158,13 @@ export default function BrandingSettingsPage() {
           onSave={(v) => saveImageField("report_watermark", v)}
         />
 
-        <div className="mt-3 max-w-xs rounded-xl border border-gray-100 p-4">
+        <div className="mt-3 max-w-xs rounded-xl border border-gray-100 p-4 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-              <Droplets size={14} className="text-gray-400" />
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
+              <Droplets size={14} className="text-gray-400 dark:text-slate-500" />
               স্বচ্ছতা (Opacity)
             </label>
-            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
               {Math.round(opacity * 100)}%
             </span>
           </div>

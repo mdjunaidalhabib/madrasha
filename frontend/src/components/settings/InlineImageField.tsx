@@ -88,18 +88,18 @@ export default function InlineImageField({
 
   if (!editing) {
     return (
-      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60">
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
         {value ? (
           <img
             src={value}
             alt={label}
-            className={`shrink-0 rounded-lg border border-gray-200 bg-white object-contain ${
+            className={`shrink-0 rounded-lg border border-gray-200 bg-white object-contain dark:border-slate-700 ${
               shape === "wide" ? "h-14 w-24" : "h-14 w-14"
             }`}
           />
         ) : (
           <div
-            className={`flex shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 ${
+            className={`flex shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 dark:bg-slate-800 dark:text-slate-600 ${
               shape === "wide" ? "h-14 w-24" : "h-14 w-14"
             }`}
           >
@@ -107,15 +107,15 @@ export default function InlineImageField({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500">{label}</p>
-          <p className="text-sm text-gray-900">
-            {value ? "আপলোড করা আছে" : <span className="text-gray-400">যোগ করা হয়নি</span>}
+          <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
+          <p className="text-sm text-gray-900 dark:text-slate-100">
+            {value ? "আপলোড করা আছে" : <span className="text-gray-400 dark:text-slate-500">যোগ করা হয়নি</span>}
           </p>
         </div>
         <button
           type="button"
           onClick={startEdit}
-          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
           title="সম্পাদনা"
         >
           <Pencil size={14} />
@@ -125,7 +125,7 @@ export default function InlineImageField({
   }
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
       <div className="max-w-xs">
         <BrandImageBox
           label={label}

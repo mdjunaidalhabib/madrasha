@@ -660,7 +660,6 @@ async function main() {
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },
       { keyName: "list", name: "list", nameBn: "ছাত্রসমূহ", sortOrder: 2 },
-      { keyName: "statement", name: "Statement", nameBn: "হিসাব বিবরণী", sortOrder: 3 },
       {
         keyName: "fee_management",
         name: "Fee Setup",

@@ -463,10 +463,10 @@ export default function ClassPanel() {
                 data-division-id={division.division_id}
                 className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
                   isEditingThis
-                    ? "border-blue-300 bg-blue-50/40"
+                    ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
                     : isActiveDivision
-                      ? "border-blue-400 bg-blue-50"
-                      : "border-gray-200 bg-white hover:border-blue-200"
+                      ? "border-blue-400 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30"
+                      : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                 } ${dragDivisionId === division.division_id ? "opacity-40" : ""}`}
               >
                 {isEditingThis ? (
@@ -491,7 +491,7 @@ export default function ClassPanel() {
                     <button
                       onClick={() => setEditingDivisionId(null)}
                       aria-label="বাতিল"
-                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200"
+                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
                       <X size={14} />
                     </button>
@@ -503,7 +503,7 @@ export default function ClassPanel() {
                       onPointerMove={handleDivisionHandlePointerMove}
                       onPointerUp={handleDivisionHandlePointerEnd}
                       onPointerCancel={handleDivisionHandlePointerEnd}
-                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100"
+                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                       style={{ touchAction: "none" }}
                       aria-label="বিভাগ সরান"
                     >
@@ -512,7 +512,7 @@ export default function ClassPanel() {
                     <button
                       onClick={() => setDivisionId(String(division.division_id))}
                       className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
-                        isActiveDivision ? "text-blue-800" : "text-gray-700 hover:bg-gray-50"
+                        isActiveDivision ? "text-blue-800 dark:text-blue-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     >
                       {division.division_name_bn}
@@ -524,14 +524,14 @@ export default function ClassPanel() {
                         setEditingDivisionOriginalName(division.division_name_bn);
                       }}
                       aria-label="বিভাগ এডিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeDivision(division.division_id)}
                       aria-label="বিভাগ ডিলিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -553,10 +553,10 @@ export default function ClassPanel() {
                 data-class-id={classItem.class_id}
                 className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
                   isEditingThis
-                    ? "border-blue-300 bg-blue-50/40"
+                    ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
                     : classId === String(classItem.class_id)
-                      ? "border-emerald-400 bg-emerald-50"
-                      : "border-gray-200 bg-white hover:border-blue-200"
+                      ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30"
+                      : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                 } ${dragClassId === classItem.class_id ? "opacity-40" : ""}`}
               >
                 {isEditingThis ? (
@@ -581,7 +581,7 @@ export default function ClassPanel() {
                     <button
                       onClick={() => setEditingClassId(null)}
                       aria-label="বাতিল"
-                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200"
+                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
                       <X size={14} />
                     </button>
@@ -593,7 +593,7 @@ export default function ClassPanel() {
                       onPointerMove={handleClassHandlePointerMove}
                       onPointerUp={handleClassHandlePointerEnd}
                       onPointerCancel={handleClassHandlePointerEnd}
-                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100"
+                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                       style={{ touchAction: "none" }}
                       aria-label="শ্রেণি সরান"
                     >
@@ -602,7 +602,7 @@ export default function ClassPanel() {
                     <button
                       onClick={() => setClassId(String(classItem.class_id))}
                       className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
-                        classId === String(classItem.class_id) ? "text-emerald-800" : "text-gray-700 hover:bg-gray-50"
+                        classId === String(classItem.class_id) ? "text-emerald-800 dark:text-emerald-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     >
                       {classItem.class_name_bn}
@@ -614,14 +614,14 @@ export default function ClassPanel() {
                         setEditingClassOriginalName(classItem.class_name_bn);
                       }}
                       aria-label="শ্রেণি এডিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeClass(classItem.class_id)}
                       aria-label="শ্রেণি ডিলিট করুন"
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -634,7 +634,7 @@ export default function ClassPanel() {
           {!showClassInput ? (
               <button
                 onClick={() => setShowClassInput(true)}
-                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
+                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
               >
                 <Plus size={15} />
                 শ্রেণি যোগ করুন
@@ -657,11 +657,11 @@ export default function ClassPanel() {
       </SectionCard>
 
       <SectionCard title="কিতাবসমূহ">
-        <p className="-mt-2 mb-3 text-xs text-gray-500">
+        <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
           মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। টেনে (drag) কিতাবের ক্রম সাজানো যায়।
         </p>
         <div className="mb-3 flex justify-end">
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
             নির্বাচিত মিয়ারি: {miyariBookIds.length}টি
           </span>
         </div>
@@ -678,10 +678,10 @@ export default function ClassPanel() {
                   data-book-id={book.book_id}
                   className={`flex w-full flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
                     editingId === book.book_id
-                      ? "border-blue-200 bg-blue-50/40"
+                      ? "border-blue-200 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
                       : isMiyari
-                        ? "border-amber-300 bg-amber-50"
-                        : "border-gray-200 bg-white hover:border-blue-200"
+                        ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+                        : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                   } ${dragBookId === book.book_id ? "opacity-40" : ""}`}
                 >
                   {editingId === book.book_id ? (
@@ -706,12 +706,12 @@ export default function ClassPanel() {
                         <button
                           onClick={() => setEditingId(null)}
                           aria-label="বাতিল"
-                          className="shrink-0 touch-manipulation rounded-md p-2 text-gray-500 hover:bg-gray-200"
+                          className="shrink-0 touch-manipulation rounded-md p-2 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                         >
                           <X size={14} />
                         </button>
                       </div>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400">
                         পূর্ণমান
                         <Input
                           type="number"
@@ -725,7 +725,7 @@ export default function ClassPanel() {
                           className="h-8 w-20"
                         />
                       </label>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400">
                         পাস মার্ক
                         <Input
                           type="number"
@@ -740,7 +740,7 @@ export default function ClassPanel() {
                           className="h-8 w-20"
                         />
                       </label>
-                      <p className="text-[11px] leading-tight text-gray-400">
+                      <p className="text-[11px] leading-tight text-gray-400 dark:text-slate-500">
                         খালি রাখলে মাদ্রাসার গ্লোবাল ফেল মার্ক প্রযোজ্য হবে
                       </p>
                     </div>
@@ -751,13 +751,13 @@ export default function ClassPanel() {
                         onPointerMove={handleHandlePointerMove}
                         onPointerUp={handleHandlePointerEnd}
                         onPointerCancel={handleHandlePointerEnd}
-                        className="shrink-0 cursor-grab select-none rounded p-1.5 text-gray-400 active:cursor-grabbing active:bg-gray-100"
+                        className="shrink-0 cursor-grab select-none rounded p-1.5 text-gray-400 active:cursor-grabbing active:bg-gray-100 dark:text-slate-500 dark:active:bg-slate-800"
                         style={{ touchAction: "none" }}
                         aria-label="কিতাব সরান"
                       >
                         <GripVertical size={15} />
                       </span>
-                      <span className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900">
+                      <span className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900 dark:text-slate-100">
                         {book.book_name_bn}
                       </span>
 
@@ -765,14 +765,14 @@ export default function ClassPanel() {
                         <button
                           onClick={() => startEdit(book)}
                           aria-label="কিতাব এডিট করুন"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100"
+                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 dark:active:bg-blue-950/60"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => removeBook(book)}
                           aria-label="কিতাব ডিলিট করুন"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100"
+                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:active:bg-red-950/60"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -782,12 +782,12 @@ export default function ClassPanel() {
 
                   {editingId !== book.book_id && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                      <span className="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                         পূর্ণমান {book.full_marks ?? 100}
                       </span>
                       {book.pass_mark != null && (
                         <span
-                          className="w-fit rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700"
+                          className="w-fit rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
                           title="এই কিতাবের জন্য আলাদা পাস মার্ক সেট করা আছে"
                         >
                           পাস {book.pass_mark}
@@ -796,13 +796,13 @@ export default function ClassPanel() {
                     </div>
                   )}
 
-                  <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-gray-600">
+                  <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-gray-600 dark:text-slate-400">
                     <input
                       type="checkbox"
                       checked={isMiyari}
                       disabled={savingMiyari}
                       onChange={() => toggleMiyari(Number(book.book_id))}
-                      className="h-5 w-5 disabled:cursor-not-allowed"
+                      className="h-5 w-5 disabled:cursor-not-allowed dark:border-slate-600"
                     />
                     মিয়ারি কিতাব
                   </label>

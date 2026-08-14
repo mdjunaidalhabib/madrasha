@@ -1,6 +1,7 @@
 import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
 import { encryptSecret } from "../../shared/utils/crypto.util";
+import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
@@ -9,6 +10,8 @@ import {
   DEFAULT_STUDENT_LIMIT,
   DEFAULT_USER_LIMIT,
   MADRASA_ACTIVITY,
+  SUPER_ADMIN_TREND_DEFAULT_LIMIT,
+  SUPER_ADMIN_TREND_ROW_LIMIT,
   WEBSITE_STATUSES,
 } from "./superadmin.constants";
 import {
@@ -612,6 +615,25 @@ export class SuperAdminService {
       recentActivities: recentActivities || [],
       expiringPlans: expiringPlans || [],
       expiredPlans: expiredPlans || [],
+    };
+  }
+
+  async getDashboardTrends(groupBy: string) {
+    const limit = SUPER_ADMIN_TREND_ROW_LIMIT[groupBy] ?? SUPER_ADMIN_TREND_DEFAULT_LIMIT;
+    const periodExpr = buildPeriodExpr(groupBy, "created_at");
+
+    const [growthRows, revenueRows] = await Promise.all([
+      this.repository.findMadrasaGrowthTrend(periodExpr, limit),
+      this.repository.findRevenueTrend(periodExpr, limit),
+    ]);
+
+    return {
+      madrasaGrowth: growthRows
+        .map((row) => ({ period: String(row.period), count: Number(row.count || 0) }))
+        .reverse(),
+      revenue: revenueRows
+        .map((row) => ({ period: String(row.period), total: Number(row.total || 0) }))
+        .reverse(),
     };
   }
 

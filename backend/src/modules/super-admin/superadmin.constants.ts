@@ -17,3 +17,10 @@ export const MADRASA_ACTIVITY = {
   CREATED: "MADRASA_CREATED",
   UPDATED: "SUPER_ADMIN_MADRASA_UPDATED",
 } as const;
+
+export const SUPER_ADMIN_TREND_ROW_LIMIT: Record<string, number> = {
+  daily: 30,
+  monthly: 12,
+  yearly: 5,
+};
+export const SUPER_ADMIN_TREND_DEFAULT_LIMIT = 12;

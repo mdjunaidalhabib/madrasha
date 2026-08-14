@@ -313,12 +313,12 @@ const FeeStructurePage = () => {
   }, [structures]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ফি সেটাপ</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               ফি কাঠামো তৈরি করুন এবং ইনভয়েস জেনারেট করুন
             </p>
           </div>
@@ -334,7 +334,7 @@ const FeeStructurePage = () => {
         </div>
 
         {/* Division/Class picker */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <select
               value={division}
@@ -343,7 +343,7 @@ const FeeStructurePage = () => {
                 setDivision(value);
                 loadClasses(value);
               }}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[160px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
               <option value="">বিভাগ (ফিল্টার)</option>
               {divisions.map((d) => (
@@ -356,7 +356,7 @@ const FeeStructurePage = () => {
               value={classId}
               onChange={(event) => setClassId(event.target.value)}
               disabled={!division || classLoading}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 sm:w-[180px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
             >
               <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি (ফিল্টার)"}</option>
               {classes.map((c) => (
@@ -368,8 +368,8 @@ const FeeStructurePage = () => {
           </div>
         </div>
 
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">
+        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
             নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
           </h2>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -378,21 +378,21 @@ const FeeStructurePage = () => {
               placeholder="নাম (যেমন: মাসিক বেতন)"
               value={structureForm.name}
               onChange={(e) => setStructureForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[200px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
             />
             <input
               type="number"
               placeholder="পরিমাণ (৳)"
               value={structureForm.amount}
               onChange={(e) => setStructureForm((p) => ({ ...p, amount: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[130px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
             />
             <select
               value={structureForm.frequency}
               onChange={(e) =>
                 setStructureForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))
               }
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[130px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
             >
               {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
                 <option key={f} value={f}>
@@ -403,7 +403,7 @@ const FeeStructurePage = () => {
             <select
               value={structureForm.session_id}
               onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[140px]"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
             >
               <option value="">সেশন</option>
               {sessions.map((s) => (
@@ -424,22 +424,22 @@ const FeeStructurePage = () => {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {structures.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">কোনো ফি কাঠামো নেই</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো ফি কাঠামো নেই</div>
           ) : (
             <div className="space-y-5">
               {groupedStructures.map((division) => (
                 <div key={division.key}>
                   {division.key !== "generic" && (
-                    <h3 className="mb-2 text-sm font-bold text-gray-700">{division.label}</h3>
+                    <h3 className="mb-2 text-sm font-bold text-gray-700 dark:text-slate-300">{division.label}</h3>
                   )}
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {division.classGroups.map((group) => (
-                      <div key={group.key} className="rounded-xl border border-gray-200 p-3">
+                      <div key={group.key} className="rounded-xl border border-gray-200 p-3 dark:border-slate-700">
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <h4 className="truncate text-sm font-semibold text-gray-800">{group.label}</h4>
-                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                          <h4 className="truncate text-sm font-semibold text-gray-800 dark:text-slate-200">{group.label}</h4>
+                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                             {group.items.length}টি
                           </span>
                         </div>
@@ -447,21 +447,21 @@ const FeeStructurePage = () => {
                           {group.items.map((row) => (
                             <div
                               key={row.id}
-                              className="flex items-center gap-1 rounded-lg border border-gray-100 px-2.5 py-2 text-sm transition hover:border-blue-200"
+                              className="flex items-center gap-1 rounded-lg border border-gray-100 px-2.5 py-2 text-sm transition hover:border-blue-200 dark:border-slate-800 dark:hover:border-blue-800"
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="truncate font-medium text-gray-800">
-                                  {row.name} <span className="font-normal text-gray-500">৳{row.amount}</span>
+                                <div className="truncate font-medium text-gray-800 dark:text-slate-200">
+                                  {row.name} <span className="font-normal text-gray-500 dark:text-slate-400">৳{row.amount}</span>
                                 </div>
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
+                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                                     {FREQUENCY_LABELS[row.frequency]}
                                   </span>
-                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                                     {row.academicYear}
                                   </span>
                                   {!row.isActive && (
-                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                                       নিষ্ক্রিয়
                                     </span>
                                   )}
@@ -472,7 +472,7 @@ const FeeStructurePage = () => {
                                   type="button"
                                   title="ইনভয়েস জেনারেট করুন"
                                   onClick={() => openGenerateModal(row)}
-                                  className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50"
+                                  className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                                 >
                                   <Receipt size={14} />
                                 </button>
@@ -480,7 +480,7 @@ const FeeStructurePage = () => {
                                   type="button"
                                   title="এডিট"
                                   onClick={() => openEditModal(row)}
-                                  className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50"
+                                  className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                                 >
                                   <Pencil size={14} />
                                 </button>
@@ -488,7 +488,7 @@ const FeeStructurePage = () => {
                                   type="button"
                                   title="মুছুন"
                                   onClick={() => handleDeleteStructure(row.id)}
-                                  className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                                  className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -514,29 +514,29 @@ const FeeStructurePage = () => {
       >
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">নাম</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নাম</label>
             <input
               type="text"
               value={editForm.name}
               onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
             <input
               type="number"
               value={editForm.amount}
               onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">ফ্রিকোয়েন্সি</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফ্রিকোয়েন্সি</label>
             <select
               value={editForm.frequency}
               onChange={(e) => setEditForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
                 <option key={f} value={f}>
@@ -546,11 +546,11 @@ const FeeStructurePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">সেশন</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সেশন</label>
             <select
               value={editForm.session_id}
               onChange={(e) => setEditForm((p) => ({ ...p, session_id: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">সেশন নির্বাচন করুন</option>
               {sessions.map((s) => (
@@ -566,7 +566,7 @@ const FeeStructurePage = () => {
           <button
             type="button"
             onClick={() => setEditTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>
@@ -589,24 +589,24 @@ const FeeStructurePage = () => {
       >
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">ডিউ তারিখ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ডিউ তারিখ</label>
             <input
               type="date"
               value={generateForm.due_date}
               onChange={(e) => setGenerateForm((p) => ({ ...p, due_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           {generateTarget?.frequency === "MONTHLY" && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 মাস (YYYY-MM)
               </label>
               <input
                 type="month"
                 value={generateForm.month}
                 onChange={(e) => setGenerateForm((p) => ({ ...p, month: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           )}
@@ -621,7 +621,7 @@ const FeeStructurePage = () => {
           <button
             type="button"
             onClick={() => setGenerateTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>

@@ -38,7 +38,7 @@ const STATUS_LABELS: Record<InvoiceStatus, { label: string; className: string }>
   UNPAID: { label: "অপরিশোধিত", className: "bg-red-100 text-red-700" },
   PARTIALLY_PAID: { label: "আংশিক পরিশোধিত", className: "bg-amber-100 text-amber-700" },
   PAID: { label: "পরিশোধিত", className: "bg-green-100 text-green-700" },
-  OVERDUE: { label: "মেয়াদোত্তীর্ণ", className: "bg-gray-200 text-gray-700" },
+  OVERDUE: { label: "মেয়াদোত্তীর্ণ", className: "bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300" },
   WAIVED: { label: "মাফকৃত", className: "bg-purple-100 text-purple-700" },
 };
 
@@ -395,23 +395,23 @@ const FeeInvoicesPage = () => {
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 ${checkedInvoices.length > 0 ? "pb-20" : ""}`}
+      className={`min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6 ${checkedInvoices.length > 0 ? "pb-20" : ""}`}
     >
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">ফি গ্রহণ</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি গ্রহণ</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             ছাত্রদের বকেয়া ইনভয়েস দেখুন, পেমেন্ট রেকর্ড করুন এবং প্রয়োজনে মাফ করুন
           </p>
         </div>
 
         {/* Student search — the only thing needed before anything shows */}
-        <div ref={searchBoxRef} className="relative mb-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div ref={searchBoxRef} className="relative mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {selectedStudent ? (
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm">
-                <span className="font-semibold text-gray-800">{selectedStudent.name_bn || `ছাত্র #${selectedStudent.id}`}</span>{" "}
-                <span className="text-gray-500">
+                <span className="font-semibold text-gray-800 dark:text-slate-100">{selectedStudent.name_bn || `ছাত্র #${selectedStudent.id}`}</span>{" "}
+                <span className="text-gray-500 dark:text-slate-400">
                   (রোল {selectedStudent.roll ?? "-"}
                   {selectedStudent.registration_no ? ` · রেজি নং ${selectedStudent.registration_no}` : ""})
                 </span>
@@ -419,7 +419,7 @@ const FeeInvoicesPage = () => {
               <button
                 type="button"
                 onClick={clearStudent}
-                className="flex h-8 items-center gap-1 rounded-md border border-gray-200 px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                className="flex h-8 items-center gap-1 rounded-md border border-gray-200 px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <X size={13} />
                 বদলান
@@ -427,7 +427,7 @@ const FeeInvoicesPage = () => {
             </div>
           ) : (
             <div className="relative">
-              <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input
                 type="text"
                 value={studentQuery}
@@ -437,22 +437,22 @@ const FeeInvoicesPage = () => {
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="ছাত্রের নাম, রোল, রেজি নং বা আইডি দিয়ে খুঁজুন"
-                className="h-10 w-full rounded-md border border-gray-300 pl-8 pr-3 text-sm outline-none focus:border-blue-400"
+                className="h-10 w-full rounded-md border border-gray-300 pl-8 pr-3 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
               {showSuggestions && studentQuery.trim() && (
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   {studentSuggestions.length === 0 ? (
-                    <div className="px-3 py-3 text-center text-sm text-gray-400">কোনো ছাত্র পাওয়া যায়নি</div>
+                    <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">কোনো ছাত্র পাওয়া যায়নি</div>
                   ) : (
                     studentSuggestions.map((s) => (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => selectStudent(s)}
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                       >
-                        <span className="text-gray-800">{s.name_bn || `ছাত্র #${s.id}`}</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-gray-800 dark:text-slate-200">{s.name_bn || `ছাত্র #${s.id}`}</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">
                           রোল {s.roll ?? "-"}
                           {s.registration_no ? ` · রেজি ${s.registration_no}` : ""}
                         </span>
@@ -466,7 +466,7 @@ const FeeInvoicesPage = () => {
         </div>
 
         {!selectedStudent ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
+          <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
             ফি দেখতে ও নিতে প্রথমে একজন ছাত্র খুঁজে নির্বাচন করুন
           </div>
         ) : (
@@ -475,7 +475,7 @@ const FeeInvoicesPage = () => {
               <select
                 value={invoiceStatusFilter}
                 onChange={(event) => setInvoiceStatusFilter(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none sm:w-[180px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[180px]"
               >
                 <option value="">সব স্ট্যাটাস</option>
                 {(Object.keys(STATUS_LABELS) as InvoiceStatus[]).map((status) => (
@@ -489,15 +489,15 @@ const FeeInvoicesPage = () => {
             {/* Summary stats */}
             {!invoicesLoading && invoices.length > 0 && (
               <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
-                  <div className="text-[11px] text-gray-500 sm:text-xs">মোট বকেয়া</div>
-                  <div className="mt-0.5 text-base font-bold text-rose-600 sm:text-lg">
+                <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900 sm:p-4">
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400 sm:text-xs">মোট বকেয়া</div>
+                  <div className="mt-0.5 text-base font-bold text-rose-600 dark:text-rose-400 sm:text-lg">
                     ৳{invoiceSummary.totalDue.toLocaleString("bn-BD")}
                   </div>
                 </div>
-                <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
-                  <div className="text-[11px] text-gray-500 sm:text-xs">সংগৃহীত</div>
-                  <div className="mt-0.5 text-base font-bold text-emerald-600 sm:text-lg">
+                <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900 sm:p-4">
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400 sm:text-xs">সংগৃহীত</div>
+                  <div className="mt-0.5 text-base font-bold text-emerald-600 dark:text-emerald-400 sm:text-lg">
                     ৳{invoiceSummary.totalCollected.toLocaleString("bn-BD")}
                   </div>
                 </div>
@@ -505,11 +505,11 @@ const FeeInvoicesPage = () => {
             )}
 
             {/* This student's invoices */}
-            <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+            <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
               {invoicesLoading ? (
                 <SkeletonList items={4} />
               ) : invoices.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">এই ছাত্রের কোনো ইনভয়েস নেই</div>
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">এই ছাত্রের কোনো ইনভয়েস নেই</div>
               ) : (
                 <>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -517,17 +517,17 @@ const FeeInvoicesPage = () => {
                       <button
                         type="button"
                         onClick={toggleCheckAll}
-                        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         {allChecked ? (
-                          <CheckSquare size={15} className="text-blue-600" />
+                          <CheckSquare size={15} className="text-blue-600 dark:text-blue-400" />
                         ) : (
-                          <Square size={15} className="text-gray-400" />
+                          <Square size={15} className="text-gray-400 dark:text-slate-500" />
                         )}
                         সব নির্বাচন করুন
                       </button>
                     ) : (
-                      <span className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-medium text-green-700">
+                      <span className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400">
                         <CircleCheck size={12} />
                         সব পরিশোধিত
                       </span>
@@ -550,22 +550,22 @@ const FeeInvoicesPage = () => {
                         const gridStyle = { gridTemplateColumns: `60px repeat(${sorted.length}, 84px)` };
                         return (
                           <div key={group.title}>
-                            <h4 className="mb-1.5 text-xs font-semibold text-gray-600">{group.title}</h4>
+                            <h4 className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-slate-400">{group.title}</h4>
                             <div className="overflow-x-auto pb-1">
                               <div className="grid items-center gap-x-1.5 gap-y-2" style={gridStyle}>
                                 {/* header row: month names, once */}
-                                <div className="sticky left-0 z-10 bg-white" />
+                                <div className="sticky left-0 z-10 bg-white dark:bg-slate-900" />
                                 {sorted.map((invoice) => (
                                   <div
                                     key={`h-${invoice.id}`}
-                                    className="text-center text-[11px] font-medium text-gray-700"
+                                    className="text-center text-[11px] font-medium text-gray-700 dark:text-slate-300"
                                   >
                                     {monthLabel(invoice.month!)}
                                   </div>
                                 ))}
 
                                 {/* checkbox row — selection only, nothing else in this field */}
-                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500">
+                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500 dark:bg-slate-900 dark:text-slate-400">
                                   নিন
                                 </div>
                                 {sorted.map((invoice) => {
@@ -574,17 +574,17 @@ const FeeInvoicesPage = () => {
                                   return (
                                     <div
                                       key={`c-${invoice.id}`}
-                                      className={`flex justify-center rounded py-0.5 ${checked ? "bg-blue-50" : ""}`}
+                                      className={`flex justify-center rounded py-0.5 ${checked ? "bg-blue-50 dark:bg-blue-950/40" : ""}`}
                                     >
                                       {invoice.status === "PAID" ? (
-                                        <CircleCheck size={16} className="text-green-600" />
+                                        <CircleCheck size={16} className="text-green-600 dark:text-green-400" />
                                       ) : (
                                         <input
                                           type="checkbox"
                                           checked={checked}
                                           disabled={!canAct}
                                           onChange={() => toggleCheckedInvoice(invoice.id)}
-                                          className="h-4 w-4 rounded border-gray-300 disabled:opacity-40"
+                                          className="h-4 w-4 rounded border-gray-300 disabled:opacity-40 dark:border-slate-600"
                                         />
                                       )}
                                     </div>
@@ -592,7 +592,7 @@ const FeeInvoicesPage = () => {
                                 })}
 
                                 {/* due amount row */}
-                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500">
+                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500 dark:bg-slate-900 dark:text-slate-400">
                                   বকেয়া
                                 </div>
                                 {sorted.map((invoice) => {
@@ -600,16 +600,16 @@ const FeeInvoicesPage = () => {
                                   return (
                                     <div key={`a-${invoice.id}`} className="text-center text-[10px] font-semibold">
                                       {remaining > 0 ? (
-                                        <span className="text-rose-600">৳{remaining}</span>
+                                        <span className="text-rose-600 dark:text-rose-400">৳{remaining}</span>
                                       ) : (
-                                        <span className="text-gray-300">—</span>
+                                        <span className="text-gray-300 dark:text-slate-600">—</span>
                                       )}
                                     </div>
                                   );
                                 })}
 
                                 {/* waive row */}
-                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500">
+                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500 dark:bg-slate-900 dark:text-slate-400">
                                   মাফ
                                 </div>
                                 {sorted.map((invoice) => {
@@ -618,7 +618,7 @@ const FeeInvoicesPage = () => {
                                   return (
                                     <div key={`w-${invoice.id}`} className="flex justify-center">
                                       {waived ? (
-                                        <span className="text-[10px] font-medium text-purple-600">
+                                        <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400">
                                           ৳{invoice.waivedAmount}
                                         </span>
                                       ) : canAct && isMuhtamim ? (
@@ -626,19 +626,19 @@ const FeeInvoicesPage = () => {
                                           type="button"
                                           title="মাফ করুন"
                                           onClick={() => openWaiveModal(invoice)}
-                                          className="rounded p-0.5 text-purple-600 hover:bg-purple-50"
+                                          className="rounded p-0.5 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                                         >
                                           <HandCoins size={13} />
                                         </button>
                                       ) : (
-                                        <span className="text-gray-300">—</span>
+                                        <span className="text-gray-300 dark:text-slate-600">—</span>
                                       )}
                                     </div>
                                   );
                                 })}
 
                                 {/* print row */}
-                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500">
+                                <div className="sticky left-0 z-10 bg-white text-[10px] font-medium text-gray-500 dark:bg-slate-900 dark:text-slate-400">
                                   প্রিন্ট
                                 </div>
                                 {sorted.map((invoice) => (
@@ -647,7 +647,7 @@ const FeeInvoicesPage = () => {
                                       type="button"
                                       title="প্রিন্ট"
                                       onClick={() => setPrintTarget(invoice)}
-                                      className="rounded p-0.5 text-gray-500 hover:bg-gray-100"
+                                      className="rounded p-0.5 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
                                     >
                                       <Printer size={13} />
                                     </button>
@@ -672,7 +672,7 @@ const FeeInvoicesPage = () => {
                           <div
                             key={invoice.id}
                             className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition ${
-                              checked ? "border-blue-300 bg-blue-50/60" : "border-gray-100"
+                              checked ? "border-blue-300 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/30" : "border-gray-100 dark:border-slate-800"
                             }`}
                           >
                             <label className="flex min-w-0 flex-1 items-center gap-2">
@@ -681,21 +681,21 @@ const FeeInvoicesPage = () => {
                                 checked={checked}
                                 disabled={!canAct}
                                 onChange={() => toggleCheckedInvoice(invoice.id)}
-                                className="h-4 w-4 shrink-0 rounded border-gray-300 disabled:opacity-40"
+                                className="h-4 w-4 shrink-0 rounded border-gray-300 disabled:opacity-40 dark:border-slate-600"
                               />
                               <span className="min-w-0">
-                                <span className="text-gray-800">{invoice.title}</span>{" "}
-                                <span className="text-gray-500">৳{invoice.amount}</span>{" "}
+                                <span className="text-gray-800 dark:text-slate-200">{invoice.title}</span>{" "}
+                                <span className="text-gray-500 dark:text-slate-400">৳{invoice.amount}</span>{" "}
                                 <span
                                   className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_LABELS[invoice.status].className}`}
                                 >
                                   {STATUS_LABELS[invoice.status].label}
                                 </span>
                                 {remaining > 0 && (
-                                  <span className="font-medium text-rose-600"> · বকেয়া ৳{remaining}</span>
+                                  <span className="font-medium text-rose-600 dark:text-rose-400"> · বকেয়া ৳{remaining}</span>
                                 )}
                                 {Number(invoice.waivedAmount) > 0 && (
-                                  <span className="text-purple-600"> · মাফ ৳{invoice.waivedAmount}</span>
+                                  <span className="text-purple-600 dark:text-purple-400"> · মাফ ৳{invoice.waivedAmount}</span>
                                 )}
                               </span>
                             </label>
@@ -705,7 +705,7 @@ const FeeInvoicesPage = () => {
                                 type="button"
                                 title="প্রিন্ট"
                                 onClick={() => setPrintTarget(invoice)}
-                                className="flex h-7 items-center rounded-md border border-gray-200 px-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                                className="flex h-7 items-center rounded-md border border-gray-200 px-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                               >
                                 <Printer size={13} />
                               </button>
@@ -713,7 +713,7 @@ const FeeInvoicesPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => openWaiveModal(invoice)}
-                                  className="flex h-7 items-center gap-1 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50"
+                                  className="flex h-7 items-center gap-1 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50 dark:border-purple-900/50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                                 >
                                   <HandCoins size={13} />
                                   মাফ করুন
@@ -736,11 +736,11 @@ const FeeInvoicesPage = () => {
           on screen while scrolling the list so the office can tick several
           months and collect them together without hunting for the button. */}
       {checkedInvoices.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 px-3 py-2.5 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur sm:px-4">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 px-3 py-2.5 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-4">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-slate-400">
               {checkedInvoices.length}টি নির্বাচিত ·{" "}
-              <span className="font-semibold text-gray-800">৳{checkedTotal.toLocaleString("bn-BD")}</span>
+              <span className="font-semibold text-gray-800 dark:text-slate-100">৳{checkedTotal.toLocaleString("bn-BD")}</span>
             </span>
             <button
               type="button"
@@ -764,7 +764,7 @@ const FeeInvoicesPage = () => {
       >
         <div className="flex flex-col gap-4">
           {payTarget && payTarget.length > 1 && (
-            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5">
+            <div className="flex flex-col gap-1.5 rounded-lg bg-gray-50 p-2.5 dark:bg-slate-800">
               {payTarget.map((invoice) => {
                 const remaining = remainingDue(invoice);
                 const line = payLines[invoice.id];
@@ -775,22 +775,22 @@ const FeeInvoicesPage = () => {
                       type="checkbox"
                       checked={line.selected}
                       onChange={() => togglePayLine(invoice.id)}
-                      className="h-4 w-4 shrink-0 rounded border-gray-300"
+                      className="h-4 w-4 shrink-0 rounded border-gray-300 dark:border-slate-600"
                     />
-                    <span className="min-w-0 flex-1 truncate text-gray-700">
-                      {invoice.title} <span className="text-gray-400">(বাকি ৳{remaining})</span>
+                    <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-slate-300">
+                      {invoice.title} <span className="text-gray-400 dark:text-slate-500">(বাকি ৳{remaining})</span>
                     </span>
                     <input
                       type="number"
                       value={line.amount}
                       disabled={!line.selected}
                       onChange={(e) => setPayLineAmount(invoice.id, e.target.value)}
-                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                      className="h-8 w-24 shrink-0 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800/60"
                     />
                   </div>
                 );
               })}
-              <div className="mt-1 flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm font-semibold text-gray-800">
+              <div className="mt-1 flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm font-semibold text-gray-800 dark:border-slate-700 dark:text-slate-100">
                 <span>মোট নেওয়া হবে</span>
                 <span>৳{selectedPayTotal.toLocaleString("bn-BD")}</span>
               </div>
@@ -799,14 +799,14 @@ const FeeInvoicesPage = () => {
 
           {payTarget && payTarget.length === 1 && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">পরিমাণ (৳)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
               <input
                 type="number"
                 value={payLines[payTarget[0].id]?.amount ?? ""}
                 onChange={(e) => setPayLineAmount(payTarget[0].id, e.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                 বাকি আছে: ৳{remainingDue(payTarget[0])}
               </p>
             </div>
@@ -814,11 +814,11 @@ const FeeInvoicesPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">পদ্ধতি</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পদ্ধতি</label>
               <select
                 value={payCommon.method}
                 onChange={(e) => setPayCommon((p) => ({ ...p, method: e.target.value as PaymentMethod }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 {PAYMENT_METHODS.map((method) => (
                   <option key={method} value={method}>
@@ -828,20 +828,20 @@ const FeeInvoicesPage = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">তারিখ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">তারিখ</label>
               <input
                 type="date"
                 value={payCommon.paid_at}
                 max={todayIso()}
                 onChange={(e) => setPayCommon((p) => ({ ...p, paid_at: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           </div>
 
           {configuredMethods.length > 0 && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 কোন চ্যানেলে টাকা পাওয়া গেছে (ঐচ্ছিক)
               </label>
               <select
@@ -849,7 +849,7 @@ const FeeInvoicesPage = () => {
                 onChange={(e) =>
                   setPayCommon((p) => ({ ...p, payment_method_setting_id: e.target.value }))
                 }
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">নির্বাচন করুন (ঐচ্ছিক)</option>
                 {configuredMethods.map((method) => (
@@ -863,24 +863,24 @@ const FeeInvoicesPage = () => {
           )}
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
               ট্রানজেকশন রেফারেন্স (ঐচ্ছিক)
             </label>
             <input
               type="text"
               value={payCommon.transaction_ref}
               onChange={(e) => setPayCommon((p) => ({ ...p, transaction_ref: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">নোট (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নোট (ঐচ্ছিক)</label>
             <textarea
               value={payCommon.note}
               onChange={(e) => setPayCommon((p) => ({ ...p, note: e.target.value }))}
               rows={2}
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none"
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               placeholder="যেমন: আংশিক পরিশোধ, বাকিটা পরের মাসে দেবে"
             />
           </div>
@@ -889,7 +889,7 @@ const FeeInvoicesPage = () => {
           <button
             type="button"
             onClick={() => setPayTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>
@@ -912,17 +912,17 @@ const FeeInvoicesPage = () => {
       >
         {waiveTarget && (
           <div className="flex flex-col gap-3">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               বাকি আছে: ৳{remainingDue(waiveTarget)}
             </p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">মাফের পরিমাণ (৳)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">মাফের পরিমাণ (৳)</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   value={waiveAmount}
                   onChange={(e) => setWaiveAmount(e.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none"
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <button
                   type="button"
@@ -934,12 +934,12 @@ const FeeInvoicesPage = () => {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">কারণ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">কারণ</label>
               <textarea
                 value={waiveReason}
                 onChange={(e) => setWaiveReason(e.target.value)}
                 rows={2}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="যেমন: এতিম ছাত্র, আর্থিক অসচ্ছলতা"
               />
             </div>
@@ -949,7 +949,7 @@ const FeeInvoicesPage = () => {
           <button
             type="button"
             onClick={() => setWaiveTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল
           </button>

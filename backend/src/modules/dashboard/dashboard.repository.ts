@@ -1,6 +1,13 @@
 import { prisma } from "../../shared/database/prisma";
 import { DASHBOARD_RECENT_TRANSACTIONS_LIMIT, DASHBOARD_UPCOMING_EXAMS_LIMIT } from "./dashboard.constants";
-import { FundBalanceRow, RecentTransactionRow, TodayTotalsRow, UpcomingExamRow } from "./dashboard.types";
+import {
+  AttendanceTrendRow,
+  FundBalanceRow,
+  IncomeExpenseTrendRow,
+  RecentTransactionRow,
+  TodayTotalsRow,
+  UpcomingExamRow,
+} from "./dashboard.types";
 
 const startOfTodayUTC = (): Date => {
   const now = new Date();
@@ -87,6 +94,31 @@ export class DashboardRepository {
       },
       select: { amount: true, paidAmount: true },
     });
+  }
+
+  // `periodExpr` is server-built (buildPeriodExpr, a fixed 3-branch
+  // ternary), never user input, so it is safe to interpolate directly —
+  // madrasaId stays parameterized. Same discipline as account.repository.ts.
+  findIncomeExpenseTrend(madrasaId: number, periodExpr: string, limit: number) {
+    return prisma.$queryRawUnsafe<IncomeExpenseTrendRow[]>(
+      `SELECT ${periodExpr} AS period,
+        SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS total_income,
+        SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS total_expense
+       FROM accounts WHERE madrasa_id = $1 AND deleted_at IS NULL
+       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
+      madrasaId,
+    );
+  }
+
+  findAttendanceRateTrend(madrasaId: number, periodExpr: string, limit: number) {
+    return prisma.$queryRawUnsafe<AttendanceTrendRow[]>(
+      `SELECT ${periodExpr} AS period,
+        COUNT(*) FILTER (WHERE status IN ('PRESENT','LATE')) AS present,
+        COUNT(*) AS total
+       FROM attendances WHERE madrasa_id = $1 AND attendee_type = 'STUDENT'
+       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
+      madrasaId,
+    );
   }
 
   async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {

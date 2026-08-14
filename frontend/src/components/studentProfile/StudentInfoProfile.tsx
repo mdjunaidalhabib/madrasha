@@ -128,8 +128,8 @@ const StudentInfoProfile = ({
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6">
-      <h2 className="text-xl mb-4">ছাত্রের তথ্য</h2>
+    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
+      <h2 className="text-xl mb-4 dark:text-slate-100">ছাত্রের তথ্য</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field
@@ -178,21 +178,21 @@ const StudentInfoProfile = ({
 
         {/* GENDER */}
         <div>
-          <label className="text-sm text-gray-500">লিঙ্গ</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">লিঙ্গ</label>
 
           {isEditMode ? (
             <select
               name="gender"
               value={student.gender ?? ""}
               onChange={handleChange}
-              className="border p-2 rounded w-full"
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">লিঙ্গ নির্বাচন করুন</option>
               <option value={1}>পুরুষ</option>
               <option value={2}>মহিলা</option>
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100">{getGenderName(student.gender)}</p>
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{getGenderName(student.gender)}</p>
           )}
         </div>
 
@@ -212,14 +212,14 @@ const StudentInfoProfile = ({
 
         {/* DIVISION */}
         <div>
-          <label className="text-sm text-gray-500">বিভাগ</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">বিভাগ</label>
 
           {isEditMode ? (
             <select
               name="division_id"
               value={student.division_id || student.academicDivision || ""}
               onChange={handleChange}
-              className="border p-2 rounded w-full"
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">বিভাগ নির্বাচন করুন</option>
               {divisions.map((d) => (
@@ -229,7 +229,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100">
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {getDivisionName(student.division_id || student.academicDivision)}
             </p>
           )}
@@ -237,14 +237,14 @@ const StudentInfoProfile = ({
 
         {/* PREVIOUS CLASS */}
         <div>
-          <label className="text-sm text-gray-500">পূর্বের শ্রেণি</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">পূর্বের শ্রেণি</label>
 
           {isEditMode ? (
             <select
               name="previous_class_id"
               value={student.previous_class_id || student.previousClass || ""}
               onChange={handleChange}
-              className="border p-2 rounded w-full"
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">পূর্বের শ্রেণি</option>
               {classes.map((c) => (
@@ -254,7 +254,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100">
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {getClassName(student.previous_class_id || student.previousClass)}
             </p>
           )}
@@ -262,14 +262,14 @@ const StudentInfoProfile = ({
 
         {/* CURRENT CLASS */}
         <div>
-          <label className="text-sm text-gray-500">বর্তমান শ্রেণি</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">বর্তমান শ্রেণি</label>
 
           {isEditMode ? (
             <select
               name="class_id"
               value={student.class_id || student.currentClass || ""}
               onChange={handleChange}
-              className="border p-2 rounded w-full"
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">বর্তমান শ্রেণি</option>
               {classes.map((c) => (
@@ -279,7 +279,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100">
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {getClassName(student.class_id || student.currentClass)}
             </p>
           )}

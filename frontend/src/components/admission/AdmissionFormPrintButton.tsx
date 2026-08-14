@@ -19,7 +19,7 @@ const AdmissionFormPrintButton = ({ row, madrasaName, className }: Props) => (
       onClick={() => window.print()}
       className={
         className ||
-        "h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        "h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
       }
     >
       প্রিন্ট ভর্তি ফরম

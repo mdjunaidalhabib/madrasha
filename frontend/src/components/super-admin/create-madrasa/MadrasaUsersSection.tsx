@@ -133,13 +133,13 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Users</h3>
+      <h3 className="text-lg font-semibold dark:text-slate-100">Users</h3>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading users...</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">Loading users...</p>
       ) : !roles.length ? (
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-gray-500">No roles found for this madrasa.</p>
+        <div className="rounded-lg border p-4 dark:border-slate-700">
+          <p className="text-sm text-gray-500 dark:text-slate-400">No roles found for this madrasa.</p>
         </div>
       ) : (
         roles.map((role) => {
@@ -150,12 +150,12 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
           const isDeleting = existingUser ? busyUserId === existingUser.id : false;
 
           return (
-            <div key={role.id} className="space-y-3 rounded-lg border bg-gray-50 p-4">
+            <div key={role.id} className="space-y-3 rounded-lg border bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-center justify-between">
-                <span className="font-medium">{role.name || role.key}</span>
+                <span className="font-medium dark:text-slate-200">{role.name || role.key}</span>
 
                 {isDefault && (
-                  <span className="text-sm font-medium text-green-600">Required</span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Required</span>
                 )}
               </div>
 
@@ -163,25 +163,25 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                 /* Role slot already filled — show the existing account instead
                    of a "create new" form, so the same role can never be
                    created twice. */
-                <div className="flex flex-col gap-2 rounded-lg border bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 rounded-lg border bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-900">{existingUser.name}</span>
+                      <span className="font-medium text-gray-900 dark:text-slate-100">{existingUser.name}</span>
                       {existingUser.is_active ? (
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-400">
                           Active
                         </span>
                       ) : (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400">
                           Inactive
                         </span>
                       )}
                     </div>
-                    <div className="truncate text-xs text-gray-500">{existingUser.email}</div>
+                    <div className="truncate text-xs text-gray-500 dark:text-slate-400">{existingUser.email}</div>
                   </div>
 
                   {isDefault ? (
-                    <span className="self-start text-xs text-gray-400 sm:self-auto">
+                    <span className="self-start text-xs text-gray-400 dark:text-slate-500 sm:self-auto">
                       Default user — cannot be deleted
                     </span>
                   ) : (
@@ -203,7 +203,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                     autoComplete="off"
                     value={form.name}
                     onChange={(e) => updateForm(role.id, "name", e.target.value)}
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   />
 
                   <input
@@ -212,7 +212,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                     autoComplete="off"
                     value={form.email}
                     onChange={(e) => updateForm(role.id, "email", e.target.value)}
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   />
 
                   <div className="relative">
@@ -222,13 +222,13 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => updateForm(role.id, "password", e.target.value)}
-                      className="w-full rounded border px-3 py-2 pr-10"
+                      className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
 
                     <button
                       type="button"
                       onClick={() => toggleVisible(role.id)}
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                       aria-label={visiblePasswords[role.id] ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >

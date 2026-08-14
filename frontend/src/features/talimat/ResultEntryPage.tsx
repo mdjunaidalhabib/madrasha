@@ -355,9 +355,9 @@ export default function ResultEntryPage() {
   };
 
   return (
-    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-wrap gap-3 justify-between items-center bg-white p-3 sm:p-4 rounded-xl shadow">
-        <h1 className="text-lg sm:text-2xl font-bold">✍️ নাম্বার এন্ট্রি</h1>
+    <div className="p-3 sm:p-6 space-y-6 bg-gray-50 dark:bg-slate-950 min-h-screen">
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl shadow">
+        <h1 className="text-lg sm:text-2xl font-bold dark:text-slate-100">✍️ নাম্বার এন্ট্রি</h1>
 
         <button
           onClick={goToPreview}
@@ -380,7 +380,7 @@ export default function ResultEntryPage() {
       />
 
       {editMode && (
-        <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded">
+        <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded dark:text-yellow-400 dark:bg-yellow-950/30 dark:border-yellow-900/50">
           ✏️ পূর্বের রেজাল্ট পাওয়া গেছে — আপনি নম্বর আপডেট করতে পারবেন
         </div>
       )}
@@ -401,7 +401,7 @@ export default function ResultEntryPage() {
           <ResultActions onSave={saveMarks} onReset={handleReset} disabled={loading} />
         </>
       ) : (
-        <div className="bg-white shadow-md rounded-xl p-6 text-center text-gray-500">
+        <div className="bg-white dark:bg-slate-900 shadow-md rounded-xl p-6 text-center text-gray-500 dark:text-slate-400">
           নাম্বার এন্ট্রি শুরু করতে উপরে থেকে বিভাগ, পরীক্ষা এবং ক্লাস নির্বাচন করুন।
         </div>
       )}

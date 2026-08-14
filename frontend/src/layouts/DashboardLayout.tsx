@@ -27,7 +27,7 @@ export default function DashboardLayout() {
   }, [setItems]);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden dark:bg-slate-950">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />
@@ -51,7 +51,7 @@ export default function DashboardLayout() {
       <div className="flex flex-col flex-1 min-w-0">
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
-        <main className="flex-1 overflow-y-auto p-4">
+        <main className="flex-1 overflow-y-auto p-4 text-slate-900 dark:text-slate-100">
           <Outlet />
         </main>
       </div>

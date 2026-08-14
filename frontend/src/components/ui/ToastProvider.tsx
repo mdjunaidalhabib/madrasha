@@ -21,15 +21,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({ toast }), [toast]);
 
   function borderClass(type: ToastType) {
-    if (type === "success") return "border-emerald-200";
-    if (type === "error") return "border-red-200";
-    return "border-gray-200";
+    if (type === "success") return "border-emerald-200 dark:border-emerald-900/50";
+    if (type === "error") return "border-red-200 dark:border-red-900/50";
+    return "border-gray-200 dark:border-slate-700";
   }
 
   function titleClass(type: ToastType) {
-    if (type === "success") return "text-emerald-700";
-    if (type === "error") return "text-red-700";
-    return "text-gray-800";
+    if (type === "success") return "text-emerald-700 dark:text-emerald-400";
+    if (type === "error") return "text-red-700 dark:text-red-400";
+    return "text-gray-800 dark:text-slate-200";
   }
 
   return (
@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             className={[
-              "rounded-2xl border bg-white p-3 shadow-lg",
+              "rounded-2xl border bg-white p-3 shadow-lg dark:bg-slate-900",
               borderClass(t.type),
             ].join(" ")}
           >
@@ -55,7 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 {t.title}
               </div>
             ) : null}
-            <div className="text-sm text-gray-700">{t.message}</div>
+            <div className="text-sm text-gray-700 dark:text-slate-300">{t.message}</div>
           </div>
         ))}
       </div>

@@ -49,7 +49,9 @@ function Badge({ active }: { active: boolean }) {
     <span
       className={[
         "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-        active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700",
+        active
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+          : "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400",
       ].join(" ")}
     >
       {active ? "Active" : "Inactive"}
@@ -85,10 +87,10 @@ function IconButton({
 }) {
   const cls =
     variant === "danger"
-      ? "rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100"
+      ? "rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40"
       : variant === "warn"
-        ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100"
-        : "rounded-lg border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 active:scale-[0.99]";
+        ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-900/40"
+        : "rounded-lg border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800";
 
   return (
     <button type="button" onClick={onClick} title={title} className={cls}>
@@ -302,8 +304,8 @@ export default function SuperAdminPlansPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Plans</h1>
-          <p className="text-sm text-gray-600">Super Admin এখান থেকে pricing/limits manage করবে।</p>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">Plans</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">Super Admin এখান থেকে pricing/limits manage করবে।</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -313,7 +315,7 @@ export default function SuperAdminPlansPage() {
               "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "plans"
                 ? "bg-black text-white"
-                : "border bg-white text-gray-700 hover:bg-gray-50",
+                : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
             Plans
@@ -325,7 +327,7 @@ export default function SuperAdminPlansPage() {
               "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "trash"
                 ? "bg-black text-white"
-                : "border bg-white text-gray-700 hover:bg-gray-50",
+                : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
             Trash
@@ -346,11 +348,11 @@ export default function SuperAdminPlansPage() {
       {tab === "plans" && (
         <div className="mt-5 grid gap-3 md:grid-cols-12">
           <div className="md:col-span-5">
-            <label className="mb-1 block text-xs text-gray-600">Search</label>
-            <div className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2">
-              <span className="text-gray-400">🔎</span>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Search</label>
+            <div className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+              <span className="text-gray-400 dark:text-slate-500">🔎</span>
               <input
-                className="w-full bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-sm outline-none dark:text-slate-100"
                 placeholder="Plan name দিয়ে খুঁজুন..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -359,9 +361,9 @@ export default function SuperAdminPlansPage() {
           </div>
 
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-gray-600">Status</label>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Status</label>
             <select
-              className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               value={active}
               onChange={(e) => setActive(e.target.value as "all" | "1" | "0")}
             >
@@ -375,13 +377,13 @@ export default function SuperAdminPlansPage() {
             <button
               onClick={load}
               disabled={loading}
-              className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60"
+              className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
             >
               {loading ? "Loading..." : "Refresh"}
             </button>
 
-            <div className="text-xs text-gray-500">
-              Total: <span className="font-medium text-gray-800">{rows.length}</span>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Total: <span className="font-medium text-gray-800 dark:text-slate-100">{rows.length}</span>
             </div>
           </div>
         </div>
@@ -393,13 +395,13 @@ export default function SuperAdminPlansPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60"
+            className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             {loading ? "Loading..." : "Refresh Trash"}
           </button>
 
-          <div className="text-xs text-gray-500">
-            Total Trash: <span className="font-medium text-gray-800">{trashRows.length}</span>
+          <div className="text-xs text-gray-500 dark:text-slate-400">
+            Total Trash: <span className="font-medium text-gray-800 dark:text-slate-100">{trashRows.length}</span>
           </div>
         </div>
       )}
@@ -409,37 +411,37 @@ export default function SuperAdminPlansPage() {
         {loading && <SkeletonList items={3} />}
 
         {!loading && tab === "plans" && rows.length === 0 && (
-          <div className="rounded-2xl border bg-white p-6 text-center">
-            <div className="text-sm font-medium text-gray-800">কোনো Plan পাওয়া যায়নি</div>
-            <div className="text-xs text-gray-500">নতুন Plan যোগ করতে “New Plan” চাপুন</div>
+          <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">কোনো Plan পাওয়া যায়নি</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">নতুন Plan যোগ করতে “New Plan” চাপুন</div>
           </div>
         )}
 
         {!loading &&
           tab === "plans" &&
           rows.map((p) => (
-            <div key={p.id} className="rounded-2xl border bg-white p-4">
+            <div key={p.id} className="rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-gray-900 dark:text-slate-100">
                     #{p.id} — {p.name}
                   </div>
-                  <div className="text-xs text-gray-500">Duration: {p.durationDays} days</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Duration: {p.durationDays} days</div>
                 </div>
                 <Badge active={!!p.isActive} />
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500">Students</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Students</div>
                   {p.studentLimit}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Users</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Users</div>
                   {p.userLimit}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Price</div>৳ {fmtMoney(p.price)}
                 </div>
               </div>
 
@@ -462,39 +464,39 @@ export default function SuperAdminPlansPage() {
           ))}
 
         {!loading && tab === "trash" && trashRows.length === 0 && (
-          <div className="rounded-2xl border bg-white p-6 text-center">
-            <div className="text-sm font-medium text-gray-800">Trash খালি</div>
-            <div className="text-xs text-gray-500">কোনো Plan trash এ নেই</div>
+          <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">Trash খালি</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">কোনো Plan trash এ নেই</div>
           </div>
         )}
 
         {!loading &&
           tab === "trash" &&
           trashRows.map((p) => (
-            <div key={p.id} className="rounded-2xl border bg-white p-4">
+            <div key={p.id} className="rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-gray-900 dark:text-slate-100">
                     #{p.id} — {p.name}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-slate-400">
                     Deleted: {p.deletedAt ? new Date(p.deletedAt).toLocaleString() : "-"}
                   </div>
                 </div>
                 <Badge active={!!p.isActive} />
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700">
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500">Students</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Students</div>
                   {p.studentLimit}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Users</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Users</div>
                   {p.userLimit}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Price</div>৳ {fmtMoney(p.price)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Price</div>৳ {fmtMoney(p.price)}
                 </div>
               </div>
 

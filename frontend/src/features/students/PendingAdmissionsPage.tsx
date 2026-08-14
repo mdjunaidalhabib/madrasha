@@ -21,9 +21,9 @@ type AdmissionInvoiceRow = {
 };
 
 const FEE_BADGE: Partial<Record<FeeStatus, { label: (due: number) => string; className: string }>> = {
-  DUE: { label: (due) => `বকেয়া ৳${due}`, className: "bg-red-100 text-red-700" },
-  WAIVED: { label: () => "মাফকৃত", className: "bg-purple-100 text-purple-700" },
-  PAID: { label: () => "পরিশোধিত", className: "bg-green-100 text-green-700" },
+  DUE: { label: (due) => `বকেয়া ৳${due}`, className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
+  WAIVED: { label: () => "মাফকৃত", className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
+  PAID: { label: () => "পরিশোধিত", className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
 };
 
 const normalizeInvoiceArray = (payload: any): AdmissionInvoiceRow[] => {
@@ -245,15 +245,15 @@ const PendingAdmissionsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
               পেন্ডিং ভর্তি অনুমোদন
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               পর্যালোচনার অপেক্ষায় আছে: {rows.length} জন
             </p>
           </div>
@@ -261,20 +261,20 @@ const PendingAdmissionsPage = () => {
           <button
             type="button"
             onClick={() => navigate(`${adminBase}/students/list`)}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 md:w-auto"
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
           >
             ছাত্র তালিকায় ফিরে যান
           </button>
         </div>
 
         {/* Content */}
-        <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+        <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {loading ? (
             <SkeletonTable rows={6} columns={6} />
           ) : error ? (
-            <div className="py-10 text-center text-sm text-red-600">{error}</div>
+            <div className="py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
           ) : rows.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500">
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
               অনুমোদনের অপেক্ষায় কোনো ভর্তি নেই
             </div>
           ) : (
@@ -284,39 +284,39 @@ const PendingAdmissionsPage = () => {
                 {rows.map((student) => (
                   <div
                     key={student.id}
-                    className="rounded-lg border border-gray-200 p-3 shadow-sm"
+                    className="rounded-lg border border-gray-200 p-3 shadow-sm dark:border-slate-700"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-800">
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">
                         {student.name_bn || "নাম নেই"}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-slate-400">
                         রোল: {student.roll ?? "নেই"}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       পিতা: {student.father_name || "নেই"} | ফোন:{" "}
                       {student.guardian_phone || "নেই"}
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       শ্রেণি: {student.current_class || "নেই"}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
                         {admissionTypeLabel(student.admission_type)}
                       </span>
                       {student.is_orphan === 1 && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
                           এতিম
                         </span>
                       )}
                       {student.residency_type ? (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
                           {residencyLabel(student.residency_type)}
                         </span>
                       ) : null}
                       {student.blood_group && (
-                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                           {student.blood_group}
                         </span>
                       )}
@@ -332,7 +332,7 @@ const PendingAdmissionsPage = () => {
                       <button
                         type="button"
                         onClick={() => setDetailTarget(student)}
-                        className="h-9 flex-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                        className="h-9 flex-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         বিস্তারিত
                       </button>
@@ -362,7 +362,7 @@ const PendingAdmissionsPage = () => {
               <div className="hidden overflow-x-auto sm:block">
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-xs uppercase text-gray-500">
+                    <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="px-3 py-2">নাম</th>
                       <th className="px-3 py-2">রোল</th>
                       <th className="px-3 py-2">পিতার নাম</th>
@@ -375,8 +375,8 @@ const PendingAdmissionsPage = () => {
                   </thead>
                   <tbody>
                     {rows.map((student) => (
-                      <tr key={student.id} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-medium text-gray-800">
+                      <tr key={student.id} className="border-b border-gray-100 dark:border-slate-800">
+                        <td className="px-3 py-2 font-medium text-gray-800 dark:text-slate-200">
                           {student.name_bn || "নাম নেই"}
                         </td>
                         <td className="px-3 py-2">{student.roll ?? "নেই"}</td>
@@ -387,12 +387,12 @@ const PendingAdmissionsPage = () => {
                         <td className="px-3 py-2">
                           <div className="flex flex-wrap gap-1">
                             {student.is_orphan === 1 && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
                                 এতিম
                               </span>
                             )}
                             {student.blood_group && (
-                              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                                 {student.blood_group}
                               </span>
                             )}
@@ -410,7 +410,7 @@ const PendingAdmissionsPage = () => {
                             <button
                               type="button"
                               onClick={() => setDetailTarget(student)}
-                              className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                              className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
                               বিস্তারিত
                             </button>
@@ -454,13 +454,13 @@ const PendingAdmissionsPage = () => {
           onChange={(event) => setRejectReason(event.target.value)}
           rows={4}
           placeholder="বাতিলের কারণ লিখুন..."
-          className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-100"
+          className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={() => setRejectTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             বাতিল করুন
           </button>
@@ -488,7 +488,7 @@ const PendingAdmissionsPage = () => {
               <img
                 src={detailTarget.image}
                 alt={detailTarget.name_bn || ""}
-                className="h-24 w-24 rounded-lg object-cover border border-gray-200"
+                className="h-24 w-24 rounded-lg object-cover border border-gray-200 dark:border-slate-700"
               />
             )}
 
@@ -510,11 +510,11 @@ const PendingAdmissionsPage = () => {
             </DetailSection>
 
             <div>
-              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">ভর্তি ফি</h4>
+              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">ভর্তি ফি</h4>
               {detailInvoicesLoading ? (
-                <div className="text-xs text-gray-400">লোড হচ্ছে...</div>
+                <div className="text-xs text-gray-400 dark:text-slate-500">লোড হচ্ছে...</div>
               ) : detailInvoices.length === 0 ? (
-                <div className="text-xs text-gray-400">এই ছাত্রের জন্য কোনো ফি বিল হয়নি</div>
+                <div className="text-xs text-gray-400 dark:text-slate-500">এই ছাত্রের জন্য কোনো ফি বিল হয়নি</div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {detailInvoices.map((inv) => {
@@ -522,13 +522,13 @@ const PendingAdmissionsPage = () => {
                     const canAct = inv.status !== "PAID" && inv.status !== "WAIVED";
                     const isActionOpen = activeFeeAction?.invoiceId === inv.id;
                     return (
-                      <div key={inv.id} className="rounded-lg border border-gray-100 p-2">
+                      <div key={inv.id} className="rounded-lg border border-gray-100 p-2 dark:border-slate-800">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                          <span className="text-gray-700">
-                            {inv.title} <span className="text-gray-400">৳{inv.amount}</span>
-                            {remaining > 0 && <span className="text-rose-600"> · বাকি ৳{remaining}</span>}
+                          <span className="text-gray-700 dark:text-slate-300">
+                            {inv.title} <span className="text-gray-400 dark:text-slate-500">৳{inv.amount}</span>
+                            {remaining > 0 && <span className="text-rose-600 dark:text-rose-400"> · বাকি ৳{remaining}</span>}
                             {inv.waivedAmount > 0 && (
-                              <span className="text-purple-600"> · মাফ ৳{inv.waivedAmount}</span>
+                              <span className="text-purple-600 dark:text-purple-400"> · মাফ ৳{inv.waivedAmount}</span>
                             )}
                           </span>
                           {canAct && (
@@ -536,14 +536,14 @@ const PendingAdmissionsPage = () => {
                               <button
                                 type="button"
                                 onClick={() => openFeeAction(inv, "pay")}
-                                className="h-7 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                className="h-7 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                               >
                                 পেমেন্ট নিন
                               </button>
                               <button
                                 type="button"
                                 onClick={() => openFeeAction(inv, "waive")}
-                                className="h-7 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50"
+                                className="h-7 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50 dark:border-purple-900/50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                               >
                                 মাফ করুন
                               </button>
@@ -552,23 +552,23 @@ const PendingAdmissionsPage = () => {
                         </div>
 
                         {isActionOpen && (
-                          <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-2">
+                          <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-2 dark:border-slate-800">
                             <div>
-                              <label className="mb-1 block text-[11px] font-medium text-gray-500">পরিমাণ (৳)</label>
+                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">পরিমাণ (৳)</label>
                               <input
                                 type="number"
                                 value={feeActionAmount}
                                 onChange={(e) => setFeeActionAmount(e.target.value)}
-                                className="h-8 w-24 rounded-md border border-gray-300 px-2 text-sm outline-none"
+                                className="h-8 w-24 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                               />
                             </div>
                             {activeFeeAction?.type === "pay" ? (
                               <div>
-                                <label className="mb-1 block text-[11px] font-medium text-gray-500">পদ্ধতি</label>
+                                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">পদ্ধতি</label>
                                 <select
                                   value={feeActionMethod}
                                   onChange={(e) => setFeeActionMethod(e.target.value as PaymentMethod)}
-                                  className="h-8 rounded-md border border-gray-300 px-2 text-sm outline-none"
+                                  className="h-8 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 >
                                   {(["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"] as PaymentMethod[]).map((m) => (
                                     <option key={m} value={m}>
@@ -579,13 +579,13 @@ const PendingAdmissionsPage = () => {
                               </div>
                             ) : (
                               <div className="min-w-[140px] flex-1">
-                                <label className="mb-1 block text-[11px] font-medium text-gray-500">কারণ</label>
+                                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">কারণ</label>
                                 <input
                                   type="text"
                                   value={feeActionReason}
                                   onChange={(e) => setFeeActionReason(e.target.value)}
                                   placeholder="যেমন: এতিম ছাত্র"
-                                  className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm outline-none"
+                                  className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 />
                               </div>
                             )}
@@ -600,7 +600,7 @@ const PendingAdmissionsPage = () => {
                             <button
                               type="button"
                               onClick={() => setActiveFeeAction(null)}
-                              className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                              className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
                               বাতিল
                             </button>
@@ -640,7 +640,7 @@ const PendingAdmissionsPage = () => {
               <DetailRow label="গ্রাম" value={detailTarget.village} />
             </DetailSection>
 
-            <div className="flex justify-end gap-2 border-t pt-4">
+            <div className="flex justify-end gap-2 border-t pt-4 dark:border-slate-700">
               <AdmissionFormPrintButton row={detailTarget} />
               <button
                 type="button"
@@ -675,16 +675,16 @@ const PendingAdmissionsPage = () => {
 
 const DetailSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div>
-    <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{title}</h4>
+    <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">{title}</h4>
     <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">{children}</div>
   </div>
 );
 
 const DetailRow = ({ label, value }: { label: string; value?: string | null }) =>
   value ? (
-    <div className="flex justify-between gap-2 border-b border-gray-100 pb-1">
-      <span className="text-gray-500">{label}</span>
-      <span className="font-medium text-gray-800">{value}</span>
+    <div className="flex justify-between gap-2 border-b border-gray-100 pb-1 dark:border-slate-800">
+      <span className="text-gray-500 dark:text-slate-400">{label}</span>
+      <span className="font-medium text-gray-800 dark:text-slate-200">{value}</span>
     </div>
   ) : null;
 

@@ -40,7 +40,6 @@ const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
 const FeeInvoicesPage = lazy(() => import("../features/fee/FeeInvoicesPage"));
-const StudentStatementPage = lazy(() => import("../features/fee/StudentStatementPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const PaymentMethodSettingsPage = lazy(() => import("../features/fee/PaymentMethodSettingsPage"));
 const RolesPermissionsPage = lazy(() => import("../features/roles/RolesPermissionsPage"));
@@ -242,10 +241,6 @@ const madrasaAdminChildren = [
   {
     path: "fee-collection",
     element: <ModuleGuard module="accounts">{withSuspense(<FeeInvoicesPage />)}</ModuleGuard>,
-  },
-  {
-    path: "students/statement",
-    element: <ModuleGuard module="accounts">{withSuspense(<StudentStatementPage />)}</ModuleGuard>,
   },
   {
     path: "payroll",

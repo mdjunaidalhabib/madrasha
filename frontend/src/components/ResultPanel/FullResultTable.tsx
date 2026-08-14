@@ -89,16 +89,16 @@ export default function FullResultTable({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4">
+    <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4 dark:bg-slate-900">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
         <div>
           <h2 className="text-base sm:text-lg font-semibold">📊 Full Result Table</h2>
           {dataList.length > 0 && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">
               Status:{" "}
               <span
                 className={`font-semibold ${
-                  alreadyPublished ? "text-green-600" : "text-yellow-600"
+                  alreadyPublished ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"
                 }`}
               >
                 {alreadyPublished ? "PUBLISHED" : "DRAFT"}
@@ -161,42 +161,42 @@ export default function FullResultTable({
         <SkeletonTable rows={8} columns={subjectList.length + 9} />
       ) : (
       <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
-      <table className="w-full table-fixed min-w-[900px] border text-xs sm:text-sm">
+      <table className="w-full table-fixed min-w-[900px] border text-xs sm:text-sm dark:border-slate-800">
         <colgroup>
           {Array.from({ length: subjectList.length + 9 }).map((_, i) => (
             <col key={i} style={{ width: `${100 / (subjectList.length + 9)}%` }} />
           ))}
         </colgroup>
-        <thead className="bg-gray-100">
+        <thead className="bg-gray-100 dark:bg-slate-800">
           <tr>
-            <th className="border px-2 py-2 text-center">রেজিঃ নম্বর</th>
-            <th className="border px-2 py-2 text-center">শিক্ষার্থীর নাম</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">রেজিঃ নম্বর</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">শিক্ষার্থীর নাম</th>
 
             {subjectList.map((b) => (
-              <th key={b.book_id} className="border px-2 py-2 text-center">
+              <th key={b.book_id} className="border px-2 py-2 text-center dark:border-slate-800">
                 <span>
                   {b.book_name || b.book_name_bn || b.name_bn || `Book ${b.book_id}`}
-                  {b.is_miyari ? <span className="ml-1 text-[10px] font-semibold text-amber-700">(মিয়ারি)</span> : null}
+                  {b.is_miyari ? <span className="ml-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">(মিয়ারি)</span> : null}
                   {b.pass_mark != null ? (
                     <span
-                      className="ml-1 text-[10px] font-semibold text-sky-700"
+                      className="ml-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
                       title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
                     >
                       (পাস {b.pass_mark})
                     </span>
                   ) : null}
-                  <span className="ml-1 text-[10px] text-gray-400">/{b.full_marks ?? 100}</span>
+                  <span className="ml-1 text-[10px] text-gray-400 dark:text-slate-500">/{b.full_marks ?? 100}</span>
                 </span>
               </th>
             ))}
 
-            <th className="border px-2 py-2 text-center">মোট</th>
-            <th className="border px-2 py-2 text-center">গড়</th>
-            <th className="border px-2 py-2 text-center">সাধারণ গ্রেড</th>
-            <th className="border px-2 py-2 text-center">মাদরাসা গ্রেড</th>
-            <th className="border px-2 py-2 text-center">অবস্থা</th>
-            <th className="border px-2 py-2 text-center">মেধাক্রম</th>
-            <th className="border px-2 py-2 text-center">কার্যক্রম</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">মোট</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">গড়</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">সাধারণ গ্রেড</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">মাদরাসা গ্রেড</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">অবস্থা</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">মেধাক্রম</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">কার্যক্রম</th>
           </tr>
         </thead>
 
@@ -205,7 +205,7 @@ export default function FullResultTable({
             <tr>
               <td
                 colSpan={subjectList.length + 9}
-                className="text-center py-10 text-gray-400"
+                className="text-center py-10 text-gray-400 dark:text-slate-500"
               >
                 No Result Found
               </td>

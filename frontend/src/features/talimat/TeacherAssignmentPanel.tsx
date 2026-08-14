@@ -195,12 +195,12 @@ export default function TeacherAssignmentPanel() {
 
   /* ================= UI ================= */
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto bg-gray-100 min-h-screen">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto bg-gray-100 dark:bg-slate-950 min-h-screen">
       {/* LEFT LIST */}
 
       <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Teacher Assignments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">Teacher Assignments</h1>
 
           <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">
             + New
@@ -211,16 +211,16 @@ export default function TeacherAssignmentPanel() {
         {assignments.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {assignments.map((a: any, i: number) => (
-              <div key={i} className="bg-white p-4 rounded shadow">
+              <div key={i} className="bg-white dark:bg-slate-900 p-4 rounded shadow">
                 <div className="flex justify-between">
-                  <h2 className="font-bold">{a.teacher_name}</h2>
+                  <h2 className="font-bold text-gray-900 dark:text-slate-100">{a.teacher_name}</h2>
 
                   <div className="flex gap-2">
-                    <button onClick={() => openEdit(a)} className="text-blue-600">
+                    <button onClick={() => openEdit(a)} className="text-blue-600 dark:text-blue-400">
                       Edit
                     </button>
 
-                    <button onClick={() => deleteAssignment(a)} className="text-red-600">
+                    <button onClick={() => deleteAssignment(a)} className="text-red-600 dark:text-red-400">
                       Delete
                     </button>
                   </div>
@@ -230,7 +230,7 @@ export default function TeacherAssignmentPanel() {
                   {a.books?.map((b: any, j: number) => (
                     <span
                       key={j}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-slate-300"
                     >
                       📘 {b.book_name_bn}
                     </span>
@@ -240,7 +240,7 @@ export default function TeacherAssignmentPanel() {
             ))}
           </div>
         ) : (
-          <div className="text-gray-500">No assignments found</div>
+          <div className="text-gray-500 dark:text-slate-400">No assignments found</div>
         )}
       </div>
 
@@ -251,25 +251,25 @@ export default function TeacherAssignmentPanel() {
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-[600px] max-h-[90vh] overflow-y-auto bg-white rounded-lg p-4 sm:p-6 relative"
+            className="w-full max-w-[600px] max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-lg p-4 sm:p-6 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <button onClick={closeModal} className="absolute right-3 top-2 text-xl">
+            <button onClick={closeModal} className="absolute right-3 top-2 text-xl text-gray-600 dark:text-slate-400">
               ✖
             </button>
 
-            <h2 className="text-lg font-bold mb-4">{isEdit ? "Edit" : "Create"} Assignment</h2>
+            <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-slate-100">{isEdit ? "Edit" : "Create"} Assignment</h2>
 
             {/* TEACHER */}
             {isEdit ? (
-              <div className="mb-3 p-2 bg-gray-100 rounded">
+              <div className="mb-3 p-2 bg-gray-100 dark:bg-slate-800 rounded text-gray-800 dark:text-slate-200">
                 Teacher: <b>{selectedTeacher?.name_bn}</b>
               </div>
             ) : (
               <select
                 value={form.teacherId}
                 onChange={(e) => updateForm("teacherId", e.target.value)}
-                className="w-full border p-2 mb-3"
+                className="w-full border p-2 mb-3 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">Select Teacher</option>
 
@@ -290,14 +290,14 @@ export default function TeacherAssignmentPanel() {
 
             {/* CLASS */}
             <div className="mt-3">
-              <h2 className="mb-2 font-medium">Class</h2>
+              <h2 className="mb-2 font-medium text-gray-900 dark:text-slate-100">Class</h2>
 
               <div className="flex gap-2 flex-wrap">
                 {classes.map((c: any) => (
                   <button
                     key={c.class_id}
                     onClick={() => updateForm("classId", c.class_id)}
-                    className={`px-3 py-2 border rounded ${
+                    className={`px-3 py-2 border rounded dark:border-slate-700 dark:text-slate-200 ${
                       form.classId === c.class_id ? "bg-green-500 text-white" : ""
                     }`}
                   >

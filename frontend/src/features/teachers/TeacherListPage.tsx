@@ -182,12 +182,12 @@ const TeacherListPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-950 md:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">শিক্ষক তালিকা</h1>
-            <p className="mt-1 text-sm text-gray-500">মোট শিক্ষক: {filteredTeachers.length} জন</p>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">শিক্ষক তালিকা</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">মোট শিক্ষক: {filteredTeachers.length} জন</p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -201,7 +201,7 @@ const TeacherListPage = () => {
           </div>
         </div>
 
-        <div className="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        <div className="mb-4 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex w-full flex-wrap items-center gap-2">
               <input
@@ -209,13 +209,13 @@ const TeacherListPage = () => {
                 placeholder="ID, নাম, ফোন বা পদবি দিয়ে সার্চ করুন"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[260px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[260px]"
               />
 
               <select
                 value={selectedGender}
                 onChange={(event) => setSelectedGender(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[150px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[150px]"
               >
                 <option value="">সব লিঙ্গ</option>
                 <option value="1">পুরুষ</option>
@@ -225,7 +225,7 @@ const TeacherListPage = () => {
               <select
                 value={selectedAcademicDivision}
                 onChange={(event) => setSelectedAcademicDivision(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 sm:w-[210px]"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[210px]"
               >
                 <option value="">সব একাডেমিক বিভাগ</option>
 
@@ -241,7 +241,7 @@ const TeacherListPage = () => {
               <button
                 type="button"
                 onClick={() => setBulkUpdateOpen(true)}
-                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/40"
               >
                 বাল্ক আপডেট
               </button>
@@ -264,12 +264,12 @@ const TeacherListPage = () => {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
             {error}
           </div>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
           {loading ? (
             <SkeletonTable rows={8} columns={2 + visibleColumns.size} />
           ) : (
@@ -278,61 +278,61 @@ const TeacherListPage = () => {
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
                     {isColumnVisible("registration") && (
-                      <th className="border p-2.5">রেজিস্ট্রেশন নং</th>
+                      <th className="border p-2.5 dark:border-slate-700">রেজিস্ট্রেশন নং</th>
                     )}
-                    <th className="border p-2.5">নাম</th>
-                    {isColumnVisible("phone") && <th className="border p-2.5">মোবাইল</th>}
-                    {isColumnVisible("gender") && <th className="border p-2.5">লিঙ্গ</th>}
-                    {isColumnVisible("designation") && <th className="border p-2.5">পদবি</th>}
+                    <th className="border p-2.5 dark:border-slate-700">নাম</th>
+                    {isColumnVisible("phone") && <th className="border p-2.5 dark:border-slate-700">মোবাইল</th>}
+                    {isColumnVisible("gender") && <th className="border p-2.5 dark:border-slate-700">লিঙ্গ</th>}
+                    {isColumnVisible("designation") && <th className="border p-2.5 dark:border-slate-700">পদবি</th>}
                     {isColumnVisible("academicDivision") && (
-                      <th className="border p-2.5">একাডেমিক বিভাগ</th>
+                      <th className="border p-2.5 dark:border-slate-700">একাডেমিক বিভাগ</th>
                     )}
                     {isColumnVisible("qualification") && (
-                      <th className="border p-2.5">যোগ্যতা</th>
+                      <th className="border p-2.5 dark:border-slate-700">যোগ্যতা</th>
                     )}
-                    <th className="border p-2.5">একশন</th>
+                    <th className="border p-2.5 dark:border-slate-700">একশন</th>
                   </tr>
                 </thead>
 
                 <tbody className="text-sm">
                   {filteredTeachers.length === 0 ? (
                     <tr>
-                      <td colSpan={2 + visibleColumns.size} className="p-6 text-center text-gray-500">
+                      <td colSpan={2 + visibleColumns.size} className="p-6 text-center text-gray-500 dark:text-slate-400">
                         কোন শিক্ষক পাওয়া যায়নি
                       </td>
                     </tr>
                   ) : (
                     filteredTeachers.map((teacher) => (
-                      <tr key={teacher.id} className="border-t transition hover:bg-gray-50">
+                      <tr key={teacher.id} className="border-t transition hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
                         {isColumnVisible("registration") && (
-                          <td className="border p-2.5">{teacher.registration_no ?? "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{teacher.registration_no ?? "নেই"}</td>
                         )}
 
-                        <td className="border p-2.5">{teacher.name_bn || teacher.name || "নেই"}</td>
+                        <td className="border p-2.5 dark:border-slate-700">{teacher.name_bn || teacher.name || "নেই"}</td>
 
                         {isColumnVisible("phone") && (
-                          <td className="border p-2.5">{teacher.phone || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{teacher.phone || "নেই"}</td>
                         )}
 
                         {isColumnVisible("gender") && (
-                          <td className="border p-2.5">{getGenderName(teacher.gender)}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{getGenderName(teacher.gender)}</td>
                         )}
 
                         {isColumnVisible("designation") && (
-                          <td className="border p-2.5">{teacher.designation || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{teacher.designation || "নেই"}</td>
                         )}
 
                         {isColumnVisible("academicDivision") && (
-                          <td className="border p-2.5">
+                          <td className="border p-2.5 dark:border-slate-700">
                             {getDivisionName(getAcademicDivisionId(teacher))}
                           </td>
                         )}
 
                         {isColumnVisible("qualification") && (
-                          <td className="border p-2.5">{teacher.qualification || "নেই"}</td>
+                          <td className="border p-2.5 dark:border-slate-700">{teacher.qualification || "নেই"}</td>
                         )}
 
-                        <td className="border p-2.5">
+                        <td className="border p-2.5 dark:border-slate-700">
                           <button
                             type="button"
                             onClick={() => navigate(`${adminBase}/ihtemam/${teacher.id}`)}
