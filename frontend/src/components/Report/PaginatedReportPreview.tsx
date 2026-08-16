@@ -246,20 +246,38 @@ const paginateTableGroup = (
 // room left - several small classes share a column instead of each one
 // wasting the rest of a column - and only moves to a fresh column when it
 // genuinely doesn't fit what's left. A class too big for one column still
-// spills into the next; every chunk (first or spillover) repeats its own
-// full heading+footer because each column is cut apart from its neighbour
-// after printing and must stand alone. ----
+// spills into the next; only that class's true first chunk shows the
+// heading and only its true last chunk shows the footer (see ColumnChunk
+// below) - a spillover chunk repeats neither, it just continues the table. ----
 
 type ColumnChunk = {
   groupIndex: number;
   rows: Record<string, any>[];
   startsNewColumn: boolean;
+  // Whether this chunk is where its class's own heading (brand header +
+  // exam/class/subject line) belongs - only the class's very first chunk,
+  // even when that class's later chunks each start a fresh column. Spillover
+  // chunks of the same class repeat neither the heading nor the signature -
+  // only the class's true first/last chunk get those, wherever they land.
+  isFirstChunkOfGroup: boolean;
+  // Whether this chunk is where its class's signature line belongs - only
+  // the class's very last chunk (see isFirstChunkOfGroup above).
+  isLastChunkOfGroup: boolean;
 };
 
 const packColumnsAcrossGroups = (
   groups: Record<string, any>[][],
   measurements: TableGroupMeasurement[],
   availableHeightPx: number,
+  // Top overhead a chunk that ISN'T its group's first chunk carries instead
+  // of the full heading - same "real continuation page" measurement the
+  // single-column table path uses (see CONTINUATION_PROBE_KEY). Only a
+  // group's true first chunk (isFirstChunkOfGroup) reserves the full
+  // heading+brand-header height; a group's true last chunk (and only that
+  // one, once it's known) reserves the footer/signature height - matching
+  // what each chunk actually renders after the isFirstPage/isLastPage fix,
+  // instead of every chunk reserving both regardless.
+  continuationOffsetPx: number,
 ): ColumnChunk[] => {
   const safetyPx = availableHeightPx * SAFETY_MARGIN_RATIO;
   const freshColumnBudgetPx = availableHeightPx - safetyPx;
@@ -269,10 +287,13 @@ const packColumnsAcrossGroups = (
 
   groups.forEach((groupRowsData, groupIndex) => {
     const measurement = measurements[groupIndex];
-    const overheadPx = measurement.firstRowOffsetPx + measurement.footerReservePx;
+    const footerReservePx = measurement.footerReservePx;
 
     let rowIndex = 0;
+    let isFirstChunkOfThisGroup = true;
     while (rowIndex < groupRowsData.length) {
+      const headingOverheadPx = isFirstChunkOfThisGroup ? measurement.firstRowOffsetPx : continuationOffsetPx;
+
       // A class only ever splits across columns when it's too big for one
       // column on its own - never just to top off a little leftover space
       // below a previous class. So before packing anything, check whether
@@ -284,7 +305,7 @@ const packColumnsAcrossGroups = (
         const remainingRowsHeightPx = measurement.rowHeightsPx
           .slice(rowIndex)
           .reduce((sum, h) => sum + h, 0);
-        const budgetHerePx = remainingPx - COLUMN_CLASS_GAP_PX - overheadPx;
+        const budgetHerePx = remainingPx - COLUMN_CLASS_GAP_PX - headingOverheadPx - footerReservePx;
 
         if (remainingRowsHeightPx > budgetHerePx) {
           remainingPx = freshColumnBudgetPx;
@@ -296,7 +317,12 @@ const packColumnsAcrossGroups = (
       // COLUMN_CLASS_GAP_PX) so there's blank paper to cut through between
       // them, not just between the two side-by-side columns.
       const gapPx = isFirstChunkOfColumn ? 0 : COLUMN_CLASS_GAP_PX;
-      const rowBudgetPx = remainingPx - gapPx - overheadPx;
+      // Footer isn't reserved up front here (mirrors paginateBlocks' same
+      // choice) - reserving it on every chunk would waste a footer's worth
+      // of space on every non-last chunk of a spilled class. Whether it
+      // actually fits alongside THIS chunk's rows is resolved below, once
+      // it's known this chunk reaches the group's last row.
+      const rowBudgetPx = remainingPx - gapPx - headingOverheadPx;
 
       // If this is a fresh column and even the budget above doesn't cover
       // one row (a class bigger than a whole column), there's nothing more
@@ -313,9 +339,35 @@ const packColumnsAcrossGroups = (
         rowIndex += 1;
       }
 
-      chunks.push({ groupIndex, rows: chunkRows, startsNewColumn: isFirstChunkOfColumn });
-      remainingPx -= gapPx + overheadPx + usedPx;
+      const reachesGroupEnd = rowIndex >= groupRowsData.length;
+      const footerFitsHere = reachesGroupEnd && usedPx + footerReservePx <= rowBudgetPx;
+
+      chunks.push({
+        groupIndex,
+        rows: chunkRows,
+        startsNewColumn: isFirstChunkOfColumn,
+        isFirstChunkOfGroup: isFirstChunkOfThisGroup,
+        isLastChunkOfGroup: footerFitsHere,
+      });
+      remainingPx -= gapPx + headingOverheadPx + usedPx + (footerFitsHere ? footerReservePx : 0);
       isFirstChunkOfColumn = false;
+      isFirstChunkOfThisGroup = false;
+
+      if (reachesGroupEnd && !footerFitsHere) {
+        // The signature doesn't fit alongside the group's last content chunk
+        // - give it a fresh column of its own (a dedicated footer-only
+        // chunk) rather than pulling rows back off the chunk already packed
+        // above, matching paginateBlocks' same footer-overflow handling.
+        chunks.push({
+          groupIndex,
+          rows: [],
+          startsNewColumn: true,
+          isFirstChunkOfGroup: false,
+          isLastChunkOfGroup: true,
+        });
+        remainingPx = freshColumnBudgetPx - continuationOffsetPx - footerReservePx;
+        isFirstChunkOfColumn = false;
+      }
     }
   });
 
@@ -617,63 +669,65 @@ const PaginatedReportPreview = ({
       let globalStartIndex = 0;
       let isVeryFirstPage = true;
 
-      if (config.kind === "table" && columnsPerPage === 2) {
-        const measurements = groups.map((_, groupIndex) => {
-          const container = measureRefs.current.get(`table-${groupIndex}`);
-          return container ? measureTableGroupContainer(container, paddingPx) : null;
-        });
-
-        if (measurements.every((m): m is TableGroupMeasurement => m !== null)) {
-          const chunks = packColumnsAcrossGroups(groups, measurements, availableHeightPx);
-
-          chunks.forEach((chunk, chunkIndex) => {
-            const groupRowsData = groups[chunk.groupIndex];
-            const resultStats =
-              report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
-
-            nextPages.push({
-              key: `${report.key}-table-${chunk.groupIndex}-${chunkIndex}`,
-              rows: chunk.rows,
-              startIndex: globalStartIndex,
-              isFirstPageOfGroup: true,
-              isFirstPage: true,
-              isLastPage: true,
-              density: getDensity(report, groupRowsData, paperSize, orientation),
-              resultStats,
-              startsNewColumn: chunk.startsNewColumn,
-            });
-            globalStartIndex += chunk.rows.length;
-          });
-        }
-      } else if (config.kind === "table") {
+      if (config.kind === "table") {
         const probeContainer = measureRefs.current.get(CONTINUATION_PROBE_KEY);
         const continuationOffsetPx = probeContainer
           ? measureTableGroupContainer(probeContainer, paddingPx).firstRowOffsetPx
           : CONTINUATION_TOP_OFFSET_PX;
 
-        groups.forEach((groupRowsData, groupIndex) => {
-          const container = measureRefs.current.get(`table-${groupIndex}`);
-          if (!container) return;
-
-          const measurement = measureTableGroupContainer(container, paddingPx);
-          const producedPages = paginateTableGroup(measurement, groupRowsData, availableHeightPx, continuationOffsetPx);
-          const resultStats =
-            report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
-
-          producedPages.forEach((pageRows, pageIndexInGroup) => {
-            nextPages.push({
-              key: `${report.key}-table-${groupIndex}-${pageIndexInGroup}`,
-              rows: pageRows,
-              startIndex: globalStartIndex,
-              isFirstPageOfGroup: pageIndexInGroup === 0,
-              isFirstPage: pageIndexInGroup === 0,
-              isLastPage: pageIndexInGroup === producedPages.length - 1,
-              density: getDensity(report, groupRowsData, paperSize, orientation),
-              resultStats,
-            });
-            globalStartIndex += pageRows.length;
+        if (columnsPerPage === 2) {
+          const measurements = groups.map((_, groupIndex) => {
+            const container = measureRefs.current.get(`table-${groupIndex}`);
+            return container ? measureTableGroupContainer(container, paddingPx) : null;
           });
-        });
+
+          if (measurements.every((m): m is TableGroupMeasurement => m !== null)) {
+            const chunks = packColumnsAcrossGroups(groups, measurements, availableHeightPx, continuationOffsetPx);
+
+            chunks.forEach((chunk, chunkIndex) => {
+              const groupRowsData = groups[chunk.groupIndex];
+              const resultStats =
+                report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
+
+              nextPages.push({
+                key: `${report.key}-table-${chunk.groupIndex}-${chunkIndex}`,
+                rows: chunk.rows,
+                startIndex: globalStartIndex,
+                isFirstPageOfGroup: chunk.isFirstChunkOfGroup,
+                isFirstPage: chunk.isFirstChunkOfGroup,
+                isLastPage: chunk.isLastChunkOfGroup,
+                density: getDensity(report, groupRowsData, paperSize, orientation),
+                resultStats,
+                startsNewColumn: chunk.startsNewColumn,
+              });
+              globalStartIndex += chunk.rows.length;
+            });
+          }
+        } else {
+          groups.forEach((groupRowsData, groupIndex) => {
+            const container = measureRefs.current.get(`table-${groupIndex}`);
+            if (!container) return;
+
+            const measurement = measureTableGroupContainer(container, paddingPx);
+            const producedPages = paginateTableGroup(measurement, groupRowsData, availableHeightPx, continuationOffsetPx);
+            const resultStats =
+              report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
+
+            producedPages.forEach((pageRows, pageIndexInGroup) => {
+              nextPages.push({
+                key: `${report.key}-table-${groupIndex}-${pageIndexInGroup}`,
+                rows: pageRows,
+                startIndex: globalStartIndex,
+                isFirstPageOfGroup: pageIndexInGroup === 0,
+                isFirstPage: pageIndexInGroup === 0,
+                isLastPage: pageIndexInGroup === producedPages.length - 1,
+                density: getDensity(report, groupRowsData, paperSize, orientation),
+                resultStats,
+              });
+              globalStartIndex += pageRows.length;
+            });
+          });
+        }
       } else if (config.kind === "grid") {
         const container = measureRefs.current.get("grid");
         if (container) {
@@ -930,7 +984,7 @@ const PaginatedReportPreview = ({
                                 <div style={{ width: "100%", height: 1, background: "#94a3b8" }} />
                               </div>
                             )}
-                            {showBrandAtAll && (
+                            {showBrandAtAll && chunk.isFirstPage && (
                               <ReportBrandHeader compactMaxWidthPx={columnContentWidthPx ?? undefined} hideLogo />
                             )}
                             <ReportContent
@@ -965,7 +1019,7 @@ const PaginatedReportPreview = ({
                                 <div style={{ width: "100%", height: 1, background: "#94a3b8" }} />
                               </div>
                             )}
-                            {showBrandAtAll && (
+                            {showBrandAtAll && chunk.isFirstPage && (
                               <ReportBrandHeader compactMaxWidthPx={columnContentWidthPx ?? undefined} hideLogo />
                             )}
                             <ReportContent
