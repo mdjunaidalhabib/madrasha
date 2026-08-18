@@ -27,6 +27,28 @@ export class NotificationRepository {
       take: limit,
     });
   }
+
+  findSetting(madrasaId: number, eventKey: string) {
+    return prisma.notificationSetting.findUnique({
+      where: { madrasaId_eventKey: { madrasaId, eventKey } },
+    });
+  }
+
+  findAllSettings(madrasaId: number) {
+    return prisma.notificationSetting.findMany({ where: { madrasaId } });
+  }
+
+  upsertSetting(
+    madrasaId: number,
+    eventKey: string,
+    data: { isEnabled: number; template: string },
+  ) {
+    return prisma.notificationSetting.upsert({
+      where: { madrasaId_eventKey: { madrasaId, eventKey } },
+      update: data,
+      create: { madrasaId, eventKey, ...data },
+    });
+  }
 }
 
 export const notificationRepository = new NotificationRepository();

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
-import api, { cachedGet } from "../../services/api";
-import { useConfirmStore } from "../../store/confirmStore";
-import { useToastStore } from "../../store/toastStore";
-import PageHeader from "../../components/ui/PageHeader";
-import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
-import SectionCard from "../../components/settings/SectionCard";
-import EmptyState from "../../components/ui/EmptyState";
+import api, { cachedGet } from "../../../services/api";
+import { useConfirmStore } from "../../../store/confirmStore";
+import { useToastStore } from "../../../store/toastStore";
+import PageHeader from "../../../components/ui/PageHeader";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import SectionCard from "../../../components/settings/SectionCard";
+import EmptyState from "../../../components/ui/EmptyState";
 
-export default function ClassPanel() {
+export default function ClassBookSettingsPage() {
   const [divisions, setDivisions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
@@ -545,6 +545,29 @@ export default function ClassPanel() {
 
       <SectionCard title="শ্রেণি">
         <div className="flex flex-col gap-1.5">
+          {!showClassInput ? (
+              <button
+                onClick={() => setShowClassInput(true)}
+                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+              >
+                <Plus size={15} />
+                শ্রেণি যোগ করুন
+              </button>
+            ) : (
+              <div className="flex w-full gap-2">
+                <Input
+                  value={className}
+                  onChange={(event) => setClassName(event.target.value)}
+                  className="w-full min-w-0"
+                  placeholder="শ্রেণির নাম"
+                  autoFocus
+                />
+                <Button onClick={addClass} className="shrink-0 px-3">
+                  <Check size={16} />
+                </Button>
+              </div>
+            )}
+
           {classes.map((classItem) => {
             const isEditingThis = editingClassId === classItem.class_id;
             return (
@@ -630,29 +653,6 @@ export default function ClassPanel() {
               </div>
             );
           })}
-
-          {!showClassInput ? (
-              <button
-                onClick={() => setShowClassInput(true)}
-                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
-              >
-                <Plus size={15} />
-                শ্রেণি যোগ করুন
-              </button>
-            ) : (
-              <div className="flex w-full gap-2">
-                <Input
-                  value={className}
-                  onChange={(event) => setClassName(event.target.value)}
-                  className="w-full min-w-0"
-                  placeholder="শ্রেণির নাম"
-                  autoFocus
-                />
-                <Button onClick={addClass} className="shrink-0 px-3">
-                  <Check size={16} />
-                </Button>
-              </div>
-            )}
         </div>
       </SectionCard>
 
@@ -664,6 +664,31 @@ export default function ClassPanel() {
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
             নির্বাচিত মিয়ারি: {miyariBookIds.length}টি
           </span>
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          {!showBookInput ? (
+            <button
+              onClick={() => setShowBookInput(true)}
+              className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
+            >
+              <Plus size={15} />
+              কিতাব যোগ করুন
+            </button>
+          ) : (
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="w-full min-w-0 sm:w-auto"
+                placeholder="কিতাবের নাম"
+                autoFocus
+              />
+              <Button onClick={addBook} className="shrink-0 px-3">
+                <Check size={16} />
+              </Button>
+            </div>
+          )}
         </div>
 
         {books.length === 0 ? (
@@ -811,31 +836,6 @@ export default function ClassPanel() {
             })}
           </div>
         )}
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          {!showBookInput ? (
-            <button
-              onClick={() => setShowBookInput(true)}
-              className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
-            >
-              <Plus size={15} />
-              কিতাব যোগ করুন
-            </button>
-          ) : (
-            <div className="flex w-full gap-2 sm:w-auto">
-              <Input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="w-full min-w-0 sm:w-auto"
-                placeholder="কিতাবের নাম"
-                autoFocus
-              />
-              <Button onClick={addBook} className="shrink-0 px-3">
-                <Check size={16} />
-              </Button>
-            </div>
-          )}
-        </div>
       </SectionCard>
       </div>
     </div>

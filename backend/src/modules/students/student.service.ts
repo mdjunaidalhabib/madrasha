@@ -21,6 +21,7 @@ import { toStudentApiDto } from "./student.mapper";
 import { StudentAdmissionRequestDto, StudentBulkUpdateRowDto } from "./student.dto";
 import { guardianService } from "../guardian/guardian.service";
 import { feeService } from "../fee/fee.service";
+import { notificationService } from "../notifications/notification.service";
 import { logger } from "../../shared/logger/logger";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
@@ -817,6 +818,20 @@ export class StudentService {
     // ensureGuardianForStudent no-ops safely when guardianPhone is empty.
     await guardianService.ensureGuardianForStudent(madrasaId, id, guardianPhone, guardianFallbackName);
 
+    // Fire-and-forget: a failure here (including the lookup) must never turn
+    // an already-successful update into an error response.
+    try {
+      const updated = await this.repository.findByIdForTenant(id, madrasaId);
+      if (updated) {
+        await notificationService.triggerEvent(madrasaId, "INFO_UPDATE", guardianPhone, {
+          name: updated.nameBn,
+          roll: updated.roll,
+        });
+      }
+    } catch (err) {
+      logger.error("INFO_UPDATE notification lookup failed:", err);
+    }
+
     return count;
   }
 
@@ -922,6 +937,12 @@ export class StudentService {
       existing.guardianPhone,
       existing.fatherName || existing.motherName,
     );
+
+    await notificationService.triggerEvent(madrasaId, "ADMISSION", existing.guardianPhone, {
+      name: existing.nameBn,
+      class: (existing as any).classRef?.nameBn || "",
+      roll: existing.roll,
+    });
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather

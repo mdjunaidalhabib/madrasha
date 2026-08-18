@@ -6,6 +6,7 @@ import { useConfirmStore } from "../../store/confirmStore";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import EmptyState from "../ui/EmptyState";
+import { recomputeChain, recomputeChainAfterDelete, type ChainGrade } from "./gradeChain";
 
 type GradeItem = {
   id: string | number;
@@ -21,54 +22,59 @@ const getGradeRange = (grade: GradeItem) => ({
   max: grade.maxMark ?? grade.max_mark,
 });
 
-// Grade ranges must be contiguous (one grade's max + 1 = next grade's min) —
-// getGradeFast() in result-panel.service.ts falls back to a default grade
-// for any average that lands in a gap, so surface gaps here before they bite.
-const findGradeGaps = (grades: GradeItem[]) => {
-  const sorted = grades
-    .map((g) => getGradeRange(g))
-    .filter((r) => r.min !== undefined && r.max !== undefined)
-    .sort((a, b) => Number(a.min) - Number(b.min));
-
-  const gaps: { from: number; to: number }[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const prevMax = Number(sorted[i - 1].max);
-    const currMin = Number(sorted[i].min);
-    if (currMin > prevMax + 1) {
-      gaps.push({ from: prevMax + 1, to: currMin - 1 });
-    }
-  }
-  return gaps;
+const toChainGrade = (grade: GradeItem): ChainGrade => {
+  const { min, max } = getGradeRange(grade);
+  return { id: grade.id, name: grade.name, minMark: Number(min), maxMark: Number(max) };
 };
 
 export default function GeneralGradeList({
   grades,
   reload,
+  failMark,
 }: {
   grades: GradeItem[];
   reload: () => void;
+  failMark: number;
 }) {
-  const gradeGaps = findGradeGaps(grades);
   const [name, setName] = useState("");
-  const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [adding, setAdding] = useState(false);
 
+  const applyChainUpdates = async (chained: ChainGrade[], skipId?: string | number) => {
+    const updates = chained.filter((row) => {
+      if (row.id === "new" || row.id === skipId) return false;
+      const original = grades.find((g) => g.id === row.id);
+      return original && getGradeRange(original).min !== row.minMark;
+    });
+    await Promise.all(
+      updates.map((row) =>
+        api.put(`/general-grades/${row.id}`, {
+          name: row.name,
+          min_mark: row.minMark,
+          max_mark: row.maxMark,
+        }),
+      ),
+    );
+  };
+
   const add = async () => {
-    if (!name.trim() || !min || !max) {
+    if (!name.trim() || !max) {
       return useToastStore.getState().show("সব ঘর পূরণ করুন", "error");
     }
 
     try {
       setAdding(true);
+      const chained = recomputeChain(grades.map(toChainGrade), { name: name.trim(), maxMark: Number(max) }, failMark);
+      const newRow = chained.find((g) => g.id === "new")!;
+
       await api.post("/general-grades", {
-        name: name.trim(),
-        min_mark: Number(min),
-        max_mark: Number(max),
+        name: newRow.name,
+        min_mark: newRow.minMark,
+        max_mark: newRow.maxMark,
       });
+      await applyChainUpdates(chained);
 
       setName("");
-      setMin("");
       setMax("");
       reload();
     } catch {
@@ -85,6 +91,8 @@ export default function GeneralGradeList({
       confirmText: "মুছে ফেলুন",
       danger: true,
       onConfirm: async () => {
+        const chained = recomputeChainAfterDelete(grades.map(toChainGrade), id, failMark);
+        await applyChainUpdates(chained, id);
         await api.delete(`/general-grades/${id}`);
         reload();
       },
@@ -102,14 +110,7 @@ export default function GeneralGradeList({
         <Input placeholder="গ্রেড (যেমনঃ A+)" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex gap-2">
           <Input
-            className="w-full sm:w-20"
-            placeholder="সর্বনিম্ন"
-            type="number"
-            value={min}
-            onChange={(e) => setMin(e.target.value)}
-          />
-          <Input
-            className="w-full sm:w-20"
+            className="w-full sm:w-24"
             placeholder="সর্বোচ্চ"
             type="number"
             value={max}
@@ -121,13 +122,13 @@ export default function GeneralGradeList({
         </div>
       </div>
 
-      {gradeGaps.length > 0 && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-          ⚠️ গ্রেড রেঞ্জের মাঝে ফাঁক আছে:{" "}
-          {gradeGaps.map((g) => (g.from === g.to ? `${g.from}` : `${g.from}-${g.to}`)).join(", ")}
-          {" "}— এই নম্বর পেলে সঠিক গ্রেড বসবে না।
-        </div>
-      )}
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        শুধু সর্বোচ্চ নম্বর দিন — সর্বনিম্ন নম্বর স্বয়ংক্রিয়ভাবে আগের গ্রেড থেকে হিসাব হয়ে যাবে।
+      </p>
+
+      <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400">
+        ০ - {failMark}: ফেল <span className="font-normal opacity-80">(স্বয়ংক্রিয়)</span>
+      </div>
 
       {grades.length === 0 ? (
         <EmptyState title="কোনো গ্রেড যোগ করা হয়নি" hint="উপরে থেকে নতুন গ্রেড যোগ করুন" />

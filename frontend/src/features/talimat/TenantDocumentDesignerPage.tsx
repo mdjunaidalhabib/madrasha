@@ -110,7 +110,7 @@ export default function TenantDocumentDesignerPage() {
     <div className="space-y-3">
       <button
         type="button"
-        onClick={() => navigate(`${adminBase}/talimat/documents`)}
+        onClick={() => navigate(`${adminBase}/talimat/settings/documents`)}
         className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
         <ArrowLeft size={15} /> ডকুমেন্ট টেমপ্লেট তালিকায় ফিরে যান
@@ -193,7 +193,7 @@ export default function TenantDocumentDesignerPage() {
         <Button
           type="button"
           variant="ghost"
-          onClick={() => navigate(`${adminBase}/talimat/documents`)}
+          onClick={() => navigate(`${adminBase}/talimat/settings/documents`)}
         >
           সম্পন্ন — তালিকায় ফিরে যান
         </Button>

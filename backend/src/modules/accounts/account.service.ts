@@ -4,17 +4,23 @@ import { logActivity } from "../../shared/utils/activity.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { accountRepository, AccountRepository } from "./account.repository";
 import {
+  CreateCategoryRequestDto,
   CreateExpenseRequestDto,
+  CreateFundRequestDto,
   CreateIncomeRequestDto,
   ListAccountsQueryDto,
   UpdateAccountRequestDto,
+  UpdateCategoryRequestDto,
+  UpdateFundRequestDto,
 } from "./account.dto";
-import { AccountOptions, ExpenseValidationError, IncomeValidationError, ReportRow } from "./account.types";
 import {
-  DEFAULT_INCOME_FUNDS,
-  DEFAULT_EXPENSE_CATEGORIES,
-  DEFAULT_MOSQUE_EXPENSES,
-  DEFAULT_GRAVEYARD_EXPENSES,
+  AccountOptions,
+  ExpenseValidationError,
+  FundValidationError,
+  IncomeValidationError,
+  ReportRow,
+} from "./account.types";
+import {
   PAYMENT_METHODS,
   INCOME_SUCCESS_MESSAGE,
   EXPENSE_SUCCESS_MESSAGE,
@@ -25,6 +31,14 @@ import {
   ACCOUNT_LIST_ROW_LIMIT,
   RECEIPT_NO_PREFIX,
   VOUCHER_NO_PREFIX,
+  FUND_NOT_FOUND_MESSAGE,
+  CATEGORY_NOT_FOUND_MESSAGE,
+  FUND_CREATE_SUCCESS_MESSAGE,
+  FUND_UPDATE_SUCCESS_MESSAGE,
+  FUND_DELETE_SUCCESS_MESSAGE,
+  CATEGORY_CREATE_SUCCESS_MESSAGE,
+  CATEGORY_UPDATE_SUCCESS_MESSAGE,
+  CATEGORY_DELETE_SUCCESS_MESSAGE,
 } from "./account.constants";
 
 const clean = (value: unknown): string | null =>
@@ -38,16 +52,102 @@ const numberValue = (value: unknown): number | null => {
 export class AccountService {
   constructor(private readonly repository: AccountRepository = accountRepository) {}
 
-  getOptions(): AccountOptions {
+  async getOptions(madrasaId: number): Promise<AccountOptions> {
+    const fundCount = await this.repository.countFunds(madrasaId);
+    if (fundCount === 0) {
+      await this.repository.seedDefaultFunds(madrasaId);
+    }
+
+    const funds = await this.repository.findFunds(madrasaId);
+    const toGroup = (fund: (typeof funds)[number]) => ({
+      name: fund.name,
+      categories: fund.categories.map((c) => c.name),
+    });
+
     return {
-      incomeFunds: DEFAULT_INCOME_FUNDS,
-      expenseGroups: [
-        { name: "সাধারণ ব্যয় বিভাগ", categories: DEFAULT_EXPENSE_CATEGORIES },
-        { name: "মসজিদ ব্যয়", categories: DEFAULT_MOSQUE_EXPENSES },
-        { name: "কবরস্থান ব্যয়", categories: DEFAULT_GRAVEYARD_EXPENSES },
-      ],
+      incomeFunds: funds.filter((f) => f.type === "income").map(toGroup),
+      expenseGroups: funds.filter((f) => f.type === "expense").map(toGroup),
       paymentMethods: PAYMENT_METHODS,
     };
+  }
+
+  async listFunds(madrasaId: number, type?: "income" | "expense") {
+    return this.repository.findFunds(madrasaId, type);
+  }
+
+  async createFund(madrasaId: number, body: CreateFundRequestDto) {
+    const name = clean(body.name);
+    if (!name || (body.type !== "income" && body.type !== "expense")) throw new FundValidationError();
+
+    const fundCount = await this.repository.countFunds(madrasaId);
+    const created = await this.repository.createFund({ madrasaId, type: body.type, name, sortOrder: fundCount });
+    return { message: FUND_CREATE_SUCCESS_MESSAGE, id: created.id };
+  }
+
+  async updateFund(madrasaId: number, id: number, body: UpdateFundRequestDto) {
+    const existing = await this.repository.findFundForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+
+    const data: Prisma.AccountFundUpdateInput = {};
+    if (body.name !== undefined) {
+      const name = clean(body.name);
+      if (!name) throw new FundValidationError();
+      data.name = name;
+    }
+    if (body.sort_order !== undefined) data.sortOrder = Number(body.sort_order);
+    if (body.is_active !== undefined) data.isActive = Boolean(body.is_active);
+
+    const updated = await this.repository.updateFund(id, data);
+    return { message: FUND_UPDATE_SUCCESS_MESSAGE, id: updated.id };
+  }
+
+  async deleteFund(madrasaId: number, id: number) {
+    const existing = await this.repository.findFundForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+
+    await this.repository.deleteFund(id);
+    return { message: FUND_DELETE_SUCCESS_MESSAGE };
+  }
+
+  async createCategory(madrasaId: number, fundId: number, body: CreateCategoryRequestDto) {
+    const fund = await this.repository.findFundForTenant(fundId, madrasaId);
+    if (!fund) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+
+    const name = clean(body.name);
+    if (!name) throw new FundValidationError();
+
+    const categoryCount = await this.repository.countCategories(fundId);
+    const created = await this.repository.createCategory({
+      fundId,
+      name,
+      sortOrder: categoryCount,
+    });
+    return { message: CATEGORY_CREATE_SUCCESS_MESSAGE, id: created.id };
+  }
+
+  async updateCategory(madrasaId: number, id: number, body: UpdateCategoryRequestDto) {
+    const existing = await this.repository.findCategoryForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
+
+    const data: Prisma.AccountCategoryUpdateInput = {};
+    if (body.name !== undefined) {
+      const name = clean(body.name);
+      if (!name) throw new FundValidationError();
+      data.name = name;
+    }
+    if (body.sort_order !== undefined) data.sortOrder = Number(body.sort_order);
+    if (body.is_active !== undefined) data.isActive = Boolean(body.is_active);
+
+    const updated = await this.repository.updateCategory(id, data);
+    return { message: CATEGORY_UPDATE_SUCCESS_MESSAGE, id: updated.id };
+  }
+
+  async deleteCategory(madrasaId: number, id: number) {
+    const existing = await this.repository.findCategoryForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
+
+    await this.repository.deleteCategory(id);
+    return { message: CATEGORY_DELETE_SUCCESS_MESSAGE };
   }
 
   async createIncome(madrasaId: number, userId: number, body: CreateIncomeRequestDto) {
@@ -190,6 +290,7 @@ export class AccountService {
     }
     if (body.fund !== undefined) data.fund = clean(body.fund);
     if (body.category !== undefined) data.category = clean(body.category);
+    if (body.mobile !== undefined) data.mobile = clean(body.mobile);
     if (body.payment_method !== undefined) data.paymentMethod = clean(body.payment_method);
     if (body.entry_date !== undefined) {
       const entry_date = clean(body.entry_date);

@@ -11,6 +11,7 @@ export type AccountRow = {
   donorName: string | null;
   receiverName: string | null;
   address: string | null;
+  mobile: string | null;
   paymentMethod: string | null;
   entryDate: string | null;
   entryTime: string | null;
@@ -19,6 +20,15 @@ export type AccountRow = {
 export const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
 
 export const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+
+export const formatDateInput = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+export const daysAgoInput = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return formatDateInput(date);
+};
 
 export const toTimeInput = (iso: string | null) => {
   if (!iso) return "";

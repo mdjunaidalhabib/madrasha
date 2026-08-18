@@ -36,6 +36,12 @@ export const DEFAULT_MOSQUE_EXPENSES = [
 
 export const DEFAULT_GRAVEYARD_EXPENSES = ["পরিষ্কার পরিচ্ছন্নতা", "মাটি ভরাট / রক্ষণাবেক্ষণ", "উন্নয়ন ও অন্যান্য"];
 
+export const DEFAULT_EXPENSE_GROUPS = [
+  { name: "সাধারণ ব্যয় বিভাগ", categories: DEFAULT_EXPENSE_CATEGORIES },
+  { name: "মসজিদ ব্যয়", categories: DEFAULT_MOSQUE_EXPENSES },
+  { name: "কবরস্থান ব্যয়", categories: DEFAULT_GRAVEYARD_EXPENSES },
+];
+
 export const PAYMENT_METHODS = ["নগদ টাকা", "ব্যাংক / মোবাইল ব্যাংকিং"];
 
 export const INCOME_VALIDATION_MESSAGE = "নাম, ফান্ড, খাত, পরিমাণ ও পেমেন্ট মাধ্যম বাধ্যতামূলক";
@@ -45,6 +51,16 @@ export const EXPENSE_SUCCESS_MESSAGE = "ব্যয় এন্ট্রি �
 export const ACCOUNT_UPDATE_SUCCESS_MESSAGE = "এন্ট্রি আপডেট হয়েছে";
 export const ACCOUNT_DELETE_SUCCESS_MESSAGE = "এন্ট্রি মুছে ফেলা হয়েছে";
 export const ACCOUNT_NOT_FOUND_MESSAGE = "এন্ট্রি খুঁজে পাওয়া যায়নি";
+
+export const FUND_VALIDATION_MESSAGE = "নাম বাধ্যতামূলক";
+export const FUND_NOT_FOUND_MESSAGE = "ফান্ড/বিভাগ খুঁজে পাওয়া যায়নি";
+export const CATEGORY_NOT_FOUND_MESSAGE = "খাত খুঁজে পাওয়া যায়নি";
+export const FUND_CREATE_SUCCESS_MESSAGE = "ফান্ড/বিভাগ যোগ করা হয়েছে";
+export const FUND_UPDATE_SUCCESS_MESSAGE = "ফান্ড/বিভাগ আপডেট হয়েছে";
+export const FUND_DELETE_SUCCESS_MESSAGE = "ফান্ড/বিভাগ মুছে ফেলা হয়েছে";
+export const CATEGORY_CREATE_SUCCESS_MESSAGE = "খাত যোগ করা হয়েছে";
+export const CATEGORY_UPDATE_SUCCESS_MESSAGE = "খাত আপডেট হয়েছে";
+export const CATEGORY_DELETE_SUCCESS_MESSAGE = "খাত মুছে ফেলা হয়েছে";
 
 export const ACCOUNT_ACTIVITY_ENTITY = { INCOME: "INCOME", EXPENSE: "EXPENSE" } as const;
 export const REPORT_ROW_LIMIT = 365;

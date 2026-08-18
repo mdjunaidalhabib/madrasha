@@ -568,24 +568,31 @@ async function main() {
     {
       keyName: "students",
       name: "Students",
-      nameBn: "ছাত্র বিভাগ",
+      nameBn: "শিক্ষার্থী",
       groupName: "core",
       sortOrder: 6,
     },
-    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 7 },
+    {
+      keyName: "communication",
+      name: "Communication",
+      nameBn: "SMS/ইমেইল",
+      groupName: "core",
+      sortOrder: 7,
+    },
+    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 8 },
     {
       keyName: "activity",
       name: "Activity Log",
       nameBn: "অ্যাক্টিভিটি লগ",
       groupName: "core",
-      sortOrder: 8,
+      sortOrder: 9,
     },
     {
       keyName: "website",
       name: "Website Settings",
       nameBn: "ওয়েবসাইট সেটিংস",
       groupName: "core",
-      sortOrder: 9,
+      sortOrder: 10,
     },
   ];
   const moduleIds: Record<string, number> = {};
@@ -623,6 +630,12 @@ async function main() {
         nameBn: "পেন্ডিং ভর্তি অনুমোদন",
         sortOrder: 3,
       },
+      {
+        keyName: "fee_management",
+        name: "Fee Setup",
+        nameBn: "ফি সেটাপ",
+        sortOrder: 4,
+      },
     ],
     reports: [
       {
@@ -637,35 +650,29 @@ async function main() {
       { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট সমূহ", sortOrder: 5 },
     ],
     talimat: [
-      { keyName: "class_panel", name: "Class Panel", nameBn: "ক্লাস প্যানেল", sortOrder: 1 },
       {
         keyName: "teacher_assignment",
         name: "Teacher Assignment",
         nameBn: "কিতাব বন্টন",
         sortOrder: 2,
       },
-      { keyName: "exam_panel", name: "Exam Panel", nameBn: "পরিক্ষা প্যানেল", sortOrder: 3 },
       { keyName: "results", name: "Results", nameBn: "রেজাল্ট", sortOrder: 4 },
-      { keyName: "documents", name: "Documents", nameBn: "ডকুমেন্ট টেমপ্লেট", sortOrder: 5 },
       { keyName: "routine", name: "Routine", nameBn: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
       { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
+      { keyName: "settings", name: "Settings", nameBn: "সেটিং", sortOrder: 8 },
     ],
     accounts: [
+      { keyName: "dashboard", name: "Dashboard", nameBn: "হিসাব ড্যাশবোর্ড", sortOrder: 0 },
       { keyName: "income", name: "Income", nameBn: "আয়/রশিদ জমা", sortOrder: 1 },
       { keyName: "expense", name: "Expense", nameBn: "ব্যয়/ভাউচার তৈরী", sortOrder: 2 },
       { keyName: "report", name: "Report", nameBn: "আয় ব্যয় রিপোর্ট", sortOrder: 3 },
       { keyName: "payroll", name: "Payroll", nameBn: "শিক্ষক বেতন (পেরোল)", sortOrder: 4 },
       { keyName: "transactions", name: "Transactions", nameBn: "সকল লেনদেন", sortOrder: 5 },
+      { keyName: "funds", name: "Funds & Categories", nameBn: "ফান্ড ও খাত সেটিংস", sortOrder: 6 },
     ],
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },
-      { keyName: "list", name: "list", nameBn: "ছাত্রসমূহ", sortOrder: 2 },
-      {
-        keyName: "fee_management",
-        name: "Fee Setup",
-        nameBn: "ফি সেটাপ",
-        sortOrder: 4,
-      },
+      { keyName: "list", name: "list", nameBn: "শিক্ষার্থী সমূহ", sortOrder: 2 },
       {
         keyName: "fee_collection",
         name: "Fee Collection",
@@ -673,16 +680,21 @@ async function main() {
         sortOrder: 5,
       },
       {
-        keyName: "notifications",
-        name: "SMS/Email",
-        nameBn: "SMS/ইমেইল পাঠান",
-        sortOrder: 6,
-      },
-      {
         keyName: "attendance_mark",
         name: "Attendance",
         nameBn: "উপস্থিতি নিন",
         sortOrder: 7,
+      },
+    ],
+    communication: [
+      { keyName: "single_send", name: "Single Send", nameBn: "একক পাঠান", sortOrder: 1 },
+      { keyName: "bulk_send", name: "Bulk Send", nameBn: "বাল্ক পাঠান", sortOrder: 2 },
+      { keyName: "history", name: "Send History", nameBn: "পাঠানোর ইতিহাস", sortOrder: 3 },
+      {
+        keyName: "auto_settings",
+        name: "Auto Notifications",
+        nameBn: "অটো নোটিফিকেশন",
+        sortOrder: 4,
       },
     ],
   };
@@ -763,6 +775,7 @@ async function main() {
     { keyName: "website.manage", name: "Manage Public Website" },
     { keyName: "notifications.read", name: "View Notification History" },
     { keyName: "notifications.send", name: "Send SMS/Email Notifications" },
+    { keyName: "notifications.settings", name: "Manage Auto Notification Settings" },
   ];
   const permissionIds: number[] = [];
   for (const p of permissions) {

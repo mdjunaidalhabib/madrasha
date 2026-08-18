@@ -17,10 +17,11 @@ import {
   ClipboardList,
   Lock,
   ChevronDown,
-  ChevronsLeft,
-  ChevronsRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   UserCog,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -32,6 +33,7 @@ const ICONS: Record<string, any> = {
   students: Users,
   accounts: Wallet,
   talimat: BookOpen,
+  communication: MessageSquare,
   users: Users,
   report: ClipboardList,
   reports: ClipboardList,
@@ -61,11 +63,15 @@ const FEATURE_PATHS: Record<string, string> = {
 const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   fee_management: "fee-management",
   fee_collection: "fee-collection",
-  notifications: "notifications",
+  sessions: "students/sessions",
   routine: "routine",
   promotion: "students/promotion",
   attendance_mark: "attendance/mark",
   payroll: "payroll",
+  single_send: "communication/single-send",
+  bulk_send: "communication/bulk-send",
+  history: "communication/history",
+  auto_settings: "communication/auto-settings",
 };
 function modulePath(key: string) {
   return MODULE_PATHS[key] || key;
@@ -153,11 +159,11 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 </span>
               )}
               <span className="min-w-0 flex-1 text-left leading-tight">
-                <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <span className="block break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {user?.name || "Madrasa"}
                 </span>
-                <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
-                  {user?.mobile || user?.email || ""}
+                <span className="block break-words text-xs text-slate-400 dark:text-slate-500">
+                  {user?.email || user?.mobile || ""}
                 </span>
               </span>
             </button>
@@ -206,7 +212,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
             className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
           >
-            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         </div>
       </div>

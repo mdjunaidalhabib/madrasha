@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toBanglaDigits } from "../../utils/reportUtils";
 import { useParams, useNavigate } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
@@ -7,6 +8,11 @@ import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfi
 import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
+import ProfileQuickNav, { type QuickNavRecord } from "../../components/common/ProfileQuickNav";
+import {
+  profileActionButtonClass as actionButtonClass,
+  profileOutlineButtonClass as outlineButtonClass,
+} from "../../components/common/profileActionStyles";
 import { logger } from "../../utils/logger";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
@@ -173,7 +179,9 @@ const StudentProfilePage = () => {
     try {
       const res = await sessionApi.list(true);
       const data = (res.data as any)?.data || [];
-      setSessions((Array.isArray(data) ? data : []).filter((s: Session) => s.id !== student?.session_id));
+      setSessions(
+        (Array.isArray(data) ? data : []).filter((s: Session) => s.id !== student?.session_id),
+      );
     } catch (error) {
       logger.error("LOAD SESSIONS ERROR:", error);
       setSessions([]);
@@ -193,7 +201,9 @@ const StudentProfilePage = () => {
         reason: transferReason.trim() || undefined,
       });
       const newRoll = (res.data as any)?.data?.roll;
-      useToastStore.getState().show(`সেশন ট্রান্সফার সফল হয়েছে (নতুন রোল: ${newRoll ?? "-"})`, "success");
+      useToastStore
+        .getState()
+        .show(`সেশন ট্রান্সফার সফল হয়েছে (নতুন রোল: ${newRoll ?? "-"})`, "success");
       setTransferModalOpen(false);
       fetchStudent();
     } catch (error: any) {
@@ -204,9 +214,54 @@ const StudentProfilePage = () => {
     }
   };
 
+  const quickNavPath = useCallback(
+    (studentId: string | number) => `${adminBase}/students/${studentId}`,
+    [adminBase],
+  );
+
+  const quickNavMeta = useCallback(
+    (record: QuickNavRecord) => [
+      (record.current_class || record.class_name || record.class) as string,
+      `রোল ${record.roll ? toBanglaDigits(record.roll as number) : "নেই"}`,
+      `রেজি. ${record.registration_no ? toBanglaDigits(record.registration_no as number) : "নেই"}`,
+    ],
+    [],
+  );
+
+  const quickNavSearchFields = useCallback(
+    (record: QuickNavRecord) => [
+      record.current_class as string,
+      record.class_name as string,
+      record.father_name as string,
+    ],
+    [],
+  );
+
+  // লোডিং অবস্থাতেও কুইক নেভ দেখানো হয় — এক প্রোফাইল থেকে আরেকটায় গেলে
+  // সার্চ বক্সটা যেন হঠাৎ উধাও হয়ে না যায়। `student` তখনও আগের রেকর্ড ধরে
+  // রাখে, তাই সেশন স্কোপ ঠিক থাকে।
+  const quickNav = id ? (
+    <ProfileQuickNav
+      endpoint={
+        student
+          ? student.session_id
+            ? `/students?session_id=${student.session_id}`
+            : "/students"
+          : null
+      }
+      currentId={id}
+      profilePath={quickNavPath}
+      placeholder="অন্য ছাত্র খুঁজুন — নাম / রোল / রেজি. / শ্রেণি"
+      ariaLabel="অন্য ছাত্র খুঁজুন"
+      metaParts={quickNavMeta}
+      extraSearchFields={quickNavSearchFields}
+    />
+  ) : null;
+
   if (loading)
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+        {quickNav}
         <SkeletonCard lines={6} />
         <SkeletonCard lines={4} />
       </div>
@@ -215,11 +270,13 @@ const StudentProfilePage = () => {
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold sm:text-3xl">Student Profile</h1>
+      {quickNav}
+
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold sm:text-2xl">Student Profile</h1>
           <span
-            className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${
+            className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
               isExpelled
                 ? "border-red-300 bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
                 : "border-green-300 bg-green-100 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400"
@@ -229,11 +286,11 @@ const StudentProfilePage = () => {
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
           {!isEditMode ? (
             <button
               onClick={() => setIsEditMode(true)}
-              className="rounded bg-blue-500 px-4 py-2 text-white"
+              className={`${actionButtonClass} bg-blue-500`}
             >
               Edit
             </button>
@@ -244,7 +301,7 @@ const StudentProfilePage = () => {
                 setEditableField(null);
                 setStudent(deepCopy(original));
               }}
-              className="rounded bg-gray-500 px-4 py-2 text-white"
+              className={`${actionButtonClass} bg-gray-500`}
             >
               Cancel
             </button>
@@ -254,37 +311,27 @@ const StudentProfilePage = () => {
             <button
               onClick={handleUpdate}
               disabled={!isChanged() || saving}
-              className={`rounded px-4 py-2 text-white ${
-                isChanged() && !saving ? "bg-green-500" : "bg-gray-400"
-              }`}
+              className={`${actionButtonClass} ${isChanged() && !saving ? "bg-green-500" : "bg-gray-400"}`}
             >
               {saving ? "Saving..." : "Update"}
             </button>
           )}
 
-          <AdmissionFormPrintButton
-            row={student}
-            className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          />
+          <AdmissionFormPrintButton row={student} className={outlineButtonClass} />
 
-          <button
-            onClick={openTransferModal}
-            className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
-          >
+          <button onClick={openTransferModal} className={`${actionButtonClass} bg-indigo-600`}>
             সেশন ট্রান্সফার
           </button>
 
           <button
             onClick={handleExpelToggle}
             disabled={expelBusy}
-            className={`rounded px-4 py-2 text-white disabled:opacity-60 ${
-              isExpelled ? "bg-amber-500" : "bg-orange-600"
-            }`}
+            className={`${actionButtonClass} ${isExpelled ? "bg-amber-500" : "bg-orange-600"}`}
           >
-            {isExpelled ? "বহিষ্কার বাতিল করুন" : "বহিষ্কার করুন"}
+            {isExpelled ? "বহিষ্কার বাতিল" : "বহিষ্কার"}
           </button>
 
-          <button onClick={handleDelete} className="rounded bg-red-500 px-4 py-2 text-white">
+          <button onClick={handleDelete} className={`${actionButtonClass} bg-red-500`}>
             Delete
           </button>
         </div>
@@ -317,14 +364,24 @@ const StudentProfilePage = () => {
         isEditMode={isEditMode}
       />
 
-      <Modal open={transferModalOpen} title="সেশন ট্রান্সফার" onClose={() => setTransferModalOpen(false)}>
+      <Modal
+        open={transferModalOpen}
+        title="সেশন ট্রান্সফার"
+        onClose={() => setTransferModalOpen(false)}
+      >
         <div className="flex flex-col gap-3">
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            বর্তমান সেশন: <span className="font-medium text-gray-700 dark:text-slate-300">{student.academic_year}</span> — এই
-            শিক্ষার্থীকে সরাসরি নতুন সেশনে নিয়ে যাওয়া হবে, রোল স্বয়ংক্রিয়ভাবে নতুন করে বসবে।
+            বর্তমান সেশন:{" "}
+            <span className="font-medium text-gray-700 dark:text-slate-300">
+              {student.academic_year}
+            </span>{" "}
+            — এই শিক্ষার্থীকে সরাসরি নতুন সেশনে নিয়ে যাওয়া হবে, রোল স্বয়ংক্রিয়ভাবে নতুন করে
+            বসবে।
           </p>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নতুন সেশন</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              নতুন সেশন
+            </label>
             <select
               value={transferSessionId}
               onChange={(e) => setTransferSessionId(e.target.value)}
@@ -340,7 +397,9 @@ const StudentProfilePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">রোল নম্বর (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              রোল নম্বর (ঐচ্ছিক)
+            </label>
             <input
               type="number"
               placeholder="খালি রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী রোল বসবে"
@@ -350,7 +409,9 @@ const StudentProfilePage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">কারণ (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              কারণ (ঐচ্ছিক)
+            </label>
             <input
               type="text"
               value={transferReason}

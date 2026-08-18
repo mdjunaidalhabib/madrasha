@@ -20,16 +20,63 @@ export interface NotificationLogItem {
   createdAt: string;
 }
 
+export type NotificationRecipient = string | { to: string; vars?: Record<string, string | number> };
+
+export interface AudienceStudent {
+  id: number;
+  name: string;
+  roll: number;
+  phone: string;
+}
+
+export interface AudienceTeacher {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface AudienceResult {
+  studentId: number;
+  name: string;
+  roll: number | string;
+  phone: string;
+  gpa: string;
+  grade: string;
+  status: string;
+}
+
+export type NotificationEventKey = "ADMISSION" | "INFO_UPDATE" | "FEE_PAYMENT";
+
+export interface NotificationSettingItem {
+  eventKey: NotificationEventKey;
+  isEnabled: boolean;
+  template: string;
+}
+
 export const notificationApi = {
   send: (payload: {
     channel: NotificationChannel;
-    recipients: string[];
+    recipients: NotificationRecipient[];
     subject?: string;
     message: string;
   }) => api.post("/notifications/send", payload),
 
   list: (params?: { channel?: NotificationChannel; status?: NotificationStatus; limit?: number }) =>
     api.get("/notifications", { params }),
+
+  audienceStudents: (params?: { sessionId?: number; classId?: number }) =>
+    api.get<{ data: AudienceStudent[] }>("/notifications/audience/students", { params }),
+
+  audienceTeachers: () => api.get<{ data: AudienceTeacher[] }>("/notifications/audience/teachers"),
+
+  audienceResults: (params: { examId: number; classId: number }) =>
+    api.get<{ data: AudienceResult[] }>("/notifications/audience/results", { params }),
+
+  getSettings: () => api.get<{ data: NotificationSettingItem[] }>("/notifications/settings"),
+
+  updateSetting: (eventKey: NotificationEventKey, payload: { isEnabled?: boolean; template?: string }) =>
+    api.put(`/notifications/settings/${eventKey}`, payload),
 };
 
 /* ================= IMAGE / FILE STORAGE (Cloudinary) ================= */

@@ -65,6 +65,19 @@ export class ExamRepository {
     return prisma.generalGrade.create({ data: { name, minMark, maxMark, madrasaId } });
   }
 
+  updateGeneralGrade(
+    id: number,
+    madrasaId: number,
+    name: string,
+    minMark: number,
+    maxMark: number,
+  ) {
+    return prisma.generalGrade.updateMany({
+      where: { id, madrasaId },
+      data: { name, minMark, maxMark },
+    });
+  }
+
   deleteGeneralGrade(id: number, madrasaId: number) {
     return prisma.generalGrade.deleteMany({ where: { id, madrasaId } });
   }
@@ -78,6 +91,19 @@ export class ExamRepository {
 
   createMadrasaGrade(madrasaId: number, name: string, minMark: number, maxMark: number) {
     return prisma.madrasaGrade.create({ data: { name, minMark, maxMark, madrasaId } });
+  }
+
+  updateMadrasaGrade(
+    id: number,
+    madrasaId: number,
+    name: string,
+    minMark: number,
+    maxMark: number,
+  ) {
+    return prisma.madrasaGrade.updateMany({
+      where: { id, madrasaId },
+      data: { name, minMark, maxMark },
+    });
   }
 
   deleteMadrasaGrade(id: number, madrasaId: number) {

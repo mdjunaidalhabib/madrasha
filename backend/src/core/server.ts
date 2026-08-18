@@ -5,6 +5,7 @@ import {
   verifyDatabaseConnection,
   registerGracefulShutdown,
   startTrashPurgeScheduler,
+  startActivityLogPurgeScheduler,
 } from "./bootstrap";
 
 async function start() {
@@ -16,6 +17,7 @@ async function start() {
 
   registerGracefulShutdown(server);
   startTrashPurgeScheduler();
+  startActivityLogPurgeScheduler();
 }
 
 start();

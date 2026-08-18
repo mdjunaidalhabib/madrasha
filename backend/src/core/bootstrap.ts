@@ -2,6 +2,8 @@ import { Server } from "http";
 import { prisma } from "../shared/database/prisma";
 import { logger } from "../shared/logger/logger";
 import { trashService } from "../modules/trash/trash.service";
+import { activityRepository } from "../modules/activity/activity.repository";
+import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.constants";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -42,6 +44,30 @@ const runTrashPurge = async (): Promise<void> => {
 export const startTrashPurgeScheduler = (): void => {
   setTimeout(runTrashPurge, TRASH_PURGE_INITIAL_DELAY_MS).unref();
   setInterval(runTrashPurge, TRASH_PURGE_INTERVAL_MS).unref();
+};
+
+const ACTIVITY_LOG_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const ACTIVITY_LOG_PURGE_INITIAL_DELAY_MS = 45 * 1000;
+
+const runActivityLogPurge = async (): Promise<void> => {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - ACTIVITY_LOG_RETENTION_DAYS);
+    const result = await activityRepository.purgeOlderThan(cutoff);
+    if (result.count) logger.info("Activity log auto-purge complete", { deleted: result.count });
+  } catch (error) {
+    logger.error("Activity log auto-purge failed", error);
+  }
+};
+
+/**
+ * Permanently removes activity log rows past the retention window
+ * (ACTIVITY_LOG_RETENTION_DAYS, see activity.constants.ts). Same
+ * setInterval pattern as startTrashPurgeScheduler - no cron library here.
+ */
+export const startActivityLogPurgeScheduler = (): void => {
+  setTimeout(runActivityLogPurge, ACTIVITY_LOG_PURGE_INITIAL_DELAY_MS).unref();
+  setInterval(runActivityLogPurge, ACTIVITY_LOG_PURGE_INTERVAL_MS).unref();
 };
 
 /**

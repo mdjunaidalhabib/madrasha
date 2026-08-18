@@ -82,7 +82,7 @@ export default function TenantDocumentTemplateLibrary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
-  const openInDesigner = (id: number) => navigate(`${adminBase}/talimat/documents/${documentTypeToUrlSlug(type)}/${id}/edit`);
+  const openInDesigner = (id: number) => navigate(`${adminBase}/talimat/settings/documents/${documentTypeToUrlSlug(type)}/${id}/edit`);
 
   const handleCreate = async (name: string) => {
     setBusyId(-1);

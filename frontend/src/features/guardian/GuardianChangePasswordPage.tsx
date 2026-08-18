@@ -51,12 +51,14 @@ export default function GuardianChangePasswordPage() {
 
         <Input
           type="password"
+          autoComplete="new-password"
           placeholder="নতুন পাসওয়ার্ড"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
         <Input
           type="password"
+          autoComplete="new-password"
           placeholder="পাসওয়ার্ড আবার লিখুন"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}

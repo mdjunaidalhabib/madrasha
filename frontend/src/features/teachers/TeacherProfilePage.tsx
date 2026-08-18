@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
@@ -7,8 +7,12 @@ import TeacherParentInfoProfile from "../../components/teacherProfile/TeacherPar
 import TeacherAddressProfile from "../../components/teacherProfile/TeacherAddressProfile";
 import ImageUploadProfile from "../../components/teacherProfile/ImageUploadProfile";
 
+import ProfileQuickNav, { type QuickNavRecord } from "../../components/common/ProfileQuickNav";
+import { profileActionButtonClass as actionButtonClass } from "../../components/common/profileActionStyles";
+
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { SkeletonCard } from "../../components/ui/Skeleton";
+import { toBanglaDigits } from "../../utils/reportUtils";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
@@ -148,12 +152,54 @@ const TeacherProfilePage = () => {
   };
 
   /* =============================
+     QUICK NAV
+  ============================= */
+
+  const quickNavPath = useCallback(
+    (teacherId: string | number) => `${adminBase}/ihtemam/${teacherId}`,
+    [adminBase],
+  );
+
+  const quickNavMeta = useCallback(
+    (record: QuickNavRecord) => [
+      record.designation as string,
+      `রেজি. ${record.registration_no ? toBanglaDigits(record.registration_no as number) : "নেই"}`,
+      record.phone as string,
+    ],
+    [],
+  );
+
+  const quickNavSearchFields = useCallback(
+    (record: QuickNavRecord) => [
+      record.designation as string,
+      record.phone as string,
+      record.qualification as string,
+    ],
+    [],
+  );
+
+  // লোডিং অবস্থাতেও দেখানো হয় — এক প্রোফাইল থেকে আরেকটায় গেলে সার্চ বক্সটা
+  // যেন হঠাৎ উধাও হয়ে না যায়।
+  const quickNav = id ? (
+    <ProfileQuickNav
+      endpoint="/teachers"
+      currentId={id}
+      profilePath={quickNavPath}
+      placeholder="অন্য শিক্ষক খুঁজুন — নাম / রেজি. / পদবি"
+      ariaLabel="অন্য শিক্ষক খুঁজুন"
+      metaParts={quickNavMeta}
+      extraSearchFields={quickNavSearchFields}
+    />
+  ) : null;
+
+  /* =============================
      LOADING STATE
   ============================= */
 
   if (loading)
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+        {quickNav}
         <SkeletonCard lines={6} />
         <SkeletonCard lines={4} />
       </div>
@@ -163,16 +209,20 @@ const TeacherProfilePage = () => {
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
+      {quickNav}
+
       {/* HEADER */}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold sm:text-3xl text-gray-900 dark:text-slate-100">Teacher Profile</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-2xl text-gray-900 dark:text-slate-100">
+          Teacher Profile
+        </h1>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
           {!isEditMode ? (
             <button
               onClick={() => setIsEditMode(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className={`${actionButtonClass} bg-blue-500`}
             >
               Edit
             </button>
@@ -186,7 +236,7 @@ const TeacherProfilePage = () => {
 
                   setTeacher(deepCopy(original));
                 }}
-                className="bg-gray-500 text-white px-4 py-2 rounded"
+                className={`${actionButtonClass} bg-gray-500`}
               >
                 Cancel
               </button>
@@ -194,16 +244,14 @@ const TeacherProfilePage = () => {
               <button
                 onClick={handleUpdate}
                 disabled={!isChanged() || saving}
-                className={`px-4 py-2 rounded text-white ${
-                  isChanged() ? "bg-green-500" : "bg-gray-400"
-                }`}
+                className={`${actionButtonClass} ${isChanged() ? "bg-green-500" : "bg-gray-400"}`}
               >
                 {saving ? "Saving..." : "Update"}
               </button>
             </>
           )}
 
-          <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded">
+          <button onClick={handleDelete} className={`${actionButtonClass} bg-red-500`}>
             Delete
           </button>
         </div>

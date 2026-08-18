@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useToastStore } from "../../store/toastStore";
-import { incomeFunds, paymentMethods } from "./accountingData";
+import { useAccountOptions } from "./useAccountOptions";
+import { normalizeBanglaDigits } from "../../utils/reportUtils";
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -14,70 +15,96 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 
 export default function IncomePage() {
   const toast = useToastStore();
+  const { incomeFunds, paymentMethods, loading } = useAccountOptions();
   const [form, setForm] = useState({
-    fund: incomeFunds[0].name,
-    category: incomeFunds[0].categories[0],
+    fund: "",
+    category: "",
     donor_name: "",
     address: "",
+    mobile: "",
     amount: "",
-    payment_method: paymentMethods[0],
+    payment_method: "",
   });
 
+  // ফান্ড/খাত/পেমেন্ট মাধ্যম API থেকে লোড হওয়ার পর একবারই ডিফল্ট সেট করে দেয়
+  useEffect(() => {
+    if (!form.fund && incomeFunds.length) {
+      const fund = incomeFunds[0];
+      setForm((prev) => ({
+        ...prev,
+        fund: fund.name,
+        category: fund.categories[0] ?? "",
+      }));
+    }
+  }, [incomeFunds, form.fund]);
+
+  useEffect(() => {
+    if (!form.payment_method && paymentMethods.length) {
+      setForm((prev) => ({ ...prev, payment_method: paymentMethods[0] }));
+    }
+  }, [paymentMethods, form.payment_method]);
+
   const selectedFund = useMemo(
-    () => incomeFunds.find((fund) => fund.name === form.fund) || incomeFunds[0],
-    [form.fund],
+    () => incomeFunds.find((fund) => fund.name === form.fund) || incomeFunds[0] || { name: "", categories: [] },
+    [form.fund, incomeFunds],
   );
   const setField = (key: keyof typeof form, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
   const handleFundChange = (fundName: string) => {
     const fund = incomeFunds.find((item) => item.name === fundName) || incomeFunds[0];
-    setForm((prev) => ({ ...prev, fund: fund.name, category: fund.categories[0] }));
+    if (!fund) return;
+    setForm((prev) => ({ ...prev, fund: fund.name, category: fund.categories[0] ?? "" }));
   };
 
   const handleSubmit = async () => {
     if (!form.donor_name.trim()) return toast.push("error", "নাম দিন");
-    if (!form.amount || Number(form.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
+    if (!form.amount || !Number(form.amount) || Number(form.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
     await api.post("/accounts/income", form);
-    toast.push("success", "আয়/রশিদ জমা সংরক্ষণ হয়েছে");
+    toast.push("success", "আয়/রশিদ জমা সংরক্ষণ হয়েছে");
     setForm((prev) => ({
       ...prev,
       donor_name: "",
       address: "",
+      mobile: "",
       amount: "",
     }));
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-xl space-y-6">
       <PageHeader
-        title="রশিদ জমা / আয় এন্ট্রি"
-        subtitle="কওমি মাদরাসার ফান্ডভিত্তিক আয় ও রশিদ জমা"
+        title="রশিদ জমা / আয় এন্ট্রি"
+        subtitle="কওমি মাদরাসার ফান্ডভিত্তিক আয় ও রশিদ জমা"
       />
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <FieldLabel>ফান্ড</FieldLabel>
-            <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={form.fund}
-              onChange={(e) => handleFundChange(e.target.value)}
-            >
-              {incomeFunds.map((fund) => (
-                <option key={fund.name}>{fund.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <FieldLabel>খাত</FieldLabel>
-            <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={form.category}
-              onChange={(e) => setField("category", e.target.value)}
-            >
-              {selectedFund.categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>ফান্ড</FieldLabel>
+              <select
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={form.fund}
+                onChange={(e) => handleFundChange(e.target.value)}
+                disabled={loading}
+              >
+                {incomeFunds.map((fund) => (
+                  <option key={fund.name}>{fund.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <FieldLabel>খাত</FieldLabel>
+              <select
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={form.category}
+                onChange={(e) => setField("category", e.target.value)}
+                disabled={loading}
+              >
+                {selectedFund.categories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <FieldLabel required>নাম</FieldLabel>
@@ -97,31 +124,44 @@ export default function IncomePage() {
             />
           </div>
           <div>
-            <FieldLabel required>পরিমাণ</FieldLabel>
+            <FieldLabel>মোবাইল নম্বর</FieldLabel>
             <Input
-              required
-              type="number"
-              min="1"
-              placeholder="পরিমাণ"
-              value={form.amount}
-              onChange={(e) => setField("amount", e.target.value)}
+              type="tel"
+              placeholder="01XXXXXXXXX"
+              value={form.mobile}
+              onChange={(e) => setField("mobile", e.target.value)}
             />
+            <p className="mt-1 text-xs text-slate-400">SMS পাঠানোর জন্য ব্যবহৃত হবে</p>
           </div>
-          <div>
-            <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
-            <select
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={form.payment_method}
-              onChange={(e) => setField("payment_method", e.target.value)}
-            >
-              {paymentMethods.map((method) => (
-                <option key={method}>{method}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel required>পরিমাণ</FieldLabel>
+              <Input
+                required
+                type="text"
+                inputMode="decimal"
+                placeholder="পরিমাণ"
+                value={form.amount}
+                onChange={(e) => setField("amount", normalizeBanglaDigits(e.target.value))}
+              />
+            </div>
+            <div>
+              <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
+              <select
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={form.payment_method}
+                onChange={(e) => setField("payment_method", e.target.value)}
+                disabled={loading}
+              >
+                {paymentMethods.map((method) => (
+                  <option key={method}>{method}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         <div className="mt-6 flex justify-end">
-          <Button onClick={handleSubmit} className="rounded-xl px-8">
+          <Button onClick={handleSubmit} className="w-full rounded-xl px-8">
             সংরক্ষণ করুন
           </Button>
         </div>

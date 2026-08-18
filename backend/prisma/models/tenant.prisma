@@ -78,6 +78,7 @@ model Madrasa {
   teachers                     Teacher[]
   teacherAssignments           TeacherAssignment[]
   accounts                     Account[]
+  accountFunds                 AccountFund[]
   exams                        Exam[]
   generalGrades                GeneralGrade[]
   madrasaGrades                MadrasaGrade[]
@@ -104,6 +105,7 @@ model Madrasa {
   payrollRecords               PayrollRecord[]
   passwordResetTokens          PasswordResetToken[]
   notificationLogs             NotificationLog[]
+  notificationSettings         NotificationSetting[]
   guardians                    Guardian[]
   cloudinaryConfig             MadrasaCloudinaryConfig?
   documentTemplates            DocumentTemplate[]

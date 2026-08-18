@@ -38,3 +38,40 @@ model Account {
   @@index([madrasaId, deletedAt], map: "idx_accounts_madrasa_deleted")
   @@map("accounts")
 }
+
+/// A fund (income) or expense group/বিভাগ that a tenant's আয়/ব্যয় entries are
+/// filed under, plus its child categories/খাত. `Account.fund`/`Account.category`
+/// stay plain strings (a saved entry keeps the name it was filed under even if
+/// this row is later renamed/deleted), so this table is only the picklist the
+/// entry forms and this settings CRUD page read/write.
+model AccountFund {
+  id        Int         @id @default(autoincrement())
+  madrasaId Int         @map("madrasa_id")
+  type      AccountType
+  name      String      @db.VarChar(120)
+  sortOrder Int         @default(0) @map("sort_order")
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  madrasa    Madrasa           @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  categories AccountCategory[]
+
+  @@index([madrasaId, type], map: "idx_account_funds_madrasa_type")
+  @@map("account_funds")
+}
+
+model AccountCategory {
+  id        Int      @id @default(autoincrement())
+  fundId    Int      @map("fund_id")
+  name      String   @db.VarChar(120)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  fund AccountFund @relation(fields: [fundId], references: [id], onDelete: Cascade)
+
+  @@index([fundId], map: "idx_account_categories_fund")
+  @@map("account_categories")
+}

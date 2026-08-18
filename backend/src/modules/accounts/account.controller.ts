@@ -3,8 +3,95 @@ import { ApiError } from "../../shared/errors";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { accountService } from "./account.service";
 
-export const getAccountOptions = asyncHandler(async (_req: Request, res: Response) => {
-  res.json(accountService.getOptions());
+export const getAccountOptions = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const options = await accountService.getOptions(madrasa_id);
+  res.json(options);
+});
+
+export const listFunds = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const type = req.query.type === "income" || req.query.type === "expense" ? req.query.type : undefined;
+  const funds = await accountService.listFunds(madrasa_id, type);
+  res.json(funds);
+});
+
+export const createFund = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.createFund(madrasa_id, req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const updateFund = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.updateFund(madrasa_id, Number(req.params.id), req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const deleteFund = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.deleteFund(madrasa_id, Number(req.params.id));
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.createCategory(madrasa_id, Number(req.params.fundId), req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.updateCategory(madrasa_id, Number(req.params.id), req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});
+
+export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.deleteCategory(madrasa_id, Number(req.params.id));
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
 });
 
 export const createIncome = asyncHandler(async (req: Request, res: Response) => {

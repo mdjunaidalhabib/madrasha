@@ -1,5 +1,5 @@
 import { BadRequestError } from "../../shared/errors";
-import { INCOME_VALIDATION_MESSAGE, EXPENSE_VALIDATION_MESSAGE } from "./account.constants";
+import { INCOME_VALIDATION_MESSAGE, EXPENSE_VALIDATION_MESSAGE, FUND_VALIDATION_MESSAGE } from "./account.constants";
 
 export class IncomeValidationError extends BadRequestError {
   constructor() {
@@ -13,8 +13,14 @@ export class ExpenseValidationError extends BadRequestError {
   }
 }
 
+export class FundValidationError extends BadRequestError {
+  constructor() {
+    super(FUND_VALIDATION_MESSAGE);
+  }
+}
+
 export interface AccountOptions {
-  incomeFunds: typeof import("./account.constants").DEFAULT_INCOME_FUNDS;
+  incomeFunds: Array<{ name: string; categories: string[] }>;
   expenseGroups: Array<{ name: string; categories: string[] }>;
   paymentMethods: string[];
 }

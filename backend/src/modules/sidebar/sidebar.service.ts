@@ -38,6 +38,25 @@ export class SidebarService {
       .map((mm) => mm.module)
       .filter((module) => module.keyName !== "admission");
 
+    // "communication" (SMS/ইমেইল) used to be a child ("notifications") of the
+    // ছাত্র বিভাগ/শিক্ষার্থী module and is now its own top-level module. Tenants
+    // whose MadrasaModule rows were seeded before this split won't have an
+    // active row for it yet, so surface it here (same reasoning as every other
+    // fallback in this file) for any tenant that already had students active -
+    // i.e. already had access to sending notifications before this change.
+    if (
+      !modules.some((module) => module.keyName === "communication") &&
+      modules.some((module) => module.keyName === "students")
+    ) {
+      modules.push({
+        id: -9001,
+        keyName: "communication",
+        nameBn: "SMS/ইমেইল",
+        groupName: "core",
+        sortOrder: 7,
+      });
+    }
+
     // `website` now lives inside the Settings hub (সেটিংস > ওয়েবসাইট সেটিংস)
     // instead of its own top-level sidebar entry. Only fold it in when the
     // tenant actually has the `settings` module, so a tenant without it
@@ -102,15 +121,41 @@ export class SidebarService {
           pendingChild.label = "পেন্ডিং ভর্তি অনুমোদন";
           if (pendingAdmissionsCount > 0) pendingChild.count = pendingAdmissionsCount;
         }
+
+        // "ফি সেটাপ" moved here from ছাত্র বিভাগ/শিক্ষার্থী - surfaces it
+        // immediately in installations seeded before the move (same reasoning
+        // as exam_report/pending above).
+        if (!children.some((child) => child.key === "fee_management")) {
+          children.push({
+            id: -1005,
+            key: "fee_management",
+            label: "ফি সেটাপ",
+            sort_order: 4,
+            disabled,
+          });
+        }
       }
 
       // Same reasoning as exam_report/pending above - surfaces ক্লাস/পরীক্ষার
       // রুটিন ও শিক্ষার্থী প্রমোশন under তালিমাত in installations seeded before
       // they moved here from ছাত্র বিভাগ.
       if (mod.keyName === "talimat") {
+        // "class_panel", "exam_panel" and "documents" used to be direct
+        // তালিমাত children, and "sessions" used to live here too. They're now
+        // sub-pages reached through the single "সেটিং" hub below - filter any
+        // already-seeded DB rows here so existing installations stop showing
+        // them as separate entries immediately, even before the seed is run
+        // again (same reasoning as the moved-key filters under "students"
+        // below).
+        for (const movedKey of ["class_panel", "exam_panel", "documents", "sessions"]) {
+          const idx = children.findIndex((child) => child.key === movedKey);
+          if (idx !== -1) children.splice(idx, 1);
+        }
+
         const fallbackTalimatChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "routine", label: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
           { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
+          { key: "settings", label: "সেটিং", sortOrder: 8 },
         ];
         for (const fallback of fallbackTalimatChildren) {
           if (!children.some((child) => child.key === fallback.key)) {
@@ -129,6 +174,10 @@ export class SidebarService {
       // of sidebar entries. Same reasoning as exam_report/pending above -
       // surface them immediately in installations seeded before this change.
       if (mod.keyName === "students") {
+        // "ছাত্র বিভাগ" renamed to "শিক্ষার্থী" - relabel already-seeded DB
+        // rows immediately, same reasoning as every other fallback here.
+        mod.nameBn = "শিক্ষার্থী";
+
         // "হিসাব বিবরণী" duplicated "ফি গ্রহণ" (student invoice/payment/waive
         // view) and was removed. Filter any already-seeded DB row here so
         // existing installations stop showing it immediately, even before
@@ -136,11 +185,17 @@ export class SidebarService {
         const statementIndex = children.findIndex((child) => child.key === "statement");
         if (statementIndex !== -1) children.splice(statementIndex, 1);
 
+        // "sessions" (সেশন সেটাপ), "fee_management" (ফি সেটাপ) and
+        // "notifications" (SMS/ইমেইল) moved out of this module entirely -
+        // filter any already-seeded DB rows here so existing installations
+        // stop showing them immediately, even before the seed is run again.
+        for (const movedKey of ["sessions", "fee_management", "notifications"]) {
+          const idx = children.findIndex((child) => child.key === movedKey);
+          if (idx !== -1) children.splice(idx, 1);
+        }
+
         const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
-          { key: "sessions", label: "সেশন সেটাপ", sortOrder: 2 },
-          { key: "fee_management", label: "ফি সেটাপ", sortOrder: 4 },
           { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 5 },
-          { key: "notifications", label: "SMS/ইমেইল পাঠান", sortOrder: 6 },
           { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 7 },
         ];
         for (const fallback of fallbackStudentChildren) {
@@ -155,12 +210,22 @@ export class SidebarService {
           }
         }
 
-        // fee_management used to cover both "ফি কাঠামো" and payment
-        // collection in one page/label. Now that fee_collection is its own
-        // entry, relabel the already-seeded row so installs from before this
-        // split stop showing the old "ফি ব্যবস্থাপনা" wording.
-        const feeManagementChild = children.find((child) => child.key === "fee_management");
-        if (feeManagementChild) feeManagementChild.label = "ফি সেটাপ";
+        // The "list" (student list) child was renamed from "ছাত্রসমূহ" to
+        // "শিক্ষার্থী সমূহ" - relabel the already-seeded row immediately.
+        const listChild = children.find((child) => child.key === "list");
+        if (listChild) listChild.label = "শিক্ষার্থী সমূহ";
+      }
+
+      // Surfaces the new হিসাব ড্যাশবোর্ড (accounting-only dashboard) under
+      // হিসাব in installations seeded before this feature existed.
+      if (mod.keyName === "accounts" && !children.some((child) => child.key === "dashboard")) {
+        children.push({
+          id: -5006,
+          key: "dashboard",
+          label: "হিসাব ড্যাশবোর্ড",
+          sort_order: 0,
+          disabled,
+        });
       }
 
       // Same reasoning as talimat/students above - surfaces শিক্ষক বেতন (পেরোল)
@@ -186,6 +251,43 @@ export class SidebarService {
           sort_order: 5,
           disabled,
         });
+      }
+
+      // Surfaces the new ফান্ড ও খাত সেটিংস (income fund / expense group +
+      // category CRUD) under হিসাব in installations seeded before this
+      // feature existed.
+      if (mod.keyName === "accounts" && !children.some((child) => child.key === "funds")) {
+        children.push({
+          id: -5007,
+          key: "funds",
+          label: "ফান্ড ও খাত সেটিংস",
+          sort_order: 6,
+          disabled,
+        });
+      }
+
+      // Same reasoning as the module-level fallback above - a tenant whose
+      // "communication" module row was only just synthesized (id -9001)
+      // obviously has no real feature rows for it yet either.
+      if (mod.keyName === "communication") {
+        const fallbackCommunicationChildren: { key: string; label: string; sortOrder: number }[] =
+          [
+            { key: "single_send", label: "একক পাঠান", sortOrder: 1 },
+            { key: "bulk_send", label: "বাল্ক পাঠান", sortOrder: 2 },
+            { key: "history", label: "পাঠানোর ইতিহাস", sortOrder: 3 },
+            { key: "auto_settings", label: "অটো নোটিফিকেশন", sortOrder: 4 },
+          ];
+        for (const fallback of fallbackCommunicationChildren) {
+          if (!children.some((child) => child.key === fallback.key)) {
+            children.push({
+              id: -(6000 + fallback.sortOrder),
+              key: fallback.key,
+              label: fallback.label,
+              sort_order: fallback.sortOrder,
+              disabled,
+            });
+          }
+        }
       }
 
       // "settings" has no other real sidebar children in the DB yet - its

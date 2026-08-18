@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { ApiError, BadRequestError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { feeRepository, FeeRepository } from "./fee.repository";
+import { studentRepository } from "../students/student.repository";
+import { notificationService } from "../notifications/notification.service";
 import {
   CreateFeeStructureRequestDto,
   CreatePaymentMethodSettingRequestDto,
@@ -387,8 +389,15 @@ export class FeeService {
       methodLabel = setting.label;
     }
 
+    let result: {
+      paymentId: number;
+      invoiceStatus: string;
+      paidAmount: number;
+      studentId: number;
+      dueAmount: number;
+    };
     try {
-      return await this.repository.runTransaction(async (tx) => {
+      result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
         if (!invoice) throw new NotFoundError("Invoice not found");
         if (invoice.status === "PAID") throw new BadRequestError("This invoice is already fully paid");
@@ -439,12 +448,37 @@ export class FeeService {
           accountEntryId: ledgerEntry.id,
         });
 
-        return { paymentId: payment.id, invoiceStatus: newStatus, paidAmount: newPaidAmount };
+        return {
+          paymentId: payment.id,
+          invoiceStatus: newStatus,
+          paidAmount: newPaidAmount,
+          studentId: invoice.studentId,
+          dueAmount: Math.max(invoiceAmount - newPaidAmount - alreadyWaived, 0),
+        };
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
       return friendlyFailure("recordPayment error:", err, "Failed to record payment");
     }
+
+    // Fire-and-forget: notify the guardian a payment was recorded. Wrapped in
+    // its own try/catch, separate from the block above, so a failure here
+    // (including the lookup) can never be mistaken for a failed payment -
+    // the payment already committed by this point.
+    try {
+      const student = await studentRepository.findByIdForTenant(result.studentId, madrasaId);
+      if (student?.guardianPhone) {
+        await notificationService.triggerEvent(madrasaId, "FEE_PAYMENT", student.guardianPhone, {
+          name: student.nameBn,
+          amount: paymentAmount,
+          due: result.dueAmount,
+        });
+      }
+    } catch (err) {
+      logger.error("FEE_PAYMENT notification lookup failed:", err);
+    }
+
+    return result;
   }
 
   /** Forgives all or part of the remaining due on an invoice. Route-level

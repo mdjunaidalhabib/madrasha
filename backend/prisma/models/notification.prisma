@@ -40,3 +40,27 @@ model NotificationLog {
   @@index([madrasaId, createdAt], map: "idx_notification_madrasa_created")
   @@map("notification_logs")
 }
+
+/// Auto-SMS/Email triggered by specific events (admission, fee payment,
+/// student info update) instead of an admin manually composing a message.
+/// One row per (madrasa, event) - if no row exists yet for an event, the
+/// service falls back to a sensible default template with the event enabled,
+/// so a tenant only needs to save a row here when they want to customize or
+/// turn one off.
+model NotificationSetting {
+  id        Int                 @id @default(autoincrement())
+  madrasaId Int                 @map("madrasa_id")
+  /// ADMISSION | INFO_UPDATE | FEE_PAYMENT
+  eventKey  String              @map("event_key") @db.VarChar(30)
+  channel   NotificationChannel @default(SMS)
+  isEnabled Int                 @default(1) @map("is_enabled")
+  /// Free text with {placeholder} tokens (e.g. {name}, {roll}, {amount}) -
+  /// resolved per-recipient at send time.
+  template  String              @db.Text
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, eventKey], map: "uniq_notification_setting_event")
+  @@map("notification_settings")
+}

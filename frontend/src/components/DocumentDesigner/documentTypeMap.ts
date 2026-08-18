@@ -56,7 +56,7 @@ const ALL_BACKEND_TYPES: BackendDocumentType[] = [
 ];
 
 /** URL-friendly slug for a BackendDocumentType, e.g. "ID_CARD" -> "id-card".
- * Used for the designer route (`talimat/documents/:type/:id/edit`) - a
+ * Used for the designer route (`talimat/settings/documents/:type/:id/edit`) - a
  * plain mechanical transform, deliberately not reusing DOCUMENT_TYPE_TO_KIND
  * above (that one maps CLEARANCE_CERTIFICATE -> "transfer-letter" to match
  * the legacy DocumentKind vocabulary, which would be a confusing URL). */

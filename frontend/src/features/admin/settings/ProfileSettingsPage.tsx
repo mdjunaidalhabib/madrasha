@@ -170,6 +170,7 @@ export default function ProfileSettingsPage() {
             </label>
             <Input
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
@@ -178,6 +179,7 @@ export default function ProfileSettingsPage() {
             <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">নতুন পাসওয়ার্ড</label>
             <Input
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
@@ -188,6 +190,7 @@ export default function ProfileSettingsPage() {
             </label>
             <Input
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

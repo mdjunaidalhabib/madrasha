@@ -44,7 +44,12 @@ const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const PaymentMethodSettingsPage = lazy(() => import("../features/fee/PaymentMethodSettingsPage"));
 const RolesPermissionsPage = lazy(() => import("../features/roles/RolesPermissionsPage"));
 const UsersPage = lazy(() => import("../features/users/UsersPage"));
-const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
+const SingleSendPage = lazy(() => import("../features/notifications/SingleSendPage"));
+const BulkSendPage = lazy(() => import("../features/notifications/BulkSendPage"));
+const NotificationHistoryPage = lazy(() => import("../features/notifications/NotificationHistoryPage"));
+const AutoNotificationSettingsPage = lazy(
+  () => import("../features/notifications/AutoNotificationSettingsPage"),
+);
 
 const TeacherAdmissionPage = lazy(() => import("../features/teachers/TeacherPage"));
 const TeacherListPage = lazy(() => import("../features/teachers/TeacherListPage"));
@@ -60,14 +65,20 @@ const ReportPage = lazy(() => import("../features/accounts/ReportPage"));
 const IncomePage = lazy(() => import("../features/accounts/IncomePage"));
 const ExpensePage = lazy(() => import("../features/accounts/ExpensePage"));
 const AccountListPage = lazy(() => import("../features/accounts/AccountListPage"));
+const AccountDashboardPage = lazy(() => import("../features/accounts/AccountDashboardPage"));
+const AccountFundSettingsPage = lazy(() => import("../features/accounts/AccountFundSettingsPage"));
 
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
-const ClassPanel = lazy(() => import("../features/talimat/ClassPanel"));
-const ExamPanel = lazy(() => import("../features/talimat/ExamPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
 const TalimatDocumentsPage = lazy(() => import("../features/talimat/TalimatDocumentsPage"));
 const TenantDocumentDesignerPage = lazy(() => import("../features/talimat/TenantDocumentDesignerPage"));
+const TalimatSettingsLayout = lazy(() => import("../features/talimat/settings/TalimatSettingsLayout"));
+const ClassBookSettingsPage = lazy(
+  () => import("../features/talimat/settings/ClassBookSettingsPage"),
+);
+const ExamSettingsPage = lazy(() => import("../features/talimat/settings/ExamSettingsPage"));
+const GradeSettingsPage = lazy(() => import("../features/talimat/settings/GradeSettingsPage"));
 
 const ActivityPage = lazy(() => import("../features/activity/ActivityPage"));
 const AdminWebsiteSettingsPage = lazy(
@@ -169,16 +180,8 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "talimat/class_panel",
-    element: <ModuleGuard module="talimat">{withSuspense(<ClassPanel />)}</ModuleGuard>,
-  },
-  {
     path: "talimat/teacher_assignment",
     element: <ModuleGuard module="talimat">{withSuspense(<TeacherAssignmentPanel />)}</ModuleGuard>,
-  },
-  {
-    path: "talimat/exam_panel",
-    element: <ModuleGuard module="talimat">{withSuspense(<ExamPanel />)}</ModuleGuard>,
   },
   {
     path: "talimat/results",
@@ -189,22 +192,38 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="talimat">{withSuspense(<ResultEntryPage />)}</ModuleGuard>,
   },
   {
-    path: "talimat/documents",
-    element: <ModuleGuard module="talimat">{withSuspense(<TalimatDocumentsPage />)}</ModuleGuard>,
+    path: "talimat/settings",
+    element: <ModuleGuard module="talimat">{withSuspense(<TalimatSettingsLayout />)}</ModuleGuard>,
+    children: [
+      { index: true, element: <Navigate to="class-book" replace /> },
+      { path: "class-book", element: withSuspense(<ClassBookSettingsPage />) },
+      { path: "exam", element: withSuspense(<ExamSettingsPage />) },
+      { path: "grade", element: withSuspense(<GradeSettingsPage />) },
+      { path: "documents", element: withSuspense(<TalimatDocumentsPage />) },
+      { path: "sessions", element: withSuspense(<SessionPage />) },
+    ],
   },
   {
-    path: "talimat/documents/:type/:id/edit",
+    path: "talimat/settings/documents/:type/:id/edit",
     element: <ModuleGuard module="talimat">{withSuspense(<TenantDocumentDesignerPage />)}</ModuleGuard>,
   },
+  // NOTE: class_panel / exam_panel / documents were 4 separate তালিমাত
+  // sidebar entries (plus students/sessions). They're now sub-pages of the
+  // single "সেটিং" hub above. Old links redirect there, same pattern as the
+  // id_card/admit_card/certificate/testimonial/transfer_letter redirects below.
+  { path: "talimat/class_panel", element: <Navigate to="../talimat/settings/class-book" replace /> },
+  { path: "talimat/exam_panel", element: <Navigate to="../talimat/settings/exam" replace /> },
+  { path: "talimat/documents", element: <Navigate to="../talimat/settings/documents" replace /> },
   // NOTE: id_card / admit_card / certificate / testimonial / transfer_letter
   // used to be 5 separate routes that all rendered the exact same page.
-  // They are now consolidated into the single "talimat/documents" route above
-  // (with tabs inside the page for each document type). Old links redirect there.
-  { path: "talimat/id_card", element: <Navigate to="../talimat/documents" replace /> },
-  { path: "talimat/admit_card", element: <Navigate to="../talimat/documents" replace /> },
-  { path: "talimat/certificate", element: <Navigate to="../talimat/documents" replace /> },
-  { path: "talimat/testimonial", element: <Navigate to="../talimat/documents" replace /> },
-  { path: "talimat/transfer_letter", element: <Navigate to="../talimat/documents" replace /> },
+  // They are now consolidated into the single "talimat/settings/documents"
+  // route above (with tabs inside the page for each document type). Old
+  // links redirect there.
+  { path: "talimat/id_card", element: <Navigate to="../talimat/settings/documents" replace /> },
+  { path: "talimat/admit_card", element: <Navigate to="../talimat/settings/documents" replace /> },
+  { path: "talimat/certificate", element: <Navigate to="../talimat/settings/documents" replace /> },
+  { path: "talimat/testimonial", element: <Navigate to="../talimat/settings/documents" replace /> },
+  { path: "talimat/transfer_letter", element: <Navigate to="../talimat/settings/documents" replace /> },
 
   {
     path: "students/new_admission",
@@ -226,17 +245,15 @@ const madrasaAdminChildren = [
     path: "students/promotion",
     element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
   },
-  {
-    path: "students/sessions",
-    element: <ModuleGuard module="students">{withSuspense(<SessionPage />)}</ModuleGuard>,
-  },
+  // "সেশন সেটাপ" moved under তালিমাত > সেটিং - old link redirects there.
+  { path: "students/sessions", element: <Navigate to="../talimat/settings/sessions" replace /> },
   {
     path: "routine",
     element: <ModuleGuard module="students">{withSuspense(<ClassExamRoutinePage />)}</ModuleGuard>,
   },
   {
     path: "fee-management",
-    element: <ModuleGuard module="accounts">{withSuspense(<FeeStructurePage />)}</ModuleGuard>,
+    element: <ModuleGuard module="ihtemam">{withSuspense(<FeeStructurePage />)}</ModuleGuard>,
   },
   {
     path: "fee-collection",
@@ -252,6 +269,10 @@ const madrasaAdminChildren = [
   },
 
   {
+    path: "accounts/dashboard",
+    element: <ModuleGuard module="accounts">{withSuspense(<AccountDashboardPage />)}</ModuleGuard>,
+  },
+  {
     path: "accounts/report",
     element: <ModuleGuard module="accounts">{withSuspense(<ReportPage />)}</ModuleGuard>,
   },
@@ -266,6 +287,10 @@ const madrasaAdminChildren = [
   {
     path: "accounts/transactions",
     element: <ModuleGuard module="accounts">{withSuspense(<AccountListPage />)}</ModuleGuard>,
+  },
+  {
+    path: "accounts/funds",
+    element: <ModuleGuard module="accounts">{withSuspense(<AccountFundSettingsPage />)}</ModuleGuard>,
   },
 
   {
@@ -301,8 +326,22 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>,
   },
   {
-    path: "notifications",
-    element: <ModuleGuard module="settings">{withSuspense(<NotificationsPage />)}</ModuleGuard>,
+    path: "communication/single-send",
+    element: <ModuleGuard module="communication">{withSuspense(<SingleSendPage />)}</ModuleGuard>,
+  },
+  {
+    path: "communication/bulk-send",
+    element: <ModuleGuard module="communication">{withSuspense(<BulkSendPage />)}</ModuleGuard>,
+  },
+  {
+    path: "communication/history",
+    element: <ModuleGuard module="communication">{withSuspense(<NotificationHistoryPage />)}</ModuleGuard>,
+  },
+  {
+    path: "communication/auto-settings",
+    element: (
+      <ModuleGuard module="communication">{withSuspense(<AutoNotificationSettingsPage />)}</ModuleGuard>
+    ),
   },
 
   {

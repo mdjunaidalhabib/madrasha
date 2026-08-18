@@ -10,9 +10,28 @@ import { SkeletonList } from "../../components/ui/Skeleton";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { logger } from "../../utils/logger";
-import { incomeFunds, expenseGroups, paymentMethods } from "./accountingData";
-import { AccountRow, AccountType, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
+import { useAccountOptions } from "./useAccountOptions";
+import { normalizeBanglaDigits } from "../../utils/reportUtils";
+import {
+  AccountRow,
+  AccountType,
+  daysAgoInput,
+  formatDateInput,
+  money,
+  partyName,
+  toDateInput,
+  toTimeInput,
+} from "./accountHelpers";
 import AccountReceiptModal from "./AccountReceiptModal";
+
+const datePresets = [
+  { key: "all", label: "সব", days: null },
+  { key: "today", label: "আজ", days: 0 },
+  { key: "3d", label: "গত ৩ দিন", days: 3 },
+  { key: "7d", label: "গত ৭ দিন", days: 7 },
+  { key: "15d", label: "গত ১৫ দিন", days: 15 },
+  { key: "30d", label: "গত ৩০ দিন", days: 30 },
+] as const;
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -29,6 +48,7 @@ type EditForm = {
   category: string;
   name: string;
   address: string;
+  mobile: string;
   amount: string;
   payment_method: string;
 };
@@ -42,21 +62,49 @@ const emptyEditForm: EditForm = {
   category: "",
   name: "",
   address: "",
+  mobile: "",
   amount: "",
   payment_method: "",
 };
 
-const findExpenseGroup = (category: string) =>
-  expenseGroups.find((group) => group.categories.includes(category)) || expenseGroups[0];
-
 export default function AccountListPage() {
   const toast = useToastStore();
+  const { incomeFunds, expenseGroups, paymentMethods } = useAccountOptions();
+
+  const findExpenseGroup = useCallback(
+    (category: string) =>
+      expenseGroups.find((group) => group.categories.includes(category)) ||
+      expenseGroups[0] || { name: "", categories: [] },
+    [expenseGroups],
+  );
   const [rows, setRows] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<"" | AccountType>("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(formatDateInput(new Date()));
+  const [to, setTo] = useState(formatDateInput(new Date()));
+  const [activePreset, setActivePreset] = useState<string>("today");
+
+  const applyPreset = (preset: (typeof datePresets)[number]) => {
+    setActivePreset(preset.key);
+    if (preset.days === null) {
+      setFrom("");
+      setTo("");
+      return;
+    }
+    setFrom(preset.days === 0 ? formatDateInput(new Date()) : daysAgoInput(preset.days));
+    setTo(formatDateInput(new Date()));
+  };
+
+  const handleFromChange = (value: string) => {
+    setActivePreset("");
+    setFrom(value);
+  };
+
+  const handleToChange = (value: string) => {
+    setActivePreset("");
+    setTo(value);
+  };
 
   const [editing, setEditing] = useState<AccountRow | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
@@ -104,7 +152,7 @@ export default function AccountListPage() {
     if (typeFilter === "income") return incomeFunds.flatMap((f) => f.categories);
     if (typeFilter === "expense") return expenseGroups.flatMap((g) => g.categories);
     return [...new Set([...incomeFunds.flatMap((f) => f.categories), ...expenseGroups.flatMap((g) => g.categories)])];
-  }, [typeFilter]);
+  }, [typeFilter, incomeFunds, expenseGroups]);
 
   const handleTypeFilterChange = (value: "" | AccountType) => {
     setTypeFilter(value);
@@ -117,7 +165,7 @@ export default function AccountListPage() {
       return incomeFunds.find((f) => f.name === editForm.fund)?.categories || [];
     }
     return expenseGroups.find((g) => g.name === editForm.group)?.categories || [];
-  }, [editing, editForm.fund, editForm.group]);
+  }, [editing, editForm.fund, editForm.group, incomeFunds, expenseGroups]);
 
   const openEdit = (row: AccountRow) => {
     setEditing(row);
@@ -130,8 +178,9 @@ export default function AccountListPage() {
       category: row.category || "",
       name: partyName(row) === "-" ? "" : partyName(row),
       address: row.address || "",
+      mobile: row.mobile || "",
       amount: String(row.amount ?? ""),
-      payment_method: row.paymentMethod || paymentMethods[0],
+      payment_method: row.paymentMethod || paymentMethods[0] || "",
     });
   };
 
@@ -149,14 +198,15 @@ export default function AccountListPage() {
   };
 
   const handleGroupChange = (groupName: string) => {
-    const group = expenseGroups.find((g) => g.name === groupName) || expenseGroups[0];
-    setEditForm((prev) => ({ ...prev, group: group.name, category: group.categories[0] }));
+    const group = expenseGroups.find((g) => g.name === groupName) || expenseGroups[0] || { name: "", categories: [] };
+    setEditForm((prev) => ({ ...prev, group: group.name, category: group.categories[0] || "" }));
   };
 
   const handleSave = async () => {
     if (!editing) return;
     if (!editForm.name.trim()) return toast.push("error", "নাম দিন");
-    if (!editForm.amount || Number(editForm.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
+    if (!editForm.amount || !Number(editForm.amount) || Number(editForm.amount) <= 0)
+      return toast.push("error", "পরিমাণ দিন");
 
     const payload: Record<string, string> = {
       entry_date: editForm.entry_date,
@@ -170,6 +220,7 @@ export default function AccountListPage() {
       payload.receipt_no = editForm.no;
       payload.donor_name = editForm.name;
       payload.address = editForm.address;
+      payload.mobile = editForm.mobile;
     } else {
       payload.voucher_no = editForm.no;
       payload.receiver_name = editForm.name;
@@ -212,6 +263,23 @@ export default function AccountListPage() {
     <div className="space-y-6">
       <PageHeader title="সকল লেনদেন" subtitle="সব আয় ও ব্যয় এন্ট্রি — এডিট ও ডিলিট করুন" />
 
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        {datePresets.map((preset) => (
+          <button
+            key={preset.key}
+            type="button"
+            onClick={() => applyPreset(preset)}
+            className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+              activePreset === preset.key
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div>
           <FieldLabel>ধরন</FieldLabel>
@@ -242,11 +310,11 @@ export default function AccountListPage() {
         </div>
         <div>
           <FieldLabel>শুরুর তারিখ</FieldLabel>
-          <Input type="date" className="h-10 w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input type="date" className="h-10 w-40" value={from} onChange={(e) => handleFromChange(e.target.value)} />
         </div>
         <div>
           <FieldLabel>শেষ তারিখ</FieldLabel>
-          <Input type="date" className="h-10 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Input type="date" className="h-10 w-40" value={to} onChange={(e) => handleToChange(e.target.value)} />
         </div>
         <div className="ml-auto flex flex-wrap gap-3 text-sm">
           <span className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -412,14 +480,20 @@ export default function AccountListPage() {
                 <Input value={editForm.address} onChange={(e) => setField("address", e.target.value)} />
               </div>
             )}
+            {editing.type === "income" && (
+              <div>
+                <FieldLabel>মোবাইল নম্বর</FieldLabel>
+                <Input value={editForm.mobile} onChange={(e) => setField("mobile", e.target.value)} />
+              </div>
+            )}
             <div>
               <FieldLabel required>পরিমাণ</FieldLabel>
               <Input
                 required
-                type="number"
-                min="1"
+                type="text"
+                inputMode="decimal"
                 value={editForm.amount}
-                onChange={(e) => setField("amount", e.target.value)}
+                onChange={(e) => setField("amount", normalizeBanglaDigits(e.target.value))}
               />
             </div>
             <div>

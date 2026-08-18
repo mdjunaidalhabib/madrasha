@@ -49,6 +49,11 @@ export const saveGeneralGrade = asyncHandler(async (req: Request, res: Response)
   return ApiResponse.message(res, "General grade added successfully");
 });
 
+export const updateGeneralGrade = asyncHandler(async (req: Request, res: Response) => {
+  await examService.updateGeneralGrade(Number(req.params.id), getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "General grade updated successfully");
+});
+
 export const deleteGeneralGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.deleteGeneralGrade(Number(req.params.id), getMadrasaId(req));
   return ApiResponse.message(res, "General grade deleted successfully");
@@ -64,6 +69,11 @@ export const getMadrasaGrades = asyncHandler(async (req: Request, res: Response)
 export const saveMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.saveMadrasaGrade(getMadrasaId(req), req.body);
   return ApiResponse.message(res, "Madrasa grade added successfully");
+});
+
+export const updateMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {
+  await examService.updateMadrasaGrade(Number(req.params.id), getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "Madrasa grade updated successfully");
 });
 
 export const deleteMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {

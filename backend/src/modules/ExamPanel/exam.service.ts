@@ -133,6 +133,26 @@ export class ExamService {
     }
   }
 
+  async updateGeneralGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
+    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+
+    try {
+      const result = await this.repository.updateGeneralGrade(
+        id,
+        madrasaId,
+        String(dto.name).trim(),
+        min,
+        max,
+      );
+      if (!result.count) throw new NotFoundError("General grade not found");
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      if (isDuplicateError(err)) throw new ConflictError("This general grade already exists");
+      return friendlyFailure("updateGeneralGrade error:", err, "Failed to update general grade");
+    }
+  }
+
   async deleteGeneralGrade(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteGeneralGrade(id, madrasaId);
@@ -162,6 +182,26 @@ export class ExamService {
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
       return friendlyFailure("saveMadrasaGrade error:", err, "Failed to save madrasa grade");
+    }
+  }
+
+  async updateMadrasaGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
+    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+
+    try {
+      const result = await this.repository.updateMadrasaGrade(
+        id,
+        madrasaId,
+        String(dto.name).trim(),
+        min,
+        max,
+      );
+      if (!result.count) throw new NotFoundError("Madrasa grade not found");
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
+      return friendlyFailure("updateMadrasaGrade error:", err, "Failed to update madrasa grade");
     }
   }
 
@@ -198,8 +238,42 @@ export class ExamService {
 
     try {
       await this.repository.upsertFailMarkSetting(madrasaId, String(failValue));
+      await this.repinLowestGradeBands(madrasaId, failValue);
     } catch (err) {
       return friendlyFailure("updateFailMark error:", err, "Failed to update fail mark");
+    }
+  }
+
+  // Grade bands are auto-chained (see GeneralGradeList/MadrasaGradeList on the
+  // frontend): the lowest grade's minMark is always failMark + 1. Changing the
+  // fail mark can leave that pinned floor stale until this re-pins it, even if
+  // the admin never revisits the গ্রেড page after changing it on পরীক্ষা.
+  private async repinLowestGradeBands(madrasaId: number, failValue: number) {
+    const [generalGrades, madrasaGrades] = await Promise.all([
+      this.repository.findGeneralGrades(madrasaId),
+      this.repository.findMadrasaGrades(madrasaId),
+    ]);
+
+    const lowestGeneral = generalGrades.at(-1);
+    if (lowestGeneral && lowestGeneral.minMark !== failValue + 1) {
+      await this.repository.updateGeneralGrade(
+        lowestGeneral.id,
+        madrasaId,
+        lowestGeneral.name,
+        failValue + 1,
+        lowestGeneral.maxMark,
+      );
+    }
+
+    const lowestMadrasa = madrasaGrades.at(-1);
+    if (lowestMadrasa && lowestMadrasa.minMark !== failValue + 1) {
+      await this.repository.updateMadrasaGrade(
+        lowestMadrasa.id,
+        madrasaId,
+        lowestMadrasa.name,
+        failValue + 1,
+        lowestMadrasa.maxMark,
+      );
     }
   }
 }

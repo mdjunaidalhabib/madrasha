@@ -1,6 +1,6 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, AccountType } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
-import { REPORT_ROW_LIMIT } from "./account.constants";
+import { REPORT_ROW_LIMIT, DEFAULT_INCOME_FUNDS, DEFAULT_EXPENSE_GROUPS } from "./account.constants";
 import { ReportRow } from "./account.types";
 
 // NOTE: the old `ensureAccountSchema()` ran ALTER TABLE at request-time to
@@ -69,6 +69,84 @@ export class AccountRepository {
        GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${REPORT_ROW_LIMIT}`,
       madrasaId,
     );
+  }
+
+  countFunds(madrasaId: number) {
+    return prisma.accountFund.count({ where: { madrasaId } });
+  }
+
+  findFunds(madrasaId: number, type?: AccountType) {
+    return prisma.accountFund.findMany({
+      where: { madrasaId, isActive: true, ...(type ? { type } : {}) },
+      orderBy: { sortOrder: "asc" },
+      include: { categories: { where: { isActive: true }, orderBy: { sortOrder: "asc" } } },
+    });
+  }
+
+  findFundForTenant(id: number, madrasaId: number) {
+    return prisma.accountFund.findFirst({ where: { id, madrasaId } });
+  }
+
+  createFund(data: Prisma.AccountFundUncheckedCreateInput) {
+    return prisma.accountFund.create({ data });
+  }
+
+  updateFund(id: number, data: Prisma.AccountFundUpdateInput) {
+    return prisma.accountFund.update({ where: { id }, data });
+  }
+
+  deleteFund(id: number) {
+    return prisma.accountFund.delete({ where: { id } });
+  }
+
+  countCategories(fundId: number) {
+    return prisma.accountCategory.count({ where: { fundId } });
+  }
+
+  findCategoryForTenant(id: number, madrasaId: number) {
+    return prisma.accountCategory.findFirst({ where: { id, fund: { madrasaId } }, include: { fund: true } });
+  }
+
+  createCategory(data: Prisma.AccountCategoryUncheckedCreateInput) {
+    return prisma.accountCategory.create({ data });
+  }
+
+  updateCategory(id: number, data: Prisma.AccountCategoryUpdateInput) {
+    return prisma.accountCategory.update({ where: { id }, data });
+  }
+
+  deleteCategory(id: number) {
+    return prisma.accountCategory.delete({ where: { id } });
+  }
+
+  /** Lazily backfills the starter ফান্ড/খাত picklist for a tenant that has
+   * none yet (existing installs from before this feature, and brand-new
+   * madrasas alike) - called once from AccountService.getOptions(). */
+  seedDefaultFunds(madrasaId: number) {
+    return prisma.$transaction([
+      ...DEFAULT_INCOME_FUNDS.map((fund, i) =>
+        prisma.accountFund.create({
+          data: {
+            madrasaId,
+            type: "income",
+            name: fund.name,
+            sortOrder: i,
+            categories: { create: fund.categories.map((name, j) => ({ name, sortOrder: j })) },
+          },
+        }),
+      ),
+      ...DEFAULT_EXPENSE_GROUPS.map((group, i) =>
+        prisma.accountFund.create({
+          data: {
+            madrasaId,
+            type: "expense",
+            name: group.name,
+            sortOrder: i,
+            categories: { create: group.categories.map((name, j) => ({ name, sortOrder: j })) },
+          },
+        }),
+      ),
+    ]);
   }
 }
 

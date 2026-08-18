@@ -6,6 +6,7 @@ import router from "./router";
 import { config } from "../shared/config";
 import { errorHandler, notFoundHandler } from "../shared/middleware/error.middleware";
 import { requestLogger } from "../shared/middleware/requestLogger.middleware";
+import { activityLoggerMiddleware } from "../shared/middleware/activityLogger.middleware";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(
 app.use(express.json({ limit: config.upload.jsonBodyLimit })); // raised to allow branding logo/banner/watermark base64 uploads
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+app.use(activityLoggerMiddleware);
 
 // API responses must never be cached — tenant status (deleted/suspended)
 // can change at any moment via the super admin panel, and a cached stale

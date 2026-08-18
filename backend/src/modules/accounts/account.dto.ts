@@ -45,7 +45,29 @@ export interface UpdateAccountRequestDto {
   donor_name?: string;
   receiver_name?: string;
   address?: string;
+  mobile?: string;
   payment_method?: string;
   entry_date?: string;
   entry_time?: string;
+}
+
+export interface CreateFundRequestDto {
+  type: "income" | "expense";
+  name: string;
+}
+
+export interface UpdateFundRequestDto {
+  name?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CreateCategoryRequestDto {
+  name: string;
+}
+
+export interface UpdateCategoryRequestDto {
+  name?: string;
+  sort_order?: number;
+  is_active?: boolean;
 }

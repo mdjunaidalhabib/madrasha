@@ -6,17 +6,21 @@ import {
   LineChart,
   Bar,
   BarChart,
+  Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { cachedGet } from "../../services/api";
-import PageHeader from "../../components/ui/PageHeader";
 import StatTile from "../../components/ui/StatTile";
 import Card, { CardHeader } from "../../components/ui/Card";
 import ChartCard from "../../components/ui/ChartCard";
+import DashboardHero from "../../components/dashboard/DashboardHero";
+import EventCalendar from "../../components/dashboard/EventCalendar";
 import { useThemeStore } from "../../store/themeStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
@@ -25,6 +29,8 @@ const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleStri
 type IncomeExpensePoint = { period: string; total_income: number; total_expense: number };
 type AttendancePoint = { period: string; percentage: number };
 type DashboardTrends = { incomeExpense: IncomeExpensePoint[]; attendance: AttendancePoint[] };
+
+const FUND_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9", "#8b5cf6", "#14b8a6", "#eab308"];
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -75,9 +81,13 @@ export default function DashboardPage() {
         },
       ];
 
+  const fundData = (data?.fundBalances || [])
+    .map((fund: any) => ({ fund: fund.fund || "নির্ধারিত নয়", balance: Number(fund.balance) || 0 }))
+    .filter((fund: any) => fund.balance > 0);
+
   return (
     <div className="space-y-6">
-      <PageHeader title="ড্যাশবোর্ড" subtitle="মাদরাসার এক নজরের সারাংশ" />
+      <DashboardHero title="ড্যাশবোর্ড" subtitle="মাদরাসার এক নজরের সারাংশ" />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {loading
@@ -179,7 +189,35 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
+        <ChartCard
+          title="ফান্ডভিত্তিক বণ্টন"
+          subtitle="মোট ব্যালেন্সের অনুপাত"
+          loading={loading}
+          empty={!loading && fundData.length === 0}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={fundData} dataKey="balance" nameKey="fund" innerRadius={48} outerRadius={80} paddingAngle={3}>
+                {fundData.map((entry: any, index: number) => (
+                  <Cell key={entry.fund} fill={FUND_COLORS[index % FUND_COLORS.length]} stroke="none" />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: unknown) => money(Number(value))}
+                contentStyle={{
+                  backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                  border: `1px solid ${gridColor}`,
+                  borderRadius: 12,
+                  fontSize: 13,
+                }}
+                labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <Card>
           <CardHeader
             title="ফান্ড ব্যালেন্স"
             actions={
@@ -210,24 +248,30 @@ export default function DashboardPage() {
           <CardHeader title="দ্রুত কাজ" />
           <div className="grid gap-3">
             <Link
-              className="rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-indigo-500"
+              className="rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
               to={`${adminBase}/accounts/income`}
             >
               আয় এন্ট্রি
             </Link>
             <Link
-              className="rounded-xl bg-rose-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-rose-500"
+              className="rounded-xl bg-rose-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-rose-500"
               to={`${adminBase}/accounts/expense`}
             >
               ব্যয় এন্ট্রি
             </Link>
             <Link
-              className="rounded-xl bg-slate-800 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+              className="rounded-xl bg-slate-800 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
               to={`${adminBase}/students/new_admission`}
             >
               নতুন ভর্তি
             </Link>
           </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card>
+          <EventCalendar exams={data?.upcomingExams || []} />
         </Card>
       </div>
 

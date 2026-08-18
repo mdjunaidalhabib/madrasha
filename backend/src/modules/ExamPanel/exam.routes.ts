@@ -10,9 +10,11 @@ import {
   reorderExams,
   getGeneralGrades,
   saveGeneralGrade,
+  updateGeneralGrade,
   deleteGeneralGrade,
   getMadrasaGrades,
   saveMadrasaGrade,
+  updateMadrasaGrade,
   deleteMadrasaGrade,
   getFailMark,
   updateFailMark,
@@ -35,11 +37,13 @@ router.delete("/exams/:id", rbacMiddleware("exam.manage"), deleteExam);
 /* ================= GENERAL GRADES ================= */
 router.get("/general-grades", rbacMiddleware("exam.read"), getGeneralGrades);
 router.post("/general-grades", rbacMiddleware("exam.manage"), saveGeneralGrade);
+router.put("/general-grades/:id", rbacMiddleware("exam.manage"), updateGeneralGrade);
 router.delete("/general-grades/:id", rbacMiddleware("exam.manage"), deleteGeneralGrade);
 
 /* ================= MADRASA GRADES ================= */
 router.get("/madrasa-grades", rbacMiddleware("exam.read"), getMadrasaGrades);
 router.post("/madrasa-grades", rbacMiddleware("exam.manage"), saveMadrasaGrade);
+router.put("/madrasa-grades/:id", rbacMiddleware("exam.manage"), updateMadrasaGrade);
 router.delete("/madrasa-grades/:id", rbacMiddleware("exam.manage"), deleteMadrasaGrade);
 
 /* ================= SETTINGS ================= */

@@ -8,13 +8,13 @@ import {
   Trash2,
   CreditCard,
   Globe2,
-  ChevronsLeft,
-  ChevronsRight,
   FileStack,
   Settings,
   Layers,
   Wallet,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 type SuperAdminSidebarProps = {
@@ -70,10 +70,10 @@ export default function SuperAdminSidebar({
     >
       {!collapsed && (
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span className="block break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
             সুপার অ্যাডমিন
           </span>
-          <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
+          <span className="block break-words text-xs text-slate-400 dark:text-slate-500">
             {admin?.name || ""}
           </span>
         </div>
@@ -93,7 +93,7 @@ export default function SuperAdminSidebar({
           title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
           className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
         >
-          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
       </div>
     </div>
