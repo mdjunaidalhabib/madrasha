@@ -110,6 +110,10 @@ model Madrasa {
   cloudinaryConfig             MadrasaCloudinaryConfig?
   documentTemplates            DocumentTemplate[]
   tenantDocumentDefaults       TenantDocumentDefault[]
+  kioskDevices                 KioskDevice[]
+  libraryBookCategories        LibraryBookCategory[]
+  libraryBooks                 LibraryBook[]
+  libraryBorrowRecords         LibraryBorrowRecord[]
 
   @@index([isActive, deletedAt], map: "idx_madrasas_active")
   @@index([planStatus], map: "idx_madrasas_plan_status")

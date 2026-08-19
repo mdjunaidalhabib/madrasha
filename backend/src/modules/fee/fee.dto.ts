@@ -3,6 +3,8 @@ export interface CreateFeeStructureRequestDto {
   name: string;
   amount: number | string;
   frequency: string;
+  /** ADMISSION / TUITION / EXAM / BOARDING / OTHER - defaults to OTHER when omitted. */
+  fee_type?: string;
   session_id?: number | string;
   /** @deprecated legacy fallback - resolved to a Session by matching name when session_id is absent. */
   academic_year?: string;
@@ -28,9 +30,19 @@ export interface InvoiceQueryDto {
   month?: string;
 }
 
+export interface PendingInvoicesQueryDto {
+  limit?: number | string;
+  offset?: number | string;
+}
+
 export interface WaiveInvoiceRequestDto {
   amount: number | string;
   reason: string;
+  /** "add" (default) tops up the existing waived amount by `amount`, for
+   * incremental waiving. "set" replaces it outright with `amount` - used to
+   * edit an already-recorded waiver (e.g. এহতেমাম correcting a mistake
+   * after fully waiving an admission fee). */
+  mode?: "add" | "set";
 }
 
 export interface RecordPaymentRequestDto {

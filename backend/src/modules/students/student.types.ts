@@ -56,6 +56,8 @@ export interface StudentApiDto {
   thana: string | null;
   village: string | null;
   image: string | null;
+  /** RFID/NFC card UID assigned for kiosk attendance scanning, if any. */
+  card_uid: string | null;
   admission_status: "PENDING" | "APPROVED" | "REJECTED";
   admission_type: "NEW" | "RE_ADMISSION";
   rejection_reason: string | null;

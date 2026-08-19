@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { admissionApi } from "../../services/phase1Api";
-import { invoiceApi, type InvoiceStatus, type PaymentMethod } from "../../services/phase2Api";
+import { invoiceApi, type InvoiceStatus } from "../../services/phase2Api";
 import Modal from "../../components/ui/Modal";
 import { useToastStore } from "../../store/toastStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
+import { normalizeBanglaDigits } from "../../utils/reportUtils";
 
 type FeeStatus = "NONE" | "DUE" | "WAIVED" | "PAID";
 
@@ -17,12 +18,13 @@ type AdmissionInvoiceRow = {
   amount: number;
   paidAmount: number;
   waivedAmount: number;
+  waiveReason: string | null;
   status: InvoiceStatus;
 };
 
 const FEE_BADGE: Partial<Record<FeeStatus, { label: (due: number) => string; className: string }>> = {
   DUE: { label: (due) => `বকেয়া ৳${due}`, className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
-  WAIVED: { label: () => "মাফকৃত", className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
+  WAIVED: { label: () => "মওকুফকৃত", className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
   PAID: { label: () => "পরিশোধিত", className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
 };
 
@@ -35,6 +37,7 @@ const normalizeInvoiceArray = (payload: any): AdmissionInvoiceRow[] => {
     amount: Number(inv.amount),
     paidAmount: Number(inv.paidAmount),
     waivedAmount: Number(inv.waivedAmount),
+    waiveReason: inv.waiveReason ?? null,
     status: inv.status,
   }));
 };
@@ -107,14 +110,16 @@ const PendingAdmissionsPage = () => {
   const [detailTarget, setDetailTarget] = useState<PendingStudent | null>(null);
 
   // detail modal — ভর্তি ফি section: this student's invoices, lazy-loaded
-  // whenever the modal opens, plus whichever line's pay/waive mini-form is
-  // currently expanded.
+  // whenever the modal opens, plus whichever line's মওকুফ mini-form is
+  // currently expanded. Muhtamim can only waive here, never collect payment
+  // - fee collection is হিসাব বিভাগ's job, and only once this admission is
+  // approved (see approveAdmission on the backend + findPendingInvoices,
+  // which only surfaces APPROVED students' due admission fees).
   const [detailInvoices, setDetailInvoices] = useState<AdmissionInvoiceRow[]>([]);
   const [detailInvoicesLoading, setDetailInvoicesLoading] = useState(false);
-  const [activeFeeAction, setActiveFeeAction] = useState<{ invoiceId: number; type: "pay" | "waive" } | null>(null);
+  const [activeFeeAction, setActiveFeeAction] = useState<{ invoiceId: number } | null>(null);
   const [feeActionAmount, setFeeActionAmount] = useState("");
   const [feeActionReason, setFeeActionReason] = useState("");
-  const [feeActionMethod, setFeeActionMethod] = useState<PaymentMethod>("CASH");
   const [feeActionBusy, setFeeActionBusy] = useState(false);
 
   const loadPending = useCallback(async () => {
@@ -158,12 +163,14 @@ const PendingAdmissionsPage = () => {
     loadDetailInvoices(detailTarget.id);
   }, [detailTarget, loadDetailInvoices]);
 
-  const openFeeAction = (invoice: AdmissionInvoiceRow, type: "pay" | "waive") => {
-    const remaining = invoice.amount - invoice.paidAmount - invoice.waivedAmount;
-    setActiveFeeAction({ invoiceId: invoice.id, type });
-    setFeeActionAmount(remaining > 0 ? String(remaining) : "0");
-    setFeeActionReason("");
-    setFeeActionMethod("CASH");
+  const openFeeAction = (invoice: AdmissionInvoiceRow) => {
+    setActiveFeeAction({ invoiceId: invoice.id });
+    // First-time waiver starts blank (Muhtamim must consciously enter an
+    // amount rather than accepting a pre-filled "waive it all" default);
+    // re-opening an already-waived invoice pre-fills the current values so
+    // it reads as editing that waiver, not starting a new one.
+    setFeeActionAmount(invoice.waivedAmount > 0 ? String(invoice.waivedAmount) : "");
+    setFeeActionReason(invoice.waiveReason || "");
   };
 
   const handleConfirmFeeAction = async () => {
@@ -173,20 +180,22 @@ const PendingAdmissionsPage = () => {
       useToastStore.getState().show("সঠিক পরিমাণ দিন", "error");
       return;
     }
-    if (activeFeeAction.type === "waive" && !feeActionReason.trim()) {
-      useToastStore.getState().show("মাফের কারণ লিখুন", "error");
+    if (!feeActionReason.trim()) {
+      useToastStore.getState().show("মওকুফের কারণ লিখুন", "error");
       return;
     }
 
     try {
       setFeeActionBusy(true);
-      if (activeFeeAction.type === "pay") {
-        await invoiceApi.pay(activeFeeAction.invoiceId, { amount, method: feeActionMethod });
-        useToastStore.getState().show("পেমেন্ট রেকর্ড করা হয়েছে", "success");
-      } else {
-        await invoiceApi.waive(activeFeeAction.invoiceId, { amount, reason: feeActionReason.trim() });
-        useToastStore.getState().show("মাফ করা হয়েছে", "success");
-      }
+      // "set" (not the default additive "add") - this form always shows/edits
+      // the invoice's *total* waived amount, so re-submitting must replace
+      // it, not stack on top.
+      await invoiceApi.waive(activeFeeAction.invoiceId, {
+        amount,
+        reason: feeActionReason.trim(),
+        mode: "set",
+      });
+      useToastStore.getState().show("মওকুফ করা হয়েছে", "success");
       setActiveFeeAction(null);
       if (detailTarget) await loadDetailInvoices(detailTarget.id);
       await loadPending();
@@ -197,12 +206,6 @@ const PendingAdmissionsPage = () => {
       setFeeActionBusy(false);
     }
   };
-
-  const detailTotalDue = detailInvoices.reduce(
-    (sum, inv) => sum + Math.max(0, inv.amount - inv.paidAmount - inv.waivedAmount),
-    0,
-  );
-  const detailCanApprove = !detailInvoicesLoading && detailTotalDue <= 0.01;
 
   const handleApprove = async (student: PendingStudent) => {
     try {
@@ -338,8 +341,7 @@ const PendingAdmissionsPage = () => {
                       </button>
                       <button
                         type="button"
-                        disabled={busyId === student.id || student.fee_status === "DUE"}
-                        title={student.fee_status === "DUE" ? "ভর্তি ফি বাকি — আগে পরিশোধ বা মাফ করুন" : undefined}
+                        disabled={busyId === student.id}
                         onClick={() => handleApprove(student)}
                         className="h-9 flex-1 rounded-md bg-green-600 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                       >
@@ -416,8 +418,7 @@ const PendingAdmissionsPage = () => {
                             </button>
                             <button
                               type="button"
-                              disabled={busyId === student.id || student.fee_status === "DUE"}
-                              title={student.fee_status === "DUE" ? "ভর্তি ফি বাকি — আগে পরিশোধ বা মাফ করুন" : undefined}
+                              disabled={busyId === student.id}
                               onClick={() => handleApprove(student)}
                               className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                             >
@@ -519,7 +520,10 @@ const PendingAdmissionsPage = () => {
                 <div className="flex flex-col gap-2">
                   {detailInvoices.map((inv) => {
                     const remaining = inv.amount - inv.paidAmount - inv.waivedAmount;
-                    const canAct = inv.status !== "PAID" && inv.status !== "WAIVED";
+                    // Fully paid has nothing left to waive; a WAIVED invoice
+                    // stays actionable so an already-recorded waiver can
+                    // still be edited (see openFeeAction).
+                    const canAct = inv.status !== "PAID";
                     const isActionOpen = activeFeeAction?.invoiceId === inv.id;
                     return (
                       <div key={inv.id} className="rounded-lg border border-gray-100 p-2 dark:border-slate-800">
@@ -528,24 +532,17 @@ const PendingAdmissionsPage = () => {
                             {inv.title} <span className="text-gray-400 dark:text-slate-500">৳{inv.amount}</span>
                             {remaining > 0 && <span className="text-rose-600 dark:text-rose-400"> · বাকি ৳{remaining}</span>}
                             {inv.waivedAmount > 0 && (
-                              <span className="text-purple-600 dark:text-purple-400"> · মাফ ৳{inv.waivedAmount}</span>
+                              <span className="text-purple-600 dark:text-purple-400"> · মওকুফ ৳{inv.waivedAmount}</span>
                             )}
                           </span>
                           {canAct && (
                             <div className="flex gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => openFeeAction(inv, "pay")}
-                                className="h-7 rounded-md border border-blue-200 px-2.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-950/40"
-                              >
-                                পেমেন্ট নিন
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openFeeAction(inv, "waive")}
+                                onClick={() => openFeeAction(inv)}
                                 className="h-7 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50 dark:border-purple-900/50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                               >
-                                মাফ করুন
+                                {inv.waivedAmount > 0 ? "মওকুফ এডিট করুন" : "মওকুফ করুন"}
                               </button>
                             </div>
                           )}
@@ -556,39 +553,23 @@ const PendingAdmissionsPage = () => {
                             <div>
                               <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">পরিমাণ (৳)</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={feeActionAmount}
-                                onChange={(e) => setFeeActionAmount(e.target.value)}
+                                onChange={(e) => setFeeActionAmount(normalizeBanglaDigits(e.target.value))}
                                 className="h-8 w-24 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                               />
                             </div>
-                            {activeFeeAction?.type === "pay" ? (
-                              <div>
-                                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">পদ্ধতি</label>
-                                <select
-                                  value={feeActionMethod}
-                                  onChange={(e) => setFeeActionMethod(e.target.value as PaymentMethod)}
-                                  className="h-8 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                                >
-                                  {(["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"] as PaymentMethod[]).map((m) => (
-                                    <option key={m} value={m}>
-                                      {m}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="min-w-[140px] flex-1">
-                                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">কারণ</label>
-                                <input
-                                  type="text"
-                                  value={feeActionReason}
-                                  onChange={(e) => setFeeActionReason(e.target.value)}
-                                  placeholder="যেমন: এতিম ছাত্র"
-                                  className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                                />
-                              </div>
-                            )}
+                            <div className="min-w-[140px] flex-1">
+                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">কারণ</label>
+                              <input
+                                type="text"
+                                value={feeActionReason}
+                                onChange={(e) => setFeeActionReason(e.target.value)}
+                                placeholder="যেমন: এতিম ছাত্র"
+                                className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                              />
+                            </div>
                             <button
                               type="button"
                               disabled={feeActionBusy}
@@ -655,8 +636,7 @@ const PendingAdmissionsPage = () => {
               </button>
               <button
                 type="button"
-                disabled={busyId === detailTarget.id || !detailCanApprove}
-                title={!detailCanApprove ? "ভর্তি ফি বাকি — আগে পরিশোধ বা মাফ করুন" : undefined}
+                disabled={busyId === detailTarget.id}
                 onClick={() => {
                   handleApprove(detailTarget);
                   setDetailTarget(null);

@@ -80,6 +80,15 @@ model Student {
 
   image String?
 
+  /// RFID/NFC card UID assigned for kiosk attendance scanning. Set via
+  /// PATCH /students/:id/card, one card per student.
+  cardUid String? @unique @map("card_uid") @db.VarChar(64)
+
+  /// External template/registration id returned by a future fingerprint
+  /// device's SDK - no physical device is integrated yet, this is only the
+  /// forward-compatible lookup key for KioskService.scanFingerprint.
+  fingerprintId String? @unique @map("fingerprint_id") @db.VarChar(100)
+
   roll Int
 
   /// Permanent, per-madrasa admission/registration number. Assigned once at
@@ -114,12 +123,13 @@ model Student {
   previousClass Class?   @relation("StudentPreviousClass", fields: [previousClassId], references: [id], onDelete: SetNull)
   sessionRef    Session  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
 
-  resultsSummary   ResultSummary[]
-  marks            Mark[]
-  promotionRecords PromotionRecord[]
-  invoices         Invoice[]
-  guardianLinks    GuardianStudent[]
-  sessionHistories StudentSessionHistory[]
+  resultsSummary       ResultSummary[]
+  marks                Mark[]
+  promotionRecords     PromotionRecord[]
+  invoices             Invoice[]
+  guardianLinks        GuardianStudent[]
+  sessionHistories     StudentSessionHistory[]
+  libraryBorrowRecords LibraryBorrowRecord[]
 
   @@unique([madrasaId, classId, sessionId, roll], map: "unique_roll_per_class_session")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")

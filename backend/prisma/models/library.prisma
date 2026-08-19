@@ -1,0 +1,91 @@
+// ============================================================
+// LIBRARY MANAGEMENT
+// Note: `academic.prisma` already has `model Book` (curriculum
+// textbook per class) - every model here is prefixed `Library*`
+// to avoid any naming collision with it.
+// ============================================================
+
+enum LibraryBorrowStatus {
+  BORROWED
+  RETURNED
+  LOST
+}
+
+model LibraryBookCategory {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  name      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa       @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  books   LibraryBook[]
+
+  @@unique([madrasaId, name], map: "uniq_library_category_madrasa_name")
+  @@index([madrasaId])
+  @@map("library_book_categories")
+}
+
+model LibraryBook {
+  id              Int      @id @default(autoincrement())
+  madrasaId       Int      @map("madrasa_id")
+  categoryId      Int?     @map("category_id")
+  title           String   @db.VarChar(250)
+  author          String?  @db.VarChar(200)
+  isbn            String?  @db.VarChar(30)
+  publisher       String?  @db.VarChar(200)
+  shelfLocation   String?  @map("shelf_location") @db.VarChar(100)
+  copiesTotal     Int      @default(1) @map("copies_total")
+  copiesAvailable Int      @default(1) @map("copies_available")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa       Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  category      LibraryBookCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  borrowRecords LibraryBorrowRecord[]
+
+  @@index([madrasaId, categoryId], map: "idx_library_book_madrasa_category")
+  @@index([madrasaId, title], map: "idx_library_book_madrasa_title")
+  @@map("library_books")
+}
+
+/// One loan of one LibraryBook to exactly one borrower (Student XOR
+/// Teacher - enforced in LibraryService.issueBook() plus a raw CHECK
+/// constraint added by hand to the migration SQL, since Prisma has no
+/// OR/XOR column constraint syntax). No separate "member" concept -
+/// student_id/teacher_id point straight at the existing tables.
+model LibraryBorrowRecord {
+  id            Int                 @id @default(autoincrement())
+  madrasaId     Int                 @map("madrasa_id")
+  bookId        Int                 @map("book_id")
+  studentId     Int?                @map("student_id")
+  teacherId     Int?                @map("teacher_id")
+  borrowedAt    DateTime            @default(now()) @map("borrowed_at")
+  dueDate       DateTime            @map("due_date") @db.Date
+  returnedAt    DateTime?           @map("returned_at")
+  status        LibraryBorrowStatus @default(BORROWED)
+  /// Frozen at return time (daysLate * per-day rate at that moment) - 0
+  /// while still BORROWED; the current fine for an active loan is always
+  /// computed on the fly instead (see LibraryService.decorateBorrowRecord),
+  /// never stored, so it can't go stale against a later rate change.
+  fineAmount    Decimal             @default(0) @map("fine_amount") @db.Decimal(10, 2)
+  fineSettled   Boolean             @default(false) @map("fine_settled")
+  fineSettledAt DateTime?           @map("fine_settled_at")
+  issuedById    Int?                @map("issued_by")
+  returnedById  Int?                @map("returned_by")
+  notes         String?             @db.VarChar(300)
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa     @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  book    LibraryBook @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  student Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, status], map: "idx_library_borrow_madrasa_status")
+  @@index([madrasaId, studentId], map: "idx_library_borrow_madrasa_student")
+  @@index([madrasaId, teacherId], map: "idx_library_borrow_madrasa_teacher")
+  @@index([bookId], map: "idx_library_borrow_book")
+  @@map("library_borrow_records")
+}

@@ -38,6 +38,25 @@ export class SidebarService {
       .map((mm) => mm.module)
       .filter((module) => module.keyName !== "admission");
 
+    // "attendance" (উপস্থিতি - manual bulk-mark + the RFID/fingerprint gate
+    // kiosk and its device management) used to be children ("attendance_mark",
+    // "kiosk_devices") of the ছাত্র বিভাগ/শিক্ষার্থী module and is now its own
+    // top-level module. Same reasoning/fallback as "communication" below -
+    // surfaces it immediately for any tenant that already had students
+    // active, even before the real MadrasaModule backfill/re-seed reaches it.
+    if (
+      !modules.some((module) => module.keyName === "attendance") &&
+      modules.some((module) => module.keyName === "students")
+    ) {
+      modules.push({
+        id: -9002,
+        keyName: "attendance",
+        nameBn: "উপস্থিতি",
+        groupName: "core",
+        sortOrder: 6.5,
+      });
+    }
+
     // "communication" (SMS/ইমেইল) used to be a child ("notifications") of the
     // ছাত্র বিভাগ/শিক্ষার্থী module and is now its own top-level module. Tenants
     // whose MadrasaModule rows were seeded before this split won't have an
@@ -68,9 +87,10 @@ export class SidebarService {
     }
 
     const moduleIds = modules.map((m) => m.id);
-    const [features, pendingAdmissionsCount] = await Promise.all([
+    const [features, pendingAdmissionsCount, pendingFeeStudentsCount] = await Promise.all([
       this.repository.findFeaturesByModuleIds(moduleIds),
       this.repository.countPendingAdmissions(madrasaId),
+      this.repository.countPendingFeeStudents(madrasaId),
     ]);
 
     return modules.map((mod) => {
@@ -185,18 +205,25 @@ export class SidebarService {
         const statementIndex = children.findIndex((child) => child.key === "statement");
         if (statementIndex !== -1) children.splice(statementIndex, 1);
 
-        // "sessions" (সেশন সেটাপ), "fee_management" (ফি সেটাপ) and
-        // "notifications" (SMS/ইমেইল) moved out of this module entirely -
-        // filter any already-seeded DB rows here so existing installations
-        // stop showing them immediately, even before the seed is run again.
-        for (const movedKey of ["sessions", "fee_management", "notifications"]) {
+        // "sessions" (সেশন সেটাপ), "fee_management" (ফি সেটাপ), "notifications"
+        // (SMS/ইমেইল), "attendance_mark" and "kiosk_devices" (উপস্থিতি, now its
+        // own module - see the "attendance" block below) moved out of this
+        // module entirely - filter any already-seeded DB rows here so
+        // existing installations stop showing them immediately, even before
+        // the seed is run again.
+        for (const movedKey of [
+          "sessions",
+          "fee_management",
+          "notifications",
+          "attendance_mark",
+          "kiosk_devices",
+        ]) {
           const idx = children.findIndex((child) => child.key === movedKey);
           if (idx !== -1) children.splice(idx, 1);
         }
 
         const fallbackStudentChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 5 },
-          { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 7 },
         ];
         for (const fallback of fallbackStudentChildren) {
           if (!children.some((child) => child.key === fallback.key)) {
@@ -216,6 +243,30 @@ export class SidebarService {
         if (listChild) listChild.label = "শিক্ষার্থী সমূহ";
       }
 
+      // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
+      // gate kiosk and its device management) - see the moved-key filter
+      // under "students" above. Same fallback reasoning as every other
+      // block in this file: surfaces these immediately even for a tenant
+      // whose "attendance" module row (real or synthesized above) has no
+      // feature rows of its own yet.
+      if (mod.keyName === "attendance") {
+        const fallbackAttendanceChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 1 },
+          { key: "kiosk_devices", label: "কিওস্ক ডিভাইস", sortOrder: 2 },
+        ];
+        for (const fallback of fallbackAttendanceChildren) {
+          if (!children.some((child) => child.key === fallback.key)) {
+            children.push({
+              id: -(7000 + fallback.sortOrder),
+              key: fallback.key,
+              label: fallback.label,
+              sort_order: fallback.sortOrder,
+              disabled,
+            });
+          }
+        }
+      }
+
       // Surfaces the new হিসাব ড্যাশবোর্ড (accounting-only dashboard) under
       // হিসাব in installations seeded before this feature existed.
       if (mod.keyName === "accounts" && !children.some((child) => child.key === "dashboard")) {
@@ -226,6 +277,28 @@ export class SidebarService {
           sort_order: 0,
           disabled,
         });
+      }
+
+      // Dedicated "ভর্তি ফি পেন্ডিং" page - separate from ফি গ্রহণ (which
+      // stays purely search-by-student) and from এহতেমাম > পেন্ডিং ভর্তি
+      // অনুমোদন (that's the approval queue; this is just the unpaid
+      // admission-fee follow-up list). Lives under হিসাব since it's the
+      // accounts office that chases unpaid fees, not এহতেমাম. Badged with
+      // how many students still owe.
+      if (mod.keyName === "accounts" && !children.some((child) => child.key === "pending_fee")) {
+        children.push({
+          id: -1006,
+          key: "pending_fee",
+          label: "ভর্তি ফি পেন্ডিং",
+          sort_order: 1,
+          disabled,
+        });
+      }
+      if (mod.keyName === "accounts") {
+        const pendingFeeChild = children.find((child) => child.key === "pending_fee");
+        if (pendingFeeChild && pendingFeeStudentsCount > 0) {
+          pendingFeeChild.count = pendingFeeStudentsCount;
+        }
       }
 
       // Same reasoning as talimat/students above - surfaces শিক্ষক বেতন (পেরোল)
@@ -276,6 +349,7 @@ export class SidebarService {
             { key: "bulk_send", label: "বাল্ক পাঠান", sortOrder: 2 },
             { key: "history", label: "পাঠানোর ইতিহাস", sortOrder: 3 },
             { key: "auto_settings", label: "অটো নোটিফিকেশন", sortOrder: 4 },
+            { key: "balance", label: "ব্যালেন্স", sortOrder: 5 },
           ];
         for (const fallback of fallbackCommunicationChildren) {
           if (!children.some((child) => child.key === fallback.key)) {

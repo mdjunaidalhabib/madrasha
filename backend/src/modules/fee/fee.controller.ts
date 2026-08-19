@@ -47,6 +47,11 @@ export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+export const getPendingInvoices = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.listPendingInvoices(getMadrasaId(req), req.query as any);
+  res.json({ success: true, data });
+});
+
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
   const sessionId = req.body.session_id ? Number(req.body.session_id) : undefined;

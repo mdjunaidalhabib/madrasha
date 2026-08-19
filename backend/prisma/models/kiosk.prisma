@@ -1,0 +1,26 @@
+// ============================================================
+// KIOSK — gate/office attendance devices (RFID card / fingerprint scan)
+// ============================================================
+
+/// One physical kiosk (tablet/PC at the gate) per row. Authenticates via
+/// `apiKeyHash` instead of a User JWT - see kiosk.middleware.ts -
+/// because the device has no logged-in admin, mirroring how guardian
+/// tokens are already a separate auth track from admin JWTs in this app.
+model KioskDevice {
+  id         Int       @id @default(autoincrement())
+  madrasaId  Int       @map("madrasa_id")
+  name       String    @db.VarChar(100)
+  /// SHA-256 hex digest of the raw device key. The raw key is shown to the
+  /// admin exactly once at creation and never stored or returned again -
+  /// same approach as PasswordResetToken.tokenHash.
+  apiKeyHash String    @unique @map("api_key_hash") @db.VarChar(255)
+  isActive   Boolean   @default(true) @map("is_active")
+  lastSeenAt DateTime? @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId], map: "idx_kiosk_devices_madrasa")
+  @@map("kiosk_devices")
+}

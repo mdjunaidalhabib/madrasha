@@ -20,6 +20,7 @@ import { useConfirmStore } from "../../store/confirmStore";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
 import Modal from "../../components/ui/Modal";
 import { sessionApi, type Session } from "../../services/sessionApi";
+import { assignStudentCard } from "../../services/phase1Api";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -44,6 +45,10 @@ const StudentProfilePage = () => {
   const [transferRoll, setTransferRoll] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferBusy, setTransferBusy] = useState(false);
+
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [cardUid, setCardUid] = useState("");
+  const [cardBusy, setCardBusy] = useState(false);
 
   const fetchStudent = useCallback(async () => {
     if (!id) return;
@@ -214,6 +219,30 @@ const StudentProfilePage = () => {
     }
   };
 
+  const openCardModal = () => {
+    setCardUid("");
+    setCardModalOpen(true);
+  };
+
+  const handleAssignCard = async () => {
+    if (!cardUid.trim()) {
+      useToastStore.getState().show("কার্ড UID লিখুন", "error");
+      return;
+    }
+    try {
+      setCardBusy(true);
+      await assignStudentCard(Number(id), cardUid.trim());
+      useToastStore.getState().show("কার্ড যুক্ত করা হয়েছে", "success");
+      setCardModalOpen(false);
+      fetchStudent();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "কার্ড যুক্ত করা যায়নি";
+      useToastStore.getState().show(msg, "error");
+    } finally {
+      setCardBusy(false);
+    }
+  };
+
   const quickNavPath = useCallback(
     (studentId: string | number) => `${adminBase}/students/${studentId}`,
     [adminBase],
@@ -321,6 +350,10 @@ const StudentProfilePage = () => {
 
           <button onClick={openTransferModal} className={`${actionButtonClass} bg-indigo-600`}>
             সেশন ট্রান্সফার
+          </button>
+
+          <button onClick={openCardModal} className={`${actionButtonClass} bg-teal-600`}>
+            RFID কার্ড যুক্ত করুন
           </button>
 
           <button
@@ -435,6 +468,47 @@ const StudentProfilePage = () => {
             className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
           >
             {transferBusy ? "ট্রান্সফার হচ্ছে..." : "ট্রান্সফার করুন"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={cardModalOpen} title="RFID কার্ড যুক্ত করুন" onClose={() => setCardModalOpen(false)}>
+        <div className="flex flex-col gap-3">
+          {student.card_uid && (
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              বর্তমান কার্ড:{" "}
+              <span className="font-medium text-gray-700 dark:text-slate-300">{student.card_uid}</span>
+            </p>
+          )}
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            কার্ডটি রিডারে ট্যাপ করুন অথবা ম্যানুয়ালি লিখুন
+          </p>
+          <input
+            type="text"
+            value={cardUid}
+            onChange={(e) => setCardUid(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAssignCard();
+            }}
+            autoFocus
+            className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setCardModalOpen(false)}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={cardBusy}
+            onClick={handleAssignCard}
+            className="h-9 rounded-md bg-teal-600 px-4 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+          >
+            {cardBusy ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
           </button>
         </div>
       </Modal>

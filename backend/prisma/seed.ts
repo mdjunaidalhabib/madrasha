@@ -573,26 +573,40 @@ async function main() {
       sortOrder: 6,
     },
     {
+      keyName: "attendance",
+      name: "Attendance",
+      nameBn: "উপস্থিতি",
+      groupName: "core",
+      sortOrder: 7,
+    },
+    {
       keyName: "communication",
       name: "Communication",
       nameBn: "SMS/ইমেইল",
       groupName: "core",
-      sortOrder: 7,
+      sortOrder: 8,
     },
-    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 8 },
+    {
+      keyName: "library",
+      name: "Library",
+      nameBn: "লাইব্রেরি",
+      groupName: "core",
+      sortOrder: 9,
+    },
+    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 10 },
     {
       keyName: "activity",
       name: "Activity Log",
       nameBn: "অ্যাক্টিভিটি লগ",
       groupName: "core",
-      sortOrder: 9,
+      sortOrder: 11,
     },
     {
       keyName: "website",
       name: "Website Settings",
       nameBn: "ওয়েবসাইট সেটিংস",
       groupName: "core",
-      sortOrder: 10,
+      sortOrder: 12,
     },
   ];
   const moduleIds: Record<string, number> = {};
@@ -679,11 +693,23 @@ async function main() {
         nameBn: "ফি গ্রহণ",
         sortOrder: 5,
       },
+    ],
+    // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
+    // gate kiosk and its device management) lives in its own module instead
+    // of being a students sub-feature, so it gets its own top-level sidebar
+    // entry.
+    attendance: [
       {
         keyName: "attendance_mark",
         name: "Attendance",
         nameBn: "উপস্থিতি নিন",
-        sortOrder: 7,
+        sortOrder: 1,
+      },
+      {
+        keyName: "kiosk_devices",
+        name: "Kiosk Devices",
+        nameBn: "কিওস্ক ডিভাইস",
+        sortOrder: 2,
       },
     ],
     communication: [
@@ -696,6 +722,13 @@ async function main() {
         nameBn: "অটো নোটিফিকেশন",
         sortOrder: 4,
       },
+      { keyName: "balance", name: "Balance", nameBn: "ব্যালেন্স", sortOrder: 5 },
+    ],
+    library: [
+      { keyName: "catalog", name: "Book Catalog", nameBn: "বই তালিকা", sortOrder: 1 },
+      { keyName: "circulation", name: "Issue & Return", nameBn: "ইস্যু ও ফেরত", sortOrder: 2 },
+      { keyName: "overdue", name: "Overdue & Fines", nameBn: "মেয়াদোত্তীর্ণ ও জরিমানা", sortOrder: 3 },
+      { keyName: "settings", name: "Library Settings", nameBn: "লাইব্রেরি সেটিংস", sortOrder: 4 },
     ],
   };
 
@@ -739,6 +772,7 @@ async function main() {
 
     { keyName: "attendance.read", name: "View Attendance" },
     { keyName: "attendance.mark", name: "Mark Attendance" },
+    { keyName: "kiosk.manage", name: "Manage Kiosk Devices" },
 
     { keyName: "routine.read", name: "View Routine" },
     { keyName: "routine.manage", name: "Manage Routine" },
@@ -776,6 +810,10 @@ async function main() {
     { keyName: "notifications.read", name: "View Notification History" },
     { keyName: "notifications.send", name: "Send SMS/Email Notifications" },
     { keyName: "notifications.settings", name: "Manage Auto Notification Settings" },
+
+    { keyName: "library.read", name: "View Library" },
+    { keyName: "library.manage", name: "Manage Library Catalog & Settings" },
+    { keyName: "library.issue", name: "Issue/Return Books" },
   ];
   const permissionIds: number[] = [];
   for (const p of permissions) {
@@ -823,11 +861,12 @@ async function main() {
       name: string;
       amount: number;
       frequency: "ONE_TIME" | "MONTHLY" | "YEARLY";
+      feeType: "ADMISSION" | "TUITION" | "EXAM" | "BOARDING";
     }[] = [
-      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME" },
-      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY" },
-      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY" },
-      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY" },
+      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME", feeType: "ADMISSION" },
+      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY", feeType: "TUITION" },
+      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "EXAM" },
+      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY", feeType: "BOARDING" },
     ];
 
     for (const f of feeSpecs) {
@@ -836,7 +875,14 @@ async function main() {
         () => prisma.defaultFeeStructure.findUnique({ where: { keyName: f.keyName } }),
         () =>
           prisma.defaultFeeStructure.create({
-            data: { keyName: f.keyName, classId, name: f.name, amount: f.amount, frequency: f.frequency },
+            data: {
+              keyName: f.keyName,
+              classId,
+              name: f.name,
+              amount: f.amount,
+              frequency: f.frequency,
+              feeType: f.feeType,
+            },
           }),
       );
     }

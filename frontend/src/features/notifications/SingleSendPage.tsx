@@ -9,16 +9,17 @@ import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
 import NotificationComposeForm from "./NotificationComposeForm";
 
-type AudienceType = "student" | "teacher";
+type AudienceType = "student" | "teacher" | "custom";
 type SelectedRecipient = { label: string; to: string } | null;
 
 const SingleSendPage = () => {
-  const [audienceType, setAudienceType] = useState<AudienceType>("student");
+  const [audienceType, setAudienceType] = useState<AudienceType>("custom");
   const [students, setStudents] = useState<AudienceStudent[]>([]);
   const [teachers, setTeachers] = useState<AudienceTeacher[]>([]);
   const [loadingAudience, setLoadingAudience] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SelectedRecipient>(null);
+  const [customTo, setCustomTo] = useState("");
 
   const [channel, setChannel] = useState<NotificationChannel>("SMS");
   const [subject, setSubject] = useState("");
@@ -28,6 +29,8 @@ const SingleSendPage = () => {
   useEffect(() => {
     setSelected(null);
     setSearch("");
+    setCustomTo("");
+    if (audienceType === "custom") return;
     (async () => {
       try {
         setLoadingAudience(true);
@@ -45,6 +48,14 @@ const SingleSendPage = () => {
       }
     })();
   }, [audienceType]);
+
+  // Custom-number mode has no "pick from list" step - selection follows
+  // the typed value directly instead of a button click.
+  useEffect(() => {
+    if (audienceType !== "custom") return;
+    const trimmed = customTo.trim();
+    setSelected(trimmed ? { label: trimmed, to: trimmed } : null);
+  }, [audienceType, customTo]);
 
   const filteredStudents = useMemo(
     () =>
@@ -125,6 +136,15 @@ const SingleSendPage = () => {
             <div className="mb-2 flex gap-2">
               <button
                 type="button"
+                onClick={() => setAudienceType("custom")}
+                className={`h-8 rounded-md px-3 text-xs font-medium transition ${
+                  audienceType === "custom" ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
+                }`}
+              >
+                {channel === "SMS" ? "নম্বর লিখুন" : "ইমেইল লিখুন"}
+              </button>
+              <button
+                type="button"
                 onClick={() => setAudienceType("student")}
                 className={`h-8 rounded-md px-3 text-xs font-medium transition ${
                   audienceType === "student" ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
@@ -143,7 +163,15 @@ const SingleSendPage = () => {
               </button>
             </div>
 
-            {selected ? (
+            {audienceType === "custom" ? (
+              <input
+                type="text"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                placeholder={channel === "SMS" ? "যেমন: 01712345678" : "যেমন: example@mail.com"}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            ) : selected ? (
               <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-900 dark:bg-blue-950/30">
                 <span className="text-blue-800 dark:text-blue-300">{selected.label} — {selected.to}</span>
                 <button type="button" onClick={() => setSelected(null)} className="text-xs text-blue-600 underline dark:text-blue-400">

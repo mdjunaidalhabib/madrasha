@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Receipt, Trash2, Users } from "lucide-react";
 import { cachedGet } from "../../services/api";
-import { feeStructureApi, invoiceApi, type FeeFrequency } from "../../services/phase2Api";
+import { feeStructureApi, invoiceApi, type FeeFrequency, type FeeType } from "../../services/phase2Api";
 import { type Session } from "../../services/sessionApi";
 import { useToastStore } from "../../store/toastStore";
 import Modal from "../../components/ui/Modal";
@@ -15,6 +15,7 @@ type FeeStructureRow = {
   name: string;
   amount: string | number;
   frequency: FeeFrequency;
+  feeType?: FeeType;
   academicYear: string;
   sessionId?: number | null;
   isActive: boolean;
@@ -28,12 +29,26 @@ const FREQUENCY_LABELS: Record<FeeFrequency, string> = {
   YEARLY: "বাৎসরিক",
 };
 
+const FEE_TYPE_LABELS: Record<FeeType, string> = {
+  ADMISSION: "ভর্তি ফি",
+  TUITION: "মাসিক বেতন",
+  EXAM: "পরীক্ষার ফি",
+  BOARDING: "বোর্ডিং ফি",
+  OTHER: "অন্যান্য",
+};
+
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
   return Array.isArray(data) ? data : [];
 };
 
-const emptyStructureForm = { name: "", amount: "", frequency: "MONTHLY" as FeeFrequency, session_id: "" };
+const emptyStructureForm = {
+  name: "",
+  amount: "",
+  frequency: "MONTHLY" as FeeFrequency,
+  fee_type: "OTHER" as FeeType,
+  session_id: "",
+};
 const emptyGenerateForm = { due_date: "", month: "" };
 
 const FeeStructurePage = () => {
@@ -135,6 +150,7 @@ const FeeStructurePage = () => {
         name: structureForm.name.trim(),
         amount: Number(structureForm.amount),
         frequency: structureForm.frequency,
+        fee_type: structureForm.fee_type,
         session_id: Number(structureForm.session_id),
       });
       useToastStore.getState().show("ফি কাঠামো তৈরি হয়েছে", "success");
@@ -154,6 +170,7 @@ const FeeStructurePage = () => {
       name: structure.name,
       amount: String(structure.amount),
       frequency: structure.frequency,
+      fee_type: structure.feeType || "OTHER",
       session_id: structure.sessionId ? String(structure.sessionId) : "",
     });
   };
@@ -170,6 +187,7 @@ const FeeStructurePage = () => {
         name: editForm.name.trim(),
         amount: Number(editForm.amount),
         frequency: editForm.frequency,
+        fee_type: editForm.fee_type,
         session_id: Number(editForm.session_id),
       });
       useToastStore.getState().show("ফি কাঠামো আপডেট হয়েছে", "success");
@@ -401,6 +419,17 @@ const FeeStructurePage = () => {
               ))}
             </select>
             <select
+              value={structureForm.fee_type}
+              onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
+            >
+              {(Object.keys(FEE_TYPE_LABELS) as FeeType[]).map((t) => (
+                <option key={t} value={t}>
+                  {FEE_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+            <select
               value={structureForm.session_id}
               onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
@@ -454,6 +483,11 @@ const FeeStructurePage = () => {
                                   {row.name} <span className="font-normal text-gray-500 dark:text-slate-400">৳{row.amount}</span>
                                 </div>
                                 <div className="mt-1 flex flex-wrap gap-1">
+                                  {row.feeType && row.feeType !== "OTHER" && (
+                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
+                                      {FEE_TYPE_LABELS[row.feeType]}
+                                    </span>
+                                  )}
                                   <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                                     {FREQUENCY_LABELS[row.frequency]}
                                   </span>
@@ -541,6 +575,20 @@ const FeeStructurePage = () => {
               {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
                 <option key={f} value={f}>
                   {FREQUENCY_LABELS[f]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফি ধরণ</label>
+            <select
+              value={editForm.fee_type}
+              onChange={(e) => setEditForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {(Object.keys(FEE_TYPE_LABELS) as FeeType[]).map((t) => (
+                <option key={t} value={t}>
+                  {FEE_TYPE_LABELS[t]}
                 </option>
               ))}
             </select>

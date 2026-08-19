@@ -278,10 +278,12 @@ export class StudentService {
     // A PENDING admission isn't a real enrolled student yet - guardian
     // provisioning happens in approveAdmission() once a Muhtamim approves it.
 
-    // Bill the student for the class's default fees right away instead of
+    // Bill the student for just the admission fee right away instead of
     // waiting for Muhtamim approval, so the office (or the applicant, on the
-    // public site) can see/pay the admission fee while the application sits
-    // PENDING. A billing failure must not fail the admission itself.
+    // public site) can see/pay it while the application sits PENDING. Every
+    // other fee (tuition, exam, boarding...) only gets billed once approved
+    // (see approveAdmission) - the applicant isn't a real enrolled student
+    // yet. A billing failure must not fail the admission itself.
     let invoices: AdmissionResult["invoices"] = [];
     try {
       await feeService.autoGenerateInvoicesForStudent(
@@ -290,6 +292,7 @@ export class StudentService {
         classId,
         session.id,
         body.admission_date ? new Date(body.admission_date) : new Date(),
+        ["ADMISSION"],
       );
       const billed = await feeService.listInvoices(madrasaId, { student_id: String(result.studentId) });
       invoices = billed.map((inv: any) => ({
@@ -503,6 +506,7 @@ export class StudentService {
           prepared[row.row - 1].classId,
           prepared[row.row - 1].sessionId,
           source.admission_date ? new Date(source.admission_date) : new Date(),
+          ["ADMISSION"],
         );
       } catch (err) {
         logger.error("AUTO-GENERATE INVOICES ON BULK ADMISSION ERROR:", err);
@@ -904,7 +908,11 @@ export class StudentService {
 
   /** Approves a pending admission. Roll/registration number were already
    * assigned at submission time by the existing admission flow, so approval
-   * only flips the status and stamps who reviewed it. */
+   * only flips the status and stamps who reviewed it. Deliberately does NOT
+   * require the admission fee to be paid/waived first - a Muhtamim approves
+   * on the merits of the application, and হিসাব বিভাগ collects the fee
+   * afterward (through the "ভর্তি ফি পেন্ডিং" page, unaffected by admission
+   * approval status - see fee.repository.ts's findPendingInvoices). */
   async approveAdmission(id: number, madrasaId: number | undefined, reviewerId: number | undefined) {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -912,15 +920,6 @@ export class StudentService {
     if (!existing) throw new StudentNotFoundError();
     if (existing.admissionStatus === "APPROVED") {
       throw new BadRequestError("This admission is already approved");
-    }
-
-    // The class's default fees are already billed at submission time (see
-    // admitStudent) - a Muhtamim must pay them off or waive them before the
-    // admission can be approved. Server-side enforcement, not just a
-    // disabled frontend button.
-    const statement = await feeService.getStudentStatement(madrasaId, id);
-    if (statement.summary.totalDue > 0.01) {
-      throw new BadRequestError("এই ছাত্রের ভর্তি ফি এখনও বাকি — আগে ফি পরিশোধ বা মাফ করুন");
     }
 
     const result = await this.repository.updateManyForTenant(id, madrasaId, {
@@ -937,6 +936,24 @@ export class StudentService {
       existing.guardianPhone,
       existing.fatherName || existing.motherName,
     );
+
+    // Now that the student is a real enrolled student (not just an
+    // applicant), bill everything besides the admission fee - monthly
+    // tuition, exam fee, boarding, etc. The admission-fee invoice already
+    // exists from submission time, so the unique (student, feeStructure,
+    // month) constraint silently skips re-billing it. Non-fatal: approval
+    // must not fail just because billing hiccuped.
+    try {
+      await feeService.autoGenerateInvoicesForStudent(
+        madrasaId,
+        id,
+        existing.classId,
+        existing.sessionId,
+        existing.admissionDate ?? new Date(),
+      );
+    } catch (err) {
+      logger.error("AUTO-GENERATE INVOICES ON ADMISSION APPROVAL ERROR:", err);
+    }
 
     await notificationService.triggerEvent(madrasaId, "ADMISSION", existing.guardianPhone, {
       name: existing.nameBn,

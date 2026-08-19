@@ -9,6 +9,7 @@ import {
   deleteFeeStructure,
   generateInvoices,
   getInvoices,
+  getPendingInvoices,
   backfillInvoices,
   payInvoice,
   waiveInvoice,
@@ -39,6 +40,9 @@ router.post("/invoices/generate", rbacMiddleware("fee.manage"), generateInvoices
 // admitted before auto-billing-at-admission existed.
 router.post("/invoices/backfill", rbacMiddleware("fee.manage"), backfillInvoices);
 router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
+// Registered as its own literal path (not GET /invoices/:id) - backs the
+// dedicated "ভর্তি ফি পেন্ডিং" sidebar page.
+router.get("/invoices/pending", rbacMiddleware("fee.read"), getPendingInvoices);
 router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
 // Deliberately named "invoice.waive", NOT "fee.waive" - isAccountsPermission()
 // in rbac-policy.ts grants every "fee.*" permission wholesale to ACCOUNTANT,

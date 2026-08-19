@@ -98,6 +98,14 @@ import {
   getPlatformCloudinaryConfig,
   savePlatformCloudinaryConfig,
   deletePlatformCloudinaryConfig,
+  getPlatformSmsConfig,
+  savePlatformSmsConfig,
+  deletePlatformSmsConfig,
+  checkPlatformSmsBalance,
+  getPlatformEmailConfig,
+  savePlatformEmailConfig,
+  deletePlatformEmailConfig,
+  checkPlatformEmailConnection,
 } from "./platform-settings.controller";
 
 const router = Router();
@@ -248,5 +256,15 @@ router.get("/document-templates/:id", superAdminMiddleware, getSystemTemplate);
 router.get("/platform-settings/cloudinary", superAdminMiddleware, getPlatformCloudinaryConfig);
 router.put("/platform-settings/cloudinary", superAdminMiddleware, savePlatformCloudinaryConfig);
 router.delete("/platform-settings/cloudinary", superAdminMiddleware, deletePlatformCloudinaryConfig);
+
+router.get("/platform-settings/sms", superAdminMiddleware, getPlatformSmsConfig);
+router.put("/platform-settings/sms", superAdminMiddleware, savePlatformSmsConfig);
+router.delete("/platform-settings/sms", superAdminMiddleware, deletePlatformSmsConfig);
+router.get("/platform-settings/sms/balance", superAdminMiddleware, checkPlatformSmsBalance);
+
+router.get("/platform-settings/email", superAdminMiddleware, getPlatformEmailConfig);
+router.put("/platform-settings/email", superAdminMiddleware, savePlatformEmailConfig);
+router.delete("/platform-settings/email", superAdminMiddleware, deletePlatformEmailConfig);
+router.get("/platform-settings/email/test", superAdminMiddleware, checkPlatformEmailConnection);
 
 export default router;

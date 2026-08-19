@@ -7,6 +7,7 @@ declare global {
       user?: AuthenticatedUser;
       tenant?: TenantContext;
       guardian?: AuthenticatedGuardian;
+      kioskDevice?: { id: number; name: string };
     }
   }
 }

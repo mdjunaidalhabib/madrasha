@@ -20,7 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   PARTIALLY_PAID: "আংশিক পরিশোধিত",
   PAID: "পরিশোধিত",
   OVERDUE: "মেয়াদোত্তীর্ণ",
-  WAIVED: "মাফকৃত",
+  WAIVED: "মওকুফকৃত",
 };
 
 type Props = {
@@ -76,7 +76,7 @@ export default function InvoicePrintModal({ invoice, studentLabel, onClose }: Pr
             </div>
             {waived > 0 && (
               <div className="flex justify-between gap-4">
-                <span className="text-slate-500">মাফকৃত</span>
+                <span className="text-slate-500">মওকুফকৃত</span>
                 <span className="font-semibold text-purple-700">{money(waived)}</span>
               </div>
             )}

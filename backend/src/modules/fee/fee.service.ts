@@ -9,6 +9,7 @@ import {
   CreatePaymentMethodSettingRequestDto,
   GenerateInvoicesRequestDto,
   InvoiceQueryDto,
+  PendingInvoicesQueryDto,
   RecordPaymentRequestDto,
   UpdateFeeStructureRequestDto,
   UpdatePaymentMethodSettingRequestDto,
@@ -16,6 +17,7 @@ import {
 } from "./fee.dto";
 import {
   FEE_FREQUENCIES,
+  FEE_TYPES,
   PAYMENT_METHODS,
   PAYMENT_METHOD_TYPES,
   FEE_ACCOUNT_CATEGORY,
@@ -164,6 +166,9 @@ export class FeeService {
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
       throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
     }
+    if (dto.fee_type !== undefined && !isEmpty(dto.fee_type) && !FEE_TYPES.includes(dto.fee_type as any)) {
+      throw new BadRequestError(`fee_type must be one of: ${FEE_TYPES.join(", ")}`);
+    }
     const amount = toAmount(dto.amount, "amount");
     const session = await this.resolveSession(madrasaId, dto);
 
@@ -173,6 +178,7 @@ export class FeeService {
         name: String(dto.name).trim(),
         amount,
         frequency: dto.frequency,
+        feeType: isEmpty(dto.fee_type) ? "OTHER" : dto.fee_type,
         sessionId: session.id,
         academicYear: session.name,
       });
@@ -192,6 +198,12 @@ export class FeeService {
         throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
       }
       data.frequency = dto.frequency;
+    }
+    if (dto.fee_type !== undefined) {
+      if (!FEE_TYPES.includes(dto.fee_type as any)) {
+        throw new BadRequestError(`fee_type must be one of: ${FEE_TYPES.join(", ")}`);
+      }
+      data.feeType = dto.fee_type;
     }
     if (dto.session_id !== undefined || dto.academic_year !== undefined) {
       const session = await this.resolveSession(madrasaId, dto);
@@ -289,11 +301,17 @@ export class FeeService {
     classId: number,
     sessionId: number,
     admissionDate: Date,
+    feeTypes?: string[],
   ) {
     const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
     if (!session) return { created: 0 };
 
-    const structures = await this.repository.findActiveStructuresForBilling(madrasaId, classId, sessionId);
+    const structures = await this.repository.findActiveStructuresForBilling(
+      madrasaId,
+      classId,
+      sessionId,
+      feeTypes,
+    );
     if (structures.length === 0) return { created: 0 };
 
     const rows = buildAutoInvoiceRows(madrasaId, studentId, structures, session, admissionDate);
@@ -348,6 +366,20 @@ export class FeeService {
       return await this.repository.findInvoices(madrasaId, where);
     } catch (err) {
       return friendlyFailure("listInvoices error:", err, "Failed to load invoices");
+    }
+  }
+
+  /** Dedicated "ভর্তি ফি পেন্ডিং" page - every student with an unpaid/
+   * partially paid ADMISSION-fee invoice (see findPendingInvoices for why
+   * it's scoped to just that fee type). */
+  async listPendingInvoices(madrasaId: number, query: PendingInvoicesQueryDto) {
+    const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 200);
+    const offset = Math.max(Number(query.offset) || 0, 0);
+
+    try {
+      return await this.repository.findPendingInvoices(madrasaId, limit, offset);
+    } catch (err) {
+      return friendlyFailure("listPendingInvoices error:", err, "Failed to load pending invoices");
     }
   }
 
@@ -504,12 +536,24 @@ export class FeeService {
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
         const alreadyWaived = Number(invoice.waivedAmount);
-        const remaining = invoiceAmount - alreadyPaid - alreadyWaived;
-        if (waiveAmount > remaining + 0.01) {
-          throw new BadRequestError(`Waiver exceeds the remaining due amount (${remaining})`);
+
+        let newWaivedAmount: number;
+        if (dto.mode === "set") {
+          // Editing an already-recorded waiver - `amount` is the new total,
+          // not an increment on top of it.
+          const maxWaivable = invoiceAmount - alreadyPaid;
+          if (waiveAmount > maxWaivable + 0.01) {
+            throw new BadRequestError(`মওকুফের পরিমাণ চালানের বাকি টাকার (${maxWaivable}) চেয়ে বেশি হতে পারবে না`);
+          }
+          newWaivedAmount = waiveAmount;
+        } else {
+          const remaining = invoiceAmount - alreadyPaid - alreadyWaived;
+          if (waiveAmount > remaining + 0.01) {
+            throw new BadRequestError(`Waiver exceeds the remaining due amount (${remaining})`);
+          }
+          newWaivedAmount = alreadyWaived + waiveAmount;
         }
 
-        const newWaivedAmount = alreadyWaived + waiveAmount;
         const newStatus = deriveStatus(invoiceAmount, alreadyPaid, newWaivedAmount);
 
         await this.repository.updateInvoiceOnTx(tx, invoiceId, {

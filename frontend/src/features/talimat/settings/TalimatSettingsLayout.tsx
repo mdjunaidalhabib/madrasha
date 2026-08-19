@@ -32,7 +32,7 @@ export default function TalimatSettingsLayout() {
   const adminBase = getTenantAdminBase(madrasaSlug);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="max-w-6xl space-y-2">
       <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
         <Settings2 size={16} />
         সেটিং

@@ -8,6 +8,17 @@ enum FeeFrequency {
   YEARLY
 }
 
+/// Categorizes what a FeeStructure is for. ADMISSION is what admitStudent()
+/// bills immediately at submission time (see FeeService.autoGenerateInvoicesForStudent) -
+/// every other type only gets billed once a Muhtamim approves the admission.
+enum FeeType {
+  ADMISSION
+  TUITION
+  EXAM
+  BOARDING
+  OTHER
+}
+
 enum InvoiceStatus {
   UNPAID
   PARTIALLY_PAID
@@ -25,6 +36,7 @@ model FeeStructure {
   name         String       @db.VarChar(150)
   amount       Decimal      @db.Decimal(10, 2)
   frequency    FeeFrequency
+  feeType      FeeType      @default(OTHER) @map("fee_type")
   /// Mirrored display string derived from `sessionRef.name` - see the same
   /// note on Student.academicYear.
   academicYear String       @map("academic_year") @db.VarChar(10)

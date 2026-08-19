@@ -45,6 +45,9 @@ import sessionRoutes from "../modules/session/session.routes";
 import feeRoutes from "../modules/fee/fee.routes";
 import payrollRoutes from "../modules/payroll/payroll.routes";
 
+// 📚 Library Management
+import libraryRoutes from "../modules/library/library.routes";
+
 // 🔐 Phase 3: Role & Permission Enhancement
 import roleRoutes from "../modules/roles/role.routes";
 
@@ -152,6 +155,11 @@ router.use("/promotion", promotionRoutes);
 ========================= */
 router.use("/", feeRoutes);
 router.use("/payroll", payrollRoutes);
+
+/* =========================
+   LIBRARY MANAGEMENT
+========================= */
+router.use("/", libraryRoutes);
 
 /* =========================
    PHASE 3: ROLE & PERMISSION

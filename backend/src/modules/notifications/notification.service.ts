@@ -2,6 +2,7 @@ import { ApiError, BadRequestError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { emailService } from "../../shared/notifications/email.service";
 import { smsService } from "../../shared/notifications/sms.service";
+import { platformSettingsService } from "../super-admin/platform-settings.service";
 import { studentRepository } from "../students/student.repository";
 import { teacherRepository } from "../teacher/teacher.repository";
 import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
@@ -55,6 +56,13 @@ export class NotificationService {
       throw new BadRequestError("subject is required for EMAIL");
     }
 
+    // Resolved once per request (not per recipient) - the platform gateway
+    // config rarely changes and this avoids a DB round trip per recipient
+    // on a bulk send.
+    const smsConfig = dto.channel === "SMS" ? await platformSettingsService.resolveSmsConfig() : null;
+    const emailConfig =
+      dto.channel === "EMAIL" ? await platformSettingsService.resolveEmailConfig() : null;
+
     const results = [];
     for (const raw of dto.recipients) {
       const recipient = typeof raw === "string" ? raw : raw.to;
@@ -74,13 +82,16 @@ export class NotificationService {
 
         const outcome =
           dto.channel === "EMAIL"
-            ? await emailService.send({
-                to: recipient,
-                subject: dto.subject!,
-                html: message,
-                text: message,
-              })
-            : await smsService.send({ to: recipient, message });
+            ? await emailService.send(
+                {
+                  to: recipient,
+                  subject: dto.subject!,
+                  html: message,
+                  text: message,
+                },
+                emailConfig,
+              )
+            : await smsService.send({ to: recipient, message }, smsConfig);
 
         if (outcome.success) {
           await this.repository.markSent(log.id, outcome.provider);
@@ -190,6 +201,20 @@ export class NotificationService {
         existing?.template ||
         DEFAULT_NOTIFICATION_TEMPLATES[eventKey as NotificationEventKey],
     });
+  }
+
+  /* ================= BALANCE / STATUS (platform gateway, Super Admin controlled) ================= */
+
+  /** SMS returns the actual account balance from the gateway; EMAIL has no
+   * balance concept so this reports whether the SMTP connection works.
+   * Both read the platform-wide config only Super Admin can set. */
+  async checkBalance(channel: "SMS" | "EMAIL") {
+    if (channel === "EMAIL") {
+      const result = await platformSettingsService.checkEmailConnection();
+      return { channel, ...result };
+    }
+    const result = await platformSettingsService.checkSmsBalance();
+    return { channel, ...result };
   }
 
   /* ================= AUTO-TRIGGER (called from other modules) ================= */

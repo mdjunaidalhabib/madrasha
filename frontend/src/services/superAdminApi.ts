@@ -195,6 +195,107 @@ export async function deletePlatformCloudinaryConfig() {
 }
 
 /* =========================
+   PLATFORM SMS GATEWAY (Super Admin controlled - shared by every madrasa)
+========================= */
+
+export type PlatformSmsConfig = {
+  configured: boolean;
+  provider?: string | null;
+  api_url?: string | null;
+  sender_id?: string | null;
+  http_method?: string | null;
+  param_api_key?: string | null;
+  param_sender_id?: string | null;
+  param_number?: string | null;
+  param_message?: string | null;
+  balance_url?: string | null;
+  balance_http_method?: string | null;
+  balance_param_api_key?: string | null;
+  balance_response_path?: string | null;
+};
+
+export async function getPlatformSmsConfig() {
+  const res = await cachedGet("/super/platform-settings/sms");
+  return res.data.data as PlatformSmsConfig;
+}
+
+export async function savePlatformSmsConfig(payload: {
+  provider?: string;
+  api_url: string;
+  api_key: string;
+  sender_id?: string;
+  http_method?: string;
+  param_api_key?: string;
+  param_sender_id?: string;
+  param_number?: string;
+  param_message?: string;
+  balance_url?: string;
+  balance_http_method?: string;
+  balance_param_api_key?: string;
+  balance_response_path?: string;
+}) {
+  const res = await api.put("/super/platform-settings/sms", payload);
+  return res.data;
+}
+
+export async function deletePlatformSmsConfig() {
+  const res = await api.delete("/super/platform-settings/sms");
+  return res.data;
+}
+
+export async function checkPlatformSmsBalance() {
+  const res = await api.get("/super/platform-settings/sms/balance");
+  return res.data.data as {
+    success: boolean;
+    balance?: number | string;
+    raw?: string;
+    errorMessage?: string;
+  };
+}
+
+/* =========================
+   PLATFORM EMAIL / SMTP (Super Admin controlled - shared by every madrasa)
+========================= */
+
+export type PlatformEmailConfig = {
+  configured: boolean;
+  host?: string | null;
+  port?: number | null;
+  secure?: boolean | null;
+  user?: string | null;
+  from_name?: string | null;
+  from_email?: string | null;
+};
+
+export async function getPlatformEmailConfig() {
+  const res = await cachedGet("/super/platform-settings/email");
+  return res.data.data as PlatformEmailConfig;
+}
+
+export async function savePlatformEmailConfig(payload: {
+  host: string;
+  port?: number;
+  secure?: boolean;
+  user: string;
+  pass: string;
+  from_name?: string;
+  from_email: string;
+}) {
+  const res = await api.put("/super/platform-settings/email", payload);
+  return res.data;
+}
+
+export async function deletePlatformEmailConfig() {
+  const res = await api.delete("/super/platform-settings/email");
+  return res.data;
+}
+
+export async function checkPlatformEmailConnection() {
+  const res = await api.get("/super/platform-settings/email/test");
+  return res.data.data as { success: boolean; errorMessage?: string };
+}
+
+/* =========================
    TRASH MADRASAS
 ========================= */
 

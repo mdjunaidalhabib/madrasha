@@ -77,6 +77,20 @@ export const notificationApi = {
 
   updateSetting: (eventKey: NotificationEventKey, payload: { isEnabled?: boolean; template?: string }) =>
     api.put(`/notifications/settings/${eventKey}`, payload),
+
+  /** SMS returns a numeric/raw balance from the gateway; EMAIL has no
+   * balance concept so `success` reports whether the SMTP connection
+   * works. Both read the platform-wide gateway Super Admin configured. */
+  checkBalance: (channel: NotificationChannel) =>
+    api.get<{
+      data: {
+        channel: NotificationChannel;
+        success: boolean;
+        balance?: number | string;
+        raw?: string;
+        errorMessage?: string;
+      };
+    }>("/notifications/balance", { params: { channel } }),
 };
 
 /* ================= IMAGE / FILE STORAGE (Cloudinary) ================= */

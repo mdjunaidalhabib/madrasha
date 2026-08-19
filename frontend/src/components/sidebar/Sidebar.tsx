@@ -22,6 +22,8 @@ import {
   UserCog,
   LogOut,
   MessageSquare,
+  Library,
+  CalendarCheck,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -31,6 +33,7 @@ const ICONS: Record<string, any> = {
   ihtemam: Users,
   admission: Folder,
   students: Users,
+  attendance: CalendarCheck,
   accounts: Wallet,
   talimat: BookOpen,
   communication: MessageSquare,
@@ -41,6 +44,7 @@ const ICONS: Record<string, any> = {
   website_settings: Settings,
   settings: Settings,
   activity: ClipboardList,
+  library: Library,
 };
 
 const MODULE_PATHS: Record<string, string> = {
@@ -55,6 +59,7 @@ const FEATURE_PATHS: Record<string, string> = {
   student_report: "student_report",
   exam_report: "exam_report",
   teacher_report: "teacher_report",
+  pending_fee: "pending-fee",
 };
 // Some sidebar entries (moved here from plain action buttons on the ছাত্র
 // তালিকা page) live at routes that don't match their menu's own module path
@@ -67,11 +72,13 @@ const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   routine: "routine",
   promotion: "students/promotion",
   attendance_mark: "attendance/mark",
+  kiosk_devices: "attendance/kiosk-devices",
   payroll: "payroll",
   single_send: "communication/single-send",
   bulk_send: "communication/bulk-send",
   history: "communication/history",
   auto_settings: "communication/auto-settings",
+  balance: "communication/balance",
 };
 function modulePath(key: string) {
   return MODULE_PATHS[key] || key;

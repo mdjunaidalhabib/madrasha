@@ -6,6 +6,7 @@ import api from "./api";
  */
 
 export type FeeFrequency = "ONE_TIME" | "MONTHLY" | "YEARLY";
+export type FeeType = "ADMISSION" | "TUITION" | "EXAM" | "BOARDING" | "OTHER";
 export type InvoiceStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "WAIVED";
 export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "ONLINE";
 
@@ -17,6 +18,7 @@ export const feeStructureApi = {
     name: string;
     amount: number;
     frequency: FeeFrequency;
+    fee_type?: FeeType;
     session_id: number;
   }) => api.post("/fee-structures", payload),
   update: (id: number, payload: Record<string, unknown>) =>
@@ -36,6 +38,9 @@ export const invoiceApi = {
   list: (params: { student_id?: number; status?: InvoiceStatus; month?: string }) =>
     api.get("/invoices", { params }),
 
+  pending: (params?: { limit?: number; offset?: number }) =>
+    api.get("/invoices/pending", { params }),
+
   backfill: (payload?: { class_id?: number; session_id?: number }) =>
     api.post("/invoices/backfill", payload || {}),
 
@@ -51,7 +56,7 @@ export const invoiceApi = {
     },
   ) => api.post(`/invoices/${invoiceId}/pay`, payload),
 
-  waive: (invoiceId: number, payload: { amount: number; reason: string }) =>
+  waive: (invoiceId: number, payload: { amount: number; reason: string; mode?: "add" | "set" }) =>
     api.post(`/invoices/${invoiceId}/waive`, payload),
 };
 
@@ -108,4 +113,52 @@ export const payrollApi = {
 
   markPaid: (id: number, payload?: { transaction_ref?: string }) =>
     api.patch(`/payroll/${id}/pay`, payload || {}),
+};
+
+/* ================= LIBRARY MANAGEMENT ================= */
+
+export type LibraryBorrowStatus = "BORROWED" | "RETURNED" | "LOST";
+
+export const libraryCategoryApi = {
+  list: () => api.get("/library/categories"),
+  create: (payload: { name: string }) => api.post("/library/categories", payload),
+  update: (id: number, payload: { name: string }) => api.put(`/library/categories/${id}`, payload),
+  remove: (id: number) => api.delete(`/library/categories/${id}`),
+};
+
+export const libraryBookApi = {
+  list: (params?: { category_id?: number; q?: string; available_only?: boolean }) =>
+    api.get("/library/books", { params }),
+  get: (id: number) => api.get(`/library/books/${id}`),
+  create: (payload: Record<string, unknown>) => api.post("/library/books", payload),
+  update: (id: number, payload: Record<string, unknown>) => api.put(`/library/books/${id}`, payload),
+  remove: (id: number) => api.delete(`/library/books/${id}`),
+};
+
+export const libraryBorrowApi = {
+  list: (params?: {
+    status?: LibraryBorrowStatus;
+    overdue_only?: boolean;
+    unsettled_fine_only?: boolean;
+    student_id?: number;
+    teacher_id?: number;
+    book_id?: number;
+  }) => api.get("/library/borrow-records", { params }),
+  issue: (payload: {
+    book_id: number;
+    student_id?: number;
+    teacher_id?: number;
+    due_date?: string;
+    notes?: string;
+  }) => api.post("/library/borrow-records", payload),
+  return: (id: number, payload?: { notes?: string }) =>
+    api.post(`/library/borrow-records/${id}/return`, payload || {}),
+  markLost: (id: number, payload?: { notes?: string }) =>
+    api.post(`/library/borrow-records/${id}/mark-lost`, payload || {}),
+  settleFine: (id: number) => api.post(`/library/borrow-records/${id}/settle-fine`, {}),
+};
+
+export const librarySettingsApi = {
+  getFinePerDay: () => api.get("/library/settings/fine-per-day"),
+  setFinePerDay: (value: number) => api.post("/library/settings/fine-per-day", { value }),
 };

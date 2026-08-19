@@ -74,14 +74,22 @@ export class FeeRepository {
 
   /** Every active fee structure that applies to a student in this class +
    * session (classId null on the structure means "every class"), used to
-   * auto-bill a single student right at admission/transfer time. */
-  findActiveStructuresForBilling(madrasaId: number, classId: number, sessionId: number) {
+   * auto-bill a single student right at admission/transfer time. Pass
+   * `feeTypes` to bill only specific fee categories (e.g. ["ADMISSION"] at
+   * submission time, before a Muhtamim has approved the admission). */
+  findActiveStructuresForBilling(
+    madrasaId: number,
+    classId: number,
+    sessionId: number,
+    feeTypes?: string[],
+  ) {
     return prisma.feeStructure.findMany({
       where: {
         madrasaId,
         sessionId,
         isActive: true,
         OR: [{ classId }, { classId: null }],
+        ...(feeTypes && feeTypes.length ? { feeType: { in: feeTypes as any } } : {}),
       },
     });
   }
@@ -124,6 +132,35 @@ export class FeeRepository {
         student: { select: { nameBn: true, roll: true } },
         payments: true,
       },
+    });
+  }
+
+  /** Every unpaid/partially-paid ADMISSION-fee invoice across all students,
+   * oldest due date first - backs the dedicated "ভর্তি ফি পেন্ডিং" sidebar
+   * page (separate from ফি গ্রহণ, which stays purely search-by-student).
+   * Deliberately scoped to admission fees only, not every due invoice -
+   * routine monthly tuition/exam/boarding dues are handled through normal
+   * fee collection, not this "needs office follow-up" list. Only APPROVED
+   * students - হিসাব বিভাগ can't collect an admission fee until a Muhtamim
+   * has approved that application (PENDING isn't ready yet, REJECTED never
+   * becomes a student - see StudentService.approveAdmission/rejectAdmission).
+   * Fee collection is decoupled from approval itself (Muhtamim doesn't
+   * collect payment, only optionally waives), so this list is what actually
+   * gates when হিসাব বিভাগ's queue picks a student up. */
+  findPendingInvoices(madrasaId: number, limit: number, offset: number) {
+    return prisma.invoice.findMany({
+      where: {
+        madrasaId,
+        status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+        feeStructure: { feeType: "ADMISSION" },
+        student: { admissionStatus: "APPROVED" },
+      },
+      orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+      include: {
+        student: { select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true } } } },
+      },
+      take: limit,
+      skip: offset,
     });
   }
 

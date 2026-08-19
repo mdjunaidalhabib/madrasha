@@ -36,6 +36,26 @@ export class SidebarRepository {
       where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
     });
   }
+
+  /** Badge count for the হিসাব > ভর্তি ফি পেন্ডিং sidebar item - how many
+   * distinct students still owe their ADMISSION fee (counting students, not
+   * invoices, so one student can't inflate it). Deliberately scoped to
+   * admission fees only, not every due invoice - routine monthly
+   * tuition/exam/boarding dues aren't "needs office follow-up" the way an
+   * unpaid admission fee is. Only APPROVED students - same reasoning as
+   * findPendingInvoices in fee.repository.ts. */
+  countPendingFeeStudents(madrasaId: number) {
+    return prisma.student.count({
+      where: {
+        madrasaId,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        invoices: {
+          some: { status: { in: ["UNPAID", "PARTIALLY_PAID"] }, feeStructure: { feeType: "ADMISSION" } },
+        },
+      },
+    });
+  }
 }
 
 export const sidebarRepository = new SidebarRepository();

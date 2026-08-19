@@ -48,6 +48,27 @@ export const attendanceApi = {
     api.get("/attendance/summary", { params }),
 };
 
+/* ================= ATTENDANCE KIOSK (admin device management) ================= */
+
+export interface KioskDevice {
+  id: number;
+  name: string;
+  isActive: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
+export const kioskDeviceApi = {
+  create: (name: string) => api.post("/attendance/kiosk/devices", { name }),
+  list: () => api.get("/attendance/kiosk/devices"),
+  setActive: (id: number, isActive: boolean) =>
+    api.patch(`/attendance/kiosk/devices/${id}`, { is_active: isActive }),
+  remove: (id: number) => api.delete(`/attendance/kiosk/devices/${id}`),
+};
+
+export const assignStudentCard = (studentId: number, cardUid: string) =>
+  api.patch(`/attendance/kiosk/students/${studentId}/card`, { card_uid: cardUid });
+
 /* ================= CLASS & EXAM ROUTINE ================= */
 
 export const classRoutineApi = {

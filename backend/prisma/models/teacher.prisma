@@ -62,11 +62,12 @@ model Teacher {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa            Madrasa             @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  divisionRef        Division            @relation(fields: [divisionId], references: [id], onDelete: Restrict)
-  teacherAssignments TeacherAssignment[]
-  classRoutines      ClassRoutine[]
-  payrollRecords     PayrollRecord[]
+  madrasa              Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  divisionRef          Division              @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+  teacherAssignments   TeacherAssignment[]
+  classRoutines        ClassRoutine[]
+  payrollRecords       PayrollRecord[]
+  libraryBorrowRecords LibraryBorrowRecord[]
 
   @@unique([madrasaId, email], map: "uniq_teacher_email")
   @@unique([madrasaId, registrationNo], map: "uniq_teacher_registration_no")

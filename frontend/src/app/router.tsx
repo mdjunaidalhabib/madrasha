@@ -35,11 +35,14 @@ const StudentProfilePage = lazy(() => import("../features/students/StudentProfil
 const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
 const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
+const AttendanceKioskPage = lazy(() => import("../features/attendance/AttendanceKioskPage"));
+const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
 const FeeInvoicesPage = lazy(() => import("../features/fee/FeeInvoicesPage"));
+const PendingAdmissionFeePage = lazy(() => import("../features/fee/PendingAdmissionFeePage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const PaymentMethodSettingsPage = lazy(() => import("../features/fee/PaymentMethodSettingsPage"));
 const RolesPermissionsPage = lazy(() => import("../features/roles/RolesPermissionsPage"));
@@ -50,6 +53,12 @@ const NotificationHistoryPage = lazy(() => import("../features/notifications/Not
 const AutoNotificationSettingsPage = lazy(
   () => import("../features/notifications/AutoNotificationSettingsPage"),
 );
+const NotificationBalancePage = lazy(() => import("../features/notifications/BalancePage"));
+
+const LibraryCatalogPage = lazy(() => import("../features/library/LibraryCatalogPage"));
+const LibraryCirculationPage = lazy(() => import("../features/library/LibraryCirculationPage"));
+const LibraryOverdueFinesPage = lazy(() => import("../features/library/LibraryOverdueFinesPage"));
+const LibrarySettingsPage = lazy(() => import("../features/library/LibrarySettingsPage"));
 
 const TeacherAdmissionPage = lazy(() => import("../features/teachers/TeacherPage"));
 const TeacherListPage = lazy(() => import("../features/teachers/TeacherListPage"));
@@ -239,7 +248,11 @@ const madrasaAdminChildren = [
   },
   {
     path: "attendance/mark",
-    element: <ModuleGuard module="students">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>,
+    element: <ModuleGuard module="attendance">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>,
+  },
+  {
+    path: "attendance/kiosk-devices",
+    element: <ModuleGuard module="attendance">{withSuspense(<AttendanceKioskDevicesPage />)}</ModuleGuard>,
   },
   {
     path: "students/promotion",
@@ -271,6 +284,10 @@ const madrasaAdminChildren = [
   {
     path: "accounts/dashboard",
     element: <ModuleGuard module="accounts">{withSuspense(<AccountDashboardPage />)}</ModuleGuard>,
+  },
+  {
+    path: "accounts/pending-fee",
+    element: <ModuleGuard module="accounts">{withSuspense(<PendingAdmissionFeePage />)}</ModuleGuard>,
   },
   {
     path: "accounts/report",
@@ -343,10 +360,31 @@ const madrasaAdminChildren = [
       <ModuleGuard module="communication">{withSuspense(<AutoNotificationSettingsPage />)}</ModuleGuard>
     ),
   },
+  {
+    path: "communication/balance",
+    element: <ModuleGuard module="communication">{withSuspense(<NotificationBalancePage />)}</ModuleGuard>,
+  },
 
   {
     path: "activity",
     element: <ModuleGuard module="activity">{withSuspense(<ActivityPage />)}</ModuleGuard>,
+  },
+
+  {
+    path: "library/catalog",
+    element: <ModuleGuard module="library">{withSuspense(<LibraryCatalogPage />)}</ModuleGuard>,
+  },
+  {
+    path: "library/circulation",
+    element: <ModuleGuard module="library">{withSuspense(<LibraryCirculationPage />)}</ModuleGuard>,
+  },
+  {
+    path: "library/overdue",
+    element: <ModuleGuard module="library">{withSuspense(<LibraryOverdueFinesPage />)}</ModuleGuard>,
+  },
+  {
+    path: "library/settings",
+    element: <ModuleGuard module="library">{withSuspense(<LibrarySettingsPage />)}</ModuleGuard>,
   },
 
   { path: "*", element: withSuspense(<NotFoundPage />) },
@@ -438,6 +476,7 @@ export const router = createBrowserRouter([
   },
 
   { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
+  { path: "/:madrasaSlug/kiosk", element: withSuspense(<AttendanceKioskPage />) },
   { path: "/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
 
   { path: "*", element: withSuspense(<NotFoundPage />) },

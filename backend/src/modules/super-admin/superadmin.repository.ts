@@ -428,7 +428,7 @@ export class SuperAdminRepository {
   findDefaultFeeStructuresOnTx(tx: TransactionClient) {
     return tx.defaultFeeStructure.findMany({
       where: { isActive: true },
-      select: { classId: true, name: true, amount: true, frequency: true },
+      select: { classId: true, name: true, amount: true, frequency: true, feeType: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -436,7 +436,13 @@ export class SuperAdminRepository {
   createDefaultFeeStructuresOnTx(
     tx: TransactionClient,
     madrasaId: number,
-    structures: { classId: number | null; name: string; amount: Prisma.Decimal; frequency: string }[],
+    structures: {
+      classId: number | null;
+      name: string;
+      amount: Prisma.Decimal;
+      frequency: string;
+      feeType: string;
+    }[],
     academicYear: string,
     sessionId: number,
   ) {
@@ -447,6 +453,7 @@ export class SuperAdminRepository {
         name: s.name,
         amount: s.amount,
         frequency: s.frequency as any,
+        feeType: s.feeType as any,
         academicYear,
         sessionId,
       })),

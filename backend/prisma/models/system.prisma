@@ -33,6 +33,59 @@ model PlatformCloudinaryConfig {
   @@map("platform_cloudinary_configs")
 }
 
+/// Platform-wide (not per-tenant) SMS gateway account used to send SMS
+/// notifications for every madrasa - configured from Super Admin Settings,
+/// replacing the old SMS_* env vars. Kept generic (configurable URL/param
+/// names, both for sending and for balance-check) because Bangladeshi SMS
+/// gateways (SSLWireless, Alpha SMS, BulkSMSBD, ...) all expose a simple
+/// HTTP GET/POST but disagree on param names and balance-check shape, and
+/// the actual gateway to use hasn't been decided yet.
+model PlatformSmsConfig {
+  id                  Int      @id @default(autoincrement())
+  /// Free-text label only (e.g. "BulkSMSBD") - not read by the send logic.
+  provider            String?  @db.VarChar(100)
+  apiUrl              String   @map("api_url") @db.VarChar(300)
+  apiKeyEnc           String   @map("api_key_enc") @db.Text
+  senderId            String?  @map("sender_id") @db.VarChar(50)
+  /// "GET" or "POST" - which HTTP method the send endpoint expects.
+  httpMethod          String   @default("GET") @map("http_method") @db.VarChar(10)
+  paramApiKey         String   @default("api_key") @map("param_api_key") @db.VarChar(50)
+  paramSenderId       String   @default("senderid") @map("param_sender_id") @db.VarChar(50)
+  paramNumber         String   @default("number") @map("param_number") @db.VarChar(50)
+  paramMessage        String   @default("message") @map("param_message") @db.VarChar(50)
+  /// Balance-check endpoint - optional; balance check is reported as
+  /// unavailable (not guessed) when this is unset.
+  balanceUrl          String?  @map("balance_url") @db.VarChar(300)
+  balanceHttpMethod   String   @default("GET") @map("balance_http_method") @db.VarChar(10)
+  balanceParamApiKey  String   @default("api_key") @map("balance_param_api_key") @db.VarChar(50)
+  /// Dot-path into the balance endpoint's JSON response to the numeric
+  /// balance field, e.g. "balance" or "data.balance".
+  balanceResponsePath String   @default("balance") @map("balance_response_path") @db.VarChar(100)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_sms_configs")
+}
+
+/// Platform-wide SMTP account used to send Email notifications for every
+/// madrasa - configured from Super Admin Settings, replacing the old
+/// SMTP_* env vars. SMTP has no "balance" concept, so the Settings page
+/// offers a connection test (transporter.verify()) instead.
+model PlatformEmailConfig {
+  id        Int      @id @default(autoincrement())
+  host      String   @db.VarChar(200)
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  user      String   @db.VarChar(200)
+  passEnc   String   @map("pass_enc") @db.Text
+  fromName  String   @default("Madrasa Management") @map("from_name") @db.VarChar(150)
+  fromEmail String   @map("from_email") @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_email_configs")
+}
+
 model Plan {
   id           Int       @id @default(autoincrement())
   name         String    @unique(map: "uniq_plan_name") @db.VarChar(100)
@@ -167,6 +220,7 @@ model DefaultFeeStructure {
   name      String       @db.VarChar(150)
   amount    Decimal      @db.Decimal(10, 2)
   frequency FeeFrequency
+  feeType   FeeType      @default(OTHER) @map("fee_type")
   sortOrder Int          @default(0) @map("sort_order")
   isActive  Boolean      @default(true) @map("is_active")
   createdAt DateTime     @default(now()) @map("created_at")
