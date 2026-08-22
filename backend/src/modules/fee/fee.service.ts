@@ -383,6 +383,19 @@ export class FeeService {
     }
   }
 
+  /** "সব ক্লিয়ার করুন" on the "ভর্তি ফি পেন্ডিং" page - dismisses every row
+   * currently on the queue for every office user. Purely a queue-visibility
+   * flag (see findPendingInvoices/clearPendingInvoices); the invoices stay
+   * exactly as due/collectible as before through ছাত্র ফি গ্রহণ. */
+  async clearPendingInvoices(madrasaId: number) {
+    try {
+      const result = await this.repository.clearPendingInvoices(madrasaId);
+      return { cleared: result.count };
+    } catch (err) {
+      return friendlyFailure("clearPendingInvoices error:", err, "Failed to clear the pending list");
+    }
+  }
+
   /* ================= PAYMENTS ================= */
 
   /** Records a (possibly partial) payment against an invoice, keeps the

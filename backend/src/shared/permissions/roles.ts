@@ -1,9 +1,5 @@
 export const Roles = {
   SUPER_ADMIN: "SUPER_ADMIN",
-  MADRASA_ADMIN: "MADRASA_ADMIN",
-  TEACHER: "TEACHER",
-  STUDENT: "STUDENT",
-  GUARDIAN: "GUARDIAN",
 } as const;
 
 export type RoleKey = keyof typeof Roles | (typeof Roles)[keyof typeof Roles];

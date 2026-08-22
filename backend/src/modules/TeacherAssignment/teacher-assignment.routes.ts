@@ -1,6 +1,7 @@
 import express from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getAssignments,
   getAllAssignments,
@@ -11,7 +12,7 @@ import {
 
 const router = express.Router();
 
-router.use(tenantMiddleware, authMiddleware);
+router.use(tenantMiddleware, authMiddleware, rbacMiddleware("talimat.manage"));
 
 router.get("/", getAssignments);
 router.get("/all", getAllAssignments);

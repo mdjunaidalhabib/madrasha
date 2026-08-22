@@ -22,7 +22,48 @@ type StudentColumnKey =
   | "academicYear"
   | "division"
   | "currentClass"
-  | "status";
+  | "status"
+  | "arabicName"
+  | "nid"
+  | "gender"
+  | "dob"
+  | "age"
+  | "bloodGroup"
+  | "residencyType"
+  | "isOrphan"
+  | "previousInstitution"
+  | "previousResult"
+  | "admissionDate"
+  | "fatherArabicName"
+  | "fatherNid"
+  | "fatherOccupation"
+  | "motherName"
+  | "motherNid"
+  | "motherOccupation"
+  | "guardianPhone2"
+  | "altGuardianName"
+  | "altGuardianRelation"
+  | "altGuardianPhone"
+  | "altGuardianAddress"
+  | "addressDivision"
+  | "district"
+  | "thana"
+  | "village"
+  | "admissionStatus"
+  | "admissionType";
+
+// এই কয়টা কলাম ডিফল্টে দেখানো হয় (আগের আচরণ অপরিবর্তিত রাখতে) — বাকি সব
+// কলাম "কলাম" মেনু থেকে ব্যবহারকারী নিজের প্রয়োজন মতো চালু করে নিতে পারবে।
+const DEFAULT_VISIBLE_STUDENT_COLUMNS: StudentColumnKey[] = [
+  "roll",
+  "registration",
+  "fatherName",
+  "phone",
+  "academicYear",
+  "division",
+  "currentClass",
+  "status",
+];
 
 const STUDENT_COLUMNS: ColumnOption<StudentColumnKey>[] = [
   { key: "roll", label: "রোল নম্বর" },
@@ -33,8 +74,57 @@ const STUDENT_COLUMNS: ColumnOption<StudentColumnKey>[] = [
   { key: "division", label: "বিভাগ" },
   { key: "currentClass", label: "বর্তমান শ্রেণি" },
   { key: "status", label: "স্ট্যাটাস" },
+  { key: "arabicName", label: "আরবি নাম" },
+  { key: "nid", label: "জন্ম সনদ/এনআইডি" },
+  { key: "gender", label: "লিঙ্গ" },
+  { key: "dob", label: "জন্ম তারিখ" },
+  { key: "age", label: "বয়স" },
+  { key: "bloodGroup", label: "রক্তের গ্রুপ" },
+  { key: "residencyType", label: "আবাসনের ধরন" },
+  { key: "isOrphan", label: "এতিম কিনা" },
+  { key: "previousInstitution", label: "পূর্ববর্তী প্রতিষ্ঠান" },
+  { key: "previousResult", label: "পূর্ববর্তী ফলাফল" },
+  { key: "admissionDate", label: "ভর্তির তারিখ" },
+  { key: "fatherArabicName", label: "বাবার আরবি নাম" },
+  { key: "fatherNid", label: "বাবার এনআইডি" },
+  { key: "fatherOccupation", label: "বাবার পেশা" },
+  { key: "motherName", label: "মায়ের নাম" },
+  { key: "motherNid", label: "মায়ের এনআইডি" },
+  { key: "motherOccupation", label: "মায়ের পেশা" },
+  { key: "guardianPhone2", label: "অভিভাবকের ফোন ২" },
+  { key: "altGuardianName", label: "বিকল্প অভিভাবকের নাম" },
+  { key: "altGuardianRelation", label: "সম্পর্ক" },
+  { key: "altGuardianPhone", label: "বিকল্প অভিভাবকের ফোন" },
+  { key: "altGuardianAddress", label: "বিকল্প অভিভাবকের ঠিকানা" },
+  { key: "addressDivision", label: "বিভাগ (ঠিকানা)" },
+  { key: "district", label: "জেলা" },
+  { key: "thana", label: "থানা" },
+  { key: "village", label: "গ্রাম" },
+  { key: "admissionStatus", label: "ভর্তির আবেদনের অবস্থা" },
+  { key: "admissionType", label: "ভর্তির ধরন" },
 ];
 const STUDENT_COLUMN_KEYS = STUDENT_COLUMNS.map((c) => c.key);
+const STUDENT_COLUMN_LABEL_MAP = new Map(STUDENT_COLUMNS.map((c) => [c.key, c.label]));
+
+const genderLabel = (v?: number | string | null) => {
+  const n = Number(v);
+  return n === 1 ? "ছেলে" : n === 2 ? "মেয়ে" : "নেই";
+};
+
+const residencyLabel = (v?: number | string | null) => {
+  const n = Number(v);
+  return n === 1 ? "আবাসিক" : n === 2 ? "অনাবাসিক" : "নেই";
+};
+
+const orphanLabel = (v?: number | string | null) => (Number(v) === 1 ? "হ্যাঁ" : "না");
+
+const admissionStatusLabel = (v?: string | null) =>
+  v === "APPROVED" ? "অনুমোদিত" : v === "REJECTED" ? "বাতিল" : v === "PENDING" ? "পেন্ডিং" : "নেই";
+
+const admissionTypeLabel = (v?: string | null) =>
+  v === "RE_ADMISSION" ? "পুনঃভর্তি" : v === "NEW" ? "নতুন" : "নেই";
+
+const orNone = (v: unknown) => (v === null || v === undefined || v === "" ? "নেই" : String(v));
 
 type Division = {
   division_id: number;
@@ -61,6 +151,34 @@ type Student = {
   class_name?: string;
   class?: string;
   is_active?: number;
+  arabic_name?: string | null;
+  nid?: string | null;
+  gender?: number | string | null;
+  dob?: string | null;
+  age?: number | string | null;
+  blood_group?: string | null;
+  residency_type?: number | string | null;
+  is_orphan?: number | string | null;
+  previous_institution?: string | null;
+  previous_result?: string | null;
+  admission_date?: string | null;
+  father_arabic_name?: string | null;
+  father_nid?: string | null;
+  father_occupation?: string | null;
+  mother_name?: string | null;
+  mother_nid?: string | null;
+  mother_occupation?: string | null;
+  guardian_phone_2?: string | null;
+  alt_guardian_name?: string | null;
+  alt_guardian_relation?: string | null;
+  alt_guardian_phone?: string | null;
+  alt_guardian_address?: string | null;
+  division?: string | null;
+  district?: string | null;
+  thana?: string | null;
+  village?: string | null;
+  admission_status?: string | null;
+  admission_type?: string | null;
 };
 
 const StudentListPage = () => {
@@ -97,10 +215,15 @@ const StudentListPage = () => {
 
   const {
     visible: visibleColumns,
+    order: columnOrder,
     toggle: toggleColumn,
     reset: resetColumns,
-    isVisible: isColumnVisible,
-  } = useColumnVisibility<StudentColumnKey>(`student-list-columns:${madrasaSlug}`, STUDENT_COLUMN_KEYS);
+    move: moveColumn,
+  } = useColumnVisibility<StudentColumnKey>(
+    `student-list-columns:${madrasaSlug}`,
+    STUDENT_COLUMN_KEYS,
+    DEFAULT_VISIBLE_STUDENT_COLUMNS,
+  );
 
   const normalizeArray = (payload: any) => {
     const data =
@@ -202,6 +325,51 @@ const StudentListPage = () => {
     },
     [classes],
   );
+
+  // প্রতিটি টগল-করা কলামের প্লেইন টেক্সট মান বের করার ফাংশন — টেবিলের সেল এবং
+  // এক্সেল/সিএসভি এক্সপোর্ট দুই জায়গাতেই ব্যবহার হয় (status বাদে, যেটা টেবিলে
+  // রঙিন ব্যাজ হিসেবে দেখানো হয়)।
+  const columnValueGetters: Record<StudentColumnKey, (s: Student) => string> = {
+    roll: (s) => orNone(s.roll),
+    registration: (s) => orNone(s.registration_no),
+    fatherName: (s) => orNone(s.father_name),
+    phone: (s) => orNone(s.guardian_phone),
+    academicYear: (s) => orNone(s.academic_year),
+    division: (s) => getDivisionName(s.division_id),
+    currentClass: (s) => getClassName(s.class_id, s.current_class || s.class_name || s.class),
+    status: (s) => (Number(s.is_active) === 0 ? "বহিষ্কৃত" : "সক্রিয়"),
+    arabicName: (s) => orNone(s.arabic_name),
+    nid: (s) => orNone(s.nid),
+    gender: (s) => genderLabel(s.gender),
+    dob: (s) => orNone(s.dob),
+    age: (s) => orNone(s.age),
+    bloodGroup: (s) => orNone(s.blood_group),
+    residencyType: (s) => residencyLabel(s.residency_type),
+    isOrphan: (s) => orphanLabel(s.is_orphan),
+    previousInstitution: (s) => orNone(s.previous_institution),
+    previousResult: (s) => orNone(s.previous_result),
+    admissionDate: (s) => orNone(s.admission_date),
+    fatherArabicName: (s) => orNone(s.father_arabic_name),
+    fatherNid: (s) => orNone(s.father_nid),
+    fatherOccupation: (s) => orNone(s.father_occupation),
+    motherName: (s) => orNone(s.mother_name),
+    motherNid: (s) => orNone(s.mother_nid),
+    motherOccupation: (s) => orNone(s.mother_occupation),
+    guardianPhone2: (s) => orNone(s.guardian_phone_2),
+    altGuardianName: (s) => orNone(s.alt_guardian_name),
+    altGuardianRelation: (s) => orNone(s.alt_guardian_relation),
+    altGuardianPhone: (s) => orNone(s.alt_guardian_phone),
+    altGuardianAddress: (s) => orNone(s.alt_guardian_address),
+    addressDivision: (s) => orNone(s.division),
+    district: (s) => orNone(s.district),
+    thana: (s) => orNone(s.thana),
+    village: (s) => orNone(s.village),
+    admissionStatus: (s) => admissionStatusLabel(s.admission_status),
+    admissionType: (s) => admissionTypeLabel(s.admission_type),
+  };
+
+  // দৃশ্যমান কলামগুলো ব্যবহারকারীর ঠিক করা ক্রমে — টেবিলের হেডার/সেল এই ক্রমেই বসে।
+  const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
 
   const filteredStudents = useMemo(() => {
     const searchText = search.trim().toLowerCase();
@@ -316,32 +484,25 @@ const StudentListPage = () => {
     });
   };
 
-  const exportStudents = useMemo(() => {
-    return filteredStudents.map((student) => ({
-      registrationNumber: student.registration_no || "নেই",
-      roll: student.roll || "নেই",
-      name: student.name_bn || student.name || "নেই",
-      fatherName: student.father_name || "নেই",
-      phone: student.guardian_phone || "নেই",
-      academicYear: student.academic_year || "নেই",
-      division: getDivisionName(student.division_id),
-      currentClass: getClassName(
-        student.class_id,
-        student.current_class || student.class_name || student.class,
-      ),
-    }));
-  }, [filteredStudents, getDivisionName, getClassName]);
-
+  // এক্সেল/সিএসভি এক্সপোর্টে সবসময় ছাত্রের সব তথ্য (কোন কলাম টেবিলে দেখানো
+  // হচ্ছে তার উপর নির্ভর না করে) — নির্দিষ্ট কিছু কলামে সীমাবদ্ধ রাখা হয় না।
   const exportColumns = [
-    { header: "রোল নম্বর", key: "roll" },
-    { header: "রেজিস্ট্রেশন নম্বর", key: "registrationNumber" },
     { header: "নাম", key: "name" },
-    { header: "বাবার নাম", key: "fatherName" },
-    { header: "ফোন", key: "phone" },
-    { header: "শিক্ষাবর্ষ", key: "academicYear" },
-    { header: "বিভাগ", key: "division" },
-    { header: "বর্তমান শ্রেণি", key: "currentClass" },
+    ...STUDENT_COLUMNS.map((col) => ({ header: col.label, key: col.key })),
   ];
+
+  const exportStudents = useMemo(() => {
+    return filteredStudents.map((student) => {
+      const row: Record<string, string> = {
+        name: student.name_bn || student.name || "নেই",
+      };
+      STUDENT_COLUMNS.forEach((col) => {
+        row[col.key] = columnValueGetters[col.key](student);
+      });
+      return row;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredStudents, getDivisionName, getClassName]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
@@ -443,6 +604,8 @@ const StudentListPage = () => {
                 visible={visibleColumns}
                 onToggle={toggleColumn}
                 onReset={resetColumns}
+                order={columnOrder}
+                onMove={moveColumn}
               />
 
               <DataExportPrintActions
@@ -450,6 +613,7 @@ const StudentListPage = () => {
                 fileName="student-list"
                 columns={exportColumns}
                 data={exportStudents}
+                hidePrintOptions
               />
             </div>
           </div>
@@ -569,21 +733,12 @@ const StudentListPage = () => {
                           className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         />
                       </th>
-                      {isColumnVisible("roll") && <th className="border p-2.5 dark:border-slate-700">রোল নম্বর</th>}
-                      {isColumnVisible("registration") && (
-                        <th className="border p-2.5 dark:border-slate-700">রেজিস্ট্রেশন নম্বর</th>
-                      )}
                       <th className="border p-2.5 dark:border-slate-700">নাম</th>
-                      {isColumnVisible("fatherName") && <th className="border p-2.5 dark:border-slate-700">বাবার নাম</th>}
-                      {isColumnVisible("phone") && <th className="border p-2.5 dark:border-slate-700">ফোন</th>}
-                      {isColumnVisible("academicYear") && (
-                        <th className="border p-2.5 dark:border-slate-700">শিক্ষাবর্ষ</th>
-                      )}
-                      {isColumnVisible("division") && <th className="border p-2.5 dark:border-slate-700">বিভাগ</th>}
-                      {isColumnVisible("currentClass") && (
-                        <th className="border p-2.5 dark:border-slate-700">বর্তমান শ্রেণি</th>
-                      )}
-                      {isColumnVisible("status") && <th className="border p-2.5 dark:border-slate-700">স্ট্যাটাস</th>}
+                      {orderedVisibleColumns.map((key) => (
+                        <th key={key} className="border p-2.5 dark:border-slate-700">
+                          {STUDENT_COLUMN_LABEL_MAP.get(key)}
+                        </th>
+                      ))}
                       <th className="border p-2.5 dark:border-slate-700">একশন</th>
                     </tr>
                   </thead>
@@ -600,44 +755,13 @@ const StudentListPage = () => {
                           />
                         </td>
 
-                        {isColumnVisible("roll") && (
-                          <td className="border p-2.5 dark:border-slate-700">{student.roll || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("registration") && (
-                          <td className="border p-2.5 dark:border-slate-700">{student.registration_no || "নেই"}</td>
-                        )}
-
                         <td className="border p-2.5 dark:border-slate-700">{student.name_bn || student.name || "নেই"}</td>
 
-                        {isColumnVisible("fatherName") && (
-                          <td className="border p-2.5 dark:border-slate-700">{student.father_name || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("phone") && (
-                          <td className="border p-2.5 dark:border-slate-700">{student.guardian_phone || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("academicYear") && (
-                          <td className="border p-2.5 dark:border-slate-700">{student.academic_year || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("division") && (
-                          <td className="border p-2.5 dark:border-slate-700">{getDivisionName(student.division_id)}</td>
-                        )}
-
-                        {isColumnVisible("currentClass") && (
-                          <td className="border p-2.5 dark:border-slate-700">
-                            {getClassName(
-                              student.class_id,
-                              student.current_class || student.class_name || student.class,
-                            )}
+                        {orderedVisibleColumns.map((key) => (
+                          <td key={key} className="border p-2.5 dark:border-slate-700">
+                            {key === "status" ? statusBadge(student.is_active) : columnValueGetters[key](student)}
                           </td>
-                        )}
-
-                        {isColumnVisible("status") && (
-                          <td className="border p-2.5 dark:border-slate-700">{statusBadge(student.is_active)}</td>
-                        )}
+                        ))}
 
                         <td className="border p-2.5 dark:border-slate-700">
                           <button

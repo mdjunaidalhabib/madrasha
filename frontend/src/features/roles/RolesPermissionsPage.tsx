@@ -11,23 +11,70 @@ import EmptyState from "../../components/ui/EmptyState";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
 import SectionCard from "../../components/settings/SectionCard";
+import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
   return Array.isArray(data) ? data : [];
 };
 
-/** Groups the flat permission catalog ("students.read", "students.create",
- * ...) by its module prefix, so the matrix can render one row per module. */
+/** The real sidebar modules (see backend sidebar.constants.ts's
+ * MODULE_PERMISSION_PREFIXES, mirrored here) - listed in the same order they
+ * appear in the sidebar, each mapped to the permission-key prefixes that
+ * belong to it. "dashboard" is intentionally omitted - it needs no
+ * permission and is always visible. A permission can legitimately belong to
+ * more than one module (e.g. "teachers.read" unlocks both ইহতিমাম's teacher
+ * list and তালিমাত's assignment screen), so it's shown - and independently
+ * toggleable from - every module card it's relevant to. */
+const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
+  { key: "ihtemam", label: "ইহতিমাম", prefixes: ["teachers.", "students.approve_admission", "fee."] },
+  { key: "reports", label: "রিপোর্ট সমূহ", prefixes: ["reports."] },
+  {
+    key: "talimat",
+    label: "তালিমাত",
+    prefixes: [
+      "talimat.",
+      "teachers.",
+      "exam.",
+      "result.",
+      "routine.",
+      "document_templates.",
+      "students.session",
+      "students.promote",
+    ],
+  },
+  { key: "accounts", label: "হিসাব বিভাগ", prefixes: ["accounts.", "fee.", "payroll."] },
+  { key: "students", label: "শিক্ষার্থী", prefixes: ["students."] },
+  { key: "attendance", label: "উপস্থিতি", prefixes: ["attendance.", "kiosk."] },
+  { key: "communication", label: "SMS/ইমেইল", prefixes: ["notifications."] },
+  { key: "library", label: "লাইব্রেরি", prefixes: ["library."] },
+  { key: "settings", label: "সেটিং", prefixes: ["settings.", "roles.manage", "users.", "website.manage"] },
+  { key: "activity", label: "অ্যাক্টিভিটি লগ", prefixes: ["activity."] },
+  { key: "website", label: "ওয়েবসাইট সেটিংস", prefixes: ["website.manage"] },
+];
+
+const matchesPrefix = (keyName: string, prefixes: string[]) =>
+  prefixes.some((prefix) => keyName === prefix || keyName.startsWith(prefix));
+
+/** Groups the flat permission catalog by real sidebar module (see
+ * MODULE_GROUPS above) instead of the raw "students.read" -> "students" key
+ * prefix, so every module a staff member actually sees in the sidebar
+ * (ইহতিমাম, উপস্থিতি, লাইব্রেরি, SMS/ইমেইল, ...) gets its own controllable
+ * card here - not just the ones whose permission keys happen to share their
+ * own name. Any catalog key that doesn't match a known module (e.g. a newly
+ * added permission this list hasn't been updated for yet) still shows up
+ * under a catch-all "অন্যান্য" group instead of silently disappearing. */
 const groupByModule = (permissions: PermissionCatalogItem[]) => {
-  const groups = new Map<string, PermissionCatalogItem[]>();
-  for (const permission of permissions) {
-    const [moduleName] = (permission.keyName || "").split(".");
-    if (!moduleName) continue;
-    if (!groups.has(moduleName)) groups.set(moduleName, []);
-    groups.get(moduleName)!.push(permission);
-  }
-  return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const groups: [string, PermissionCatalogItem[]][] = MODULE_GROUPS.map((m) => [
+    m.label,
+    permissions.filter((p) => matchesPrefix(p.keyName || "", m.prefixes)),
+  ]);
+
+  const claimed = new Set(MODULE_GROUPS.flatMap((m) => permissions.filter((p) => matchesPrefix(p.keyName || "", m.prefixes)).map((p) => p.id)));
+  const unclaimed = permissions.filter((p) => !claimed.has(p.id));
+  if (unclaimed.length) groups.push(["অন্যান্য", unclaimed]);
+
+  return groups.filter(([, perms]) => perms.length > 0);
 };
 
 const RolesPermissionsPage = () => {
@@ -172,7 +219,9 @@ const RolesPermissionsPage = () => {
           <EmptyState title="কোনো রোল নেই" />
         ) : (
           <div className="space-y-3">
-            {roles.map((role) => (
+            {roles.map((role) => {
+              const isMuhtamim = (role.key_name || "").toUpperCase() === "MUHTAMIM";
+              return (
               <div
                 key={role.id}
                 className="group flex flex-col gap-3 rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between"
@@ -187,15 +236,20 @@ const RolesPermissionsPage = () => {
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                    {role.permission_keys.length} টি পারমিশন · {role.user_count} জন ইউজার
+                    {isMuhtamim
+                      ? "সকল পারমিশন (সবসময়, পরিবর্তনযোগ্য নয়)"
+                      : `${role.permission_keys.length} টি পারমিশন`}{" "}
+                    · {role.user_count} জন ইউজার
                   </p>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
+                    disabled={isMuhtamim}
+                    title={isMuhtamim ? "মুহতামিম সবসময় সম্পূর্ণ অ্যাক্সেস পাবেন — এটি পরিবর্তনযোগ্য নয়" : undefined}
                     onClick={() => openEditModal(role)}
-                    className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                    className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
                   >
                     <Pencil size={12} />
                     পারমিশন সেট করুন
@@ -213,7 +267,8 @@ const RolesPermissionsPage = () => {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </SectionCard>
@@ -229,19 +284,44 @@ const RolesPermissionsPage = () => {
             {grouped.map(([moduleName, modulePermissions]) => {
               const moduleKeys = modulePermissions.map((p) => p.keyName);
               const allSelected = moduleKeys.every((k) => selectedKeys.has(k));
+              const someSelected = moduleKeys.some((k) => selectedKeys.has(k));
               return (
-                <div key={moduleName} className="rounded-lg border border-gray-200 p-3 dark:border-slate-700">
+                <div
+                  key={moduleName}
+                  className={`rounded-lg border p-3 transition ${
+                    allSelected
+                      ? "border-blue-300 bg-blue-50/50 dark:border-blue-900/60 dark:bg-blue-950/20"
+                      : someSelected
+                        ? "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/10"
+                        : "border-gray-200 dark:border-slate-700"
+                  }`}
+                >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm font-semibold capitalize text-gray-800 dark:text-slate-200">
                       {moduleName}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleModuleAll(moduleKeys, allSelected)}
-                      className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {allSelected ? "সব বাদ দিন" : "সব সিলেক্ট করুন"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[11px] font-medium ${
+                          allSelected
+                            ? "text-blue-600 dark:text-blue-400"
+                            : someSelected
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-gray-400 dark:text-slate-500"
+                        }`}
+                      >
+                        {allSelected ? "পুরো মডিউল চালু" : someSelected ? "আংশিক চালু" : "বন্ধ"}
+                      </span>
+                      <ToggleSwitch
+                        checked={allSelected}
+                        onChange={() => toggleModuleAll(moduleKeys, allSelected)}
+                        title={
+                          allSelected
+                            ? "পুরো মডিউলের সব পারমিশন বন্ধ করুন"
+                            : "পুরো মডিউলের সব পারমিশন চালু করুন"
+                        }
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {modulePermissions.map((permission) => (

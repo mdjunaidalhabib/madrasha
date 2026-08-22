@@ -6,11 +6,14 @@ import Topbar from "../components/topbar/Topbar";
 import LockScreen from "../components/lock/LockScreen";
 
 import { loadSidebar } from "../services/sidebarApi";
+import { getMyPlan } from "../services/planApi";
 import { useSidebarStore } from "../store/sidebarStore";
+import { usePlanStore } from "../store/planStore";
 import { logger } from "../utils/logger";
 
 export default function DashboardLayout() {
   const setItems = useSidebarStore((s) => s.setItems);
+  const setPlan = usePlanStore((s) => s.setPlan);
   const [mobileSidebar, setMobileSidebar] = useState(false);
 
   useEffect(() => {
@@ -25,6 +28,19 @@ export default function DashboardLayout() {
 
     load();
   }, [setItems]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await getMyPlan();
+        setPlan(data);
+      } catch (err) {
+        logger.error("Plan load failed:", err);
+      }
+    };
+
+    load();
+  }, [setPlan]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden dark:bg-slate-950">

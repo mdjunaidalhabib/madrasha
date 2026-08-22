@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getAcademicAdmissionReport,
   getAcademicResultNoticeReport,
@@ -32,6 +33,7 @@ const router = Router();
 
 router.use(tenantMiddleware);
 router.use(authMiddleware);
+router.use(rbacMiddleware("reports.read"));
 
 router.get("/academic/results", getAcademicResultsReport);
 router.get("/academic/results-by-rank", getAcademicResultsByRankReport);

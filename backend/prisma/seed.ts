@@ -764,6 +764,9 @@ async function main() {
     { keyName: "students.expel", name: "Expel Student" },
     { keyName: "students.approve_admission", name: "Approve/Reject Admissions" },
     { keyName: "students.promote", name: "Promote Students" },
+    { keyName: "students.session_read", name: "View Sessions" },
+    { keyName: "students.session_manage", name: "Manage Sessions" },
+    { keyName: "students.transfer_session", name: "Transfer Student Session" },
 
     { keyName: "teachers.read", name: "View Teachers" },
     { keyName: "teachers.create", name: "Create Teachers" },

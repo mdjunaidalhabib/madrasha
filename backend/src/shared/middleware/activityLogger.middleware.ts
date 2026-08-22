@@ -33,6 +33,26 @@ function deriveEntity(originalUrl: string): { entity: string; entityId: number |
   return { entity: nameSegments.join("/") || segments[0] || "unknown", entityId };
 }
 
+// Only ever read from this allow-list of known identifying fields - never a
+// generic dump of req.body - so sensitive fields (password, token, base64
+// file data, etc.) can never end up in the details column.
+const DETAIL_FIELD_CANDIDATES = ["name_bn", "name", "title", "designation"];
+const MAX_DETAIL_LENGTH = 190;
+
+function deriveDetails(body: unknown, entityId: number | null): string | null {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const record = body as Record<string, unknown>;
+    for (const key of DETAIL_FIELD_CANDIDATES) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) {
+        const trimmed = value.trim();
+        return trimmed.length > MAX_DETAIL_LENGTH ? `${trimmed.slice(0, MAX_DETAIL_LENGTH)}…` : trimmed;
+      }
+    }
+  }
+  return entityId !== null ? `আইডি: ${entityId}` : null;
+}
+
 /**
  * Auto-records every successful create/update/delete request as an activity
  * log row, so the audit trail covers the whole app instead of only the
@@ -59,6 +79,7 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
       action: ACTION_BY_METHOD[req.method] ?? req.method,
       entity,
       entity_id: entityId,
+      details: deriveDetails(req.body, entityId),
     }).catch((error) => logger.error("Auto activity log failed", error));
   });
 

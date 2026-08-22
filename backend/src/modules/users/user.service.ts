@@ -3,7 +3,7 @@ import { logActivity } from "../../shared/utils/activity.util";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { isMuhtamimRole } from "../../shared/permissions";
 import { userRepository, UserRepository } from "./user.repository";
-import { CreateUserRequestDto, UpdateUserRequestDto } from "./user.dto";
+import { CreateUserRequestDto, ResetPasswordRequestDto, UpdateUserRequestDto } from "./user.dto";
 import { USER_ACTIVITY_ENTITY, USER_LIMIT_REACHED_MESSAGE } from "./user.constants";
 import { DefaultUserProtectedError } from "./user.types";
 
@@ -56,7 +56,7 @@ export class UserService {
       action: "CREATE",
       entity: USER_ACTIVITY_ENTITY,
       entity_id: created.id,
-      details: `User ${dto.name} created`,
+      details: `ইউজার ${dto.name} তৈরি করা হয়েছে`,
     });
 
     return created.id;
@@ -77,7 +77,7 @@ export class UserService {
       action: "DELETE",
       entity: USER_ACTIVITY_ENTITY,
       entity_id: id,
-      details: `User ${id} deleted`,
+      details: `ইউজার আইডি ${id} মুছে ফেলা হয়েছে`,
     });
   }
 
@@ -111,6 +111,8 @@ export class UserService {
     }
     if (dto.is_active !== undefined) data.isActive = dto.is_active ? 1 : 0;
     if (dto.name !== undefined && dto.name.trim()) data.name = dto.name.trim();
+    if (dto.mobile !== undefined) data.mobile = dto.mobile.trim() || null;
+    if (dto.photo_url !== undefined) data.photoUrl = dto.photo_url.trim() || null;
 
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
 
@@ -123,7 +125,63 @@ export class UserService {
       action: "UPDATE",
       entity: USER_ACTIVITY_ENTITY,
       entity_id: id,
-      details: `User ${id} updated`,
+      details: `ইউজার আইডি ${id} হালনাগাদ করা হয়েছে`,
+    });
+  }
+
+  /** Lets a Muhtamim/privileged staff reset a colleague's password without
+   * needing their current one - the self-service change-password flow
+   * requires the current password, which is useless if the staff member is
+   * simply locked out or has forgotten it. */
+  async adminResetPassword(
+    madrasaId: number,
+    actingUserId: number,
+    id: number,
+    dto: ResetPasswordRequestDto,
+  ) {
+    if (!dto.password || dto.password.length < 6) {
+      throw new BadRequestError("Password must be at least 6 characters");
+    }
+
+    const existing = await this.repository.findByIdForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError("User not found");
+    if (isMuhtamimRole(existing.role?.keyName || "")) {
+      throw new ForbiddenError(
+        "ডিফল্ট মুহতামিম অ্যাকাউন্টের পাসওয়ার্ড এখান থেকে রিসেট করা যাবে না।",
+      );
+    }
+
+    const passwordHash = await hashPassword(dto.password);
+    const result = await this.repository.updatePasswordHash(id, madrasaId, passwordHash);
+    if (!result.count) throw new NotFoundError("User not found");
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: actingUserId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: id,
+      details: `অ্যাডমিন কর্তৃক ইউজার আইডি ${id}-এর পাসওয়ার্ড রিসেট করা হয়েছে`,
+    });
+  }
+
+  /** Clears the failed-login lockout (see MAX_FAILED_LOGIN_ATTEMPTS in
+   * auth.constants.ts) so a locked-out staff member can log in again
+   * immediately, instead of waiting out the 15-minute cooldown. */
+  async adminUnlockAccount(madrasaId: number, actingUserId: number, id: number) {
+    const existing = await this.repository.findByIdForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError("User not found");
+
+    const result = await this.repository.resetLockAndAttempts(id, madrasaId);
+    if (!result.count) throw new NotFoundError("User not found");
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: actingUserId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: id,
+      details: `অ্যাডমিন কর্তৃক ইউজার আইডি ${id}-এর অ্যাকাউন্ট আনলক করা হয়েছে`,
     });
   }
 }

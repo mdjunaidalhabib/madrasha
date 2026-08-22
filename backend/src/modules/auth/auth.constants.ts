@@ -1,12 +1,17 @@
 /**
- * Historical role labels (English key or legacy Bengali label) that get
- * an implicit baseline set of permissions on login, even if role_permissions
- * hasn't been fully seeded for that role yet. Extracted unchanged from the
- * original auth.service.ts so behavior is identical.
+ * MUHTAMIM (madrasa owner/principal) bypasses permission checks entirely on
+ * the backend (see isMuhtamimRole short-circuit in rbac.middleware.ts) and
+ * on the frontend (see frontend/src/utils/permissions.ts's hasPermission
+ * helper) — it never needs its access read from this list. This baseline is
+ * only used to populate the `permissions[]` array returned at login so
+ * MUHTAMIM's own UI has a non-empty list to display, purely informational.
+ *
+ * TALIMAT/ACCOUNTANT no longer have a hardcoded baseline here — their real
+ * access now comes entirely from seeded RolePermission rows (see
+ * shared/permissions/baseline-role-permissions.ts), the same mechanism used
+ * for custom roles.
  */
 export const MUHTAMIM_ROLE_KEYS = ["MUHTAMIM", "মুহতামিম"] as const;
-export const TALIMAT_ROLE_KEYS = ["TALIMAT", "তালিমাত"] as const;
-export const ACCOUNTANT_ROLE_KEYS = ["ACCOUNTANT", "হিসাবরক্ষক", "হিসাব রক্ষক"] as const;
 
 export const MUHTAMIM_BASELINE_PERMISSIONS = [
   "students.read",
@@ -22,20 +27,6 @@ export const MUHTAMIM_BASELINE_PERMISSIONS = [
   "accounts.delete",
   "talimat.manage",
   "activity.read",
-] as const;
-
-export const TALIMAT_BASELINE_PERMISSIONS = [
-  "talimat.manage",
-  "students.read",
-  "students.create",
-  "students.update",
-] as const;
-
-export const ACCOUNTANT_BASELINE_PERMISSIONS = [
-  "accounts.read",
-  "accounts.create",
-  "accounts.update",
-  "accounts.delete",
 ] as const;
 
 export const DEFAULT_TOKEN_EXPIRY = "7d";

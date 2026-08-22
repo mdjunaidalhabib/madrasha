@@ -42,3 +42,21 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 
   res.json({ message: "Updated" });
 });
+
+export const resetUserPassword = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const id = Number(req.params.id);
+
+  await userService.adminResetPassword(madrasa_id, req.user!.id, id, req.body);
+
+  res.json({ message: "Password reset" });
+});
+
+export const unlockUserAccount = asyncHandler(async (req: Request, res: Response) => {
+  const madrasa_id = req.tenant!.madrasa_id;
+  const id = Number(req.params.id);
+
+  await userService.adminUnlockAccount(madrasa_id, req.user!.id, id);
+
+  res.json({ message: "Account unlocked" });
+});

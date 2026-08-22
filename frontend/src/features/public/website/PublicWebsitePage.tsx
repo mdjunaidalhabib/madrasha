@@ -690,6 +690,8 @@ export default function PublicWebsitePage() {
                           <img
                             src={member.photo_url}
                             alt={member.name}
+                            loading="lazy"
+                            decoding="async"
                             className="mx-auto h-16 w-16 rounded-full object-cover"
                           />
                         ) : (
@@ -748,6 +750,8 @@ export default function PublicWebsitePage() {
                           <img
                             src={item.image_url}
                             alt={item.title || "Gallery"}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                           />
                         </div>

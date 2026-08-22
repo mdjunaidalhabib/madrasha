@@ -6,8 +6,10 @@ type Props = {
   student_limit: number;
   user_limit: number;
   duration_days: number;
+  start_date: string;
   locked: boolean;
   onPlanChange: (id: string) => void;
+  onStartDateChange: (value: string) => void;
 };
 
 export default function PlanSection({
@@ -16,8 +18,10 @@ export default function PlanSection({
   student_limit,
   user_limit,
   duration_days,
+  start_date,
   locked,
   onPlanChange,
+  onStartDateChange,
 }: Props) {
   return (
     <div className="space-y-4">
@@ -36,6 +40,21 @@ export default function PlanSection({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">
+          Plan Start Date
+        </label>
+        <input
+          type="date"
+          className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          value={start_date}
+          onChange={(e) => onStartDateChange(e.target.value)}
+        />
+        <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+          এই মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করে থাকলে প্রকৃত শুরুর তারিখ দিন, নাহলে আজকের তারিখ থাকবে।
+        </p>
       </div>
 
       <LimitField label="Student Limit" value={student_limit} disabled={locked} />

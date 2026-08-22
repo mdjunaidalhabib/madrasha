@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
+import { isMuhtamimRole } from "../../shared/permissions";
 import { roleRepository, RoleRepository } from "./role.repository";
 import { CreateRoleRequestDto, UpdateRoleRequestDto } from "./role.dto";
 import { PROTECTED_ROLE_KEYS } from "./role.constants";
@@ -85,6 +86,17 @@ export class RoleService {
   async updateRole(id: number, madrasaId: number, dto: UpdateRoleRequestDto) {
     const role = await this.repository.findRoleForTenant(id, madrasaId);
     if (!role) throw new NotFoundError("Role not found");
+
+    // MUHTAMIM bypasses every permission check regardless of what's stored
+    // in role_permissions (see isMuhtamimRole in rbac.middleware.ts) - its
+    // rows exist only so the Roles & Permissions UI shows an accurate "all
+    // permissions" count, not so they can be edited. Changing them here
+    // would silently do nothing, which is worse than just refusing.
+    if (dto.permission_keys !== undefined && isMuhtamimRole(role.keyName || "")) {
+      throw new ConflictError(
+        "মুহতামিম সবসময় সম্পূর্ণ অ্যাক্সেস পাবেন — এই রোলের পারমিশন পরিবর্তন করা যাবে না।",
+      );
+    }
 
     try {
       await this.repository.runTransaction(async (tx) => {

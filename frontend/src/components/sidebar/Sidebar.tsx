@@ -15,7 +15,6 @@ import {
   Users,
   Settings,
   ClipboardList,
-  Lock,
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
@@ -93,12 +92,10 @@ function navItemClass(isActive: boolean) {
 function childItemClass(isActive: boolean) {
   return `block py-1.5 text-[15px] transition ${isActive ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"}`;
 }
-const disabledClass =
-  "flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-base font-medium text-slate-300 dark:text-slate-600";
-const disabledChildClass = "block cursor-not-allowed py-1.5 text-[15px] text-slate-300 dark:text-slate-600";
-
 export default function Sidebar({ closeSidebar }: SidebarProps) {
-  const sidebar = useSidebarStore((s) => s.items);
+  // এই ইউজারের রোলে যে মডিউল/আইটেমের অনুমতি নেই, সেগুলো ধূসর করে দেখানোর
+  // বদলে সম্পূর্ণ বাদ দেওয়া হয় - অনুমতি না থাকা জিনিস মেনুতেই দেখাবে না।
+  const sidebar = useSidebarStore((s) => s.items.filter((m) => !m.disabled));
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -229,22 +226,9 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     <AdminSidebarShell collapsed={collapsed} header={header}>
       {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
-          const moduleDisabled = Boolean(module.disabled);
+          const visibleChildren = module.children?.filter((c) => !c.disabled) || [];
 
           if (!module.children || module.children.length === 0) {
-            if (moduleDisabled) {
-              return (
-                <div key={module.key} className={disabledClass} title="এই ইউজারের অনুমতি নেই">
-                  <Icon size={18} />
-                  {!collapsed && (
-                    <>
-                      <span>{module.label}</span>
-                      <Lock size={13} className="ml-auto" />
-                    </>
-                  )}
-                </div>
-              );
-            }
             return (
               <NavLink
                 key={module.key}
@@ -260,23 +244,20 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             );
           }
 
+          if (visibleChildren.length === 0) return null;
+
           const isOpen = !collapsed && openModuleKey === module.key;
 
           return (
-            <div key={module.key} className={moduleDisabled ? "opacity-70" : ""}>
+            <div key={module.key}>
               <button
                 type="button"
                 onClick={() => toggleModule(module.key)}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold transition ${
-                  moduleDisabled
-                    ? "text-slate-300 dark:text-slate-600"
-                    : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                }`}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <Icon size={18} />
                 {!collapsed && <span className="flex-1 text-left">{module.label}</span>}
-                {moduleDisabled && !collapsed && <Lock size={13} />}
-                {!collapsed && !moduleDisabled && (
+                {!collapsed && (
                   <ChevronDown
                     size={16}
                     className={`text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
@@ -289,32 +270,25 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 }`}
               >
                 <div className="ml-6 space-y-1 overflow-hidden border-l border-slate-200 pl-3 dark:border-slate-700">
-                  {module.children.map((child) => {
-                    const childDisabled = moduleDisabled || Boolean(child.disabled);
-                    return childDisabled ? (
-                      <span key={child.key} className={disabledChildClass}>
-                        {child.label}
-                      </span>
-                    ) : (
-                      <NavLink
-                        key={child.key}
-                        to={`${adminBase}/${childPath(module.key, child.key)}`}
-                        onClick={handleClick}
-                        onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                        onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                        className={({ isActive }) =>
-                          `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`
-                        }
-                      >
-                        <span>{child.label}</span>
-                        {Boolean(child.count) && (
-                          <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
-                            {child.count}
-                          </span>
-                        )}
-                      </NavLink>
-                    );
-                  })}
+                  {visibleChildren.map((child) => (
+                    <NavLink
+                      key={child.key}
+                      to={`${adminBase}/${childPath(module.key, child.key)}`}
+                      onClick={handleClick}
+                      onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
+                      onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
+                      className={({ isActive }) =>
+                        `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`
+                      }
+                    >
+                      <span>{child.label}</span>
+                      {Boolean(child.count) && (
+                        <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                          {child.count}
+                        </span>
+                      )}
+                    </NavLink>
+                  ))}
                 </div>
               </div>
             </div>

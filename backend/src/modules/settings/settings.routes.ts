@@ -19,6 +19,7 @@ import {
   updateLetterDesign,
   getBookLabelDesign,
   updateBookLabelDesign,
+  getMyPlan,
 } from "./settings.controller";
 
 const router = Router();
@@ -27,11 +28,29 @@ router.get("/divisions", tenantMiddleware, authMiddleware, subscriptionCheck, ge
 router.get("/classes/:division_id", tenantMiddleware, authMiddleware, subscriptionCheck, getClassesByDivision);
 
 router.get("/branding", tenantMiddleware, authMiddleware, getBranding);
-router.put("/branding", tenantMiddleware, authMiddleware, updateBranding);
-router.delete("/branding/:field", tenantMiddleware, authMiddleware, deleteBrandingImage);
+router.put(
+  "/branding",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateBranding,
+);
+router.delete(
+  "/branding/:field",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  deleteBrandingImage,
+);
 
 router.get("/document-templates", tenantMiddleware, authMiddleware, getDocumentTemplates);
-router.put("/document-templates", tenantMiddleware, authMiddleware, updateDocumentTemplates);
+router.put(
+  "/document-templates",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateDocumentTemplates,
+);
 
 router.get("/id-card-design", tenantMiddleware, authMiddleware, getIdCardDesign);
 router.put(
@@ -52,9 +71,23 @@ router.put(
 );
 
 router.get("/letter-design", tenantMiddleware, authMiddleware, getLetterDesign);
-router.put("/letter-design", tenantMiddleware, authMiddleware, updateLetterDesign);
+router.put(
+  "/letter-design",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateLetterDesign,
+);
 
 router.get("/book-label-design", tenantMiddleware, authMiddleware, getBookLabelDesign);
-router.put("/book-label-design", tenantMiddleware, authMiddleware, updateBookLabelDesign);
+router.put(
+  "/book-label-design",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateBookLabelDesign,
+);
+
+router.get("/plan", tenantMiddleware, authMiddleware, getMyPlan);
 
 export default router;

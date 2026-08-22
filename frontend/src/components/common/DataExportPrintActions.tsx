@@ -18,6 +18,8 @@ type Props<T> = {
   orientation?: Orientation;
   onPaperSizeChange?: (value: PaperSize) => void;
   onOrientationChange?: (value: Orientation) => void;
+  /** A4/A5, Portrait/Landscape ও প্রিন্ট বাটন লুকিয়ে শুধু Excel/CSV এক্সপোর্ট দেখাতে চাইলে true। */
+  hidePrintOptions?: boolean;
 };
 
 const DataExportPrintActions = <T extends Record<string, any>>({
@@ -28,6 +30,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   orientation: controlledOrientation,
   onPaperSizeChange,
   onOrientationChange,
+  hidePrintOptions = false,
 }: Props<T>) => {
   const [internalPaperSize, setInternalPaperSize] = useState<PaperSize>("a4");
   const [internalOrientation, setInternalOrientation] = useState<Orientation>("portrait");
@@ -113,24 +116,51 @@ const DataExportPrintActions = <T extends Record<string, any>>({
 
   const downloadExcel = async () => {
     const XLSX = await import("xlsx");
-    const exportData = data.map((item) => {
-      const row: Record<string, any> = {};
 
-      columns.forEach((col) => {
-        const key = String(col.key);
-        const value = item[key];
-        row[col.header] =
-          value === null || value === undefined || value === ""
-            ? ""
-            : formatReportValue(value, key);
-      });
+    const headerRow = columns.map((col) => col.header);
+    const bodyRows = getRows();
+    const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...bodyRows]);
 
-      return row;
+    // হেডার সারি বোল্ড + নীল ব্যাকগ্রাউন্ড এবং সব সেলে হালকা বর্ডার — এক্সেলে
+    // খুললে সারি-কলাম এলোমেলো না লেগে সাজানো টেবিলের মতো দেখায়।
+    const thinBorder = { style: "thin", color: { rgb: "CBD5E1" } } as const;
+    const cellBorder = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+    headerRow.forEach((_, colIndex) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+      if (!worksheet[cellRef]) return;
+      worksheet[cellRef].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+        fill: { patternType: "solid", fgColor: { rgb: "1E40AF" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: cellBorder,
+      };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
+    bodyRows.forEach((row, rowIndex) => {
+      row.forEach((_, colIndex) => {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex + 1, c: colIndex });
+        if (!worksheet[cellRef]) return;
+        worksheet[cellRef].s = {
+          alignment: { horizontal: "center", vertical: "center" },
+          border: cellBorder,
+        };
+      });
+    });
 
+    // কলামের প্রশস্ততা সেই কলামের সবচেয়ে লম্বা মান অনুযায়ী — নাহলে লেখা কাটা
+    // পড়ে বা পাশের কলামের সাথে মিশে যায়।
+    worksheet["!cols"] = headerRow.map((header, colIndex) => {
+      const maxLen = bodyRows.reduce(
+        (max, row) => Math.max(max, String(row[colIndex] ?? "").length),
+        header.length,
+      );
+      return { wch: Math.min(Math.max(maxLen + 2, 12), 40) };
+    });
+
+    worksheet["!rows"] = [{ hpt: 22 }];
+
+    const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
     XLSX.writeFile(workbook, `${fileName}.xlsx`);
   };
@@ -145,23 +175,27 @@ const DataExportPrintActions = <T extends Record<string, any>>({
 
   return (
     <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-      <select
-        value={paperSize}
-        onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
-        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
-      >
-        <option value="a4">A4</option>
-        <option value="a5">A5</option>
-      </select>
+      {!hidePrintOptions && (
+        <>
+          <select
+            value={paperSize}
+            onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
+            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
+          >
+            <option value="a4">A4</option>
+            <option value="a5">A5</option>
+          </select>
 
-      <select
-        value={orientation}
-        onChange={(e) => updateOrientation(e.target.value as Orientation)}
-        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
-      >
-        <option value="portrait">Portrait</option>
-        <option value="landscape">Landscape</option>
-      </select>
+          <select
+            value={orientation}
+            onChange={(e) => updateOrientation(e.target.value as Orientation)}
+            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
+          >
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+        </>
+      )}
 
       <button
         type="button"
@@ -179,13 +213,15 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         CSV
       </button>
 
-      <button
-        type="button"
-        onClick={printData}
-        className="col-span-2 h-10 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 sm:col-auto"
-      >
-        Print / PDF
-      </button>
+      {!hidePrintOptions && (
+        <button
+          type="button"
+          onClick={printData}
+          className="col-span-2 h-10 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 sm:col-auto"
+        >
+          Print / PDF
+        </button>
+      )}
     </div>
   );
 };

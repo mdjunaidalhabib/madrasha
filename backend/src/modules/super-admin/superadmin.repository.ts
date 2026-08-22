@@ -245,6 +245,30 @@ export class SuperAdminRepository {
     return tx.role.create({ data: { madrasaId, keyName, nameBn } });
   }
 
+  findPermissionIdsByKeysOnTx(tx: TransactionClient, keys: string[]) {
+    return tx.permission.findMany({
+      where: { keyName: { in: keys } },
+      select: { id: true },
+    });
+  }
+
+  /** MUHTAMIM gets every permission that exists in the catalog, seeded as
+   * real rows (not just derived from a fixed key list) so the count never
+   * goes stale as new permission keys are added later - see
+   * DEFAULT_ROLE_PERMISSION_KEYS's docblock for why this is deliberately
+   * separate from TALIMAT/ACCOUNTANT's fixed default sets. */
+  findAllPermissionIdsOnTx(tx: TransactionClient) {
+    return tx.permission.findMany({ select: { id: true } });
+  }
+
+  setRolePermissionsOnTx(tx: TransactionClient, roleId: number, permissionIds: number[]) {
+    if (!permissionIds.length) return Promise.resolve();
+    return tx.rolePermission.createMany({
+      data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+      skipDuplicates: true,
+    });
+  }
+
   createUserOnTx(tx: TransactionClient, data: Prisma.UserUncheckedCreateInput) {
     return tx.user.create({ data });
   }
@@ -478,7 +502,7 @@ export class SuperAdminRepository {
         subscriptions: {
           where: { isActive: 1 },
           take: 1,
-          select: { planId: true },
+          select: { planId: true, startDate: true, endDate: true },
         },
         madrasaDivisions: {
           where: { isActive: 1 },

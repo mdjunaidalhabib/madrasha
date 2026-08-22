@@ -1,3 +1,3 @@
 export * from "./roles";
-export * from "./permissions.constants";
 export * from "./rbac-policy";
+export * from "./baseline-role-permissions";

@@ -47,6 +47,23 @@ export default function HeroSlider({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasSlides = slides.length > 0;
 
+  // Only the active slide's image downloads on first paint. Every other
+  // slide is rendered without a src until it's about to be shown — without
+  // this, all slides (however many the admin uploaded) downloaded at once
+  // on page load, even though only one is ever visible at a time.
+  const [loadedIndices, setLoadedIndices] = useState<Set<number>>(() => new Set([0]));
+  useEffect(() => {
+    if (!slides.length) return;
+    const next = (state.active + 1) % slides.length;
+    setLoadedIndices((prev) => {
+      if (prev.has(state.active) && prev.has(next)) return prev;
+      const merged = new Set(prev);
+      merged.add(state.active);
+      merged.add(next);
+      return merged;
+    });
+  }, [state.active, slides.length]);
+
   const transitionTo = (compute: (prevActive: number) => number) => {
     setState((s) => {
       if (!slides.length) return s;
@@ -131,21 +148,29 @@ export default function HeroSlider({
                 {/* Blurred, cropped copy fills the box edge-to-edge behind the
                     real photo — so object-contain below can show the whole
                     image, on any device, without ever leaving bare gaps. */}
-                <img
-                  src={slide.image_url}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
-                  style={{
-                    animation:
-                      isEntering && !atStart ? "heroKenBurns 9s ease-in-out infinite alternate" : undefined,
-                  }}
-                />
-                <img
-                  src={slide.image_url}
-                  alt={slide.title || "Slide"}
-                  className="absolute inset-0 h-full w-full object-contain"
-                />
+                {loadedIndices.has(index) && (
+                  <>
+                    <img
+                      src={slide.image_url}
+                      alt=""
+                      aria-hidden="true"
+                      fetchPriority={index === 0 ? "high" : "auto"}
+                      className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
+                      style={{
+                        animation:
+                          isEntering && !atStart
+                            ? "heroKenBurns 9s ease-in-out infinite alternate"
+                            : undefined,
+                      }}
+                    />
+                    <img
+                      src={slide.image_url}
+                      alt={slide.title || "Slide"}
+                      fetchPriority={index === 0 ? "high" : "auto"}
+                      className="absolute inset-0 h-full w-full object-contain"
+                    />
+                  </>
+                )}
               </div>
             );
           })}

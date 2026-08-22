@@ -16,7 +16,40 @@ type TeacherColumnKey =
   | "gender"
   | "designation"
   | "academicDivision"
-  | "qualification";
+  | "qualification"
+  | "nameAr"
+  | "nid"
+  | "dob"
+  | "age"
+  | "email"
+  | "department"
+  | "experienceYear"
+  | "experienceMonth"
+  | "joiningDate"
+  | "salary"
+  | "fatherName"
+  | "fatherNameAr"
+  | "fatherNid"
+  | "fatherOccupation"
+  | "motherName"
+  | "motherNid"
+  | "motherOccupation"
+  | "parentPhone"
+  | "addressDivision"
+  | "district"
+  | "thana"
+  | "village";
+
+// এই কয়টা কলাম ডিফল্টে দেখানো হয় (আগের আচরণ অপরিবর্তিত রাখতে) — বাকি সব
+// কলাম "কলাম" মেনু থেকে ব্যবহারকারী নিজের প্রয়োজন মতো চালু করে নিতে পারবে।
+const DEFAULT_VISIBLE_TEACHER_COLUMNS: TeacherColumnKey[] = [
+  "registration",
+  "phone",
+  "gender",
+  "designation",
+  "academicDivision",
+  "qualification",
+];
 
 const TEACHER_COLUMNS: ColumnOption<TeacherColumnKey>[] = [
   { key: "registration", label: "রেজিস্ট্রেশন নং" },
@@ -25,8 +58,33 @@ const TEACHER_COLUMNS: ColumnOption<TeacherColumnKey>[] = [
   { key: "designation", label: "পদবি" },
   { key: "academicDivision", label: "একাডেমিক বিভাগ" },
   { key: "qualification", label: "যোগ্যতা" },
+  { key: "nameAr", label: "আরবি নাম" },
+  { key: "nid", label: "এনআইডি" },
+  { key: "dob", label: "জন্ম তারিখ" },
+  { key: "age", label: "বয়স" },
+  { key: "email", label: "ইমেইল" },
+  { key: "department", label: "বিভাগ (পদ)" },
+  { key: "experienceYear", label: "অভিজ্ঞতা (বছর)" },
+  { key: "experienceMonth", label: "অভিজ্ঞতা (মাস)" },
+  { key: "joiningDate", label: "যোগদানের তারিখ" },
+  { key: "salary", label: "বেতন" },
+  { key: "fatherName", label: "বাবার নাম" },
+  { key: "fatherNameAr", label: "বাবার আরবি নাম" },
+  { key: "fatherNid", label: "বাবার এনআইডি" },
+  { key: "fatherOccupation", label: "বাবার পেশা" },
+  { key: "motherName", label: "মায়ের নাম" },
+  { key: "motherNid", label: "মায়ের এনআইডি" },
+  { key: "motherOccupation", label: "মায়ের পেশা" },
+  { key: "parentPhone", label: "অভিভাবকের ফোন" },
+  { key: "addressDivision", label: "বিভাগ (ঠিকানা)" },
+  { key: "district", label: "জেলা" },
+  { key: "thana", label: "থানা" },
+  { key: "village", label: "গ্রাম" },
 ];
 const TEACHER_COLUMN_KEYS = TEACHER_COLUMNS.map((c) => c.key);
+const TEACHER_COLUMN_LABEL_MAP = new Map(TEACHER_COLUMNS.map((c) => [c.key, c.label]));
+
+const orNone = (v: unknown) => (v === null || v === undefined || v === "" ? "নেই" : String(v));
 
 type Division = {
   division_id: number | string;
@@ -46,6 +104,26 @@ type Teacher = {
   department?: number | string;
   qualification?: string;
   salary?: number | string;
+  name_ar?: string | null;
+  nid?: string | null;
+  dob?: string | null;
+  age?: number | string | null;
+  email?: string | null;
+  experience_year?: number | string | null;
+  experience_month?: number | string | null;
+  joining_date?: string | null;
+  father_name?: string | null;
+  father_name_ar?: string | null;
+  father_nid?: string | null;
+  father_occupation?: string | null;
+  mother_name?: string | null;
+  mother_nid?: string | null;
+  mother_occupation?: string | null;
+  parent_phone?: string | null;
+  division?: string | null;
+  district?: string | null;
+  thana?: string | null;
+  village?: string | null;
 };
 
 const TeacherListPage = () => {
@@ -66,10 +144,15 @@ const TeacherListPage = () => {
 
   const {
     visible: visibleColumns,
+    order: columnOrder,
     toggle: toggleColumn,
     reset: resetColumns,
-    isVisible: isColumnVisible,
-  } = useColumnVisibility<TeacherColumnKey>(`teacher-list-columns:${madrasaSlug}`, TEACHER_COLUMN_KEYS);
+    move: moveColumn,
+  } = useColumnVisibility<TeacherColumnKey>(
+    `teacher-list-columns:${madrasaSlug}`,
+    TEACHER_COLUMN_KEYS,
+    DEFAULT_VISIBLE_TEACHER_COLUMNS,
+  );
 
   const normalizeArray = (payload: any) => {
     const data =
@@ -130,6 +213,42 @@ const TeacherListPage = () => {
     },
     [divisions],
   );
+
+  // প্রতিটা টগল-করা কলামের প্লেইন টেক্সট মান বের করার ফাংশন — টেবিলের সেলে
+  // ব্যবহার হয়, রিঅর্ডার করা ক্রম অনুযায়ী।
+  const columnValueGetters: Record<TeacherColumnKey, (t: Teacher) => string> = {
+    registration: (t) => orNone(t.registration_no),
+    phone: (t) => orNone(t.phone),
+    gender: (t) => getGenderName(t.gender),
+    designation: (t) => orNone(t.designation),
+    academicDivision: (t) => String(getDivisionName(getAcademicDivisionId(t))),
+    qualification: (t) => orNone(t.qualification),
+    nameAr: (t) => orNone(t.name_ar),
+    nid: (t) => orNone(t.nid),
+    dob: (t) => orNone(t.dob),
+    age: (t) => orNone(t.age),
+    email: (t) => orNone(t.email),
+    department: (t) => orNone(t.department),
+    experienceYear: (t) => orNone(t.experience_year),
+    experienceMonth: (t) => orNone(t.experience_month),
+    joiningDate: (t) => orNone(t.joining_date),
+    salary: (t) => orNone(t.salary),
+    fatherName: (t) => orNone(t.father_name),
+    fatherNameAr: (t) => orNone(t.father_name_ar),
+    fatherNid: (t) => orNone(t.father_nid),
+    fatherOccupation: (t) => orNone(t.father_occupation),
+    motherName: (t) => orNone(t.mother_name),
+    motherNid: (t) => orNone(t.mother_nid),
+    motherOccupation: (t) => orNone(t.mother_occupation),
+    parentPhone: (t) => orNone(t.parent_phone),
+    addressDivision: (t) => orNone(t.division),
+    district: (t) => orNone(t.district),
+    thana: (t) => orNone(t.thana),
+    village: (t) => orNone(t.village),
+  };
+
+  // দৃশ্যমান কলামগুলো ব্যবহারকারীর ঠিক করা ক্রমে — টেবিলের হেডার/সেল এই ক্রমেই বসে।
+  const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
 
   const filteredTeachers = useMemo(() => {
     const searchText = search.trim().toLowerCase();
@@ -251,6 +370,8 @@ const TeacherListPage = () => {
                 visible={visibleColumns}
                 onToggle={toggleColumn}
                 onReset={resetColumns}
+                order={columnOrder}
+                onMove={moveColumn}
               />
 
               <DataExportPrintActions
@@ -277,19 +398,12 @@ const TeacherListPage = () => {
               <table className="w-full min-w-[950px] border-collapse text-center">
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
-                    {isColumnVisible("registration") && (
-                      <th className="border p-2.5 dark:border-slate-700">রেজিস্ট্রেশন নং</th>
-                    )}
                     <th className="border p-2.5 dark:border-slate-700">নাম</th>
-                    {isColumnVisible("phone") && <th className="border p-2.5 dark:border-slate-700">মোবাইল</th>}
-                    {isColumnVisible("gender") && <th className="border p-2.5 dark:border-slate-700">লিঙ্গ</th>}
-                    {isColumnVisible("designation") && <th className="border p-2.5 dark:border-slate-700">পদবি</th>}
-                    {isColumnVisible("academicDivision") && (
-                      <th className="border p-2.5 dark:border-slate-700">একাডেমিক বিভাগ</th>
-                    )}
-                    {isColumnVisible("qualification") && (
-                      <th className="border p-2.5 dark:border-slate-700">যোগ্যতা</th>
-                    )}
+                    {orderedVisibleColumns.map((key) => (
+                      <th key={key} className="border p-2.5 dark:border-slate-700">
+                        {TEACHER_COLUMN_LABEL_MAP.get(key)}
+                      </th>
+                    ))}
                     <th className="border p-2.5 dark:border-slate-700">একশন</th>
                   </tr>
                 </thead>
@@ -304,33 +418,13 @@ const TeacherListPage = () => {
                   ) : (
                     filteredTeachers.map((teacher) => (
                       <tr key={teacher.id} className="border-t transition hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                        {isColumnVisible("registration") && (
-                          <td className="border p-2.5 dark:border-slate-700">{teacher.registration_no ?? "নেই"}</td>
-                        )}
-
                         <td className="border p-2.5 dark:border-slate-700">{teacher.name_bn || teacher.name || "নেই"}</td>
 
-                        {isColumnVisible("phone") && (
-                          <td className="border p-2.5 dark:border-slate-700">{teacher.phone || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("gender") && (
-                          <td className="border p-2.5 dark:border-slate-700">{getGenderName(teacher.gender)}</td>
-                        )}
-
-                        {isColumnVisible("designation") && (
-                          <td className="border p-2.5 dark:border-slate-700">{teacher.designation || "নেই"}</td>
-                        )}
-
-                        {isColumnVisible("academicDivision") && (
-                          <td className="border p-2.5 dark:border-slate-700">
-                            {getDivisionName(getAcademicDivisionId(teacher))}
+                        {orderedVisibleColumns.map((key) => (
+                          <td key={key} className="border p-2.5 dark:border-slate-700">
+                            {columnValueGetters[key](teacher)}
                           </td>
-                        )}
-
-                        {isColumnVisible("qualification") && (
-                          <td className="border p-2.5 dark:border-slate-700">{teacher.qualification || "নেই"}</td>
-                        )}
+                        ))}
 
                         <td className="border p-2.5 dark:border-slate-700">
                           <button

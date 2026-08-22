@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./router";
@@ -12,6 +13,7 @@ const app = express();
 
 app.set("trust proxy", 1);
 app.use(helmet());
+app.use(compression());
 app.use(
   cors({
     origin(origin, callback) {

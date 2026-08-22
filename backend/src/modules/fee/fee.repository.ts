@@ -154,13 +154,33 @@ export class FeeRepository {
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
         feeStructure: { feeType: "ADMISSION" },
         student: { admissionStatus: "APPROVED" },
+        queueClearedAt: null,
       },
-      orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+      // Newest admission first - this is a "needs office follow-up" queue,
+      // not a due-date worklist, so a just-approved student should surface
+      // immediately instead of waiting behind older due dates.
+      orderBy: [{ id: "desc" }],
       include: {
         student: { select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true } } } },
       },
       take: limit,
       skip: offset,
+    });
+  }
+
+  /** "সব ক্লিয়ার করুন" - hides every invoice currently on the pending queue
+   * from that queue only (queueClearedAt), for every office user. The
+   * invoice itself is untouched and stays fully payable from ছাত্র ফি গ্রহণ. */
+  clearPendingInvoices(madrasaId: number) {
+    return prisma.invoice.updateMany({
+      where: {
+        madrasaId,
+        status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+        feeStructure: { feeType: "ADMISSION" },
+        student: { admissionStatus: "APPROVED" },
+        queueClearedAt: null,
+      },
+      data: { queueClearedAt: new Date() },
     });
   }
 

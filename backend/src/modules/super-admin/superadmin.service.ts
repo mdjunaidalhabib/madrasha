@@ -14,6 +14,8 @@ import {
   SUPER_ADMIN_TREND_ROW_LIMIT,
   WEBSITE_STATUSES,
 } from "./superadmin.constants";
+import { DEFAULT_ROLE_PERMISSION_KEYS } from "../../shared/permissions/baseline-role-permissions";
+import { isMuhtamimRole } from "../../shared/permissions";
 import {
   DefaultUserProtectedError,
   InvalidMadrasaIdError,
@@ -61,6 +63,16 @@ function slugify(text: string) {
 const cleanNumberArray = (v: unknown): number[] => {
   if (!Array.isArray(v)) return [];
   return v.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0);
+};
+
+/** Many madrasas already had a running subscription before being entered
+ * into this system, so the plan's start date can't always just be "today" -
+ * the super admin may backdate it here. Falls back to today when omitted. */
+const resolvePlanStartDate = (value?: string): Date => {
+  if (!value) return new Date(new Date().toDateString());
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) throw new BadRequestError("Invalid start date");
+  return new Date(parsed.toDateString());
 };
 
 export class SuperAdminService {
@@ -137,7 +149,7 @@ export class SuperAdminService {
 
       await this.repository.deactivateSubscriptionsOnTx(tx, madrasaId);
 
-      const startDate = new Date(new Date().toDateString());
+      const startDate = resolvePlanStartDate(dto.start_date);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + (plan.durationDays || 0));
 
@@ -175,6 +187,26 @@ export class SuperAdminService {
       for (const r of DEFAULT_MADRASA_ROLES) {
         const role = await this.repository.createRoleOnTx(tx, madrasaId, r.key, r.name);
         roleMap[r.key] = role.id;
+
+        // MUHTAMIM bypasses permission checks entirely (isMuhtamimRole
+        // short-circuit) and can never actually be restricted by these rows -
+        // it's seeded with the full catalog purely so the Roles & Permissions
+        // UI shows an accurate "all permissions" count instead of a
+        // misleading empty one. TALIMAT/ACCOUNTANT get their real, editable
+        // default set from DEFAULT_ROLE_PERMISSION_KEYS.
+        const permissionRows = isMuhtamimRole(r.key)
+          ? await this.repository.findAllPermissionIdsOnTx(tx)
+          : DEFAULT_ROLE_PERMISSION_KEYS[r.key]?.length
+            ? await this.repository.findPermissionIdsByKeysOnTx(tx, DEFAULT_ROLE_PERMISSION_KEYS[r.key])
+            : [];
+
+        if (permissionRows.length) {
+          await this.repository.setRolePermissionsOnTx(
+            tx,
+            role.id,
+            permissionRows.map((p) => p.id),
+          );
+        }
       }
 
       /* ========================= USERS ========================= */
@@ -260,7 +292,7 @@ export class SuperAdminService {
 
         const durationDays = Number(dto.duration_days) > 0 ? Number(dto.duration_days) : plan.durationDays || 0;
 
-        const startDate = new Date(new Date().toDateString());
+        const startDate = resolvePlanStartDate(dto.start_date);
         const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + durationDays);
 
@@ -382,7 +414,7 @@ export class SuperAdminService {
 
         await this.repository.deactivateSubscriptionsOnTx(tx, id);
 
-        const startDate = new Date(new Date().toDateString());
+        const startDate = resolvePlanStartDate(dto.start_date);
         const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + (plan.durationDays || 0));
 
@@ -434,6 +466,8 @@ export class SuperAdminService {
       is_active: madrasa.isActive,
       website_status: madrasa.websiteStatus,
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
+      start_date: madrasa.subscriptions[0]?.startDate ?? null,
+      end_date: madrasa.subscriptions[0]?.endDate ?? null,
       divisions: madrasa.madrasaDivisions.map((d) => d.divisionId),
       modules: madrasa.madrasaModules.map((m) => m.moduleId),
     };

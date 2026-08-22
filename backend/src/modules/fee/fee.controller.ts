@@ -52,6 +52,11 @@ export const getPendingInvoices = asyncHandler(async (req: Request, res: Respons
   res.json({ success: true, data });
 });
 
+export const clearPendingInvoices = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.clearPendingInvoices(getMadrasaId(req));
+  return ApiResponse.success(res, { message: "তালিকা ক্লিয়ার করা হয়েছে", data });
+});
+
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
   const sessionId = req.body.session_id ? Number(req.body.session_id) : undefined;

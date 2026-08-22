@@ -4,17 +4,17 @@ import { SidebarChildItem, SidebarModuleItem } from "./sidebar.types";
 import {
   SIDEBAR_MUHTAMIM_ROLE,
   SIDEBAR_SUPER_ADMIN_ROLE,
-  SIDEBAR_TALIMAT_ROLE,
-  SIDEBAR_ACCOUNTANT_ROLE,
-  SIDEBAR_TALIMAT_MODULE_KEY,
-  SIDEBAR_ACCOUNTS_MODULE_KEY,
+  MODULE_PERMISSION_PREFIXES,
 } from "./sidebar.constants";
 
-const isAllowed = (role: string, moduleKey: string) => {
+const isModuleAllowed = (role: string, permissionKeys: string[], moduleKey: string) => {
   if (!role || role === SIDEBAR_MUHTAMIM_ROLE || role === SIDEBAR_SUPER_ADMIN_ROLE) return true;
-  if (role === SIDEBAR_TALIMAT_ROLE) return moduleKey === SIDEBAR_TALIMAT_MODULE_KEY;
-  if (role === SIDEBAR_ACCOUNTANT_ROLE) return moduleKey === SIDEBAR_ACCOUNTS_MODULE_KEY;
-  return true;
+
+  const prefixes = MODULE_PERMISSION_PREFIXES[moduleKey];
+  if (prefixes === undefined) return true; // unknown module key - fail open, same as before
+  if (prefixes.length === 0) return true; // e.g. dashboard - always visible
+
+  return permissionKeys.some((key) => prefixes.some((prefix) => key === prefix || key.startsWith(prefix)));
 };
 
 export class SidebarService {
@@ -26,8 +26,17 @@ export class SidebarService {
     return normalizeAppRole(role?.keyName || role?.nameBn || "");
   }
 
+  private async resolvePermissionKeys(roleId?: number): Promise<string[]> {
+    if (!roleId) return [];
+    const rows = await this.repository.findRolePermissionKeys(roleId);
+    return rows.map((r) => r.permission.keyName).filter((k): k is string => Boolean(k));
+  }
+
   async getSidebarTree(madrasaId: number, roleId?: number): Promise<SidebarModuleItem[]> {
-    const roleKey = await this.resolveRoleKey(roleId);
+    const [roleKey, permissionKeys] = await Promise.all([
+      this.resolveRoleKey(roleId),
+      this.resolvePermissionKeys(roleId),
+    ]);
 
     const madrasaModules = await this.repository.findActiveMadrasaModules(madrasaId);
     // The old standalone `admission` module duplicated the "নতুন ভর্তি"
@@ -94,7 +103,7 @@ export class SidebarService {
     ]);
 
     return modules.map((mod) => {
-      const disabled = !isAllowed(roleKey, mod.keyName || "");
+      const disabled = !isModuleAllowed(roleKey, permissionKeys, mod.keyName || "");
       const children: SidebarChildItem[] = features
         .filter((f) => f.moduleId === mod.id)
         .map((f) => ({
@@ -373,6 +382,7 @@ export class SidebarService {
       if (mod.keyName === "settings") {
         const fallbackSettingsChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "profile", label: "প্রোফাইল সেটিংস", sortOrder: -1 },
+          { key: "plan", label: "প্ল্যান", sortOrder: -0.5 },
           { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 0 },
           { key: "branding", label: "রিপোর্ট ব্র্যান্ডিং", sortOrder: 1 },
           { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 2 },

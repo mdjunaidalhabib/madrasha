@@ -35,17 +35,25 @@ export interface UserItem {
   id: number;
   name: string;
   email: string;
+  mobile: string | null;
+  photoUrl: string | null;
   roleId: number;
   isActive: number;
   roleKey: string | null;
   isMuhtamim: boolean;
+  lastLoginAt: string | null;
+  lockedUntil: string | null;
 }
 
 export const userAdminApi = {
   list: () => api.get("/users"),
   create: (payload: { name: string; email: string; password: string; role_id: number }) =>
     api.post("/users", payload),
-  update: (id: number, payload: { role_id?: number; is_active?: boolean; name?: string }) =>
-    api.patch(`/users/${id}`, payload),
+  update: (
+    id: number,
+    payload: { role_id?: number; is_active?: boolean; name?: string; mobile?: string; photo_url?: string },
+  ) => api.patch(`/users/${id}`, payload),
+  resetPassword: (id: number, password: string) => api.post(`/users/${id}/reset-password`, { password }),
+  unlock: (id: number) => api.post(`/users/${id}/unlock`, {}),
   remove: (id: number) => api.delete(`/users/${id}`),
 };

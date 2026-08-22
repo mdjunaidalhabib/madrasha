@@ -144,7 +144,11 @@ export class StudentService {
   ): Promise<StudentListItem[]> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
-    const where: Prisma.StudentWhereInput = { madrasaId };
+    // Only fully-approved students show up here (Student List, attendance,
+    // exam, promotion, ID cards...) - an admission stays invisible to every
+    // other module until a Muhtamim approves it (see approveAdmission).
+    // PENDING/REJECTED applicants are only reachable via listPendingAdmissions.
+    const where: Prisma.StudentWhereInput = { madrasaId, admissionStatus: "APPROVED" };
     if (filters.divisionId !== undefined) where.divisionId = filters.divisionId;
     if (filters.classId !== undefined) where.classId = filters.classId;
     if (filters.academicYear !== undefined) where.academicYear = filters.academicYear;

@@ -41,6 +41,11 @@ export const invoiceApi = {
   pending: (params?: { limit?: number; offset?: number }) =>
     api.get("/invoices/pending", { params }),
 
+  // "সব ক্লিয়ার করুন" - hides every row currently on the pending queue (for
+  // every office user); the invoices themselves stay collectible from ছাত্র
+  // ফি গ্রহণ (see backend FeeRepository.clearPendingInvoices).
+  clearPending: () => api.post("/invoices/pending/clear"),
+
   backfill: (payload?: { class_id?: number; session_id?: number }) =>
     api.post("/invoices/backfill", payload || {}),
 

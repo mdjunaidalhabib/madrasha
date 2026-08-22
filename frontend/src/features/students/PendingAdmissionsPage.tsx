@@ -621,8 +621,15 @@ const PendingAdmissionsPage = () => {
               <DetailRow label="গ্রাম" value={detailTarget.village} />
             </DetailSection>
 
-            <div className="flex justify-end gap-2 border-t pt-4 dark:border-slate-700">
+            <div className="flex flex-wrap justify-end gap-2 border-t pt-4 dark:border-slate-700">
               <AdmissionFormPrintButton row={detailTarget} />
+              <button
+                type="button"
+                onClick={() => navigate(`${adminBase}/students/${detailTarget.id}`)}
+                className="h-9 rounded-md border border-blue-200 px-4 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-950/40"
+              >
+                তথ্য সম্পাদনা করুন
+              </button>
               <button
                 type="button"
                 disabled={busyId === detailTarget.id}

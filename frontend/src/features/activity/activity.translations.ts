@@ -147,6 +147,9 @@ const ENTITY_NOUNS: LangMap = {
     expense: "ব্যয়",
     user: "ইউজার",
     documenttemplate: "ডকুমেন্ট টেমপ্লেট",
+    library: "লাইব্রেরি",
+    website: "ওয়েবসাইট",
+    madrasa: "মাদ্রাসা",
   },
   en: {
     students: "Student",
@@ -183,6 +186,9 @@ const ENTITY_NOUNS: LangMap = {
     expense: "Expense",
     user: "User",
     documenttemplate: "Document Template",
+    library: "Library",
+    website: "Website",
+    madrasa: "Madrasa",
   },
   ar: {
     students: "طالب",
@@ -219,6 +225,9 @@ const ENTITY_NOUNS: LangMap = {
     expense: "المصروف",
     user: "مستخدم",
     documenttemplate: "قالب المستند",
+    library: "المكتبة",
+    website: "الموقع",
+    madrasa: "المدرسة",
   },
 };
 
@@ -303,6 +312,105 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
       },
     ];
   }),
+
+  // Fee / Invoices
+  { key: "invoices/pending/clear|CREATE", bn: "বকেয়া ইনভয়েস ক্লিয়ার করা হয়েছে", en: "Pending invoices cleared", ar: "تم تصفية الفواتير المعلقة" },
+
+  // Payroll
+  { key: "payroll/generate|CREATE", bn: "বেতন (পেরোল) তৈরি করা হয়েছে", en: "Payroll generated", ar: "تم إنشاء كشف الرواتب" },
+  { key: "payroll/pay|UPDATE", bn: "বেতন পরিশোধ করা হয়েছে", en: "Payroll paid", ar: "تم دفع الراتب" },
+
+  // Promotion
+  { key: "promotion/preview|CREATE", bn: "প্রমোশনের প্রিভিউ দেখা হয়েছে", en: "Promotion previewed", ar: "تمت معاينة الترقية" },
+  { key: "promotion/execute|CREATE", bn: "শিক্ষার্থীদের প্রমোশন কার্যকর করা হয়েছে", en: "Student promotion executed", ar: "تم تنفيذ ترقية الطلاب" },
+
+  // Students
+  { key: "students/admission|CREATE", bn: "নতুন শিক্ষার্থী ভর্তি করা হয়েছে", en: "Student admitted", ar: "تم قبول طالب جديد" },
+  { key: "students/admission/bulk|CREATE", bn: "একাধিক শিক্ষার্থী একসাথে (বাল্ক) ভর্তি করা হয়েছে", en: "Students bulk admitted", ar: "تم قبول عدة طلاب دفعة واحدة" },
+  { key: "students/bulk-update|CREATE", bn: "একাধিক শিক্ষার্থীর তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "Students bulk updated", ar: "تم تحديث بيانات عدة طلاب دفعة واحدة" },
+  { key: "students/approve|UPDATE", bn: "শিক্ষার্থীর ভর্তি অনুমোদন করা হয়েছে", en: "Student admission approved", ar: "تمت الموافقة على قبول الطالب" },
+  { key: "students/reject|UPDATE", bn: "শিক্ষার্থীর ভর্তি বাতিল করা হয়েছে", en: "Student admission rejected", ar: "تم رفض قبول الطالب" },
+  { key: "students/expel|UPDATE", bn: "শিক্ষার্থীকে বহিষ্কার করা হয়েছে", en: "Student expelled", ar: "تم فصل الطالب" },
+  { key: "students/transfer-session|UPDATE", bn: "শিক্ষার্থীকে নতুন শিক্ষাবর্ষে স্থানান্তর করা হয়েছে", en: "Student transferred to new session", ar: "تم نقل الطالب إلى عام دراسي جديد" },
+  { key: "students/bulk|DELETE", bn: "একাধিক শিক্ষার্থী ট্র্যাশে সরানো হয়েছে", en: "Students moved to trash in bulk", ar: "تم نقل عدة طلاب إلى سلة المهملات" },
+
+  // Teachers
+  { key: "teachers/bulk|CREATE", bn: "একাধিক শিক্ষক একসাথে (বাল্ক) যোগ করা হয়েছে", en: "Teachers bulk added", ar: "تمت إضافة عدة معلمين دفعة واحدة" },
+  { key: "teachers/bulk-update|CREATE", bn: "একাধিক শিক্ষকের তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "Teachers bulk updated", ar: "تم تحديث بيانات عدة معلمين دفعة واحدة" },
+
+  // Teacher assignments
+  { key: "teacher-assignments/delete|CREATE", bn: "শিক্ষক বণ্টন মুছে ফেলা হয়েছে", en: "Teacher assignment deleted", ar: "تم حذف توزيع المعلم" },
+
+  // ResultPanel
+  { key: "results/session|CREATE", bn: "ফলাফলের সেশন তৈরি করা হয়েছে", en: "Result session created", ar: "تم إنشاء جلسة النتائج" },
+  { key: "results/marks|CREATE", bn: "পরীক্ষার নম্বর সংরক্ষণ করা হয়েছে", en: "Marks saved", ar: "تم حفظ الدرجات" },
+  { key: "results/process|CREATE", bn: "ফলাফল প্রসেস করা হয়েছে", en: "Result processed", ar: "تمت معالجة النتيجة" },
+  { key: "results/publish|CREATE", bn: "ফলাফল প্রকাশ করা হয়েছে", en: "Result published", ar: "تم نشر النتيجة" },
+  { key: "results/apply-roll-by-rank|CREATE", bn: "মেধাক্রম অনুযায়ী রোল নম্বর দেওয়া হয়েছে", en: "Roll numbers applied by rank", ar: "تم تطبيق أرقام الجلوس حسب الترتيب" },
+
+  // Attendance / Kiosk
+  { key: "attendance/bulk|CREATE", bn: "একসাথে অনেক শিক্ষার্থীর হাজিরা দেওয়া হয়েছে", en: "Attendance bulk marked", ar: "تم تسجيل حضور عدة طلاب دفعة واحدة" },
+  { key: "attendance/kiosk/devices|CREATE", bn: "কিয়স্ক ডিভাইস যোগ করা হয়েছে", en: "Kiosk device added", ar: "تمت إضافة جهاز الكشك" },
+  { key: "attendance/kiosk/devices|UPDATE", bn: "কিয়স্ক ডিভাইস হালনাগাদ করা হয়েছে", en: "Kiosk device updated", ar: "تم تحديث جهاز الكشك" },
+  { key: "attendance/kiosk/devices|DELETE", bn: "কিয়স্ক ডিভাইস মুছে ফেলা হয়েছে", en: "Kiosk device deleted", ar: "تم حذف جهاز الكشك" },
+  { key: "attendance/kiosk/students/card|UPDATE", bn: "শিক্ষার্থীর কার্ড/ফিঙ্গারপ্রিন্ট সংযুক্ত করা হয়েছে", en: "Student card/fingerprint assigned", ar: "تم ربط بطاقة/بصمة الطالب" },
+
+  // Library
+  { key: "library/categories|CREATE", bn: "লাইব্রেরি ক্যাটাগরি যোগ করা হয়েছে", en: "Library category added", ar: "تمت إضافة فئة المكتبة" },
+  { key: "library/categories|UPDATE", bn: "লাইব্রেরি ক্যাটাগরি হালনাগাদ করা হয়েছে", en: "Library category updated", ar: "تم تحديث فئة المكتبة" },
+  { key: "library/categories|DELETE", bn: "লাইব্রেরি ক্যাটাগরি মুছে ফেলা হয়েছে", en: "Library category deleted", ar: "تم حذف فئة المكتبة" },
+  { key: "library/books|CREATE", bn: "লাইব্রেরিতে বই যোগ করা হয়েছে", en: "Library book added", ar: "تمت إضافة كتاب إلى المكتبة" },
+  { key: "library/books|UPDATE", bn: "বইয়ের তথ্য হালনাগাদ করা হয়েছে", en: "Library book updated", ar: "تم تحديث بيانات الكتاب" },
+  { key: "library/books|DELETE", bn: "বই মুছে ফেলা হয়েছে", en: "Library book deleted", ar: "تم حذف الكتاب" },
+  { key: "library/borrow-records|CREATE", bn: "বই ইস্যু করা হয়েছে", en: "Book issued", ar: "تم إعارة الكتاب" },
+  { key: "library/borrow-records/return|CREATE", bn: "বই ফেরত নেওয়া হয়েছে", en: "Book returned", ar: "تم إرجاع الكتاب" },
+  { key: "library/borrow-records/mark-lost|CREATE", bn: "বই হারানো হিসেবে চিহ্নিত করা হয়েছে", en: "Book marked as lost", ar: "تم تحديد الكتاب كمفقود" },
+  { key: "library/borrow-records/settle-fine|CREATE", bn: "লাইব্রেরির জরিমানা পরিশোধ করা হয়েছে", en: "Library fine settled", ar: "تمت تسوية غرامة المكتبة" },
+  { key: "library/settings/fine-per-day|CREATE", bn: "লাইব্রেরির প্রতিদিনের জরিমানার হার নির্ধারণ করা হয়েছে", en: "Library fine-per-day rate set", ar: "تم تحديد غرامة المكتبة اليومية" },
+
+  // Settings
+  { key: "settings/branding|UPDATE", bn: "ব্র্যান্ডিং সেটিংস হালনাগাদ করা হয়েছে", en: "Branding settings updated", ar: "تم تحديث إعدادات العلامة التجارية" },
+  { key: "settings/branding/logo|DELETE", bn: "লোগো মুছে ফেলা হয়েছে", en: "Logo removed", ar: "تم حذف الشعار" },
+  { key: "settings/branding/banner|DELETE", bn: "ব্যানার মুছে ফেলা হয়েছে", en: "Banner removed", ar: "تم حذف اللافتة" },
+  { key: "settings/branding/watermark|DELETE", bn: "ওয়াটারমার্ক মুছে ফেলা হয়েছে", en: "Watermark removed", ar: "تم حذف العلامة المائية" },
+  { key: "settings/document-templates|UPDATE", bn: "ডকুমেন্ট টেমপ্লেট সেটিংস হালনাগাদ করা হয়েছে", en: "Document template settings updated", ar: "تم تحديث إعدادات قوالب المستندات" },
+  { key: "settings/id-card-design|UPDATE", bn: "আইডি কার্ডের ডিজাইন হালনাগাদ করা হয়েছে", en: "ID card design updated", ar: "تم تحديث تصميم بطاقة الهوية" },
+  { key: "settings/admit-card-design|UPDATE", bn: "এডমিট কার্ডের ডিজাইন হালনাগাদ করা হয়েছে", en: "Admit card design updated", ar: "تم تحديث تصميم بطاقة الدخول" },
+  { key: "settings/letter-design|UPDATE", bn: "চিঠির ডিজাইন হালনাগাদ করা হয়েছে", en: "Letter design updated", ar: "تم تحديث تصميم الخطاب" },
+  { key: "settings/book-label-design|UPDATE", bn: "বই-লেবেলের ডিজাইন হালনাগাদ করা হয়েছে", en: "Book label design updated", ar: "تم تحديث تصميم ملصق الكتاب" },
+
+  // Public website
+  { key: "website/admin/settings|UPDATE", bn: "ওয়েবসাইট সেটিংস হালনাগাদ করা হয়েছে", en: "Website settings updated", ar: "تم تحديث إعدادات الموقع" },
+  { key: "website/admin/pages|UPDATE", bn: "ওয়েবসাইট পেজ হালনাগাদ করা হয়েছে", en: "Website page updated", ar: "تم تحديث صفحة الموقع" },
+  { key: "website/admin/notices|CREATE", bn: "ওয়েবসাইট নোটিশ যোগ করা হয়েছে", en: "Website notice added", ar: "تمت إضافة إشعار الموقع" },
+  { key: "website/admin/notices|DELETE", bn: "ওয়েবসাইট নোটিশ মুছে ফেলা হয়েছে", en: "Website notice deleted", ar: "تم حذف إشعار الموقع" },
+  { key: "website/admin/gallery|CREATE", bn: "গ্যালারিতে ছবি যোগ করা হয়েছে", en: "Gallery photo added", ar: "تمت إضافة صورة إلى المعرض" },
+  { key: "website/admin/gallery|DELETE", bn: "গ্যালারি থেকে ছবি মুছে ফেলা হয়েছে", en: "Gallery photo deleted", ar: "تم حذف صورة من المعرض" },
+  { key: "website/admin/slides|CREATE", bn: "হিরো স্লাইড যোগ করা হয়েছে", en: "Hero slide added", ar: "تمت إضافة شريحة العرض الرئيسية" },
+  { key: "website/admin/slides|DELETE", bn: "হিরো স্লাইড মুছে ফেলা হয়েছে", en: "Hero slide deleted", ar: "تم حذف شريحة العرض الرئيسية" },
+  { key: "website/admin/committee|CREATE", bn: "কমিটির সদস্য যোগ করা হয়েছে", en: "Committee member added", ar: "تمت إضافة عضو اللجنة" },
+  { key: "website/admin/committee|DELETE", bn: "কমিটির সদস্য মুছে ফেলা হয়েছে", en: "Committee member deleted", ar: "تم حذف عضو اللجنة" },
+  { key: "website/admin/admissions/status|UPDATE", bn: "ভর্তি আবেদনের অবস্থা পরিবর্তন করা হয়েছে", en: "Admission application status changed", ar: "تم تغيير حالة طلب القبول" },
+  { key: "website/admin/admissions|DELETE", bn: "ভর্তি আবেদন মুছে ফেলা হয়েছে", en: "Admission application deleted", ar: "تم حذف طلب القبول" },
+
+  // Document templates (custom action strings, not plain CREATE/UPDATE/DELETE)
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.CREATE", bn: "ডকুমেন্ট টেমপ্লেট তৈরি করা হয়েছে", en: "Document template created", ar: "تم إنشاء قالب المستند" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.CLONE", bn: "ডকুমেন্ট টেমপ্লেট কপি (ক্লোন) করা হয়েছে", en: "Document template cloned", ar: "تم استنساخ قالب المستند" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.PUBLISH", bn: "ডকুমেন্ট টেমপ্লেট প্রকাশ করা হয়েছে", en: "Document template published", ar: "تم نشر قالب المستند" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.UPDATE", bn: "ডকুমেন্ট টেমপ্লেট হালনাগাদ করা হয়েছে", en: "Document template updated", ar: "تم تحديث قالب المستند" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.DELETE", bn: "ডকুমেন্ট টেমপ্লেট মুছে ফেলা হয়েছে", en: "Document template deleted", ar: "تم حذف قالب المستند" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.SET_SYSTEM_DEFAULT", bn: "সিস্টেম ডিফল্ট টেমপ্লেট নির্ধারণ করা হয়েছে", en: "System default template set", ar: "تم تعيين القالب الافتراضي للنظام" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.SET_TENANT_DEFAULT", bn: "মাদ্রাসার ডিফল্ট টেমপ্লেট নির্ধারণ করা হয়েছে", en: "Madrasa default template set", ar: "تم تعيين القالب الافتراضي للمدرسة" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.AUTO_MIGRATED", bn: "টেমপ্লেট স্বয়ংক্রিয়ভাবে মাইগ্রেট করা হয়েছে", en: "Template auto-migrated", ar: "تمت ترقية القالب تلقائيًا" },
+
+  // Super-admin actions visible in a tenant's own log
+  { key: "madrasa|MADRASA_CREATED", bn: "মাদ্রাসা তৈরি করা হয়েছে", en: "Madrasa created", ar: "تم إنشاء المدرسة" },
+  { key: "madrasa|SUPER_ADMIN_MADRASA_UPDATED", bn: "মাদ্রাসার তথ্য হালনাগাদ করা হয়েছে (সুপার এডমিন)", en: "Madrasa updated (super admin)", ar: "تم تحديث بيانات المدرسة (المشرف العام)" },
+  { key: "user|SUPER_ADMIN_USER_CREATED", bn: "নতুন ইউজার তৈরি করা হয়েছে (সুপার এডমিন)", en: "User created (super admin)", ar: "تم إنشاء مستخدم (المشرف العام)" },
+  { key: "user|SUPER_ADMIN_USER_DELETED", bn: "ইউজার মুছে ফেলা হয়েছে (সুপার এডমিন)", en: "User deleted (super admin)", ar: "تم حذف المستخدم (المشرف العام)" },
+
+  // Talimat
+  { key: "talimat/create|CREATE", bn: "তালিমাত যোগ করা হয়েছে", en: "Talimat added", ar: "تمت إضافة التعليمات" },
 ];
 
 const SPECIAL_LABELS: LangMap = { bn: {}, en: {}, ar: {} };

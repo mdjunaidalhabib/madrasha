@@ -99,6 +99,36 @@ export class SettingsRepository {
   updateBookLabelDesign(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
+
+  findMadrasaLimits(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { studentLimit: true, userLimit: true, planStatus: true },
+    });
+  }
+
+  /** Current plan comes from the latest active subscription row - see
+   * assignPlanToMadrasa in superadmin.service.ts, which is the only place
+   * this row is created/replaced (fully super-admin controlled). */
+  findActiveSubscription(madrasaId: number) {
+    return prisma.madrasaSubscription.findFirst({
+      where: { madrasaId, isActive: 1 },
+      orderBy: { id: "desc" },
+      select: {
+        startDate: true,
+        endDate: true,
+        plan: { select: { name: true, price: true, durationDays: true } },
+      },
+    });
+  }
+
+  countActiveStudents(madrasaId: number) {
+    return prisma.student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+  }
+
+  countActiveUsers(madrasaId: number) {
+    return prisma.user.count({ where: { madrasaId, isActive: 1 } });
+  }
 }
 
 export const settingsRepository = new SettingsRepository();

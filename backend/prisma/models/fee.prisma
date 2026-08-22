@@ -77,6 +77,11 @@ model Invoice {
   waiveReason    String?       @map("waive_reason") @db.VarChar(300)
   waivedById     Int?          @map("waived_by")
   waivedAt       DateTime?     @map("waived_at")
+  /// Set when হিসাব বিভাগ clicks "সব ক্লিয়ার করুন" on the "ভর্তি ফি পেন্ডিং"
+  /// queue. Only hides this invoice from that queue - the invoice itself is
+  /// untouched and still fully collectible from ছাত্র ফি গ্রহণ (see
+  /// FeeRepository.findPendingInvoices).
+  queueClearedAt DateTime?     @map("queue_cleared_at")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
 

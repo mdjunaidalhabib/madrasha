@@ -20,53 +20,57 @@ import {
 
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
+import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 
 const router = Router();
+
+router.use(tenantMiddleware, authMiddleware);
+
+// GET routes are deliberately left ungated - they're consumed as dropdown/
+// reference data by many unrelated pages (admission, attendance, fee,
+// reports, routine...) across every role, not just this settings screen.
+// Only the mutating endpoints are restricted.
+const manage = rbacMiddleware("talimat.manage");
 
 /* =========================
    DIVISIONS
 ========================= */
-router.get("/madrasa-divisions", tenantMiddleware, authMiddleware, getDivisions);
+router.get("/madrasa-divisions", getDivisions);
 
-router.put("/madrasa-divisions/reorder", tenantMiddleware, authMiddleware, reorderDivisions);
+router.put("/madrasa-divisions/reorder", manage, reorderDivisions);
 
-router.put("/madrasa-divisions/:id", tenantMiddleware, authMiddleware, updateDivision);
+router.put("/madrasa-divisions/:id", manage, updateDivision);
 
-router.delete("/madrasa-divisions/:id", tenantMiddleware, authMiddleware, deleteDivision);
+router.delete("/madrasa-divisions/:id", manage, deleteDivision);
 
 /* =========================
    CLASSES
 ========================= */
-router.get("/madrasa-classes", tenantMiddleware, authMiddleware, getClasses);
+router.get("/madrasa-classes", getClasses);
 
-router.post("/madrasa-classes", tenantMiddleware, authMiddleware, addClass);
+router.post("/madrasa-classes", manage, addClass);
 
-router.put("/madrasa-classes/reorder", tenantMiddleware, authMiddleware, reorderClasses);
+router.put("/madrasa-classes/reorder", manage, reorderClasses);
 
-router.put("/madrasa-classes/:id", tenantMiddleware, authMiddleware, updateClass);
+router.put("/madrasa-classes/:id", manage, updateClass);
 
-router.delete("/madrasa-classes/:id", tenantMiddleware, authMiddleware, deleteClass);
+router.delete("/madrasa-classes/:id", manage, deleteClass);
 
 /* =========================
    BOOKS
 ========================= */
-router.get("/madrasa-books", tenantMiddleware, authMiddleware, getSubjects);
+router.get("/madrasa-books", getSubjects);
 
-router.post("/madrasa-books", tenantMiddleware, authMiddleware, addSubject);
+router.post("/madrasa-books", manage, addSubject);
 
-router.put("/madrasa-books/miyari", tenantMiddleware, authMiddleware, updateMiyariSubjects);
+router.put("/madrasa-books/miyari", manage, updateMiyariSubjects);
 
-router.put("/madrasa-books/reorder", tenantMiddleware, authMiddleware, reorderSubjects);
+router.put("/madrasa-books/reorder", manage, reorderSubjects);
 
-router.put("/madrasa-books/:id", tenantMiddleware, authMiddleware, updateSubject);
+router.put("/madrasa-books/:id", manage, updateSubject);
 
-router.get(
-  "/madrasa-books/:id/delete-info",
-  tenantMiddleware,
-  authMiddleware,
-  getSubjectDeleteInfo,
-);
+router.get("/madrasa-books/:id/delete-info", getSubjectDeleteInfo);
 
-router.delete("/madrasa-books/:id", tenantMiddleware, authMiddleware, deleteSubject);
+router.delete("/madrasa-books/:id", manage, deleteSubject);
 
 export default router;

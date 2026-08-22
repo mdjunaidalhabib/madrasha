@@ -2,6 +2,7 @@ import { useAuthStore } from "../../store/authStore";
 import LockButton from "../lock/LockButton";
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
+import PlanBadge from "./PlanBadge";
 import { LogOut } from "lucide-react";
 
 type TopbarProps = {
@@ -39,6 +40,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
       {/* Right */}
       <div className="flex items-center gap-1 md:gap-2">
+        <PlanBadge />
         <ThemeToggle />
         <LockButton />
 

@@ -7,6 +7,10 @@ export interface CreateMadrasaRequestDto {
   student_limit?: number | string;
   user_limit?: number | string;
   duration_days?: number | string;
+  /** Plan's real start date (YYYY-MM-DD) - super admin can backdate this for
+   * madrasas that were already subscribed before being entered into the
+   * system. Defaults to today when omitted. */
+  start_date?: string;
   divisions?: unknown;
   modules?: unknown;
   classes?: unknown;
@@ -24,6 +28,8 @@ export interface UpdateMadrasaRequestDto {
   is_active?: unknown;
   website_status?: string;
   plan_id?: number | string;
+  /** See CreateMadrasaRequestDto.start_date. */
+  start_date?: string;
   divisions?: unknown;
   modules?: unknown;
   classes?: unknown;
@@ -32,6 +38,8 @@ export interface UpdateMadrasaRequestDto {
 
 export interface AssignPlanRequestDto {
   plan_id: number | string;
+  /** See CreateMadrasaRequestDto.start_date. */
+  start_date?: string;
 }
 
 export interface CreateMadrasaUserRequestDto {

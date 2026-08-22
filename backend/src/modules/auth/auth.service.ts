@@ -15,11 +15,7 @@ import {
 } from "./auth.types";
 import {
   MUHTAMIM_ROLE_KEYS,
-  TALIMAT_ROLE_KEYS,
-  ACCOUNTANT_ROLE_KEYS,
   MUHTAMIM_BASELINE_PERMISSIONS,
-  TALIMAT_BASELINE_PERMISSIONS,
-  ACCOUNTANT_BASELINE_PERMISSIONS,
   PASSWORD_RESET_TOKEN_TTL_MS,
   MAX_FAILED_LOGIN_ATTEMPTS,
   ACCOUNT_LOCKOUT_DURATION_MS,
@@ -119,12 +115,6 @@ export class AuthService {
 
     if ((MUHTAMIM_ROLE_KEYS as readonly string[]).includes(roleKey)) {
       MUHTAMIM_BASELINE_PERMISSIONS.forEach((permission) => permissionSet.add(permission));
-    }
-    if ((TALIMAT_ROLE_KEYS as readonly string[]).includes(roleKey)) {
-      TALIMAT_BASELINE_PERMISSIONS.forEach((permission) => permissionSet.add(permission));
-    }
-    if ((ACCOUNTANT_ROLE_KEYS as readonly string[]).includes(roleKey)) {
-      ACCOUNTANT_BASELINE_PERMISSIONS.forEach((permission) => permissionSet.add(permission));
     }
 
     return Array.from(permissionSet);

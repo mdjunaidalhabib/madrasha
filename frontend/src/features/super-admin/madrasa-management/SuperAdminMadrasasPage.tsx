@@ -36,6 +36,8 @@ export type Madrasa = {
   website_status?: string;
   address?: string | null;
   phone?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 };
 
 export type Plan = {
@@ -411,6 +413,14 @@ export default function SuperAdminMadrasasPage() {
   );
 }
 
+/** yyyy-mm-dd for a <input type="date">, defaulting to today when the
+ * madrasa has no subscription yet (e.g. plan not assigned). */
+function toDateInputValue(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
+  const base = Number.isNaN(date.getTime()) ? new Date() : date;
+  return base.toISOString().slice(0, 10);
+}
+
 function EditMadrasaModal({
   madrasa,
   plans,
@@ -434,6 +444,7 @@ function EditMadrasaModal({
     is_active: Number(madrasa.is_active || 0),
     website_status: madrasa.website_status || "active",
     plan_id: madrasa.plan_id ? String(madrasa.plan_id) : "",
+    start_date: toDateInputValue(madrasa.start_date),
   });
 
   const update = (key: keyof typeof form, value: string | number) =>
@@ -578,6 +589,21 @@ function EditMadrasaModal({
             </select>
           </div>
           <div>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
+              Plan Start Date
+            </label>
+            <input
+              type="date"
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.start_date}
+              disabled={!form.plan_id}
+              onChange={(e) => update("start_date", e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              অনেক মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করছে — প্রকৃত শুরুর তারিখ বসিয়ে দিন, নাহলে আজকের তারিখ ধরা হবে।
+            </p>
+          </div>
+          <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
             <input
               type="number"
@@ -657,6 +683,7 @@ function EditMadrasaModal({
               onSubmit({
                 ...form,
                 plan_id: form.plan_id ? Number(form.plan_id) : undefined,
+                start_date: form.plan_id ? form.start_date : undefined,
                 divisions: divisions.map(Number),
                 modules: modules.map(Number),
                 classes: classes.map(Number),

@@ -9,8 +9,12 @@ export class UserRepository {
         id: true,
         name: true,
         email: true,
+        mobile: true,
+        photoUrl: true,
         roleId: true,
         isActive: true,
+        lastLoginAt: true,
+        lockedUntil: true,
         role: { select: { keyName: true } },
       },
       orderBy: { id: "desc" },
@@ -21,6 +25,17 @@ export class UserRepository {
     return prisma.user.findFirst({
       where: { id, madrasaId },
       select: { id: true, role: { select: { keyName: true } } },
+    });
+  }
+
+  updatePasswordHash(id: number, madrasaId: number, passwordHash: string) {
+    return prisma.user.updateMany({ where: { id, madrasaId }, data: { passwordHash } });
+  }
+
+  resetLockAndAttempts(id: number, madrasaId: number) {
+    return prisma.user.updateMany({
+      where: { id, madrasaId },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
     });
   }
 

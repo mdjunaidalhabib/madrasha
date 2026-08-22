@@ -48,23 +48,20 @@ router.get("/exams", rbacMiddleware("exam.manage"), getTrashedExams);
 router.post("/exams/:id/restore", rbacMiddleware("exam.manage"), restoreExam);
 router.delete("/exams/:id", rbacMiddleware("exam.manage"), permanentDeleteExam);
 
-// Division/Class/Book delete has no RBAC gate today either (see
-// class-panel.routes.ts) — trash access mirrors that, since gating trash
-// more tightly than the underlying delete action would be inconsistent.
 /* ================= DIVISIONS ================= */
-router.get("/divisions", getTrashedDivisions);
-router.post("/divisions/:id/restore", restoreDivision);
-router.delete("/divisions/:id", permanentDeleteDivision);
+router.get("/divisions", rbacMiddleware("talimat.manage"), getTrashedDivisions);
+router.post("/divisions/:id/restore", rbacMiddleware("talimat.manage"), restoreDivision);
+router.delete("/divisions/:id", rbacMiddleware("talimat.manage"), permanentDeleteDivision);
 
 /* ================= CLASSES ================= */
-router.get("/classes", getTrashedClasses);
-router.post("/classes/:id/restore", restoreClass);
-router.delete("/classes/:id", permanentDeleteClass);
+router.get("/classes", rbacMiddleware("talimat.manage"), getTrashedClasses);
+router.post("/classes/:id/restore", rbacMiddleware("talimat.manage"), restoreClass);
+router.delete("/classes/:id", rbacMiddleware("talimat.manage"), permanentDeleteClass);
 
 /* ================= BOOKS ================= */
-router.get("/books", getTrashedBooks);
-router.post("/books/:id/restore", restoreBook);
-router.delete("/books/:id", permanentDeleteBook);
+router.get("/books", rbacMiddleware("talimat.manage"), getTrashedBooks);
+router.post("/books/:id/restore", rbacMiddleware("talimat.manage"), restoreBook);
+router.delete("/books/:id", rbacMiddleware("talimat.manage"), permanentDeleteBook);
 
 /* ================= RESULTS ================= */
 router.get("/results", rbacMiddleware("result.manage"), getTrashedResults);

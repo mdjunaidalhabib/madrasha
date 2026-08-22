@@ -191,7 +191,7 @@ export class AccountService {
       action: "CREATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.INCOME,
       entity_id: created.id,
-      details: `Income added: ${amount}`,
+      details: `আয় যোগ করা হয়েছে: ${amount} টাকা`,
     });
 
     return { message: INCOME_SUCCESS_MESSAGE, id: created.id };
@@ -236,7 +236,7 @@ export class AccountService {
       action: "CREATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: created.id,
-      details: `Expense added: ${amount}`,
+      details: `ব্যয় যোগ করা হয়েছে: ${amount} টাকা`,
     });
 
     return { message: EXPENSE_SUCCESS_MESSAGE, id: created.id };
@@ -327,7 +327,7 @@ export class AccountService {
       entity:
         existing.type === "income" ? ACCOUNT_ACTIVITY_ENTITY.INCOME : ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: updated.id,
-      details: `Entry updated`,
+      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} হালনাগাদ করা হয়েছে: ${updated.amount} টাকা`,
     });
 
     return { message: ACCOUNT_UPDATE_SUCCESS_MESSAGE, id: updated.id };
@@ -346,7 +346,7 @@ export class AccountService {
       entity:
         existing.type === "income" ? ACCOUNT_ACTIVITY_ENTITY.INCOME : ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: id,
-      details: `Entry deleted`,
+      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} মুছে ফেলা হয়েছে: ${existing.amount} টাকা`,
     });
 
     return { message: ACCOUNT_DELETE_SUCCESS_MESSAGE };

@@ -34,3 +34,20 @@ export interface BookLabelDesignData {
   book_label_design: string;
   book_label_background_image: string | null;
 }
+
+export interface MyPlanData {
+  plan_name: string | null;
+  price: number | null;
+  duration_days: number | null;
+  start_date: Date | null;
+  end_date: Date | null;
+  days_remaining: number | null;
+  plan_status: string;
+  has_active_subscription: boolean;
+  student_limit: number;
+  user_limit: number;
+  usage: {
+    students: number;
+    users: number;
+  };
+}

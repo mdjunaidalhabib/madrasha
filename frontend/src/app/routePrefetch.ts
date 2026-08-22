@@ -36,6 +36,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "accounts/transactions": () => import("../features/accounts/AccountListPage"),
   "accounts/funds": () => import("../features/accounts/AccountFundSettingsPage"),
   "settings/branding": () => import("../features/admin/settings/BrandingSettingsPage"),
+  "settings/plan": () => import("../features/admin/settings/PlanSettingsPage"),
   "settings/website": () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
   activity: () => import("../features/activity/ActivityPage"),
 };

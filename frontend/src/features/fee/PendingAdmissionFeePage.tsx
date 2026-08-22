@@ -7,6 +7,7 @@ import {
   type PaymentMethodSetting,
 } from "../../services/phase2Api";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import Modal from "../../components/ui/Modal";
@@ -56,6 +57,7 @@ const PendingAdmissionFeePage = () => {
 
   const [rows, setRows] = useState<PendingFeeRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [configuredMethods, setConfiguredMethods] = useState<PaymentMethodSetting[]>([]);
 
   const [search, setSearch] = useState("");
@@ -101,6 +103,33 @@ const PendingAdmissionFeePage = () => {
   useEffect(() => {
     loadRows();
   }, [loadRows]);
+
+  // "সব ক্লিয়ার করুন" শুধু এই তালিকা থেকে সরিয়ে দেয় - আসল ভর্তি ফি ইনভয়েস
+  // অপরিবর্তিত থাকে এবং পরে "ছাত্র ফি গ্রহণ" পেজ থেকে নেওয়া যাবে।
+  const handleClearAll = () => {
+    if (rows.length === 0) return;
+    useConfirmStore.getState().show({
+      title: "পুরো তালিকা ক্লিয়ার করবেন?",
+      message:
+        "এই তালিকার সবগুলো এখান থেকে সরে যাবে (সবার জন্য)। ভর্তি ফি বাতিল হবে না — পরে \"ছাত্র ফি গ্রহণ\" পেজ থেকে সেগুলো নেওয়া যাবে।",
+      confirmText: "ক্লিয়ার করুন",
+      danger: false,
+      onConfirm: async () => {
+        try {
+          setClearing(true);
+          await invoiceApi.clearPending();
+          useToastStore.getState().show("তালিকা ক্লিয়ার করা হয়েছে", "success");
+          setSelectedIds(new Set());
+          await loadRows();
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || "ক্লিয়ার করতে সমস্যা হয়েছে";
+          useToastStore.getState().show(msg, "error");
+        } finally {
+          setClearing(false);
+        }
+      },
+    });
+  };
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -271,18 +300,31 @@ const PendingAdmissionFeePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
-            ভর্তি ফি পেন্ডিং
-            {rows.length > 0 && (
-              <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                {rows.length}
-              </span>
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            যেসব ছাত্র আবেদন করেছে কিন্তু এখনও ভর্তি ফি পরিশোধ করেনি
-          </p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
+              ভর্তি ফি পেন্ডিং
+              {rows.length > 0 && (
+                <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+                  {rows.length}
+                </span>
+              )}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              যেসব ছাত্র আবেদন করেছে কিন্তু এখনও ভর্তি ফি পরিশোধ করেনি
+            </p>
+          </div>
+
+          {rows.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={clearing}
+              className="h-9 shrink-0 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {clearing ? "ক্লিয়ার হচ্ছে..." : "সব ক্লিয়ার করুন"}
+            </button>
+          )}
         </div>
 
         {/* সার্চবার — নাম, রোল বা রেজিস্ট্রেশন নম্বর দিয়ে খোঁজা যায় */}

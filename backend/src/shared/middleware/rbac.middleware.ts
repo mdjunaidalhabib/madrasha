@@ -1,12 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../database/prisma";
-import {
-  isSuperAdminRole,
-  normalizeAppRole,
-  isMuhtamimRole,
-  hasFallbackRole,
-  isRoleBasedPermission,
-} from "../permissions";
+import { isSuperAdminRole, normalizeAppRole, isMuhtamimRole } from "../permissions";
 
 async function getUserRole(req: Request) {
   const directRole = (req.user as any)?.role || (req.user as any)?.role_name;
@@ -32,31 +26,6 @@ async function getRolePermissions(roleId: number) {
   return rows.map((r) => r.permission.keyName).filter((k): k is string => Boolean(k));
 }
 
-export const requireRole = (...roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const role = await getUserRole(req);
-      const allowedRoles = roles.map(normalizeAppRole);
-
-      if (
-        isSuperAdminRole(role) ||
-        isMuhtamimRole(role) ||
-        allowedRoles.includes(normalizeAppRole(role))
-      ) {
-        return next();
-      }
-
-      return res.status(403).json({ message: "Forbidden: insufficient role" });
-    } catch (error) {
-      return next(error);
-    }
-  };
-};
-
 export const rbacMiddleware = (permission: string) => requirePermission(permission);
 
 export const requirePermission = (permission: string) => {
@@ -74,12 +43,9 @@ export const requirePermission = (permission: string) => {
         return next();
       }
 
-      const appRole = normalizeAppRole(role);
-      const roleBasedAllowed = isRoleBasedPermission(appRole, permission);
-
       const perms = await getRolePermissions(Number(roleId));
 
-      if (!perms.includes(permission) && !hasFallbackRole(permission, role) && !roleBasedAllowed) {
+      if (!perms.includes(permission)) {
         return res.status(403).json({ message: "Forbidden: missing permission" });
       }
 
@@ -105,18 +71,10 @@ export const requireAnyPermission = (...permissions: string[]) => {
         return next();
       }
 
-      const appRole = normalizeAppRole(role);
       const perms = await getRolePermissions(Number(roleId));
       const hasPermission = permissions.some((permission) => perms.includes(permission));
 
-      const hasFallbackPermission = permissions.some((permission) =>
-        hasFallbackRole(permission, role),
-      );
-      const hasRoleBasedPermission = permissions.some((permission) =>
-        isRoleBasedPermission(appRole, permission),
-      );
-
-      if (!hasPermission && !hasFallbackPermission && !hasRoleBasedPermission) {
+      if (!hasPermission) {
         return res.status(403).json({ message: "Forbidden: missing permission" });
       }
 

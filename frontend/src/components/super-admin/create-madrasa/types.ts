@@ -22,6 +22,7 @@ export type CreateMadrasaPayload = {
   student_limit: number;
   user_limit: number;
   duration_days: number;
+  start_date: string;
 
   /* ========================
   System Setup

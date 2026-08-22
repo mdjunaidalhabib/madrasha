@@ -6,6 +6,7 @@ import GuardianLayout from "../layouts/GuardianLayout";
 import AuthGuard from "../components/guards/AuthGuard";
 import GuardianAuthGuard from "../components/guards/GuardianAuthGuard";
 import ModuleGuard from "../components/guards/ModuleGuard";
+import PermissionGuard from "../components/guards/PermissionGuard";
 import SuperAdminLayout from "../layouts/SuperAdminLayout";
 import PageLoader from "../components/ui/PageLoader";
 import LoginPage from "../features/auth/LoginPage";
@@ -95,6 +96,7 @@ const AdminWebsiteSettingsPage = lazy(
 );
 const BrandingSettingsPage = lazy(() => import("../features/admin/settings/BrandingSettingsPage"));
 const ProfileSettingsPage = lazy(() => import("../features/admin/settings/ProfileSettingsPage"));
+const PlanSettingsPage = lazy(() => import("../features/admin/settings/PlanSettingsPage"));
 const TrashPage = lazy(() => import("../features/admin/TrashPage"));
 
 const SuperAdminDashboardPage = lazy(
@@ -169,28 +171,52 @@ const madrasaAdminChildren = [
 
   {
     path: "reports/academic-report",
-    element: <ModuleGuard module="reports">{withSuspense(<AcademicReportPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="reports">
+        <PermissionGuard permission="reports.read">{withSuspense(<AcademicReportPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "reports/student_report",
-    element: <ModuleGuard module="reports">{withSuspense(<StudentReportPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="reports">
+        <PermissionGuard permission="reports.read">{withSuspense(<StudentReportPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "reports/exam_report",
-    element: <ModuleGuard module="reports">{withSuspense(<ExamReportPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="reports">
+        <PermissionGuard permission="reports.read">{withSuspense(<ExamReportPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "reports/teacher_report",
-    element: <ModuleGuard module="reports">{withSuspense(<TeacherReportPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="reports">
+        <PermissionGuard permission="reports.read">{withSuspense(<TeacherReportPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "reports/documents",
-    element: <ModuleGuard module="reports">{withSuspense(<DocumentsReportPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="reports">
+        <PermissionGuard permission="reports.read">{withSuspense(<DocumentsReportPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
 
   {
     path: "talimat/teacher_assignment",
-    element: <ModuleGuard module="talimat">{withSuspense(<TeacherAssignmentPanel />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="talimat.manage">{withSuspense(<TeacherAssignmentPanel />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "talimat/results",
@@ -315,14 +341,24 @@ const madrasaAdminChildren = [
     element: withSuspense(<ProfileSettingsPage />),
   },
   {
+    path: "settings/plan",
+    element: withSuspense(<PlanSettingsPage />),
+  },
+  {
     path: "settings/website",
     element: (
-      <ModuleGuard module="website">{withSuspense(<AdminWebsiteSettingsPage />)}</ModuleGuard>
+      <ModuleGuard module="website">
+        <PermissionGuard permission="website.manage">{withSuspense(<AdminWebsiteSettingsPage />)}</PermissionGuard>
+      </ModuleGuard>
     ),
   },
   {
     path: "settings/branding",
-    element: <ModuleGuard module="settings">{withSuspense(<BrandingSettingsPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="settings">
+        <PermissionGuard permission="settings.manage">{withSuspense(<BrandingSettingsPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "settings/payment-methods",
@@ -332,11 +368,19 @@ const madrasaAdminChildren = [
   },
   {
     path: "settings/roles",
-    element: <ModuleGuard module="settings">{withSuspense(<RolesPermissionsPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="settings">
+        <PermissionGuard permission="roles.manage">{withSuspense(<RolesPermissionsPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "settings/users",
-    element: <ModuleGuard module="settings">{withSuspense(<UsersPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="settings">
+        <PermissionGuard permission="users.read">{withSuspense(<UsersPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "settings/trash",

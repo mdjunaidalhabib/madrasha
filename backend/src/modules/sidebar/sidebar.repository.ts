@@ -8,6 +8,13 @@ export class SidebarRepository {
     });
   }
 
+  findRolePermissionKeys(roleId: number) {
+    return prisma.rolePermission.findMany({
+      where: { roleId },
+      select: { permission: { select: { keyName: true } } },
+    });
+  }
+
   findActiveMadrasaModules(madrasaId: number) {
     return prisma.madrasaModule.findMany({
       where: { madrasaId, isActive: 1, module: { isActive: 1 } },

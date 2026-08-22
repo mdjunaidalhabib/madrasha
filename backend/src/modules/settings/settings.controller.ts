@@ -154,3 +154,13 @@ export const updateBookLabelDesign = async (req: Request, res: Response) => {
     respondError(res, error);
   }
 };
+
+export const getMyPlan = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getMyPlan(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};

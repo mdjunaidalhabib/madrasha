@@ -8,6 +8,7 @@ import {
   AdmitCardDesignData,
   LetterDesignData,
   BookLabelDesignData,
+  MyPlanData,
 } from "./settings.types";
 import {
   UpdateBrandingRequestDto,
@@ -303,6 +304,47 @@ export class SettingsService {
           }
         : {}),
     });
+  }
+
+  async getMyPlan(madrasaId: number): Promise<MyPlanData> {
+    const [madrasa, subscription, students, users] = await Promise.all([
+      this.repository.findMadrasaLimits(madrasaId),
+      this.repository.findActiveSubscription(madrasaId),
+      this.repository.countActiveStudents(madrasaId),
+      this.repository.countActiveUsers(madrasaId),
+    ]);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    const endDate = subscription?.endDate ?? null;
+    let daysRemaining: number | null = null;
+    if (endDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      daysRemaining = Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    }
+
+    return {
+      plan_name: subscription?.plan?.name ?? null,
+      price: subscription?.plan?.price !== undefined && subscription?.plan?.price !== null
+        ? Number(subscription.plan.price)
+        : null,
+      duration_days: subscription?.plan?.durationDays ?? null,
+      start_date: subscription?.startDate ?? null,
+      end_date: endDate,
+      days_remaining: daysRemaining,
+      plan_status: madrasa.planStatus,
+      has_active_subscription: !!subscription,
+      // Actual enforced limits live on the Madrasa row itself, not the Plan -
+      // assignPlanToMadrasa copies the plan's limits here but a super admin
+      // can also override them per-madrasa afterwards (see
+      // updateMadrasaLimitsOnTx in superadmin.service.ts), so this is the
+      // source of truth for "what this tenant can actually use".
+      student_limit: madrasa.studentLimit ?? 0,
+      user_limit: madrasa.userLimit ?? 0,
+      usage: { students, users },
+    };
   }
 }
 

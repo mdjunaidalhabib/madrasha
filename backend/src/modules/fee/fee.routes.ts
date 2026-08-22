@@ -10,6 +10,7 @@ import {
   generateInvoices,
   getInvoices,
   getPendingInvoices,
+  clearPendingInvoices,
   backfillInvoices,
   payInvoice,
   waiveInvoice,
@@ -43,9 +44,13 @@ router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
 // Registered as its own literal path (not GET /invoices/:id) - backs the
 // dedicated "ভর্তি ফি পেন্ডিং" sidebar page.
 router.get("/invoices/pending", rbacMiddleware("fee.read"), getPendingInvoices);
+// "সব ক্লিয়ার করুন" on that page - fee.manage (not fee.read) since it mutates
+// every currently-pending row, even though it's non-destructive.
+router.post("/invoices/pending/clear", rbacMiddleware("fee.manage"), clearPendingInvoices);
 router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
-// Deliberately named "invoice.waive", NOT "fee.waive" - isAccountsPermission()
-// in rbac-policy.ts grants every "fee.*" permission wholesale to ACCOUNTANT,
+// Deliberately named "invoice.waive", NOT "fee.waive" - ACCOUNTANT's default
+// grant (see ACCOUNTANT_DEFAULT_PERMISSION_KEYS in
+// shared/permissions/baseline-role-permissions.ts) covers every "fee.*" key,
 // which would defeat the point. With no fee.* prefix and nothing seeded for
 // this key, only MUHTAMIM/SUPER_ADMIN (who bypass rbacMiddleware entirely)
 // can waive a fee.

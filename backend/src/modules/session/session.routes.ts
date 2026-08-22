@@ -9,9 +9,10 @@ const router = Router();
 router.use(tenantMiddleware, authMiddleware);
 
 // Permission keys use the "students." prefix (not a new "session." prefix)
-// so TALIMAT staff - who already manage students.* - get access for free
-// via isTalimatPermission()'s prefix match, without needing a fresh
-// role_permissions seed. MUHTAMIM/SUPER_ADMIN bypass rbacMiddleware entirely.
+// to group with the rest of student management. Seeded into TALIMAT's
+// default grant (see TALIMAT_DEFAULT_PERMISSION_KEYS in
+// shared/permissions/baseline-role-permissions.ts). MUHTAMIM/SUPER_ADMIN
+// bypass rbacMiddleware entirely.
 router.get("/", rbacMiddleware("students.session_read"), getSessions);
 router.post("/", rbacMiddleware("students.session_manage"), createSession);
 router.put("/:id", rbacMiddleware("students.session_manage"), updateSession);
