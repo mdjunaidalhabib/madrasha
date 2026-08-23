@@ -55,6 +55,7 @@ const AutoNotificationSettingsPage = lazy(
   () => import("../features/notifications/AutoNotificationSettingsPage"),
 );
 const NotificationBalancePage = lazy(() => import("../features/notifications/BalancePage"));
+const BillingDashboardPage = lazy(() => import("../features/billing/BillingDashboardPage"));
 
 const LibraryCatalogPage = lazy(() => import("../features/library/LibraryCatalogPage"));
 const LibraryCirculationPage = lazy(() => import("../features/library/LibraryCirculationPage"));
@@ -128,6 +129,21 @@ const SuperAdminCatalogPage = lazy(
 );
 const SuperAdminDefaultFeeStructuresPage = lazy(
   () => import("../features/super-admin/fee/SuperAdminDefaultFeeStructuresPage"),
+);
+const SuperAdminSmsPackagesPage = lazy(
+  () => import("../features/super-admin/billing/SuperAdminSmsPackagesPage"),
+);
+const SuperAdminEmailPackagesPage = lazy(
+  () => import("../features/super-admin/billing/SuperAdminEmailPackagesPage"),
+);
+const SuperAdminBillingRequestsPage = lazy(
+  () => import("../features/super-admin/billing/SuperAdminBillingRequestsPage"),
+);
+const SuperAdminBillingPricingPage = lazy(
+  () => import("../features/super-admin/billing/SuperAdminBillingPricingPage"),
+);
+const SuperAdminBillingReportsPage = lazy(
+  () => import("../features/super-admin/billing/SuperAdminBillingReportsPage"),
 );
 
 const PublicWebsitePage = lazy(() => import("../features/public/website/PublicWebsitePage"));
@@ -408,6 +424,10 @@ const madrasaAdminChildren = [
     path: "communication/balance",
     element: <ModuleGuard module="communication">{withSuspense(<NotificationBalancePage />)}</ModuleGuard>,
   },
+  {
+    path: "communication/billing",
+    element: <ModuleGuard module="communication">{withSuspense(<BillingDashboardPage />)}</ModuleGuard>,
+  },
 
   {
     path: "activity",
@@ -456,6 +476,11 @@ export const router = createBrowserRouter([
       { path: "websites", element: withSuspense(<SuperAdminWebsiteControlPage />) },
       { path: "catalog", element: withSuspense(<SuperAdminCatalogPage />) },
       { path: "fee-structure-templates", element: withSuspense(<SuperAdminDefaultFeeStructuresPage />) },
+      { path: "billing/sms-packages", element: withSuspense(<SuperAdminSmsPackagesPage />) },
+      { path: "billing/email-packages", element: withSuspense(<SuperAdminEmailPackagesPage />) },
+      { path: "billing/requests", element: withSuspense(<SuperAdminBillingRequestsPage />) },
+      { path: "billing/pricing", element: withSuspense(<SuperAdminBillingPricingPage />) },
+      { path: "billing/reports", element: withSuspense(<SuperAdminBillingReportsPage />) },
       { path: "settings", element: withSuspense(<SuperAdminSettingsPage />) },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],

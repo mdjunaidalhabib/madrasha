@@ -31,7 +31,7 @@ export const MODULE_PERMISSION_PREFIXES: Record<string, string[]> = {
   accounts: ["accounts.", "fee.", "payroll."],
   students: ["students."],
   attendance: ["attendance.", "kiosk."],
-  communication: ["notifications."],
+  communication: ["notifications.", "billing."],
   library: ["library."],
   settings: ["settings.", "roles.manage", "users.", "website.manage"],
   activity: ["activity."],

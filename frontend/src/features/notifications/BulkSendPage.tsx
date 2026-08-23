@@ -11,6 +11,7 @@ import {
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
 import NotificationComposeForm from "./NotificationComposeForm";
+import MessageCreditNotice from "../billing/MessageCreditNotice";
 
 type AudienceMode = "all_students" | "class_students" | "all_teachers" | "results";
 
@@ -38,6 +39,7 @@ const BulkSendPage = () => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [creditBlocked, setCreditBlocked] = useState(false);
 
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -170,6 +172,10 @@ const BulkSendPage = () => {
           sending={sending}
           onSend={handleSend}
           sendLabel="সবাইকে পাঠান"
+          sendDisabled={creditBlocked}
+          creditNotice={
+            <MessageCreditNotice channel={channel} message={message} onDisabledChange={setCreditBlocked} />
+          }
         >
           <div>
             <div className="mb-2 flex flex-wrap gap-2">

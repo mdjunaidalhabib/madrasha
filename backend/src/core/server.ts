@@ -6,6 +6,7 @@ import {
   registerGracefulShutdown,
   startTrashPurgeScheduler,
   startActivityLogPurgeScheduler,
+  startMessageSubscriptionExpirySync,
 } from "./bootstrap";
 
 async function start() {
@@ -18,6 +19,7 @@ async function start() {
   registerGracefulShutdown(server);
   startTrashPurgeScheduler();
   startActivityLogPurgeScheduler();
+  startMessageSubscriptionExpirySync();
 }
 
 start();

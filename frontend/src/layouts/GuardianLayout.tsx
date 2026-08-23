@@ -1,8 +1,10 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import guardianApi from "../services/guardianApi";
 import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { getTenantGuardianBase } from "../utils/tenantSlug";
+import RouteErrorBoundary from "../components/ui/RouteErrorBoundary";
+import Breadcrumbs from "../components/ui/Breadcrumbs";
 
 const NAV_ITEMS = [
   { to: "dashboard", label: "ড্যাশবোর্ড" },
@@ -16,6 +18,7 @@ export default function GuardianLayout() {
   const { madrasaSlug = "" } = useParams();
   const base = getTenantGuardianBase(madrasaSlug);
   const nav = useNavigate();
+  const location = useLocation();
 
   const guardian = useGuardianAuthStore((s) => s.guardian);
   const children = useGuardianAuthStore((s) => s.children);
@@ -30,6 +33,13 @@ export default function GuardianLayout() {
       setChildren(res.data?.data || []);
     })();
   }, [setChildren]);
+
+  const breadcrumbs = useMemo(() => {
+    const home = { label: "হোম", to: `${base}/dashboard` };
+    const current = NAV_ITEMS.find((item) => location.pathname === `${base}/${item.to}`);
+    if (!current || current.to === "dashboard") return [home, { label: "ড্যাশবোর্ড" }];
+    return [home, { label: current.label }];
+  }, [base, location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -86,7 +96,10 @@ export default function GuardianLayout() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <Outlet />
+        <Breadcrumbs items={breadcrumbs} />
+        <RouteErrorBoundary key={location.pathname}>
+          <Outlet />
+        </RouteErrorBoundary>
       </main>
     </div>
   );

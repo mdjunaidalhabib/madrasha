@@ -6,6 +6,7 @@ import { platformSettingsService } from "../super-admin/platform-settings.servic
 import { studentRepository } from "../students/student.repository";
 import { teacherRepository } from "../teacher/teacher.repository";
 import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
+import { billingService } from "../billing/billing.service";
 import { notificationRepository, NotificationRepository } from "./notification.repository";
 import {
   NotificationQueryDto,
@@ -69,6 +70,31 @@ export class NotificationService {
       const message =
         typeof raw === "string" || !raw.vars ? dto.message : renderTemplate(dto.message, raw.vars);
 
+      // Billing gate (PHASE 6/7/8/19/20): resolved per-recipient (not once
+      // per batch) since a personalized template can render to a different
+      // SMS segment count per recipient. Nothing is sent to the provider
+      // until credit is atomically reserved - a rejection here never
+      // touches the provider at all.
+      let charge;
+      try {
+        charge = await billingService.chargeForSend(madrasaId, dto.channel, recipient, message);
+      } catch (err) {
+        const errorMessage = err instanceof BadRequestError ? err.message : "বিলিং যাচাই ব্যর্থ হয়েছে";
+        await this.repository.create({
+          madrasaId,
+          channel: dto.channel,
+          recipient,
+          subject: dto.channel === "EMAIL" ? dto.subject : null,
+          message,
+          status: "FAILED",
+          provider: null,
+          errorMessage,
+          sentById: sentById ?? null,
+        });
+        results.push({ recipient, status: "FAILED", error: errorMessage });
+        continue;
+      }
+
       try {
         const log = await this.repository.create({
           madrasaId,
@@ -95,13 +121,28 @@ export class NotificationService {
 
         if (outcome.success) {
           await this.repository.markSent(log.id, outcome.provider);
+          await billingService.finalizeSendSuccess(charge.usageLogId, outcome.provider);
           results.push({ recipient, status: "SENT", provider: outcome.provider });
         } else {
           await this.repository.markFailed(log.id, outcome.provider, outcome.errorMessage || "");
+          await billingService.releaseSendFailure(
+            madrasaId,
+            dto.channel,
+            charge.segmentCount,
+            charge.usageLogId,
+            outcome.errorMessage || "Provider rejected the message",
+          );
           results.push({ recipient, status: "FAILED", error: outcome.errorMessage });
         }
       } catch (err) {
         logger.error(`Notification send failed for ${recipient}:`, err);
+        await billingService.releaseSendFailure(
+          madrasaId,
+          dto.channel,
+          charge.segmentCount,
+          charge.usageLogId,
+          (err as Error)?.message || "Unexpected error",
+        );
         results.push({ recipient, status: "FAILED", error: "Unexpected error" });
       }
     }

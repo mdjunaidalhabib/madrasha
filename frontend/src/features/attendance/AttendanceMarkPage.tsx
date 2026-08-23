@@ -41,7 +41,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? data.filter((item) => item && typeof item === "object") : [];
 };
 
 const AttendanceMarkPage = () => {

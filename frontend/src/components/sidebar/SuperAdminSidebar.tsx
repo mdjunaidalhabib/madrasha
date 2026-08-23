@@ -15,6 +15,11 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Send,
+  Mail,
+  ClipboardList,
+  Tags,
+  BarChart3,
 } from "lucide-react";
 
 type SuperAdminSidebarProps = {
@@ -25,7 +30,7 @@ type SuperAdminSidebarProps = {
 
 type NavItem = { to: string; label: string; icon: ReactElement; end?: boolean };
 
-const NAV_ITEMS: NavItem[] = [
+export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/super-admin/dashboard", label: "ড্যাশবোর্ড", icon: <LayoutDashboard size={18} />, end: true },
   { to: "/super-admin/madrasas", label: "মাদরাসাসমূহ", icon: <School size={18} />, end: true },
   { to: "/super-admin/madrasas/trash", label: "ট্র্যাশ", icon: <Trash2 size={18} /> },
@@ -34,6 +39,14 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/super-admin/catalog", label: "একাডেমিক ক্যাটালগ", icon: <Layers size={18} /> },
   { to: "/super-admin/fee-structure-templates", label: "ফি টেমপ্লেট", icon: <Wallet size={18} /> },
   { to: "/super-admin/websites", label: "ওয়েবসাইটসমূহ", icon: <Globe2 size={18} /> },
+
+  // বিলিং (SMS/Email credit বিক্রয়)
+  { to: "/super-admin/billing/sms-packages", label: "SMS প্যাকেজ", icon: <Send size={18} /> },
+  { to: "/super-admin/billing/email-packages", label: "Email প্যাকেজ", icon: <Mail size={18} /> },
+  { to: "/super-admin/billing/requests", label: "বিলিং রিকোয়েস্ট", icon: <ClipboardList size={18} /> },
+  { to: "/super-admin/billing/pricing", label: "বিলিং প্রাইসিং", icon: <Tags size={18} /> },
+  { to: "/super-admin/billing/reports", label: "বিলিং রিপোর্ট", icon: <BarChart3 size={18} /> },
+
   { to: "/super-admin/settings", label: "সেটিংস", icon: <Settings size={18} /> },
 ];
 
@@ -115,7 +128,7 @@ export default function SuperAdminSidebar({
 
   return (
     <AdminSidebarShell collapsed={collapsed} header={header} footer={footer}>
-      {NAV_ITEMS.map((item) => (
+      {SUPER_ADMIN_NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

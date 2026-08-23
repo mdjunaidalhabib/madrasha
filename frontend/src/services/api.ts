@@ -7,7 +7,7 @@ import { getTenantSlugFromPath, getTenantAdminBase } from "../utils/tenantSlug";
 
 const baseURL = API_BASE_URL;
 
-const api = axios.create({ baseURL });
+const api = axios.create({ baseURL, timeout: 20_000 });
 
 const GET_CACHE_TTL_MS = 20_000;
 const GET_CACHE_MAX_ENTRIES = 80;

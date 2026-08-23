@@ -723,6 +723,7 @@ async function main() {
         sortOrder: 4,
       },
       { keyName: "balance", name: "Balance", nameBn: "ব্যালেন্স", sortOrder: 5 },
+      { keyName: "billing", name: "SMS/Email Billing", nameBn: "SMS/ইমেইল বিলিং", sortOrder: 6 },
     ],
     library: [
       { keyName: "catalog", name: "Book Catalog", nameBn: "বই তালিকা", sortOrder: 1 },
@@ -813,6 +814,8 @@ async function main() {
     { keyName: "notifications.read", name: "View Notification History" },
     { keyName: "notifications.send", name: "Send SMS/Email Notifications" },
     { keyName: "notifications.settings", name: "Manage Auto Notification Settings" },
+    { keyName: "billing.view", name: "View SMS/Email Billing & Balance" },
+    { keyName: "billing.purchase", name: "Purchase/Recharge SMS/Email Packages" },
 
     { keyName: "library.read", name: "View Library" },
     { keyName: "library.manage", name: "Manage Library Catalog & Settings" },

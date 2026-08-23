@@ -8,6 +8,7 @@ import {
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
 import NotificationComposeForm from "./NotificationComposeForm";
+import MessageCreditNotice from "../billing/MessageCreditNotice";
 
 type AudienceType = "student" | "teacher" | "custom";
 type SelectedRecipient = { label: string; to: string } | null;
@@ -25,6 +26,7 @@ const SingleSendPage = () => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [creditBlocked, setCreditBlocked] = useState(false);
 
   useEffect(() => {
     setSelected(null);
@@ -131,6 +133,10 @@ const SingleSendPage = () => {
           recipientCount={selected ? 1 : 0}
           sending={sending}
           onSend={handleSend}
+          sendDisabled={creditBlocked}
+          creditNotice={
+            <MessageCreditNotice channel={channel} message={message} onDisabledChange={setCreditBlocked} />
+          }
         >
           <div>
             <div className="mb-2 flex gap-2">

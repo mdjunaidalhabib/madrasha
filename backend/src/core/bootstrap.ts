@@ -4,6 +4,7 @@ import { logger } from "../shared/logger/logger";
 import { trashService } from "../modules/trash/trash.service";
 import { activityRepository } from "../modules/activity/activity.repository";
 import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.constants";
+import { billingService } from "../modules/billing/billing.service";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -68,6 +69,30 @@ const runActivityLogPurge = async (): Promise<void> => {
 export const startActivityLogPurgeScheduler = (): void => {
   setTimeout(runActivityLogPurge, ACTIVITY_LOG_PURGE_INITIAL_DELAY_MS).unref();
   setInterval(runActivityLogPurge, ACTIVITY_LOG_PURGE_INTERVAL_MS).unref();
+};
+
+const MESSAGE_SUBSCRIPTION_SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const MESSAGE_SUBSCRIPTION_SYNC_INITIAL_DELAY_MS = 20 * 1000;
+
+const runMessageSubscriptionExpirySync = async (): Promise<void> => {
+  try {
+    const result = await billingService.syncExpiredSubscriptions();
+    if (result.count) logger.info("SMS/Email subscription expiry sync complete", { expired: result.count });
+  } catch (error) {
+    logger.error("SMS/Email subscription expiry sync failed", error);
+  }
+};
+
+/**
+ * Keeps MessageSubscription.status accurate for reporting/dashboards
+ * (PHASE 6/28) - purely cosmetic/reporting, NOT the access gate. Every
+ * actual send still checks `expiryDate` directly and in real time
+ * (see billing.service.ts#chargeForSend), so a delayed sync here can
+ * never let an expired tenant send.
+ */
+export const startMessageSubscriptionExpirySync = (): void => {
+  setTimeout(runMessageSubscriptionExpirySync, MESSAGE_SUBSCRIPTION_SYNC_INITIAL_DELAY_MS).unref();
+  setInterval(runMessageSubscriptionExpirySync, MESSAGE_SUBSCRIPTION_SYNC_INTERVAL_MS).unref();
 };
 
 /**

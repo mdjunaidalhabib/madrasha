@@ -54,6 +54,10 @@ import roleRoutes from "../modules/roles/role.routes";
 // 📣 Phase 4: SMS/Email Notifications
 import notificationRoutes from "../modules/notifications/notification.routes";
 
+// 💳 SMS/Email Billing (packages, subscriptions, credit, usage ledger)
+import billingRoutes from "../modules/billing/billing.routes";
+import billingAdminRoutes from "../modules/billing/billing-admin.routes";
+
 // 🖼️ Phase 4: Image/File Storage (Cloudinary)
 import uploadRoutes from "../modules/uploads/upload.routes";
 
@@ -106,6 +110,18 @@ router.use("/sidebar", sidebarRoutes);
    auth check.
 ========================================================= */
 router.use("/guardian", guardianRoutes);
+
+/* =========================================================
+   💳 SMS/EMAIL BILLING
+   Mounted here for the same reason as /guardian above: several
+   modules further down (examRoutes, classPanalRoutes, routineRoutes,
+   feeRoutes, libraryRoutes, roleRoutes) are mounted at "/" with their
+   own blanket tenantMiddleware/authMiddleware, which would otherwise
+   intercept every request - including /billing/* and
+   /super/message-billing/* - before it ever reaches these routers.
+========================================================= */
+router.use("/billing", billingRoutes);
+router.use("/super/message-billing", billingAdminRoutes);
 
 /* =========================
    CORE MODULES

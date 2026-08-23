@@ -1,14 +1,19 @@
 import { useState } from "react";
-import { Outlet, Navigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { useAdminAuthStore } from "../store/adminAuthStore";
 import SuperAdminSidebar from "../components/sidebar/SuperAdminSidebar";
 import SuperAdminTopbar from "../components/topbar/SuperAdminTopbar";
+import RouteErrorBoundary from "../components/ui/RouteErrorBoundary";
+import Breadcrumbs from "../components/ui/Breadcrumbs";
+import { useSuperAdminBreadcrumbs } from "../components/sidebar/useSuperAdminBreadcrumbs";
 
 export default function SuperAdminLayout() {
   const token = useAdminAuthStore((s) => s.token);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  const location = useLocation();
+  const breadcrumbs = useSuperAdminBreadcrumbs();
 
   if (!token) return <Navigate to="/super-admin/login" replace />;
 
@@ -38,7 +43,10 @@ export default function SuperAdminLayout() {
         <SuperAdminTopbar openSidebar={() => setMobileSidebar(true)} />
 
         <main className="flex-1 overflow-y-auto p-4 text-slate-900 dark:text-slate-100 md:p-8">
-          <Outlet />
+          <Breadcrumbs items={breadcrumbs} />
+          <RouteErrorBoundary key={location.pathname}>
+            <Outlet />
+          </RouteErrorBoundary>
         </main>
       </div>
     </div>

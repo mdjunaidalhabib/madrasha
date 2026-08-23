@@ -15,6 +15,8 @@ interface NotificationComposeFormProps {
   onSend: () => void;
   sendLabel?: string;
   children?: ReactNode;
+  creditNotice?: ReactNode;
+  sendDisabled?: boolean;
 }
 
 /** Channel toggle + subject/message fields shared by Single Send and Bulk
@@ -34,6 +36,8 @@ const NotificationComposeForm = ({
   onSend,
   sendLabel = "পাঠান",
   children,
+  creditNotice,
+  sendDisabled = false,
 }: NotificationComposeFormProps) => {
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
@@ -86,9 +90,11 @@ const NotificationComposeForm = ({
           {messageHint && <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">{messageHint}</p>}
         </div>
 
+        {creditNotice}
+
         <button
           type="button"
-          disabled={sending || recipientCount === 0}
+          disabled={sending || recipientCount === 0 || sendDisabled}
           onClick={onSend}
           className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto sm:px-6"
         >

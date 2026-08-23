@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useParams } from "react-router-dom";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useUIStore } from "../../store/uiStore";
@@ -6,6 +6,7 @@ import { useAuthStore } from "../../store/authStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "../shell/AdminSidebarShell";
+import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
 
 import {
   LayoutDashboard,
@@ -46,56 +47,29 @@ const ICONS: Record<string, any> = {
   library: Library,
 };
 
-const MODULE_PATHS: Record<string, string> = {
-  reports: "reports",
-  report: "reports",
-  website: "settings/website",
-  website_settings: "settings/website",
-};
-const FEATURE_PATHS: Record<string, string> = {
-  acadamic_report: "academic-report",
-  academic_report: "academic-report",
-  student_report: "student_report",
-  exam_report: "exam_report",
-  teacher_report: "teacher_report",
-  pending_fee: "pending-fee",
-};
-// Some sidebar entries (moved here from plain action buttons on the ছাত্র
-// তালিকা page) live at routes that don't match their menu's own module path
-// (e.g. "promotion" sits under তালিমাত but its route is still students/promotion)
-// — these need the full path, not module/childKey.
-const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
-  fee_management: "fee-management",
-  fee_collection: "fee-collection",
-  sessions: "students/sessions",
-  routine: "routine",
-  promotion: "students/promotion",
-  attendance_mark: "attendance/mark",
-  kiosk_devices: "attendance/kiosk-devices",
-  payroll: "payroll",
-  single_send: "communication/single-send",
-  bulk_send: "communication/bulk-send",
-  history: "communication/history",
-  auto_settings: "communication/auto-settings",
-  balance: "communication/balance",
-};
-function modulePath(key: string) {
-  return MODULE_PATHS[key] || key;
-}
-function childPath(moduleKey: string, childKey: string) {
-  if (ABSOLUTE_CHILD_PATHS[childKey]) return ABSOLUTE_CHILD_PATHS[childKey];
-  return `${modulePath(moduleKey)}/${FEATURE_PATHS[childKey] || childKey}`;
-}
 function navItemClass(isActive: boolean) {
   return `flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 text-base font-medium transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`;
 }
 function childItemClass(isActive: boolean) {
-  return `block py-1.5 text-[15px] transition ${isActive ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"}`;
+  return `flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[15px] transition ${
+    isActive
+      ? "bg-indigo-100 font-semibold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+  }`;
+}
+function moduleHeaderClass(isActive: boolean) {
+  return `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold transition ${isActive ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`;
 }
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   // এই ইউজারের রোলে যে মডিউল/আইটেমের অনুমতি নেই, সেগুলো ধূসর করে দেখানোর
   // বদলে সম্পূর্ণ বাদ দেওয়া হয় - অনুমতি না থাকা জিনিস মেনুতেই দেখাবে না।
-  const sidebar = useSidebarStore((s) => s.items.filter((m) => !m.disabled));
+  const sidebarItems = useSidebarStore((s) => s.items);
+  // `.filter()` on every render would create a new array reference even when
+  // `sidebarItems` itself hasn't changed, which would retrigger the
+  // active-module sync effect below on every unrelated re-render (toast,
+  // count polling, etc.) - not just on real navigation - forcing whichever
+  // accordion you just opened by hand back to the current route's module.
+  const sidebar = useMemo(() => sidebarItems.filter((m) => !m.disabled), [sidebarItems]);
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -107,18 +81,24 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     if (closeSidebar) closeSidebar();
   };
 
+  // Which module (with a submenu) the current route belongs to - used both
+  // to auto-expand its accordion and to highlight its header, independent of
+  // the open/closed accordion state so it stays visible even collapsed.
+  const activeModuleKey = useMemo(() => {
+    const prefix = `${adminBase}/`;
+    if (!location.pathname.startsWith(prefix)) return null;
+    const subpath = location.pathname.slice(prefix.length).replace(/\/+$/, "");
+    const match = matchSidebarPath(sidebar, subpath);
+    return match?.child ? match.module.key : null;
+  }, [location.pathname, sidebar, adminBase]);
+
   // Accordion: only one module's submenu open at a time, click its header to
   // toggle. Whichever module the current route belongs to is auto-expanded
   // so refreshing/deep-linking into a page never hides its own submenu.
   const [openModuleKey, setOpenModuleKey] = useState<string | null>(null);
   useEffect(() => {
-    const active = sidebar.find(
-      (m) =>
-        m.children?.length && location.pathname.startsWith(`${adminBase}/${modulePath(m.key)}`),
-    );
-    if (active) setOpenModuleKey(active.key);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, sidebar]);
+    if (activeModuleKey) setOpenModuleKey(activeModuleKey);
+  }, [activeModuleKey]);
   const toggleModule = (key: string) => {
     setOpenModuleKey((prev) => (prev === key ? null : key));
   };
@@ -247,20 +227,21 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           if (visibleChildren.length === 0) return null;
 
           const isOpen = !collapsed && openModuleKey === module.key;
+          const isActiveModule = activeModuleKey === module.key;
 
           return (
             <div key={module.key}>
               <button
                 type="button"
                 onClick={() => toggleModule(module.key)}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                className={moduleHeaderClass(isActiveModule)}
               >
                 <Icon size={18} />
                 {!collapsed && <span className="flex-1 text-left">{module.label}</span>}
                 {!collapsed && (
                   <ChevronDown
                     size={16}
-                    className={`text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
+                    className={`transition-transform duration-200 ${isActiveModule ? "text-indigo-400 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"} ${isOpen ? "rotate-180" : ""}`}
                   />
                 )}
               </button>
@@ -277,9 +258,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                       onClick={handleClick}
                       onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
                       onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                      className={({ isActive }) =>
-                        `flex items-center justify-between gap-2 pr-2 ${childItemClass(isActive)}`
-                      }
+                      className={({ isActive }) => childItemClass(isActive)}
                     >
                       <span>{child.label}</span>
                       {Boolean(child.count) && (

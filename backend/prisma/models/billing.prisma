@@ -1,0 +1,251 @@
+// ============================================================
+// MESSAGE BILLING — centralized SMS/Email package, subscription,
+// credit, pricing and usage-ledger system.
+//
+// SMS and Email are billed as two completely independent products
+// (see PHASE requirements): every model here carries a `channel`
+// (NotificationChannel: SMS | EMAIL) discriminator instead of being
+// duplicated into SmsX/EmailX pairs — this keeps the two products
+// logically separate in every query (always filtered by channel)
+// without doubling the number of tables/CRUD code paths.
+//
+// Provider credentials (PlatformSmsConfig/PlatformEmailConfig) and the
+// per-send audit trail (NotificationLog) already exist in
+// notification.prisma - this file only adds the billing layer on top:
+// what a tenant is allowed to send, how much it costs, and what's left.
+// ============================================================
+
+enum MessagePackageType {
+  /// Grants (or renews) a validity window + credit, e.g. "5,000 SMS / 90 days".
+  PACKAGE
+  /// Adds credit only to an existing subscription - does not touch
+  /// startDate/expiryDate. Requires a subscription row to already exist.
+  RECHARGE
+}
+
+enum MessageSubscriptionStatus {
+  ACTIVE
+  EXPIRED
+}
+
+enum SmsEncoding {
+  GSM_7
+  UNICODE
+}
+
+enum MessageUsageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  REJECTED
+}
+
+enum BillingTransactionType {
+  PACKAGE_PURCHASE
+  RECHARGE
+  RENEWAL
+  USAGE
+  REFUND
+  MANUAL_CREDIT
+  MANUAL_DEDUCTION
+}
+
+enum PurchaseRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A sellable SMS or Email package, defined by Super Admin. `type` decides
+/// whether purchasing it starts/extends a subscription window (PACKAGE) or
+/// only tops up credit on an already-existing subscription (RECHARGE).
+model MessagePackage {
+  id           Int                 @id @default(autoincrement())
+  channel      NotificationChannel
+  type         MessagePackageType  @default(PACKAGE)
+  name         String              @db.VarChar(150)
+  description  String?             @db.VarChar(500)
+  price        Decimal             @db.Decimal(10, 2)
+  currency     String              @default("BDT") @db.VarChar(10)
+  /// SMS credit count or Email credit count, depending on `channel`.
+  credit       Int
+  /// Ignored for RECHARGE-type packages (recharge never changes validity).
+  validityDays Int                 @default(0) @map("validity_days")
+  isActive     Boolean             @default(true) @map("is_active")
+  deletedAt    DateTime?           @map("deleted_at")
+  createdById  Int?                @map("created_by")
+  updatedById  Int?                @map("updated_by")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  subscriptions    MessageSubscription[]
+  transactions     BillingTransaction[]
+  purchaseRequests MessagePurchaseRequest[]
+
+  @@index([channel, isActive, deletedAt], map: "idx_message_package_channel_active")
+  @@map("message_packages")
+}
+
+/// One row per (madrasa, channel) - the tenant's current SMS or Email
+/// "wallet": credit balance + validity window. Extended in place on
+/// renewal/recharge (see message-billing.service.ts); full history lives
+/// in BillingTransaction, so this row is safe to treat as a mutable
+/// cache of "current state" rather than the source of truth for audit.
+model MessageSubscription {
+  id              Int                       @id @default(autoincrement())
+  madrasaId       Int                       @map("madrasa_id")
+  channel         NotificationChannel
+  /// Last package purchased/renewed against this subscription.
+  packageId       Int?                      @map("package_id")
+  startDate       DateTime                  @map("start_date")
+  expiryDate      DateTime                  @map("expiry_date")
+  status          MessageSubscriptionStatus @default(ACTIVE)
+  purchasedPrice  Decimal                   @default(0) @map("purchased_price") @db.Decimal(10, 2)
+  totalCredit     Int                       @default(0) @map("total_credit")
+  usedCredit      Int                       @default(0) @map("used_credit")
+  /// Kept as its own column (not derived) so a send can atomically check
+  /// -and-deduct in one conditional UPDATE ... WHERE remaining_credit >= :n
+  /// without a separate SELECT/lock round trip - this is what prevents two
+  /// concurrent sends from both succeeding on the last unit of credit.
+  remainingCredit Int                       @default(0) @map("remaining_credit")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  package MessagePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  @@unique([madrasaId, channel], map: "uniq_message_subscription_madrasa_channel")
+  @@index([madrasaId, channel, status], map: "idx_message_subscription_status")
+  @@index([expiryDate], map: "idx_message_subscription_expiry")
+  @@map("message_subscriptions")
+}
+
+/// One row per SMS/Email send attempt, for billing purposes only (cost,
+/// segments, credit consumed). Message body/subject is intentionally NOT
+/// stored here - NotificationLog already owns that audit trail; this table
+/// only exists so revenue/cost/segment reporting doesn't have to parse it.
+model MessageUsageLog {
+  id                Int                 @id @default(autoincrement())
+  madrasaId         Int                 @map("madrasa_id")
+  channel           NotificationChannel
+  recipient         String              @db.VarChar(150)
+  /// SMS only - null for EMAIL rows.
+  encoding          SmsEncoding?
+  characterCount    Int?                @map("character_count")
+  /// SMS: computed segment count. EMAIL: always 1.
+  segmentCount      Int                 @default(1) @map("segment_count")
+  pricePerUnit      Decimal             @default(0) @map("price_per_unit") @db.Decimal(10, 4)
+  totalCost         Decimal             @default(0) @map("total_cost") @db.Decimal(10, 2)
+  creditUsed        Int                 @default(1) @map("credit_used")
+  provider          String?             @db.VarChar(50)
+  providerMessageId String?             @map("provider_message_id") @db.VarChar(150)
+  status            MessageUsageStatus  @default(PENDING)
+  failureReason     String?             @map("failure_reason") @db.VarChar(500)
+  /// Links back to the NotificationLog row created for the same send.
+  notificationLogId Int?                @map("notification_log_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, channel, createdAt], map: "idx_message_usage_madrasa_channel_created")
+  @@index([providerMessageId], map: "idx_message_usage_provider_msgid")
+  @@map("message_usage_logs")
+}
+
+/// The billing audit ledger (PHASE 16/34) - every credit-changing event
+/// (purchase, recharge, renewal, usage, refund, manual adjustment) gets an
+/// immutable row here. MessageSubscription.remainingCredit is a fast-path
+/// balance; this table is the source of truth for "why did the balance
+/// change".
+model BillingTransaction {
+  id              Int                    @id @default(autoincrement())
+  madrasaId       Int                    @map("madrasa_id")
+  channel         NotificationChannel
+  type            BillingTransactionType
+  packageId       Int?                   @map("package_id")
+  /// Money paid/refunded. Null for USAGE and MANUAL_* rows (no cash moved).
+  amount          Decimal?               @db.Decimal(10, 2)
+  /// Signed credit change: +N for purchase/recharge/manual credit,
+  /// -N for usage/manual deduction.
+  creditDelta     Int                    @map("credit_delta")
+  /// remainingCredit snapshot immediately after this transaction.
+  balanceAfter    Int                    @map("balance_after")
+  note            String?                @db.VarChar(300)
+  performedById   Int?                   @map("performed_by_id")
+  /// SUPER_ADMIN | ADMIN | SYSTEM - SYSTEM covers automated usage rows.
+  performedByType String?                @map("performed_by_type") @db.VarChar(20)
+  usageLogId      Int?                   @map("usage_log_id")
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  madrasa Madrasa         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  package MessagePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  @@index([madrasaId, channel, createdAt], map: "idx_billing_tx_madrasa_channel_created")
+  @@index([type], map: "idx_billing_tx_type")
+  @@map("billing_transactions")
+}
+
+/// Platform-wide default pricing per channel (one row each, singleton by
+/// channel) - Super Admin controlled. sellingPrice is per-SMS-segment for
+/// SMS, per-email for EMAIL. providerCost is never exposed to Madrasa Admin
+/// (see message-billing.service.ts) - it exists purely for Super Admin's
+/// own profit reporting.
+model PlatformMessagePricing {
+  id                 Int                 @id @default(autoincrement())
+  channel            NotificationChannel @unique
+  sellingPrice       Decimal             @default(0.5) @map("selling_price") @db.Decimal(10, 4)
+  providerCost       Decimal             @default(0) @map("provider_cost") @db.Decimal(10, 4)
+  lowCreditThreshold Int                 @default(100) @map("low_credit_threshold")
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_message_pricing")
+}
+
+/// Optional per-madrasa selling-price override (PHASE 12/14). Absent =
+/// PlatformMessagePricing.sellingPrice applies. Provider cost is never
+/// overridden per-tenant - it is a platform-wide fact, not a tenant price.
+model MadrasaMessagePricing {
+  id           Int                 @id @default(autoincrement())
+  madrasaId    Int                 @map("madrasa_id")
+  channel      NotificationChannel
+  sellingPrice Decimal             @map("selling_price") @db.Decimal(10, 4)
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, channel], map: "uniq_madrasa_message_pricing")
+  @@map("madrasa_message_pricing")
+}
+
+/// A Madrasa Admin's request to buy/recharge a package. No payment gateway
+/// exists yet (see backend audit) - the admin records which manual payment
+/// channel they used, Super Admin verifies the money actually arrived and
+/// approves, which is what actually credits the subscription (see
+/// message-billing.service.ts#approvePurchaseRequest). Mirrors the
+/// existing PaymentMethodSetting-based manual payment flow used for
+/// student fees.
+model MessagePurchaseRequest {
+  id                 Int                   @id @default(autoincrement())
+  madrasaId          Int                   @map("madrasa_id")
+  channel            NotificationChannel
+  packageId          Int                   @map("package_id")
+  amount             Decimal               @db.Decimal(10, 2)
+  paymentMethodLabel String?               @map("payment_method_label") @db.VarChar(150)
+  transactionRef     String?               @map("transaction_ref") @db.VarChar(120)
+  note               String?               @db.VarChar(300)
+  status             PurchaseRequestStatus @default(PENDING)
+  requestedById      Int?                  @map("requested_by_id")
+  reviewedById       Int?                  @map("reviewed_by_id")
+  reviewNote         String?               @map("review_note") @db.VarChar(300)
+  reviewedAt         DateTime?             @map("reviewed_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  madrasa Madrasa        @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  package MessagePackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  @@index([madrasaId, status], map: "idx_purchase_request_madrasa_status")
+  @@index([status, createdAt], map: "idx_purchase_request_status_created")
+  @@map("message_purchase_requests")
+}
