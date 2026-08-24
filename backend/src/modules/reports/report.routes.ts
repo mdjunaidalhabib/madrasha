@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
-import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
+import { requireAnyPermission } from "../../shared/middleware/rbac.middleware";
 import {
   getAcademicAdmissionReport,
   getAcademicResultNoticeReport,
@@ -33,30 +33,38 @@ const router = Router();
 
 router.use(tenantMiddleware);
 router.use(authMiddleware);
-router.use(rbacMiddleware("reports.read"));
 
-router.get("/academic/results", getAcademicResultsReport);
-router.get("/academic/results-by-rank", getAcademicResultsByRankReport);
-router.get("/academic/result-notice", getAcademicResultNoticeReport);
-router.get("/academic/prize-book-labels", getPrizeBookLabelsReport);
-router.get("/academic/routines", getAcademicRoutineReport);
-router.get("/academic/admissions", getAcademicAdmissionReport);
-router.get("/academic/guardian-phones", getGuardianPhoneReport);
-router.get("/academic/exam-signature-sheet", getExamSignatureSheetReport);
-router.get("/academic/exam-number-sheet", getExamNumberSheetReport);
-router.get("/academic/residential-attendance", getResidentialAttendanceReport);
-router.get("/academic/daily-attendance", getDailyAttendanceReport);
-router.get("/academic/digital-attendance", getDigitalAttendanceReport);
-router.get("/academic/id-cards", getStudentIdCardsReport);
+// `reports.read` remains a superset that grants everything below - these
+// per-category keys only ADD a narrower alternative grant, they never
+// remove access from an existing `reports.read` holder.
+const academicAccess = requireAnyPermission("reports.read", "reports.academic");
+const examAccess = requireAnyPermission("reports.read", "reports.exam");
+const attendanceAccess = requireAnyPermission("reports.read", "reports.attendance", "reports.academic");
+const studentAccess = requireAnyPermission("reports.read", "reports.student");
+const teacherAccess = requireAnyPermission("reports.read", "reports.teacher");
 
-router.get("/student/marksheets", getStudentMarksheetsReport);
-router.get("/student/id-cards", getStudentIdCardsReport);
-router.get("/student/admit-cards", getStudentAdmitCardsReport);
-router.get("/student/sanads", getStudentSanadsReport);
-router.get("/student/certificates", getStudentCertificatesReport);
-router.get("/student/transfer-letters", getStudentTransferLettersReport);
+router.get("/academic/results", academicAccess, getAcademicResultsReport);
+router.get("/academic/results-by-rank", academicAccess, getAcademicResultsByRankReport);
+router.get("/academic/result-notice", academicAccess, getAcademicResultNoticeReport);
+router.get("/academic/prize-book-labels", academicAccess, getPrizeBookLabelsReport);
+router.get("/academic/routines", academicAccess, getAcademicRoutineReport);
+router.get("/academic/admissions", academicAccess, getAcademicAdmissionReport);
+router.get("/academic/guardian-phones", academicAccess, getGuardianPhoneReport);
+router.get("/academic/exam-signature-sheet", examAccess, getExamSignatureSheetReport);
+router.get("/academic/exam-number-sheet", examAccess, getExamNumberSheetReport);
+router.get("/academic/residential-attendance", attendanceAccess, getResidentialAttendanceReport);
+router.get("/academic/daily-attendance", attendanceAccess, getDailyAttendanceReport);
+router.get("/academic/digital-attendance", attendanceAccess, getDigitalAttendanceReport);
+router.get("/academic/id-cards", academicAccess, getStudentIdCardsReport);
 
-router.get("/teacher/list", getTeacherListReport);
-router.get("/teacher/phones", getTeacherPhoneReport);
+router.get("/student/marksheets", studentAccess, getStudentMarksheetsReport);
+router.get("/student/id-cards", studentAccess, getStudentIdCardsReport);
+router.get("/student/admit-cards", studentAccess, getStudentAdmitCardsReport);
+router.get("/student/sanads", studentAccess, getStudentSanadsReport);
+router.get("/student/certificates", studentAccess, getStudentCertificatesReport);
+router.get("/student/transfer-letters", studentAccess, getStudentTransferLettersReport);
+
+router.get("/teacher/list", teacherAccess, getTeacherListReport);
+router.get("/teacher/phones", teacherAccess, getTeacherPhoneReport);
 
 export default router;

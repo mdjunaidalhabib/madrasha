@@ -10,6 +10,7 @@ import {
   TemplateActor,
   TemplateDetail,
   TemplateListItem,
+  TemplateVersionListItem,
   TemplateVersionSnapshot,
 } from "./document-templates.types";
 import {
@@ -267,11 +268,7 @@ export class DocumentTemplateService {
 
     const current = await this.repository.findVersionById(template.currentVersionId);
     if (!current) throw new ConflictError("Template has no draft version");
-    if (current.status !== "DRAFT") {
-      // Should be unreachable given publish() always opens a fresh draft,
-      // but defends against any future code path that doesn't.
-      throw new ConflictError("Current version is already published; cannot edit in place");
-    }
+    const draft = await this.ensureDraftVersion(template.id, current);
 
     const data: Record<string, unknown> = {};
     if (body.width !== undefined) {
@@ -285,7 +282,86 @@ export class DocumentTemplateService {
     if (body.background !== undefined) data.background = body.background;
     if (body.layers !== undefined) data.layers = assertLayers(body.layers);
 
-    await this.repository.updateVersion(current.id, data);
+    await this.repository.updateVersion(draft.id, data);
+
+    const refreshed = await this.repository.findById(id);
+    return this.toDetail(refreshed!, context);
+  }
+
+  /** Guarantees `currentVersionId` points at a DRAFT row, self-healing
+   * templates whose current version was left PUBLISHED by a creation path
+   * that never opened a follow-up draft (legacy-template-migration.service.ts
+   * and prisma/seed.ts both did this before it was caught - existing rows
+   * created that way get repaired here on first edit instead of needing a
+   * data migration). Mirrors the draft `publish()` opens after publishing. */
+  private async ensureDraftVersion(
+    templateId: number,
+    current: DocumentTemplateVersion,
+  ): Promise<DocumentTemplateVersion> {
+    if (current.status === "DRAFT") return current;
+
+    return this.repository.runTransaction(async (tx) => {
+      const nextVersionNo = (await this.repository.maxVersionNoOnTx(tx, templateId)) + 1;
+      const draft = await this.repository.createVersionOnTx(tx, {
+        templateId,
+        versionNo: nextVersionNo,
+        width: current.width,
+        height: current.height,
+        background: current.background ?? undefined,
+        layers: current.layers as any,
+        status: "DRAFT",
+      });
+      await this.repository.updateOnTx(tx, templateId, { currentVersionId: draft.id });
+      return draft;
+    });
+  }
+
+  /* ============================================================
+     VERSION HISTORY
+  ============================================================ */
+
+  async listVersions(id: number, context: TemplateContext): Promise<TemplateVersionListItem[]> {
+    const template = await this.loadReadable(id, context);
+    const versions = await this.repository.findVersionsForTemplate(template.id);
+    return versions.map((v) => ({
+      id: v.id,
+      versionNo: v.versionNo,
+      width: v.width,
+      height: v.height,
+      status: v.status,
+      publishedAt: v.publishedAt,
+      createdAt: v.createdAt,
+    }));
+  }
+
+  /** Copies an old version's content into the CURRENT DRAFT - never touches
+   * `publishedVersionId`, so a previously published snapshot is never
+   * destroyed. Restoring only seeds the draft; the user still has to
+   * `publish()` to make it live. */
+  async restoreVersion(
+    id: number,
+    versionId: number,
+    context: TemplateContext,
+    actor: TemplateActor,
+  ): Promise<TemplateDetail> {
+    const template = await this.loadOwned(id, context);
+    if (!template.currentVersionId) throw new ConflictError("Template has no draft version");
+
+    const target = await this.repository.findVersionById(versionId);
+    if (!target || target.templateId !== template.id) throw new NotFoundError("Version not found");
+
+    const current = await this.repository.findVersionById(template.currentVersionId);
+    if (!current) throw new ConflictError("Template has no draft version");
+    const draft = await this.ensureDraftVersion(template.id, current);
+
+    await this.repository.updateVersion(draft.id, {
+      width: target.width,
+      height: target.height,
+      background: target.background ?? undefined,
+      layers: target.layers as unknown,
+    });
+
+    await this.logActorActivity(context, actor, "document_template.version_restore", id);
 
     const refreshed = await this.repository.findById(id);
     return this.toDetail(refreshed!, context);
@@ -437,6 +513,22 @@ export class DocumentTemplateService {
       const result = await this.reports.findStudentAdmitCards(tenantId, {});
       return (result.rows as Record<string, unknown>[])[0] ?? null;
     }
+    if (type === "CERTIFICATE") {
+      const rows = await this.reports.findStudentSanads(tenantId, {});
+      return (rows.rows as Record<string, unknown>[])[0] ?? null;
+    }
+    if (type === "TESTIMONIAL") {
+      const rows = await this.reports.findStudentCertificates(tenantId, {});
+      return (rows as Record<string, unknown>[])[0] ?? null;
+    }
+    if (type === "CLEARANCE_CERTIFICATE") {
+      const rows = await this.reports.findStudentTransferLetters(tenantId, {});
+      return (rows as Record<string, unknown>[])[0] ?? null;
+    }
+    if (type === "MARKSHEET") {
+      const result = await this.reports.findStudentMarksheets(tenantId, {});
+      return (result.rows as Record<string, unknown>[])[0] ?? null;
+    }
     return null;
   }
 
@@ -464,6 +556,18 @@ export class DocumentTemplateService {
       rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
     } else if (type === "ADMIT_CARD") {
       const result = await this.reports.findStudentAdmitCards(tenantId, filters);
+      rows = (result as any)?.rows ?? [];
+    } else if (type === "CERTIFICATE") {
+      const result = await this.reports.findStudentSanads(tenantId, filters);
+      rows = (result as any)?.rows ?? [];
+    } else if (type === "TESTIMONIAL") {
+      const result = await this.reports.findStudentCertificates(tenantId, filters);
+      rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
+    } else if (type === "CLEARANCE_CERTIFICATE") {
+      const result = await this.reports.findStudentTransferLetters(tenantId, filters);
+      rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
+    } else if (type === "MARKSHEET") {
+      const result = await this.reports.findStudentMarksheets(tenantId, filters);
       rows = (result as any)?.rows ?? [];
     } else {
       throw new BadRequestError(`Bulk generation for ${type} is not wired up yet`);

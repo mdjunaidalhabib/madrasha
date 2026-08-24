@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { idParamSchema } from "../../shared/validators";
 
 /**
@@ -7,3 +8,10 @@ import { idParamSchema } from "../../shared/validators";
  * layer shape is expected to evolve alongside the frontend designer.
  */
 export const documentTemplateIdParamSchema = idParamSchema;
+
+export const documentTemplateVersionRestoreParamSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+    versionId: z.coerce.number().int().positive(),
+  }),
+});

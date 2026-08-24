@@ -22,6 +22,7 @@ import StudentAdmissionListPrint from "./student/StudentAdmissionListPrint";
 import TeacherListPrint from "./teacher/TeacherListPrint";
 import TeacherPhoneListPrint from "./teacher/TeacherPhoneListPrint";
 import ReportTable from "./ReportTable";
+import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 
 type ReportContentProps = {
   loading: boolean;
@@ -36,6 +37,13 @@ type ReportContentProps = {
   // academic-result only: pass/fail/absent counts for the whole class/exam
   // group this page belongs to (see PaginatedReportPreview.getResultStats).
   resultStats?: { total: number; pass: number; fail: number; absent: number };
+  // Explicitly-selected (non-default) document template id from
+  // ReportFilterBar's template <select>, for the id-card/admit-card/
+  // certificate/testimonial/transfer-letter reports. This component's only
+  // caller (PaginatedReportPreview) doesn't pass it through - it's read from
+  // selectedTemplateOverrideStore below instead - so this prop is here for
+  // direct callers/explicitness and defaults to that store's value.
+  selectedTemplateId?: number | null;
 };
 
 const ReportContent = ({
@@ -49,7 +57,11 @@ const ReportContent = ({
   isFirstPage = true,
   bodyTextOverride,
   resultStats,
+  selectedTemplateId,
 }: ReportContentProps) => {
+  const overrideTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
+  const templateId = selectedTemplateId ?? overrideTemplateId;
+
   if (loading) {
     return (
       <div className="bg-white p-4">
@@ -83,8 +95,8 @@ const ReportContent = ({
       />
     );
   }
-  if (report.printable === "id-card") return <IdCardGrid rows={rows} />;
-  if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} />;
+  if (report.printable === "id-card") return <IdCardGrid rows={rows} templateId={templateId} />;
+  if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} templateId={templateId} />;
   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
   if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
   if (report.printable === "certificate") {
@@ -94,6 +106,7 @@ const ReportContent = ({
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
         bodyTextOverride={bodyTextOverride}
+        templateId={templateId}
       />
     );
   }
@@ -104,6 +117,7 @@ const ReportContent = ({
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
         bodyTextOverride={bodyTextOverride}
+        templateId={templateId}
       />
     );
   }
@@ -114,6 +128,7 @@ const ReportContent = ({
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
         bodyTextOverride={bodyTextOverride}
+        templateId={templateId}
       />
     );
   }

@@ -49,6 +49,16 @@ export interface TemplateListItemDto {
   updated_at: string;
 }
 
+export interface TemplateVersionListItemDto {
+  id: number;
+  version_no: number;
+  width: number;
+  height: number;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  created_at: string;
+}
+
 export interface GenerateResultDto {
   template: {
     id: number;
@@ -132,6 +142,16 @@ export async function setTenantDefault(type: BackendDocumentType, templateId: nu
 
 export async function getPreviewData(id: number): Promise<Record<string, any> | null> {
   const res = await cachedGet(`/document-templates/${id}/preview-data`);
+  return res.data.data;
+}
+
+export async function listTemplateVersions(id: number): Promise<TemplateVersionListItemDto[]> {
+  const res = await cachedGet(`/document-templates/${id}/versions`);
+  return res.data?.data || [];
+}
+
+export async function restoreTemplateVersion(id: number, versionId: number): Promise<TemplateDetailDto> {
+  const res = await api.post(`/document-templates/${id}/versions/${versionId}/restore`);
   return res.data.data;
 }
 

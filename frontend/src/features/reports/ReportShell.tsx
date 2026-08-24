@@ -7,6 +7,8 @@ import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
 import { logger } from "../../utils/logger";
+import { listTemplates, type TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
+import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
@@ -54,6 +56,9 @@ const ReportShell = ({
   const [selectedExam, setSelectedExam] = useState("");
   const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
+  const [templates, setTemplates] = useState<TemplateListItemDto[]>([]);
+  const selectedTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
+  const setSelectedTemplateId = useSelectedTemplateOverrideStore((s) => s.setTemplateId);
 
   const activeReport = useMemo(
     () => reports.find((item) => item.key === activeKey) || reports[0],
@@ -145,12 +150,35 @@ const ReportShell = ({
     setSelectedClass("");
     setClasses([]);
     setOrientation(activeReport.defaultOrientation || "portrait");
+    setSelectedTemplateId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, activeReport.defaultOrientation]);
 
   useEffect(() => {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, selectedExam]);
+
+  useEffect(() => {
+    const documentType = activeReport.documentType;
+    if (!documentType) {
+      setTemplates([]);
+      return;
+    }
+
+    let cancelled = false;
+    listTemplates(documentType)
+      .then((list) => {
+        if (!cancelled) setTemplates(list);
+      })
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReport.documentType]);
 
   const filteredRows = rows.filter((row) => {
     const keyword = search.trim().toLowerCase();
@@ -320,6 +348,9 @@ const ReportShell = ({
               orientation={orientation}
               onPaperSizeChange={setPaperSize}
               onOrientationChange={setOrientation}
+              templates={templates}
+              selectedTemplateId={selectedTemplateId}
+              onTemplateChange={setSelectedTemplateId}
             />
 
             {warning && (

@@ -42,6 +42,11 @@ export function layerPositionStyle(layer: DocumentLayer): CSSProperties {
     // `locked` has no visual effect at render time — it only matters to the
     // future interactive editor (disabling drag/resize on this layer).
     ...layer.style,
+    // A borderRadius (e.g. the circular-photo toggle) only actually crops
+    // the rendered content when its box also clips overflow - otherwise the
+    // underlying image/element keeps its square corners and just pokes out
+    // past the rounded edge.
+    overflow: layer.style?.borderRadius ? "hidden" : layer.style?.overflow,
   };
 }
 

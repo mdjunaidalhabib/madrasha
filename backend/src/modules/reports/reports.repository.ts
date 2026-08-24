@@ -101,8 +101,11 @@ export class ReportsRepository {
     );
   }
 
-  private async resultRosterFallback(madrasaId: number): Promise<OptionalQueryResult<any>> {
-    const roster = await this.findActiveStudentRoster(madrasaId);
+  private async resultRosterFallback(
+    madrasaId: number,
+    filters: RosterFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
+    const roster = await this.findActiveStudentRoster(madrasaId, filters);
     return {
       rows: roster.map((row: any) => ({
         ...row,
@@ -676,7 +679,11 @@ export class ReportsRepository {
     return this.findActiveStudentRoster(madrasaId, filters);
   }
 
-  async findStudentMarksheets(madrasaId: number): Promise<OptionalQueryResult<any>> {
+  async findStudentMarksheets(
+    madrasaId: number,
+    filters: RosterFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     const result = await this.runOptionalQuery(
       `
       SELECT
@@ -735,6 +742,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         AND rm.status = 'PUBLISHED'
+        ${conditions}
       GROUP BY
         s.id,
         s.registration_no,
@@ -763,14 +771,15 @@ export class ReportsRepository {
         rm.id
       ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
-      [madrasaId],
+      params,
     );
 
     if (result.rows.length) return result;
-    return this.resultRosterFallback(madrasaId);
+    return this.resultRosterFallback(madrasaId, filters);
   }
 
-  findStudentCertificates(madrasaId: number) {
+  findStudentCertificates(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runQuery(
       `
       SELECT
@@ -795,9 +804,10 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 
@@ -805,6 +815,13 @@ export class ReportsRepository {
     const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runOptionalQuery(
       `
+      WITH latest_exam AS (
+        SELECT id
+        FROM exams
+        WHERE madrasa_id = $1 AND deleted_at IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+      )
       SELECT
         s.id,
         s.registration_no,
@@ -822,15 +839,8 @@ export class ReportsRepository {
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      LEFT JOIN exams e ON e.madrasa_id = s.madrasa_id
-        AND e.id = (
-          SELECT ex2.id
-          FROM exams ex2
-          WHERE ex2.madrasa_id = s.madrasa_id
-            AND ex2.deleted_at IS NULL
-          ORDER BY ex2.id DESC
-          LIMIT 1
-        )
+      LEFT JOIN latest_exam le ON true
+      LEFT JOIN exams e ON e.id = le.id
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
@@ -841,7 +851,8 @@ export class ReportsRepository {
     );
   }
 
-  findStudentSanads(madrasaId: number) {
+  findStudentSanads(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runOptionalQuery(
       `
       SELECT
@@ -870,13 +881,15 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 
-  findStudentTransferLetters(madrasaId: number) {
+  findStudentTransferLetters(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runQuery(
       `
       SELECT
@@ -901,9 +914,10 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 

@@ -1,13 +1,21 @@
+import { useEffect, useState } from "react";
 import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import { useLetterDesign } from "./engine/useLetterDesign";
 import LetterDocument from "./engine/LetterDocument";
+import DocumentPreview from "../../DocumentDesigner/DocumentPreview";
+import { useDocumentTemplateDefaultStore } from "../../../store/documentTemplateDefaultStore";
 import { DEFAULT_SANAD_TEMPLATE } from "../../../utils/documentTemplates";
+import { getTemplate, type TemplateDetailDto } from "../../../services/documentTemplateLibraryApi";
 
 type SanadListProps = {
   rows: Record<string, any>[];
   isFirstPage?: boolean;
   isLastPage?: boolean;
   bodyTextOverride?: string;
+  // Explicit non-default published template chosen from the Reports screen
+  // (ReportFilterBar) - when set, overrides the tenant's effective default
+  // fetched below. Null/undefined keeps today's default-lookup behaviour.
+  templateId?: number | null;
 };
 
 const SanadList = ({
@@ -15,10 +23,75 @@ const SanadList = ({
   isFirstPage = true,
   isLastPage = true,
   bodyTextOverride,
+  templateId,
 }: SanadListProps) => {
   const template = useDocumentTemplate("sanad_template", DEFAULT_SANAD_TEMPLATE);
   const { design, backgroundImage } = useLetterDesign();
   const row = rows[0] || {};
+
+  const defaultDocTemplate = useDocumentTemplateDefaultStore((s) => s.defaults.CERTIFICATE);
+  const defaultDocTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.CERTIFICATE);
+  const fetchDefault = useDocumentTemplateDefaultStore((s) => s.fetchDefault);
+  const [overrideTemplate, setOverrideTemplate] = useState<TemplateDetailDto | null>(null);
+  const [overrideLoaded, setOverrideLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchDefault("CERTIFICATE");
+  }, [fetchDefault]);
+
+  useEffect(() => {
+    if (!templateId) {
+      setOverrideTemplate(null);
+      setOverrideLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+    setOverrideLoaded(false);
+    getTemplate(templateId)
+      .then((detail) => {
+        if (!cancelled) {
+          setOverrideTemplate(detail);
+          setOverrideLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOverrideTemplate(null);
+          setOverrideLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [templateId]);
+
+  const docTemplate = templateId ? overrideTemplate : defaultDocTemplate;
+  const docTemplateLoaded = templateId ? overrideLoaded : defaultDocTemplateLoaded;
+  const version = docTemplate?.published || docTemplate?.draft;
+
+  if (version) {
+    return (
+      <DocumentPreview
+        className="print-page-break"
+        layout={{
+          id: String(docTemplate!.id),
+          kind: "certificate",
+          width: version.width,
+          height: version.height,
+          background: version.background || undefined,
+          layers: version.layers,
+        }}
+        row={row}
+      />
+    );
+  }
+
+  // Not yet resolved (still loading) - render nothing this pass rather than
+  // flashing the fallback layout, PaginatedReportPreview re-measures once
+  // `loaded` flips.
+  if (!docTemplateLoaded) return null;
 
   return (
     <LetterDocument

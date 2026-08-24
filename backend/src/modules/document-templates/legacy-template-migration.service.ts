@@ -63,7 +63,7 @@ export class LegacyTemplateMigrationService {
         isPublished: true,
       });
 
-      const version = await this.templates.createVersionOnTx(tx, {
+      const publishedVersion = await this.templates.createVersionOnTx(tx, {
         templateId: template.id,
         versionNo: 1,
         width,
@@ -74,9 +74,23 @@ export class LegacyTemplateMigrationService {
         publishedAt: new Date(),
       });
 
+      // Mirror publish()'s invariant: currentVersionId always points at a
+      // DRAFT, never directly at the immutable published snapshot - otherwise
+      // the tenant's very first edit in the designer fails with "Current
+      // version is already published; cannot edit in place".
+      const draftVersion = await this.templates.createVersionOnTx(tx, {
+        templateId: template.id,
+        versionNo: 2,
+        width,
+        height,
+        background,
+        layers,
+        status: "DRAFT",
+      });
+
       await this.templates.updateOnTx(tx, template.id, {
-        currentVersionId: version.id,
-        publishedVersionId: version.id,
+        currentVersionId: draftVersion.id,
+        publishedVersionId: publishedVersion.id,
       });
 
       await this.templates.upsertTenantDefaultOnTx(tx, madrasaId, type, template.id);

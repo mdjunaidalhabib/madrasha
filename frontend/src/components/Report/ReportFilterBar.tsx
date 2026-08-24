@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import DataExportPrintActions, { Orientation, PaperSize } from "../common/DataExportPrintActions";
 import {
   ClassItem,
@@ -6,6 +7,8 @@ import {
   ReportColumn,
   ReportMenuItem,
 } from "../../../src/features/reports/types";
+import type { TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
+import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 type ReportFilterBarProps = {
   search: string;
@@ -27,6 +30,9 @@ type ReportFilterBarProps = {
   orientation: Orientation;
   onPaperSizeChange: (value: PaperSize) => void;
   onOrientationChange: (value: Orientation) => void;
+  templates: TemplateListItemDto[];
+  selectedTemplateId: number | null;
+  onTemplateChange: (value: number | null) => void;
 };
 
 const ReportFilterBar = ({
@@ -49,6 +55,9 @@ const ReportFilterBar = ({
   orientation,
   onPaperSizeChange,
   onOrientationChange,
+  templates,
+  selectedTemplateId,
+  onTemplateChange,
 }: ReportFilterBarProps) => {
   return (
     <div className="no-print flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -103,6 +112,30 @@ const ReportFilterBar = ({
             </option>
           ))}
         </select>
+
+        {activeReport.documentType && (
+          <select
+            value={selectedTemplateId ?? ""}
+            onChange={(e) => onTemplateChange(e.target.value ? Number(e.target.value) : null)}
+            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 xl:w-[170px]"
+          >
+            <option value="">ডিফল্ট (স্বয়ংক্রিয়)</option>
+            {templates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>
+                {tpl.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {activeReport.documentType && (
+          <Link
+            to={`${getTenantAdminBase()}/talimat/settings/documents`}
+            className="flex h-10 w-full items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-blue-950/40 xl:w-auto"
+          >
+            টেমপ্লেট ম্যানেজ করুন
+          </Link>
+        )}
 
         <button
           type="button"

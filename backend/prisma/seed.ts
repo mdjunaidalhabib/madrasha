@@ -167,7 +167,7 @@ async function main() {
       },
     });
 
-    const version = await prisma.documentTemplateVersion.create({
+    const publishedVersion = await prisma.documentTemplateVersion.create({
       data: {
         templateId: template.id,
         versionNo: 1,
@@ -180,9 +180,24 @@ async function main() {
       },
     });
 
+    // currentVersionId must always point at a DRAFT (mirrors what publish()
+    // does after publishing) - otherwise editing this template in the
+    // designer fails immediately with "cannot edit in place".
+    const draftVersion = await prisma.documentTemplateVersion.create({
+      data: {
+        templateId: template.id,
+        versionNo: 2,
+        width,
+        height,
+        background: background as any,
+        layers: layers as any,
+        status: "DRAFT",
+      },
+    });
+
     await prisma.documentTemplate.update({
       where: { id: template.id },
-      data: { currentVersionId: version.id, publishedVersionId: version.id },
+      data: { currentVersionId: draftVersion.id, publishedVersionId: publishedVersion.id },
     });
 
     console.log(`   ✅ Seeded system template: ${spec.name}`);
@@ -806,6 +821,11 @@ async function main() {
 
     { keyName: "talimat.manage", name: "Manage Talimat" },
     { keyName: "reports.read", name: "View Reports" },
+    { keyName: "reports.academic", name: "View Academic Reports" },
+    { keyName: "reports.exam", name: "View Exam Reports" },
+    { keyName: "reports.student", name: "View Student Reports" },
+    { keyName: "reports.teacher", name: "View Teacher Reports" },
+    { keyName: "reports.attendance", name: "View Attendance Reports" },
     { keyName: "activity.read", name: "View Activity Log" },
     { keyName: "settings.manage", name: "Manage Settings" },
     { keyName: "document_templates.read", name: "View Document Templates" },

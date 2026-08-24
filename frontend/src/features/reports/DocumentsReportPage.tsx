@@ -18,6 +18,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের আইডি কার্ড রিপোর্ট ও প্রিন্ট",
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
+    documentType: "ID_CARD",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -34,6 +35,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের পরীক্ষার প্রবেশপত্র তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
+    documentType: "ADMIT_CARD",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -50,6 +52,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "প্রবেশপত্রের সাথে দেওয়ার জন্য পরীক্ষার নিয়মাবলীর একটি মাত্র নোটিশ পৃষ্ঠা তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card-with-rules",
+    documentType: "ADMIT_CARD",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -66,6 +69,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের শিক্ষাগত সনদ তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/sanads",
     printable: "certificate",
+    documentType: "CERTIFICATE",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -83,6 +87,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের প্রত্যয়ন পত্র তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/certificates",
     printable: "testimonial",
+    documentType: "TESTIMONIAL",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -100,6 +105,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "শিক্ষার্থীদের ছাড়পত্র তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/transfer-letters",
     printable: "transfer-letter",
+    documentType: "CLEARANCE_CERTIFICATE",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },

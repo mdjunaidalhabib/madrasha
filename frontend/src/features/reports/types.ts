@@ -1,3 +1,5 @@
+import type { BackendDocumentType } from "../../components/DocumentDesigner/documentTypeMap";
+
 export type ReportColumn = {
   header: string;
   key: string;
@@ -13,6 +15,12 @@ export type ReportMenuItem = {
   groupTitle?: string;
   requiresExam?: boolean;
   defaultOrientation?: "portrait" | "landscape";
+  // Set on the 5 document-template-driven report types (id-card, admit-card
+  // /admit-card-with-rules, certificate, testimonial, transfer-letter) so
+  // ReportFilterBar/ReportShell know to offer a "pick a non-default
+  // published template" control for this report - see IdCardGrid and
+  // siblings under components/Report/documents/.
+  documentType?: BackendDocumentType;
   // Extra static query params merged into the endpoint request alongside
   // exam_id (e.g. distinguishing two menu entries that hit the same
   // endpoint with a different filter flag, like the plain-rank vs.

@@ -53,3 +53,16 @@ Examples:
 - `/jamia`
 
 The frontend reads the first URL segment as the tenant slug and sends it to the backend with the `X-Madrasa-Slug` header.
+
+## Document designer
+
+```txt
+src/components/DocumentDesigner/      Canvas-based layout editor (layers, elements, render engine)
+src/features/talimat/
+  TenantDocumentTemplateLibrary.tsx   List/clone/set-default/delete templates
+  TenantDocumentDesignerPage.tsx      Edit one template's draft, publish, restore versions
+```
+
+Reachable at Talimat -> Settings -> Documents (`talimat/settings/documents`, editor at `talimat/settings/documents/:type/:id/edit`), gated by the `document_templates.read`/`document_templates.manage` permissions.
+
+Replaces the old per-type `id_card` / `admit_card` / `certificate` / `testimonial` / `transfer_letter` settings pages; those routes now redirect here. Print output in `components/Report/documents/*` resolves the tenant's default template through the backend and renders it with the same `DocumentDesigner` engine used for the designer's live preview.

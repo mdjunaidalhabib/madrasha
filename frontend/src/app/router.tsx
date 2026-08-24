@@ -250,13 +250,26 @@ const madrasaAdminChildren = [
       { path: "class-book", element: withSuspense(<ClassBookSettingsPage />) },
       { path: "exam", element: withSuspense(<ExamSettingsPage />) },
       { path: "grade", element: withSuspense(<GradeSettingsPage />) },
-      { path: "documents", element: withSuspense(<TalimatDocumentsPage />) },
+      {
+        path: "documents",
+        element: (
+          <PermissionGuard permission="document_templates.read">
+            {withSuspense(<TalimatDocumentsPage />)}
+          </PermissionGuard>
+        ),
+      },
       { path: "sessions", element: withSuspense(<SessionPage />) },
     ],
   },
   {
     path: "talimat/settings/documents/:type/:id/edit",
-    element: <ModuleGuard module="talimat">{withSuspense(<TenantDocumentDesignerPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="document_templates.read">
+          {withSuspense(<TenantDocumentDesignerPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   // NOTE: class_panel / exam_panel / documents were 4 separate তালিমাত
   // sidebar entries (plus students/sessions). They're now sub-pages of the

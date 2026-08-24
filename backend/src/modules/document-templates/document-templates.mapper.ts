@@ -1,4 +1,9 @@
-import { TemplateDetail, TemplateListItem, TemplateVersionSnapshot } from "./document-templates.types";
+import {
+  TemplateDetail,
+  TemplateListItem,
+  TemplateVersionListItem,
+  TemplateVersionSnapshot,
+} from "./document-templates.types";
 
 const toVersionDto = (version: TemplateVersionSnapshot | null) =>
   version && {
@@ -28,6 +33,16 @@ export const toTemplateDetailDto = (row: TemplateDetail) => ({
   updated_at: row.updatedAt,
   draft: toVersionDto(row.draft),
   published: toVersionDto(row.published),
+});
+
+export const toTemplateVersionListItemDto = (row: TemplateVersionListItem) => ({
+  id: row.id,
+  version_no: row.versionNo,
+  width: row.width,
+  height: row.height,
+  status: row.status,
+  published_at: row.publishedAt,
+  created_at: row.createdAt,
 });
 
 export const toTemplateListItemDto = (row: TemplateListItem) => ({

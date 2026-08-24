@@ -77,6 +77,19 @@ export interface TemplateListItem {
   updatedAt: Date;
 }
 
+/** Lightweight version-history row - no layers/background payload, so
+ * listing a template's full history stays cheap (mirrors TemplateListItem's
+ * "thumbnail resolved lazily" philosophy). */
+export interface TemplateVersionListItem {
+  id: number;
+  versionNo: number;
+  width: number;
+  height: number;
+  status: DocumentTemplateVersionStatus;
+  publishedAt: Date | null;
+  createdAt: Date;
+}
+
 export interface GenerateFilters {
   classId?: number;
   divisionId?: number;

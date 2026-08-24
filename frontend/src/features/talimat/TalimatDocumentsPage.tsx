@@ -27,6 +27,7 @@ import BookLabelArch from "../../components/Report/documents/book-label-designs/
 import BookLabelCustom from "../../components/Report/documents/book-label-designs/BookLabelCustom";
 import LetterDocument from "../../components/Report/documents/engine/LetterDocument";
 import TenantDocumentTemplateLibrary from "./TenantDocumentTemplateLibrary";
+import type { BackendDocumentType } from "../../components/DocumentDesigner/documentTypeMap";
 import {
   ADMIT_CARD_RULE_TOKENS,
   DEFAULT_ADMIT_CARD_RULES,
@@ -108,6 +109,18 @@ const docTypes: DocType[] = [
     dataFields: ["নাম", "মেধাক্রম", "রোল নম্বর", "শ্রেণি", "বিভাগ", "গ্রেড", "পরীক্ষা", "সেশন"],
   },
 ];
+
+// ID Card / Admit Card / Certificate / Testimonial / Transfer Letter route
+// through the new Document Template Designer's tenant library (see the
+// docTypes.key -> TenantDocumentTemplateLibrary branch below). Book-label
+// has no backend DocumentType enum value, so it stays legacy-only.
+const NEW_ENGINE_DOCUMENT_TYPE_BY_KEY: Partial<Record<string, BackendDocumentType>> = {
+  "id-card": "ID_CARD",
+  "admit-card": "ADMIT_CARD",
+  certificate: "CERTIFICATE",
+  testimonial: "TESTIMONIAL",
+  transfer: "CLEARANCE_CERTIFICATE",
+};
 
 // শুধুমাত্র প্রিভিউ দেখানোর জন্য নমুনা তথ্য — এটি কোনো প্রকৃত শিক্ষার্থীর তথ্য নয় এবং কোথাও সেভ হয় না
 const PREVIEW_ROW: Record<string, any> = {
@@ -598,13 +611,14 @@ export default function TalimatDocumentsPage() {
     return <SkeletonCard lines={5} />;
   }
 
-  // ID Card / Admit Card now go through the real Document Template
-  // Designer (system+tenant template library, drag/resize/rotate layers,
-  // QR codes, versioning) instead of the old fixed classic/minimal/arch/
-  // custom preset picker below. Certificate/testimonial/transfer/book-label
-  // are untouched in this pass and keep falling through to the original
-  // render path further down.
-  if (active.key === "id-card" || active.key === "admit-card") {
+  // ID Card / Admit Card / Certificate / Testimonial / Transfer Letter now
+  // go through the real Document Template Designer (system+tenant template
+  // library, drag/resize/rotate layers, QR codes, versioning) instead of
+  // the old fixed classic/minimal/arch/custom preset picker below.
+  // Book-label is untouched (no backend DocumentType enum value for it) and
+  // keeps falling through to the original render path further down.
+  const newEngineType = NEW_ENGINE_DOCUMENT_TYPE_BY_KEY[active.key];
+  if (newEngineType) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -626,10 +640,7 @@ export default function TalimatDocumentsPage() {
           ))}
         </div>
 
-        <TenantDocumentTemplateLibrary
-          type={active.key === "id-card" ? "ID_CARD" : "ADMIT_CARD"}
-          title={active.title}
-        />
+        <TenantDocumentTemplateLibrary type={newEngineType} title={active.title} />
       </div>
     );
   }

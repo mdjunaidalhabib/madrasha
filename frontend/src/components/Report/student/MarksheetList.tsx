@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import DocumentPreview from "../../DocumentDesigner/DocumentPreview";
+import { useDocumentTemplateDefaultStore } from "../../../store/documentTemplateDefaultStore";
 import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "../../../utils/reportUtils";
 
 type SubjectMark = {
@@ -68,6 +71,38 @@ const MarksheetList = ({ rows, isFirstPage = true }: MarksheetListProps) => {
   const failed = rowStatus === "FAIL";
   const isAbsent = rowStatus === "ABSENT";
   const subjects = getSubjects(row);
+
+  const template = useDocumentTemplateDefaultStore((s) => s.defaults.MARKSHEET);
+  const templateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.MARKSHEET);
+  const fetchDefault = useDocumentTemplateDefaultStore((s) => s.fetchDefault);
+
+  useEffect(() => {
+    fetchDefault("MARKSHEET");
+  }, [fetchDefault]);
+
+  const version = template?.published || template?.draft;
+
+  if (version) {
+    return (
+      <DocumentPreview
+        className="print-page-break"
+        layout={{
+          id: String(template!.id),
+          kind: "marksheet",
+          width: version.width,
+          height: version.height,
+          background: version.background || undefined,
+          layers: version.layers,
+        }}
+        row={row}
+      />
+    );
+  }
+
+  // Not yet resolved (still loading) - render nothing this pass rather than
+  // flashing the fallback layout, PaginatedReportPreview re-measures once
+  // `loaded` flips.
+  if (!templateLoaded) return null;
 
   // Total/average have no per-subject serial or full-marks concept of their
   // own, so their row merges the (ক্রম + বিষয়ের নাম) and (প্রাপ্ত নম্বর +

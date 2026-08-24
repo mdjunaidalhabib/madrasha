@@ -30,6 +30,22 @@ const NumberField = ({
 
 const style = (layer: DocumentLayer): CSSProperties => (layer.style as CSSProperties) || {};
 
+/** Fonts already loaded app-wide (see index.html's Google Fonts link + the
+ * self-hosted "Kalpurush" @font-face in index.css) - no extra network/asset
+ * loading needed to offer these here. Generic web-safe fonts are included
+ * too for documents that mix in English/Latin text. */
+const FONT_OPTIONS: { value: string; label: string }[] = [
+  { value: '"Kalpurush", "Hind Siliguri", sans-serif', label: "কালপুরুষ (Kalpurush)" },
+  { value: '"Hind Siliguri", sans-serif', label: "হিন্দ শিলিগুড়ি (Hind Siliguri)" },
+  { value: '"Noto Sans Bengali", sans-serif', label: "Noto Sans Bengali" },
+  { value: '"Noto Serif Bengali", serif', label: "Noto Serif Bengali" },
+  { value: '"Manrope", sans-serif', label: "Manrope" },
+  { value: "Arial, sans-serif", label: "Arial" },
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "'Times New Roman', serif", label: "Times New Roman" },
+  { value: "'Courier New', monospace", label: "Courier New" },
+];
+
 /**
  * The right-hand designer panel: geometry (x/y/w/h/rotation) always shown,
  * plus a per-LayerType content editor (text/template with a field-binding
@@ -102,6 +118,23 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফন্ট</span>
+            <select
+              value={String(style(layer).fontFamily || FONT_OPTIONS[0].value)}
+              onChange={(e) => updateStyle({ fontFamily: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {style(layer).fontFamily && !FONT_OPTIONS.some((f) => f.value === style(layer).fontFamily) && (
+                <option value={String(style(layer).fontFamily)}>{String(style(layer).fontFamily)}</option>
+              )}
+              {FONT_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <NumberField
               label="ফন্ট সাইজ"
@@ -164,6 +197,73 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               />
             </label>
           )}
+
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+            <input
+              type="checkbox"
+              checked={Boolean(content.lockAspectRatio)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  // A circle only reads as a true circle at a 1:1 ratio, so
+                  // locking also squares the layer to its smaller side right
+                  // away instead of leaving it to look like a clipped oval
+                  // until the next manual resize.
+                  const size = Math.min(layer.width, layer.height);
+                  onChange({
+                    width: size,
+                    height: size,
+                    content: { ...content, lockAspectRatio: true },
+                    style: { ...style(layer), borderRadius: "50%" },
+                  });
+                } else {
+                  const { borderRadius: _drop, ...restStyle } = style(layer);
+                  onChange({ content: { ...content, lockAspectRatio: undefined }, style: restStyle });
+                }
+              }}
+            />
+            আকার পরিবর্তনের সময় অনুপাত ঠিক রাখুন (ছবি গোল হয়ে যাবে)
+          </label>
+
+          <div>
+            <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">বর্ডার</p>
+            <div className="grid grid-cols-2 gap-2">
+              <NumberField
+                label="প্রস্থ (px)"
+                value={Number(style(layer).borderWidth) || 0}
+                onChange={(v) => {
+                  const width = Math.max(0, v);
+                  if (width === 0) {
+                    updateStyle({ borderWidth: undefined, borderStyle: undefined, borderColor: undefined });
+                  } else {
+                    updateStyle({
+                      borderWidth: width,
+                      borderStyle: "solid",
+                      borderColor: String(style(layer).borderColor || "#0f172a"),
+                    });
+                  }
+                }}
+              />
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">রং</span>
+                <input
+                  type="color"
+                  value={String(style(layer).borderColor || "#0f172a")}
+                  onChange={(e) => updateStyle({ borderColor: e.target.value, borderStyle: "solid" })}
+                  disabled={!style(layer).borderWidth}
+                  className="h-9 w-full rounded-lg border border-slate-200 disabled:opacity-50 dark:border-slate-700"
+                />
+              </label>
+            </div>
+            {Boolean(style(layer).borderWidth) && (
+              <button
+                type="button"
+                onClick={() => updateStyle({ borderWidth: undefined, borderStyle: undefined, borderColor: undefined })}
+                className="mt-1.5 text-[11px] font-medium text-rose-600 underline dark:text-rose-400"
+              >
+                বর্ডার মুছুন
+              </button>
+            )}
+          </div>
         </div>
       )}
 

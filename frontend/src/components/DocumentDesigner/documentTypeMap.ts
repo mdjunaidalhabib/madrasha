@@ -42,7 +42,14 @@ export const DOCUMENT_TYPE_LABELS_BN: Record<BackendDocumentType, string> = {
  * pass - system starter templates + legacy migration + generation UI. The
  * rest of the enum is still valid/creatable (generic engine), just without
  * dedicated starter content yet. */
-export const FULLY_WIRED_DOCUMENT_TYPES: BackendDocumentType[] = ["ID_CARD", "ADMIT_CARD"];
+export const FULLY_WIRED_DOCUMENT_TYPES: BackendDocumentType[] = [
+  "ID_CARD",
+  "ADMIT_CARD",
+  "CERTIFICATE",
+  "CLEARANCE_CERTIFICATE",
+  "TESTIMONIAL",
+  "MARKSHEET",
+];
 
 const ALL_BACKEND_TYPES: BackendDocumentType[] = [
   "ID_CARD",

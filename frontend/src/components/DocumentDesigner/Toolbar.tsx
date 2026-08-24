@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { ZoomIn, ZoomOut, Image as ImageIcon, X, RectangleVertical, RectangleHorizontal } from "lucide-react";
+import { ZoomIn, ZoomOut, Image as ImageIcon, Loader2, X, RectangleVertical, RectangleHorizontal } from "lucide-react";
 import Button from "../ui/Button";
+import { useToastStore } from "../../store/toastStore";
 import type { CanvasBackground } from "./types";
 import { detectPageSize, pageSizePx, pxToMm, mmToPx, PAGE_SIZE_LABELS_BN, type PageSizeId } from "./pageSizes";
 
@@ -26,6 +27,11 @@ export interface ToolbarProps {
   onPublish: () => void;
   publishing: boolean;
   isPublished: boolean;
+  /** Whether the live editor state differs from what's currently published.
+   * When false and isPublished is true, there is nothing new to publish, so
+   * the publish button shows "প্রকাশিত" and stays disabled instead of
+   * offering a no-op republish. */
+  hasChanges: boolean;
   saveError?: string;
 }
 
@@ -45,9 +51,11 @@ const Toolbar = ({
   onPublish,
   publishing,
   isPublished,
+  hasChanges,
   saveError,
 }: ToolbarProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
   // Detected from the actual size by default; "কাস্টম" is a user override so
   // picking it stays selected even when the current mm exactly matches a
   // preset (detectPageSize would otherwise snap it straight back to A4/A5).
@@ -155,12 +163,27 @@ const Toolbar = ({
           const file = e.target.files?.[0];
           e.target.value = "";
           if (!file) return;
-          const url = await onUploadBackgroundImage(file);
-          onChangeBackground({ ...background, image: url, fit: background?.fit || "cover" });
+          setUploadingBg(true);
+          try {
+            const url = await onUploadBackgroundImage(file);
+            onChangeBackground({ ...background, image: url, fit: background?.fit || "cover" });
+          } catch {
+            useToastStore.getState().show("ব্যাকগ্রাউন্ড ছবি আপলোড করা যায়নি, আবার চেষ্টা করুন", "error");
+          } finally {
+            setUploadingBg(false);
+          }
         }}
       />
-      <Button type="button" variant="secondary" onClick={() => fileRef.current?.click()}>
-        <ImageIcon size={15} className="mr-1.5" /> ব্যাকগ্রাউন্ড আপলোড
+      <Button type="button" variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploadingBg}>
+        {uploadingBg ? (
+          <>
+            <Loader2 size={15} className="mr-1.5 animate-spin" /> আপলোড হচ্ছে...
+          </>
+        ) : (
+          <>
+            <ImageIcon size={15} className="mr-1.5" /> ব্যাকগ্রাউন্ড আপলোড
+          </>
+        )}
       </Button>
       {background?.image && (
         <button
@@ -185,8 +208,19 @@ const Toolbar = ({
         <Button type="button" variant="secondary" onClick={onSaveDraft} disabled={saving}>
           {saving ? "সেভ হচ্ছে..." : "খসড়া সেভ করুন"}
         </Button>
-        <Button type="button" variant="primary" onClick={onPublish} disabled={publishing}>
-          {publishing ? "প্রকাশ হচ্ছে..." : isPublished ? "পুনঃপ্রকাশ করুন" : "প্রকাশ করুন"}
+        <Button
+          type="button"
+          variant="primary"
+          onClick={onPublish}
+          disabled={publishing || (isPublished && !hasChanges)}
+        >
+          {publishing
+            ? "প্রকাশ হচ্ছে..."
+            : isPublished && !hasChanges
+            ? "প্রকাশিত"
+            : isPublished
+            ? "পুনঃপ্রকাশ করুন"
+            : "প্রকাশ করুন"}
         </Button>
       </div>
     </div>

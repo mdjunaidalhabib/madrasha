@@ -89,6 +89,9 @@ export interface ImageLayerContent {
   field?: string;
   alt?: string;
   fit?: "cover" | "contain" | "fill";
+  /** When true, resizing this layer in the designer keeps its current
+   * width/height ratio instead of allowing free (stretched) resize. */
+  lockAspectRatio?: boolean;
 }
 
 /** Content shape for `QRCodeElement` / `BarcodeElement`. */

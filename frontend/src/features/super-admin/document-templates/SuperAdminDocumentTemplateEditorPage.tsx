@@ -5,6 +5,7 @@ import EditableCanvas from "../../../components/DocumentDesigner/EditableCanvas"
 import LayerPanel from "../../../components/DocumentDesigner/panels/LayerPanel";
 import PropertyInspector from "../../../components/DocumentDesigner/panels/PropertyInspector";
 import Toolbar from "../../../components/DocumentDesigner/Toolbar";
+import DemoDataModal from "../../../components/DocumentDesigner/DemoDataModal";
 import { useDesignerState } from "../../../components/DocumentDesigner/useDesignerState";
 import { FIELD_BINDINGS } from "../../../components/DocumentDesigner/fieldBindings";
 import { DOCUMENT_TYPE_LABELS_BN, type BackendDocumentType } from "../../../components/DocumentDesigner/documentTypeMap";
@@ -16,6 +17,17 @@ import {
 } from "../../../services/superAdminDocumentTemplateApi";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import Button from "../../../components/ui/Button";
+import { useToastStore } from "../../../store/toastStore";
+import type { TemplateVersionDto } from "../../../services/documentTemplateLibraryApi";
+
+/** Normalized content fingerprint used to tell whether the live editor
+ * state actually differs from a given version. */
+const contentSnapshot = (v: {
+  width: number;
+  height: number;
+  background: TemplateVersionDto["background"];
+  layers: TemplateVersionDto["layers"];
+}) => JSON.stringify({ width: v.width, height: v.height, background: v.background || null, layers: v.layers });
 
 // No real tenant exists at the platform level, so the designer previews
 // against realistic sample data instead (spec: "Show realistic sample data
@@ -49,6 +61,9 @@ export default function SuperAdminDocumentTemplateEditorPage() {
   const [publishing, setPublishing] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [type, setType] = useState<BackendDocumentType | null>(null);
+  const [publishedSnapshot, setPublishedSnapshot] = useState<string | null>(null);
+  const [previewOverrides, setPreviewOverrides] = useState<Record<string, any>>({});
+  const [demoDataOpen, setDemoDataOpen] = useState(false);
 
   const designer = useDesignerState({ width: 400, height: 600, background: undefined, layers: [], selectedLayerId: null });
 
@@ -68,6 +83,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         });
         setName(detail.name);
         setIsPublished(detail.is_published);
+        setPublishedSnapshot(detail.published ? contentSnapshot(detail.published) : null);
         setType(detail.type);
       } catch {
         setNotFound(true);
@@ -84,6 +100,16 @@ export default function SuperAdminDocumentTemplateEditorPage() {
 
   const selectedLayer = designer.state.layers.find((l) => l.id === designer.state.selectedLayerId) || null;
   const fieldBindings = FIELD_BINDINGS[type];
+  const effectiveRow = { ...SAMPLE_ROW, ...previewOverrides };
+  const hasPreviewOverrides = Object.keys(previewOverrides).length > 0;
+  const hasChanges =
+    publishedSnapshot === null ||
+    contentSnapshot({
+      width: designer.state.width,
+      height: designer.state.height,
+      background: designer.state.background || null,
+      layers: designer.state.layers,
+    }) !== publishedSnapshot;
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -96,8 +122,10 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         layers: designer.state.layers,
       });
       setIsPublished(detail.is_published);
+      useToastStore.getState().show("Draft saved", "success");
     } catch {
       setSaveError("সেভ করা যায়নি, আবার চেষ্টা করুন");
+      useToastStore.getState().show("Could not save the draft, please try again", "error");
     } finally {
       setSaving(false);
     }
@@ -115,8 +143,11 @@ export default function SuperAdminDocumentTemplateEditorPage() {
       });
       const detail = await publishSystemTemplate(templateId);
       setIsPublished(detail.is_published);
+      setPublishedSnapshot(detail.published ? contentSnapshot(detail.published) : null);
+      useToastStore.getState().show("Template published", "success");
     } catch {
       setSaveError("প্রকাশ করা যায়নি, আবার চেষ্টা করুন");
+      useToastStore.getState().show("Could not publish, please try again", "error");
     } finally {
       setPublishing(false);
     }
@@ -157,12 +188,22 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         onPublish={handlePublish}
         publishing={publishing}
         isPublished={isPublished}
+        hasChanges={hasChanges}
         saveError={saveError}
       />
 
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-        Editing a <b>{DOCUMENT_TYPE_LABELS_BN[type]}</b> system template. Preview uses sample data — never
-        real student data.
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+        <span>
+          Editing a <b>{DOCUMENT_TYPE_LABELS_BN[type]}</b> system template. Preview uses sample data — never
+          real student data.
+        </span>
+        <button
+          type="button"
+          onClick={() => setDemoDataOpen(true)}
+          className="font-medium text-blue-600 underline dark:text-blue-400"
+        >
+          ডেমো ডেটা এডিট করুন{hasPreviewOverrides ? " (পরিবর্তিত)" : ""}
+        </button>
       </div>
 
       <div className="flex items-start gap-4 overflow-x-auto pb-6">
@@ -184,7 +225,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
             height={designer.state.height}
             background={designer.state.background}
             layers={designer.state.layers}
-            row={SAMPLE_ROW}
+            row={effectiveRow}
             selectedLayerId={designer.state.selectedLayerId}
             onSelectLayer={designer.selectLayer}
             onChangeLayer={designer.updateLayer}
@@ -207,6 +248,16 @@ export default function SuperAdminDocumentTemplateEditorPage() {
           Done — back to list
         </Button>
       </div>
+
+      <DemoDataModal
+        open={demoDataOpen}
+        onClose={() => setDemoDataOpen(false)}
+        fields={fieldBindings}
+        row={effectiveRow}
+        onChangeField={(field, value) => setPreviewOverrides((prev) => ({ ...prev, [field]: value }))}
+        onReset={() => setPreviewOverrides({})}
+        hasOverrides={hasPreviewOverrides}
+      />
     </div>
   );
 }

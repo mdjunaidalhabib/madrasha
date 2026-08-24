@@ -4,7 +4,11 @@ import { ApiResponse } from "../../shared/responses";
 import { BadRequestError } from "../../shared/errors";
 import { documentTemplateService, assertDocumentType } from "./document-templates.service";
 import { legacyTemplateMigrationService } from "./legacy-template-migration.service";
-import { toTemplateDetailDto, toTemplateListItemDto } from "./document-templates.mapper";
+import {
+  toTemplateDetailDto,
+  toTemplateListItemDto,
+  toTemplateVersionListItemDto,
+} from "./document-templates.mapper";
 import { TemplateActor } from "./document-templates.types";
 
 const tenantContext = (req: Request): { kind: "tenant"; tenantId: number } => ({
@@ -103,6 +107,21 @@ export const getPreviewData = asyncHandler(async (req: Request, res: Response) =
   const detail = await documentTemplateService.getDetail(Number(req.params.id), tenantContext(req));
   const row = await documentTemplateService.getPreviewRow(tenantContext(req).tenantId, detail.type);
   return ApiResponse.success(res, { data: row });
+});
+
+export const listTemplateVersions = asyncHandler(async (req: Request, res: Response) => {
+  const versions = await documentTemplateService.listVersions(Number(req.params.id), tenantContext(req));
+  return ApiResponse.success(res, { data: versions.map(toTemplateVersionListItemDto) });
+});
+
+export const restoreTemplateVersion = asyncHandler(async (req: Request, res: Response) => {
+  const detail = await documentTemplateService.restoreVersion(
+    Number(req.params.id),
+    Number(req.params.versionId),
+    tenantContext(req),
+    tenantActor(req),
+  );
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: "Version restored to draft" });
 });
 
 export const generateDocuments = asyncHandler(async (req: Request, res: Response) => {

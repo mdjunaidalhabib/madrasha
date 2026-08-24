@@ -4,7 +4,10 @@ import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { subscriptionCheck } from "../../shared/middleware/subscription.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
-import { documentTemplateIdParamSchema } from "./document-templates.validation";
+import {
+  documentTemplateIdParamSchema,
+  documentTemplateVersionRestoreParamSchema,
+} from "./document-templates.validation";
 import {
   listTemplates,
   getTemplate,
@@ -18,6 +21,8 @@ import {
   setTenantDefault,
   getPreviewData,
   generateDocuments,
+  listTemplateVersions,
+  restoreTemplateVersion,
 } from "./document-templates.controller";
 
 const router = Router();
@@ -42,6 +47,13 @@ router.post("/:id/clone", canManage, validate(documentTemplateIdParamSchema), cl
 router.put("/:id/draft", canManage, validate(documentTemplateIdParamSchema), saveDraft);
 router.post("/:id/publish", canManage, validate(documentTemplateIdParamSchema), publishTemplate);
 router.get("/:id/preview-data", canRead, validate(documentTemplateIdParamSchema), getPreviewData);
+router.get("/:id/versions", canRead, validate(documentTemplateIdParamSchema), listTemplateVersions);
+router.post(
+  "/:id/versions/:versionId/restore",
+  canManage,
+  validate(documentTemplateVersionRestoreParamSchema),
+  restoreTemplateVersion,
+);
 router.put("/:id", canManage, validate(documentTemplateIdParamSchema), updateTemplateMeta);
 router.delete("/:id", canManage, validate(documentTemplateIdParamSchema), deleteTemplate);
 router.get("/:id", canRead, validate(documentTemplateIdParamSchema), getTemplate);
