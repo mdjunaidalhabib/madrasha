@@ -18,7 +18,9 @@ export class DashboardService {
       expenseAgg,
       today,
       funds,
+      paymentMethodTotals,
       recent,
+      genderGroups,
       attendanceCounts,
       pendingAdmissionsCount,
       overdueInvoices,
@@ -31,7 +33,9 @@ export class DashboardService {
       this.repository.sumAccountsByType(madrasaId, "expense"),
       this.repository.findTodayTotals(madrasaId),
       this.repository.findFundBalances(madrasaId),
+      this.repository.findPaymentMethodTotals(madrasaId),
       this.repository.findRecentTransactions(madrasaId),
+      this.repository.countActiveStudentsByGender(madrasaId),
       this.repository.findTodayStudentAttendanceCounts(madrasaId),
       this.repository.countPendingAdmissions(madrasaId),
       this.repository.findOverdueInvoices(madrasaId),
@@ -40,6 +44,17 @@ export class DashboardService {
 
     const income = Number(incomeAgg._sum.amount || 0);
     const expense = Number(expenseAgg._sum.amount || 0);
+
+    const studentsByGender = genderGroups.reduce(
+      (acc, group) => {
+        const count = group._count._all;
+        if (group.gender === 1) acc.male += count;
+        else if (group.gender === 2) acc.female += count;
+        else acc.unspecified += count;
+        return acc;
+      },
+      { male: 0, female: 0, unspecified: 0 }
+    );
 
     const { PRESENT, ABSENT, LATE, LEAVE } = attendanceCounts;
     const attendanceTotal = PRESENT + ABSENT + LATE + LEAVE;
@@ -61,7 +76,13 @@ export class DashboardService {
       todayIncome: Number(today[0]?.income || 0),
       todayExpense: Number(today[0]?.expense || 0),
       fundBalances: funds,
+      paymentMethodTotals: paymentMethodTotals.map((row) => ({
+        payment_method: row.payment_method,
+        income: Number(row.income || 0),
+        expense: Number(row.expense || 0),
+      })),
       recentTransactions: recent,
+      studentsByGender,
       attendanceToday: {
         present: PRESENT,
         absent: ABSENT,

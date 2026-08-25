@@ -9,6 +9,23 @@ type Props = {
   onClose: () => void;
 };
 
+const A5_PRINT_STYLE_ID = "account-receipt-a5-print-style";
+
+const printAsA5 = () => {
+  const style = document.createElement("style");
+  style.id = A5_PRINT_STYLE_ID;
+  style.textContent = "@media print { @page { size: A5; margin: 0.5in; } }";
+  document.head.appendChild(style);
+
+  const cleanup = () => {
+    document.getElementById(A5_PRINT_STYLE_ID)?.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+
+  window.print();
+};
+
 export default function AccountReceiptModal({ row, onClose }: Props) {
   if (!row) return null;
 
@@ -59,6 +76,12 @@ export default function AccountReceiptModal({ row, onClose }: Props) {
               <span className="text-slate-500">পেমেন্ট মাধ্যম</span>
               <span className="font-semibold">{row.paymentMethod || "-"}</span>
             </div>
+            {row.note && (
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500">নোট</span>
+                <span className="font-semibold">{row.note}</span>
+              </div>
+            )}
           </div>
 
           <div
@@ -86,7 +109,7 @@ export default function AccountReceiptModal({ row, onClose }: Props) {
         <Button variant="secondary" onClick={onClose}>
           বন্ধ করুন
         </Button>
-        <Button onClick={() => window.print()}>
+        <Button onClick={printAsA5}>
           <Printer size={16} className="mr-1 inline" /> প্রিন্ট করুন
         </Button>
       </div>

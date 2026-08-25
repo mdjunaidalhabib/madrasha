@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import api from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import Input from "../../components/ui/Input";
@@ -6,6 +7,14 @@ import Button from "../../components/ui/Button";
 import { useToastStore } from "../../store/toastStore";
 import { useAccountOptions } from "./useAccountOptions";
 import { normalizeBanglaDigits } from "../../utils/reportUtils";
+import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { formatDateInput } from "./accountHelpers";
+import AccountRecentPanel from "./AccountRecentPanel";
+
+const nowTimeInput = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -16,12 +25,19 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 export default function ExpensePage() {
   const toast = useToastStore();
   const { expenseGroups, paymentMethods, loading } = useAccountOptions();
+  const { madrasaSlug = "" } = useParams();
+  const adminBase = getTenantAdminBase(madrasaSlug);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [groupName, setGroupName] = useState("");
   const [form, setForm] = useState({
     category: "",
     amount: "",
     payment_method: "",
     receiver_name: "",
+    mobile: "",
+    note: "",
+    entry_date: formatDateInput(new Date()),
+    entry_time: nowTimeInput(),
   });
   const selectedGroup = useMemo(
     () => expenseGroups.find((group) => group.name === groupName) || expenseGroups[0] || { name: "", categories: [] },
@@ -55,17 +71,32 @@ export default function ExpensePage() {
       ...prev,
       amount: "",
       receiver_name: "",
+      mobile: "",
+      note: "",
+      entry_date: formatDateInput(new Date()),
+      entry_time: nowTimeInput(),
     }));
+    setRefreshKey((k) => k + 1);
   };
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="ভাউচার তৈরি / ব্যয় এন্ট্রি"
         subtitle="ফান্ডভিত্তিক ভাউচার ও ব্যয় সংরক্ষণ"
       />
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>তারিখ</FieldLabel>
+              <Input type="date" value={form.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>সময়</FieldLabel>
+              <Input type="time" value={form.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel>ব্যয় বিভাগ</FieldLabel>
@@ -105,6 +136,15 @@ export default function ExpensePage() {
               onChange={(e) => setField("receiver_name", e.target.value)}
             />
           </div>
+          <div>
+            <FieldLabel>মোবাইল নম্বর</FieldLabel>
+            <Input
+              type="tel"
+              placeholder="01XXXXXXXXX"
+              value={form.mobile}
+              onChange={(e) => setField("mobile", e.target.value)}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel required>পরিমাণ</FieldLabel>
@@ -132,6 +172,16 @@ export default function ExpensePage() {
               </select>
             </div>
           </div>
+          <div>
+            <FieldLabel>নোট / বিবরণ</FieldLabel>
+            <textarea
+              rows={2}
+              placeholder="ঐচ্ছিক নোট"
+              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.note}
+              onChange={(e) => setField("note", e.target.value)}
+            />
+          </div>
         </div>
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSubmit} className="w-full rounded-xl px-8">
@@ -139,6 +189,8 @@ export default function ExpensePage() {
           </Button>
         </div>
       </div>
+
+      <AccountRecentPanel type="expense" adminBase={adminBase} refreshKey={refreshKey} />
     </div>
   );
 }

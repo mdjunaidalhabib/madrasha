@@ -3,12 +3,17 @@ import { Link } from "react-router-dom";
 import {
   Bell,
   ExternalLink,
+  FileText,
   GalleryHorizontalEnd,
   Globe,
   Images,
+  Megaphone,
+  Palette,
   Pencil,
   Plus,
+  Quote,
   Settings2,
+  Share2,
   Trash2,
   Users,
 } from "lucide-react";
@@ -117,16 +122,19 @@ const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
   ["show_contact", "যোগাযোগ", "যোগাযোগ তথ্য সেকশন দেখাবে"],
 ];
 
-type TabKey = "general" | "notices" | "gallery" | "slider" | "committee";
+type TabKey =
+  | "general"
+  | "appearance"
+  | "notice-bar"
+  | "notices"
+  | "gallery"
+  | "slider"
+  | "muhtamim"
+  | "committee"
+  | "social"
+  | "pages";
 
 const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-slate-400";
-
-const badgeCount = (n: number) =>
-  n > 0 && (
-    <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-      {n}
-    </span>
-  );
 
 export default function AdminWebsiteSettingsPage() {
   const user = useAuthStore((s) => s.user);
@@ -617,10 +625,15 @@ export default function AdminWebsiteSettingsPage() {
 
   const tabs: Array<{ key: TabKey; label: string; icon: typeof Settings2; badge?: number }> = [
     { key: "general", label: "সাধারণ সেটিংস", icon: Settings2 },
+    { key: "appearance", label: "থিম ও হিরো ব্যানার", icon: Palette },
+    { key: "notice-bar", label: "নোটিশ বার", icon: Megaphone },
     { key: "notices", label: "নোটিশ", icon: Bell, badge: notices.length },
     { key: "gallery", label: "গ্যালারি", icon: Images, badge: gallery.length },
     { key: "slider", label: "হিরো স্লাইডার", icon: GalleryHorizontalEnd, badge: slides.length },
+    { key: "muhtamim", label: "মুহতামিমের বাণী", icon: Quote },
     { key: "committee", label: "মাদ্রাসা কমিটি", icon: Users, badge: committee.length },
+    { key: "social", label: "সোশ্যাল মিডিয়া", icon: Share2 },
+    { key: "pages", label: "পেজ কন্টেন্ট", icon: FileText },
   ];
 
   if (loading) {
@@ -699,83 +712,108 @@ export default function AdminWebsiteSettingsPage() {
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        {tabs.map(({ key, label, icon: Icon, badge }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-              tab === key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-            {typeof badge === "number" &&
-              badge > 0 &&
-              (tab === key ? (
-                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-bold">
-                  {badge}
-                </span>
-              ) : (
-                badgeCount(badge)
-              ))}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5">
+        <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
+          <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
+            <h2 className="text-base font-bold">সেটিংস মেনু</h2>
+          </div>
+          <div className="space-y-1">
+            {tabs.map(({ key, label, icon: Icon, badge }) => {
+              const active = tab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
+                    active
+                      ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2 truncate font-medium">
+                    <Icon size={15} className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {typeof badge === "number" && badge > 0 && (
+                      <span
+                        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                          active
+                            ? "bg-blue-600/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                    <span className={active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}>
+                      ›
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
 
+        <div className="min-w-0 space-y-6">
       {tab === "general" && (
         <div className="space-y-6">
-          <SectionCard title="মূল তথ্য" hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে">
-            <div className="space-y-2">
-              <InlineTextField
-                label="মাদ্রাসার নাম"
-                value={form.name || ""}
-                placeholder="যেমন: জামিয়া ইসলামিয়া মাদ্রাসা"
-                required
-                onSave={(v) => saveSettingsField("name", v)}
-              />
-              <InlineTextField
-                label="ফোন নম্বর"
-                value={form.phone || ""}
-                onSave={(v) => saveSettingsField("phone", v)}
-              />
-              <InlineTextField
-                label="ইমেইল"
-                value={form.email || ""}
-                onSave={(v) => saveSettingsField("email", v)}
-              />
-              <InlineTextField
-                label="ঠিকানা"
-                value={form.address || ""}
-                multiline
-                rows={2}
-                onSave={(v) => saveSettingsField("address", v)}
-              />
-              <InlineTextField
-                label="থিম কালার"
-                value={form.theme_color || "#2563eb"}
-                type="color"
-                onSave={(v) => saveSettingsField("theme_color", v)}
-              />
+          <SectionCard
+            title="সেকশন দৃশ্যমানতা"
+            hint="ক্লিক করলেই সাথে সাথে আপডেট হয়ে যাবে — কোন সেকশনগুলো পাবলিক ওয়েবসাইটে দেখাবে তা নিয়ন্ত্রণ করুন"
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              {toggleFields.map(([key, label, hint]) => (
+                <div
+                  key={String(key)}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-slate-700"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-slate-100">{label}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">{hint}</span>
+                  </span>
+                  {savingToggle === String(key) ? (
+                    <span className="text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
+                  ) : (
+                    <ToggleSwitch
+                      checked={(form[key] as number) !== 0}
+                      onChange={(v) => handleToggle(key, v)}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           </SectionCard>
+        </div>
+      )}
 
-          <SectionCard title="লোগো">
+      {tab === "appearance" && (
+        <div className="space-y-6">
+          <SectionCard title="প্রতিষ্ঠান পরিচিতি ও লোগো">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              ওয়েবসাইটের লোগো এখন{" "}
-              <span className="font-semibold text-slate-800 dark:text-slate-100">ব্র্যান্ডিং সেটিংস</span>{" "}
-              থেকে নেওয়া হয়, যাতে একটি লোগোই ওয়েবসাইট ও আইডি কার্ড/মার্কশিটের মতো সব রিপোর্টে
+              মাদ্রাসার নাম, ঠিকানা, যোগাযোগ ও লোগো এখন{" "}
+              <span className="font-semibold text-slate-800 dark:text-slate-100">প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস</span>{" "}
+              থেকে স্বয়ংক্রিয়ভাবে নেওয়া হয়, যাতে একই তথ্য ওয়েবসাইট ও আইডি কার্ড/মার্কশিটের মতো সব রিপোর্টে
               একইরকম দেখায়।
             </p>
             <Link
               to={`${getTenantAdminBase()}/settings/branding`}
               className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
-              ব্র্যান্ডিং সেটিংসে লোগো পরিবর্তন করুন
+              প্রতিষ্ঠান ব্র্যান্ডিং সেটিংসে সম্পাদনা করুন
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
+          </SectionCard>
+
+          <SectionCard title="থিম কালার">
+            <InlineTextField
+              label="থিম কালার"
+              value={form.theme_color || "#2563eb"}
+              type="color"
+              onSave={(v) => saveSettingsField("theme_color", v)}
+            />
           </SectionCard>
 
           <SectionCard title="হোমপেজ ব্যানার">
@@ -794,7 +832,11 @@ export default function AdminWebsiteSettingsPage() {
               />
             </div>
           </SectionCard>
+        </div>
+      )}
 
+      {tab === "notice-bar" && (
+        <div className="space-y-6">
           <SectionCard
             title="চলমান নোটিশ বার"
             hint="হোমপেজের একদম উপরে যে লেখাটি স্ক্রল হয়ে চলবে। একাধিক লাইন লিখলে প্রতিটি লাইন আলাদাভাবে স্ক্রল হবে। খালি রাখলে বার দেখাবে না।"
@@ -807,7 +849,11 @@ export default function AdminWebsiteSettingsPage() {
               onSave={(v) => saveSettingsField("notice_bar_text", v)}
             />
           </SectionCard>
+        </div>
+      )}
 
+      {tab === "muhtamim" && (
+        <div className="space-y-6">
           <SectionCard title="মুহতামিম সাহেবের বাণী">
             <div className="space-y-2">
               <InlineTextField
@@ -838,7 +884,11 @@ export default function AdminWebsiteSettingsPage() {
               />
             </div>
           </SectionCard>
+        </div>
+      )}
 
+      {tab === "social" && (
+        <div className="space-y-6">
           <SectionCard
             title="সোশ্যাল মিডিয়া লিংক"
             hint="খালি রাখলে সেই আইকনটি পাবলিক ওয়েবসাইটের ফুটার ও WhatsApp বাটনে দেখাবে না।"
@@ -870,34 +920,11 @@ export default function AdminWebsiteSettingsPage() {
               />
             </div>
           </SectionCard>
+        </div>
+      )}
 
-          <SectionCard
-            title="সেকশন দৃশ্যমানতা"
-            hint="ক্লিক করলেই সাথে সাথে আপডেট হয়ে যাবে — কোন সেকশনগুলো পাবলিক ওয়েবসাইটে দেখাবে তা নিয়ন্ত্রণ করুন"
-          >
-            <div className="grid gap-3 md:grid-cols-2">
-              {toggleFields.map(([key, label, hint]) => (
-                <div
-                  key={String(key)}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-slate-700"
-                >
-                  <span>
-                    <span className="block text-sm font-semibold text-gray-900 dark:text-slate-100">{label}</span>
-                    <span className="text-xs text-gray-500 dark:text-slate-400">{hint}</span>
-                  </span>
-                  {savingToggle === String(key) ? (
-                    <span className="text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
-                  ) : (
-                    <ToggleSwitch
-                      checked={(form[key] as number) !== 0}
-                      onChange={(v) => handleToggle(key, v)}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
+      {tab === "pages" && (
+        <div className="space-y-6">
           <SectionCard title="পেজ কন্টেন্ট" hint="আমাদের সম্পর্কে, ভর্তি তথ্য ও যোগাযোগ পেজের লেখা এখান থেকে সম্পাদনা করুন">
             <div className="space-y-3">
               {pages.map((page, index) =>
@@ -1596,6 +1623,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -15,6 +15,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/results",
     printable: "academic-result",
     defaultOrientation: "portrait",
+    requiresExam: true,
     columns: ACADEMIC_RESULT_COLUMNS,
   },
   {
@@ -24,6 +25,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/results-by-rank",
     printable: "academic-result",
     defaultOrientation: "portrait",
+    requiresExam: true,
     columns: ACADEMIC_RESULT_COLUMNS,
   },
 

@@ -106,6 +106,7 @@ export class AuthRepository {
         email: true,
         mobile: true,
         photoUrl: true,
+        roleId: true,
         role: { select: { keyName: true, nameBn: true } },
       },
     });

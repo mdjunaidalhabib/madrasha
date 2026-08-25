@@ -13,6 +13,7 @@ export type AccountRow = {
   address: string | null;
   mobile: string | null;
   paymentMethod: string | null;
+  note: string | null;
   entryDate: string | null;
   entryTime: string | null;
 };

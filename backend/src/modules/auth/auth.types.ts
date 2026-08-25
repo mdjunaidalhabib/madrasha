@@ -35,6 +35,8 @@ export interface MyProfile {
   photo_url: string | null;
   role_key: string;
   role_label: string;
+  permissions: string[];
+  modules: string[];
 }
 
 export interface UpdateMyProfileInput {

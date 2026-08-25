@@ -1,14 +1,14 @@
-import { reportsRepository, ReportsRepository } from "../reports.repository";
+import { AcademicResultFilters, reportsRepository, ReportsRepository } from "../reports.repository";
 
 export class AcademicReportService {
   constructor(private readonly repository: ReportsRepository = reportsRepository) {}
 
-  getResults(madrasaId: number) {
-    return this.repository.findAcademicResults(madrasaId);
+  getResults(madrasaId: number, filters: AcademicResultFilters = {}) {
+    return this.repository.findAcademicResults(madrasaId, filters);
   }
 
-  getResultsByRank(madrasaId: number) {
-    return this.repository.findAcademicResultsByRank(madrasaId);
+  getResultsByRank(madrasaId: number, filters: AcademicResultFilters = {}) {
+    return this.repository.findAcademicResultsByRank(madrasaId, filters);
   }
 
   getResultNotice(madrasaId: number) {

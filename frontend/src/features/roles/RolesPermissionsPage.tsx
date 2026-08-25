@@ -23,11 +23,12 @@ const normalizeArray = (payload: any) => {
  * appear in the sidebar, each mapped to the permission-key prefixes that
  * belong to it. "dashboard" is intentionally omitted - it needs no
  * permission and is always visible. A permission can legitimately belong to
- * more than one module (e.g. "teachers.read" unlocks both ইহতিমাম's teacher
- * list and তালিমাত's assignment screen), so it's shown - and independently
+ * more than one module (e.g. "teachers.read" unlocks both শিক্ষক স্টাফ's
+ * teacher list and তালিমাত's assignment screen), so it's shown - and independently
  * toggleable from - every module card it's relevant to. */
 const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
-  { key: "ihtemam", label: "ইহতিমাম", prefixes: ["teachers.", "students.approve_admission", "fee."] },
+  { key: "ihtemam", label: "ইহতিমাম", prefixes: ["students.approve_admission", "fee."] },
+  { key: "teacher_staff", label: "শিক্ষক ও স্টাফ", prefixes: ["teachers.", "staff."] },
   { key: "reports", label: "রিপোর্ট সমূহ", prefixes: ["reports."] },
   {
     key: "talimat",
@@ -43,8 +44,9 @@ const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
       "students.promote",
     ],
   },
-  { key: "accounts", label: "হিসাব বিভাগ", prefixes: ["accounts.", "fee.", "payroll."] },
+  { key: "accounts", label: "হিসাব বিভাগ", prefixes: ["accounts.", "payroll."] },
   { key: "students", label: "শিক্ষার্থী", prefixes: ["students."] },
+  { key: "fee", label: "ফি ব্যবস্থাপনা", prefixes: ["fee."] },
   { key: "attendance", label: "উপস্থিতি", prefixes: ["attendance.", "kiosk."] },
   { key: "communication", label: "SMS/ইমেইল", prefixes: ["notifications."] },
   { key: "library", label: "লাইব্রেরি", prefixes: ["library."] },

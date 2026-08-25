@@ -1,6 +1,8 @@
 export interface UpdateBrandingRequestDto {
   name?: string;
   address?: string;
+  phones?: string[];
+  emails?: string[];
   report_logo?: string | null;
   report_banner?: string | null;
   report_watermark?: string | null;

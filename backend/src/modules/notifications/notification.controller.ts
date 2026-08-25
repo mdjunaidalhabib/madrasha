@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
-import { BadRequestError, TenantNotFoundInRequestError } from "../../shared/errors";
+import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { notificationService } from "./notification.service";
 
 const getMadrasaId = (req: Request): number => {
@@ -49,13 +49,4 @@ export const updateNotificationSetting = asyncHandler(async (req: Request, res: 
     req.body,
   );
   return ApiResponse.success(res, { message: "Setting saved", data });
-});
-
-export const getNotificationBalance = asyncHandler(async (req: Request, res: Response) => {
-  const channel = String(req.query.channel || "").toUpperCase();
-  if (channel !== "SMS" && channel !== "EMAIL") {
-    throw new BadRequestError("channel must be SMS or EMAIL");
-  }
-  const data = await notificationService.checkBalance(channel);
-  return ApiResponse.success(res, { data });
 });

@@ -1,18 +1,20 @@
 import { useRef, useState } from "react";
 import { useToastStore } from "../../store/toastStore";
-import { uploadApi } from "../../services/phase4Api";
+import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "../../utils/logger";
 
 interface Props {
   data: any;
   setData: React.Dispatch<React.SetStateAction<any>>;
   isEditMode?: boolean;
+  folder?: UploadFolder;
 }
 
 const ImageUploadProfile: React.FC<Props> = ({
   data,
   setData,
   isEditMode = false,
+  folder = "teachers",
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(data?.image || null);
@@ -46,7 +48,7 @@ const ImageUploadProfile: React.FC<Props> = ({
 
       try {
         setUploading(true);
-        const res = await uploadApi.uploadImage(img, "teachers");
+        const res = await uploadApi.uploadImage(img, folder);
         const uploaded = res.data?.data;
         if (uploaded?.uploaded && uploaded.url) {
           setPreview(uploaded.url);
@@ -54,7 +56,7 @@ const ImageUploadProfile: React.FC<Props> = ({
         }
         // else: cloud storage not configured yet - keep the base64 already set.
       } catch (err) {
-        logger.error("TEACHER PROFILE PHOTO UPLOAD ERROR:", err);
+        logger.error("PROFILE PHOTO UPLOAD ERROR:", err);
       } finally {
         setUploading(false);
       }

@@ -7,6 +7,7 @@ import { UploadImageRequestDto, DeleteImageRequestDto } from "./upload.dto";
 const ALLOWED_FOLDERS = [
   "students",
   "teachers",
+  "staff",
   "branding",
   "gallery",
   "certificates",

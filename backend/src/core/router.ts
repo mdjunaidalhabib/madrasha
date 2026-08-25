@@ -20,6 +20,9 @@ import studentRoutes from "../modules/students/student.routes";
 import teacherRoutes from "../modules/teacher/teacher.routes";
 import teacherAssignmentRoutes from "../modules/TeacherAssignment/teacher-assignment.routes";
 
+// 🧑‍💼 Staff (শিক্ষক স্টাফ - non-academic staff)
+import staffRoutes from "../modules/staff/staff.routes";
+
 // 💰 Accounts & Talimat
 import accountRoutes from "../modules/accounts/account.routes";
 import talimatRoutes from "../modules/talimat/talimat.routes";
@@ -142,6 +145,7 @@ router.use("/students", studentRoutes);
 ========================= */
 router.use("/teachers", teacherRoutes);
 router.use("/teacher-assignments", teacherAssignmentRoutes);
+router.use("/staff", staffRoutes);
 /* =========================
    FINANCE & TALIMAT
 ========================= */

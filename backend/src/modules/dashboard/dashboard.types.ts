@@ -8,14 +8,28 @@ export interface FundBalanceRow {
   balance: number;
 }
 
+export interface PaymentMethodTotalRow {
+  payment_method: string | null;
+  income: number;
+  expense: number;
+}
+
 export interface RecentTransactionRow {
   id: number;
   type: string;
   amount: number;
   fund: string;
   category: string | null;
-  payment_method: string | null;
-  entry_date: Date;
+  paymentMethod: string | null;
+  receiptNo: string | null;
+  voucherNo: string | null;
+  donorName: string | null;
+  receiverName: string | null;
+  address: string | null;
+  mobile: string | null;
+  note: string | null;
+  entryDate: Date;
+  entryTime: Date | null;
 }
 
 export interface AttendanceTodaySummary {
@@ -30,6 +44,12 @@ export interface AttendanceTodaySummary {
 export interface OverdueFeesSummary {
   count: number;
   totalDue: number;
+}
+
+export interface StudentGenderBreakdown {
+  male: number;
+  female: number;
+  unspecified: number;
 }
 
 export interface UpcomingExamRow {
@@ -80,7 +100,9 @@ export interface DashboardSummary {
   todayIncome: number;
   todayExpense: number;
   fundBalances: FundBalanceRow[];
+  paymentMethodTotals: PaymentMethodTotalRow[];
   recentTransactions: RecentTransactionRow[];
+  studentsByGender: StudentGenderBreakdown;
   attendanceToday: AttendanceTodaySummary;
   pendingAdmissionsCount: number;
   overdueFees: OverdueFeesSummary;

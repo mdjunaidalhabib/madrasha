@@ -5,8 +5,13 @@ import { ReportResponse } from "./reports.types";
 
 export const tenantId = (req: Request) => Number(req.tenant?.madrasa_id || 0);
 
-export const ok = (res: Response, data: unknown[], warning?: string) =>
-  res.json({ success: true, data, ...(warning ? { warning } : {}) });
+export const ok = (res: Response, data: unknown[], warning?: string, total?: number) =>
+  res.json({
+    success: true,
+    data,
+    ...(warning ? { warning } : {}),
+    ...(total !== undefined ? { total } : {}),
+  });
 
 export const fail = (res: Response, error: unknown) => {
   logger.error("REPORT ERROR:", error);

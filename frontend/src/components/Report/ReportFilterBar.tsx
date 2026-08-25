@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import DataExportPrintActions, { Orientation, PaperSize } from "../common/DataExportPrintActions";
+import DataExportPrintActions, { Orientation, PaperSize, PageMargins } from "../common/DataExportPrintActions";
 import {
   ClassItem,
   Division,
@@ -15,6 +15,8 @@ type ReportFilterBarProps = {
   selectedDivision: string;
   selectedClass: string;
   selectedExam: string;
+  selectedSubject: string;
+  subjectOptions: { key: string; name: string }[];
   divisions: Division[];
   classes: ClassItem[];
   exams: ExamItem[];
@@ -25,11 +27,14 @@ type ReportFilterBarProps = {
   onDivisionChange: (value: string) => void;
   onClassChange: (value: string) => void;
   onExamChange: (value: string) => void;
+  onSubjectChange: (value: string) => void;
   onClear: () => void;
   paperSize: PaperSize;
   orientation: Orientation;
   onPaperSizeChange: (value: PaperSize) => void;
   onOrientationChange: (value: Orientation) => void;
+  margins: PageMargins;
+  onMarginsChange: (value: PageMargins) => void;
   templates: TemplateListItemDto[];
   selectedTemplateId: number | null;
   onTemplateChange: (value: number | null) => void;
@@ -40,6 +45,8 @@ const ReportFilterBar = ({
   selectedDivision,
   selectedClass,
   selectedExam,
+  selectedSubject,
+  subjectOptions,
   divisions,
   classes,
   exams,
@@ -50,11 +57,14 @@ const ReportFilterBar = ({
   onDivisionChange,
   onClassChange,
   onExamChange,
+  onSubjectChange,
   onClear,
   paperSize,
   orientation,
   onPaperSizeChange,
   onOrientationChange,
+  margins,
+  onMarginsChange,
   templates,
   selectedTemplateId,
   onTemplateChange,
@@ -113,6 +123,22 @@ const ReportFilterBar = ({
           ))}
         </select>
 
+        {activeReport.hasSubjectFilter && (
+          <select
+            value={selectedSubject}
+            onChange={(e) => onSubjectChange(e.target.value)}
+            disabled={!selectedClass}
+            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 xl:w-[165px]"
+          >
+            <option value="">{selectedClass ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
+            {subjectOptions.map((subject) => (
+              <option key={subject.key} value={subject.key}>
+                {subject.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         {activeReport.documentType && (
           <select
             value={selectedTemplateId ?? ""}
@@ -155,6 +181,8 @@ const ReportFilterBar = ({
         orientation={orientation}
         onPaperSizeChange={onPaperSizeChange}
         onOrientationChange={onOrientationChange}
+        margins={margins}
+        onMarginsChange={onMarginsChange}
       />
     </div>
   );

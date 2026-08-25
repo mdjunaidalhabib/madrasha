@@ -13,6 +13,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/exam-signature-sheet",
     printable: "exam-signature-sheet",
     requiresExam: true,
+    hasSubjectFilter: true,
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
@@ -30,6 +31,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/exam-number-sheet",
     printable: "exam-number-sheet",
     requiresExam: true,
+    hasSubjectFilter: true,
     columns: [
       { header: "রোল", key: "roll", className: smallCol },
       { header: "রেজিঃ নম্বর", key: "registration_no", className: idCol },
@@ -48,6 +50,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/exam-number-sheet",
     printable: "exam-signature-number-sheet",
     requiresExam: true,
+    hasSubjectFilter: true,
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
@@ -64,6 +67,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/academic/exam-number-sheet",
     printable: "exam-signature-number-sheet-2col",
     requiresExam: true,
+    hasSubjectFilter: true,
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },

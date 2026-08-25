@@ -312,7 +312,7 @@ const TeacherListPage = () => {
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              onClick={() => navigate(`${adminBase}/ihtemam/teacher_admission`)}
+              onClick={() => navigate(`${adminBase}/teacher_staff/teacher_admission`)}
               className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
             >
               + নতুন শিক্ষক যোগ করুন
@@ -429,7 +429,7 @@ const TeacherListPage = () => {
                         <td className="border p-2.5 dark:border-slate-700">
                           <button
                             type="button"
-                            onClick={() => navigate(`${adminBase}/ihtemam/${teacher.id}`)}
+                            onClick={() => navigate(`${adminBase}/teacher_staff/teacher/${teacher.id}`)}
                             className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-green-700"
                           >
                             দেখুন

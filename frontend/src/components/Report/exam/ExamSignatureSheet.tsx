@@ -17,6 +17,28 @@ const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   return fallback;
 };
 
+// ReportShell narrows `row.subjects` down to just the ReportFilterBar-selected
+// subject (see ReportShell's displayRows) - since every student in a class
+// shares the same subject list, the first row's (single, once narrowed)
+// entry is enough to know which subject this whole sheet is for. "সকল বিষয়"
+// leaves `subjects` at its full multi-entry list, so no single name applies.
+const getSelectedSubjectName = (row: Record<string, any>): string => {
+  const subjects = row?.subjects;
+  const list = Array.isArray(subjects)
+    ? subjects
+    : typeof subjects === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(subjects);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+  return list.length === 1 ? list[0]?.subject_name || "" : "";
+};
+
 const ExamSignatureSheet = ({
   rows,
   selectedClassName = "",
@@ -29,6 +51,7 @@ const ExamSignatureSheet = ({
   const examYear = value(firstRow, ["exam_year", "academic_year"], "........................");
   const className =
     selectedClassName || value(firstRow, ["class_name", "class_name_bn"], "সকল শ্রেণি");
+  const subjectName = getSelectedSubjectName(firstRow);
 
   return (
     <div className="mx-auto w-full bg-white text-black">
@@ -41,6 +64,11 @@ const ExamSignatureSheet = ({
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
           জামাতঃ {className}
         </p>
+        {subjectName && (
+          <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+            বিষয়ঃ {subjectName}
+          </p>
+        )}
       </div>
       )}
 

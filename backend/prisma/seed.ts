@@ -560,68 +560,82 @@ async function main() {
     },
     { keyName: "ihtemam", name: "ihtemam", nameBn: "ইহতিমাম", groupName: "core", sortOrder: 2 },
     {
+      keyName: "teacher_staff",
+      name: "Teacher Staff",
+      nameBn: "শিক্ষক ও স্টাফ",
+      groupName: "core",
+      sortOrder: 3,
+    },
+    {
       keyName: "reports",
       name: "Reports",
       nameBn: "রিপোর্ট সমূহ",
       groupName: "core",
-      sortOrder: 3,
+      sortOrder: 4,
     },
     {
       keyName: "talimat",
       name: "Talimat",
       nameBn: "তালিমাত",
       groupName: "education",
-      sortOrder: 4,
+      sortOrder: 5,
     },
     {
       keyName: "accounts",
       name: "Accounts",
       nameBn: "হিসাব বিভাগ",
       groupName: "core",
-      sortOrder: 5,
+      sortOrder: 6,
     },
     {
       keyName: "students",
       name: "Students",
       nameBn: "শিক্ষার্থী",
       groupName: "core",
-      sortOrder: 6,
+      sortOrder: 7,
+    },
+    {
+      keyName: "fee",
+      name: "Fee Management",
+      nameBn: "ফি ব্যবস্থাপনা",
+      groupName: "core",
+      sortOrder: 8,
     },
     {
       keyName: "attendance",
       name: "Attendance",
       nameBn: "উপস্থিতি",
       groupName: "core",
-      sortOrder: 7,
+      sortOrder: 9,
     },
     {
       keyName: "communication",
       name: "Communication",
       nameBn: "SMS/ইমেইল",
       groupName: "core",
-      sortOrder: 8,
+      sortOrder: 10,
     },
     {
       keyName: "library",
       name: "Library",
       nameBn: "লাইব্রেরি",
       groupName: "core",
-      sortOrder: 9,
+      sortOrder: 11,
     },
-    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 10 },
+    { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 12 },
     {
       keyName: "activity",
       name: "Activity Log",
       nameBn: "অ্যাক্টিভিটি লগ",
       groupName: "core",
-      sortOrder: 11,
+      sortOrder: 13,
     },
     {
       keyName: "website",
       name: "Website Settings",
       nameBn: "ওয়েবসাইট সেটিংস",
       groupName: "core",
-      sortOrder: 12,
+      sortOrder: 14,
     },
   ];
   const moduleIds: Record<string, number> = {};
@@ -647,6 +661,22 @@ async function main() {
   > = {
     ihtemam: [
       {
+        keyName: "pending",
+        name: "Pending Admission",
+        nameBn: "পেন্ডিং ভর্তি অনুমোদন",
+        sortOrder: 1,
+      },
+      {
+        keyName: "fee_management",
+        name: "Fee Setup",
+        nameBn: "ফি সেটাপ",
+        sortOrder: 2,
+      },
+    ],
+    // "teacher_admission"/"all_teacher" moved here from ইহতিমাম, joined by
+    // the new স্টাফ (non-academic staff) admission/list pair.
+    teacher_staff: [
+      {
         keyName: "teacher_admission",
         name: "Teacher Admission",
         nameBn: "নতুন শিক্ষক",
@@ -654,17 +684,12 @@ async function main() {
       },
       { keyName: "all_teacher", name: "All Teachers", nameBn: "শিক্ষকসমূহ", sortOrder: 2 },
       {
-        keyName: "pending",
-        name: "Pending Admission",
-        nameBn: "পেন্ডিং ভর্তি অনুমোদন",
+        keyName: "staff_admission",
+        name: "Staff Admission",
+        nameBn: "নতুন স্টাফ",
         sortOrder: 3,
       },
-      {
-        keyName: "fee_management",
-        name: "Fee Setup",
-        nameBn: "ফি সেটাপ",
-        sortOrder: 4,
-      },
+      { keyName: "all_staff", name: "All Staff", nameBn: "স্টাফসমূহ", sortOrder: 4 },
     ],
     reports: [
       {
@@ -702,11 +727,20 @@ async function main() {
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },
       { keyName: "list", name: "list", nameBn: "শিক্ষার্থী সমূহ", sortOrder: 2 },
+    ],
+    // "ফি গ্রহণ" (search-by-student invoice/payment/waive) and "ভর্তি ফি
+    // পেন্ডিং" (the admission-fee follow-up queue, moved here from হিসাব
+    // বিভাগ) live in their own module instead of being split across
+    // শিক্ষার্থী and হিসাব বিভাগ. "ফি সেটাপ" (fee_management) deliberately
+    // stays under ইহতিমাম - only the two student-facing collection screens
+    // moved.
+    fee: [
+      { keyName: "fee_collection", name: "Fee Collection", nameBn: "ফি গ্রহণ", sortOrder: 1 },
       {
-        keyName: "fee_collection",
-        name: "Fee Collection",
-        nameBn: "ফি গ্রহণ",
-        sortOrder: 5,
+        keyName: "pending_fee",
+        name: "Pending Admission Fee",
+        nameBn: "ভর্তি ফি পেন্ডিং",
+        sortOrder: 2,
       },
     ],
     // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
@@ -715,16 +749,22 @@ async function main() {
     // entry.
     attendance: [
       {
+        keyName: "attendance_report",
+        name: "Attendance Report",
+        nameBn: "উপস্থিতি রিপোর্ট",
+        sortOrder: 1,
+      },
+      {
         keyName: "attendance_mark",
         name: "Attendance",
         nameBn: "উপস্থিতি নিন",
-        sortOrder: 1,
+        sortOrder: 2,
       },
       {
         keyName: "kiosk_devices",
         name: "Kiosk Devices",
         nameBn: "কিওস্ক ডিভাইস",
-        sortOrder: 2,
+        sortOrder: 3,
       },
     ],
     communication: [
@@ -737,7 +777,6 @@ async function main() {
         nameBn: "অটো নোটিফিকেশন",
         sortOrder: 4,
       },
-      { keyName: "balance", name: "Balance", nameBn: "ব্যালেন্স", sortOrder: 5 },
       { keyName: "billing", name: "SMS/Email Billing", nameBn: "SMS/ইমেইল বিলিং", sortOrder: 6 },
     ],
     library: [
@@ -773,73 +812,78 @@ async function main() {
   // the original list only covered students/users/accounts even though
   // many more modules exist now. Naming convention: "<module>.<action>".
   const permissions = [
-    { keyName: "students.read", name: "View Students" },
-    { keyName: "students.create", name: "Create Students" },
-    { keyName: "students.update", name: "Update Students" },
-    { keyName: "students.delete", name: "Delete Students" },
-    { keyName: "students.expel", name: "Expel Student" },
-    { keyName: "students.approve_admission", name: "Approve/Reject Admissions" },
-    { keyName: "students.promote", name: "Promote Students" },
-    { keyName: "students.session_read", name: "View Sessions" },
-    { keyName: "students.session_manage", name: "Manage Sessions" },
-    { keyName: "students.transfer_session", name: "Transfer Student Session" },
+    { keyName: "students.read", name: "শিক্ষার্থী দেখুন" },
+    { keyName: "students.create", name: "শিক্ষার্থী যোগ করুন" },
+    { keyName: "students.update", name: "শিক্ষার্থীর তথ্য সম্পাদনা" },
+    { keyName: "students.delete", name: "শিক্ষার্থী মুছুন" },
+    { keyName: "students.expel", name: "শিক্ষার্থী বহিষ্কার" },
+    { keyName: "students.approve_admission", name: "ভর্তি অনুমোদন/বাতিল" },
+    { keyName: "students.promote", name: "শিক্ষার্থী প্রমোশন" },
+    { keyName: "students.session_read", name: "সেশন দেখুন" },
+    { keyName: "students.session_manage", name: "সেশন ব্যবস্থাপনা" },
+    { keyName: "students.transfer_session", name: "শিক্ষার্থীর সেশন স্থানান্তর" },
 
-    { keyName: "teachers.read", name: "View Teachers" },
-    { keyName: "teachers.create", name: "Create Teachers" },
-    { keyName: "teachers.update", name: "Update Teachers" },
-    { keyName: "teachers.delete", name: "Delete Teachers" },
+    { keyName: "teachers.read", name: "শিক্ষক দেখুন" },
+    { keyName: "teachers.create", name: "শিক্ষক যোগ করুন" },
+    { keyName: "teachers.update", name: "শিক্ষকের তথ্য সম্পাদনা" },
+    { keyName: "teachers.delete", name: "শিক্ষক মুছুন" },
 
-    { keyName: "attendance.read", name: "View Attendance" },
-    { keyName: "attendance.mark", name: "Mark Attendance" },
-    { keyName: "kiosk.manage", name: "Manage Kiosk Devices" },
+    { keyName: "staff.read", name: "স্টাফ দেখুন" },
+    { keyName: "staff.create", name: "স্টাফ যোগ করুন" },
+    { keyName: "staff.update", name: "স্টাফের তথ্য সম্পাদনা" },
+    { keyName: "staff.delete", name: "স্টাফ মুছুন" },
 
-    { keyName: "routine.read", name: "View Routine" },
-    { keyName: "routine.manage", name: "Manage Routine" },
+    { keyName: "attendance.read", name: "উপস্থিতি দেখুন" },
+    { keyName: "attendance.mark", name: "উপস্থিতি নিন" },
+    { keyName: "kiosk.manage", name: "কিওস্ক ডিভাইস ব্যবস্থাপনা" },
 
-    { keyName: "exam.read", name: "View Exams" },
-    { keyName: "exam.manage", name: "Manage Exams" },
-    { keyName: "result.read", name: "View Results" },
-    { keyName: "result.manage", name: "Manage Results" },
+    { keyName: "routine.read", name: "রুটিন দেখুন" },
+    { keyName: "routine.manage", name: "রুটিন ব্যবস্থাপনা" },
 
-    { keyName: "fee.read", name: "View Fees/Invoices" },
-    { keyName: "fee.manage", name: "Manage Fee Structures & Invoices" },
-    { keyName: "fee.collect_payment", name: "Record Fee Payments" },
+    { keyName: "exam.read", name: "পরীক্ষা দেখুন" },
+    { keyName: "exam.manage", name: "পরীক্ষা ব্যবস্থাপনা" },
+    { keyName: "result.read", name: "ফলাফল দেখুন" },
+    { keyName: "result.manage", name: "ফলাফল ব্যবস্থাপনা" },
 
-    { keyName: "payroll.read", name: "View Payroll" },
-    { keyName: "payroll.manage", name: "Manage Payroll" },
+    { keyName: "fee.read", name: "ফি/ইনভয়েস দেখুন" },
+    { keyName: "fee.manage", name: "ফি কাঠামো ও ইনভয়েস ব্যবস্থাপনা" },
+    { keyName: "fee.collect_payment", name: "ফি পরিশোধ গ্রহণ" },
 
-    { keyName: "accounts.read", name: "View Accounts" },
-    { keyName: "accounts.create", name: "Create Accounts" },
-    { keyName: "accounts.update", name: "Update Accounts" },
-    { keyName: "accounts.delete", name: "Delete Accounts" },
+    { keyName: "payroll.read", name: "বেতন তথ্য দেখুন" },
+    { keyName: "payroll.manage", name: "বেতন ব্যবস্থাপনা" },
 
-    { keyName: "users.read", name: "View Users" },
-    { keyName: "users.create", name: "Create Users" },
-    { keyName: "users.update", name: "Update Users" },
-    { keyName: "users.delete", name: "Delete Users" },
-    { keyName: "roles.manage", name: "Manage Roles & Permissions" },
+    { keyName: "accounts.read", name: "হিসাব দেখুন" },
+    { keyName: "accounts.create", name: "হিসাব যোগ করুন" },
+    { keyName: "accounts.update", name: "হিসাব সম্পাদনা" },
+    { keyName: "accounts.delete", name: "হিসাব মুছুন" },
 
-    { keyName: "talimat.manage", name: "Manage Talimat" },
-    { keyName: "reports.read", name: "View Reports" },
-    { keyName: "reports.academic", name: "View Academic Reports" },
-    { keyName: "reports.exam", name: "View Exam Reports" },
-    { keyName: "reports.student", name: "View Student Reports" },
-    { keyName: "reports.teacher", name: "View Teacher Reports" },
-    { keyName: "reports.attendance", name: "View Attendance Reports" },
-    { keyName: "activity.read", name: "View Activity Log" },
-    { keyName: "settings.manage", name: "Manage Settings" },
-    { keyName: "document_templates.read", name: "View Document Templates" },
-    { keyName: "document_templates.manage", name: "Manage Document Templates" },
-    { keyName: "website.manage", name: "Manage Public Website" },
-    { keyName: "notifications.read", name: "View Notification History" },
-    { keyName: "notifications.send", name: "Send SMS/Email Notifications" },
-    { keyName: "notifications.settings", name: "Manage Auto Notification Settings" },
-    { keyName: "billing.view", name: "View SMS/Email Billing & Balance" },
-    { keyName: "billing.purchase", name: "Purchase/Recharge SMS/Email Packages" },
+    { keyName: "users.read", name: "ইউজার দেখুন" },
+    { keyName: "users.create", name: "ইউজার যোগ করুন" },
+    { keyName: "users.update", name: "ইউজার সম্পাদনা" },
+    { keyName: "users.delete", name: "ইউজার মুছুন" },
+    { keyName: "roles.manage", name: "রোল ও পারমিশন ব্যবস্থাপনা" },
 
-    { keyName: "library.read", name: "View Library" },
-    { keyName: "library.manage", name: "Manage Library Catalog & Settings" },
-    { keyName: "library.issue", name: "Issue/Return Books" },
+    { keyName: "talimat.manage", name: "তালিমাত ব্যবস্থাপনা" },
+    { keyName: "reports.read", name: "রিপোর্ট দেখুন" },
+    { keyName: "reports.academic", name: "একাডেমিক রিপোর্ট দেখুন" },
+    { keyName: "reports.exam", name: "পরীক্ষার রিপোর্ট দেখুন" },
+    { keyName: "reports.student", name: "শিক্ষার্থী রিপোর্ট দেখুন" },
+    { keyName: "reports.teacher", name: "শিক্ষক রিপোর্ট দেখুন" },
+    { keyName: "reports.attendance", name: "উপস্থিতি রিপোর্ট দেখুন" },
+    { keyName: "activity.read", name: "অ্যাক্টিভিটি লগ দেখুন" },
+    { keyName: "settings.manage", name: "সেটিং ব্যবস্থাপনা" },
+    { keyName: "document_templates.read", name: "ডকুমেন্ট টেমপ্লেট দেখুন" },
+    { keyName: "document_templates.manage", name: "ডকুমেন্ট টেমপ্লেট ব্যবস্থাপনা" },
+    { keyName: "website.manage", name: "পাবলিক ওয়েবসাইট ব্যবস্থাপনা" },
+    { keyName: "notifications.read", name: "নোটিফিকেশন ইতিহাস দেখুন" },
+    { keyName: "notifications.send", name: "SMS/ইমেইল নোটিফিকেশন পাঠান" },
+    { keyName: "notifications.settings", name: "অটো নোটিফিকেশন সেটিং ব্যবস্থাপনা" },
+    { keyName: "billing.view", name: "SMS/ইমেইল বিলিং ও ব্যালেন্স দেখুন" },
+    { keyName: "billing.purchase", name: "SMS/ইমেইল প্যাকেজ কেনা/রিচার্জ" },
+
+    { keyName: "library.read", name: "লাইব্রেরি দেখুন" },
+    { keyName: "library.manage", name: "লাইব্রেরি ক্যাটালগ ও সেটিং ব্যবস্থাপনা" },
+    { keyName: "library.issue", name: "বই ইস্যু/ফেরত" },
   ];
   const permissionIds: number[] = [];
   for (const p of permissions) {

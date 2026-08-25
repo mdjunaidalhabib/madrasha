@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import api from "../../services/api";
 import PageHeader from "../../components/ui/PageHeader";
 import Input from "../../components/ui/Input";
@@ -6,6 +7,14 @@ import Button from "../../components/ui/Button";
 import { useToastStore } from "../../store/toastStore";
 import { useAccountOptions } from "./useAccountOptions";
 import { normalizeBanglaDigits } from "../../utils/reportUtils";
+import { getTenantAdminBase } from "../../utils/tenantSlug";
+import { formatDateInput } from "./accountHelpers";
+import AccountRecentPanel from "./AccountRecentPanel";
+
+const nowTimeInput = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -16,6 +25,9 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 export default function IncomePage() {
   const toast = useToastStore();
   const { incomeFunds, paymentMethods, loading } = useAccountOptions();
+  const { madrasaSlug = "" } = useParams();
+  const adminBase = getTenantAdminBase(madrasaSlug);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [form, setForm] = useState({
     fund: "",
     category: "",
@@ -24,6 +36,9 @@ export default function IncomePage() {
     mobile: "",
     amount: "",
     payment_method: "",
+    note: "",
+    entry_date: formatDateInput(new Date()),
+    entry_time: nowTimeInput(),
   });
 
   // ফান্ড/খাত/পেমেন্ট মাধ্যম API থেকে লোড হওয়ার পর একবারই ডিফল্ট সেট করে দেয়
@@ -67,16 +82,20 @@ export default function IncomePage() {
       address: "",
       mobile: "",
       amount: "",
+      note: "",
+      entry_date: formatDateInput(new Date()),
+      entry_time: nowTimeInput(),
     }));
+    setRefreshKey((k) => k + 1);
   };
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="রশিদ জমা / আয় এন্ট্রি"
         subtitle="কওমি মাদরাসার ফান্ডভিত্তিক আয় ও রশিদ জমা"
       />
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -104,6 +123,16 @@ export default function IncomePage() {
                   <option key={category}>{category}</option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>তারিখ</FieldLabel>
+              <Input type="date" value={form.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>সময়</FieldLabel>
+              <Input type="time" value={form.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
             </div>
           </div>
           <div>
@@ -159,6 +188,16 @@ export default function IncomePage() {
               </select>
             </div>
           </div>
+          <div>
+            <FieldLabel>নোট / বিবরণ</FieldLabel>
+            <textarea
+              rows={2}
+              placeholder="ঐচ্ছিক নোট"
+              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.note}
+              onChange={(e) => setField("note", e.target.value)}
+            />
+          </div>
         </div>
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSubmit} className="w-full rounded-xl px-8">
@@ -166,6 +205,8 @@ export default function IncomePage() {
           </Button>
         </div>
       </div>
+
+      <AccountRecentPanel type="income" adminBase={adminBase} refreshKey={refreshKey} />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
-import { PaperSize, Orientation } from "../common/DataExportPrintActions";
+import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
 import { ReportBackground, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { toBanglaDigits } from "../../utils/reportUtils";
-import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getPagePaddingMm } from "./pagination/pageGeometry";
+import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins } from "./pagination/pageGeometry";
 import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks";
 import { splitTextToFit } from "./pagination/splitTextToFit";
 import { getPrintableConfig } from "./pagination/printableConfig";
@@ -19,6 +19,8 @@ type PaginatedReportPreviewProps = {
   hideBrandHeader?: boolean;
   paperSize: PaperSize;
   orientation: Orientation;
+  /** পেজের চার পাশের মার্জিন (mm) - না দিলে paperSize অনুযায়ী ডিফল্ট (a5=7mm, a4=10mm, চার পাশে সমান) ব্যবহৃত হয়, DataExportPrintActions-এর সাথে সামঞ্জস্যপূর্ণ। */
+  margins?: PageMargins;
 };
 
 type ReportDensity = "comfortable" | "compact" | "dense" | "ultra-dense";
@@ -439,12 +441,12 @@ type RecordPage = {
 const measureAndSplitRecord = (
   container: HTMLElement,
   paddingTopPx: number,
+  verticalPaddingPx: number,
   firstPageBudgetPx: number,
   continuationBudgetPx: number,
 ): RecordPage[] => {
-  const paddingYPx = paddingTopPx * 2;
   const containerTop = container.getBoundingClientRect().top;
-  const naturalHeightPx = container.getBoundingClientRect().height - paddingYPx;
+  const naturalHeightPx = container.getBoundingClientRect().height - verticalPaddingPx;
 
   if (naturalHeightPx <= firstPageBudgetPx) {
     return [{ isFirstPage: true, isLastPage: true }];
@@ -527,7 +529,12 @@ const PaginatedReportPreview = ({
   hideBrandHeader = false,
   paperSize,
   orientation,
+  margins: marginsProp,
 }: PaginatedReportPreviewProps) => {
+  const margins = useMemo(
+    () => marginsProp ?? getDefaultPageMargins(paperSize),
+    [marginsProp, paperSize],
+  );
   const viewportRef = useRef<HTMLDivElement>(null);
   const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [previewScale, setPreviewScale] = useState(1);
@@ -560,7 +567,7 @@ const PaginatedReportPreview = ({
   const config = getPrintableConfig(report);
   const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
   const columnsPerPage = config.columnsPerPage ?? 1;
-  const pagePaddingPx = getPagePaddingMm(paperSize) * MM_TO_CSS_PX;
+  const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
   // Content width of ONE column in a columnsPerPage:2 report - the page's
   // full content width (paper width minus its own left/right padding) split
   // in half around the divider gap. Off-screen measurement below renders at
@@ -568,11 +575,11 @@ const PaginatedReportPreview = ({
   // the same row height they'll actually take up in the narrower column.
   const columnContentWidthPx =
     columnsPerPage === 2
-      ? (getPaperWidthPx(paperSize, orientation) - pagePaddingPx * 2 - TWO_COLUMN_GAP_PX) / 2
+      ? (getPaperWidthPx(paperSize, orientation) - horizontalPaddingPx - TWO_COLUMN_GAP_PX) / 2
       : null;
   const measurementWidthPx =
     columnsPerPage === 2 && columnContentWidthPx !== null
-      ? columnContentWidthPx + pagePaddingPx * 2
+      ? columnContentWidthPx + horizontalPaddingPx
       : getPaperWidthPx(paperSize, orientation);
 
   const groups = useMemo(() => {
@@ -661,9 +668,9 @@ const PaginatedReportPreview = ({
     const runMeasurement = () => {
       if (cancelled) return;
 
-      const paddingMm = getPagePaddingMm(paperSize);
-      const paddingPx = paddingMm * MM_TO_CSS_PX;
-      const availableHeightPx = getPaperHeightPx(paperSize, orientation) - paddingPx * 2;
+      const paddingTopPx = margins.top * MM_TO_CSS_PX;
+      const verticalPaddingPx = (margins.top + margins.bottom) * MM_TO_CSS_PX;
+      const availableHeightPx = getPaperHeightPx(paperSize, orientation) - verticalPaddingPx;
 
       const nextPages: ResolvedPage[] = [];
       let globalStartIndex = 0;
@@ -672,13 +679,13 @@ const PaginatedReportPreview = ({
       if (config.kind === "table") {
         const probeContainer = measureRefs.current.get(CONTINUATION_PROBE_KEY);
         const continuationOffsetPx = probeContainer
-          ? measureTableGroupContainer(probeContainer, paddingPx).firstRowOffsetPx
+          ? measureTableGroupContainer(probeContainer, paddingTopPx).firstRowOffsetPx
           : CONTINUATION_TOP_OFFSET_PX;
 
         if (columnsPerPage === 2) {
           const measurements = groups.map((_, groupIndex) => {
             const container = measureRefs.current.get(`table-${groupIndex}`);
-            return container ? measureTableGroupContainer(container, paddingPx) : null;
+            return container ? measureTableGroupContainer(container, paddingTopPx) : null;
           });
 
           if (measurements.every((m): m is TableGroupMeasurement => m !== null)) {
@@ -708,7 +715,7 @@ const PaginatedReportPreview = ({
             const container = measureRefs.current.get(`table-${groupIndex}`);
             if (!container) return;
 
-            const measurement = measureTableGroupContainer(container, paddingPx);
+            const measurement = measureTableGroupContainer(container, paddingTopPx);
             const producedPages = paginateTableGroup(measurement, groupRowsData, availableHeightPx, continuationOffsetPx);
             const resultStats =
               report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
@@ -731,7 +738,7 @@ const PaginatedReportPreview = ({
       } else if (config.kind === "grid") {
         const container = measureRefs.current.get("grid");
         if (container) {
-          const measurement = measureGridContainer(container, paddingPx);
+          const measurement = measureGridContainer(container, paddingTopPx);
           const producedPages = paginateGrid(measurement, availableHeightPx);
 
           producedPages.forEach((cardIndices, pageIndex) => {
@@ -775,7 +782,8 @@ const PaginatedReportPreview = ({
             rowIndex === 0 ? availableHeightPx - firstRecordBrandHeightPx : availableHeightPx;
           const recordPages = measureAndSplitRecord(
             container,
-            paddingPx,
+            paddingTopPx,
+            verticalPaddingPx,
             firstPageBudgetPx,
             continuationBudgetPx,
           );
@@ -829,6 +837,7 @@ const PaginatedReportPreview = ({
     report,
     paperSize,
     orientation,
+    margins,
     groups,
     config.kind,
     showBrandAtAll,
@@ -918,7 +927,7 @@ const PaginatedReportPreview = ({
               data-density={target.density}
               style={{
                 width: `${measurementWidthPx}px`,
-                padding: `${getPagePaddingMm(paperSize)}mm`,
+                padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
                 height: "auto",
                 overflow: "visible",
               }}
@@ -963,6 +972,7 @@ const PaginatedReportPreview = ({
                     data-paper-size={paperSize}
                     data-orientation={orientation}
                     data-density={left?.[0]?.density ?? right?.[0]?.density ?? "comfortable"}
+                    style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
                   >
                     <ReportBackground />
                     <ReportWatermark />
@@ -1052,6 +1062,7 @@ const PaginatedReportPreview = ({
                     data-paper-size={paperSize}
                     data-orientation={orientation}
                     data-density={page.density}
+                    style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
                   >
                     <ReportBackground />
                     <ReportWatermark />

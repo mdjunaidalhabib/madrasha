@@ -50,6 +50,12 @@ model Madrasa {
   reportWatermark        String? @map("report_watermark")
   reportWatermarkOpacity Decimal @default(0.08) @map("report_watermark_opacity") @db.Decimal(3, 2)
 
+  // Institution contact numbers/emails shown on branded documents (distinct
+  // from `phone`/`email` above, which are the tenant account's own single
+  // contact info) - a madrasa commonly lists more than one number.
+  brandingPhones String[] @default([]) @map("branding_phones")
+  brandingEmails String[] @default([]) @map("branding_emails")
+
   sanadTemplate          String? @map("sanad_template") @db.Text
   testimonialTemplate    String? @map("testimonial_template") @db.Text
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
@@ -77,6 +83,7 @@ model Madrasa {
   students                     Student[]
   teachers                     Teacher[]
   teacherAssignments           TeacherAssignment[]
+  staff                        Staff[]
   accounts                     Account[]
   accountFunds                 AccountFund[]
   exams                        Exam[]

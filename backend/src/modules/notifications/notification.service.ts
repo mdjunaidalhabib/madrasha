@@ -244,20 +244,6 @@ export class NotificationService {
     });
   }
 
-  /* ================= BALANCE / STATUS (platform gateway, Super Admin controlled) ================= */
-
-  /** SMS returns the actual account balance from the gateway; EMAIL has no
-   * balance concept so this reports whether the SMTP connection works.
-   * Both read the platform-wide config only Super Admin can set. */
-  async checkBalance(channel: "SMS" | "EMAIL") {
-    if (channel === "EMAIL") {
-      const result = await platformSettingsService.checkEmailConnection();
-      return { channel, ...result };
-    }
-    const result = await platformSettingsService.checkSmsBalance();
-    return { channel, ...result };
-  }
-
   /* ================= AUTO-TRIGGER (called from other modules) ================= */
 
   /** Fire-and-forget SMS for a business event (admission approved, student

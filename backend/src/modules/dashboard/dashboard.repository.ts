@@ -4,6 +4,7 @@ import {
   AttendanceTrendRow,
   FundBalanceRow,
   IncomeExpenseTrendRow,
+  PaymentMethodTotalRow,
   RecentTransactionRow,
   TodayTotalsRow,
   UpcomingExamRow,
@@ -21,6 +22,14 @@ export class DashboardRepository {
 
   countActiveTeachers(madrasaId: number) {
     return prisma.teacher.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+  }
+
+  countActiveStudentsByGender(madrasaId: number) {
+    return prisma.student.groupBy({
+      by: ["gender"],
+      where: { madrasaId, isActive: 1, deletedAt: null },
+      _count: { _all: true },
+    });
   }
 
   countUsers(madrasaId: number) {
@@ -55,10 +64,41 @@ export class DashboardRepository {
     `;
   }
 
+  // Tenants have accumulated free-text payment_method values over time
+  // ("CASH", "নগদ টাকা", "Bkash", "ব্যাংক / মোবাইল ব্যাংকিং", NULL on old
+  // rows, ...) - grouping by the raw column would silently drop anything
+  // that doesn't exactly match today's picklist out of both buckets, making
+  // online+offline undercount the real total. Classify by keyword instead:
+  // anything mentioning bank/mobile (in English or Bangla) is "online",
+  // everything else (cash and unrecognized/NULL values) is "offline" - so
+  // the two buckets always sum to the tenant's true total.
+  findPaymentMethodTotals(madrasaId: number) {
+    return prisma.$queryRaw<PaymentMethodTotalRow[]>`
+      SELECT
+        CASE
+          WHEN payment_method ~* 'bank|mobile|bkash|nagad|rocket|upay|ব্যাংক|মোবাইল'
+            THEN 'online'
+          ELSE 'offline'
+        END AS payment_method,
+        SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS income,
+        SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS expense
+      FROM accounts
+      WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
+      GROUP BY 1
+    `;
+  }
+
   findRecentTransactions(madrasaId: number) {
     return prisma.$queryRaw<RecentTransactionRow[]>`
-      SELECT id, type, amount, fund, category, payment_method,
-        COALESCE(entry_date, CAST(created_at AS DATE)) as entry_date
+      SELECT id, type, amount, fund, category,
+        payment_method AS "paymentMethod",
+        receipt_no AS "receiptNo",
+        voucher_no AS "voucherNo",
+        donor_name AS "donorName",
+        receiver_name AS "receiverName",
+        address, mobile, note,
+        COALESCE(entry_date, CAST(created_at AS DATE)) AS "entryDate",
+        entry_time AS "entryTime"
       FROM accounts
       WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
       ORDER BY COALESCE(entry_date, CAST(created_at AS DATE)) DESC, id DESC

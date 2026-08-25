@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api, { cachedGet } from "../../services/api";
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
-import { Orientation, PaperSize } from "../../components/common/DataExportPrintActions";
+import { Orientation, PaperSize, PageMargins } from "../../components/common/DataExportPrintActions";
+import { getDefaultPageMargins } from "../../components/Report/pagination/pageGeometry";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
@@ -54,8 +55,13 @@ const ReportShell = ({
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
   const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
+  const [margins, setMargins] = useState<PageMargins>(() => getDefaultPageMargins("a4"));
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+  const [totalCount, setTotalCount] = useState(0);
   const [templates, setTemplates] = useState<TemplateListItemDto[]>([]);
   const selectedTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
   const setSelectedTemplateId = useSelectedTemplateOverrideStore((s) => s.setTemplateId);
@@ -64,6 +70,11 @@ const ReportShell = ({
     () => reports.find((item) => item.key === activeKey) || reports[0],
     [activeKey, reports],
   );
+
+  // The "ফলাফল" / "ফলাফল (মেধাক্রম অনুযায়ী)" reports are the only ones whose
+  // endpoint understands division_id/class_id/page/page_size - every other
+  // report keeps filtering client-side only, exactly as before.
+  const isPaginatedAcademicResult = activeReport.printable === "academic-result";
 
   const loadReport = async () => {
     if (!activeReport?.endpoint) return;
@@ -74,6 +85,7 @@ const ReportShell = ({
 
       if (activeReport.requiresExam && !selectedExam) {
         setRows([]);
+        setTotalCount(0);
         setWarning("পরীক্ষা নির্বাচন করুন");
         return;
       }
@@ -83,16 +95,26 @@ const ReportShell = ({
       if (activeReport.extraParams) {
         Object.entries(activeReport.extraParams).forEach(([key, value]) => params.set(key, value));
       }
+      if (isPaginatedAcademicResult) {
+        if (selectedDivision) params.set("division_id", selectedDivision);
+        if (selectedClass) params.set("class_id", selectedClass);
+        params.set("page", String(page));
+        params.set("page_size", String(pageSize));
+      }
       const query = params.toString();
       const res = await cachedGet(`${activeReport.endpoint}${query ? `?${query}` : ""}`);
       const data =
         res.data?.data || res.data?.students || res.data?.teachers || res.data?.result || [];
 
       setRows(Array.isArray(data) ? data : []);
+      setTotalCount(
+        typeof res.data?.total === "number" ? res.data.total : Array.isArray(data) ? data.length : 0,
+      );
       setWarning(res.data?.warning || "");
     } catch (error: any) {
       logger.error("REPORT LOAD ERROR:", error);
       setRows([]);
+      setTotalCount(0);
       setWarning(error?.response?.data?.message || "রিপোর্ট লোড করা যায়নি");
     } finally {
       setLoading(false);
@@ -149,15 +171,30 @@ const ReportShell = ({
     setSelectedDivision("");
     setSelectedClass("");
     setClasses([]);
+    setSelectedSubject("");
+    setPage(1);
     setOrientation(activeReport.defaultOrientation || "portrait");
     setSelectedTemplateId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, activeReport.defaultOrientation]);
 
   useEffect(() => {
+    setMargins(getDefaultPageMargins(paperSize));
+  }, [paperSize]);
+
+  // Non-paginated reports only ever need to refetch on activeKey/selectedExam
+  // change (division/class stay client-side filters). The paginated academic
+  // -result reports also refetch on division/class/page/pageSize, since
+  // those are now sent to the server - folded into one string so the effect
+  // fires exactly once per meaningful change instead of racing two effects.
+  const loadTrigger = isPaginatedAcademicResult
+    ? `${activeKey}|${selectedExam}|${selectedDivision}|${selectedClass}|${page}|${pageSize}`
+    : `${activeKey}|${selectedExam}`;
+
+  useEffect(() => {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey, selectedExam]);
+  }, [loadTrigger]);
 
   useEffect(() => {
     const documentType = activeReport.documentType;
@@ -179,6 +216,26 @@ const ReportShell = ({
       cancelled = true;
     };
   }, [activeReport.documentType]);
+
+  // Subjects/books are tied to a class (see reports.repository.ts's
+  // `b.class_id = s.class_id` join), so listing every subject across ALL
+  // loaded classes at once would jumble together books that don't even
+  // belong to the same jamat. Scoped to selectedClass instead - empty until
+  // a class is picked, matching how the শ্রেণি select itself stays empty
+  // until a division is picked.
+  const subjectOptions = useMemo(() => {
+    if (!activeReport.hasSubjectFilter || !selectedClass) return [];
+    const map = new Map<string, string>();
+    rows
+      .filter((row) => String(getRowClassId(row)) === String(selectedClass))
+      .forEach((row) => {
+        getReportSubjects(row).forEach((subject, index) => {
+          const key = String(subject.book_id ?? subject.subject_name ?? index);
+          if (!map.has(key)) map.set(key, subject.subject_name || `বিষয় ${index + 1}`);
+        });
+      });
+    return Array.from(map.entries()).map(([key, name]) => ({ key, name }));
+  }, [rows, activeReport.hasSubjectFilter, selectedClass]);
 
   const filteredRows = rows.filter((row) => {
     const keyword = search.trim().toLowerCase();
@@ -244,13 +301,28 @@ const ReportShell = ({
   const selectedClassName =
     classes.find((cls) => String(cls.class_id) === String(selectedClass))?.class_name_bn || "";
 
-  let exportRows = filteredRows;
+  // When a single subject is picked, narrow every row's `subjects` array down
+  // to just that one before it reaches the print preview or the CSV/Excel
+  // export builder below - students stay in the list, only their subject
+  // columns shrink to the one selected.
+  const displayRows: Record<string, any>[] =
+    activeReport.hasSubjectFilter && selectedSubject
+      ? filteredRows.map((row) => ({
+          ...row,
+          subjects: getReportSubjects(row).filter(
+            (subject, index) =>
+              String(subject.book_id ?? subject.subject_name ?? index) === selectedSubject,
+          ),
+        }))
+      : filteredRows;
+
+  let exportRows = displayRows;
   let exportColumns: ReportColumn[] = activeReport.columns;
 
   if (activeReport.printable === "academic-result") {
     const subjectMap = new Map<string, { key: string; name: string }>();
 
-    filteredRows.forEach((row) => {
+    displayRows.forEach((row) => {
       getReportSubjects(row).forEach((subject, index) => {
         const subjectId = String(subject.book_id ?? subject.subject_name ?? index);
         const key = `subject_${subjectId}`;
@@ -278,7 +350,7 @@ const ReportShell = ({
           ]
         : [...activeReport.columns, ...subjectColumns];
 
-    exportRows = filteredRows.map((row) => {
+    exportRows = displayRows.map((row) => {
       const flattenedRow = { ...row };
       getReportSubjects(row).forEach((subject, index) => {
         const subjectId = String(subject.book_id ?? subject.subject_name ?? index);
@@ -294,7 +366,15 @@ const ReportShell = ({
     setSelectedDivision("");
     setSelectedClass("");
     setClasses([]);
+    setSelectedSubject("");
+    setPage(1);
   };
+
+  const totalRecords = isPaginatedAcademicResult ? totalCount : filteredRows.length;
+  const pageStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(page * pageSize, totalCount);
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * pageSize < totalCount;
 
   return (
     <div className="min-h-screen bg-[#f6f8fb] p-2 dark:bg-slate-950 sm:p-4 lg:p-6">
@@ -319,9 +399,51 @@ const ReportShell = ({
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{activeReport.subtitle}</p>
               </div>
 
-              <div className="w-fit shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:px-4">
-                মোট <span className="font-bold text-slate-900 dark:text-slate-100">{filteredRows.length}</span> টি
-                রেকর্ড
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <div className="w-fit rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:px-4">
+                  মোট <span className="font-bold text-slate-900 dark:text-slate-100">{totalRecords}</span> টি
+                  রেকর্ড
+                </div>
+
+                {isPaginatedAcademicResult && totalCount > 0 && (
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      {[50, 100, 200, 500].map((size) => (
+                        <option key={size} value={size}>
+                          {size} জন/পেজ
+                        </option>
+                      ))}
+                    </select>
+
+                    <span className="text-xs">
+                      {pageStart}–{pageEnd}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={!hasPrevPage}
+                      className="h-8 rounded-md border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                    >
+                      আগের
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={!hasNextPage}
+                      className="h-8 rounded-md border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                    >
+                      পরের
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -330,6 +452,8 @@ const ReportShell = ({
               selectedDivision={selectedDivision}
               selectedClass={selectedClass}
               selectedExam={selectedExam}
+              selectedSubject={selectedSubject}
+              subjectOptions={subjectOptions}
               divisions={divisions}
               classes={classes}
               exams={exams}
@@ -340,14 +464,27 @@ const ReportShell = ({
               onDivisionChange={(value) => {
                 setSelectedDivision(value);
                 loadClassesByDivision(value);
+                setSelectedSubject("");
+                setPage(1);
               }}
-              onClassChange={setSelectedClass}
-              onExamChange={setSelectedExam}
+              onClassChange={(value) => {
+                setSelectedClass(value);
+                setSelectedSubject("");
+                setPage(1);
+              }}
+              onExamChange={(value) => {
+                setSelectedExam(value);
+                setSelectedSubject("");
+                setPage(1);
+              }}
+              onSubjectChange={setSelectedSubject}
               onClear={clearFilters}
               paperSize={paperSize}
               orientation={orientation}
               onPaperSizeChange={setPaperSize}
               onOrientationChange={setOrientation}
+              margins={margins}
+              onMarginsChange={setMargins}
               templates={templates}
               selectedTemplateId={selectedTemplateId}
               onTemplateChange={setSelectedTemplateId}
@@ -364,12 +501,13 @@ const ReportShell = ({
             <PaginatedReportPreview
               loading={loading}
               report={activeReport}
-              rows={filteredRows}
+              rows={displayRows}
               selectedDivisionName={selectedDivisionName}
               selectedClassName={selectedClassName}
               hideBrandHeader={hideBrandHeader}
               paperSize={paperSize}
               orientation={orientation}
+              margins={margins}
             />
           </div>
         </main>

@@ -1,5 +1,5 @@
 import { lazy, Suspense, type JSX } from "react";
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter, useParams } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import GuardianLayout from "../layouts/GuardianLayout";
@@ -38,6 +38,7 @@ const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdm
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
 const AttendanceKioskPage = lazy(() => import("../features/attendance/AttendanceKioskPage"));
 const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
+const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
@@ -54,7 +55,6 @@ const NotificationHistoryPage = lazy(() => import("../features/notifications/Not
 const AutoNotificationSettingsPage = lazy(
   () => import("../features/notifications/AutoNotificationSettingsPage"),
 );
-const NotificationBalancePage = lazy(() => import("../features/notifications/BalancePage"));
 const BillingDashboardPage = lazy(() => import("../features/billing/BillingDashboardPage"));
 
 const LibraryCatalogPage = lazy(() => import("../features/library/LibraryCatalogPage"));
@@ -65,6 +65,9 @@ const LibrarySettingsPage = lazy(() => import("../features/library/LibrarySettin
 const TeacherAdmissionPage = lazy(() => import("../features/teachers/TeacherPage"));
 const TeacherListPage = lazy(() => import("../features/teachers/TeacherListPage"));
 const TeacherProfilePage = lazy(() => import("../features/teachers/TeacherProfilePage"));
+const StaffAdmissionPage = lazy(() => import("../features/staff/StaffPage"));
+const StaffListPage = lazy(() => import("../features/staff/StaffListPage"));
+const StaffProfilePage = lazy(() => import("../features/staff/StaffProfilePage"));
 
 const AcademicReportPage = lazy(() => import("../features/reports/AcademicReportPage"));
 const StudentReportPage = lazy(() => import("../features/reports/StudentReportPage"));
@@ -159,6 +162,14 @@ const withSuspense = (element: JSX.Element) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
 );
 
+// Old ইহতিমাম/:id teacher-profile links (bookmarks, already-open tabs) redirect
+// to the new শিক্ষক স্টাফ path — <Navigate to> can't interpolate a route param
+// on its own, so this reads it and builds the target path itself.
+const LegacyTeacherProfileRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`../teacher_staff/teacher/${id}`} replace />;
+};
+
 const madrasaAdminChildren = [
   { index: true, element: <Navigate to="dashboard" replace /> },
   { path: "unauthorized", element: withSuspense(<UnauthorizedPage />) },
@@ -169,21 +180,38 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "ihtemam/teacher_admission",
-    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherAdmissionPage />)}</ModuleGuard>,
-  },
-  {
-    path: "ihtemam/all_teacher",
-    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherListPage />)}</ModuleGuard>,
-  },
-  {
     path: "ihtemam/pending",
     element: <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
   },
+
   {
-    path: "ihtemam/:id",
-    element: <ModuleGuard module="ihtemam">{withSuspense(<TeacherProfilePage />)}</ModuleGuard>,
+    path: "teacher_staff/teacher_admission",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<TeacherAdmissionPage />)}</ModuleGuard>,
   },
+  {
+    path: "teacher_staff/all_teacher",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<TeacherListPage />)}</ModuleGuard>,
+  },
+  {
+    path: "teacher_staff/teacher/:id",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<TeacherProfilePage />)}</ModuleGuard>,
+  },
+  {
+    path: "teacher_staff/staff_admission",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<StaffAdmissionPage />)}</ModuleGuard>,
+  },
+  {
+    path: "teacher_staff/all_staff",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<StaffListPage />)}</ModuleGuard>,
+  },
+  {
+    path: "teacher_staff/staff/:id",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<StaffProfilePage />)}</ModuleGuard>,
+  },
+  // Old ইহতিমাম teacher routes redirect to their new home under শিক্ষক স্টাফ.
+  { path: "ihtemam/teacher_admission", element: <Navigate to="../teacher_staff/teacher_admission" replace /> },
+  { path: "ihtemam/all_teacher", element: <Navigate to="../teacher_staff/all_teacher" replace /> },
+  { path: "ihtemam/:id", element: <LegacyTeacherProfileRedirect /> },
 
   {
     path: "reports/academic-report",
@@ -310,6 +338,10 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="attendance">{withSuspense(<AttendanceKioskDevicesPage />)}</ModuleGuard>,
   },
   {
+    path: "attendance/report",
+    element: <ModuleGuard module="attendance">{withSuspense(<AttendanceReportPage />)}</ModuleGuard>,
+  },
+  {
     path: "students/promotion",
     element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
   },
@@ -325,7 +357,7 @@ const madrasaAdminChildren = [
   },
   {
     path: "fee-collection",
-    element: <ModuleGuard module="accounts">{withSuspense(<FeeInvoicesPage />)}</ModuleGuard>,
+    element: <ModuleGuard module="fee">{withSuspense(<FeeInvoicesPage />)}</ModuleGuard>,
   },
   {
     path: "payroll",
@@ -341,8 +373,8 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="accounts">{withSuspense(<AccountDashboardPage />)}</ModuleGuard>,
   },
   {
-    path: "accounts/pending-fee",
-    element: <ModuleGuard module="accounts">{withSuspense(<PendingAdmissionFeePage />)}</ModuleGuard>,
+    path: "fee/pending-fee",
+    element: <ModuleGuard module="fee">{withSuspense(<PendingAdmissionFeePage />)}</ModuleGuard>,
   },
   {
     path: "accounts/report",
@@ -432,10 +464,6 @@ const madrasaAdminChildren = [
     element: (
       <ModuleGuard module="communication">{withSuspense(<AutoNotificationSettingsPage />)}</ModuleGuard>
     ),
-  },
-  {
-    path: "communication/balance",
-    element: <ModuleGuard module="communication">{withSuspense(<NotificationBalancePage />)}</ModuleGuard>,
   },
   {
     path: "communication/billing",

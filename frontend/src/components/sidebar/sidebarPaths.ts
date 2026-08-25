@@ -31,12 +31,12 @@ export const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   promotion: "students/promotion",
   attendance_mark: "attendance/mark",
   kiosk_devices: "attendance/kiosk-devices",
+  attendance_report: "attendance/report",
   payroll: "payroll",
   single_send: "communication/single-send",
   bulk_send: "communication/bulk-send",
   history: "communication/history",
   auto_settings: "communication/auto-settings",
-  balance: "communication/balance",
 };
 
 export function modulePath(key: string) {

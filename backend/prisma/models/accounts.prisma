@@ -22,6 +22,7 @@ model Account {
   address       String?      @db.VarChar(255)
   mobile        String?      @db.VarChar(30)
   paymentMethod String?      @map("payment_method") @db.VarChar(80)
+  note          String?      @db.VarChar(500)
   entryDate     DateTime?    @map("entry_date") @db.Date
   entryTime     DateTime?    @map("entry_time") @db.Time
   createdBy     Int?         @map("created_by")

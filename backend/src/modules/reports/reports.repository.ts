@@ -13,6 +13,19 @@ export interface RosterFilters {
   studentIds?: number[];
 }
 
+/** Optional narrowing + pagination filters accepted by academicResultsQuery
+ * (findAcademicResults / findAcademicResultsByRank) - all optional and
+ * backward compatible. Without exam/class/division, behaves like before;
+ * limit/offset let the controller page through a large result set instead
+ * of always shipping every published exam's rows for every student. */
+export interface AcademicResultFilters {
+  examId?: number;
+  classId?: number;
+  divisionId?: number;
+  limit?: number;
+  offset?: number;
+}
+
 /** Builds the extra `AND ...` SQL fragment + positional params (starting
  * after $1 = madrasaId) for RosterFilters, shared by every roster query
  * that accepts them. */
@@ -126,26 +139,63 @@ export class ReportsRepository {
 
   /* ================= ACADEMIC ================= */
 
-  findAcademicResults(madrasaId: number): Promise<OptionalQueryResult<any>> {
+  findAcademicResults(
+    madrasaId: number,
+    filters: AcademicResultFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
     return this.academicResultsQuery(
       madrasaId,
       "ORDER BY rm.id DESC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC",
+      filters,
     );
   }
 
   /** Same document as findAcademicResults, but ordered by merit rank (১ম, ২য়, ...)
-   * instead of roll number - used by the separate "মেধাক্রম অনুযায়ী ফলাফল" report. */
-  findAcademicResultsByRank(madrasaId: number): Promise<OptionalQueryResult<any>> {
+   * instead of roll number - used by the separate "মেধাক্রম অনুযায়ী ফলাফল" report.
+   * rank_no is precomputed and stored on results_summary at publish time, so
+   * paginating (limit/offset below) never affects which rank a row shows. */
+  findAcademicResultsByRank(
+    madrasaId: number,
+    filters: AcademicResultFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
     return this.academicResultsQuery(
       madrasaId,
       "ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC",
+      filters,
     );
   }
 
   private async academicResultsQuery(
     madrasaId: number,
     orderByClause: string,
+    filters: AcademicResultFilters = {},
   ): Promise<OptionalQueryResult<any>> {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+
+    if (filters.examId !== undefined) {
+      params.push(filters.examId);
+      conditions.push(`AND rm.exam_id = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
+    let limitOffsetSql = "";
+    if (filters.limit !== undefined) {
+      params.push(filters.limit);
+      limitOffsetSql += ` LIMIT $${params.length}`;
+    }
+    if (filters.offset !== undefined) {
+      params.push(filters.offset);
+      limitOffsetSql += ` OFFSET $${params.length}`;
+    }
+
     const result = await this.runOptionalQuery(
       `
       SELECT
@@ -171,6 +221,7 @@ export class ReportsRepository {
         rs.rank_no,
         rm.status AS publish_status,
         rm.id AS result_master_id,
+        COUNT(*) OVER()::int AS total_count,
         COALESCE(
           jsonb_agg(
             jsonb_build_object(
@@ -205,6 +256,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         AND rm.status = 'PUBLISHED'
+        ${conditions.join("\n        ")}
       GROUP BY
         s.id,
         s.registration_no,
@@ -231,12 +283,16 @@ export class ReportsRepository {
         rm.status,
         rm.id
       ${orderByClause}
+      ${limitOffsetSql}
       `,
-      [madrasaId],
+      params,
     );
 
     if (result.rows.length) return result;
-    return this.resultRosterFallback(madrasaId);
+    return this.resultRosterFallback(madrasaId, {
+      classId: filters.classId,
+      divisionId: filters.divisionId,
+    });
   }
 
   async findAcademicResultNotice(madrasaId: number): Promise<OptionalQueryResult<any>> {
@@ -485,14 +541,45 @@ export class ReportsRepository {
         COALESCE(d.name_bn, d.name) AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
-        e.year AS exam_year
+        e.year AS exam_year,
+        COALESCE(
+          jsonb_agg(
+            jsonb_build_object('book_id', b.id, 'subject_name', COALESCE(b.name_bn, b.name))
+            ORDER BY b.id
+          ) FILTER (WHERE b.id IS NOT NULL),
+          '[]'::jsonb
+        ) AS subjects
       FROM students s
       CROSS JOIN selected_exam e
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
+      LEFT JOIN madrasa_books mb
+        ON mb.madrasa_id = s.madrasa_id
+        AND COALESCE(mb.is_active, 1) = 1
+      LEFT JOIN books b
+        ON b.id = mb.book_id
+        AND b.class_id = s.class_id
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+      GROUP BY
+        s.id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn,
+        s.father_name,
+        c.id,
+        c.name_bn,
+        c.name,
+        d.id,
+        d.name_bn,
+        d.name,
+        e.id,
+        e.name,
+        e.year
       ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       [madrasaId, examId || null],

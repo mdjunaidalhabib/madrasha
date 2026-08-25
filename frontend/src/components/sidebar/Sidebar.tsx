@@ -24,6 +24,8 @@ import {
   MessageSquare,
   Library,
   CalendarCheck,
+  GraduationCap,
+  Receipt,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -31,8 +33,10 @@ type SidebarProps = { closeSidebar?: () => void };
 const ICONS: Record<string, any> = {
   dashboard: LayoutDashboard,
   ihtemam: Users,
+  teacher_staff: GraduationCap,
   admission: Folder,
   students: Users,
+  fee: Receipt,
   attendance: CalendarCheck,
   accounts: Wallet,
   talimat: BookOpen,

@@ -26,6 +26,7 @@ type AuthState = {
   modules: string[];
   setAuth: (data: AuthPayload) => void;
   updateUser: (patch: Partial<AuthUser>) => void;
+  setAccess: (permissions: string[], modules: string[]) => void;
   logout: () => void;
 };
 
@@ -51,6 +52,14 @@ export const useAuthStore = create<AuthState>()(
 
       updateUser: (patch) => {
         set((state) => ({ user: state.user ? { ...state.user, ...patch } : state.user }));
+      },
+
+      // Re-syncs just permissions/modules against the backend (see
+      // DashboardLayout.tsx, called on every app load) without touching
+      // token/user - so a module split or a role's permission edit reaches
+      // an already-logged-in user without forcing them to log out first.
+      setAccess: (permissions, modules) => {
+        set({ permissions, modules });
       },
 
       logout: () => {

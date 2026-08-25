@@ -143,7 +143,7 @@ const TeacherProfilePage = () => {
 
           useToastStore.getState().show("🗑️ ট্র্যাশে সরানো হয়েছে", "success");
 
-          navigate(`${adminBase}/ihtemam/all_teacher`);
+          navigate(`${adminBase}/teacher_staff/all_teacher`);
         } catch {
           useToastStore.getState().show("❌ মুছে ফেলা যায়নি", "error");
         }
@@ -156,7 +156,7 @@ const TeacherProfilePage = () => {
   ============================= */
 
   const quickNavPath = useCallback(
-    (teacherId: string | number) => `${adminBase}/ihtemam/${teacherId}`,
+    (teacherId: string | number) => `${adminBase}/teacher_staff/teacher/${teacherId}`,
     [adminBase],
   );
 

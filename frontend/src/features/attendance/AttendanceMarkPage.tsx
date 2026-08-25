@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { cachedGet } from "../../services/api";
 import { attendanceApi, type AttendanceStatus } from "../../services/phase1Api";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
 import { SkeletonList } from "../../components/ui/Skeleton";
+import { getTenantAdminBase } from "../../utils/tenantSlug";
 
 type Division = {
   division_id: number;
@@ -24,20 +25,13 @@ type Student = {
   academic_year?: string;
 };
 
-type AttendanceRow = {
-  attendee_id: number;
-  status: AttendanceStatus;
-  remarks: string;
-};
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
-const STATUS_OPTIONS: { value: AttendanceStatus; label: string; activeClass: string }[] = [
-  { value: "PRESENT", label: "উপস্থিত", activeClass: "bg-green-600 text-white" },
-  { value: "ABSENT", label: "অনুপস্থিত", activeClass: "bg-red-600 text-white" },
-  { value: "LATE", label: "দেরি", activeClass: "bg-amber-500 text-white" },
-  { value: "LEAVE", label: "ছুটি", activeClass: "bg-blue-500 text-white" },
-];
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const TODAY_BN = new Date().toLocaleDateString("bn-BD", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -45,7 +39,7 @@ const normalizeArray = (payload: any) => {
 };
 
 const AttendanceMarkPage = () => {
-  const { madrasaSlug: _madrasaSlug = "" } = useParams();
+  const { madrasaSlug = "" } = useParams();
 
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -53,16 +47,19 @@ const AttendanceMarkPage = () => {
 
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedDate, setSelectedDate] = useState(todayIso());
   const [academicYear] = useState(String(new Date().getFullYear()));
 
   const [classLoading, setClassLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [attendanceByStudent, setAttendanceByStudent] = useState<
-    Record<string, AttendanceRow>
-  >({});
+  // Once today's attendance is already recorded for the selected class, the
+  // sheet locks - further changes for today only happen from the Attendance
+  // Report page, so a class can't accidentally get re-submitted.
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+
+  // true = present, false = absent
+  const [presentByStudent, setPresentByStudent] = useState<Record<string, boolean>>({});
 
   const loadDivisions = useCallback(async () => {
     try {
@@ -91,7 +88,8 @@ const AttendanceMarkPage = () => {
 
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
-    setAttendanceByStudent({});
+    setPresentByStudent({});
+    setAlreadySubmitted(false);
 
     if (!divisionId) {
       setClasses([]);
@@ -119,101 +117,89 @@ const AttendanceMarkPage = () => {
     );
   }, [allStudents, selectedClass, academicYear]);
 
-  // Whenever class or date changes, load any already-saved attendance for
-  // that day and prefill; anyone not yet marked defaults to PRESENT.
+  // Whenever the class changes, check whether today's attendance was already
+  // recorded for it - if so the sheet locks (see alreadySubmitted above);
+  // otherwise everyone defaults to present.
   const loadExistingAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedDate || studentsInClass.length === 0) return;
+    if (!selectedClass || studentsInClass.length === 0) return;
 
     try {
       setStudentsLoading(true);
       const res = await attendanceApi.list({
-        date: selectedDate,
+        date: TODAY_ISO,
         class_id: Number(selectedClass),
         attendee_type: "STUDENT",
       });
       const existingRows = normalizeArray(res) as Array<{
         attendeeId: number;
         status: AttendanceStatus;
-        remarks?: string | null;
       }>;
+
+      setAlreadySubmitted(existingRows.length > 0);
 
       const existingByStudent = new Map(
         existingRows.map((row) => [String(row.attendeeId), row]),
       );
 
-      const next: Record<string, AttendanceRow> = {};
+      const next: Record<string, boolean> = {};
       for (const student of studentsInClass) {
         const existing = existingByStudent.get(String(student.id));
-        next[String(student.id)] = {
-          attendee_id: Number(student.id),
-          status: existing?.status || "PRESENT",
-          remarks: existing?.remarks || "",
-        };
+        next[String(student.id)] = existing ? existing.status === "PRESENT" : true;
       }
-      setAttendanceByStudent(next);
+      setPresentByStudent(next);
     } catch (err) {
       logger.error("LOAD ATTENDANCE ERROR:", err);
-      // fall back to a fresh "all present" sheet rather than blocking the page
-      const next: Record<string, AttendanceRow> = {};
+      setAlreadySubmitted(false);
+      const next: Record<string, boolean> = {};
       for (const student of studentsInClass) {
-        next[String(student.id)] = {
-          attendee_id: Number(student.id),
-          status: "PRESENT",
-          remarks: "",
-        };
+        next[String(student.id)] = true;
       }
-      setAttendanceByStudent(next);
+      setPresentByStudent(next);
     } finally {
       setStudentsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClass, selectedDate, studentsInClass.length]);
+  }, [selectedClass, studentsInClass.length]);
 
   useEffect(() => {
     loadExistingAttendance();
   }, [loadExistingAttendance]);
 
-  const setStatus = (studentId: number | string, status: AttendanceStatus) => {
-    setAttendanceByStudent((prev) => ({
-      ...prev,
-      [String(studentId)]: { ...prev[String(studentId)], status },
-    }));
+  const togglePresent = (studentId: number | string) => {
+    if (alreadySubmitted) return;
+    const key = String(studentId);
+    setPresentByStudent((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const setRemarks = (studentId: number | string, remarks: string) => {
-    setAttendanceByStudent((prev) => ({
-      ...prev,
-      [String(studentId)]: { ...prev[String(studentId)], remarks },
-    }));
-  };
+  const allChecked = useMemo(() => {
+    const ids = studentsInClass.map((student) => String(student.id));
+    return ids.length > 0 && ids.every((id) => presentByStudent[id]);
+  }, [studentsInClass, presentByStudent]);
 
-  const markAllPresent = () => {
-    setAttendanceByStudent((prev) => {
-      const next: Record<string, AttendanceRow> = {};
-      for (const key of Object.keys(prev)) {
-        next[key] = { ...prev[key], status: "PRESENT" };
-      }
+  const toggleCheckAll = () => {
+    if (alreadySubmitted) return;
+    const ids = studentsInClass.map((student) => String(student.id));
+    const nextValue = !allChecked;
+    setPresentByStudent((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = nextValue;
       return next;
     });
   };
 
-  const summary = useMemo(() => {
-    const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
-    for (const row of Object.values(attendanceByStudent)) {
-      counts[row.status] += 1;
-    }
-    return counts;
-  }, [attendanceByStudent]);
+  const presentCount = useMemo(
+    () => Object.values(presentByStudent).filter(Boolean).length,
+    [presentByStudent],
+  );
 
   const handleSaveAll = async () => {
     if (!selectedClass) {
       useToastStore.getState().show("প্রথমে শ্রেণি নির্বাচন করুন", "error");
       return;
     }
-    const entries = Object.values(attendanceByStudent).map((row) => ({
-      attendee_id: row.attendee_id,
-      status: row.status,
-      remarks: row.remarks?.trim() || undefined,
+    const entries = studentsInClass.map((student) => ({
+      attendee_id: Number(student.id),
+      status: (presentByStudent[String(student.id)] ? "PRESENT" : "ABSENT") as AttendanceStatus,
     }));
     if (entries.length === 0) {
       useToastStore.getState().show("এই শ্রেণিতে কোনো ছাত্র নেই", "error");
@@ -224,11 +210,12 @@ const AttendanceMarkPage = () => {
       setSaving(true);
       await attendanceApi.bulkMark({
         attendee_type: "STUDENT",
-        date: selectedDate,
+        date: TODAY_ISO,
         class_id: Number(selectedClass),
         entries,
       });
       useToastStore.getState().show("উপস্থিতি সংরক্ষণ করা হয়েছে", "success");
+      setAlreadySubmitted(true);
     } catch (err: any) {
       const msg = err?.response?.data?.message || "উপস্থিতি সংরক্ষণ করতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
@@ -239,25 +226,18 @@ const AttendanceMarkPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-md">
         {/* Header */}
         <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছাত্র উপস্থিতি</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            শ্রেণি ও তারিখ নির্বাচন করে একসাথে সবার উপস্থিতি সংরক্ষণ করুন
+            আজকের তারিখ: <span className="font-medium">{TODAY_BN}</span> · টিক দিলে উপস্থিত, টিক না দিলে অনুপস্থিত
           </p>
         </div>
 
         {/* Filters */}
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
-            />
-
             <select
               value={selectedDivision}
               onChange={(event) => {
@@ -290,28 +270,31 @@ const AttendanceMarkPage = () => {
                 </option>
               ))}
             </select>
-
-            {selectedClass && (
-              <button
-                type="button"
-                onClick={markAllPresent}
-                className="h-9 w-full rounded-md border border-green-300 bg-green-50 px-3 text-sm font-medium text-green-700 transition hover:bg-green-100 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 sm:w-auto"
-              >
-                সবাইকে উপস্থিত করুন
-              </button>
-            )}
           </div>
 
           {selectedClass && (
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-slate-400">
               <span>মোট: {studentsInClass.length}</span>
-              <span className="text-green-700 dark:text-green-400">উপস্থিত: {summary.PRESENT}</span>
-              <span className="text-red-700 dark:text-red-400">অনুপস্থিত: {summary.ABSENT}</span>
-              <span className="text-amber-700 dark:text-amber-400">দেরি: {summary.LATE}</span>
-              <span className="text-blue-700 dark:text-blue-400">ছুটি: {summary.LEAVE}</span>
+              <span className="text-green-700 dark:text-green-400">উপস্থিত: {presentCount}</span>
+              <span className="text-red-700 dark:text-red-400">
+                অনুপস্থিত: {studentsInClass.length - presentCount}
+              </span>
             </div>
           )}
         </div>
+
+        {/* Already-submitted notice */}
+        {selectedClass && alreadySubmitted && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+            <span>আজকের উপস্থিতি ইতিমধ্যে জমা দেওয়া হয়েছে। পরিবর্তনের প্রয়োজন হলে উপস্থিতি রিপোর্ট থেকে এডিট করুন।</span>
+            <Link
+              to={`${getTenantAdminBase(madrasaSlug)}/attendance/report`}
+              className="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-transparent dark:text-amber-300 dark:hover:bg-amber-950/50"
+            >
+              উপস্থিতি রিপোর্টে যান
+            </Link>
+          </div>
+        )}
 
         {/* Student list */}
         {!selectedClass ? (
@@ -328,69 +311,73 @@ const AttendanceMarkPage = () => {
           </div>
         ) : (
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-            <div className="flex flex-col gap-2">
+            <label
+              className={`flex items-center justify-between gap-3 border-b border-gray-200 pb-2 text-sm font-medium text-gray-700 dark:border-slate-700 dark:text-slate-200 ${
+                alreadySubmitted ? "opacity-60" : "cursor-pointer"
+              }`}
+            >
+              <span>সবাইকে উপস্থিত করুন</span>
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={toggleCheckAll}
+                disabled={alreadySubmitted}
+                className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed dark:border-slate-600"
+              />
+            </label>
+
+            <div className="divide-y divide-gray-100 dark:divide-slate-800">
               {studentsInClass
                 .slice()
                 .sort((a, b) => Number(a.roll || 0) - Number(b.roll || 0))
                 .map((student) => {
-                  const row = attendanceByStudent[String(student.id)];
-                  if (!row) return null;
+                  const isPresent = presentByStudent[String(student.id)] ?? true;
 
                   return (
-                    <div
+                    <label
                       key={student.id}
-                      className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between"
+                      className={`flex items-center justify-between gap-3 py-2.5 ${
+                        alreadySubmitted ? "" : "cursor-pointer"
+                      }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <span className="flex min-w-0 items-center gap-3">
                         <span className="w-10 shrink-0 text-sm font-semibold text-gray-500 dark:text-slate-400">
                           {student.roll ?? "-"}
                         </span>
-                        <span className="text-sm font-medium text-gray-800 dark:text-slate-200">
+                        <span
+                          className={`truncate text-sm ${
+                            isPresent
+                              ? "text-gray-800 dark:text-slate-200"
+                              : "text-gray-400 line-through dark:text-slate-500"
+                          }`}
+                        >
                           {student.name_bn || "নাম নেই"}
                         </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex overflow-hidden rounded-md border border-gray-300 dark:border-slate-600">
-                          {STATUS_OPTIONS.map((option) => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => setStatus(student.id, option.value)}
-                              className={`h-8 px-3 text-xs font-medium transition ${
-                                row.status === option.value
-                                  ? option.activeClass
-                                  : "bg-white text-gray-600 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        <input
-                          type="text"
-                          value={row.remarks}
-                          onChange={(event) => setRemarks(student.id, event.target.value)}
-                          placeholder="মন্তব্য (ঐচ্ছিক)"
-                          className="h-8 w-full max-w-[160px] rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-                    </div>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isPresent}
+                        onChange={() => togglePresent(student.id)}
+                        disabled={alreadySubmitted}
+                        className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed dark:border-slate-600"
+                      />
+                    </label>
                   );
                 })}
             </div>
 
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={handleSaveAll}
-                className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
-              >
-                {saving ? "সংরক্ষণ হচ্ছে..." : "সব সংরক্ষণ করুন"}
-              </button>
-            </div>
+            {!alreadySubmitted && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleSaveAll}
+                  className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                >
+                  {saving ? "সংরক্ষণ হচ্ছে..." : "উপস্থিতি সংরক্ষণ করুন"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

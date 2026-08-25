@@ -160,6 +160,7 @@ export class AccountService {
     const address = clean(body.address);
     const mobile = clean(body.mobile);
     const payment_method = clean(body.payment_method);
+    const note = clean(body.note);
     const entry_date = clean(body.entry_date) || new Date().toISOString().slice(0, 10);
     const entry_time = clean(body.entry_time) || new Date().toTimeString().slice(0, 8);
 
@@ -180,6 +181,7 @@ export class AccountService {
       address,
       mobile,
       paymentMethod: payment_method,
+      note,
       entryDate: new Date(entry_date),
       entryTime: new Date(`1970-01-01T${entry_time}`),
       createdBy: userId,
@@ -206,6 +208,7 @@ export class AccountService {
     const receiver_name = clean(body.receiver_name);
     const mobile = clean(body.mobile);
     const payment_method = clean(body.payment_method);
+    const note = clean(body.note);
     const entry_date = clean(body.entry_date) || new Date().toISOString().slice(0, 10);
     const entry_time = clean(body.entry_time) || new Date().toTimeString().slice(0, 8);
 
@@ -225,6 +228,7 @@ export class AccountService {
       receiverName: receiver_name,
       mobile,
       paymentMethod: payment_method,
+      note,
       entryDate: new Date(entry_date),
       entryTime: new Date(`1970-01-01T${entry_time}`),
       createdBy: userId,
@@ -292,6 +296,7 @@ export class AccountService {
     if (body.category !== undefined) data.category = clean(body.category);
     if (body.mobile !== undefined) data.mobile = clean(body.mobile);
     if (body.payment_method !== undefined) data.paymentMethod = clean(body.payment_method);
+    if (body.note !== undefined) data.note = clean(body.note);
     if (body.entry_date !== undefined) {
       const entry_date = clean(body.entry_date);
       if (entry_date) data.entryDate = new Date(entry_date);

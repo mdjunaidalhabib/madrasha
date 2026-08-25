@@ -1,6 +1,8 @@
 export interface BrandingData {
   name: string | null;
   address: string | null;
+  phones: string[];
+  emails: string[];
   report_logo: string | null;
   report_banner: string | null;
   report_watermark: string | null;

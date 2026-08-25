@@ -24,6 +24,8 @@ export class SettingsRepository {
       select: {
         name: true,
         address: true,
+        brandingPhones: true,
+        brandingEmails: true,
         reportLogo: true,
         reportBanner: true,
         reportWatermark: true,

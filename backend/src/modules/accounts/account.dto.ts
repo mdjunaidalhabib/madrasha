@@ -7,6 +7,7 @@ export interface CreateIncomeRequestDto {
   address?: string;
   mobile?: string;
   payment_method: string;
+  note?: string;
   entry_date?: string;
   entry_time?: string;
 }
@@ -19,6 +20,7 @@ export interface CreateExpenseRequestDto {
   receiver_name: string;
   mobile?: string;
   payment_method: string;
+  note?: string;
   entry_date?: string;
   entry_time?: string;
 }
@@ -47,6 +49,7 @@ export interface UpdateAccountRequestDto {
   address?: string;
   mobile?: string;
   payment_method?: string;
+  note?: string;
   entry_date?: string;
   entry_time?: string;
 }

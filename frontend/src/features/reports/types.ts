@@ -26,6 +26,11 @@ export type ReportMenuItem = {
   // endpoint with a different filter flag, like the plain-rank vs.
   // rank+mumtaz prize book label reports).
   extraParams?: Record<string, string>;
+  // Set on report types whose rows carry a per-student `subjects` array
+  // (exam-number-sheet and the signature+number-sheet variants) so
+  // ReportFilterBar offers a "বিষয়" dropdown that narrows every row down to
+  // one subject - see ReportShell's subjectOptions/displayRows.
+  hasSubjectFilter?: boolean;
   printable?:
     | "table"
     | "marksheet"

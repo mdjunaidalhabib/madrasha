@@ -1,4 +1,4 @@
-import { PaperSize, Orientation } from "../../common/DataExportPrintActions";
+import { PaperSize, Orientation, PageMargins } from "../../common/DataExportPrintActions";
 
 export const MM_TO_CSS_PX = 96 / 25.4;
 
@@ -17,9 +17,12 @@ export const getPaperHeightMm = (paperSize: PaperSize, orientation: Orientation)
   return orientation === "portrait" ? 210 : 148;
 };
 
-// Must mirror the `padding` shorthand on `.print-page-preview` in
-// index.css (base rule ~line 155 for a4, the `html[data-print-size="a5"]...`
-// overrides ~lines 400/406 for a5) - both screen preview and the
-// `@media print` block share these same values, so a measurement container
-// built from this constant matches what actually prints.
-export const getPagePaddingMm = (paperSize: PaperSize) => (paperSize === "a5" ? 7 : 10);
+// Default margin (mm) for each side when the user hasn't customized any of
+// them - matches the old uniform `padding: 10mm / 7mm` rule in index.css.
+// Independently adjustable per side (see DataExportPrintActions' margin
+// panel) so a report with, say, extra room reserved for a binding hole on
+// the left doesn't have to also waste that space on the right.
+export const getDefaultPageMargins = (paperSize: PaperSize): PageMargins => {
+  const value = paperSize === "a5" ? 7 : 10;
+  return { top: value, right: value, bottom: value, left: value };
+};

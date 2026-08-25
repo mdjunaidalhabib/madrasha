@@ -4,6 +4,7 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
+import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import { deleteBrandingImage, saveBranding, type BrandingPayload } from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
@@ -16,6 +17,8 @@ export default function BrandingSettingsPage() {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [phones, setPhones] = useState<string[]>([]);
+  const [emails, setEmails] = useState<string[]>([]);
   const [logo, setLogo] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
   const [watermark, setWatermark] = useState<string | null>(null);
@@ -36,6 +39,8 @@ export default function BrandingSettingsPage() {
     if (!branding) return;
     setName(branding.name ?? "");
     setAddress(branding.address ?? "");
+    setPhones(branding.phones ?? []);
+    setEmails(branding.emails ?? []);
     setLogo(branding.report_logo ?? null);
     setBackground(branding.report_banner ?? null);
     setWatermark(branding.report_watermark ?? null);
@@ -54,6 +59,8 @@ export default function BrandingSettingsPage() {
       await saveBranding(patch);
       if (patch.name !== undefined) setName(patch.name || "");
       if (patch.address !== undefined) setAddress(patch.address || "");
+      if (patch.phones !== undefined) setPhones(patch.phones);
+      if (patch.emails !== undefined) setEmails(patch.emails);
       if (patch.report_logo !== undefined) setLogo(patch.report_logo);
       if (patch.report_banner !== undefined) setBackground(patch.report_banner);
       if (patch.report_watermark !== undefined) setWatermark(patch.report_watermark);
@@ -61,6 +68,8 @@ export default function BrandingSettingsPage() {
       setBranding({
         name,
         address,
+        phones,
+        emails,
         report_logo: logo,
         report_banner: background,
         report_watermark: watermark,
@@ -97,7 +106,7 @@ export default function BrandingSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title="রিপোর্ট ব্র্যান্ডিং সেটিংস" />
+        <PageHeader title="প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস" />
         <SkeletonCard lines={2} />
         <SkeletonCard lines={2} />
       </div>
@@ -107,8 +116,8 @@ export default function BrandingSettingsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="রিপোর্ট ব্র্যান্ডিং সেটিংস"
-        subtitle="মাদ্রাসার নাম, ঠিকানা, লোগো ও ওয়াটারমার্ক দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।"
+        title="প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস"
+        subtitle="মাদ্রাসার নাম, ঠিকানা, মোবাইল নম্বর, ইমেইল, লোগো ও ওয়াটারমার্ক দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।"
       />
 
       <SectionCard title="মূল তথ্য" hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে">
@@ -125,6 +134,20 @@ export default function BrandingSettingsPage() {
             value={address}
             placeholder="যেমন: গ্রাম/মহল্লা, উপজেলা, জেলা"
             onSave={(v) => patchBranding({ address: v })}
+          />
+          <InlineListField
+            label="মোবাইল নম্বর"
+            values={phones}
+            type="tel"
+            placeholder="যেমন: ০১৭xxxxxxxx"
+            onSave={(v) => patchBranding({ phones: v })}
+          />
+          <InlineListField
+            label="ইমেইল"
+            values={emails}
+            type="email"
+            placeholder="যেমন: info@example.com"
+            onSave={(v) => patchBranding({ emails: v })}
           />
         </div>
       </SectionCard>

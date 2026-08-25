@@ -23,6 +23,9 @@ import {
   MAX_TEMPLATE_LENGTH,
   MAX_MADRASA_NAME_LENGTH,
   MAX_MADRASA_ADDRESS_LENGTH,
+  MAX_BRANDING_PHONE_LENGTH,
+  MAX_BRANDING_EMAIL_LENGTH,
+  MAX_BRANDING_CONTACT_ITEMS,
   BRANDING_IMAGE_FIELDS,
   DOCUMENT_DESIGNS,
   DEFAULT_DOCUMENT_DESIGN,
@@ -41,6 +44,24 @@ function isValidTextValue(value: unknown, maxLength: number): value is string | 
 
 function isValidTemplateValue(value: unknown): value is string | null {
   return isValidTextValue(value, MAX_TEMPLATE_LENGTH);
+}
+
+/** Trims/drops blank entries and enforces per-item length + item count caps.
+ * Returns null (instead of throwing) on a malformed shape so callers can
+ * turn that into a single BadRequestError. */
+function sanitizeContactList(value: unknown, maxLength: number): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (value.length > MAX_BRANDING_CONTACT_ITEMS) return null;
+
+  const cleaned: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > maxLength) return null;
+    cleaned.push(trimmed);
+  }
+  return cleaned;
 }
 
 export class SettingsService {
@@ -63,6 +84,8 @@ export class SettingsService {
     return {
       name: madrasa.name,
       address: madrasa.address,
+      phones: madrasa.brandingPhones,
+      emails: madrasa.brandingEmails,
       report_logo: madrasa.reportLogo,
       report_banner: madrasa.reportBanner,
       report_watermark: madrasa.reportWatermark,
@@ -71,8 +94,16 @@ export class SettingsService {
   }
 
   async updateBranding(madrasaId: number, body: UpdateBrandingRequestDto) {
-    const { name, address, report_logo, report_banner, report_watermark, report_watermark_opacity } =
-      body;
+    const {
+      name,
+      address,
+      phones,
+      emails,
+      report_logo,
+      report_banner,
+      report_watermark,
+      report_watermark_opacity,
+    } = body;
 
     for (const [key, value] of Object.entries({ report_logo, report_banner, report_watermark })) {
       if (value !== undefined && !storageProvider.isValidImage(value)) {
@@ -92,6 +123,18 @@ export class SettingsService {
       throw new BadRequestError("Madrasa name cannot be empty");
     }
 
+    let cleanedPhones: string[] | undefined;
+    if (phones !== undefined) {
+      cleanedPhones = sanitizeContactList(phones, MAX_BRANDING_PHONE_LENGTH) ?? undefined;
+      if (!cleanedPhones) throw new BadRequestError("Invalid phone numbers");
+    }
+
+    let cleanedEmails: string[] | undefined;
+    if (emails !== undefined) {
+      cleanedEmails = sanitizeContactList(emails, MAX_BRANDING_EMAIL_LENGTH) ?? undefined;
+      if (!cleanedEmails) throw new BadRequestError("Invalid email addresses");
+    }
+
     let opacity: number | undefined;
     if (report_watermark_opacity !== undefined && report_watermark_opacity !== null) {
       opacity = Number(report_watermark_opacity);
@@ -104,6 +147,8 @@ export class SettingsService {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
       ...(name !== undefined && String(name).trim() !== "" ? { name } : {}),
       ...(address !== undefined ? { address } : {}),
+      ...(cleanedPhones !== undefined ? { brandingPhones: { set: cleanedPhones } } : {}),
+      ...(cleanedEmails !== undefined ? { brandingEmails: { set: cleanedEmails } } : {}),
       ...(report_logo !== undefined && report_logo !== null
         ? { reportLogo: storageProvider.persistImage(report_logo) }
         : {}),

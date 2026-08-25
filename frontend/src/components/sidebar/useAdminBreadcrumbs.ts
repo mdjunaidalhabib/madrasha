@@ -10,7 +10,8 @@ import type { BreadcrumbItem } from "../ui/Breadcrumbs";
 // yet, unauthorized) get a hand-picked label here instead.
 const FALLBACK_LABELS: { test: RegExp; label: string }[] = [
   { test: /^students\/[^/]+$/, label: "শিক্ষার্থী প্রোফাইল" },
-  { test: /^ihtemam\/[^/]+$/, label: "শিক্ষক প্রোফাইল" },
+  { test: /^teacher_staff\/teacher\/[^/]+$/, label: "শিক্ষক প্রোফাইল" },
+  { test: /^teacher_staff\/staff\/[^/]+$/, label: "স্টাফ প্রোফাইল" },
   { test: /^talimat\/settings\/documents\/[^/]+\/[^/]+\/edit$/, label: "ডকুমেন্ট ডিজাইনার" },
   { test: /^unauthorized$/, label: "অননুমোদিত প্রবেশ" },
 ];

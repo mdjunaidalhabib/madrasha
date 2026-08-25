@@ -9,14 +9,17 @@ import Breadcrumbs from "../components/ui/Breadcrumbs";
 
 import { loadSidebar } from "../services/sidebarApi";
 import { getMyPlan } from "../services/planApi";
+import { getMyProfile } from "../services/profileApi";
 import { useSidebarStore } from "../store/sidebarStore";
 import { usePlanStore } from "../store/planStore";
+import { useAuthStore } from "../store/authStore";
 import { useAdminBreadcrumbs } from "../components/sidebar/useAdminBreadcrumbs";
 import { logger } from "../utils/logger";
 
 export default function DashboardLayout() {
   const setItems = useSidebarStore((s) => s.setItems);
   const setPlan = usePlanStore((s) => s.setPlan);
+  const setAccess = useAuthStore((s) => s.setAccess);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
   const breadcrumbs = useAdminBreadcrumbs();
@@ -46,6 +49,23 @@ export default function DashboardLayout() {
 
     load();
   }, [setPlan]);
+
+  // Re-syncs permissions/modules against the backend on every app load, not
+  // just at login - so a sidebar module split (see the ফি ব্যবস্থাপনা split)
+  // or a role's permissions being edited reaches an already-logged-in user
+  // immediately instead of only after they explicitly log out and back in.
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const profile = await getMyProfile();
+        setAccess(profile.permissions, profile.modules);
+      } catch (err) {
+        logger.error("Access refresh failed:", err);
+      }
+    };
+
+    load();
+  }, [setAccess]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden dark:bg-slate-950">

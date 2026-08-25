@@ -1,0 +1,70 @@
+// ============================================================
+// STAFF (non-academic / general staff — accountant, khadem, guard, etc.)
+// ============================================================
+
+model Staff {
+  id Int @id @default(autoincrement())
+
+  madrasaId Int @map("madrasa_id")
+
+  /// Permanent, per-madrasa, system-assigned registration number. Mirrors
+  /// teacher.prisma's registrationNo — kept in its own sequence, not shared
+  /// with Teacher's.
+  registrationNo Int @map("registration_no")
+
+  nameBn String  @map("name_bn") @db.VarChar(200)
+  nameAr String? @map("name_ar") @db.VarChar(200)
+
+  nid    String? @db.VarChar(50)
+  /// 1=male, 2=female
+  gender Int?
+
+  dob DateTime? @db.Date
+  age Int?
+
+  phone String? @db.VarChar(50)
+  email String? @db.VarChar(150)
+
+  designation   String? @db.VarChar(150)
+  department    String? @db.VarChar(150)
+  qualification String? @db.VarChar(200)
+
+  experienceYear  Int? @default(0) @map("experience_year")
+  experienceMonth Int? @default(0) @map("experience_month")
+
+  joiningDate DateTime? @map("joining_date") @db.Date
+  salary      Decimal?  @db.Decimal(10, 2)
+
+  fatherName       String? @map("father_name") @db.VarChar(200)
+  fatherNameAr     String? @map("father_name_ar") @db.VarChar(200)
+  fatherNid        String? @map("father_nid") @db.VarChar(50)
+  fatherOccupation String? @map("father_occupation") @db.VarChar(150)
+
+  motherName       String? @map("mother_name") @db.VarChar(200)
+  motherNid        String? @map("mother_nid") @db.VarChar(50)
+  motherOccupation String? @map("mother_occupation") @db.VarChar(150)
+
+  parentPhone String? @map("parent_phone") @db.VarChar(50)
+
+  division String? @db.VarChar(100)
+  district String? @db.VarChar(100)
+  thana    String? @db.VarChar(100)
+  village  String? @db.VarChar(150)
+
+  image String? @db.Text
+
+  isActive  Int?      @default(1) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, email], map: "uniq_staff_email")
+  @@unique([madrasaId, registrationNo], map: "uniq_staff_registration_no")
+  @@index([madrasaId], map: "idx_staff_madrasa")
+  @@index([phone], map: "idx_staff_phone")
+  @@index([madrasaId, isActive], map: "idx_staff_madrasa_active")
+  @@map("staff")
+}

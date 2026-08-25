@@ -3,6 +3,7 @@ export interface ReportResponse {
   data: unknown[];
   message?: string;
   warning?: string;
+  total?: number;
 }
 
 export interface OptionalQueryResult<T = any> {

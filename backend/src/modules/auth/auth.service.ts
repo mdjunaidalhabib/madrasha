@@ -203,9 +203,20 @@ export class AuthService {
 
   /* ================= MY PROFILE ================= */
 
+  /** Also returns fresh permissions/modules (not just profile fields) so the
+   * frontend can re-sync useAuthStore's access snapshot on every app load
+   * (see DashboardLayout.tsx) instead of only at login - otherwise a module
+   * split, or a role's permissions being edited, only takes effect for an
+   * already-logged-in user after they explicitly log out and back in. */
   async getMe(userId: number, madrasaId: number): Promise<MyProfile> {
     const user = await this.repository.findMyProfile(userId, madrasaId);
     if (!user) throw new NotFoundError("User not found");
+
+    const roleKey = normalizeRoleKey(user.role?.keyName || user.role?.nameBn);
+    const [permissions, modules] = await Promise.all([
+      this.resolvePermissions(user.roleId, roleKey),
+      this.resolveEnabledModules(madrasaId),
+    ]);
 
     return {
       id: user.id,
@@ -213,8 +224,10 @@ export class AuthService {
       email: user.email,
       mobile: user.mobile,
       photo_url: user.photoUrl,
-      role_key: normalizeRoleKey(user.role?.keyName || user.role?.nameBn),
+      role_key: roleKey,
       role_label: user.role?.nameBn || "",
+      permissions,
+      modules,
     };
   }
 

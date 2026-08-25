@@ -10,7 +10,6 @@ import {
   getAudienceResults,
   getNotificationSettings,
   updateNotificationSetting,
-  getNotificationBalance,
 } from "./notification.controller";
 
 const router = Router();
@@ -28,7 +27,5 @@ router.get("/audience/results", rbacMiddleware("notifications.send"), getAudienc
 
 router.get("/settings", rbacMiddleware("notifications.settings"), getNotificationSettings);
 router.put("/settings/:eventKey", rbacMiddleware("notifications.settings"), updateNotificationSetting);
-
-router.get("/balance", rbacMiddleware("notifications.send"), getNotificationBalance);
 
 export default router;
