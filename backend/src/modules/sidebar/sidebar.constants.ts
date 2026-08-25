@@ -25,6 +25,7 @@ export const MODULE_PERMISSION_PREFIXES: Record<string, string[]> = {
     "exam.",
     "result.",
     "routine.",
+    "events.",
     "document_templates.",
     "students.session",
     "students.promote",

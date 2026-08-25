@@ -92,3 +92,23 @@ export const defaultFeeStructureApi = {
   ) => api.put(`/super/default-fee-structures/${id}`, payload),
   remove: (id: number) => api.delete(`/super/default-fee-structures/${id}`),
 };
+
+/* ================= IMPORTANT LINKS (Dashboard "গুরুত্বপূর্ণ লিংক") ================= */
+
+export interface ImportantLinkDto {
+  id: number;
+  label: string;
+  sub_label: string | null;
+  url: string;
+  is_active: boolean;
+}
+
+export const importantLinkApi = {
+  list: () => cachedGet<{ data: ImportantLinkDto[] }>("/super/important-links"),
+  create: (payload: { label: string; sub_label?: string | null; url: string }) =>
+    api.post("/super/important-links", payload),
+  update: (id: number, payload: Partial<{ label: string; sub_label: string | null; url: string; is_active: boolean }>) =>
+    api.put(`/super/important-links/${id}`, payload),
+  remove: (id: number) => api.delete(`/super/important-links/${id}`),
+  reorder: (linkIds: number[]) => api.put("/super/important-links/reorder", { link_ids: linkIds }),
+};

@@ -1,5 +1,6 @@
 export const DASHBOARD_RECENT_TRANSACTIONS_LIMIT = 8;
 export const DASHBOARD_UPCOMING_EXAMS_LIMIT = 5;
+export const DASHBOARD_OVERDUE_FEES_LIST_LIMIT = 5;
 
 export const DASHBOARD_TREND_ROW_LIMIT: Record<string, number> = {
   daily: 30,

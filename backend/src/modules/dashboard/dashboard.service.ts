@@ -1,6 +1,10 @@
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { dashboardRepository, DashboardRepository } from "./dashboard.repository";
-import { DASHBOARD_TREND_DEFAULT_LIMIT, DASHBOARD_TREND_ROW_LIMIT } from "./dashboard.constants";
+import {
+  DASHBOARD_OVERDUE_FEES_LIST_LIMIT,
+  DASHBOARD_TREND_DEFAULT_LIMIT,
+  DASHBOARD_TREND_ROW_LIMIT,
+} from "./dashboard.constants";
 import { DashboardSummary, DashboardTrends } from "./dashboard.types";
 
 const ACCOUNTS_DATE_COLUMN = "COALESCE(entry_date, CAST(created_at AS DATE))";
@@ -25,6 +29,7 @@ export class DashboardService {
       pendingAdmissionsCount,
       overdueInvoices,
       upcomingExams,
+      importantLinks,
     ] = await Promise.all([
       this.repository.countActiveStudents(madrasaId),
       this.repository.countActiveTeachers(madrasaId),
@@ -40,6 +45,7 @@ export class DashboardService {
       this.repository.countPendingAdmissions(madrasaId),
       this.repository.findOverdueInvoices(madrasaId),
       this.repository.findUpcomingExams(madrasaId),
+      this.repository.findActiveImportantLinks(),
     ]);
 
     const income = Number(incomeAgg._sum.amount || 0);
@@ -95,8 +101,21 @@ export class DashboardService {
       overdueFees: {
         count: overdueInvoices.length,
         totalDue: overdueTotalDue,
+        list: overdueInvoices.slice(0, DASHBOARD_OVERDUE_FEES_LIST_LIMIT).map((invoice) => ({
+          id: invoice.id,
+          title: invoice.title,
+          studentName: invoice.student.nameBn,
+          dueDate: invoice.dueDate,
+          remaining: Number(invoice.amount) - Number(invoice.paidAmount),
+        })),
       },
       upcomingExams,
+      importantLinks: importantLinks.map((link) => ({
+        id: link.id,
+        label: link.label,
+        subLabel: link.subLabel,
+        url: link.url,
+      })),
     };
   }
 

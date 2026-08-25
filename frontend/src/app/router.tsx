@@ -130,6 +130,9 @@ const SuperAdminSettingsPage = lazy(
 const SuperAdminCatalogPage = lazy(
   () => import("../features/super-admin/catalog/SuperAdminCatalogPage"),
 );
+const SuperAdminImportantLinksPage = lazy(
+  () => import("../features/super-admin/important-links/SuperAdminImportantLinksPage"),
+);
 const SuperAdminDefaultFeeStructuresPage = lazy(
   () => import("../features/super-admin/fee/SuperAdminDefaultFeeStructuresPage"),
 );
@@ -517,6 +520,7 @@ export const router = createBrowserRouter([
       { path: "websites", element: withSuspense(<SuperAdminWebsiteControlPage />) },
       { path: "catalog", element: withSuspense(<SuperAdminCatalogPage />) },
       { path: "fee-structure-templates", element: withSuspense(<SuperAdminDefaultFeeStructuresPage />) },
+      { path: "important-links", element: withSuspense(<SuperAdminImportantLinksPage />) },
       { path: "billing/sms-packages", element: withSuspense(<SuperAdminSmsPackagesPage />) },
       { path: "billing/email-packages", element: withSuspense(<SuperAdminEmailPackagesPage />) },
       { path: "billing/requests", element: withSuspense(<SuperAdminBillingRequestsPage />) },

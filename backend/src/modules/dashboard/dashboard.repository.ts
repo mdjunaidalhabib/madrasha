@@ -4,6 +4,7 @@ import {
   AttendanceTrendRow,
   FundBalanceRow,
   IncomeExpenseTrendRow,
+  ImportantLinkRow,
   PaymentMethodTotalRow,
   RecentTransactionRow,
   TodayTotalsRow,
@@ -132,7 +133,15 @@ export class DashboardRepository {
         dueDate: { lt: startOfTodayUTC() },
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
       },
-      select: { amount: true, paidAmount: true },
+      select: {
+        id: true,
+        title: true,
+        amount: true,
+        paidAmount: true,
+        dueDate: true,
+        student: { select: { nameBn: true } },
+      },
+      orderBy: { dueDate: "asc" },
     });
   }
 
@@ -159,6 +168,16 @@ export class DashboardRepository {
        GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
       madrasaId,
     );
+  }
+
+  /** Global (not tenant-scoped) "গুরুত্বপূর্ণ লিংক" list managed by Super
+   * Admin - same list shown on every madrasa's Dashboard. */
+  findActiveImportantLinks(): Promise<ImportantLinkRow[]> {
+    return prisma.importantLink.findMany({
+      where: { isActive: true },
+      select: { id: true, label: true, subLabel: true, url: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
   }
 
   async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {

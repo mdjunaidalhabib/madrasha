@@ -77,6 +77,17 @@ import {
 } from "./default-fee-structure.controller";
 
 /* =========================
+   Important links handlers
+========================= */
+import {
+  listImportantLinks,
+  createImportantLink,
+  updateImportantLink,
+  deleteImportantLink,
+  reorderImportantLinks,
+} from "./important-link.controller";
+
+/* =========================
    Document template handlers
 ========================= */
 import {
@@ -232,6 +243,17 @@ router.get("/default-fee-structures", superAdminMiddleware, listDefaultFeeStruct
 router.post("/default-fee-structures", superAdminMiddleware, createDefaultFeeStructure);
 router.put("/default-fee-structures/:id", superAdminMiddleware, updateDefaultFeeStructure);
 router.delete("/default-fee-structures/:id", superAdminMiddleware, deleteDefaultFeeStructure);
+
+/* =====================================================
+   IMPORTANT LINKS (shown on every tenant's Dashboard)
+   Base: /api/super/important-links
+===================================================== */
+
+router.get("/important-links", superAdminMiddleware, listImportantLinks);
+router.post("/important-links", superAdminMiddleware, createImportantLink);
+router.put("/important-links/reorder", superAdminMiddleware, reorderImportantLinks);
+router.put("/important-links/:id", superAdminMiddleware, updateImportantLink);
+router.delete("/important-links/:id", superAdminMiddleware, deleteImportantLink);
 
 /* =====================================================
    DOCUMENT TEMPLATES (System Template Library)

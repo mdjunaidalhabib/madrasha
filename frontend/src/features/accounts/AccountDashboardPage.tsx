@@ -116,14 +116,12 @@ const MethodCard = ({
   label,
   pct,
   amount,
-  expense,
   tone,
 }: {
   icon: ReactNode;
   label: string;
   pct: number;
   amount: string;
-  expense: string;
   tone: "indigo" | "sky";
 }) => {
   const t = STAT_TONES[tone];
@@ -146,7 +144,7 @@ const MethodCard = ({
       </div>
       <div className="relative mt-2.5 flex items-baseline justify-between">
         <span className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{amount}</span>
-        <span className="text-xs text-slate-400 dark:text-slate-500">ব্যয় {expense}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">মোট আয়ের অংশ</span>
       </div>
     </div>
   );
@@ -288,18 +286,16 @@ export default function AccountDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <MethodCard
             icon={<Landmark size={14} />}
-            label="অনলাইন (ব্যাংক/মোবাইল)"
+            label="অনলাইন আয় (ব্যাংক/মোবাইল)"
             pct={onlinePct}
             amount={money(online.income)}
-            expense={money(online.expense)}
             tone="indigo"
           />
           <MethodCard
             icon={<Banknote size={14} />}
-            label="অফলাইন (নগদ)"
+            label="অফলাইন আয় (নগদ)"
             pct={offlinePct}
             amount={money(offline.income)}
-            expense={money(offline.expense)}
             tone="sky"
           />
         </div>

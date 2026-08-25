@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Tags,
   BarChart3,
+  Link2,
 } from "lucide-react";
 
 type SuperAdminSidebarProps = {
@@ -38,6 +39,7 @@ export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/super-admin/document-templates", label: "ডকুমেন্ট টেমপ্লেট", icon: <FileStack size={18} /> },
   { to: "/super-admin/catalog", label: "একাডেমিক ক্যাটালগ", icon: <Layers size={18} /> },
   { to: "/super-admin/fee-structure-templates", label: "ফি টেমপ্লেট", icon: <Wallet size={18} /> },
+  { to: "/super-admin/important-links", label: "গুরুত্বপূর্ণ লিংক", icon: <Link2 size={18} /> },
   { to: "/super-admin/websites", label: "ওয়েবসাইটসমূহ", icon: <Globe2 size={18} /> },
 
   // বিলিং (SMS/Email credit বিক্রয়)

@@ -206,6 +206,24 @@ model DefaultSetting {
   @@map("default_settings")
 }
 
+/// Global "গুরুত্বপূর্ণ লিংক" (important links) shown on every tenant's
+/// Dashboard - managed centrally by Super Admin (add/edit/delete/reorder),
+/// same shared-catalog shape as the Default* templates above but read
+/// directly (not copied) since every tenant should always see the latest
+/// list, not a point-in-time snapshot.
+model ImportantLink {
+  id        Int      @id @default(autoincrement())
+  label     String   @db.VarChar(150)
+  subLabel  String?  @map("sub_label") @db.VarChar(150)
+  url       String   @db.VarChar(500)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("important_links")
+}
+
 /// Global fee-structure template, managed by Super Admin (unlike the other
 /// Default* templates above, this one also gets a full CRUD UI - see
 /// meta.* vs default-fee-structure.* modules). Active rows are copied into

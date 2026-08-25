@@ -101,6 +101,6 @@ export function SkeletonBlock({ className = "h-40 w-full" }: { className?: strin
   return <Skeleton className={className} />;
 }
 
-export function SkeletonChart({ className = "" }: { className?: string }) {
-  return <Skeleton className={`h-64 w-full ${className}`} />;
+export function SkeletonChart({ className = "h-64" }: { className?: string }) {
+  return <Skeleton className={`w-full ${className}`} />;
 }

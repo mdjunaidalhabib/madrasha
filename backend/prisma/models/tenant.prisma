@@ -102,6 +102,7 @@ model Madrasa {
   attendances                  Attendance[]
   classRoutines                ClassRoutine[]
   examRoutines                 ExamRoutine[]
+  events                       Event[]
   promotionBatches             PromotionBatch[]
   sessions                     Session[]
   studentSessionHistories      StudentSessionHistory[]

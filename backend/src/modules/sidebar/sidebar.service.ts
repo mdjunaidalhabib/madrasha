@@ -81,7 +81,7 @@ export class SidebarService {
         keyName: "fee",
         nameBn: "ফি ব্যবস্থাপনা",
         groupName: "core",
-        sortOrder: 7.5,
+        sortOrder: 5.5,
       });
     }
 
@@ -100,7 +100,7 @@ export class SidebarService {
         keyName: "communication",
         nameBn: "SMS/ইমেইল",
         groupName: "core",
-        sortOrder: 7,
+        sortOrder: 9.5,
       });
     }
 
@@ -119,7 +119,7 @@ export class SidebarService {
         keyName: "teacher_staff",
         nameBn: "শিক্ষক ও স্টাফ",
         groupName: "core",
-        sortOrder: 2.5,
+        sortOrder: 8.5,
       });
     }
 
@@ -453,12 +453,12 @@ export class SidebarService {
       if (mod.keyName === "settings") {
         const fallbackSettingsChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "profile", label: "প্রোফাইল সেটিংস", sortOrder: -1 },
-          { key: "plan", label: "প্ল্যান", sortOrder: -0.5 },
+          { key: "branding", label: "প্রতিষ্ঠান ব্র্যান্ডিং", sortOrder: -0.5 },
           { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 0 },
-          { key: "branding", label: "প্রতিষ্ঠান ব্র্যান্ডিং", sortOrder: 1 },
-          { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 2 },
-          { key: "users", label: "স্টাফ ব্যবস্থাপনা", sortOrder: 3 },
-          { key: "roles", label: "রোল ও পারমিশন", sortOrder: 4 },
+          { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 1 },
+          { key: "users", label: "স্টাফ ব্যবস্থাপনা", sortOrder: 2 },
+          { key: "roles", label: "রোল ও পারমিশন", sortOrder: 3 },
+          { key: "plan", label: "প্ল্যান", sortOrder: 4 },
           { key: "trash", label: "ট্র্যাশ", sortOrder: 5 },
         ];
         for (const fallback of fallbackSettingsChildren) {

@@ -30,6 +30,8 @@ export const TALIMAT_DEFAULT_PERMISSION_KEYS = [
   "attendance.mark",
   "routine.read",
   "routine.manage",
+  "events.read",
+  "events.manage",
   "exam.read",
   "exam.manage",
   "result.read",

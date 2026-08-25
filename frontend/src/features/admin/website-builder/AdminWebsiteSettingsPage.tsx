@@ -638,7 +638,7 @@ export default function AdminWebsiteSettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <PageHeader title="ওয়েবসাইট সেটিংস" />
         <SkeletonCard lines={3} />
         <SkeletonCard lines={3} />
@@ -647,7 +647,53 @@ export default function AdminWebsiteSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-24">
+        <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
+          <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
+            <h2 className="text-base font-bold">সেটিংস মেনু</h2>
+          </div>
+          <div className="space-y-1">
+            {tabs.map(({ key, label, icon: Icon, badge }) => {
+              const active = tab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
+                    active
+                      ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2 truncate font-medium">
+                    <Icon size={15} className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {typeof badge === "number" && badge > 0 && (
+                      <span
+                        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                          active
+                            ? "bg-blue-600/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                    <span className={active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}>
+                      ›
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="min-w-0 max-w-4xl space-y-6">
       <PageHeader
         title="ওয়েবসাইট সেটিংস"
         subtitle="মাদ্রাসার পাবলিক ওয়েবসাইটের নাম, লোগো, ব্যানার, নোটিশ, গ্যালারি ও পেজ কন্টেন্ট এখান থেকে পরিচালনা করুন।"
@@ -712,52 +758,6 @@ export default function AdminWebsiteSettingsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5">
-        <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
-          <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-            <h2 className="text-base font-bold">সেটিংস মেনু</h2>
-          </div>
-          <div className="space-y-1">
-            {tabs.map(({ key, label, icon: Icon, badge }) => {
-              const active = tab === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTab(key)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
-                    active
-                      ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <span className="flex min-w-0 items-center gap-2 truncate font-medium">
-                    <Icon size={15} className="shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    {typeof badge === "number" && badge > 0 && (
-                      <span
-                        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                          active
-                            ? "bg-blue-600/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                    <span className={active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}>
-                      ›
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        <div className="min-w-0 space-y-6">
       {tab === "general" && (
         <div className="space-y-6">
           <SectionCard

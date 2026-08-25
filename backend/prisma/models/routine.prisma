@@ -51,3 +51,33 @@ model ExamRoutine {
   @@index([madrasaId, classId, examDate], map: "idx_exam_routine_madrasa_class_date")
   @@map("exam_routines")
 }
+
+enum EventType {
+  MEETING
+  NOTICE
+  HOLIDAY
+  OTHER
+}
+
+/// A manually-added calendar entry (মিটিং/নোটিশ/ছুটি/ইত্যাদি) - separate
+/// from ExamRoutine since exams are always generated from an existing Exam
+/// row, while these are free-form items an admin types in directly. The
+/// Dashboard's "আসন্ন কার্যক্রম" list and the calendar widget merge this
+/// with upcoming exams into one combined feed.
+model Event {
+  id          Int       @id @default(autoincrement())
+  madrasaId   Int       @map("madrasa_id")
+  title       String    @db.VarChar(200)
+  type        EventType @default(OTHER)
+  eventDate   DateTime  @map("event_date") @db.Date
+  startTime   String?   @map("start_time") @db.VarChar(10)
+  endTime     String?   @map("end_time") @db.VarChar(10)
+  description String?   @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, eventDate], map: "idx_events_madrasa_date")
+  @@map("events")
+}

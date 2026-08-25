@@ -12,6 +12,7 @@ import settingsRoutes from "../modules/settings/settings.routes";
 import documentTemplateRoutes from "../modules/document-templates/document-templates.routes";
 import activityRoutes from "../modules/activity/activity.routes";
 import sidebarRoutes from "../modules/sidebar/sidebar.routes";
+import eventRoutes from "../modules/events/event.routes";
 
 // 👨‍🎓 Student & Admission
 import studentRoutes from "../modules/students/student.routes";
@@ -96,6 +97,9 @@ router.use("/dashboard", dashboardRoutes);
 
 // Sidebar (UI config)
 router.use("/sidebar", sidebarRoutes);
+
+// Events (calendar meetings/notices/holidays etc., merged with exams on the Dashboard)
+router.use("/events", eventRoutes);
 
 /* =========================================================
    👨‍👩‍👧 GUARDIAN PORTAL

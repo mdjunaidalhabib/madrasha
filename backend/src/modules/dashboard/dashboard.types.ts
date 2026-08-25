@@ -41,15 +41,31 @@ export interface AttendanceTodaySummary {
   percentage: number;
 }
 
+export interface OverdueFeeListItem {
+  id: number;
+  title: string;
+  studentName: string;
+  dueDate: Date;
+  remaining: number;
+}
+
 export interface OverdueFeesSummary {
   count: number;
   totalDue: number;
+  list: OverdueFeeListItem[];
 }
 
 export interface StudentGenderBreakdown {
   male: number;
   female: number;
   unspecified: number;
+}
+
+export interface ImportantLinkRow {
+  id: number;
+  label: string;
+  subLabel: string | null;
+  url: string;
 }
 
 export interface UpcomingExamRow {
@@ -107,4 +123,5 @@ export interface DashboardSummary {
   pendingAdmissionsCount: number;
   overdueFees: OverdueFeesSummary;
   upcomingExams: UpcomingExamRow[];
+  importantLinks: ImportantLinkRow[];
 }
