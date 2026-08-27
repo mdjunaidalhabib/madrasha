@@ -1,6 +1,7 @@
 export interface StudentAdmissionRequestDto {
   name_bn: string;
   arabic_name?: string;
+  name_en?: string;
   nid?: string;
   gender?: number | string;
   dob?: string;
@@ -17,14 +18,19 @@ export interface StudentAdmissionRequestDto {
   admission_date?: string;
   father_name?: string;
   father_arabic_name?: string;
+  father_name_en?: string;
   father_nid?: string;
   father_occupation?: string;
   mother_name?: string;
+  mother_arabic_name?: string;
+  mother_name_en?: string;
   mother_nid?: string;
   mother_occupation?: string;
   guardian_phone?: string;
   guardian_phone_2?: string;
   alt_guardian_name?: string;
+  alt_guardian_arabic_name?: string;
+  alt_guardian_name_en?: string;
   alt_guardian_relation?: string;
   alt_guardian_address?: string;
   alt_guardian_phone?: string;

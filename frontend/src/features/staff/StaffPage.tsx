@@ -10,6 +10,7 @@ import { useToastStore } from "../../store/toastStore";
 export interface StaffFormData {
   name_bn: string;
   name_ar: string;
+  name_en: string;
   nid: string;
   gender: number | null;
   dob: string;
@@ -25,7 +26,10 @@ export interface StaffFormData {
   salary: string;
   father_name: string;
   father_name_ar: string;
+  father_name_en: string;
   mother_name: string;
+  mother_name_ar: string;
+  mother_name_en: string;
   father_nid: string;
   mother_nid: string;
   father_occupation: string;
@@ -43,6 +47,7 @@ export type StaffFormErrors = Partial<Record<keyof StaffFormData, string>>;
 const initialState: StaffFormData = {
   name_bn: "",
   name_ar: "",
+  name_en: "",
   nid: "",
   gender: null,
   dob: "",
@@ -58,7 +63,10 @@ const initialState: StaffFormData = {
   salary: "",
   father_name: "",
   father_name_ar: "",
+  father_name_en: "",
   mother_name: "",
+  mother_name_ar: "",
+  mother_name_en: "",
   father_nid: "",
   mother_nid: "",
   father_occupation: "",
@@ -110,6 +118,7 @@ const StaffPage: React.FC = () => {
   const makePayload = (data: StaffFormData) => ({
     name_bn: data.name_bn,
     name_ar: data.name_ar || null,
+    name_en: data.name_en || null,
     nid: data.nid || null,
     gender: toGenderNumber(data.gender),
     dob: data.dob || null,
@@ -125,9 +134,12 @@ const StaffPage: React.FC = () => {
     salary: data.salary ? Number(data.salary) : null,
     father_name: data.father_name || null,
     father_name_ar: data.father_name_ar || null,
+    father_name_en: data.father_name_en || null,
     father_nid: data.father_nid || null,
     father_occupation: data.father_occupation || null,
     mother_name: data.mother_name || null,
+    mother_name_ar: data.mother_name_ar || null,
+    mother_name_en: data.mother_name_en || null,
     mother_nid: data.mother_nid || null,
     mother_occupation: data.mother_occupation || null,
     parent_phone: cleanPhone(data.parent_phone),

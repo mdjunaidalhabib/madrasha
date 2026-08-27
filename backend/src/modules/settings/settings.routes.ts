@@ -20,6 +20,8 @@ import {
   getBookLabelDesign,
   updateBookLabelDesign,
   getMyPlan,
+  getSectionToggles,
+  updateSectionToggle,
 } from "./settings.controller";
 
 const router = Router();
@@ -89,5 +91,14 @@ router.put(
 );
 
 router.get("/plan", tenantMiddleware, authMiddleware, getMyPlan);
+
+router.get("/section-toggles", tenantMiddleware, authMiddleware, getSectionToggles);
+router.put(
+  "/section-toggles",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateSectionToggle,
+);
 
 export default router;

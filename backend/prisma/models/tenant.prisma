@@ -56,6 +56,22 @@ model Madrasa {
   brandingPhones String[] @default([]) @map("branding_phones")
   brandingEmails String[] @default([]) @map("branding_emails")
 
+  // Custom report header/footer text, shown on every printed report/document
+  // instead of the default logo+name+address header when enabled. printMode
+  // "letterhead" suppresses the logo/background/watermark/header/footer
+  // entirely at print time (pre-printed press paper already has them) -
+  // "normal" prints them as configured.
+  reportHeaderFooterEnabled Int?    @default(0) @map("report_header_footer_enabled")
+  reportHeaderText          String? @map("report_header_text") @db.Text
+  reportFooterText          String? @map("report_footer_text") @db.Text
+  reportPrintMode           String? @default("normal") @map("report_print_mode") @db.VarChar(20)
+
+  // Per-section enabled/disabled state for the admin settings pages
+  // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
+  // JSON map { sectionKey: boolean } instead of one column per section, since
+  // this list only grows. A missing key defaults to enabled (true).
+  settingsSectionToggles Json? @map("settings_section_toggles")
+
   sanadTemplate          String? @map("sanad_template") @db.Text
   testimonialTemplate    String? @map("testimonial_template") @db.Text
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
@@ -333,6 +349,7 @@ model WebsiteSettings {
   showNoticeBar Int?    @default(1) @map("show_notice_bar")
   isPublished   Int?    @default(1) @map("is_published")
   noticeBarText String? @map("notice_bar_text") @db.Text
+  noticeBarSpeed Int?   @default(20) @map("notice_bar_speed")
 
   muhtamimName        String? @map("muhtamim_name") @db.VarChar(190)
   muhtamimDesignation String? @map("muhtamim_designation") @db.VarChar(190)

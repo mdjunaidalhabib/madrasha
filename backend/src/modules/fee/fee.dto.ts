@@ -14,16 +14,6 @@ export type UpdateFeeStructureRequestDto = Partial<CreateFeeStructureRequestDto>
   is_active?: boolean;
 };
 
-export interface GenerateInvoicesRequestDto {
-  fee_structure_id: number | string;
-  due_date: string;
-  month?: string; // required when the fee structure is MONTHLY, "YYYY-MM"
-  class_id?: number | string; // overrides the fee structure's class if given
-  session_id?: number | string; // which students to bill; defaults to the fee structure's session
-  /** @deprecated legacy fallback - resolved to a Session by matching name when session_id is absent. */
-  academic_year?: string;
-}
-
 export interface InvoiceQueryDto {
   student_id?: string;
   status?: string;
@@ -33,6 +23,12 @@ export interface InvoiceQueryDto {
 export interface PendingInvoicesQueryDto {
   limit?: number | string;
   offset?: number | string;
+}
+
+export interface DeleteAllInvoicesRequestDto {
+  /** Must be exactly "DELETE" - a typed confirmation gate for this
+   * irreversible, tenant-wide action (see fee.service.ts deleteAllInvoices). */
+  confirm: string;
 }
 
 export interface WaiveInvoiceRequestDto {

@@ -13,10 +13,29 @@ const TeacherParentInfoProfile = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field
-          label="পিতার নাম"
+          label="পিতার নাম (বাংলা)"
           name="father_name"
           value={data.father_name}
           onChange={handleChange}
+          scriptLang="bn"
+          {...{ editableField, setEditableField, isEditMode }}
+        />
+
+        <Field
+          label="পিতার নাম (আরবি)"
+          name="father_name_ar"
+          value={data.father_name_ar}
+          onChange={handleChange}
+          scriptLang="ar"
+          {...{ editableField, setEditableField, isEditMode }}
+        />
+
+        <Field
+          label="পিতার নাম (ইংরেজি)"
+          name="father_name_en"
+          value={data.father_name_en}
+          onChange={handleChange}
+          scriptLang="en"
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -25,6 +44,7 @@ const TeacherParentInfoProfile = ({
           name="father_nid"
           value={data.father_nid}
           onChange={handleChange}
+          numeric
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -37,10 +57,29 @@ const TeacherParentInfoProfile = ({
         />
 
         <Field
-          label="মাতার নাম"
+          label="মাতার নাম (বাংলা)"
           name="mother_name"
           value={data.mother_name}
           onChange={handleChange}
+          scriptLang="bn"
+          {...{ editableField, setEditableField, isEditMode }}
+        />
+
+        <Field
+          label="মাতার নাম (আরবি)"
+          name="mother_name_ar"
+          value={data.mother_name_ar}
+          onChange={handleChange}
+          scriptLang="ar"
+          {...{ editableField, setEditableField, isEditMode }}
+        />
+
+        <Field
+          label="মাতার নাম (ইংরেজি)"
+          name="mother_name_en"
+          value={data.mother_name_en}
+          onChange={handleChange}
+          scriptLang="en"
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -49,6 +88,7 @@ const TeacherParentInfoProfile = ({
           name="mother_nid"
           value={data.mother_nid}
           onChange={handleChange}
+          numeric
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -65,6 +105,7 @@ const TeacherParentInfoProfile = ({
           name="parent_phone"
           value={data.parent_phone}
           onChange={handleChange}
+          numeric
           {...{ editableField, setEditableField, isEditMode }}
         />
       </div>

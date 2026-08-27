@@ -79,12 +79,14 @@ const reports: ReportMenuItem[] = [
   },
 ];
 
-const ExamReportPage = () => (
+const ExamReportPage = ({ printMode }: { printMode?: boolean }) => (
   <ReportShell
     pageTitle="পরীক্ষা রিপোর্ট"
     pageSubtitle="পরীক্ষা নির্বাচন করে স্বাক্ষরপত্র ও বিষয়ভিত্তিক নম্বরপত্র দেখুন এবং প্রিন্ট করুন।"
     accentTitle="Exam Reports"
     reports={reports}
+    reportsPageKey="exam"
+    printMode={printMode}
   />
 );
 

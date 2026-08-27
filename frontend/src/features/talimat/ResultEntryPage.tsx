@@ -92,7 +92,7 @@ export default function ResultEntryPage() {
       try {
         const [d, e] = await Promise.all([
           cachedGet("/madrasa-divisions"),
-          cachedGet("/exams"),
+          cachedGet("/exams", { params: { active_only: true } }),
         ]);
         setDivisions(extractArray(d.data));
         setExams(extractArray(e.data));

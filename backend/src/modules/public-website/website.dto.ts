@@ -18,6 +18,7 @@ export interface UpsertWebsiteSettingsRequestDto {
   show_committee?: unknown;
   show_notice_bar?: unknown;
   notice_bar_text?: string;
+  notice_bar_speed?: number | string;
   is_published?: unknown;
   muhtamim_name?: string;
   muhtamim_designation?: string;

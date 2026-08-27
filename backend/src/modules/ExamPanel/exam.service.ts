@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
+import { sessionRepository, SessionRepository } from "../session/session.repository";
 import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
@@ -39,26 +40,43 @@ const validateMarkRange = (min_mark: unknown, max_mark: unknown) => {
   return { min, max };
 };
 
+const parsePoint = (point: unknown): number | null => {
+  if (isEmpty(point)) return null;
+  const value = Number(point);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new BadRequestError("Point must be a non-negative number");
+  }
+  return value;
+};
+
 export class ExamService {
-  constructor(private readonly repository: ExamRepository = examRepository) {}
+  constructor(
+    private readonly repository: ExamRepository = examRepository,
+    private readonly sessions: SessionRepository = sessionRepository,
+  ) {}
 
   /* ================= EXAMS ================= */
 
-  async listExams(madrasaId: number) {
+  async listExams(madrasaId: number, activeOnly = false) {
     try {
-      return await this.repository.findExams(madrasaId);
+      return await this.repository.findExams(madrasaId, activeOnly);
     } catch (err) {
       return friendlyFailure("getExams error:", err, "Failed to load exams");
     }
   }
 
   async createExam(madrasaId: number, dto: CreateExamRequestDto) {
-    if (isEmpty(dto.name) || isEmpty(dto.year)) {
-      throw new BadRequestError("Name and year are required");
+    if (isEmpty(dto.name)) {
+      throw new BadRequestError("Name is required");
+    }
+
+    const currentSession = await this.sessions.findCurrentSession(madrasaId);
+    if (!currentSession) {
+      throw new BadRequestError("No current session found. Please set a current session first.");
     }
 
     try {
-      await this.repository.createExam(madrasaId, String(dto.name).trim(), String(dto.year).trim());
+      await this.repository.createExam(madrasaId, String(dto.name).trim(), currentSession.name);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("createExam error:", err, "Failed to create exam");
@@ -66,17 +84,17 @@ export class ExamService {
   }
 
   async updateExam(id: number, madrasaId: number, dto: UpdateExamRequestDto) {
-    if (isEmpty(dto.name) || isEmpty(dto.year)) {
-      throw new BadRequestError("Name and year are required");
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) {
+      if (isEmpty(dto.name)) throw new BadRequestError("Name cannot be empty");
+      data.name = String(dto.name).trim();
     }
+    if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
+
+    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
 
     try {
-      const result = await this.repository.updateExam(
-        id,
-        madrasaId,
-        String(dto.name).trim(),
-        String(dto.year).trim(),
-      );
+      const result = await this.repository.updateExam(id, madrasaId, data);
       if (!result.count) throw new NotFoundError("Exam not found");
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
@@ -124,9 +142,10 @@ export class ExamService {
   async saveGeneralGrade(madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+    const point = parsePoint(dto.point);
 
     try {
-      await this.repository.createGeneralGrade(madrasaId, String(dto.name).trim(), min, max);
+      await this.repository.createGeneralGrade(madrasaId, String(dto.name).trim(), min, max, point);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This general grade already exists");
       return friendlyFailure("saveGeneralGrade error:", err, "Failed to save general grade");
@@ -136,6 +155,7 @@ export class ExamService {
   async updateGeneralGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+    const point = parsePoint(dto.point);
 
     try {
       const result = await this.repository.updateGeneralGrade(
@@ -144,6 +164,7 @@ export class ExamService {
         String(dto.name).trim(),
         min,
         max,
+        point,
       );
       if (!result.count) throw new NotFoundError("General grade not found");
     } catch (err) {
@@ -176,9 +197,10 @@ export class ExamService {
   async saveMadrasaGrade(madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+    const point = parsePoint(dto.point);
 
     try {
-      await this.repository.createMadrasaGrade(madrasaId, String(dto.name).trim(), min, max);
+      await this.repository.createMadrasaGrade(madrasaId, String(dto.name).trim(), min, max, point);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
       return friendlyFailure("saveMadrasaGrade error:", err, "Failed to save madrasa grade");
@@ -188,6 +210,7 @@ export class ExamService {
   async updateMadrasaGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
+    const point = parsePoint(dto.point);
 
     try {
       const result = await this.repository.updateMadrasaGrade(
@@ -196,6 +219,7 @@ export class ExamService {
         String(dto.name).trim(),
         min,
         max,
+        point,
       );
       if (!result.count) throw new NotFoundError("Madrasa grade not found");
     } catch (err) {
@@ -245,9 +269,12 @@ export class ExamService {
   }
 
   // Grade bands are auto-chained (see GeneralGradeList/MadrasaGradeList on the
-  // frontend): the lowest grade's minMark is always failMark + 1. Changing the
-  // fail mark can leave that pinned floor stale until this re-pins it, even if
-  // the admin never revisits the গ্রেড page after changing it on পরীক্ষা.
+  // frontend): the lowest grade's minMark is always failMark + 1, clamped to
+  // that grade's own maxMark so a stale lowest band (predating a later
+  // fail-mark increase) never ends up with min > max - the update below
+  // would otherwise be rejected. Changing the fail mark can leave that
+  // pinned floor stale until this re-pins it, even if the admin never
+  // revisits the গ্রেড page after changing it on পরীক্ষা.
   private async repinLowestGradeBands(madrasaId: number, failValue: number) {
     const [generalGrades, madrasaGrades] = await Promise.all([
       this.repository.findGeneralGrades(madrasaId),
@@ -255,25 +282,33 @@ export class ExamService {
     ]);
 
     const lowestGeneral = generalGrades.at(-1);
-    if (lowestGeneral && lowestGeneral.minMark !== failValue + 1) {
-      await this.repository.updateGeneralGrade(
-        lowestGeneral.id,
-        madrasaId,
-        lowestGeneral.name,
-        failValue + 1,
-        lowestGeneral.maxMark,
-      );
+    if (lowestGeneral) {
+      const newMin = Math.min(failValue + 1, lowestGeneral.maxMark);
+      if (lowestGeneral.minMark !== newMin) {
+        await this.repository.updateGeneralGrade(
+          lowestGeneral.id,
+          madrasaId,
+          lowestGeneral.name,
+          newMin,
+          lowestGeneral.maxMark,
+          lowestGeneral.point,
+        );
+      }
     }
 
     const lowestMadrasa = madrasaGrades.at(-1);
-    if (lowestMadrasa && lowestMadrasa.minMark !== failValue + 1) {
-      await this.repository.updateMadrasaGrade(
-        lowestMadrasa.id,
-        madrasaId,
-        lowestMadrasa.name,
-        failValue + 1,
-        lowestMadrasa.maxMark,
-      );
+    if (lowestMadrasa) {
+      const newMinMadrasa = Math.min(failValue + 1, lowestMadrasa.maxMark);
+      if (lowestMadrasa.minMark !== newMinMadrasa) {
+        await this.repository.updateMadrasaGrade(
+          lowestMadrasa.id,
+          madrasaId,
+          lowestMadrasa.name,
+          newMinMadrasa,
+          lowestMadrasa.maxMark,
+          lowestMadrasa.point,
+        );
+      }
     }
   }
 }

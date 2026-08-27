@@ -7,10 +7,10 @@ import {
   createFeeStructure,
   updateFeeStructure,
   deleteFeeStructure,
-  generateInvoices,
   getInvoices,
   getPendingInvoices,
   clearPendingInvoices,
+  deleteAllInvoices,
   backfillInvoices,
   payInvoice,
   waiveInvoice,
@@ -35,10 +35,9 @@ router.put("/fee-structures/:id", rbacMiddleware("fee.manage"), updateFeeStructu
 router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStructure);
 
 /* ================= INVOICES ================= */
-router.post("/invoices/generate", rbacMiddleware("fee.manage"), generateInvoices);
-// Bulk version of generate: runs auto-billing for every currently-enrolled
-// student instead of one class/month at a time - for backfilling students
-// admitted before auto-billing-at-admission existed.
+// Runs auto-billing for every currently-enrolled student in a class/session -
+// for backfilling students admitted before auto-billing-at-admission
+// existed, and called automatically right after a fee structure is created.
 router.post("/invoices/backfill", rbacMiddleware("fee.manage"), backfillInvoices);
 router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
 // Registered as its own literal path (not GET /invoices/:id) - backs the
@@ -47,6 +46,12 @@ router.get("/invoices/pending", rbacMiddleware("fee.read"), getPendingInvoices);
 // "সব ক্লিয়ার করুন" on that page - fee.manage (not fee.read) since it mutates
 // every currently-pending row, even though it's non-destructive.
 router.post("/invoices/pending/clear", rbacMiddleware("fee.manage"), clearPendingInvoices);
+// Irreversible tenant-wide wipe (e.g. clearing test/demo invoices before
+// real use) - deliberately NOT under the "fee.*" prefix (see the same
+// reasoning on invoice.waive below) so ACCOUNTANT's default "fee.*" grant
+// doesn't cover it; only MUHTAMIM/SUPER_ADMIN (who bypass rbacMiddleware)
+// can call this.
+router.post("/invoices/delete-all", rbacMiddleware("invoice.delete_all"), deleteAllInvoices);
 router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
 // Deliberately named "invoice.waive", NOT "fee.waive" - ACCOUNTANT's default
 // grant (see ACCOUNTANT_DEFAULT_PERMISSION_KEYS in

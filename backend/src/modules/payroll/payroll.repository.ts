@@ -46,7 +46,10 @@ export class PayrollRepository {
   }
 
   findForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {
-    return tx.payrollRecord.findFirst({ where: { id, madrasaId } });
+    return tx.payrollRecord.findFirst({
+      where: { id, madrasaId },
+      include: { teacher: { select: { nameBn: true, phone: true } } },
+    });
   }
 
   markPaidOnTx(

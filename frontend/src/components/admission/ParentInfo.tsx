@@ -1,4 +1,6 @@
 import { AdmissionFormData, AdmissionFormErrors } from "../../features/students/AdmissionPage";
+import ScriptInput from "../ui/ScriptInput";
+import NumericInput from "../ui/NumericInput";
 
 interface Props {
   formData: AdmissionFormData;
@@ -43,8 +45,9 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (বাংলা)</label>
+          <ScriptInput
+            scriptLang="bn"
             name="fatherName"
             value={formData.fatherName || ""}
             onChange={handleChange}
@@ -55,20 +58,34 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার আরবি নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (আরবি)</label>
+          <ScriptInput
+            scriptLang="ar"
             name="fatherArabicName"
             value={formData.fatherArabicName || ""}
             onChange={handleChange}
-            placeholder="পিতার আরবি নাম"
+            placeholder="الأب اسم"
             className={inputClass("fatherArabicName")}
           />
           <ErrorText field="fatherArabicName" />
         </div>
 
         <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="fatherNameEn"
+            value={formData.fatherNameEn || ""}
+            onChange={handleChange}
+            placeholder="Father's Name"
+            className={inputClass("fatherNameEn")}
+          />
+          <ErrorText field="fatherNameEn" />
+        </div>
+
+        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার NID</label>
-          <input
+          <NumericInput
             name="fatherNid"
             value={formData.fatherNid || ""}
             onChange={handleChange}
@@ -91,8 +108,9 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (বাংলা)</label>
+          <ScriptInput
+            scriptLang="bn"
             name="motherName"
             value={formData.motherName || ""}
             onChange={handleChange}
@@ -103,8 +121,34 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
         </div>
 
         <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (আরবি)</label>
+          <ScriptInput
+            scriptLang="ar"
+            name="motherArabicName"
+            value={formData.motherArabicName || ""}
+            onChange={handleChange}
+            placeholder="الأم اسم"
+            className={inputClass("motherArabicName")}
+          />
+          <ErrorText field="motherArabicName" />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="motherNameEn"
+            value={formData.motherNameEn || ""}
+            onChange={handleChange}
+            placeholder="Mother's Name"
+            className={inputClass("motherNameEn")}
+          />
+          <ErrorText field="motherNameEn" />
+        </div>
+
+        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার NID</label>
-          <input
+          <NumericInput
             name="motherNid"
             value={formData.motherNid || ""}
             onChange={handleChange}
@@ -128,7 +172,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
 
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের মোবাইল নম্বর</label>
-          <input
+          <NumericInput
             name="parentPhone"
             value={formData.parentPhone || ""}
             onChange={handleChange}
@@ -142,7 +186,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             অভিভাবকের বিকল্প মোবাইল নম্বর
           </label>
-          <input
+          <NumericInput
             name="parentPhone2"
             value={formData.parentPhone2 || ""}
             onChange={handleChange}

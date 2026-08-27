@@ -20,6 +20,11 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
     hint: "কোনো ইনভয়েসে পেমেন্ট রেকর্ড করলে অভিভাবককে স্বয়ংক্রিয়ভাবে SMS যাবে",
     placeholders: "{name} {amount} {due}",
   },
+  SALARY_PAYMENT: {
+    title: "শিক্ষক বেতন পরিশোধের পর",
+    hint: "পেরোল পেজে কোনো শিক্ষকের বেতন পরিশোধিত হিসেবে চিহ্নিত করলে তাকে স্বয়ংক্রিয়ভাবে SMS যাবে",
+    placeholders: "{name} {amount} {month}",
+  },
 };
 
 const AutoNotificationSettingsPage = () => {

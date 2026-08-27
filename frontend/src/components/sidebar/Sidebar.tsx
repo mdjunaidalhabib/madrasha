@@ -26,6 +26,7 @@ import {
   CalendarCheck,
   GraduationCap,
   Receipt,
+  UserRound,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -107,8 +108,6 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     setOpenModuleKey((prev) => (prev === key ? null : key));
   };
 
-  const avatarLetter = (user?.name || "ম").trim().charAt(0).toUpperCase();
-
   // Account dropdown - click the avatar card to reveal প্রোফাইল সেটিংস/লগআউট
   // instead of the card itself being a direct link (a single, unlabeled
   // click straight into a settings page reads as accidental, not a
@@ -142,16 +141,16 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover dark:border-slate-700"
                 />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white">
-                  {avatarLetter}
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+                  <UserRound size={20} />
                 </span>
               )}
               <span className="min-w-0 flex-1 text-left leading-tight">
-                <span className="block break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <span className="block break-words text-base font-semibold text-slate-800 dark:text-slate-100">
                   {user?.name || "Madrasa"}
                 </span>
-                <span className="block break-words text-xs text-slate-400 dark:text-slate-500">
-                  {user?.email || user?.mobile || ""}
+                <span className="block break-words text-xs text-slate-800 dark:text-slate-100">
+                  {user?.role_label || user?.role || ""}
                 </span>
               </span>
             </button>

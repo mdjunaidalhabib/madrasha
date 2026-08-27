@@ -1,6 +1,7 @@
 export interface StaffPayloadDto {
   name_bn?: string;
   name_ar?: string;
+  name_en?: string;
   nid?: string;
   gender?: number | string;
   dob?: string;
@@ -16,9 +17,12 @@ export interface StaffPayloadDto {
   salary?: number | string;
   father_name?: string;
   father_name_ar?: string;
+  father_name_en?: string;
   father_nid?: string;
   father_occupation?: string;
   mother_name?: string;
+  mother_name_ar?: string;
+  mother_name_en?: string;
   mother_nid?: string;
   mother_occupation?: string;
   parent_phone?: string;

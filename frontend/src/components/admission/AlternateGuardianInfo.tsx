@@ -1,4 +1,6 @@
 import { AdmissionFormData } from "../../features/students/AdmissionPage";
+import ScriptInput from "../ui/ScriptInput";
+import NumericInput from "../ui/NumericInput";
 
 interface Props {
   formData: AdmissionFormData;
@@ -33,12 +35,37 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
       {formData.hasAltGuardian && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম</label>
-            <input
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (বাংলা)</label>
+            <ScriptInput
+              scriptLang="bn"
               name="altGuardianName"
               value={formData.altGuardianName || ""}
               onChange={handleChange}
               placeholder="নাম লিখুন"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (আরবি)</label>
+            <ScriptInput
+              scriptLang="ar"
+              name="altGuardianArabicName"
+              value={formData.altGuardianArabicName || ""}
+              onChange={handleChange}
+              placeholder="اسم ولي الأمر"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (ইংরেজি)</label>
+            <ScriptInput
+              scriptLang="en"
+              name="altGuardianNameEn"
+              value={formData.altGuardianNameEn || ""}
+              onChange={handleChange}
+              placeholder="Guardian's Name"
               className={inputClass}
             />
           </div>
@@ -58,7 +85,7 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
 
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মোবাইল নম্বর</label>
-            <input
+            <NumericInput
               name="altGuardianPhone"
               value={formData.altGuardianPhone || ""}
               onChange={handleChange}

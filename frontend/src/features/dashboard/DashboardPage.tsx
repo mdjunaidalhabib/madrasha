@@ -293,7 +293,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="grid items-start gap-6 xl:grid-cols-4">
         <div className="space-y-6 xl:col-span-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {loading
               ? Array.from({ length: 10 }).map((_, i) => (
                   <StatTile key={i} label="" value="" loading size="sm" />
@@ -301,7 +301,7 @@ export default function DashboardPage() {
               : cards.map((card) => <StatTile key={card.label} {...card} size="sm" />)}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <StatTile key={i} label="" value="" loading size="sm" />
@@ -654,12 +654,13 @@ export default function DashboardPage() {
             <CardHeader
               title="দ্রুত কাজ"
               subtitle="প্রায়ই ব্যবহৃত কাজ"
+              nowrap
               actions={
                 <a
                   href={publicUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-600/30"
+                  className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-600/30"
                 >
                   <ExternalLink size={13} />
                   ওয়েবসাইট দেখুন

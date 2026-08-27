@@ -13,7 +13,8 @@ const getMadrasaId = (req: Request): number => {
 /* ================= EXAMS ================= */
 
 export const getExams = asyncHandler(async (req: Request, res: Response) => {
-  const data = await examService.listExams(getMadrasaId(req));
+  const activeOnly = req.query.active_only === "true";
+  const data = await examService.listExams(getMadrasaId(req), activeOnly);
   res.json(data);
 });
 

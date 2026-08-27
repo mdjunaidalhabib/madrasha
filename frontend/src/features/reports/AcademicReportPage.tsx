@@ -95,13 +95,8 @@ const reports: ReportMenuItem[] = [
   },
 ];
 
-const AcademicReportPage = () => (
-  <ReportShell
-    pageTitle="একাডেমিক রিপোর্ট"
-    pageSubtitle="ফলাফল, ফলাফল সারসংক্ষেপ, রুটিন এবং হাজিরা খাতা এক জায়গায়।"
-    accentTitle="Academic Reports"
-    reports={reports}
-  />
+const AcademicReportPage = ({ printMode }: { printMode?: boolean }) => (
+  <ReportShell reports={reports} reportsPageKey="academic" printMode={printMode} />
 );
 
 export default AcademicReportPage;

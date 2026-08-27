@@ -20,6 +20,7 @@ export default function DashboardLayout() {
   const setItems = useSidebarStore((s) => s.setItems);
   const setPlan = usePlanStore((s) => s.setPlan);
   const setAccess = useAuthStore((s) => s.setAccess);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
   const breadcrumbs = useAdminBreadcrumbs();
@@ -59,13 +60,14 @@ export default function DashboardLayout() {
       try {
         const profile = await getMyProfile();
         setAccess(profile.permissions, profile.modules);
+        updateUser({ role_key: profile.role_key, role_label: profile.role_label });
       } catch (err) {
         logger.error("Access refresh failed:", err);
       }
     };
 
     load();
-  }, [setAccess]);
+  }, [setAccess, updateUser]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden dark:bg-slate-950">

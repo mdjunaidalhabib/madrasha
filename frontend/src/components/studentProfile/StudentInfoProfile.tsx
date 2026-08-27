@@ -133,13 +133,14 @@ const StudentInfoProfile = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field
-          label="নাম"
+          label="নাম (বাংলা)"
           name="name_bn"
           value={student.name_bn || ""}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode}
+          scriptLang="bn"
         />
 
         <Field
@@ -157,13 +158,25 @@ const StudentInfoProfile = ({
         />
 
         <Field
-          label="ছাত্রের আরবি নাম"
+          label="ছাত্রের নাম (আরবি)"
           name="arabic_name"
           value={student.arabic_name || ""}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode}
+          scriptLang="ar"
+        />
+
+        <Field
+          label="ছাত্রের নাম (ইংরেজি)"
+          name="name_en"
+          value={student.name_en || ""}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode}
+          scriptLang="en"
         />
 
         <Field
@@ -174,6 +187,7 @@ const StudentInfoProfile = ({
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode}
+          numeric
         />
 
         {/* GENDER */}

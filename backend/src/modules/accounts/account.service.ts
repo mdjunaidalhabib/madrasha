@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
-import { NotFoundError } from "../../shared/errors";
+import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { accountRepository, AccountRepository } from "./account.repository";
 import {
+  BulkDeleteAccountsRequestDto,
   CreateCategoryRequestDto,
   CreateExpenseRequestDto,
   CreateFundRequestDto,
@@ -257,6 +258,10 @@ export class AccountService {
       return this.repository.findReportByCategory(madrasaId);
     }
 
+    if (groupBy === "fund_category") {
+      return this.repository.findReportByFundCategory(madrasaId) as unknown as Promise<ReportRow[]>;
+    }
+
     const periodExpr = buildPeriodExpr(type, dateColumn);
 
     return this.repository.findReportByPeriod(madrasaId, periodExpr);
@@ -272,7 +277,11 @@ export class AccountService {
   async list(madrasaId: number, query: ListAccountsQueryDto) {
     const where: Prisma.AccountWhereInput = {};
     if (query.type === "income" || query.type === "expense") where.type = query.type;
-    if (query.fund) where.fund = clean(query.fund) || undefined;
+    // Free-text substring search (not an exact match, unlike category below)
+    // - lets an admin find entries whose fund name doesn't match any current
+    // ফান্ড ও খাত সেটিংস row (e.g. leftover from a past bug), for cleanup.
+    const fundSearch = clean(query.fund);
+    if (fundSearch) where.fund = { contains: fundSearch, mode: "insensitive" };
     if (query.category) where.category = clean(query.category) || undefined;
     if (query.from || query.to) {
       where.entryDate = {};
@@ -355,6 +364,28 @@ export class AccountService {
     });
 
     return { message: ACCOUNT_DELETE_SUCCESS_MESSAGE };
+  }
+
+  /** Deletes many entries at once (e.g. cleaning up a batch of stale/
+   * misfiled entries) - scoped to `madrasaId` in a single query rather than
+   * one findForTenant+softDelete per id, so a large selection stays fast. */
+  async removeMany(madrasaId: number, userId: number, body: BulkDeleteAccountsRequestDto) {
+    const numericIds = [...new Set((body.ids || []).map(Number))].filter(
+      (id) => Number.isInteger(id) && id > 0,
+    );
+    if (numericIds.length === 0) throw new BadRequestError("মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি");
+
+    const result = await this.repository.softDeleteMany(numericIds, madrasaId);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "DELETE",
+      entity: "ACCOUNT",
+      details: `${result.count} টি এন্ট্রি একসাথে মুছে ফেলা হয়েছে`,
+    });
+
+    return { message: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, count: result.count };
   }
 }
 

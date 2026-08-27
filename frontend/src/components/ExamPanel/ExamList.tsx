@@ -6,8 +6,9 @@ import { useConfirmStore } from "../../store/confirmStore";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import EmptyState from "../ui/EmptyState";
+import { ToggleSwitch } from "../settings/ToggleSwitch";
 
-type ExamItem = { id: string | number; name: string; year: string };
+type ExamItem = { id: string | number; name: string; isActive: boolean };
 
 interface ExamListProps {
   exams: ExamItem[];
@@ -16,7 +17,6 @@ interface ExamListProps {
 
 export default function ExamList({ exams, reload }: ExamListProps) {
   const [name, setName] = useState("");
-  const [year, setYear] = useState("");
   const [adding, setAdding] = useState(false);
 
   // Local, optimistically-reorderable copy of the list, so dragging feels
@@ -29,7 +29,6 @@ export default function ExamList({ exams, reload }: ExamListProps) {
 
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editYear, setEditYear] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -37,20 +36,33 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   }, [exams]);
 
   const addExam = async () => {
-    if (!name.trim() || !year.trim()) {
-      return useToastStore.getState().show("পরীক্ষার নাম ও বছর দিন", "error");
+    if (!name.trim()) {
+      return useToastStore.getState().show("পরীক্ষার নাম দিন", "error");
     }
 
     try {
       setAdding(true);
-      await api.post("/exams", { name: name.trim(), year: year.trim() });
+      await api.post("/exams", { name: name.trim() });
       setName("");
-      setYear("");
       reload();
-    } catch {
-      useToastStore.getState().show("পরীক্ষা যোগ করা যায়নি", "error");
+    } catch (err: any) {
+      useToastStore
+        .getState()
+        .show(err?.response?.data?.message || "পরীক্ষা যোগ করা যায়নি", "error");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const toggleActive = async (exam: ExamItem) => {
+    const nextActive = !exam.isActive;
+    setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, isActive: nextActive } : it)));
+
+    try {
+      await api.put(`/exams/${exam.id}`, { is_active: nextActive });
+    } catch {
+      useToastStore.getState().show("পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
+      reload();
     }
   };
 
@@ -71,23 +83,21 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   const startEdit = (exam: ExamItem) => {
     setEditingId(exam.id);
     setEditName(exam.name);
-    setEditYear(exam.year);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
-    setEditYear("");
   };
 
   const saveEdit = async (id: string | number) => {
-    if (!editName.trim() || !editYear.trim()) {
-      return useToastStore.getState().show("পরীক্ষার নাম ও বছর দিন", "error");
+    if (!editName.trim()) {
+      return useToastStore.getState().show("পরীক্ষার নাম দিন", "error");
     }
 
     try {
       setSaving(true);
-      await api.put(`/exams/${id}`, { name: editName.trim(), year: editYear.trim() });
+      await api.put(`/exams/${id}`, { name: editName.trim() });
       useToastStore.getState().show("পরীক্ষা আপডেট হয়েছে", "success");
       cancelEdit();
       reload();
@@ -151,12 +161,6 @@ export default function ExamList({ exams, reload }: ExamListProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <Input
-          className="sm:w-32"
-          placeholder="সাল"
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-        />
         <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
           <Plus size={16} />
           {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
@@ -201,12 +205,6 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                         onChange={(ev) => setEditName(ev.target.value)}
                         placeholder="পরীক্ষার নাম"
                       />
-                      <Input
-                        className="sm:w-28"
-                        value={editYear}
-                        onChange={(ev) => setEditYear(ev.target.value)}
-                        placeholder="সাল"
-                      />
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1">
@@ -242,11 +240,15 @@ export default function ExamList({ exams, reload }: ExamListProps) {
 
                       <div>
                         <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{e.year}</p>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-2">
+                      <ToggleSwitch
+                        checked={e.isActive}
+                        onChange={() => toggleActive(e)}
+                        title={e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                      />
                       <button
                         onClick={() => startEdit(e)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50 dark:hover:bg-blue-950/40"

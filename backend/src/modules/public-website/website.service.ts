@@ -34,6 +34,18 @@ const boolValue = (value: unknown, fallback = 1) => {
   return Number(value) ? 1 : 0;
 };
 
+// Seconds for one full marquee loop - lower is faster. Clamped so a bad/
+// missing value can't produce an unusably fast or frozen-looking scroll.
+const NOTICE_BAR_SPEED_MIN = 5;
+const NOTICE_BAR_SPEED_MAX = 60;
+const NOTICE_BAR_SPEED_DEFAULT = 20;
+
+const noticeBarSpeedValue = (value: unknown) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return NOTICE_BAR_SPEED_DEFAULT;
+  return Math.min(NOTICE_BAR_SPEED_MAX, Math.max(NOTICE_BAR_SPEED_MIN, Math.round(num)));
+};
+
 export class WebsiteService {
   constructor(private readonly repository: WebsiteRepository = websiteRepository) {}
 
@@ -126,6 +138,7 @@ export class WebsiteService {
       show_committee,
       show_notice_bar,
       notice_bar_text,
+      notice_bar_speed,
       is_published,
       muhtamim_name,
       muhtamim_designation,
@@ -160,6 +173,7 @@ export class WebsiteService {
       showCommittee: boolValue(show_committee),
       showNoticeBar: boolValue(show_notice_bar),
       noticeBarText: notice_bar_text || null,
+      noticeBarSpeed: noticeBarSpeedValue(notice_bar_speed),
       isPublished: boolValue(is_published),
       muhtamimName: muhtamim_name || null,
       muhtamimDesignation: muhtamim_designation || null,

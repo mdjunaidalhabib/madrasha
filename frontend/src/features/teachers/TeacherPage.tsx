@@ -14,6 +14,7 @@ import { useToastStore } from "../../store/toastStore";
 export interface TeacherFormData {
   name_bn: string;
   name_ar: string;
+  name_en: string;
   nid: string;
   gender: number | null;
   dob: string;
@@ -29,7 +30,10 @@ export interface TeacherFormData {
   salary: string;
   father_name: string;
   father_name_ar: string;
+  father_name_en: string;
   mother_name: string;
+  mother_name_ar: string;
+  mother_name_en: string;
   father_nid: string;
   mother_nid: string;
   father_occupation: string;
@@ -52,6 +56,7 @@ type DivisionItem = {
 const initialState: TeacherFormData = {
   name_bn: "",
   name_ar: "",
+  name_en: "",
   nid: "",
   gender: null,
   dob: "",
@@ -67,7 +72,10 @@ const initialState: TeacherFormData = {
   salary: "",
   father_name: "",
   father_name_ar: "",
+  father_name_en: "",
   mother_name: "",
+  mother_name_ar: "",
+  mother_name_en: "",
   father_nid: "",
   mother_nid: "",
   father_occupation: "",
@@ -160,6 +168,7 @@ const TeacherPage: React.FC = () => {
   const makePayload = (data: TeacherFormData) => ({
     name_bn: data.name_bn,
     name_ar: data.name_ar || null,
+    name_en: data.name_en || null,
     nid: data.nid || null,
     gender: toGenderNumber(data.gender),
     dob: data.dob || null,
@@ -176,9 +185,12 @@ const TeacherPage: React.FC = () => {
     salary: data.salary ? Number(data.salary) : null,
     father_name: data.father_name || null,
     father_name_ar: data.father_name_ar || null,
+    father_name_en: data.father_name_en || null,
     father_nid: data.father_nid || null,
     father_occupation: data.father_occupation || null,
     mother_name: data.mother_name || null,
+    mother_name_ar: data.mother_name_ar || null,
+    mother_name_en: data.mother_name_en || null,
     mother_nid: data.mother_nid || null,
     mother_occupation: data.mother_occupation || null,
     parent_phone: cleanPhone(data.parent_phone),
@@ -193,6 +205,7 @@ const TeacherPage: React.FC = () => {
     excelTeachers.map((teacher) => ({
       name_bn: teacher.name_bn || teacher.name,
       name_ar: teacher.name_ar || null,
+      name_en: teacher.name_en || null,
       nid: teacher.nid || null,
       gender: toGenderNumber(teacher.gender),
       dob: teacher.dob || null,
@@ -209,9 +222,12 @@ const TeacherPage: React.FC = () => {
       salary: teacher.salary ? Number(teacher.salary) : null,
       father_name: teacher.father_name || null,
       father_name_ar: teacher.father_name_ar || null,
+      father_name_en: teacher.father_name_en || null,
       father_nid: teacher.father_nid || null,
       father_occupation: teacher.father_occupation || null,
       mother_name: teacher.mother_name || null,
+      mother_name_ar: teacher.mother_name_ar || null,
+      mother_name_en: teacher.mother_name_en || null,
       mother_nid: teacher.mother_nid || null,
       mother_occupation: teacher.mother_occupation || null,
       parent_phone: cleanPhone(teacher.parent_phone || ""),
@@ -227,6 +243,7 @@ const TeacherPage: React.FC = () => {
     const columns = [
       { key: "name_bn", required: true },
       { key: "name_ar", required: false },
+      { key: "name_en", required: false },
       { key: "nid", required: false },
       { key: "gender", required: false },
       { key: "dob", required: false },
@@ -241,9 +258,12 @@ const TeacherPage: React.FC = () => {
       { key: "salary", required: false },
       { key: "father_name", required: false },
       { key: "father_name_ar", required: false },
+      { key: "father_name_en", required: false },
       { key: "father_nid", required: false },
       { key: "father_occupation", required: false },
       { key: "mother_name", required: false },
+      { key: "mother_name_ar", required: false },
+      { key: "mother_name_en", required: false },
       { key: "mother_nid", required: false },
       { key: "mother_occupation", required: false },
       { key: "parent_phone", required: false },

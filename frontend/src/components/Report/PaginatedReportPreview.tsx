@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
-import { ReportBackground, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
+import { ReportBackground, ReportBrandFooter, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { toBanglaDigits } from "../../utils/reportUtils";
 import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins } from "./pagination/pageGeometry";
@@ -9,6 +9,7 @@ import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks"
 import { splitTextToFit } from "./pagination/splitTextToFit";
 import { getPrintableConfig } from "./pagination/printableConfig";
 import { useDocumentTemplateDefaultStore } from "../../store/documentTemplateDefaultStore";
+import { useBrandingStore } from "../../store/brandingStore";
 
 type PaginatedReportPreviewProps = {
   loading: boolean;
@@ -564,8 +565,23 @@ const PaginatedReportPreview = ({
   // (no async template), so it needs no such subscription.
   const idCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ID_CARD);
 
+  const branding = useBrandingStore((s) => s.branding);
+  // "লেটারহেড" print mode: the physical paper is already pre-printed at a
+  // press, so nothing decorative (logo/background/watermark/header/footer)
+  // should print - only the main content text.
+  const isLetterhead =
+    !!branding?.report_header_footer_enabled && branding?.report_print_mode === "letterhead";
+
   const config = getPrintableConfig(report);
-  const showBrandAtAll = !hideBrandHeader && report.printable !== "id-card";
+  // Marksheet always carries the madrasa logo/name header even on the
+  // "ডকুমেন্ট সমূহ" page (hideBrandHeader=true there) - unlike id-card/
+  // admit-card/certificate etc. which already brand themselves via their
+  // own document-designer template, the marksheet's hardcoded fallback
+  // layout (MarksheetList) has no such built-in branding of its own.
+  const showBrandAtAll =
+    (report.printable === "marksheet" || !hideBrandHeader) &&
+    !isLetterhead &&
+    report.printable !== "id-card";
   const columnsPerPage = config.columnsPerPage ?? 1;
   const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
   // Content width of ONE column in a columnsPerPage:2 report - the page's
@@ -896,6 +912,16 @@ const PaginatedReportPreview = ({
 
   const pages = loading || !rows.length ? [statusPage] : resolvedPages ?? fallbackPages;
 
+  // Signals "fully rendered, safe to screenshot/print" - used by the
+  // server-side PDF export (see backend report-export.service.ts), which
+  // navigates a headless browser to this same preview and waits for this
+  // attribute before calling page.pdf(). True once either there's nothing to
+  // paginate (loading finished, no rows) or the off-screen measurement pass
+  // has actually produced resolvedPages - not just "loading is false", since
+  // resolvedPages starts null and is filled in asynchronously after
+  // `document.fonts.ready` (see the useLayoutEffect above).
+  const isReportReady = !loading && (rows.length === 0 || resolvedPages !== null);
+
   // columnsPerPage:2 only: fold the flat chunk sequence back into columns
   // (a column can hold several stacked chunks when classes packed together -
   // see packColumnsAcrossGroups) so each one renders as a vertical stack
@@ -956,7 +982,11 @@ const PaginatedReportPreview = ({
         </div>
       )}
 
-      <div ref={viewportRef} className="print-preview-viewport">
+      <div
+        ref={viewportRef}
+        className="print-preview-viewport"
+        data-report-ready={isReportReady ? "true" : "false"}
+      >
         <div className="print-area print-pages" style={scaleStyle}>
           {columnsPerPage === 2 && twoColColumns
             ? Array.from({ length: Math.ceil(twoColColumns.length / 2) }, (_, physicalIndex) => {
@@ -974,8 +1004,13 @@ const PaginatedReportPreview = ({
                     data-density={left?.[0]?.density ?? right?.[0]?.density ?? "comfortable"}
                     style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
                   >
-                    <ReportBackground />
-                    <ReportWatermark />
+                    {!isLetterhead && (
+                      <>
+                        <ReportBackground />
+                        <ReportWatermark />
+                        <ReportBrandFooter />
+                      </>
+                    )}
                     <div className="report-page-footer">
                       <span className="report-page-footer-label">পৃষ্ঠা:</span>
                       <span className="report-page-footer-number">
@@ -1064,8 +1099,13 @@ const PaginatedReportPreview = ({
                     data-density={page.density}
                     style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
                   >
-                    <ReportBackground />
-                    <ReportWatermark />
+                    {!isLetterhead && (
+                      <>
+                        <ReportBackground />
+                        <ReportWatermark />
+                        <ReportBrandFooter />
+                      </>
+                    )}
                     {showsBrandHeader && <ReportBrandHeader />}
                     <div className="report-page-footer">
                       <span className="report-page-footer-label">পৃষ্ঠা:</span>

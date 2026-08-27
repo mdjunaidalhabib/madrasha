@@ -14,6 +14,7 @@ model Teacher {
 
   nameBn String  @map("name_bn") @db.VarChar(200)
   nameAr String? @map("name_ar") @db.VarChar(200)
+  nameEn String? @map("name_en") @db.VarChar(200)
 
   nid    String? @db.VarChar(50)
   /// 1=male, 2=female
@@ -40,10 +41,13 @@ model Teacher {
 
   fatherName       String? @map("father_name") @db.VarChar(200)
   fatherNameAr     String? @map("father_name_ar") @db.VarChar(200)
+  fatherNameEn     String? @map("father_name_en") @db.VarChar(200)
   fatherNid        String? @map("father_nid") @db.VarChar(50)
   fatherOccupation String? @map("father_occupation") @db.VarChar(150)
 
   motherName       String? @map("mother_name") @db.VarChar(200)
+  motherNameAr     String? @map("mother_name_ar") @db.VarChar(200)
+  motherNameEn     String? @map("mother_name_en") @db.VarChar(200)
   motherNid        String? @map("mother_nid") @db.VarChar(50)
   motherOccupation String? @map("mother_occupation") @db.VarChar(150)
 

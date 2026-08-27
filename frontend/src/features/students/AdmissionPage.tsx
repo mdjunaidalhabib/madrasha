@@ -18,6 +18,7 @@ import { useToastStore } from "../../store/toastStore";
 export interface AdmissionFormData {
   name: string;
   arabicName: string;
+  nameEn: string;
   nid: string;
   gender: number | null;
   dob: string;
@@ -35,15 +36,20 @@ export interface AdmissionFormData {
   currentClass: string;
   fatherName: string;
   fatherArabicName: string;
+  fatherNameEn: string;
   fatherNid: string;
   fatherOccupation: string;
   motherName: string;
+  motherArabicName: string;
+  motherNameEn: string;
   motherNid: string;
   motherOccupation: string;
   parentPhone: string;
   parentPhone2: string;
   hasAltGuardian: boolean;
   altGuardianName: string;
+  altGuardianArabicName: string;
+  altGuardianNameEn: string;
   altGuardianRelation: string;
   altGuardianAddress: string;
   altGuardianPhone: string;
@@ -60,6 +66,7 @@ interface PreviousStudentData {
   id: number;
   name_bn: string;
   arabic_name: string | null;
+  name_en: string | null;
   nid: string | null;
   gender: number | null;
   dob: string | null;
@@ -77,14 +84,19 @@ interface PreviousStudentData {
   current_class: string | null;
   father_name: string | null;
   father_arabic_name: string | null;
+  father_name_en: string | null;
   father_nid: string | null;
   father_occupation: string | null;
   mother_name: string | null;
+  mother_arabic_name: string | null;
+  mother_name_en: string | null;
   mother_nid: string | null;
   mother_occupation: string | null;
   guardian_phone: string | null;
   guardian_phone_2: string | null;
   alt_guardian_name: string | null;
+  alt_guardian_arabic_name: string | null;
+  alt_guardian_name_en: string | null;
   alt_guardian_relation: string | null;
   alt_guardian_address: string | null;
   alt_guardian_phone: string | null;
@@ -111,6 +123,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 const initialState: AdmissionFormData = {
   name: "",
   arabicName: "",
+  nameEn: "",
   nid: "",
   gender: null,
   dob: "",
@@ -128,15 +141,20 @@ const initialState: AdmissionFormData = {
   currentClass: "",
   fatherName: "",
   fatherArabicName: "",
+  fatherNameEn: "",
   fatherNid: "",
   fatherOccupation: "",
   motherName: "",
+  motherArabicName: "",
+  motherNameEn: "",
   motherNid: "",
   motherOccupation: "",
   parentPhone: "",
   parentPhone2: "",
   hasAltGuardian: false,
   altGuardianName: "",
+  altGuardianArabicName: "",
+  altGuardianNameEn: "",
   altGuardianRelation: "",
   altGuardianAddress: "",
   altGuardianPhone: "",
@@ -209,6 +227,7 @@ const AdmissionPage = () => {
             ...prev,
             name: data.name_bn || prev.name,
             arabicName: data.arabic_name || prev.arabicName,
+            nameEn: data.name_en || prev.nameEn,
             gender: data.gender ?? prev.gender,
             dob: data.dob ? String(data.dob).slice(0, 10) : prev.dob,
             age: data.age ?? prev.age,
@@ -221,15 +240,20 @@ const AdmissionPage = () => {
             previousResult: data.previous_result || prev.previousResult,
             fatherName: data.father_name || prev.fatherName,
             fatherArabicName: data.father_arabic_name || prev.fatherArabicName,
+            fatherNameEn: data.father_name_en || prev.fatherNameEn,
             fatherNid: data.father_nid || prev.fatherNid,
             fatherOccupation: data.father_occupation || prev.fatherOccupation,
             motherName: data.mother_name || prev.motherName,
+            motherArabicName: data.mother_arabic_name || prev.motherArabicName,
+            motherNameEn: data.mother_name_en || prev.motherNameEn,
             motherNid: data.mother_nid || prev.motherNid,
             motherOccupation: data.mother_occupation || prev.motherOccupation,
             parentPhone: data.guardian_phone || prev.parentPhone,
             parentPhone2: data.guardian_phone_2 || prev.parentPhone2,
             hasAltGuardian: Boolean(data.alt_guardian_name) || prev.hasAltGuardian,
             altGuardianName: data.alt_guardian_name || prev.altGuardianName,
+            altGuardianArabicName: data.alt_guardian_arabic_name || prev.altGuardianArabicName,
+            altGuardianNameEn: data.alt_guardian_name_en || prev.altGuardianNameEn,
             altGuardianRelation: data.alt_guardian_relation || prev.altGuardianRelation,
             altGuardianAddress: data.alt_guardian_address || prev.altGuardianAddress,
             altGuardianPhone: data.alt_guardian_phone || prev.altGuardianPhone,
@@ -405,13 +429,17 @@ const AdmissionPage = () => {
       division_id: Number(student.academic_division),
       guardian_phone: cleanPhone(student.guardian_phone || student.parent_phone || ""),
       arabic_name: student.arabic_name || null,
+      name_en: student.name_en || null,
       nid: student.nid || null,
       age: calculateAge(student.dob),
       father_name: student.father_name || null,
       father_arabic_name: student.father_arabic_name || null,
+      father_name_en: student.father_name_en || null,
       father_nid: student.father_nid || null,
       father_occupation: student.father_occupation || null,
       mother_name: student.mother_name || null,
+      mother_arabic_name: student.mother_arabic_name || null,
+      mother_name_en: student.mother_name_en || null,
       mother_nid: student.mother_nid || null,
       mother_occupation: student.mother_occupation || null,
       division: student.division || null,
@@ -426,6 +454,7 @@ const AdmissionPage = () => {
     const columns = [
       { key: "name_bn", required: true },
       { key: "arabic_name", required: false },
+      { key: "name_en", required: false },
       { key: "nid", required: false },
       { key: "gender", required: false },
       { key: "dob", required: false },
@@ -436,9 +465,12 @@ const AdmissionPage = () => {
       { key: "guardian_phone", required: false },
       { key: "father_name", required: false },
       { key: "father_arabic_name", required: false },
+      { key: "father_name_en", required: false },
       { key: "father_nid", required: false },
       { key: "father_occupation", required: false },
       { key: "mother_name", required: false },
+      { key: "mother_arabic_name", required: false },
+      { key: "mother_name_en", required: false },
       { key: "mother_nid", required: false },
       { key: "mother_occupation", required: false },
       { key: "division", required: false },
@@ -589,19 +621,25 @@ const AdmissionPage = () => {
       guardian_phone: cleanPhone(formData.parentPhone),
       guardian_phone_2: formData.parentPhone2 ? cleanPhone(formData.parentPhone2) : null,
       alt_guardian_name: formData.hasAltGuardian ? formData.altGuardianName || null : null,
+      alt_guardian_arabic_name: formData.hasAltGuardian ? formData.altGuardianArabicName || null : null,
+      alt_guardian_name_en: formData.hasAltGuardian ? formData.altGuardianNameEn || null : null,
       alt_guardian_relation: formData.hasAltGuardian ? formData.altGuardianRelation || null : null,
       alt_guardian_address: formData.hasAltGuardian ? formData.altGuardianAddress || null : null,
       alt_guardian_phone: formData.hasAltGuardian
         ? cleanPhone(formData.altGuardianPhone) || null
         : null,
       arabic_name: formData.arabicName || null,
+      name_en: formData.nameEn || null,
       nid: formData.nid || null,
       age: calculateAge(formData.dob),
       father_name: formData.fatherName || null,
       father_arabic_name: formData.fatherArabicName || null,
+      father_name_en: formData.fatherNameEn || null,
       father_nid: formData.fatherNid || null,
       father_occupation: formData.fatherOccupation || null,
       mother_name: formData.motherName || null,
+      mother_arabic_name: formData.motherArabicName || null,
+      mother_name_en: formData.motherNameEn || null,
       mother_nid: formData.motherNid || null,
       mother_occupation: formData.motherOccupation || null,
       division: formData.division || null,

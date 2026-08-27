@@ -47,13 +47,6 @@ export class FeeRepository {
 
   /* ================= INVOICES ================= */
 
-  findStudentsForBilling(madrasaId: number, classId: number, sessionId: number) {
-    return prisma.student.findMany({
-      where: { madrasaId, classId, sessionId, isActive: 1, deletedAt: null },
-      select: { id: true },
-    });
-  }
-
   /** Every currently-enrolled student, for the "বিদ্যমান সব ছাত্রের ফি সেট
    * করুন" backfill action - covers students admitted before auto-billing
    * existed, or transferred/promoted into a new session without a fresh
@@ -182,6 +175,14 @@ export class FeeRepository {
       },
       data: { queueClearedAt: new Date() },
     });
+  }
+
+  /** Hard-deletes every invoice for this tenant (e.g. wiping test/demo
+   * invoices before real use) - Payment rows cascade-delete automatically
+   * (Payment.invoice has onDelete: Cascade). Irreversible; the service
+   * layer gates this behind an explicit typed confirmation. */
+  deleteAllInvoices(madrasaId: number) {
+    return prisma.invoice.deleteMany({ where: { madrasaId } });
   }
 
   findInvoiceForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {

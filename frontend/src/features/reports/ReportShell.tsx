@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
 import { Orientation, PaperSize, PageMargins } from "../../components/common/DataExportPrintActions";
@@ -41,14 +42,32 @@ const ReportShell = ({
   accentTitle,
   reports,
   hideBrandHeader = false,
+  showSearch = false,
+  reportsPageKey,
+  printMode = false,
 }: ReportShellProps) => {
-  const [activeKey, setActiveKey] = useState(reports[0]?.key || "");
+  const [searchParams] = useSearchParams();
+  // In print mode the active report comes from the URL (?key=...) rather
+  // than defaulting to the first menu item - set directly in initial state
+  // (not an effect) so it's correct on the very first render and the
+  // "reset filters on activeKey change" effect below never sees activeKey
+  // change again after mount, which would otherwise wipe out the
+  // division/class/orientation values the hydration effect further down
+  // sets.
+  const [activeKey, setActiveKey] = useState(
+    (printMode && searchParams.get("key")) || reports[0]?.key || "",
+  );
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [exams, setExams] = useState<ExamItem[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  // Starts true (rather than waiting for the first loadReport() call to flip
+  // it) so the very first paint shows the loading skeleton instead of
+  // briefly flashing the "কোনো ডাটা পাওয়া যায়নি" empty state before any
+  // fetch has even had a chance to run.
+  const [loading, setLoading] = useState(true);
+  const [examsLoaded, setExamsLoaded] = useState(false);
   const [warning, setWarning] = useState("");
 
   const [search, setSearch] = useState("");
@@ -133,13 +152,15 @@ const ReportShell = ({
 
   const loadExams = async () => {
     try {
-      const res = await cachedGet("/exams");
+      const res = await cachedGet("/exams", { params: { active_only: true } });
       const data = res.data?.data || res.data?.result || res.data || [];
       const examRows = Array.isArray(data) ? data : [];
       setExams(examRows);
       if (!selectedExam && examRows.length) setSelectedExam(String(examRows[0].id));
     } catch {
       setExams([]);
+    } finally {
+      setExamsLoaded(true);
     }
   };
 
@@ -182,6 +203,44 @@ const ReportShell = ({
     setMargins(getDefaultPageMargins(paperSize));
   }, [paperSize]);
 
+  // Print-mode only, runs once on mount: hydrates the filter state a headless
+  // browser can't set by clicking through the UI, straight from the URL
+  // query string the backend export service builds (see
+  // report-export.service.ts). Deliberately skips margins - the print route
+  // just uses that paper size's defaults (getDefaultPageMargins above),
+  // matching what a fresh visit would compute anyway, so there's no need to
+  // thread margin_top/right/bottom/left through the URL too.
+  useEffect(() => {
+    if (!printMode) return;
+
+    const examId = searchParams.get("exam_id");
+    if (examId) setSelectedExam(examId);
+
+    const subject = searchParams.get("subject");
+    if (subject) setSelectedSubject(subject);
+
+    const templateId = searchParams.get("template_id");
+    if (templateId) setSelectedTemplateId(Number(templateId));
+
+    const paperSizeParam = searchParams.get("paper_size");
+    if (paperSizeParam === "a4" || paperSizeParam === "a5") setPaperSize(paperSizeParam);
+
+    const orientationParam = searchParams.get("orientation");
+    if (orientationParam === "portrait" || orientationParam === "landscape") {
+      setOrientation(orientationParam);
+    }
+
+    const divisionId = searchParams.get("division_id");
+    const classId = searchParams.get("class_id");
+    if (divisionId) {
+      setSelectedDivision(divisionId);
+      loadClassesByDivision(divisionId).then(() => {
+        if (classId) setSelectedClass(classId);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printMode]);
+
   // Non-paginated reports only ever need to refetch on activeKey/selectedExam
   // change (division/class stay client-side filters). The paginated academic
   // -result reports also refetch on division/class/page/pageSize, since
@@ -192,9 +251,17 @@ const ReportShell = ({
     : `${activeKey}|${selectedExam}`;
 
   useEffect(() => {
+    // For an exam-requiring report, loadExams() auto-selects the first exam
+    // once it resolves - but that's a separate async call from this effect,
+    // so on mount selectedExam is still "" for a moment even though an exam
+    // will shortly be picked. Loading report data before exams have finished
+    // loading would wrongly conclude "no exam selected" and flash the
+    // "পরীক্ষা নির্বাচন করুন" warning before the real exam (and its data) ever
+    // gets a chance to load - so just wait for that first exams response.
+    if (activeReport.requiresExam && !selectedExam && !examsLoaded) return;
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadTrigger]);
+  }, [loadTrigger, examsLoaded]);
 
   useEffect(() => {
     const documentType = activeReport.documentType;
@@ -376,44 +443,87 @@ const ReportShell = ({
   const hasPrevPage = page > 1;
   const hasNextPage = page * pageSize < totalCount;
 
+  // Built once here (not inside DataExportPrintActions) since this is the
+  // one place that already has every filter value the print route needs to
+  // reproduce this exact view - see ReportShell's printMode hydration effect
+  // above for the other end of this contract.
+  const serverPdfExport = {
+    reportsPage: reportsPageKey,
+    reportKey: activeReport.key,
+    filters: {
+      exam_id: selectedExam || undefined,
+      division_id: selectedDivision || undefined,
+      class_id: selectedClass || undefined,
+      subject: selectedSubject || undefined,
+      template_id: selectedTemplateId ? String(selectedTemplateId) : undefined,
+    },
+  };
+
+  // Chrome-less: no sidebar/filter-bar/page header, nothing that isn't the
+  // report itself - this is what the headless browser (server-side PDF
+  // export) actually screenshots/prints. See PaginatedReportPreview's
+  // data-report-ready attribute for how it signals "done rendering" back to
+  // that headless browser.
+  if (printMode) {
+    return (
+      <PaginatedReportPreview
+        loading={loading}
+        report={activeReport}
+        rows={displayRows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        hideBrandHeader={hideBrandHeader}
+        paperSize={paperSize}
+        orientation={orientation}
+        margins={margins}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f6f8fb] p-2 dark:bg-slate-950 sm:p-4 lg:p-6">
-      <div className="no-print mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:mb-5 sm:p-5">
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-400">
-          {accentTitle}
+      {(accentTitle || pageTitle || pageSubtitle) && (
+        <div className="no-print mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:mb-5 sm:p-5">
+          {accentTitle && (
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-400">
+              {accentTitle}
+            </div>
+          )}
+          {pageTitle && (
+            <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">{pageTitle}</h1>
+          )}
+          {pageSubtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{pageSubtitle}</p>}
         </div>
-        <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">{pageTitle}</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{pageSubtitle}</p>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5">
         <ReportSidebar reports={reports} activeKey={activeReport.key} onChange={setActiveKey} />
 
         <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="no-print border-b border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-5">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 sm:text-xl">
+          <div className="no-print border-b border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+            <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
                   {activeReport.title}
                 </h2>
-                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{activeReport.subtitle}</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">{activeReport.subtitle}</p>
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <div className="w-fit rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:px-4">
+                <div className="w-fit rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:text-[13px]">
                   মোট <span className="font-bold text-slate-900 dark:text-slate-100">{totalRecords}</span> টি
                   রেকর্ড
                 </div>
 
                 {isPaginatedAcademicResult && totalCount > 0 && (
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setPage(1);
                       }}
-                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      className="h-7 rounded border border-slate-200 bg-white px-1.5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     >
                       {[50, 100, 200, 500].map((size) => (
                         <option key={size} value={size}>
@@ -422,7 +532,7 @@ const ReportShell = ({
                       ))}
                     </select>
 
-                    <span className="text-xs">
+                    <span className="whitespace-nowrap text-xs">
                       {pageStart}–{pageEnd}
                     </span>
 
@@ -430,7 +540,7 @@ const ReportShell = ({
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={!hasPrevPage}
-                      className="h-8 rounded-md border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
                     >
                       আগের
                     </button>
@@ -438,7 +548,7 @@ const ReportShell = ({
                       type="button"
                       onClick={() => setPage((p) => p + 1)}
                       disabled={!hasNextPage}
-                      className="h-8 rounded-md border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
                     >
                       পরের
                     </button>
@@ -448,6 +558,8 @@ const ReportShell = ({
             </div>
 
             <ReportFilterBar
+              showSearch={showSearch}
+              serverPdfExport={serverPdfExport}
               search={search}
               selectedDivision={selectedDivision}
               selectedClass={selectedClass}

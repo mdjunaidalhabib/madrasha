@@ -1,5 +1,7 @@
 import api, { cachedGet } from "./api";
 
+export type ReportPrintMode = "normal" | "letterhead";
+
 export type BrandingPayload = {
   name?: string | null;
   address?: string | null;
@@ -9,6 +11,10 @@ export type BrandingPayload = {
   report_banner?: string | null;
   report_watermark?: string | null;
   report_watermark_opacity?: number;
+  report_header_footer_enabled?: boolean;
+  report_header_text?: string | null;
+  report_footer_text?: string | null;
+  report_print_mode?: ReportPrintMode;
 };
 
 export async function getBranding(): Promise<BrandingPayload> {

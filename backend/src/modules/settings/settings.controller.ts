@@ -164,3 +164,23 @@ export const getMyPlan = async (req: Request, res: Response) => {
     respondError(res, error);
   }
 };
+
+export const getSectionToggles = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getSectionToggles(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateSectionToggle = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.updateSectionToggle(madrasa_id, req.body);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};

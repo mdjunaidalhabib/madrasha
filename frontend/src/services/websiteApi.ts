@@ -22,6 +22,7 @@ export type WebsiteSettingsPayload = {
   show_committee?: 0 | 1;
   show_notice_bar?: 0 | 1;
   notice_bar_text?: string;
+  notice_bar_speed?: number;
   is_published?: 0 | 1;
   muhtamim_name?: string;
   muhtamim_designation?: string;

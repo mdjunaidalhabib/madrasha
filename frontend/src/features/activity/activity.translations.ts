@@ -255,7 +255,6 @@ const ACTION_VERBS: Record<Lang, Record<string, (noun: string) => string>> = {
 const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: string }> = [
   { key: "invoices/pay|CREATE", bn: "ইনভয়েস পরিশোধ করা হয়েছে", en: "Invoice paid", ar: "تم دفع الفاتورة" },
   { key: "invoices/waive|CREATE", bn: "ইনভয়েস মওকুফ করা হয়েছে", en: "Invoice waived", ar: "تم إعفاء الفاتورة" },
-  { key: "invoices/generate|CREATE", bn: "ইনভয়েস তৈরি করা হয়েছে", en: "Invoices generated", ar: "تم إنشاء الفواتير" },
   {
     key: "invoices/backfill|CREATE",
     bn: "পুরনো ইনভয়েস তৈরি করা হয়েছে (ব্যাকফিল)",

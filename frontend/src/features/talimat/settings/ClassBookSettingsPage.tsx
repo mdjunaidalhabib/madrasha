@@ -452,7 +452,7 @@ export default function ClassBookSettingsPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-      <SectionCard title="বিভাগ">
+      <SectionCard title="বিভাগ" badge={`${divisions.length}টি`}>
         <div className="flex flex-col gap-1.5">
           {divisions.map((division) => {
             const isActiveDivision = divisionId === String(division.division_id);
@@ -543,7 +543,7 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="শ্রেণি">
+      <SectionCard title="শ্রেণি" badge={`${classes.length}টি`}>
         <div className="flex flex-col gap-1.5">
           {!showClassInput ? (
               <button
@@ -656,7 +656,7 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="কিতাবসমূহ">
+      <SectionCard title="কিতাবসমূহ" badge={`${books.length}টি`}>
         <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
           মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। টেনে (drag) কিতাবের ক্রম সাজানো যায়।
         </p>

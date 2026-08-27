@@ -25,11 +25,18 @@ export interface AccountOptions {
   paymentMethods: string[];
 }
 
-export type ReportGroupBy = "period" | "fund" | "category";
+export type ReportGroupBy = "period" | "fund" | "category" | "fund_category";
 export type ReportType = "daily" | "monthly" | "yearly";
 
 export interface ReportRow {
   period: string;
+  total_income: number;
+  total_expense: number;
+}
+
+export interface FundCategoryReportRow {
+  fund: string;
+  category: string;
   total_income: number;
   total_expense: number;
 }

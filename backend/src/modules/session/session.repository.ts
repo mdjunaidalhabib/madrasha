@@ -13,6 +13,10 @@ export class SessionRepository {
     return prisma.session.findFirst({ where: { id, madrasaId } });
   }
 
+  findCurrentSession(madrasaId: number) {
+    return prisma.session.findFirst({ where: { madrasaId, isCurrent: true } });
+  }
+
   findByNameForTenant(madrasaId: number, name: string) {
     return prisma.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
   }

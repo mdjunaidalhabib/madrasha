@@ -40,9 +40,16 @@ export default function AccountListPage() {
     initialType === "income" || initialType === "expense" ? initialType : "",
   );
   const [categoryFilter, setCategoryFilter] = useState("");
+  // ফান্ডের নাম দিয়ে সরাসরি টেক্সট সার্চ - ফান্ড ড্রপডাউন শুধু বর্তমান খাত
+  // সেটিংসে যা আছে তাই দেখায়, কিন্তু কোনো পুরনো/ভুলবশত তৈরি এন্ট্রির ফান্ড নাম
+  // সেটিংসে না-ও থাকতে পারে (যেমন কোনো পুরনো কোড বাগের কারণে তৈরি এন্ট্রি) -
+  // সেগুলো খুঁজে বের করে বাল্ক-ডিলিট করার জন্য এই ফ্রি-টেক্সট ফিল্টার দরকার।
+  const [fundFilter, setFundFilter] = useState("");
   const [from, setFrom] = useState(formatDateInput(new Date()));
   const [to, setTo] = useState(formatDateInput(new Date()));
   const [activePreset, setActivePreset] = useState<string>("today");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const applyPreset = (preset: (typeof datePresets)[number]) => {
     setActivePreset(preset.key);
@@ -74,6 +81,7 @@ export default function AccountListPage() {
       const params: Record<string, string> = {};
       if (typeFilter) params.type = typeFilter;
       if (categoryFilter) params.category = categoryFilter;
+      if (fundFilter.trim()) params.fund = fundFilter.trim();
       if (from) params.from = from;
       if (to) params.to = to;
       const res = await api.get("/accounts", { params });
@@ -85,11 +93,16 @@ export default function AccountListPage() {
     } finally {
       setLoading(false);
     }
-  }, [typeFilter, categoryFilter, from, to]);
+  }, [typeFilter, categoryFilter, fundFilter, from, to]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // ফিল্টার বদলালে বা তালিকা রিফ্রেশ হলে আগের নির্বাচন আর প্রাসঙ্গিক থাকে না।
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [rows]);
 
   const totals = useMemo(
     () =>
@@ -132,6 +145,50 @@ export default function AccountListPage() {
         } catch (err: any) {
           const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
           toast.push("error", msg);
+        }
+      },
+    });
+  };
+
+  const allVisibleSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(allVisibleSelected ? new Set() : new Set(rows.map((row) => row.id)));
+  };
+  const toggleSelectRow = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedTotal = useMemo(
+    () => rows.filter((row) => selectedIds.has(row.id)).reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    [rows, selectedIds],
+  );
+
+  const handleBulkDelete = () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    useConfirmStore.getState().show({
+      title: "নির্বাচিত এন্ট্রি ডিলিট করুন",
+      message: `${ids.length} টি এন্ট্রি (মোট ${money(selectedTotal)}) স্থায়ীভাবে মুছে ফেলতে চান? এই কাজ আর ফিরিয়ে নেওয়া যাবে না।`,
+      confirmText: "সব ডিলিট করুন",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          setBulkDeleting(true);
+          const res = await api.post("/accounts/bulk-delete", { ids });
+          const count = res.data?.count ?? res.data?.data?.count ?? ids.length;
+          toast.push("success", `${count} টি এন্ট্রি মুছে ফেলা হয়েছে`);
+          setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+          setSelectedIds(new Set());
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          toast.push("error", msg);
+        } finally {
+          setBulkDeleting(false);
         }
       },
     });
@@ -187,6 +244,16 @@ export default function AccountListPage() {
           </select>
         </div>
         <div>
+          <FieldLabel>ফান্ড খুঁজুন</FieldLabel>
+          <Input
+            type="text"
+            placeholder="ফান্ডের নাম লিখুন"
+            className="h-10 w-44"
+            value={fundFilter}
+            onChange={(e) => setFundFilter(e.target.value)}
+          />
+        </div>
+        <div>
           <FieldLabel>শুরুর তারিখ</FieldLabel>
           <Input type="date" className="h-10 w-40" value={from} onChange={(e) => handleFromChange(e.target.value)} />
         </div>
@@ -204,6 +271,31 @@ export default function AccountListPage() {
         </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/30">
+          <span className="text-sm font-medium text-rose-700 dark:text-rose-400">
+            {selectedIds.size} টি এন্ট্রি নির্বাচিত (মোট {money(selectedTotal)})
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/50"
+            >
+              নির্বাচন বাতিল
+            </button>
+            <button
+              type="button"
+              disabled={bulkDeleting}
+              onClick={handleBulkDelete}
+              className="rounded-lg bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
+            >
+              {bulkDeleting ? "মুছে ফেলা হচ্ছে..." : "নির্বাচিত এন্ট্রি মুছুন"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {loading ? (
           <div className="p-4">
@@ -213,9 +305,17 @@ export default function AccountListPage() {
           <EmptyState title="কোনো এন্ট্রি পাওয়া যায়নি" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[950px] text-sm">
               <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="সব নির্বাচন করুন"
+                    />
+                  </th>
                   <th className="px-4 py-3">তারিখ</th>
                   <th className="px-4 py-3">নং</th>
                   <th className="px-4 py-3">ধরন</th>
@@ -228,7 +328,20 @@ export default function AccountListPage() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-t hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                  <tr
+                    key={row.id}
+                    className={`border-t hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${
+                      selectedIds.has(row.id) ? "bg-rose-50/60 dark:bg-rose-950/20" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelectRow(row.id)}
+                        aria-label="এন্ট্রি নির্বাচন করুন"
+                      />
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
                       {toDateInput(row.entryDate)} <span className="text-slate-400 dark:text-slate-500">{toTimeInput(row.entryTime)}</span>
                     </td>

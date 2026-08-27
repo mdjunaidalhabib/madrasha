@@ -7,21 +7,28 @@ import PaginatedReportPreview from "../../components/Report/PaginatedReportPrevi
 import { ReportMenuItem } from "../../features/reports/types";
 import { logger } from "../../utils/logger";
 
-type Row = { period: string; total_income: number | string; total_expense: number | string };
-
-const reportMeta: ReportMenuItem = {
-  key: "income-expense-report",
-  title: "আয়-ব্যয় রিপোর্ট",
-  subtitle: "দৈনিক, মাসিক, ফান্ড ও খাতভিত্তিক রিপোর্ট",
-  endpoint: "/accounts/report",
-  printable: "table",
-  columns: [
-    { header: "বিবরণ", key: "period" },
-    { header: "আয়", key: "total_income" },
-    { header: "ব্যয়", key: "total_expense" },
-    { header: "ব্যালেন্স", key: "balance" },
-  ],
+type Row = {
+  period?: string;
+  fund?: string;
+  category?: string;
+  total_income: number | string;
+  total_expense: number | string;
 };
+
+const PERIOD_COLUMNS = [
+  { header: "বিবরণ", key: "period" },
+  { header: "আয়", key: "total_income" },
+  { header: "ব্যয়", key: "total_expense" },
+  { header: "ব্যালেন্স", key: "balance" },
+];
+
+const FUND_CATEGORY_COLUMNS = [
+  { header: "ফান্ড", key: "fund" },
+  { header: "খাত", key: "category" },
+  { header: "আয়", key: "total_income" },
+  { header: "ব্যয়", key: "total_expense" },
+  { header: "ব্যালেন্স", key: "balance" },
+];
 
 const filters = [
   { label: "দৈনিক", type: "daily", groupBy: "period" },
@@ -29,6 +36,7 @@ const filters = [
   { label: "বাৎসরিক", type: "yearly", groupBy: "period" },
   { label: "ফান্ড ভিত্তিক", type: "monthly", groupBy: "fund" },
   { label: "খাত ভিত্তিক", type: "monthly", groupBy: "category" },
+  { label: "ফান্ড ও খাত বিস্তারিত", type: "monthly", groupBy: "fund_category" },
 ];
 
 const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
@@ -41,19 +49,93 @@ export default function ReportPage() {
   const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
 
-  const exportRows = rows.map((row) => {
-    const income = Number(row.total_income || 0);
-    const expense = Number(row.total_expense || 0);
-    return {
-      period: row.period || "নির্ধারিত নয়",
-      total_income: income,
-      total_expense: expense,
-      balance: income - expense,
-    };
-  });
+  const isFundCategory = active.groupBy === "fund_category";
+  const columns = isFundCategory ? FUND_CATEGORY_COLUMNS : PERIOD_COLUMNS;
+
+  const reportMeta: ReportMenuItem = useMemo(
+    () => ({
+      key: "income-expense-report",
+      title: "আয়-ব্যয় রিপোর্ট",
+      subtitle: `${active.label} রিপোর্ট`,
+      endpoint: "/accounts/report",
+      printable: "table",
+      columns,
+    }),
+    [columns, active.label],
+  );
+
+  type ExportRow = {
+    period?: string;
+    fund?: string;
+    category?: string;
+    total_income: number;
+    total_expense: number;
+    balance: number;
+    __bold?: boolean;
+  };
+
+  // ফান্ড ও খাত বিস্তারিত মোডে প্রতিটি ফান্ডের জন্য একটি বোল্ড সাবটোটাল সারি,
+  // তারপর সেই ফান্ডের আওতাধীন প্রতিটি খাতের নিজস্ব সারি দেখানো হয় - যাতে
+  // প্রত্যেক ফান্ড ও খাতের বিস্তারিত তথ্য এক নজরে বোঝা যায়।
+  const exportRows = useMemo<ExportRow[]>(() => {
+    if (!isFundCategory) {
+      return rows.map((row) => {
+        const income = Number(row.total_income || 0);
+        const expense = Number(row.total_expense || 0);
+        return {
+          period: row.period || "নির্ধারিত নয়",
+          total_income: income,
+          total_expense: expense,
+          balance: income - expense,
+        };
+      });
+    }
+
+    const fundOrder: string[] = [];
+    const byFund = new Map<string, Row[]>();
+    rows.forEach((row) => {
+      const fund = row.fund || "নির্ধারিত নয়";
+      if (!byFund.has(fund)) {
+        byFund.set(fund, []);
+        fundOrder.push(fund);
+      }
+      byFund.get(fund)!.push(row);
+    });
+
+    const result: ExportRow[] = [];
+
+    fundOrder.forEach((fund) => {
+      const categoryRows = byFund.get(fund)!;
+      const fundIncome = categoryRows.reduce((sum, r) => sum + Number(r.total_income || 0), 0);
+      const fundExpense = categoryRows.reduce((sum, r) => sum + Number(r.total_expense || 0), 0);
+
+      result.push({
+        fund,
+        category: "সর্বমোট",
+        total_income: fundIncome,
+        total_expense: fundExpense,
+        balance: fundIncome - fundExpense,
+        __bold: true,
+      });
+
+      categoryRows.forEach((row) => {
+        const income = Number(row.total_income || 0);
+        const expense = Number(row.total_expense || 0);
+        result.push({
+          fund: "",
+          category: row.category || "নির্ধারিত নয়",
+          total_income: income,
+          total_expense: expense,
+          balance: income - expense,
+        });
+      });
+    });
+
+    return result;
+  }, [rows, isFundCategory]);
 
   const previewRows = exportRows.map((row) => ({
-    period: row.period,
+    ...row,
     total_income: money(row.total_income),
     total_expense: money(row.total_expense),
     balance: money(row.balance),
@@ -100,12 +182,7 @@ export default function ReportPage() {
         <PageHeader title="আয়-ব্যয় রিপোর্ট" subtitle="দৈনিক, মাসিক, ফান্ড ও খাতভিত্তিক রিপোর্ট" />
         <DataExportPrintActions
           title="আয়-ব্যয় রিপোর্ট"
-          columns={[
-            { header: "বিবরণ", key: "period" },
-            { header: "আয়", key: "total_income" },
-            { header: "ব্যয়", key: "total_expense" },
-            { header: "ব্যালেন্স", key: "balance" },
-          ]}
+          columns={columns}
           data={exportRows}
           fileName={`income-expense-${active.type}-${active.groupBy}`}
           paperSize={paperSize}

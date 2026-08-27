@@ -268,7 +268,7 @@ export class ResultPanelRepository {
 
   findExams(madrasaId: number) {
     return prisma.exam.findMany({
-      where: { madrasaId, deletedAt: null },
+      where: { madrasaId, deletedAt: null, isActive: true },
       select: { id: true, name: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });

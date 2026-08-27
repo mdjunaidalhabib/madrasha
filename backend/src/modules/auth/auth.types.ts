@@ -16,6 +16,7 @@ export interface AuthenticatedUserSummary {
   email: string;
   role_id: number;
   role_key: string;
+  role_label: string;
   mobile?: string | null;
   photo_url?: string | null;
 }

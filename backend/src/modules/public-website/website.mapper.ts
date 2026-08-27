@@ -43,6 +43,7 @@ export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefi
     show_committee: row.showCommittee ?? 1,
     show_notice_bar: row.showNoticeBar ?? 1,
     notice_bar_text: row.noticeBarText ?? null,
+    notice_bar_speed: row.noticeBarSpeed ?? 20,
     is_published: row.isPublished ?? 1,
     muhtamim_name: row.muhtamimName ?? null,
     muhtamim_designation: row.muhtamimDesignation ?? null,

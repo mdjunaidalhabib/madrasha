@@ -65,7 +65,7 @@ const ReportContent = ({
   if (loading) {
     return (
       <div className="bg-white p-4">
-        <SkeletonTable rows={8} columns={6} className="border-0 shadow-none" />
+        <SkeletonTable rows={8} columns={6} bordered={false} shadowed={false} />
       </div>
     );
   }
@@ -75,7 +75,7 @@ const ReportContent = ({
     // page for a footer/signature that had no room left on the last page
     // of actual content, not a "this report has no data" state.
     return (
-      <div className="flex h-56 items-center justify-center border border-black bg-white text-sm text-slate-500">
+      <div className="flex h-56 items-center justify-center bg-white text-sm text-slate-500">
         কোনো ডাটা পাওয়া যায়নি
       </div>
     );
@@ -287,9 +287,9 @@ const ReportContent = ({
   }
 
   return (
-    <div className="border bg-white">
+    <div className="bg-white">
       <div className="overflow-x-auto">
-        <ReportTable report={report} rows={rows} startIndex={startIndex} />
+        <ReportTable report={report} rows={rows} startIndex={startIndex} isFirstPage={isFirstPage} />
       </div>
     </div>
   );

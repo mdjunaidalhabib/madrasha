@@ -11,6 +11,7 @@ import {
   listAccounts,
   updateAccount,
   deleteAccount,
+  bulkDeleteAccounts,
   listFunds,
   createFund,
   updateFund,
@@ -77,6 +78,14 @@ router.delete(
   subscriptionCheck,
   rbacMiddleware("accounts.delete"),
   deleteAccount,
+);
+router.post(
+  "/bulk-delete",
+  tenantMiddleware,
+  authMiddleware,
+  subscriptionCheck,
+  rbacMiddleware("accounts.delete"),
+  bulkDeleteAccounts,
 );
 
 /* ================= ফান্ড ও খাত ব্যবস্থাপনা (settings CRUD) ================= */

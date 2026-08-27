@@ -8,6 +8,7 @@ export const toStaffApiDto = (row: Record<string, any>) => {
     registration_no: s.registrationNo ?? null,
     name_bn: s.nameBn,
     name_ar: s.nameAr ?? null,
+    name_en: s.nameEn ?? null,
     nid: s.nid ?? null,
     gender: s.gender ?? null,
     dob: s.dob ?? null,
@@ -28,10 +29,13 @@ export const toStaffApiDto = (row: Record<string, any>) => {
 
     father_name: s.fatherName ?? null,
     father_name_ar: s.fatherNameAr ?? null,
+    father_name_en: s.fatherNameEn ?? null,
     father_nid: s.fatherNid ?? null,
     father_occupation: s.fatherOccupation ?? null,
 
     mother_name: s.motherName ?? null,
+    mother_name_ar: s.motherNameAr ?? null,
+    mother_name_en: s.motherNameEn ?? null,
     mother_nid: s.motherNid ?? null,
     mother_occupation: s.motherOccupation ?? null,
 

@@ -30,6 +30,10 @@ export class SettingsRepository {
         reportBanner: true,
         reportWatermark: true,
         reportWatermarkOpacity: true,
+        reportHeaderFooterEnabled: true,
+        reportHeaderText: true,
+        reportFooterText: true,
+        reportPrintMode: true,
       },
     });
   }
@@ -130,6 +134,20 @@ export class SettingsRepository {
 
   countActiveUsers(madrasaId: number) {
     return prisma.user.count({ where: { madrasaId, isActive: 1 } });
+  }
+
+  findSectionToggles(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { settingsSectionToggles: true },
+    });
+  }
+
+  updateSectionToggles(madrasaId: number, toggles: Record<string, boolean>) {
+    return prisma.madrasa.update({
+      where: { id: madrasaId },
+      data: { settingsSectionToggles: toggles },
+    });
   }
 }
 

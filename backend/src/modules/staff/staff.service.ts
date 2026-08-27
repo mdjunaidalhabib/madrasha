@@ -52,6 +52,7 @@ const normalizeStaffPayload = (rawBody: Record<string, unknown>, madrasaId: numb
   const snakePayload: Record<string, any> = {
     name_bn: body.name_bn,
     name_ar: body.name_ar || null,
+    name_en: body.name_en || null,
     nid: body.nid || null,
     gender: toGenderNumber(body.gender),
     dob,
@@ -72,10 +73,13 @@ const normalizeStaffPayload = (rawBody: Record<string, unknown>, madrasaId: numb
 
     father_name: body.father_name || null,
     father_name_ar: body.father_name_ar || null,
+    father_name_en: body.father_name_en || null,
     father_nid: body.father_nid || null,
     father_occupation: body.father_occupation || null,
 
     mother_name: body.mother_name || null,
+    mother_name_ar: body.mother_name_ar || null,
+    mother_name_en: body.mother_name_en || null,
     mother_nid: body.mother_nid || null,
     mother_occupation: body.mother_occupation || null,
 

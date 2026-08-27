@@ -1,4 +1,6 @@
 import { TeacherFormData } from "../../features/teachers/TeacherPage";
+import ScriptInput from "../ui/ScriptInput";
+import NumericInput from "../ui/NumericInput";
 
 interface Props {
   formData: TeacherFormData;
@@ -20,8 +22,9 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Father's Name */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (বাংলা)</label>
+          <ScriptInput
+            scriptLang="bn"
             name="father_name"
             value={formData.father_name || ""}
             onChange={handleChange}
@@ -32,12 +35,26 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
 
         {/* Father's Arabic Name */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার আরবি নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (আরবি)</label>
+          <ScriptInput
+            scriptLang="ar"
             name="father_name_ar"
             value={formData.father_name_ar || ""}
             onChange={handleChange}
-            placeholder="পিতার আরবি নাম"
+            placeholder="الأب اسم"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+
+        {/* Father's English Name */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="father_name_en"
+            value={formData.father_name_en || ""}
+            onChange={handleChange}
+            placeholder="Father's Name"
             className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
@@ -45,7 +62,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
         {/* Father's NID */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পিতার NID</label>
-          <input
+          <NumericInput
             name="father_nid"
             value={formData.father_nid || ""}
             onChange={handleChange}
@@ -68,8 +85,9 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
 
         {/* Mother's Name */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (বাংলা)</label>
+          <ScriptInput
+            scriptLang="bn"
             name="mother_name"
             value={formData.mother_name || ""}
             onChange={handleChange}
@@ -78,10 +96,36 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
           />
         </div>
 
+        {/* Mother's Arabic Name */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (আরবি)</label>
+          <ScriptInput
+            scriptLang="ar"
+            name="mother_name_ar"
+            value={formData.mother_name_ar || ""}
+            onChange={handleChange}
+            placeholder="الأم اسم"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+
+        {/* Mother's English Name */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="mother_name_en"
+            value={formData.mother_name_en || ""}
+            onChange={handleChange}
+            placeholder="Mother's Name"
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+
         {/* Mother's NID */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মাতার NID</label>
-          <input
+          <NumericInput
             name="mother_nid"
             value={formData.mother_nid || ""}
             onChange={handleChange}
@@ -105,7 +149,7 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData }) => {
         {/* Parent Phone */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের মোবাইল নম্বর</label>
-          <input
+          <NumericInput
             name="parent_phone"
             value={formData.parent_phone || ""}
             onChange={handleChange}

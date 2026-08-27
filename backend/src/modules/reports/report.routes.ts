@@ -2,6 +2,8 @@ import { Router } from "express";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { requireAnyPermission } from "../../shared/middleware/rbac.middleware";
+import { asyncHandler } from "../../shared/utils/async-handler.util";
+import { exportReportPdf } from "./controllers/report-export.controller";
 import {
   getAcademicAdmissionReport,
   getAcademicResultNoticeReport,
@@ -66,5 +68,15 @@ router.get("/student/transfer-letters", studentAccess, getStudentTransferLetters
 
 router.get("/teacher/list", teacherAccess, getTeacherListReport);
 router.get("/teacher/phones", teacherAccess, getTeacherPhoneReport);
+
+// Server-side PDF export (Playwright) - see report-export.service.ts for why
+// this replaced the old client-side html2canvas rendering. `reports.read`
+// alone is enough since it's just a different output format of reports the
+// requester can already view via the endpoints above.
+router.post(
+  "/export-pdf",
+  requireAnyPermission("reports.read"),
+  asyncHandler(exportReportPdf),
+);
 
 export default router;

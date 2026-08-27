@@ -108,7 +108,8 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
     return { kind: "blocks", hasHeading: true, hasFooter: true, getGroupKey: noGrouping };
   }
 
-  // Default fallback ("table" / anything unrecognized): plain flat table,
-  // no heading/footer block to gate.
-  return { kind: "table", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
+  // Default fallback ("table" / anything unrecognized): plain flat table
+  // with a title/subtitle heading (see ReportTable) so a printed page is
+  // still identifiable on its own; no footer/signature block.
+  return { kind: "table", hasHeading: true, hasFooter: false, getGroupKey: noGrouping };
 };

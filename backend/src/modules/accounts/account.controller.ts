@@ -160,3 +160,16 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     throw error;
   }
 });
+
+export const bulkDeleteAccounts = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const result = await accountService.removeMany(madrasa_id, req.user!.id, req.body);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    throw error;
+  }
+});

@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
-import { Droplets } from "lucide-react";
+import { Droplets, FileText } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
 import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
-import { deleteBrandingImage, saveBranding, type BrandingPayload } from "../../../services/brandingApi";
+import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
+import {
+  deleteBrandingImage,
+  saveBranding,
+  type BrandingPayload,
+  type ReportPrintMode,
+} from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { useToastStore } from "../../../store/toastStore";
 
@@ -23,6 +29,10 @@ export default function BrandingSettingsPage() {
   const [background, setBackground] = useState<string | null>(null);
   const [watermark, setWatermark] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(0.08);
+  const [headerFooterEnabled, setHeaderFooterEnabled] = useState(false);
+  const [headerText, setHeaderText] = useState("");
+  const [footerText, setFooterText] = useState("");
+  const [printMode, setPrintMode] = useState<ReportPrintMode>("normal");
 
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +59,10 @@ export default function BrandingSettingsPage() {
         ? Number(branding.report_watermark_opacity)
         : 0.08,
     );
+    setHeaderFooterEnabled(!!branding.report_header_footer_enabled);
+    setHeaderText(branding.report_header_text ?? "");
+    setFooterText(branding.report_footer_text ?? "");
+    setPrintMode(branding.report_print_mode ?? "normal");
   }, [branding]);
 
   // The backend only touches fields actually present in the PUT body (real
@@ -65,6 +79,10 @@ export default function BrandingSettingsPage() {
       if (patch.report_banner !== undefined) setBackground(patch.report_banner);
       if (patch.report_watermark !== undefined) setWatermark(patch.report_watermark);
       if (patch.report_watermark_opacity !== undefined) setOpacity(patch.report_watermark_opacity);
+      if (patch.report_header_footer_enabled !== undefined) setHeaderFooterEnabled(patch.report_header_footer_enabled);
+      if (patch.report_header_text !== undefined) setHeaderText(patch.report_header_text || "");
+      if (patch.report_footer_text !== undefined) setFooterText(patch.report_footer_text || "");
+      if (patch.report_print_mode !== undefined) setPrintMode(patch.report_print_mode);
       setBranding({
         name,
         address,
@@ -74,6 +92,10 @@ export default function BrandingSettingsPage() {
         report_banner: background,
         report_watermark: watermark,
         report_watermark_opacity: opacity,
+        report_header_footer_enabled: headerFooterEnabled,
+        report_header_text: headerText,
+        report_footer_text: footerText,
+        report_print_mode: printMode,
         ...patch,
       });
       useToastStore.getState().show("সংরক্ষণ হয়েছে।", "success");
@@ -103,6 +125,14 @@ export default function BrandingSettingsPage() {
     patchBranding({ report_watermark_opacity: opacity }).catch(() => {});
   };
 
+  const toggleHeaderFooterEnabled = (checked: boolean) => {
+    patchBranding({ report_header_footer_enabled: checked }).catch(() => {});
+  };
+
+  const changePrintMode = (mode: ReportPrintMode) => {
+    patchBranding({ report_print_mode: mode }).catch(() => {});
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -120,7 +150,10 @@ export default function BrandingSettingsPage() {
         subtitle="মাদ্রাসার নাম, ঠিকানা, মোবাইল নম্বর, ইমেইল, লোগো ও ওয়াটারমার্ক দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।"
       />
 
-      <SectionCard title="মূল তথ্য" hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে">
+      <SectionCard
+        title="মূল তথ্য"
+        hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে"
+      >
         <div className="space-y-2">
           <InlineTextField
             label="মাদ্রাসার নাম"
@@ -202,6 +235,74 @@ export default function BrandingSettingsPage() {
             onTouchEnd={saveOpacity}
             className="mt-2 w-full accent-blue-600"
           />
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="রিপোর্ট হেডার-ফুটার"
+        hint="চালু না থাকলে রিপোর্টে আগের মতোই মাদ্রাসার নাম-ঠিকানা দিয়ে ডিফল্ট হেডার দেখাবে"
+      >
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <FileText size={14} className="text-gray-400 dark:text-slate-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+              কাস্টম হেডার-ফুটার চালু করুন
+            </span>
+          </div>
+          <ToggleSwitch checked={headerFooterEnabled} onChange={toggleHeaderFooterEnabled} />
+        </div>
+
+        <div
+          className={
+            headerFooterEnabled ? "space-y-3" : "space-y-3 pointer-events-none opacity-40"
+          }
+        >
+          <InlineTextField
+            label="হেডার টেক্সট"
+            value={headerText}
+            multiline
+            placeholder="রিপোর্টের উপরে যা দেখাবে (লোগোর নিচে)"
+            onSave={(v) => patchBranding({ report_header_text: v })}
+          />
+          <InlineTextField
+            label="ফুটার টেক্সট"
+            value={footerText}
+            multiline
+            placeholder="প্রতি পেজের নিচে যা দেখাবে"
+            onSave={(v) => patchBranding({ report_footer_text: v })}
+          />
+
+          <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+            <p className="mb-2 text-xs font-medium text-gray-500 dark:text-slate-400">প্রিন্ট মোড</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => changePrintMode("normal")}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  printMode === "normal"
+                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                সাধারণ পেজ
+              </button>
+              <button
+                type="button"
+                onClick={() => changePrintMode("letterhead")}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  printMode === "letterhead"
+                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                প্রেস পেপার (লেটারহেড)
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+              প্রেস পেপার মোডে লোগো, ব্যাকগ্রাউন্ড, ওয়াটারমার্ক ও হেডার-ফুটার কিছুই প্রিন্ট হবে না — শুধু মূল
+              লেখাগুলো প্রিন্ট হবে (আগে থেকে ছাপানো লেটারহেড কাগজে প্রিন্টের জন্য)।
+            </p>
+          </div>
         </div>
       </SectionCard>
     </div>

@@ -8,6 +8,7 @@ export type AuthUser = {
   email?: string;
   role?: string;
   role_key?: string;
+  role_label?: string;
   mobile?: string | null;
   photo_url?: string | null;
 };

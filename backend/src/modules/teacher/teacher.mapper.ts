@@ -20,6 +20,7 @@ export const toTeacherApiDto = (row: Record<string, any>) => {
     registration_no: t.registrationNo ?? null,
     name_bn: t.nameBn,
     name_ar: t.nameAr ?? null,
+    name_en: t.nameEn ?? null,
     nid: t.nid ?? null,
     gender: t.gender ?? null,
     dob: t.dob ?? null,
@@ -44,10 +45,13 @@ export const toTeacherApiDto = (row: Record<string, any>) => {
 
     father_name: t.fatherName ?? null,
     father_name_ar: t.fatherNameAr ?? null,
+    father_name_en: t.fatherNameEn ?? null,
     father_nid: t.fatherNid ?? null,
     father_occupation: t.fatherOccupation ?? null,
 
     mother_name: t.motherName ?? null,
+    mother_name_ar: t.motherNameAr ?? null,
+    mother_name_en: t.motherNameEn ?? null,
     mother_nid: t.motherNid ?? null,
     mother_occupation: t.motherOccupation ?? null,
 

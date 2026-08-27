@@ -9,10 +9,14 @@ const sortByMaxDesc = (grades: ChainGrade[]) => [...grades].sort((a, b) => b.max
 
 /** Recomputes minMark for every grade in the list so the whole chain stays
  * gap-free by construction: the lowest grade's min is always failMark + 1,
- * and every other grade's min is the next-lower grade's max + 1. */
+ * and every other grade's min is the next-lower grade's max + 1. Clamped to
+ * never exceed that grade's own maxMark - a stale lowest band (created
+ * before a later fail-mark increase) would otherwise get min > max and the
+ * backend would reject the save. */
 const chainMinMarks = (sorted: ChainGrade[], failMark: number) => {
   for (let i = sorted.length - 1; i >= 0; i--) {
-    sorted[i].minMark = i === sorted.length - 1 ? failMark + 1 : sorted[i + 1].maxMark + 1;
+    const wanted = i === sorted.length - 1 ? failMark + 1 : sorted[i + 1].maxMark + 1;
+    sorted[i].minMark = Math.min(wanted, sorted[i].maxMark);
   }
   return sorted;
 };

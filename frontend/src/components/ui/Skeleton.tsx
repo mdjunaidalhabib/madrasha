@@ -20,14 +20,24 @@ export function SkeletonTable({
   rows = 6,
   columns = 5,
   className = "",
+  bordered = true,
+  shadowed = true,
 }: {
   rows?: number;
   columns?: number;
   className?: string;
+  /** Set to false to render without the outer border - a "border-0" class
+   * added via `className` isn't reliable here since it and the base
+   * "border" class have equal CSS specificity, so whichever rule Tailwind
+   * happens to emit last wins regardless of class order in the string. */
+  bordered?: boolean;
+  shadowed?: boolean;
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${className}`}
+      className={`overflow-hidden rounded-xl bg-white dark:bg-slate-900 ${
+        bordered ? "border border-gray-200 dark:border-slate-700" : ""
+      } ${shadowed ? "shadow-sm" : ""} ${className}`}
     >
       <div className="flex gap-4 border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
         {Array.from({ length: columns }).map((_, i) => (

@@ -4,10 +4,11 @@ import { logger } from "../../shared/logger/logger";
 import { feeRepository, FeeRepository } from "./fee.repository";
 import { studentRepository } from "../students/student.repository";
 import { notificationService } from "../notifications/notification.service";
+import { accountService } from "../accounts/account.service";
 import {
   CreateFeeStructureRequestDto,
   CreatePaymentMethodSettingRequestDto,
-  GenerateInvoicesRequestDto,
+  DeleteAllInvoicesRequestDto,
   InvoiceQueryDto,
   PendingInvoicesQueryDto,
   RecordPaymentRequestDto,
@@ -15,14 +16,7 @@ import {
   UpdatePaymentMethodSettingRequestDto,
   WaiveInvoiceRequestDto,
 } from "./fee.dto";
-import {
-  FEE_FREQUENCIES,
-  FEE_TYPES,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_TYPES,
-  FEE_ACCOUNT_CATEGORY,
-  FEE_ACCOUNT_FUND,
-} from "./fee.constants";
+import { FEE_FREQUENCIES, FEE_TYPES, PAYMENT_METHODS, PAYMENT_METHOD_TYPES } from "./fee.constants";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -233,59 +227,6 @@ export class FeeService {
 
   /* ================= INVOICE GENERATION ================= */
 
-  async generateInvoices(madrasaId: number, dto: GenerateInvoicesRequestDto) {
-    if (isEmpty(dto.fee_structure_id) || isEmpty(dto.due_date)) {
-      throw new BadRequestError("fee_structure_id and due_date are required");
-    }
-
-    const structure = await this.repository.findStructureForTenant(
-      Number(dto.fee_structure_id),
-      madrasaId,
-    );
-    if (!structure) throw new NotFoundError("Fee structure not found");
-    if (!structure.isActive) throw new BadRequestError("This fee structure is inactive");
-
-    if (structure.frequency === "MONTHLY" && isEmpty(dto.month)) {
-      throw new BadRequestError('month ("YYYY-MM") is required for a MONTHLY fee structure');
-    }
-
-    const classId = dto.class_id ? Number(dto.class_id) : structure.classId;
-    if (!classId) {
-      throw new BadRequestError(
-        "This fee structure applies to no specific class; pass class_id to generate invoices for one",
-      );
-    }
-    const sessionId = !isEmpty(dto.session_id) || !isEmpty(dto.academic_year)
-      ? (await this.resolveSession(madrasaId, dto)).id
-      : structure.sessionId;
-
-    const dueDate = new Date(dto.due_date);
-    if (Number.isNaN(dueDate.getTime())) throw new BadRequestError("due_date is invalid");
-
-    try {
-      const students = await this.repository.findStudentsForBilling(madrasaId, classId, sessionId);
-      if (students.length === 0) return { created: 0, skipped: 0, totalStudents: 0 };
-
-      const rows = students.map((student) => ({
-        madrasaId,
-        studentId: student.id,
-        feeStructureId: structure.id,
-        title: structure.name,
-        amount: structure.amount,
-        dueDate,
-        month: structure.frequency === "MONTHLY" ? String(dto.month) : null,
-      }));
-
-      const created = await this.repository.runTransaction((tx) =>
-        this.repository.generateInvoicesOnTx(tx, rows),
-      );
-
-      return { created, skipped: students.length - created, totalStudents: students.length };
-    } catch (err) {
-      return friendlyFailure("generateInvoices error:", err, "Failed to generate invoices");
-    }
-  }
-
   /** Auto-bills a single student right at admission/transfer: every active
    * fee structure for their class + session is turned into invoice(s)
    * immediately, so office staff no longer has to run "generate" by hand.
@@ -396,6 +337,22 @@ export class FeeService {
     }
   }
 
+  /** Wipes every invoice (and, via cascade, every payment) for this tenant
+   * - meant for clearing out test/demo data before real use, never for
+   * routine cleanup. Gated on a typed "DELETE" confirmation independent of
+   * whatever the frontend already asked, since this is irreversible. */
+  async deleteAllInvoices(madrasaId: number, dto: DeleteAllInvoicesRequestDto) {
+    if (dto.confirm !== "DELETE") {
+      throw new BadRequestError('Type "DELETE" to confirm this irreversible action');
+    }
+    try {
+      const result = await this.repository.deleteAllInvoices(madrasaId);
+      return { deleted: result.count };
+    } catch (err) {
+      return friendlyFailure("deleteAllInvoices error:", err, "Failed to delete invoices");
+    }
+  }
+
   /* ================= PAYMENTS ================= */
 
   /** Records a (possibly partial) payment against an invoice, keeps the
@@ -434,6 +391,16 @@ export class FeeService {
       methodLabel = setting.label;
     }
 
+    // ফান্ড ও খাত সেটিংসে বাস্তবে যা আছে তা থেকেই নেওয়া হয় (প্রথম আয় ফান্ড ও
+    // তার প্রথম খাত) - হার্ডকোড করা কোনো ফান্ড/খাত নাম ব্যবহার হয় না, তাই
+    // অ্যাডমিন সেটিংসে ফান্ড রিনেম/পুনর্বিন্যাস করলে এখানেও তা প্রতিফলিত হয়।
+    const { incomeFunds } = await accountService.getOptions(madrasaId);
+    const feeFund = incomeFunds[0]?.name;
+    const feeCategory = incomeFunds[0]?.categories[0];
+    if (!feeFund || !feeCategory) {
+      throw new BadRequestError("হিসাব বিভাগে কোনো আয় ফান্ড/খাত সেটআপ করা নেই - প্রথমে ফান্ড ও খাত সেটিংসে একটি যোগ করুন");
+    }
+
     let result: {
       paymentId: number;
       invoiceStatus: string;
@@ -470,8 +437,8 @@ export class FeeService {
             madrasaId,
             type: "income",
             amount: paymentAmount,
-            category: FEE_ACCOUNT_CATEGORY,
-            fund: FEE_ACCOUNT_FUND,
+            category: feeCategory,
+            fund: feeFund,
             description: `Invoice #${invoiceId}: ${invoice.title}`,
             paymentMethod: methodLabel || dto.method,
             entryDate: paidAt,

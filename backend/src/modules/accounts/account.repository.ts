@@ -1,7 +1,7 @@
 import { Prisma, AccountType } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { REPORT_ROW_LIMIT, DEFAULT_INCOME_FUNDS, DEFAULT_EXPENSE_GROUPS } from "./account.constants";
-import { ReportRow } from "./account.types";
+import { FundCategoryReportRow, ReportRow } from "./account.types";
 
 // NOTE: the old `ensureAccountSchema()` ran ALTER TABLE at request-time to
 // patch missing `accounts` columns on the fly. With Prisma, schema.prisma
@@ -36,6 +36,16 @@ export class AccountRepository {
     return prisma.account.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
+  /** Scoped to `madrasaId` (unlike softDelete, which trusts a single row
+   * already fetched via findForTenant) since a bulk request only carries
+   * raw ids - this is the tenant check for the whole batch in one query. */
+  softDeleteMany(ids: number[], madrasaId: number) {
+    return prisma.account.updateMany({
+      where: { id: { in: ids }, madrasaId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+  }
+
   findReportByFund(madrasaId: number) {
     return prisma.$queryRaw<ReportRow[]>`
       SELECT fund AS period,
@@ -53,6 +63,18 @@ export class AccountRepository {
         SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS total_expense
       FROM accounts WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
       GROUP BY category ORDER BY category
+    `;
+  }
+
+  /** Every fund+category combination with its own income/expense totals -
+   * the granular breakdown behind "ফান্ড ও খাত ভিত্তিক বিস্তারিত" report. */
+  findReportByFundCategory(madrasaId: number) {
+    return prisma.$queryRaw<FundCategoryReportRow[]>`
+      SELECT fund, category,
+        SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS total_income,
+        SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS total_expense
+      FROM accounts WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
+      GROUP BY fund, category ORDER BY fund, category
     `;
   }
 

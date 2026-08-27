@@ -591,6 +591,20 @@ export const router = createBrowserRouter([
 
   { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
   { path: "/:madrasaSlug/kiosk", element: withSuspense(<AttendanceKioskPage />) },
+
+  // Chrome-less report preview, rendered for the server-side PDF export's
+  // headless browser (see backend/src/modules/reports/controllers/
+  // report-export.service.ts). Deliberately outside AuthGuard/DashboardLayout
+  // - no sidebar, no client-side login redirect - the headless browser sets
+  // its own auth state directly via localStorage before navigating here, see
+  // ReportShell's printMode prop for how the filter state is hydrated from
+  // this URL's query params instead of user interaction.
+  { path: "/:madrasaSlug/print/reports/academic", element: withSuspense(<AcademicReportPage printMode />) },
+  { path: "/:madrasaSlug/print/reports/student", element: withSuspense(<StudentReportPage printMode />) },
+  { path: "/:madrasaSlug/print/reports/exam", element: withSuspense(<ExamReportPage printMode />) },
+  { path: "/:madrasaSlug/print/reports/teacher", element: withSuspense(<TeacherReportPage printMode />) },
+  { path: "/:madrasaSlug/print/reports/documents", element: withSuspense(<DocumentsReportPage printMode />) },
+
   { path: "/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
 
   { path: "*", element: withSuspense(<NotFoundPage />) },

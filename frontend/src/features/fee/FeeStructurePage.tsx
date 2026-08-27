@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Receipt, Trash2, Users } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import { feeStructureApi, invoiceApi, type FeeFrequency, type FeeType } from "../../services/phase2Api";
 import { type Session } from "../../services/sessionApi";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import Modal from "../../components/ui/Modal";
 import { logger } from "../../utils/logger";
 
@@ -49,7 +50,6 @@ const emptyStructureForm = {
   fee_type: "OTHER" as FeeType,
   session_id: "",
 };
-const emptyGenerateForm = { due_date: "", month: "" };
 
 const FeeStructurePage = () => {
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -64,15 +64,46 @@ const FeeStructurePage = () => {
   const [structureForm, setStructureForm] = useState(emptyStructureForm);
   const [saving, setSaving] = useState(false);
 
-  const [generateTarget, setGenerateTarget] = useState<FeeStructureRow | null>(null);
-  const [generateForm, setGenerateForm] = useState(emptyGenerateForm);
-  const [generating, setGenerating] = useState(false);
-
   const [editTarget, setEditTarget] = useState<FeeStructureRow | null>(null);
   const [editForm, setEditForm] = useState(emptyStructureForm);
   const [editSaving, setEditSaving] = useState(false);
 
-  const [backfilling, setBackfilling] = useState(false);
+  // "সব ইনভয়েস মুছুন" - অপরিবর্তনীয় বলে সাধারণ কনফার্ম ডায়ালগের বদলে টাইপ-করে-
+  // নিশ্চিত-করুন মোডাল, যেন ভুলবশত ক্লিক করলেও কিছু মোছা না যায়।
+  const [dangerModalOpen, setDangerModalOpen] = useState(false);
+  const [dangerConfirmText, setDangerConfirmText] = useState("");
+  const [deletingAllInvoices, setDeletingAllInvoices] = useState(false);
+
+  // "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন" - backfillInvoicesForAllStudents
+  // idempotent (ইতিমধ্যে বিল হওয়া কিছু আবার তৈরি করে না, unique constraint
+  // নিরবে স্কিপ করে দেয়) - তাই ডেঞ্জার জোনের বাইরে সাধারণ অ্যাকশন হিসেবে রাখা।
+  const [backfillingAll, setBackfillingAll] = useState(false);
+  const handleBackfillAll = () => {
+    useConfirmStore.getState().show({
+      title: "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন",
+      message:
+        "প্রতিটি সক্রিয় ছাত্রের জন্য, তার ক্লাস/সেশনের বর্তমান ফি স্ট্রাকচার অনুযায়ী যেসব ইনভয়েস এখনো তৈরি হয়নি সেগুলো তৈরি হবে। আগে থেকে তৈরি থাকা ইনভয়েস আবার ডুপ্লিকেট হবে না। চালাতে চান?",
+      confirmText: "চালান",
+      onConfirm: async () => {
+        try {
+          setBackfillingAll(true);
+          const res = await invoiceApi.backfill();
+          const data = (res.data as any)?.data;
+          useToastStore
+            .getState()
+            .show(
+              `${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+              "success",
+            );
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || "ফি সেট করতে সমস্যা হয়েছে";
+          useToastStore.getState().show(msg, "error");
+        } finally {
+          setBackfillingAll(false);
+        }
+      },
+    });
+  };
 
   const loadDivisions = useCallback(async () => {
     try {
@@ -143,19 +174,44 @@ const FeeStructurePage = () => {
       useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
       return;
     }
+    const structureClassId = classId ? Number(classId) : undefined;
+    const structureSessionId = Number(structureForm.session_id);
     try {
       setSaving(true);
       await feeStructureApi.create({
-        class_id: classId ? Number(classId) : undefined,
+        class_id: structureClassId,
         name: structureForm.name.trim(),
         amount: Number(structureForm.amount),
         frequency: structureForm.frequency,
         fee_type: structureForm.fee_type,
-        session_id: Number(structureForm.session_id),
+        session_id: structureSessionId,
       });
-      useToastStore.getState().show("ফি কাঠামো তৈরি হয়েছে", "success");
       setStructureForm(emptyStructureForm);
       loadStructures();
+
+      // Immediately bill every already-enrolled student this structure
+      // applies to, so nobody has to remember a separate manual step -
+      // matches the auto-billing-at-admission behavior new students
+      // already get. A billing hiccup here doesn't mean the structure
+      // itself failed to save, so it's reported as its own toast.
+      try {
+        const res = await invoiceApi.backfill({
+          class_id: structureClassId,
+          session_id: structureSessionId,
+        });
+        const data = (res.data as any)?.data;
+        useToastStore
+          .getState()
+          .show(
+            `ফি কাঠামো তৈরি হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+            "success",
+          );
+      } catch (err) {
+        logger.error("AUTO BACKFILL ERROR:", err);
+        useToastStore
+          .getState()
+          .show("ফি কাঠামো তৈরি হয়েছে, তবে বিদ্যমান ছাত্রদের ইনভয়েস তৈরিতে সমস্যা হয়েছে", "error");
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || "ফি কাঠামো তৈরি করতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
@@ -212,76 +268,24 @@ const FeeStructurePage = () => {
     }
   };
 
-  const openGenerateModal = (structure: FeeStructureRow) => {
-    setGenerateTarget(structure);
-    setGenerateForm(emptyGenerateForm);
+  const closeDangerModal = () => {
+    setDangerModalOpen(false);
+    setDangerConfirmText("");
   };
 
-  const handleGenerate = async () => {
-    if (!generateTarget || !generateForm.due_date) {
-      useToastStore.getState().show("ডিউ তারিখ দিন", "error");
-      return;
-    }
-    if (generateTarget.frequency === "MONTHLY" && !generateForm.month) {
-      useToastStore.getState().show("মাসিক ফির জন্য মাস (YYYY-MM) দিন", "error");
-      return;
-    }
-
+  const handleDeleteAllInvoices = async () => {
+    if (dangerConfirmText !== "DELETE") return;
     try {
-      setGenerating(true);
-      const res = await invoiceApi.generate({
-        fee_structure_id: generateTarget.id,
-        due_date: generateForm.due_date,
-        month: generateForm.month || undefined,
-        class_id: classId ? Number(classId) : undefined,
-      });
+      setDeletingAllInvoices(true);
+      const res = await invoiceApi.deleteAll(dangerConfirmText);
       const data = (res.data as any)?.data;
-      useToastStore
-        .getState()
-        .show(
-          `ইনভয়েস তৈরি হয়েছে: ${data?.created ?? 0} জনের (আগে থেকে বিল করা ছিল: ${data?.skipped ?? 0} জন)`,
-          "success",
-        );
-      setGenerateTarget(null);
+      useToastStore.getState().show(`${data?.deleted ?? 0} টি ইনভয়েস মুছে ফেলা হয়েছে`, "success");
+      closeDangerModal();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "ইনভয়েস তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
     } finally {
-      setGenerating(false);
-    }
-  };
-
-  // Bills every currently-enrolled student (not just newly admitted ones)
-  // against whatever active fee structures apply to them - for
-  // installations/classes that already had students before auto-billing-at
-  // -admission existed.
-  const handleBackfill = async () => {
-    const scopeLabel = classId
-      ? classes.find((c) => String(c.class_id) === classId)?.class_name_bn || "নির্বাচিত শ্রেণি"
-      : "সব শ্রেণির";
-    if (
-      !window.confirm(
-        `${scopeLabel} সব বিদ্যমান ছাত্রের জন্য বকেয়া ফি ইনভয়েস তৈরি করা হবে (যাদের এখনো নেই)। এগিয়ে যাবেন?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setBackfilling(true);
-      const res = await invoiceApi.backfill(classId ? { class_id: Number(classId) } : undefined);
-      const data = (res.data as any)?.data;
-      useToastStore
-        .getState()
-        .show(
-          `${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য ${data?.invoicesCreated ?? 0}টি নতুন ইনভয়েস তৈরি হয়েছে`,
-          "success",
-        );
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "ফি সেট করতে সমস্যা হয়েছে";
-      useToastStore.getState().show(msg, "error");
-    } finally {
-      setBackfilling(false);
+      setDeletingAllInvoices(false);
     }
   };
 
@@ -333,21 +337,21 @@ const FeeStructurePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              ফি কাঠামো তৈরি করুন এবং ইনভয়েস জেনারেট করুন
+              ফি কাঠামো তৈরি করুন — নতুন ভর্তি হওয়া ছাত্রদের ইনভয়েস অটোমেটিক তৈরি হয়ে যায়
             </p>
           </div>
           <button
             type="button"
-            disabled={backfilling}
-            onClick={handleBackfill}
-            className="flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60 sm:text-sm"
+            disabled={backfillingAll}
+            onClick={handleBackfillAll}
+            title="প্রতিটি সক্রিয় ছাত্রের জন্য বর্তমান ফি স্ট্রাকচার অনুযায়ী বাকি থাকা ইনভয়েস তৈরি করুন"
+            className="h-9 shrink-0 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            <Users size={14} />
-            {backfilling ? "সেট হচ্ছে..." : "বিদ্যমান সব ছাত্রের ফি সেট করুন"}
+            {backfillingAll ? "চলছে..." : "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন"}
           </button>
         </div>
 
@@ -390,6 +394,9 @@ const FeeStructurePage = () => {
           <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
             নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
           </h2>
+          <p className="mb-3 -mt-1 text-xs text-gray-500 dark:text-slate-400">
+            তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে।
+          </p>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <input
               type="text"
@@ -448,7 +455,7 @@ const FeeStructurePage = () => {
               onClick={handleCreateStructure}
               className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
             >
-              তৈরি করুন
+              {saving ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
             </button>
           </div>
         </div>
@@ -504,14 +511,6 @@ const FeeStructurePage = () => {
                               <div className="flex shrink-0 gap-0.5">
                                 <button
                                   type="button"
-                                  title="ইনভয়েস জেনারেট করুন"
-                                  onClick={() => openGenerateModal(row)}
-                                  className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                                >
-                                  <Receipt size={14} />
-                                </button>
-                                <button
-                                  type="button"
                                   title="এডিট"
                                   onClick={() => openEditModal(row)}
                                   className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
@@ -538,7 +537,58 @@ const FeeStructurePage = () => {
             </div>
           )}
         </div>
+
+        {/* বিপজ্জনক অ্যাকশন - শুধু টেস্ট/ডেমো ডেটা পরিষ্কার করার জন্য */}
+        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
+          <h2 className="text-sm font-bold text-rose-700 dark:text-rose-400">বিপজ্জনক এলাকা</h2>
+          <p className="mt-1 text-sm text-rose-600 dark:text-rose-400">
+            এই ট্যানেন্টের সব ইনভয়েস (ও তার সব পেমেন্ট) স্থায়ীভাবে মুছে ফেলুন। শুধু টেস্ট/ডেমো ডেটা
+            পরিষ্কার করার জন্য ব্যবহার করুন — এই কাজ আর ফিরিয়ে নেওয়া যাবে না।
+          </p>
+          <button
+            type="button"
+            onClick={() => setDangerModalOpen(true)}
+            className="mt-3 h-9 rounded-md border border-rose-300 bg-white px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-400 dark:hover:bg-rose-950/40"
+          >
+            সব ইনভয়েস মুছুন
+          </button>
+        </div>
       </div>
+
+      {/* সব ইনভয়েস মুছে ফেলার নিশ্চিতকরণ - সাধারণ কনফার্ম ডায়ালগ নয়, কারণ এটা
+          অপরিবর্তনীয় ও পুরো ট্যানেন্টের সব ইনভয়েস প্রভাবিত করে। */}
+      <Modal open={dangerModalOpen} title="সব ইনভয়েস মুছে ফেলুন" onClose={closeDangerModal}>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-gray-700 dark:text-slate-300">
+            এই ট্যানেন্টের <strong>সব ইনভয়েস ও পেমেন্ট স্থায়ীভাবে মুছে যাবে</strong> — এই কাজ আর ফিরিয়ে
+            নেওয়া যাবে না। নিশ্চিত হলে নিচের বক্সে <strong>DELETE</strong> লিখুন।
+          </p>
+          <input
+            type="text"
+            value={dangerConfirmText}
+            onChange={(e) => setDangerConfirmText(e.target.value)}
+            placeholder="DELETE লিখুন"
+            className="h-10 w-full rounded-md border border-gray-300 px-3 text-base outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeDangerModal}
+            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            বাতিল
+          </button>
+          <button
+            type="button"
+            disabled={dangerConfirmText !== "DELETE" || deletingAllInvoices}
+            onClick={handleDeleteAllInvoices}
+            className="h-9 rounded-md bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            {deletingAllInvoices ? "মুছে ফেলা হচ্ছে..." : "স্থায়ীভাবে মুছুন"}
+          </button>
+        </div>
+      </Modal>
 
       {/* Edit fee structure modal */}
       <Modal
@@ -625,61 +675,6 @@ const FeeStructurePage = () => {
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-          </button>
-        </div>
-      </Modal>
-
-      {/* Generate invoices modal */}
-      <Modal
-        open={!!generateTarget}
-        title={`ইনভয়েস জেনারেট করুন — ${generateTarget?.name || ""}`}
-        onClose={() => setGenerateTarget(null)}
-      >
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ডিউ তারিখ</label>
-            <input
-              type="date"
-              value={generateForm.due_date}
-              onChange={(e) => setGenerateForm((p) => ({ ...p, due_date: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          {generateTarget?.frequency === "MONTHLY" && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                মাস (YYYY-MM)
-              </label>
-              <input
-                type="month"
-                value={generateForm.month}
-                onChange={(e) => setGenerateForm((p) => ({ ...p, month: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-          )}
-          {!classId && (
-            <p className="text-xs text-amber-600">
-              কোনো শ্রেণি ফিল্টার নির্বাচন করা নেই — ফি কাঠামোর সাথে যুক্ত শ্রেণির সব ছাত্রের জন্য
-              ইনভয়েস তৈরি হবে।
-            </p>
-          )}
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setGenerateTarget(null)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            বাতিল
-          </button>
-          <button
-            type="button"
-            disabled={generating}
-            onClick={handleGenerate}
-            className="h-9 rounded-md bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
-          >
-            {generating ? "তৈরি হচ্ছে..." : "জেনারেট করুন"}
           </button>
         </div>
       </Modal>

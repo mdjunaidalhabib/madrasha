@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import { StaffFormData, StaffFormErrors } from "../../features/staff/StaffPage";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import ExperiencePicker from "../../components/ExperiencePicker/ExperiencePicker";
+import NumericInput from "../ui/NumericInput";
+import ScriptInput from "../ui/ScriptInput";
 
 interface Props {
   formData: StaffFormData;
@@ -68,20 +70,26 @@ const StaffInfo: React.FC<Props> = ({ formData, setFormData, errors = {}, setErr
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             নাম (বাংলা) <span className="text-red-500">*</span>
           </label>
-          <input name="name_bn" value={formData.name_bn || ""} onChange={handleChange} className={inputClass("name_bn")} />
+          <ScriptInput scriptLang="bn" name="name_bn" value={formData.name_bn || ""} onChange={handleChange} className={inputClass("name_bn")} />
           <ErrorText field="name_bn" />
         </div>
 
         {/* নাম (আরবি) */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">নাম (আরবি)</label>
-          <input name="name_ar" value={formData.name_ar || ""} onChange={handleChange} className={inputClass("name_ar")} />
+          <ScriptInput scriptLang="ar" name="name_ar" value={formData.name_ar || ""} onChange={handleChange} placeholder="اسم الموظف" className={inputClass("name_ar")} />
+        </div>
+
+        {/* নাম (ইংরেজি) */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">নাম (ইংরেজি)</label>
+          <ScriptInput scriptLang="en" name="name_en" value={formData.name_en || ""} onChange={handleChange} placeholder="Staff's Name" className={inputClass("name_en")} />
         </div>
 
         {/* NID */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID</label>
-          <input name="nid" value={formData.nid || ""} onChange={handleChange} className={inputClass("nid")} />
+          <NumericInput name="nid" value={formData.nid || ""} onChange={handleChange} className={inputClass("nid")} />
         </div>
 
         {/* লিঙ্গ */}
@@ -114,7 +122,7 @@ const StaffInfo: React.FC<Props> = ({ formData, setFormData, errors = {}, setErr
         {/* মোবাইল */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মোবাইল</label>
-          <input name="phone" value={formData.phone || ""} onChange={handleChange} className={inputClass("phone")} />
+          <NumericInput name="phone" value={formData.phone || ""} onChange={handleChange} className={inputClass("phone")} />
           <ErrorText field="phone" />
         </div>
 

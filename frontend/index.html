@@ -22,6 +22,10 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- রিপোর্ট প্রিভিউ Kalpurush ফন্টে রেন্ডার হয় - preload না করলে প্রথমে
+         সিস্টেম ফন্টে (মোটা দেখায়) আঁকা হয়ে পরে ফন্ট লোড হওয়ার পর হঠাৎ পাল্টে
+         যেত। আগেভাগে ডাউনলোড শুরু করলে ওই flash আর হয় না। -->
+    <link rel="preload" href="/fonts/Kalpurush.ttf" as="font" type="font/ttf" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Manrope:wght@500;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700;800&display=swap"
       rel="stylesheet"

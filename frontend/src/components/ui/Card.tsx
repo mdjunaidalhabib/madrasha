@@ -27,18 +27,30 @@ export function CardHeader({
   title,
   subtitle,
   actions,
+  nowrap = false,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  nowrap?: boolean;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
-      <div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
-      </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    <div className="mb-4 grid grid-cols-1 items-start gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <h3
+        className={`min-w-0 text-lg font-bold text-slate-900 dark:text-slate-100 sm:col-start-1 sm:row-start-1 ${nowrap ? "sm:truncate" : ""}`}
+      >
+        {title}
+      </h3>
+      {subtitle && (
+        <p
+          className={`min-w-0 text-sm text-slate-500 dark:text-slate-400 sm:col-span-2 sm:row-start-2 ${nowrap ? "sm:truncate" : ""}`}
+        >
+          {subtitle}
+        </p>
+      )}
+      {actions && (
+        <div className="flex shrink-0 items-center gap-2 sm:col-start-2 sm:row-start-1">{actions}</div>
+      )}
     </div>
   );
 }

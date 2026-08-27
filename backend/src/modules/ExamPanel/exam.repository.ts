@@ -2,9 +2,9 @@ import { prisma } from "../../shared/database/prisma";
 import { FAIL_MARK_SETTING_NAME } from "./exam.constants";
 
 export class ExamRepository {
-  findExams(madrasaId: number) {
+  findExams(madrasaId: number, activeOnly = false) {
     return prisma.exam.findMany({
-      where: { madrasaId, deletedAt: null },
+      where: { madrasaId, deletedAt: null, ...(activeOnly ? { isActive: true } : {}) },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -20,10 +20,10 @@ export class ExamRepository {
     });
   }
 
-  updateExam(id: number, madrasaId: number, name: string, year: string) {
+  updateExam(id: number, madrasaId: number, data: Record<string, unknown>) {
     return prisma.exam.updateMany({
       where: { id, madrasaId, deletedAt: null },
-      data: { name, year },
+      data,
     });
   }
 
@@ -61,8 +61,14 @@ export class ExamRepository {
     });
   }
 
-  createGeneralGrade(madrasaId: number, name: string, minMark: number, maxMark: number) {
-    return prisma.generalGrade.create({ data: { name, minMark, maxMark, madrasaId } });
+  createGeneralGrade(
+    madrasaId: number,
+    name: string,
+    minMark: number,
+    maxMark: number,
+    point: number | null,
+  ) {
+    return prisma.generalGrade.create({ data: { name, minMark, maxMark, point, madrasaId } });
   }
 
   updateGeneralGrade(
@@ -71,10 +77,11 @@ export class ExamRepository {
     name: string,
     minMark: number,
     maxMark: number,
+    point: number | null,
   ) {
     return prisma.generalGrade.updateMany({
       where: { id, madrasaId },
-      data: { name, minMark, maxMark },
+      data: { name, minMark, maxMark, point },
     });
   }
 
@@ -89,8 +96,14 @@ export class ExamRepository {
     });
   }
 
-  createMadrasaGrade(madrasaId: number, name: string, minMark: number, maxMark: number) {
-    return prisma.madrasaGrade.create({ data: { name, minMark, maxMark, madrasaId } });
+  createMadrasaGrade(
+    madrasaId: number,
+    name: string,
+    minMark: number,
+    maxMark: number,
+    point: number | null,
+  ) {
+    return prisma.madrasaGrade.create({ data: { name, minMark, maxMark, point, madrasaId } });
   }
 
   updateMadrasaGrade(
@@ -99,10 +112,11 @@ export class ExamRepository {
     name: string,
     minMark: number,
     maxMark: number,
+    point: number | null,
   ) {
     return prisma.madrasaGrade.updateMany({
       where: { id, madrasaId },
-      data: { name, minMark, maxMark },
+      data: { name, minMark, maxMark, point },
     });
   }
 

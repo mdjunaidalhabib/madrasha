@@ -1,17 +1,17 @@
 export interface CreateExamRequestDto {
   name: string;
-  year: string | number;
 }
 
 export interface UpdateExamRequestDto {
-  name: string;
-  year: string | number;
+  name?: string;
+  is_active?: boolean;
 }
 
 export interface SaveGradeRequestDto {
   name: string;
   min_mark: number | string;
   max_mark: number | string;
+  point?: number | string;
 }
 
 export interface UpdateFailMarkRequestDto {

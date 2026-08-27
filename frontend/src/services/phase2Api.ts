@@ -27,14 +27,6 @@ export const feeStructureApi = {
 };
 
 export const invoiceApi = {
-  generate: (payload: {
-    fee_structure_id: number;
-    due_date: string;
-    month?: string;
-    class_id?: number;
-    session_id?: number;
-  }) => api.post("/invoices/generate", payload),
-
   list: (params: { student_id?: number; status?: InvoiceStatus; month?: string }) =>
     api.get("/invoices", { params }),
 
@@ -63,6 +55,10 @@ export const invoiceApi = {
 
   waive: (invoiceId: number, payload: { amount: number; reason: string; mode?: "add" | "set" }) =>
     api.post(`/invoices/${invoiceId}/waive`, payload),
+
+  // অপরিবর্তনীয় - এই ট্যানেন্টের সব ইনভয়েস (ও ক্যাসকেডে সব পেমেন্ট) স্থায়ীভাবে
+  // মুছে দেয়। শুধু টেস্ট/ডেমো ডেটা পরিষ্কার করার জন্য, নিয়মিত ব্যবহারের জন্য নয়।
+  deleteAll: (confirm: string) => api.post("/invoices/delete-all", { confirm }),
 };
 
 /* ================= MANUAL PAYMENT METHOD SETUP (admin panel) ================= */
@@ -113,11 +109,11 @@ export const payrollApi = {
     }>;
   }) => api.post("/payroll/generate", payload),
 
-  list: (params: { month?: string; teacher_id?: number; status?: PayrollStatus }) =>
+  list: (params: { month?: string; year?: string; teacher_id?: number; status?: PayrollStatus }) =>
     api.get("/payroll", { params }),
 
-  markPaid: (id: number, payload?: { transaction_ref?: string }) =>
-    api.patch(`/payroll/${id}/pay`, payload || {}),
+  markPaid: (id: number, payload: { fund: string; category: string; transaction_ref?: string }) =>
+    api.patch(`/payroll/${id}/pay`, payload),
 };
 
 /* ================= LIBRARY MANAGEMENT ================= */

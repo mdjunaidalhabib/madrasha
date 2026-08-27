@@ -54,6 +54,10 @@ export interface UpdateAccountRequestDto {
   entry_time?: string;
 }
 
+export interface BulkDeleteAccountsRequestDto {
+  ids: (number | string)[];
+}
+
 export interface CreateFundRequestDto {
   type: "income" | "expense";
   name: string;

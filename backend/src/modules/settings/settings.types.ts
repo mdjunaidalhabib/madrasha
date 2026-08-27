@@ -7,7 +7,13 @@ export interface BrandingData {
   report_banner: string | null;
   report_watermark: string | null;
   report_watermark_opacity: number | null;
+  report_header_footer_enabled: boolean;
+  report_header_text: string | null;
+  report_footer_text: string | null;
+  report_print_mode: string;
 }
+
+export type SectionTogglesData = Record<string, boolean>;
 
 export interface DocumentTemplatesData {
   sanad_template: string | null;

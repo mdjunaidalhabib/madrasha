@@ -36,12 +36,14 @@ const reports: ReportMenuItem[] = [
   },
 ];
 
-const TeacherReportPage = () => (
+const TeacherReportPage = ({ printMode }: { printMode?: boolean }) => (
   <ReportShell
     pageTitle="শিক্ষক রিপোর্ট"
     pageSubtitle="শিক্ষক তালিকা ও মোবাইল নাম্বার database থেকে নিয়ে দ্রুত export/print করার সুবিধা।"
     accentTitle="Teacher Reports"
     reports={reports}
+    reportsPageKey="teacher"
+    printMode={printMode}
   />
 );
 

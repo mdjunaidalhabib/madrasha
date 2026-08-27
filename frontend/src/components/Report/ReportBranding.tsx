@@ -120,29 +120,63 @@ export function ReportBrandHeader({
     setCompactNameFontPx(fontPx);
   }, [compactMaxWidthPx, nameText]);
 
-  if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
+  const useCustomHeader = !!branding?.report_header_footer_enabled && !!branding?.report_header_text?.trim();
+
+  if (!branding?.report_logo && !branding?.name && !branding?.address && !useCustomHeader) return null;
+
+  const showLogo = !!branding.report_logo && !hideLogo;
 
   return (
-    <div className="report-brand-header relative flex flex-col items-center text-center">
-      {branding.report_logo && !hideLogo && (
+    <div
+      className={`report-brand-header relative flex flex-col items-center text-center ${
+        showLogo ? "report-brand-header--with-logo" : ""
+      }`}
+    >
+      {showLogo && branding.report_logo && (
         <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
       )}
-      {branding.name && (
-        <div
-          ref={nameRef}
-          className="report-brand-name text-black"
-          style={
-            compactMaxWidthPx
-              ? { whiteSpace: "nowrap", fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX }
-              : undefined
-          }
-        >
-          {nameText}
+      {useCustomHeader ? (
+        <div className="report-brand-address whitespace-pre-line text-black">
+          {toBanglaDigits(branding!.report_header_text || "")}
         </div>
+      ) : (
+        <>
+          {branding.name && (
+            <div
+              ref={nameRef}
+              className="report-brand-name text-black"
+              style={
+                compactMaxWidthPx
+                  ? { whiteSpace: "nowrap", fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX }
+                  : undefined
+              }
+            >
+              {nameText}
+            </div>
+          )}
+          {branding.address && (
+            <div className="report-brand-address text-black">{toBanglaDigits(branding.address)}</div>
+          )}
+        </>
       )}
-      {branding.address && (
-        <div className="report-brand-address text-black">{toBanglaDigits(branding.address)}</div>
-      )}
+    </div>
+  );
+}
+
+/**
+ * Renders the madrasa's custom report footer text at the bottom of every
+ * printed page, alongside the page-number footer - only when the "কাস্টম
+ * হেডার-ফুটার" section is enabled AND footer text is actually set. Renders
+ * nothing otherwise (no footer by default, matching pre-existing behaviour).
+ */
+export function ReportBrandFooter() {
+  const branding = useBrandingStore((s) => s.branding);
+
+  if (!branding?.report_header_footer_enabled || !branding?.report_footer_text?.trim()) return null;
+
+  return (
+    <div className="report-brand-footer whitespace-pre-line text-center text-black">
+      {toBanglaDigits(branding.report_footer_text || "")}
     </div>
   );
 }

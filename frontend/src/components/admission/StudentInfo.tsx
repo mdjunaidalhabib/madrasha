@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import { logger } from "../../utils/logger";
+import ScriptInput from "../ui/ScriptInput";
+import NumericInput from "../ui/NumericInput";
 
 interface Props {
   formData: AdmissionFormData;
@@ -197,9 +199,10 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            ছাত্রের নাম <span className="text-red-500 dark:text-red-400">*</span>
+            ছাত্রের নাম (বাংলা) <span className="text-red-500 dark:text-red-400">*</span>
           </label>
-          <input
+          <ScriptInput
+            scriptLang="bn"
             name="name"
             value={formData.name || ""}
             onChange={handleChange}
@@ -209,18 +212,32 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">আরবি নাম</label>
-          <input
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">ছাত্রের নাম (আরবি)</label>
+          <ScriptInput
+            scriptLang="ar"
             name="arabicName"
             value={formData.arabicName || ""}
             onChange={handleChange}
+            placeholder="اسم الطالب"
             className={inputClass("arabicName")}
           />
         </div>
 
         <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">ছাত্রের নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="nameEn"
+            value={formData.nameEn || ""}
+            onChange={handleChange}
+            placeholder="Student's Name"
+            className={inputClass("nameEn")}
+          />
+        </div>
+
+        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID/জন্ম নিবন্ধন নম্বর</label>
-          <input
+          <NumericInput
             name="nid"
             value={formData.nid || ""}
             onChange={handleChange}

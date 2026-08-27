@@ -1,5 +1,11 @@
 import { Link } from "react-router-dom";
-import DataExportPrintActions, { Orientation, PaperSize, PageMargins } from "../common/DataExportPrintActions";
+import { Search, Settings2, X } from "lucide-react";
+import DataExportPrintActions, {
+  Orientation,
+  PaperSize,
+  PageMargins,
+  ServerPdfExportConfig,
+} from "../common/DataExportPrintActions";
 import {
   ClassItem,
   Division,
@@ -10,7 +16,12 @@ import {
 import type { TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
+const fieldClass =
+  "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
+
 type ReportFilterBarProps = {
+  showSearch?: boolean;
+  serverPdfExport?: ServerPdfExportConfig;
   search: string;
   selectedDivision: string;
   selectedClass: string;
@@ -41,6 +52,8 @@ type ReportFilterBarProps = {
 };
 
 const ReportFilterBar = ({
+  showSearch = false,
+  serverPdfExport,
   search,
   selectedDivision,
   selectedClass,
@@ -70,21 +83,26 @@ const ReportFilterBar = ({
   onTemplateChange,
 }: ReportFilterBarProps) => {
   return (
-    <div className="no-print flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
-        <input
-          type="text"
-          placeholder="ID / নাম / মোবাইল"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:col-span-2 xl:w-[240px] xl:col-span-1"
-        />
+    <div className="no-print flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {showSearch && (
+          <div className="relative w-full min-w-[150px] flex-1 sm:w-auto sm:flex-none sm:basis-[170px]">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="ID / নাম / মোবাইল"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className={`${fieldClass} pl-6`}
+            />
+          </div>
+        )}
 
         {activeReport.requiresExam && (
           <select
             value={selectedExam}
             onChange={(e) => onExamChange(e.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 xl:w-[190px]"
+            className={`${fieldClass} min-w-[130px] flex-1 sm:w-auto sm:flex-none`}
           >
             <option value="">পরীক্ষা নির্বাচন করুন</option>
             {exams.map((exam) => (
@@ -99,7 +117,7 @@ const ReportFilterBar = ({
         <select
           value={selectedDivision}
           onChange={(e) => onDivisionChange(e.target.value)}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 xl:w-[150px]"
+          className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
         >
           <option value="">সকল বিভাগ</option>
           {divisions.map((division) => (
@@ -113,7 +131,7 @@ const ReportFilterBar = ({
           value={selectedClass}
           onChange={(e) => onClassChange(e.target.value)}
           disabled={!selectedDivision}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 xl:w-[165px]"
+          className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
         >
           <option value="">{selectedDivision ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}</option>
           {classes.map((cls) => (
@@ -128,7 +146,7 @@ const ReportFilterBar = ({
             value={selectedSubject}
             onChange={(e) => onSubjectChange(e.target.value)}
             disabled={!selectedClass}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 xl:w-[165px]"
+            className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
           >
             <option value="">{selectedClass ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
             {subjectOptions.map((subject) => (
@@ -143,7 +161,7 @@ const ReportFilterBar = ({
           <select
             value={selectedTemplateId ?? ""}
             onChange={(e) => onTemplateChange(e.target.value ? Number(e.target.value) : null)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 xl:w-[170px]"
+            className={`${fieldClass} min-w-[130px] flex-1 sm:w-auto sm:flex-none`}
           >
             <option value="">ডিফল্ট (স্বয়ংক্রিয়)</option>
             {templates.map((tpl) => (
@@ -157,18 +175,20 @@ const ReportFilterBar = ({
         {activeReport.documentType && (
           <Link
             to={`${getTenantAdminBase()}/talimat/settings/documents`}
-            className="flex h-10 w-full items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-blue-950/40 xl:w-auto"
+            className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2 text-[13px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
           >
-            টেমপ্লেট ম্যানেজ করুন
+            <Settings2 className="h-3 w-3" />
+            টেমপ্লেট
           </Link>
         )}
 
         <button
           type="button"
           onClick={onClear}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 xl:w-auto"
+          className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-200 px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          Clear
+          <X className="h-3 w-3" />
+          মুছুন
         </button>
       </div>
 
@@ -183,6 +203,7 @@ const ReportFilterBar = ({
         onOrientationChange={onOrientationChange}
         margins={margins}
         onMarginsChange={onMarginsChange}
+        serverPdfExport={serverPdfExport}
       />
     </div>
   );

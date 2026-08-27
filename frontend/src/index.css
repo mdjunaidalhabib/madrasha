@@ -7,7 +7,13 @@
   src: url("/fonts/Kalpurush.ttf") format("truetype");
   font-weight: 400 700;
   font-style: normal;
-  font-display: swap;
+  /* "swap" প্রথমে fallback ফন্টে (সাধারণত সিস্টেমের ডিফল্ট বাংলা ফন্ট, যা
+     Kalpurush-এর চেয়ে চোখে মোটা লাগে) এঁকে পরে Kalpurush লোড হলে হঠাৎ পাল্টে
+     ফেলত - রিপোর্ট প্রিভিউতে এটাই "লোডিং এ বোল্ড, পরে ঠিক" flash-এর কারণ।
+     "optional" + index.html-এর preload একসাথে থাকায় ফন্ট সময়মতো রেডি থাকলে
+     সরাসরি সেটাতেই আঁকে, নাহলে ওই পেজ-লোডে fallback-এই থেকে যায় - কোনো
+     দৃশ্যমান swap হয় না। */
+  font-display: optional;
 }
 
 :root {
@@ -87,12 +93,17 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: heroFadeUp 0.6s ease-out both;
 }
 
+/* Ticker-style marquee: a single (non-duplicated) copy of the notice text
+   enters from just past the bar's right edge and exits past its left edge,
+   then jumps back to the start for the next lap (see NoticeMarquee.tsx,
+   which sets --marquee-start/--marquee-end in px from the actual measured
+   bar/content widths so this works regardless of text length). */
 @keyframes marqueeScroll {
   from {
-    transform: translateX(0);
+    transform: translateX(var(--marquee-start, 100%));
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(var(--marquee-end, -100%));
   }
 }
 
@@ -218,9 +229,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .print-page-preview {
-  --report-table-font-size: 11.5px;
-  --report-title-font-size: 21px;
-  --report-meta-font-size: 11px;
+  --report-table-font-size: 15px;
+  --report-title-font-size: 26px;
+  --report-meta-font-size: 14px;
   position: relative;
   box-sizing: border-box;
   flex: none;
@@ -266,6 +277,23 @@ input[type="number"]::-webkit-inner-spin-button {
   letter-spacing: -0.02em;
 }
 
+/* Custom institution footer text (settings: রিপোর্ট হেডার-ফুটার) - an
+   absolute overlay like .report-background/.report-watermark rather than
+   part of the measured content flow, so it never affects pagination.
+   Reserves space on the right for .report-page-footer's page number. */
+.report-brand-footer {
+  position: absolute;
+  left: 3mm;
+  right: 20mm;
+  bottom: 2mm;
+  z-index: 2;
+  font-family: var(--font-report-body);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #334155;
+}
+
 .report-background {
   position: absolute;
   inset: 0;
@@ -307,13 +335,26 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .report-brand-header {
-  /* Above .report-content-body (a later DOM sibling at the same stacking
-     level would otherwise paint over the logo when it overflows past the
-     header's own box, since the header's height is driven by the name/
-     address text only, not the absolutely-positioned logo). */
+  /* Above .report-content-body in case a future edge case still leaves the
+     logo overlapping it - the extra margin-bottom on
+     .report-brand-header--with-logo below is what actually keeps that from
+     happening in the normal case. */
   z-index: 2;
   margin-bottom: 10px;
   gap: 2px;
+}
+
+/* Only applied when a logo actually renders (ReportBrandHeader sets this
+   modifier class) - a madrasa with no uploaded logo keeps the compact 10px
+   margin above instead of wasting this space. The logo is centered on the
+   header's own bottom edge (see .report-brand-logo's top:105% +
+   translateY(-50%)), so roughly half its own height always overhangs past
+   the header's text-driven flow height regardless of how much name/address
+   text there is. This margin must clear that overhang (half the logo
+   height + a small buffer) or the report's own heading text directly below
+   renders underneath/behind the logo. */
+.report-brand-header--with-logo {
+  margin-bottom: 54px;
 }
 
 .report-brand-logo {
@@ -365,15 +406,15 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* Tailwind utility text and spacing are compacted only inside short paper sheets. */
 .print-page-preview[data-orientation="landscape"] .report-content-body .text-lg {
-  font-size: 15px !important;
+  font-size: 18.5px !important;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-content-body .text-sm {
-  font-size: 10.5px !important;
+  font-size: 13px !important;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-content-body .text-xs {
-  font-size: 9px !important;
+  font-size: 11.5px !important;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .text-2xl,
@@ -382,19 +423,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .text-lg {
-  font-size: 11.5px !important;
+  font-size: 15px !important;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .text-base {
-  font-size: 9.5px !important;
+  font-size: 12px !important;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .text-sm {
-  font-size: 8.5px !important;
+  font-size: 11px !important;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .text-xs {
-  font-size: 7.4px !important;
+  font-size: 9.5px !important;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-content-body .leading-9 {
@@ -438,45 +479,45 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .print-page-preview[data-orientation="landscape"] {
-  --report-table-font-size: 10.75px;
-  --report-title-font-size: 19px;
-  --report-meta-font-size: 10px;
+  --report-table-font-size: 14px;
+  --report-title-font-size: 24px;
+  --report-meta-font-size: 13px;
 }
 
 .print-page-preview[data-paper-size="a5"] {
-  --report-table-font-size: 8.6px;
-  --report-title-font-size: 15px;
-  --report-meta-font-size: 8px;
+  --report-table-font-size: 11.5px;
+  --report-title-font-size: 19.5px;
+  --report-meta-font-size: 10.5px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] {
-  --report-table-font-size: 8px;
-  --report-title-font-size: 14px;
-  --report-meta-font-size: 7.5px;
+  --report-table-font-size: 10.5px;
+  --report-title-font-size: 18px;
+  --report-meta-font-size: 10px;
 }
 
 .print-page-preview[data-density="compact"] {
-  --report-table-font-size: 10.75px;
+  --report-table-font-size: 14px;
 }
 
 .print-page-preview[data-density="dense"] {
-  --report-table-font-size: 9.8px;
+  --report-table-font-size: 12.5px;
 }
 
 .print-page-preview[data-density="ultra-dense"] {
-  --report-table-font-size: 8.9px;
+  --report-table-font-size: 11.5px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-density="compact"] {
-  --report-table-font-size: 8px;
+  --report-table-font-size: 10.5px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-density="dense"] {
-  --report-table-font-size: 7.3px;
+  --report-table-font-size: 9.6px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-density="ultra-dense"] {
-  --report-table-font-size: 6.7px;
+  --report-table-font-size: 8.8px;
 }
 
 /* Marksheet: pin every font-size variable and Tailwind text-* utility back
@@ -725,6 +766,10 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   gap: 1px;
 }
 
+.print-page-preview[data-orientation="landscape"] .report-brand-header--with-logo {
+  margin-bottom: 48px;
+}
+
 .print-page-preview[data-orientation="landscape"] .report-brand-logo {
   width: 84px;
   height: 84px;
@@ -743,6 +788,10 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 .print-page-preview[data-paper-size="a5"] .report-brand-header {
   margin-bottom: 6px;
   gap: 1px;
+}
+
+.print-page-preview[data-paper-size="a5"] .report-brand-header--with-logo {
+  margin-bottom: 40px;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-logo {
@@ -1287,6 +1336,11 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   }
 
   .report-brand-header {
+    z-index: 2 !important;
+  }
+
+  .report-brand-footer {
+    position: absolute !important;
     z-index: 2 !important;
   }
 

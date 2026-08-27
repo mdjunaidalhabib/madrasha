@@ -13,6 +13,27 @@ const PRIZE_BOOK_LABEL_COLUMNS = [
 
 const reports: ReportMenuItem[] = [
   {
+    key: "student-marksheets",
+    title: "মার্কশিট",
+    subtitle: "শিক্ষার্থীর ফলাফল ও মার্কশিট রিপোর্ট",
+    endpoint: "/reports/student/marksheets",
+    printable: "marksheet",
+    documentType: "MARKSHEET",
+    columns: [
+      { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
+      { header: "শিক্ষার্থীর নাম", key: "student_name" },
+      { header: "পরীক্ষা", key: "exam_name" },
+      { header: "শ্রেণি", key: "class_name" },
+      { header: "মোট", key: "total" },
+      { header: "গড়", key: "average" },
+      { header: "গ্রেড", key: "general_grade" },
+      { header: "মাদরাসা গ্রেড", key: "madrasa_grade" },
+      { header: "মেধাক্রম", key: "rank_no" },
+      { header: "স্ট্যাটাস", key: "status" },
+    ],
+  },
+  {
     key: "student-id-cards",
     title: "আইডি কার্ড",
     subtitle: "শিক্ষার্থীদের আইডি কার্ড রিপোর্ট ও প্রিন্ট",
@@ -137,13 +158,16 @@ const reports: ReportMenuItem[] = [
   },
 ];
 
-const DocumentsReportPage = () => (
+const DocumentsReportPage = ({ printMode }: { printMode?: boolean }) => (
   <ReportShell
     pageTitle="ডকুমেন্ট সমূহ"
-    pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
+    pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র, মার্কশিট ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
     accentTitle="Documents"
     reports={reports}
+    reportsPageKey="documents"
+    printMode={printMode}
     hideBrandHeader
+    showSearch
   />
 );
 

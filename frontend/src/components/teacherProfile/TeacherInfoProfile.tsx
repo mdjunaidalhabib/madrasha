@@ -78,6 +78,7 @@ const TeacherInfoProfile = ({
           name="name_bn"
           value={data?.name_bn || ""}
           onChange={handleChange}
+          scriptLang="bn"
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -87,6 +88,17 @@ const TeacherInfoProfile = ({
           name="name_ar"
           value={data?.name_ar || ""}
           onChange={handleChange}
+          scriptLang="ar"
+          {...{ editableField, setEditableField, isEditMode }}
+        />
+
+        {/* NAME EN */}
+        <Field
+          label="নাম (ইংরেজি)"
+          name="name_en"
+          value={data?.name_en || ""}
+          onChange={handleChange}
+          scriptLang="en"
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -96,6 +108,7 @@ const TeacherInfoProfile = ({
           name="nid"
           value={data?.nid || ""}
           onChange={handleChange}
+          numeric
           {...{ editableField, setEditableField, isEditMode }}
         />
 
@@ -130,6 +143,7 @@ const TeacherInfoProfile = ({
           name="phone"
           value={data?.phone || ""}
           onChange={handleChange}
+          numeric
           {...{ editableField, setEditableField, isEditMode }}
         />
 

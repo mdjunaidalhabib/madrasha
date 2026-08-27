@@ -84,6 +84,7 @@ export class AuthService {
         email: user.email,
         role_id: user.roleId,
         role_key: roleKey,
+        role_label: role?.nameBn || "",
         mobile: user.mobile,
         photo_url: user.photoUrl,
       },

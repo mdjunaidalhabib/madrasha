@@ -9,6 +9,7 @@ import {
   LetterDesignData,
   BookLabelDesignData,
   MyPlanData,
+  SectionTogglesData,
 } from "./settings.types";
 import {
   UpdateBrandingRequestDto,
@@ -17,6 +18,7 @@ import {
   UpdateAdmitCardDesignRequestDto,
   UpdateLetterDesignRequestDto,
   UpdateBookLabelDesignRequestDto,
+  UpdateSectionToggleRequestDto,
 } from "./settings.dto";
 import {
   TEMPLATE_TOKENS,
@@ -29,6 +31,9 @@ import {
   BRANDING_IMAGE_FIELDS,
   DOCUMENT_DESIGNS,
   DEFAULT_DOCUMENT_DESIGN,
+  REPORT_PRINT_MODES,
+  DEFAULT_REPORT_PRINT_MODE,
+  SETTINGS_SECTION_KEYS,
 } from "./settings.constants";
 
 function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
@@ -64,6 +69,8 @@ function sanitizeContactList(value: unknown, maxLength: number): string[] | null
   return cleaned;
 }
 
+const toBoolInt = (value: unknown): 0 | 1 => (Number(value) ? 1 : 0);
+
 export class SettingsService {
   constructor(private readonly repository: SettingsRepository = settingsRepository) {}
 
@@ -90,6 +97,10 @@ export class SettingsService {
       report_banner: madrasa.reportBanner,
       report_watermark: madrasa.reportWatermark,
       report_watermark_opacity: Number(madrasa.reportWatermarkOpacity),
+      report_header_footer_enabled: !!madrasa.reportHeaderFooterEnabled,
+      report_header_text: madrasa.reportHeaderText,
+      report_footer_text: madrasa.reportFooterText,
+      report_print_mode: madrasa.reportPrintMode || DEFAULT_REPORT_PRINT_MODE,
     };
   }
 
@@ -103,6 +114,10 @@ export class SettingsService {
       report_banner,
       report_watermark,
       report_watermark_opacity,
+      report_header_footer_enabled,
+      report_header_text,
+      report_footer_text,
+      report_print_mode,
     } = body;
 
     for (const [key, value] of Object.entries({ report_logo, report_banner, report_watermark })) {
@@ -143,6 +158,21 @@ export class SettingsService {
       }
     }
 
+    if (report_header_text !== undefined && !isValidTextValue(report_header_text, MAX_TEMPLATE_LENGTH)) {
+      throw new BadRequestError(`Invalid report header text (max ${MAX_TEMPLATE_LENGTH} characters)`);
+    }
+
+    if (report_footer_text !== undefined && !isValidTextValue(report_footer_text, MAX_TEMPLATE_LENGTH)) {
+      throw new BadRequestError(`Invalid report footer text (max ${MAX_TEMPLATE_LENGTH} characters)`);
+    }
+
+    if (
+      report_print_mode !== undefined &&
+      !(REPORT_PRINT_MODES as readonly string[]).includes(report_print_mode)
+    ) {
+      throw new BadRequestError("Invalid report print mode");
+    }
+
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
       ...(name !== undefined && String(name).trim() !== "" ? { name } : {}),
@@ -162,6 +192,12 @@ export class SettingsService {
       // now saved independently (inline edit UI), so a save of e.g. just the
       // name must not silently reset this back to DEFAULT_WATERMARK_OPACITY.
       ...(opacity !== undefined ? { reportWatermarkOpacity: opacity } : {}),
+      ...(report_header_footer_enabled !== undefined
+        ? { reportHeaderFooterEnabled: toBoolInt(report_header_footer_enabled) }
+        : {}),
+      ...(report_header_text !== undefined ? { reportHeaderText: report_header_text } : {}),
+      ...(report_footer_text !== undefined ? { reportFooterText: report_footer_text } : {}),
+      ...(report_print_mode !== undefined ? { reportPrintMode: report_print_mode } : {}),
     });
   }
 
@@ -390,6 +426,30 @@ export class SettingsService {
       user_limit: madrasa.userLimit ?? 0,
       usage: { students, users },
     };
+  }
+
+  async getSectionToggles(madrasaId: number): Promise<SectionTogglesData> {
+    const madrasa = await this.repository.findSectionToggles(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    const stored = (madrasa.settingsSectionToggles as Record<string, boolean> | null) || {};
+    const result: SectionTogglesData = {};
+    for (const key of SETTINGS_SECTION_KEYS) {
+      result[key] = stored[key] !== undefined ? !!stored[key] : true;
+    }
+    return result;
+  }
+
+  async updateSectionToggle(madrasaId: number, body: UpdateSectionToggleRequestDto) {
+    const { key, enabled } = body;
+    if (!key || !(SETTINGS_SECTION_KEYS as readonly string[]).includes(key)) {
+      throw new BadRequestError("Invalid section key");
+    }
+
+    const current = await this.getSectionToggles(madrasaId);
+    current[key] = toBoolInt(enabled) === 1;
+    await this.repository.updateSectionToggles(madrasaId, current);
+    return current;
   }
 }
 

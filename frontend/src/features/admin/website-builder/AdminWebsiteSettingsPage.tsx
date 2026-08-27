@@ -26,8 +26,10 @@ import BrandImageBox from "../../../components/settings/BrandImageBox";
 import SectionCard from "../../../components/settings/SectionCard";
 import { ToggleSwitch, PublishToggle } from "../../../components/settings/ToggleSwitch";
 import InlineTextField, { textAreaClass } from "../../../components/settings/InlineTextField";
+import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import { CLOUD_NOT_CONFIGURED_MSG, isPendingCloudUpload } from "../../../utils/cloudUpload";
+import { useSectionTogglesStore } from "../../../store/sectionTogglesStore";
 import { getTenantAdminBase } from "../../../utils/tenantSlug";
 import {
   deleteWebsiteCommitteeMember,
@@ -85,11 +87,32 @@ const defaultSettings: WebsiteSettingsPayload = {
   muhtamim_photo: "",
   muhtamim_message: "",
   notice_bar_text: "",
+  notice_bar_speed: 20,
   facebook_url: "",
   youtube_url: "",
   instagram_url: "",
   whatsapp_channel_url: "",
 };
+
+/**
+ * সিরিয়াল/ক্রম টাইপ করে বসানো যায় না — শুধু ড্রপডাউন থেকে অবস্থান বেছে নিলে
+ * মাঝের সব আইটেমের sort_order স্বয়ংক্রিয়ভাবে শিফট হয়ে যায় (1-based position)।
+ */
+function reorderBySortOrder<T extends { id?: number; sort_order?: number }>(
+  list: T[],
+  movedId: number,
+  newPosition: number,
+): T[] {
+  const ordered = [...list].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const fromIndex = ordered.findIndex((item) => item.id === movedId);
+  if (fromIndex === -1) return list;
+
+  const [moved] = ordered.splice(fromIndex, 1);
+  const toIndex = Math.min(Math.max(newPosition - 1, 0), ordered.length);
+  ordered.splice(toIndex, 0, moved);
+
+  return ordered.map((item, index) => ({ ...item, sort_order: index + 1 }));
+}
 
 const emptyNotice: WebsiteNoticePayload = { title: "", content: "", is_published: 1 };
 const emptyGallery: WebsiteGalleryPayload = { title: "", image_url: "", is_published: 1, sort_order: 0 };
@@ -136,10 +159,69 @@ type TabKey =
 
 const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-slate-400";
 
+const selectFieldClass =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+/** "প্রকাশ করুন" টগল + বাতিল/সংরক্ষণ বাটন - এডিট-ড্রাফট ব্লকগুলোতে (পেজ,
+ * নোটিশ, গ্যালারি, স্লাইড, কমিটি) হুবহু একই স্টাইল/অ্যালাইনমেন্ট নিশ্চিত করতে
+ * একটাই কম্পোনেন্ট থেকে রেন্ডার হয়, আলাদা আলাদা কপি-পেস্ট না করে। */
+function PublishAndSaveActions({
+  published,
+  onPublishedChange,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  published: boolean;
+  onPublishedChange: (v: boolean) => void;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <PublishToggle checked={published} onChange={onPublishedChange} />
+      <div className="flex gap-2">
+        <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>
+          বাতিল
+        </Button>
+        <Button type="button" disabled={saving} onClick={onSave}>
+          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** "প্রকাশ করুন" টগল + "যোগ করুন" সাবমিট বাটন - নতুন-আইটেম-যোগ ফর্মগুলোতে
+ * (নোটিশ, গ্যালারি, স্লাইড, কমিটি) একই স্টাইলে ব্যবহারের জন্য। */
+function PublishAndSubmitAction({
+  published,
+  onPublishedChange,
+  saving,
+}: {
+  published: boolean;
+  onPublishedChange: (v: boolean) => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <PublishToggle checked={published} onChange={onPublishedChange} />
+      <Button disabled={saving} type="submit" className="gap-1.5">
+        {!saving && <Plus size={15} />}
+        {saving ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminWebsiteSettingsPage() {
   const user = useAuthStore((s) => s.user);
   const slug = getTenantSlugFromPath();
   const toast = useToastStore((s) => s.show);
+  const isSectionEnabled = useSectionTogglesStore((s) => s.isEnabled);
+  const setSectionToggle = useSectionTogglesStore((s) => s.setToggle);
+  const fetchSectionToggles = useSectionTogglesStore((s) => s.fetchToggles);
 
   const [tab, setTab] = useState<TabKey>("general");
 
@@ -150,6 +232,9 @@ export default function AdminWebsiteSettingsPage() {
   useEffect(() => {
     formRef.current = form;
   }, [form]);
+  useEffect(() => {
+    fetchSectionToggles();
+  }, [fetchSectionToggles]);
   // Every field/toggle save PUTs the *entire* settings object (the backend
   // has no partial-update endpoint), so concurrent saves must be serialized
   // — otherwise a slower request can overwrite a faster one's change with
@@ -394,10 +479,20 @@ export default function AdminWebsiteSettingsPage() {
       toast(CLOUD_NOT_CONFIGURED_MSG, "error");
       return;
     }
+    const chosenPosition = galleryDraft.sort_order || gallery.length + 1;
     setSavingGallery(true);
     try {
-      const saved = await saveWebsiteGalleryItem(galleryDraft);
-      setGallery((prev) => [saved.data, ...prev]);
+      const saved = await saveWebsiteGalleryItem({ ...galleryDraft, sort_order: gallery.length + 1 });
+      let nextGallery = [saved.data, ...gallery];
+      if (chosenPosition <= gallery.length) {
+        nextGallery = reorderBySortOrder(nextGallery, saved.data.id!, chosenPosition);
+        await Promise.all(
+          nextGallery
+            .filter((item) => item.id !== saved.data.id)
+            .map((item) => saveWebsiteGalleryItem(item)),
+        );
+      }
+      setGallery(nextGallery.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setGalleryDraft(emptyGallery);
       toast("গ্যালারিতে ছবি যোগ করা হয়েছে।", "success");
     } catch (err) {
@@ -410,7 +505,8 @@ export default function AdminWebsiteSettingsPage() {
 
   const startEditGalleryItem = (item: WebsiteGalleryPayload) => {
     setEditingGalleryId(item.id!);
-    setGalleryEditDraft(item);
+    const position = gallery.findIndex((g) => g.id === item.id) + 1;
+    setGalleryEditDraft({ ...item, sort_order: position || gallery.length });
   };
 
   const cancelEditGalleryItem = () => {
@@ -428,10 +524,24 @@ export default function AdminWebsiteSettingsPage() {
       toast(CLOUD_NOT_CONFIGURED_MSG, "error");
       return;
     }
+    const desiredPosition = galleryEditDraft.sort_order || gallery.length;
+    const originalItem = gallery.find((g) => g.id === galleryEditDraft.id);
     setSavingGalleryEdit(true);
     try {
-      const saved = await saveWebsiteGalleryItem(galleryEditDraft);
-      setGallery((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
+      // নিজের ফিল্ড আগে সেভ করা হয় পুরনো sort_order অক্ষুণ্ণ রেখে - তারপর দরকার
+      // হলে অবস্থান বদলে অন্য আইটেমগুলো শিফট করা হয়, একসাথে দুটো না করে।
+      const saved = await saveWebsiteGalleryItem({ ...galleryEditDraft, sort_order: originalItem?.sort_order });
+      let nextGallery = gallery.map((item) => (item.id === saved.data.id ? saved.data : item));
+      const currentPosition = nextGallery.findIndex((item) => item.id === saved.data.id) + 1;
+
+      if (desiredPosition !== currentPosition) {
+        nextGallery = reorderBySortOrder(nextGallery, saved.data.id, desiredPosition);
+        await Promise.all(
+          nextGallery.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteGalleryItem(item)),
+        );
+      }
+
+      setGallery(nextGallery.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       toast("গ্যালারি ছবি আপডেট হয়েছে।", "success");
       cancelEditGalleryItem();
     } catch (err) {
@@ -474,10 +584,18 @@ export default function AdminWebsiteSettingsPage() {
       toast(CLOUD_NOT_CONFIGURED_MSG, "error");
       return;
     }
+    const chosenPosition = slideDraft.sort_order || slides.length + 1;
     setSavingSlide(true);
     try {
-      const saved = await saveWebsiteSlide(slideDraft);
-      setSlides((prev) => [saved.data, ...prev]);
+      const saved = await saveWebsiteSlide({ ...slideDraft, sort_order: slides.length + 1 });
+      let nextSlides = [saved.data, ...slides];
+      if (chosenPosition <= slides.length) {
+        nextSlides = reorderBySortOrder(nextSlides, saved.data.id!, chosenPosition);
+        await Promise.all(
+          nextSlides.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteSlide(item)),
+        );
+      }
+      setSlides(nextSlides.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setSlideDraft(emptySlide);
       toast("স্লাইড যোগ করা হয়েছে।", "success");
     } catch (err) {
@@ -490,7 +608,8 @@ export default function AdminWebsiteSettingsPage() {
 
   const startEditSlide = (item: WebsiteSlidePayload) => {
     setEditingSlideId(item.id!);
-    setSlideEditDraft(item);
+    const position = slides.findIndex((s) => s.id === item.id) + 1;
+    setSlideEditDraft({ ...item, sort_order: position || slides.length });
   };
 
   const cancelEditSlide = () => {
@@ -508,10 +627,22 @@ export default function AdminWebsiteSettingsPage() {
       toast(CLOUD_NOT_CONFIGURED_MSG, "error");
       return;
     }
+    const desiredPosition = slideEditDraft.sort_order || slides.length;
+    const originalItem = slides.find((s) => s.id === slideEditDraft.id);
     setSavingSlideEdit(true);
     try {
-      const saved = await saveWebsiteSlide(slideEditDraft);
-      setSlides((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
+      const saved = await saveWebsiteSlide({ ...slideEditDraft, sort_order: originalItem?.sort_order });
+      let nextSlides = slides.map((item) => (item.id === saved.data.id ? saved.data : item));
+      const currentPosition = nextSlides.findIndex((item) => item.id === saved.data.id) + 1;
+
+      if (desiredPosition !== currentPosition) {
+        nextSlides = reorderBySortOrder(nextSlides, saved.data.id, desiredPosition);
+        await Promise.all(
+          nextSlides.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteSlide(item)),
+        );
+      }
+
+      setSlides(nextSlides.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       toast("স্লাইড আপডেট হয়েছে।", "success");
       cancelEditSlide();
     } catch (err) {
@@ -763,6 +894,10 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title="সেকশন দৃশ্যমানতা"
             hint="ক্লিক করলেই সাথে সাথে আপডেট হয়ে যাবে — কোন সেকশনগুলো পাবলিক ওয়েবসাইটে দেখাবে তা নিয়ন্ত্রণ করুন"
+            toggle={{
+              checked: isSectionEnabled("website_section_visibility"),
+              onChange: (v) => setSectionToggle("website_section_visibility", v),
+            }}
           >
             <div className="grid gap-3 md:grid-cols-2">
               {toggleFields.map(([key, label, hint]) => (
@@ -791,7 +926,13 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "appearance" && (
         <div className="space-y-6">
-          <SectionCard title="প্রতিষ্ঠান পরিচিতি ও লোগো">
+          <SectionCard
+            title="প্রতিষ্ঠান পরিচিতি ও লোগো"
+            toggle={{
+              checked: isSectionEnabled("website_institution_info"),
+              onChange: (v) => setSectionToggle("website_institution_info", v),
+            }}
+          >
             <p className="text-sm text-slate-600 dark:text-slate-400">
               মাদ্রাসার নাম, ঠিকানা, যোগাযোগ ও লোগো এখন{" "}
               <span className="font-semibold text-slate-800 dark:text-slate-100">প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস</span>{" "}
@@ -807,7 +948,13 @@ export default function AdminWebsiteSettingsPage() {
             </Link>
           </SectionCard>
 
-          <SectionCard title="থিম কালার">
+          <SectionCard
+            title="থিম কালার"
+            toggle={{
+              checked: isSectionEnabled("website_theme_color"),
+              onChange: (v) => setSectionToggle("website_theme_color", v),
+            }}
+          >
             <InlineTextField
               label="থিম কালার"
               value={form.theme_color || "#2563eb"}
@@ -816,7 +963,13 @@ export default function AdminWebsiteSettingsPage() {
             />
           </SectionCard>
 
-          <SectionCard title="হোমপেজ ব্যানার">
+          <SectionCard
+            title="হোমপেজ ব্যানার"
+            toggle={{
+              checked: isSectionEnabled("website_hero_banner"),
+              onChange: (v) => setSectionToggle("website_hero_banner", v),
+            }}
+          >
             <div className="space-y-2">
               <InlineTextField
                 label="হিরো শিরোনাম"
@@ -839,22 +992,53 @@ export default function AdminWebsiteSettingsPage() {
         <div className="space-y-6">
           <SectionCard
             title="চলমান নোটিশ বার"
-            hint="হোমপেজের একদম উপরে যে লেখাটি স্ক্রল হয়ে চলবে। একাধিক লাইন লিখলে প্রতিটি লাইন আলাদাভাবে স্ক্রল হবে। খালি রাখলে বার দেখাবে না।"
+            hint="হোমপেজের একদম উপরে এই লেখাগুলো স্ক্রল হয়ে চলবে। খালি রাখলে বার দেখাবে না।"
+            toggle={{
+              checked: isSectionEnabled("website_notice_bar"),
+              onChange: (v) => setSectionToggle("website_notice_bar", v),
+            }}
           >
-            <InlineTextField
-              label="নোটিশ বার টেক্সট"
-              value={form.notice_bar_text || ""}
-              multiline
+            <InlineListField
+              label="নোটিশ লেখা"
+              values={(form.notice_bar_text || "").split("\n").map((v) => v.trim()).filter(Boolean)}
+              maxItems={20}
               placeholder="যেমনঃ আগামী ১৫ই রমজান থেকে ভর্তি কার্যক্রম শুরু হবে।"
-              onSave={(v) => saveSettingsField("notice_bar_text", v)}
+              onSave={(list) => saveSettingsField("notice_bar_text", list.join("\n"))}
             />
+
+            <div className="mt-3 max-w-xs rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">গতি (স্পিড)</label>
+                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
+                  {form.notice_bar_speed ?? 20}s
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={60}
+                step={1}
+                value={form.notice_bar_speed ?? 20}
+                onChange={(e) => setForm((prev) => ({ ...prev, notice_bar_speed: Number(e.target.value) }))}
+                onMouseUp={(e) => saveSettingsField("notice_bar_speed", Number((e.target as HTMLInputElement).value))}
+                onTouchEnd={(e) => saveSettingsField("notice_bar_speed", Number((e.target as HTMLInputElement).value))}
+                className="mt-2 w-full accent-blue-600"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">কম মান = দ্রুত স্ক্রল, বেশি মান = ধীর স্ক্রল</p>
+            </div>
           </SectionCard>
         </div>
       )}
 
       {tab === "muhtamim" && (
         <div className="space-y-6">
-          <SectionCard title="মুহতামিম সাহেবের বাণী">
+          <SectionCard
+            title="মুহতামিম সাহেবের বাণী"
+            toggle={{
+              checked: isSectionEnabled("website_muhtamim_message"),
+              onChange: (v) => setSectionToggle("website_muhtamim_message", v),
+            }}
+          >
             <div className="space-y-2">
               <InlineTextField
                 label="নাম"
@@ -892,6 +1076,10 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title="সোশ্যাল মিডিয়া লিংক"
             hint="খালি রাখলে সেই আইকনটি পাবলিক ওয়েবসাইটের ফুটার ও WhatsApp বাটনে দেখাবে না।"
+            toggle={{
+              checked: isSectionEnabled("website_social_links"),
+              onChange: (v) => setSectionToggle("website_social_links", v),
+            }}
           >
             <div className="space-y-2">
               <InlineTextField
@@ -925,7 +1113,14 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "pages" && (
         <div className="space-y-6">
-          <SectionCard title="পেজ কন্টেন্ট" hint="আমাদের সম্পর্কে, ভর্তি তথ্য ও যোগাযোগ পেজের লেখা এখান থেকে সম্পাদনা করুন">
+          <SectionCard
+            title="পেজ কন্টেন্ট"
+            hint="আমাদের সম্পর্কে, ভর্তি তথ্য ও যোগাযোগ পেজের লেখা এখান থেকে সম্পাদনা করুন"
+            toggle={{
+              checked: isSectionEnabled("website_page_content"),
+              onChange: (v) => setSectionToggle("website_page_content", v),
+            }}
+          >
             <div className="space-y-3">
               {pages.map((page, index) =>
                 editingPageIndex === index && pageDraft ? (
@@ -945,27 +1140,15 @@ export default function AdminWebsiteSettingsPage() {
                         setPageDraft((prev) => (prev ? { ...prev, content: e.target.value } : prev))
                       }
                     />
-                    <div className="mt-3 flex items-center justify-between">
-                      <PublishToggle
-                        checked={pageDraft.is_published !== 0}
-                        onChange={(v) =>
-                          setPageDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={savingPage}
-                          onClick={cancelEditPage}
-                        >
-                          বাতিল
-                        </Button>
-                        <Button type="button" disabled={savingPage} onClick={savePage}>
-                          {savingPage ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-                        </Button>
-                      </div>
-                    </div>
+                    <PublishAndSaveActions
+                      published={pageDraft.is_published !== 0}
+                      onPublishedChange={(v) =>
+                        setPageDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                      }
+                      saving={savingPage}
+                      onCancel={cancelEditPage}
+                      onSave={savePage}
+                    />
                   </div>
                 ) : (
                   <div
@@ -1011,7 +1194,13 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "notices" && (
         <div className="space-y-6">
-          <SectionCard title="নতুন নোটিশ যোগ করুন">
+          <SectionCard
+            title="নতুন নোটিশ যোগ করুন"
+            toggle={{
+              checked: isSectionEnabled("website_notice_add"),
+              onChange: (v) => setSectionToggle("website_notice_add", v),
+            }}
+          >
             <form onSubmit={submitNotice} className="space-y-3">
               <Input
                 value={noticeDraft.title || ""}
@@ -1025,20 +1214,22 @@ export default function AdminWebsiteSettingsPage() {
                 onChange={(e) => setNoticeDraft((prev) => ({ ...prev, content: e.target.value }))}
                 placeholder="নোটিশের বিস্তারিত"
               />
-              <div className="flex items-center justify-between">
-                <PublishToggle
-                  checked={noticeDraft.is_published !== 0}
-                  onChange={(v) => setNoticeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                />
-                <Button disabled={savingNotice} type="submit" className="gap-1.5">
-                  {!savingNotice && <Plus size={15} />}
-                  {savingNotice ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
-                </Button>
-              </div>
+              <PublishAndSubmitAction
+                published={noticeDraft.is_published !== 0}
+                onPublishedChange={(v) => setNoticeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
+                saving={savingNotice}
+              />
             </form>
           </SectionCard>
 
-          <SectionCard title="সব নোটিশ" hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+          <SectionCard
+            title="সব নোটিশ"
+            hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            toggle={{
+              checked: isSectionEnabled("website_notice_list"),
+              onChange: (v) => setSectionToggle("website_notice_list", v),
+            }}
+          >
             {notices.length ? (
               <div className="space-y-3">
                 {notices.map((notice) =>
@@ -1060,27 +1251,15 @@ export default function AdminWebsiteSettingsPage() {
                         }
                         placeholder="নোটিশের বিস্তারিত"
                       />
-                      <div className="mt-3 flex items-center justify-between">
-                        <PublishToggle
-                          checked={noticeEditDraft.is_published !== 0}
-                          onChange={(v) =>
-                            setNoticeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={savingNoticeEdit}
-                            onClick={cancelEditNotice}
-                          >
-                            বাতিল
-                          </Button>
-                          <Button type="button" disabled={savingNoticeEdit} onClick={saveNoticeEdit}>
-                            {savingNoticeEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-                          </Button>
-                        </div>
-                      </div>
+                      <PublishAndSaveActions
+                        published={noticeEditDraft.is_published !== 0}
+                        onPublishedChange={(v) =>
+                          setNoticeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                        }
+                        saving={savingNoticeEdit}
+                        onCancel={cancelEditNotice}
+                        onSave={saveNoticeEdit}
+                      />
                     </div>
                   ) : (
                     <div
@@ -1131,7 +1310,13 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "gallery" && (
         <div className="space-y-6">
-          <SectionCard title="নতুন ছবি যোগ করুন">
+          <SectionCard
+            title="নতুন ছবি যোগ করুন"
+            toggle={{
+              checked: isSectionEnabled("website_gallery_add"),
+              onChange: (v) => setSectionToggle("website_gallery_add", v),
+            }}
+          >
             <form onSubmit={submitGallery} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-xs">
@@ -1153,31 +1338,40 @@ export default function AdminWebsiteSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ক্রম (Sort order)</label>
-                    <Input
-                      type="number"
-                      value={galleryDraft.sort_order ?? 0}
+                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <select
+                      value={galleryDraft.sort_order || gallery.length + 1}
                       onChange={(e) =>
                         setGalleryDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
                       }
-                    />
+                      className={selectFieldClass}
+                    >
+                      {Array.from({ length: gallery.length + 1 }, (_, i) => i + 1).map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                          {pos === gallery.length + 1 ? " (সবার শেষে)" : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <PublishToggle
-                  checked={galleryDraft.is_published !== 0}
-                  onChange={(v) => setGalleryDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                />
-                <Button disabled={savingGallery} type="submit" className="gap-1.5">
-                  {!savingGallery && <Plus size={15} />}
-                  {savingGallery ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
-                </Button>
-              </div>
+              <PublishAndSubmitAction
+                published={galleryDraft.is_published !== 0}
+                onPublishedChange={(v) => setGalleryDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
+                saving={savingGallery}
+              />
             </form>
           </SectionCard>
 
-          <SectionCard title="সব ছবি" hint="যেকোনো ছবির পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+          <SectionCard
+            title="সব ছবি"
+            hint="যেকোনো ছবির পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            toggle={{
+              checked: isSectionEnabled("website_gallery_list"),
+              onChange: (v) => setSectionToggle("website_gallery_list", v),
+            }}
+          >
             {gallery.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((item) =>
@@ -1205,27 +1399,33 @@ export default function AdminWebsiteSettingsPage() {
                           }
                         />
                       </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <PublishToggle
-                          checked={galleryEditDraft.is_published !== 0}
-                          onChange={(v) =>
-                            setGalleryEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                      <div className="mt-3">
+                        <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                        <select
+                          value={galleryEditDraft.sort_order || gallery.length}
+                          onChange={(e) =>
+                            setGalleryEditDraft((prev) =>
+                              prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
+                            )
                           }
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={savingGalleryEdit}
-                            onClick={cancelEditGalleryItem}
-                          >
-                            বাতিল
-                          </Button>
-                          <Button type="button" disabled={savingGalleryEdit} onClick={saveGalleryEdit}>
-                            {savingGalleryEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-                          </Button>
-                        </div>
+                          className={selectFieldClass}
+                        >
+                          {gallery.map((_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {i + 1}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+                      <PublishAndSaveActions
+                        published={galleryEditDraft.is_published !== 0}
+                        onPublishedChange={(v) =>
+                          setGalleryEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                        }
+                        saving={savingGalleryEdit}
+                        onCancel={cancelEditGalleryItem}
+                        onSave={saveGalleryEdit}
+                      />
                     </div>
                   ) : (
                     <div
@@ -1274,7 +1474,13 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "slider" && (
         <div className="space-y-6">
-          <SectionCard title="নতুন স্লাইড যোগ করুন">
+          <SectionCard
+            title="নতুন স্লাইড যোগ করুন"
+            toggle={{
+              checked: isSectionEnabled("website_slider_add"),
+              onChange: (v) => setSectionToggle("website_slider_add", v),
+            }}
+          >
             <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
               প্রস্তাবিত ছবির সাইজ: 1600 x 900px (16:9, landscape) — সব ডিভাইসে ঠিকভাবে ফিট হবে।
             </p>
@@ -1306,31 +1512,40 @@ export default function AdminWebsiteSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ক্রম (Sort order)</label>
-                    <Input
-                      type="number"
-                      value={slideDraft.sort_order ?? 0}
+                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <select
+                      value={slideDraft.sort_order || slides.length + 1}
                       onChange={(e) =>
                         setSlideDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
                       }
-                    />
+                      className={selectFieldClass}
+                    >
+                      {Array.from({ length: slides.length + 1 }, (_, i) => i + 1).map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                          {pos === slides.length + 1 ? " (সবার শেষে)" : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <PublishToggle
-                  checked={slideDraft.is_published !== 0}
-                  onChange={(v) => setSlideDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                />
-                <Button disabled={savingSlide} type="submit" className="gap-1.5">
-                  {!savingSlide && <Plus size={15} />}
-                  {savingSlide ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
-                </Button>
-              </div>
+              <PublishAndSubmitAction
+                published={slideDraft.is_published !== 0}
+                onPublishedChange={(v) => setSlideDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
+                saving={savingSlide}
+              />
             </form>
           </SectionCard>
 
-          <SectionCard title="সব স্লাইড" hint="যেকোনো স্লাইডের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+          <SectionCard
+            title="সব স্লাইড"
+            hint="যেকোনো স্লাইডের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            toggle={{
+              checked: isSectionEnabled("website_slider_list"),
+              onChange: (v) => setSectionToggle("website_slider_list", v),
+            }}
+          >
             {slides.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {slides.map((item) =>
@@ -1369,28 +1584,34 @@ export default function AdminWebsiteSettingsPage() {
                             }
                           />
                         </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <PublishToggle
-                          checked={slideEditDraft.is_published !== 0}
-                          onChange={(v) =>
-                            setSlideEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={savingSlideEdit}
-                            onClick={cancelEditSlide}
+                        <div>
+                          <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                          <select
+                            value={slideEditDraft.sort_order || slides.length}
+                            onChange={(e) =>
+                              setSlideEditDraft((prev) =>
+                                prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
+                              )
+                            }
+                            className={selectFieldClass}
                           >
-                            বাতিল
-                          </Button>
-                          <Button type="button" disabled={savingSlideEdit} onClick={saveSlideEdit}>
-                            {savingSlideEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-                          </Button>
+                            {slides.map((_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
+                      <PublishAndSaveActions
+                        published={slideEditDraft.is_published !== 0}
+                        onPublishedChange={(v) =>
+                          setSlideEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                        }
+                        saving={savingSlideEdit}
+                        onCancel={cancelEditSlide}
+                        onSave={saveSlideEdit}
+                      />
                     </div>
                   ) : (
                     <div
@@ -1442,7 +1663,13 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "committee" && (
         <div className="space-y-6">
-          <SectionCard title="নতুন সদস্য যোগ করুন">
+          <SectionCard
+            title="নতুন সদস্য যোগ করুন"
+            toggle={{
+              checked: isSectionEnabled("website_committee_add"),
+              onChange: (v) => setSectionToggle("website_committee_add", v),
+            }}
+          >
             <form onSubmit={submitCommitteeMember} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-[9rem]">
@@ -1481,20 +1708,22 @@ export default function AdminWebsiteSettingsPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <PublishToggle
-                  checked={committeeDraft.is_published !== 0}
-                  onChange={(v) => setCommitteeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                />
-                <Button disabled={savingCommittee} type="submit" className="gap-1.5">
-                  {!savingCommittee && <Plus size={15} />}
-                  {savingCommittee ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
-                </Button>
-              </div>
+              <PublishAndSubmitAction
+                published={committeeDraft.is_published !== 0}
+                onPublishedChange={(v) => setCommitteeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
+                saving={savingCommittee}
+              />
             </form>
           </SectionCard>
 
-          <SectionCard title="কমিটির সদস্যরা" hint="যেকোনো সদস্যের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+          <SectionCard
+            title="কমিটির সদস্যরা"
+            hint="যেকোনো সদস্যের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            toggle={{
+              checked: isSectionEnabled("website_committee_list"),
+              onChange: (v) => setSectionToggle("website_committee_list", v),
+            }}
+          >
             {committee.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {committee.map((item) =>
@@ -1550,29 +1779,15 @@ export default function AdminWebsiteSettingsPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <PublishToggle
-                          checked={committeeEditDraft.is_published !== 0}
-                          onChange={(v) =>
-                            setCommitteeEditDraft((prev) =>
-                              prev ? { ...prev, is_published: v ? 1 : 0 } : prev,
-                            )
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={savingCommitteeEdit}
-                            onClick={cancelEditCommitteeMember}
-                          >
-                            বাতিল
-                          </Button>
-                          <Button type="button" disabled={savingCommitteeEdit} onClick={saveCommitteeEdit}>
-                            {savingCommitteeEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-                          </Button>
-                        </div>
-                      </div>
+                      <PublishAndSaveActions
+                        published={committeeEditDraft.is_published !== 0}
+                        onPublishedChange={(v) =>
+                          setCommitteeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                        }
+                        saving={savingCommitteeEdit}
+                        onCancel={cancelEditCommitteeMember}
+                        onSave={saveCommitteeEdit}
+                      />
                     </div>
                   ) : (
                     <div

@@ -37,11 +37,6 @@ export const deleteFeeStructure = asyncHandler(async (req: Request, res: Respons
 
 /* ================= INVOICES ================= */
 
-export const generateInvoices = asyncHandler(async (req: Request, res: Response) => {
-  const data = await feeService.generateInvoices(getMadrasaId(req), req.body);
-  return ApiResponse.success(res, { message: "Invoices generated successfully", data });
-});
-
 export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.listInvoices(getMadrasaId(req), req.query as any);
   res.json({ success: true, data });
@@ -55,6 +50,11 @@ export const getPendingInvoices = asyncHandler(async (req: Request, res: Respons
 export const clearPendingInvoices = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.clearPendingInvoices(getMadrasaId(req));
   return ApiResponse.success(res, { message: "তালিকা ক্লিয়ার করা হয়েছে", data });
+});
+
+export const deleteAllInvoices = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.deleteAllInvoices(getMadrasaId(req), req.body);
+  return ApiResponse.success(res, { message: `${data.deleted} টি ইনভয়েস মুছে ফেলা হয়েছে`, data });
 });
 
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {

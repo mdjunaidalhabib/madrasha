@@ -4,6 +4,7 @@ export interface ExcelAdmissionRow {
   name_bn?: string;
   name?: string;
   arabic_name?: string;
+  name_en?: string;
   nid?: string;
   gender?: string | number | null;
   dob?: string;
@@ -16,9 +17,12 @@ export interface ExcelAdmissionRow {
   parent_phone?: string | number;
   father_name?: string;
   father_arabic_name?: string;
+  father_name_en?: string;
   father_nid?: string;
   father_occupation?: string;
   mother_name?: string;
+  mother_arabic_name?: string;
+  mother_name_en?: string;
   mother_nid?: string;
   mother_occupation?: string;
   division?: string;

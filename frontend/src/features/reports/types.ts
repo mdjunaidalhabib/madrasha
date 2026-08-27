@@ -74,11 +74,26 @@ export type ExamItem = {
 };
 
 export type ReportShellProps = {
-  pageTitle: string;
-  pageSubtitle: string;
-  accentTitle: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
+  accentTitle?: string;
   reports: ReportMenuItem[];
   hideBrandHeader?: boolean;
+  // ID/নাম/মোবাইল সার্চ বক্স - শুধু ডকুমেন্ট সমূহ পেজে (অনেকগুলো ভিন্ন
+  // ডকুমেন্ট টাইপের মধ্যে একজন নির্দিষ্ট শিক্ষার্থী খুঁজে বের করার জন্য) দরকার,
+  // বাকি রিপোর্ট পেজে দেখানো হয় না।
+  showSearch?: boolean;
+  // /:madrasaSlug/print/reports/<reportsPageKey> - "PDF" বাটন ক্লিক করলে
+  // backend-এর headless-browser export ঠিক কোন প্রিন্ট-রুটে নেভিগেট করবে তা
+  // চিহ্নিত করে। প্রতিটা *ReportPage.tsx-এর নিজস্ব একটা মান আছে
+  // ("academic"/"student"/"exam"/"teacher"/"documents") - router.tsx-এর
+  // /print/reports/:key রুটগুলোর সাথে মিলিয়ে রাখা।
+  reportsPageKey: string;
+  // true হলে sidebar/filter-bar/হেডার লুকিয়ে শুধু প্রিভিউ রেন্ডার হয়, এবং
+  // URL query params থেকে ফিল্টার state হাইড্রেট হয় - server-side PDF export
+  // (backend/report-export.service.ts) এই মোডে headless browser দিয়ে পেজটা
+  // লোড করে।
+  printMode?: boolean;
 };
 
 export type AttendancePrintProps = {

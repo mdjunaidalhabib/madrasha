@@ -54,6 +54,7 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   madrasaId,
   nameBn: String(body.name_bn || "").trim(),
   arabicName: clean(body.arabic_name),
+  nameEn: clean(body.name_en),
   nid: clean(body.nid),
   gender: toGenderNumber(body.gender),
   dob: body.dob ? new Date(body.dob) : null,
@@ -77,10 +78,13 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
 
   fatherName: clean(body.father_name),
   fatherArabicName: clean(body.father_arabic_name),
+  fatherNameEn: clean(body.father_name_en),
   fatherNid: clean(body.father_nid),
   fatherOccupation: clean(body.father_occupation),
 
   motherName: clean(body.mother_name),
+  motherArabicName: clean(body.mother_arabic_name),
+  motherNameEn: clean(body.mother_name_en),
   motherNid: clean(body.mother_nid),
   motherOccupation: clean(body.mother_occupation),
 
@@ -88,6 +92,8 @@ const makeStudentData = (body: Record<string, any>, madrasaId: number) => ({
   guardianPhone2: clean(body.guardian_phone_2),
 
   altGuardianName: clean(body.alt_guardian_name),
+  altGuardianArabicName: clean(body.alt_guardian_arabic_name),
+  altGuardianNameEn: clean(body.alt_guardian_name_en),
   altGuardianRelation: clean(body.alt_guardian_relation),
   altGuardianAddress: clean(body.alt_guardian_address),
   altGuardianPhone: clean(body.alt_guardian_phone),

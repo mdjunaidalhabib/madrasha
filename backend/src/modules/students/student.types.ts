@@ -21,6 +21,7 @@ export interface StudentApiDto {
   registration_no: number | null;
   name_bn: string;
   arabic_name: string | null;
+  name_en: string | null;
   nid: string | null;
   gender: number | null;
   dob: Date | null;
@@ -40,14 +41,19 @@ export interface StudentApiDto {
   current_class: string | null;
   father_name: string | null;
   father_arabic_name: string | null;
+  father_name_en: string | null;
   father_nid: string | null;
   father_occupation: string | null;
   mother_name: string | null;
+  mother_arabic_name: string | null;
+  mother_name_en: string | null;
   mother_nid: string | null;
   mother_occupation: string | null;
   guardian_phone: string | null;
   guardian_phone_2: string | null;
   alt_guardian_name: string | null;
+  alt_guardian_arabic_name: string | null;
+  alt_guardian_name_en: string | null;
   alt_guardian_relation: string | null;
   alt_guardian_address: string | null;
   alt_guardian_phone: string | null;

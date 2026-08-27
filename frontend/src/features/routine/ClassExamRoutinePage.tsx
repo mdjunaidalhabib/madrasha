@@ -90,7 +90,7 @@ const ClassExamRoutinePage = () => {
 
   const loadExams = useCallback(async () => {
     try {
-      const res = await cachedGet("/exams");
+      const res = await cachedGet("/exams", { params: { active_only: true } });
       setExams(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD EXAMS ERROR:", err);

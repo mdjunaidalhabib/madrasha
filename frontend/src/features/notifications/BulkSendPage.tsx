@@ -58,7 +58,7 @@ const BulkSendPage = () => {
         .catch((err) => logger.error("LOAD DIVISIONS ERROR:", err));
     }
     if (mode === "results") {
-      cachedGet("/exams")
+      cachedGet("/exams", { params: { active_only: true } })
         .then((res) => setExams(normalizeArray(res)))
         .catch((err) => logger.error("LOAD EXAMS ERROR:", err));
     }

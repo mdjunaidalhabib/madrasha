@@ -337,7 +337,7 @@ export default function PublicWebsitePage() {
         </nav>
 
         {settings.show_notice_bar !== 0 && (
-          <NoticeMarquee text={settings.notice_bar_text} />
+          <NoticeMarquee text={settings.notice_bar_text} speed={settings.notice_bar_speed} />
         )}
       </header>
 

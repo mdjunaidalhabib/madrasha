@@ -13,22 +13,34 @@ const ParentInfoProfile = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field
-          label="পিতার নাম"
+          label="পিতার নাম (বাংলা)"
           name="father_name"
           value={student.father_name}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          scriptLang="bn"
         />
         <Field
-          label="পিতার আরবি নাম"
+          label="পিতার নাম (আরবি)"
           name="father_arabic_name"
           value={student.father_arabic_name}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          scriptLang="ar"
+        />
+        <Field
+          label="পিতার নাম (ইংরেজি)"
+          name="father_name_en"
+          value={student.father_name_en}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode} // ✅ pass
+          scriptLang="en"
         />
         <Field
           label="পিতার NID"
@@ -38,24 +50,46 @@ const ParentInfoProfile = ({
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          numeric
         />
         <Field
           label="পিতার পেশা"
-          name="father_name"
-          value={student.father_name}
+          name="father_occupation"
+          value={student.father_occupation}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
         />
         <Field
-          label="মাতার নাম"
+          label="মাতার নাম (বাংলা)"
           name="mother_name"
           value={student.mother_name}
           onChange={handleChange}
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          scriptLang="bn"
+        />
+        <Field
+          label="মাতার নাম (আরবি)"
+          name="mother_arabic_name"
+          value={student.mother_arabic_name}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode} // ✅ pass
+          scriptLang="ar"
+        />
+        <Field
+          label="মাতার নাম (ইংরেজি)"
+          name="mother_name_en"
+          value={student.mother_name_en}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode} // ✅ pass
+          scriptLang="en"
         />
         <Field
           label="মাতার NID"
@@ -65,6 +99,7 @@ const ParentInfoProfile = ({
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          numeric
         />
         <Field
           label="মাতার পেশা"
@@ -83,6 +118,7 @@ const ParentInfoProfile = ({
           editableField={editableField}
           setEditableField={setEditableField}
           isEditMode={isEditMode} // ✅ pass
+          numeric
         />
       </div>
     </div>

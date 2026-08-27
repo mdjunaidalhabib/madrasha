@@ -293,7 +293,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       {/* Desktop table */}
       <div className="mt-5 hidden overflow-hidden rounded-2xl border bg-white md:block">
         {loading ? (
-          <SkeletonTable rows={6} columns={7} className="rounded-none border-0 shadow-none" />
+          <SkeletonTable rows={6} columns={7} className="rounded-none" bordered={false} shadowed={false} />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">

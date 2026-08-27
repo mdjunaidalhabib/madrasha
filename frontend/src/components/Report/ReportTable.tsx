@@ -5,11 +5,19 @@ type ReportTableProps = {
   report: ReportMenuItem;
   rows: Record<string, any>[];
   startIndex?: number;
+  isFirstPage?: boolean;
 };
 
-const ReportTable = ({ report, rows, startIndex = 0 }: ReportTableProps) => {
+const ReportTable = ({ report, rows, startIndex = 0, isFirstPage = true }: ReportTableProps) => {
   return (
     <div className="w-full min-w-0">
+      {isFirstPage && (
+        <div className="report-block-heading mb-3 text-center">
+          <h1 className="text-xl font-bold">{report.title}</h1>
+          {report.subtitle && <p className="mt-1 text-base font-bold text-black">{report.subtitle}</p>}
+        </div>
+      )}
+
       <table className="report-responsive-table w-full border-collapse border border-black text-center">
         <thead>
           <tr className="bg-slate-100">
@@ -40,7 +48,7 @@ const ReportTable = ({ report, rows, startIndex = 0 }: ReportTableProps) => {
             rows.map((row, rowIndex) => (
               <tr
                 key={`${report.key}-${row.id || row.student_id || row.teacher_id || rowIndex}`}
-                className="transition hover:bg-slate-50"
+                className={`transition hover:bg-slate-50 ${row.__bold ? "bg-slate-50 font-semibold" : ""}`}
               >
                 {report.columns.map((column) => (
                   <td

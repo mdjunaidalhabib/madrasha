@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import { TeacherFormData, TeacherFormErrors } from "../../features/teachers/TeacherPage";
 import CustomDatePicker from "../../components/CustomDatePicker/CustomDatePicker";
 import ExperiencePicker from "../../components/ExperiencePicker/ExperiencePicker";
+import NumericInput from "../ui/NumericInput";
+import ScriptInput from "../ui/ScriptInput";
 
 interface DivisionItem {
   division_id: number;
@@ -82,7 +84,8 @@ const TeacherInfo: React.FC<Props> = ({
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             নাম (বাংলা) <span className="text-red-500">*</span>
           </label>
-          <input
+          <ScriptInput
+            scriptLang="bn"
             name="name_bn"
             value={formData.name_bn || ""}
             onChange={handleChange}
@@ -94,18 +97,33 @@ const TeacherInfo: React.FC<Props> = ({
         {/* নাম (আরবি) */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">নাম (আরবি)</label>
-          <input
+          <ScriptInput
+            scriptLang="ar"
             name="name_ar"
             value={formData.name_ar || ""}
             onChange={handleChange}
+            placeholder="اسم المدرس"
             className={inputClass("name_ar")}
+          />
+        </div>
+
+        {/* নাম (ইংরেজি) */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">নাম (ইংরেজি)</label>
+          <ScriptInput
+            scriptLang="en"
+            name="name_en"
+            value={formData.name_en || ""}
+            onChange={handleChange}
+            placeholder="Teacher's Name"
+            className={inputClass("name_en")}
           />
         </div>
 
         {/* NID */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID</label>
-          <input
+          <NumericInput
             name="nid"
             value={formData.nid || ""}
             onChange={handleChange}
@@ -153,7 +171,7 @@ const TeacherInfo: React.FC<Props> = ({
         {/* মোবাইল */}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মোবাইল</label>
-          <input
+          <NumericInput
             name="phone"
             value={formData.phone || ""}
             onChange={handleChange}
