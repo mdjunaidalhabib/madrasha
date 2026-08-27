@@ -1,5 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // The Docker build stage (node:20-bookworm-slim, no `openssl` CLI present)
+  // can't auto-detect the runtime's actual OpenSSL version and silently
+  // defaults to 1.1.x - but the production stage ends up with OpenSSL 3.0.x
+  // (pulled in as a dependency of Playwright's `--with-deps chromium`
+  // install, see backend/Dockerfile), so the 1.1.x-only engine binary can't
+  // be found at runtime and every DB query fails. Generating both makes the
+  // client work regardless of which one the build stage guessed.
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
