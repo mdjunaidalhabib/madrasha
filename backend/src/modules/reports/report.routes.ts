@@ -33,6 +33,12 @@ import {
 
 const router = Router();
 
+// NOTE: GET /export-pdf/:downloadId (downloadReportPdf) is deliberately NOT
+// registered here - it's mounted at the top level in core/router.ts,
+// before the blanket-`tenantMiddleware`-at-"/" routers (examRoutes etc.),
+// for the same reason /guardian and /billing are up there. See that file's
+// comment.
+
 router.use(tenantMiddleware);
 router.use(authMiddleware);
 

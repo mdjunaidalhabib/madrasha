@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, Browser } from "playwright";
 import { generateToken } from "../../../shared/utils/jwt.util";
 import { config } from "../../../shared/config";
 import { logger } from "../../../shared/logger/logger";
@@ -6,6 +6,39 @@ import { ApiError } from "../../../shared/errors";
 
 type PaperSize = "a4" | "a5";
 type Orientation = "portrait" | "landscape";
+
+// Caps how many PDF exports render at once. Each one drives a real Chromium
+// tab (context) through a full page load + render, which is real CPU/memory
+// - with no cap, a burst of exports (e.g. many admins pulling result sheets
+// right after a result gets published) could spin up dozens of these
+// simultaneously and take the whole server down with them, not just PDF
+// export. Anything beyond the cap simply waits its turn (see acquire()
+// below) instead of starting immediately - a few extra seconds of queueing
+// is a far better failure mode than an OOM crash.
+const MAX_CONCURRENT_EXPORTS = 3;
+
+class Semaphore {
+  private available: number;
+  private readonly waiters: Array<() => void> = [];
+
+  constructor(limit: number) {
+    this.available = limit;
+  }
+
+  acquire(): Promise<void> {
+    if (this.available > 0) {
+      this.available -= 1;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => this.waiters.push(resolve));
+  }
+
+  release(): void {
+    const next = this.waiters.shift();
+    if (next) next();
+    else this.available += 1;
+  }
+}
 
 // Matches PAPER_SIZE_MM in frontend/src/components/common/DataExportPrintActions.tsx -
 // keep the two in sync if either changes.
@@ -36,6 +69,26 @@ export type ExportReportPdfParams = {
 // (via page.pdf()) to print it, rather than approximating the render in a
 // <canvas>.
 export class ReportExportService {
+  // Reused across requests instead of a fresh `chromium.launch()` each time
+  // - a cold Chromium launch was consistently the single largest chunk of
+  // "PDF export timing"'s launchMs (often 1-2s, sometimes more under load),
+  // and every request needs its own isolated `context`/`page` anyway (that's
+  // what actually carries the per-user auth state below), not its own
+  // browser process. `getBrowser()` launches once, lazily, and every
+  // request afterward just opens/closes a context on the shared instance.
+  private browserPromise: Promise<Browser> | null = null;
+  private readonly slots = new Semaphore(MAX_CONCURRENT_EXPORTS);
+
+  private async getBrowser(): Promise<Browser> {
+    if (this.browserPromise) {
+      const existing = await this.browserPromise;
+      if (existing.isConnected()) return existing;
+      this.browserPromise = null; // crashed/closed - relaunch below
+    }
+    this.browserPromise = chromium.launch({ headless: true });
+    return this.browserPromise;
+  }
+
   async generatePdf(params: ExportReportPdfParams): Promise<Buffer> {
     if (!config.app.frontendBaseUrl) {
       throw new ApiError(
@@ -52,18 +105,21 @@ export class ReportExportService {
       "2m",
     );
 
-    // Stage timings, logged once at the end - a cold Chromium launch plus
-    // rendering+paginating a large multi-page report can add up past what
-    // seems reasonable at a glance, and without this the only symptom
-    // visible from the frontend is "it timed out somewhere in there" (see
-    // the 120s client-side timeout in DataExportPrintActions.tsx). Findable
-    // in the logs the next time a report is slow enough to matter.
+    // Stage timings, logged once at the end - rendering+paginating a large
+    // multi-page report can add up past what seems reasonable at a glance,
+    // and without this the only symptom visible from the frontend is "it
+    // timed out somewhere in there" (see the 120s client-side timeout in
+    // DataExportPrintActions.tsx). Findable in the logs the next time a
+    // report is slow enough to matter.
     const startedAt = Date.now();
-    const browser = await chromium.launch({ headless: true });
-    const launchedAt = Date.now();
+    await this.slots.acquire();
+    const acquiredAt = Date.now();
 
+    let context: Awaited<ReturnType<Browser["newContext"]>> | undefined;
     try {
-      const context = await browser.newContext();
+      const browser = await this.getBrowser();
+      const launchedAt = Date.now();
+      context = await browser.newContext();
 
       const authState = {
         state: {
@@ -109,7 +165,11 @@ export class ReportExportService {
       logger.info("PDF export timing", {
         reportsPage: params.reportsPage,
         reportKey: params.reportKey,
-        launchMs: launchedAt - startedAt,
+        // Time spent waiting for a free slot under MAX_CONCURRENT_EXPORTS -
+        // 0 outside of a concurrent burst, rising under load instead of the
+        // request just piling more CPU/memory onto an already-busy server.
+        queueMs: acquiredAt - startedAt,
+        launchMs: launchedAt - acquiredAt,
         navigateMs: navigatedAt - launchedAt,
         renderWaitMs: readyAt - navigatedAt,
         pdfMs: pdfAt - readyAt,
@@ -121,7 +181,9 @@ export class ReportExportService {
       logger.error("PDF export failed:", error);
       throw new ApiError("Failed to generate PDF", 500);
     } finally {
-      await browser.close();
+      // Only the context - the browser itself is shared, see getBrowser().
+      await context?.close();
+      this.slots.release();
     }
   }
 }

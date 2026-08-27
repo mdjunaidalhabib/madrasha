@@ -32,6 +32,7 @@ import talimatRoutes from "../modules/talimat/talimat.routes";
 import classPanalRoutes from "../modules/classPanal/class-panel.routes";
 
 import reportsRoutes from "../modules/reports/report.routes";
+import { downloadReportPdf } from "../modules/reports/controllers/report-export.controller";
 // 👑 Super Admin
 import superadminRoutes from "../modules/super-admin/superadmin.routes";
 import superAdminAuthRoutes from "../modules/super-admin/superadmin.auth.routes";
@@ -129,6 +130,19 @@ router.use("/guardian", guardianRoutes);
 ========================================================= */
 router.use("/billing", billingRoutes);
 router.use("/super/message-billing", billingAdminRoutes);
+
+/* =========================================================
+   📄 REPORT PDF DOWNLOAD (public, id-guarded)
+   Mounted here for the same reason as /guardian and /billing above: a
+   plain browser-triggered file download can't carry an Authorization
+   header, so this one route can't sit behind tenantMiddleware/
+   authMiddleware at all - it's protected instead by its own short-lived,
+   unguessable id (see report-export.store.ts). It must be
+   matched before the blanket-`tenantMiddleware`-at-"/" routers below
+   (examRoutes etc.), or one of those swallows it first and rejects it
+   for having no madrasa slug.
+========================================================= */
+router.get("/reports/export-pdf/:downloadId", downloadReportPdf);
 
 /* =========================
    CORE MODULES

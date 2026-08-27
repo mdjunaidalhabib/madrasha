@@ -883,6 +883,24 @@ const PaginatedReportPreview = ({
     };
   }, [orientation, paperSize]);
 
+  // `.print-page-preview`'s own fixed width/height (both the screen-mode
+  // rule and the `@media print` one, in index.css) only apply under
+  // `html[data-print-size][data-print-orientation]` - normally set by
+  // DataExportPrintActions' applyPreviewSettings effect. The standalone
+  // print route (ReportShell's printMode, what the server-side PDF export
+  // in report-export.service.ts navigates a headless browser to) renders
+  // this component directly, without DataExportPrintActions ever mounting -
+  // so those attributes were never set there, `.print-page-preview` fell
+  // back to an unconstrained/auto height, and the `position: absolute;
+  // bottom: 2mm` page-number footer ended up anchored to that shrunk
+  // height (right under the content) instead of the true physical page
+  // bottom. Setting it here too - redundant with DataExportPrintActions in
+  // the interactive view, but the only place that covers printMode.
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-print-size", paperSize);
+    document.documentElement.setAttribute("data-print-orientation", orientation);
+  }, [paperSize, orientation]);
+
   const scaleStyle = { "--report-preview-scale": previewScale } as CSSProperties;
 
   const statusPage: ResolvedPage = {

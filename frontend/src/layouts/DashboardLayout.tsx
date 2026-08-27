@@ -26,6 +26,13 @@ export default function DashboardLayout() {
   const breadcrumbs = useAdminBreadcrumbs();
 
   useEffect(() => {
+    document.body.style.overflow = mobileSidebar ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileSidebar]);
+
+  useEffect(() => {
     const load = async () => {
       try {
         const data = await loadSidebar();
@@ -77,18 +84,20 @@ export default function DashboardLayout() {
       </div>
 
       {/* Mobile Sidebar */}
-      {mobileSidebar && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="w-56 shadow-xl">
-            <Sidebar closeSidebar={() => setMobileSidebar(false)} />
-          </div>
-
-          <div
-            className="flex-1 bg-black/40"
-            onClick={() => setMobileSidebar(false)}
-          />
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 md:hidden ${
+          mobileSidebar ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMobileSidebar(false)}
+        aria-hidden="true"
+      />
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-56 max-w-[80%] shadow-xl transition-transform duration-300 ease-out md:hidden ${
+          mobileSidebar ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Sidebar closeSidebar={() => setMobileSidebar(false)} />
+      </div>
 
       {/* Main Layout */}
       <div className="flex flex-col flex-1 min-w-0">

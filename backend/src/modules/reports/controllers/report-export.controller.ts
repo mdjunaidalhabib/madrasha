@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { requireTenant } from "../reports.response";
 import { reportExportService } from "./report-export.service";
-import { BadRequestError } from "../../../shared/errors";
+import { storePdf, takePdf } from "./report-export.store";
+import { BadRequestError, NotFoundError } from "../../../shared/errors";
 
 const ALLOWED_REPORTS_PAGES = ["academic", "student", "exam", "teacher", "documents"];
 const ALLOWED_PAPER_SIZES = ["a4", "a5"];
@@ -64,17 +65,27 @@ export const exportReportPdf = async (req: Request, res: Response) => {
     orientation: orientation as "portrait" | "landscape",
   });
 
-  // `inline`, not `attachment` - this response is fetched via XHR/fetch
-  // (responseType: "blob" in DataExportPrintActions.tsx) and turned into a
-  // download client-side through an `<a download>` click on an object URL.
-  // Chromium treats any response carrying `Content-Disposition: attachment`
-  // as a browser-level download regardless of how it was requested, which
-  // hijacks the bytes into the download manager before they ever reach the
-  // page's fetch/XHR promise - the promise then never resolves or rejects,
-  // even though the server finished successfully. `inline` keeps the file
-  // name hint (harmless, ignored for XHR) without triggering that behavior.
+  // Handed back as a short-lived download id, not the PDF bytes directly -
+  // see report-export.store.ts for why: a download manager like IDM can't
+  // follow up on a `blob:` URL, so the actual bytes are fetched next via a
+  // real, re-fetchable GET (downloadReportPdf below) that both the browser's
+  // native download handling and third-party download managers understand.
   const fileName = String(req.body?.file_name || "report").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const downloadId = storePdf(pdfBuffer, fileName);
+  res.json({ downloadId });
+};
+
+// No auth middleware runs ahead of this route (see core/router.ts) - a
+// plain browser-triggered download can't carry an Authorization header.
+// Security instead comes from the id itself: a 24-byte random token,
+// expiring after 2 minutes (report-export.store.ts).
+export const downloadReportPdf = (req: Request, res: Response) => {
+  const entry = takePdf(String(req.params.downloadId || ""));
+  if (!entry) {
+    throw new NotFoundError("This download link has expired - please generate the PDF again");
+  }
+
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename="${fileName}.pdf"`);
-  res.send(pdfBuffer);
+  res.setHeader("Content-Disposition", `attachment; filename="${entry.fileName}.pdf"`);
+  res.send(entry.buffer);
 };

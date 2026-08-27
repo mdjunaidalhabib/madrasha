@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDown, FileSpreadsheet, FileText, Printer, Ruler, X } from "lucide-react";
 import api from "../../services/api";
+import { API_BASE_URL } from "../../services/apiConfig";
 import { formatReportValue } from "../../utils/reportUtils";
 import { useToastStore } from "../../store/toastStore";
 import { logger } from "../../utils/logger";
@@ -419,6 +420,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
 
     try {
       setGeneratingPdf(true);
+      useToastStore.getState().show("PDF তৈরি হচ্ছে, একটু অপেক্ষা করুন...", "info");
 
       const response = await api.post(
         "/reports/export-pdf",
@@ -431,7 +433,6 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           file_name: fileName,
         },
         {
-          responseType: "blob",
           signal: controller.signal,
           // Overrides the shared `api` instance's 20s default - a cold
           // Chromium launch plus rendering+paginating a large multi-page
@@ -443,49 +444,33 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         },
       );
 
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      if (!blob.size) {
+      const downloadId = response.data?.downloadId;
+      if (!downloadId) {
         throw new Error("Empty PDF response");
       }
 
-      const url = URL.createObjectURL(blob);
+      // A real, re-fetchable GET URL - not a client-side `blob:` one (what
+      // this used to click). Internet Download Manager (and similar
+      // browser-integrated download managers) intercepts every download
+      // click, but can't refetch a `blob:` URL over the network to actually
+      // save it - it would just fail silently there. A real server URL with
+      // Content-Disposition: attachment (see report-export.controller.ts's
+      // downloadReportPdf) is something both the browser's native download
+      // handling and IDM-style managers can complete.
       const link = document.createElement("a");
-      link.href = url;
+      link.href = `${API_BASE_URL}/reports/export-pdf/${downloadId}`;
       link.download = `${fileName}.pdf`;
-      // Appended to the DOM before clicking, and the object URL revoked only
-      // after a short delay - a detached <a> and an immediately-revoked blob
-      // URL both "work" in most evergreen browsers, but for a multi-hundred-
-      // KB PDF (unlike this file's small CSV export, which never hit this)
-      // there's a real race where the browser hasn't finished reading the
-      // blob by the time the URL is invalidated, silently dropping the
-      // download with no error.
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
 
       useToastStore.getState().show(`PDF ডাউনলোড হয়েছে (${fileName}.pdf)`, "success");
     } catch (error: any) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
         useToastStore.getState().show("PDF তৈরি বাতিল করা হয়েছে", "error");
       } else {
-        // With `responseType: "blob"` set on the request, axios hands back
-        // an error response body as a Blob too (even though the backend
-        // actually sent JSON) - reading error.response.data directly would
-        // just be "[object Blob]". Parse it back to text/JSON so a real
-        // backend failure (bad params, Playwright crash, ...) shows its
-        // actual message instead of the generic fallback below.
-        let detail = "";
-        const data = error?.response?.data;
-        if (data instanceof Blob) {
-          try {
-            const text = await data.text();
-            detail = JSON.parse(text)?.message || text;
-          } catch {
-            // not JSON/text - ignore, fall through to the generic message
-          }
-        }
-        logger.error("PDF generation failed:", error, detail);
+        const detail = error?.response?.data?.message;
+        logger.error("PDF generation failed:", error);
         useToastStore.getState().show(detail || "PDF তৈরি করা যায়নি", "error");
       }
     } finally {

@@ -11,7 +11,7 @@ const TONE_CLASSES: Record<"green" | "yellow" | "red", string> = {
   red: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900",
 };
 
-export default function PlanBadge() {
+export default function PlanBadge({ expanded = false }: { expanded?: boolean }) {
   const plan = usePlanStore((s) => s.plan);
   if (!plan) return null;
 
@@ -33,14 +33,16 @@ export default function PlanBadge() {
   return (
     <Link
       to={`${getTenantAdminBase()}/settings/plan`}
-      title="প্ল্যান দেখুন"
-      className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold transition hover:opacity-80 ${TONE_CLASSES[tone]}`}
+      title={`প্ল্যান: ${plan.plan_name || ""} ${statusLabel || daysLabel}`.trim()}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-1.5 py-1 text-xs font-semibold transition hover:opacity-80 sm:px-2 ${TONE_CLASSES[tone]}`}
     >
       <Crown size={13} className="shrink-0" />
-      <span className="hidden max-w-[110px] truncate sm:inline">
+      <span className={`max-w-[110px] truncate ${expanded ? "inline" : "hidden sm:inline"}`}>
         {plan.plan_name || "প্ল্যান"}
       </span>
-      <span className="shrink-0 whitespace-nowrap">{statusLabel || daysLabel}</span>
+      <span className={`shrink-0 whitespace-nowrap ${expanded ? "inline" : "hidden sm:inline"}`}>
+        {statusLabel || daysLabel}
+      </span>
     </Link>
   );
 }

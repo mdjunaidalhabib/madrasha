@@ -3,7 +3,7 @@ import { useToastStore } from "../../store/toastStore";
 const typeStyle: Record<string, string> = {
   success: "bg-green-600",
   error: "bg-red-600",
-  info: "bg-gray-900",
+  info: "bg-green-600",
 };
 
 export default function Toaster() {
