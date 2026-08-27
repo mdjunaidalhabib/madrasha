@@ -7,4 +7,5 @@ export const appConfig = {
   rootDomain: env.rootDomain,
   jsonBodyLimit: env.jsonBodyLimit,
   frontendBaseUrl: env.frontendBaseUrl,
+  internalFrontendUrl: env.internalFrontendUrl,
 };

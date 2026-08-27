@@ -35,9 +35,23 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   rootDomain: process.env.ROOT_DOMAIN || "localhost",
   // Optional full override (e.g. "https://app.example.com") for building
-  // links that point at the frontend (password reset emails, etc.).
+  // links that point at the frontend (password reset emails, etc.) - this
+  // one must always be the real public URL, since it ends up in front of an
+  // actual user's browser.
   // Falls back to building one from rootDomain when unset.
   frontendBaseUrl: process.env.FRONTEND_BASE_URL || "",
+  // Where the server-side PDF export's headless browser navigates instead
+  // (see report-export.service.ts) - separate from frontendBaseUrl because
+  // when backend and frontend run as sibling containers on the same Docker
+  // network (e.g. Coolify), the backend calling its own PUBLIC domain has to
+  // go out to the internet and back in through the reverse proxy to reach a
+  // container on the very same host/network - a "hairpin NAT" round trip
+  // that can hang or time out entirely depending on the network setup. Set
+  // this to the frontend's internal Docker hostname (e.g.
+  // "http://<frontend-internal-hostname>") to route straight there instead.
+  // Falls back to frontendBaseUrl when unset (fine for local dev, or any
+  // deployment where the two aren't on a shared internal network).
+  internalFrontendUrl: process.env.INTERNAL_FRONTEND_URL || process.env.FRONTEND_BASE_URL || "",
   corsOrigins: (process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || "http://localhost:5173")
     .split(",")
     .map((origin) => origin.trim())

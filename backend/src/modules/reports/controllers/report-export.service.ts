@@ -90,7 +90,7 @@ export class ReportExportService {
   }
 
   async generatePdf(params: ExportReportPdfParams): Promise<Buffer> {
-    if (!config.app.frontendBaseUrl) {
+    if (!config.app.internalFrontendUrl) {
       throw new ApiError(
         "PDF export is not configured (FRONTEND_BASE_URL is unset on the server)",
         500,
@@ -136,9 +136,12 @@ export class ReportExportService {
 
       const page = await context.newPage();
 
+      // internalFrontendUrl, not frontendBaseUrl - see env.ts's doc comment
+      // on why this navigation must avoid the public domain when frontend
+      // and backend are sibling containers on the same host.
       const url = new URL(
         `/${params.madrasaSlug}/print/reports/${params.reportsPage}`,
-        config.app.frontendBaseUrl,
+        config.app.internalFrontendUrl,
       );
       url.searchParams.set("key", params.reportKey);
       Object.entries(params.filters).forEach(([key, value]) => {
