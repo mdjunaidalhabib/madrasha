@@ -32,10 +32,15 @@ export const MAX_BRANDING_PHONE_LENGTH = 20;
 export const MAX_BRANDING_EMAIL_LENGTH = 120;
 export const MAX_BRANDING_CONTACT_ITEMS = 5;
 
-export const BRANDING_IMAGE_FIELDS: Record<string, "reportLogo" | "reportBanner" | "reportWatermark"> = {
+export const BRANDING_IMAGE_FIELDS: Record<
+  string,
+  "reportLogo" | "reportBanner" | "reportWatermark" | "reportHeaderImage" | "reportFooterImage"
+> = {
   report_logo: "reportLogo",
   report_banner: "reportBanner",
   report_watermark: "reportWatermark",
+  report_header_image: "reportHeaderImage",
+  report_footer_image: "reportFooterImage",
 };
 
 // Shared by id-card, admit-card and letter (sanad/testimonial/transfer)

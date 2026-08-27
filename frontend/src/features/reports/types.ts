@@ -14,6 +14,12 @@ export type ReportMenuItem = {
   columns: ReportColumn[];
   groupTitle?: string;
   requiresExam?: boolean;
+  // Set on report types whose backend query can get heavy without a
+  // division narrowing it down (full academic-result set, every published
+  // result notice, every class routine) - ReportShell then withholds the
+  // fetch and shows "বিভাগ নির্বাচন করুন" instead of defaulting to
+  // "সকল বিভাগ" (still offered as an explicit choice in the dropdown).
+  requiresDivision?: boolean;
   defaultOrientation?: "portrait" | "landscape";
   // Set on the 5 document-template-driven report types (id-card, admit-card
   // /admit-card-with-rules, certificate, testimonial, transfer-letter) so

@@ -99,7 +99,7 @@ export default function StatTile({
   }
 
   if (compact) {
-    const compactClassName = `group relative flex items-start justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white py-4 pl-5 pr-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 ${
+    const compactClassName = `group relative flex min-w-0 items-start justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white py-4 pl-5 pr-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 ${
       to ? "transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:hover:border-slate-600" : ""
     }`;
 
@@ -108,7 +108,7 @@ export default function StatTile({
         <span className={`absolute inset-y-0 left-0 w-1 ${accent}`} />
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-          <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+          <p className="mt-1.5 break-words text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {formatValue(value, variant)}
           </p>
           {subLabel && <p className="mt-1 truncate text-[11px] text-slate-400 dark:text-slate-500">{subLabel}</p>}
@@ -135,7 +135,7 @@ export default function StatTile({
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
         {icon && <span className={`shrink-0 ${text}`}>{icon}</span>}
       </div>
-      <p className={`mt-2 text-2xl font-bold tabular-nums ${text}`}>{formatValue(value, variant)}</p>
+      <p className={`mt-2 break-words text-2xl font-bold tabular-nums ${text}`}>{formatValue(value, variant)}</p>
       {subLabel && <p className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{subLabel}</p>}
     </>
   );

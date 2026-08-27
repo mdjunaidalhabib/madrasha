@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { Crown, CalendarDays, Users, GraduationCap, ShieldCheck, PhoneCall } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
 import { SkeletonCard } from "../../../components/ui/Skeleton";
@@ -7,6 +8,8 @@ import Badge, { type BadgeTone } from "../../../components/ui/Badge";
 import { getMyPlan, type MyPlan } from "../../../services/planApi";
 import { toBanglaDigits } from "../../../utils/reportUtils";
 import { useToastStore } from "../../../store/toastStore";
+import { getTenantAdminBase } from "../../../utils/tenantSlug";
+import VendorPromoCard from "../../vendor/VendorPromoCard";
 
 const formatDate = (value: string | null) => {
   if (!value) return "-";
@@ -74,6 +77,8 @@ function UsageBar({
 export default function PlanSettingsPage() {
   const [plan, setPlan] = useState<MyPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const { madrasaSlug = "" } = useParams();
+  const adminBase = getTenantAdminBase(madrasaSlug);
 
   useEffect(() => {
     (async () => {
@@ -200,6 +205,8 @@ export default function PlanSettingsPage() {
           সহায়তার জন্য অ্যাডমিন প্যানেল থেকে দায়িত্বপ্রাপ্ত কর্তৃপক্ষের সাথে যোগাযোগ করুন।
         </div>
       </SectionCard>
+
+      <VendorPromoCard adminBase={adminBase} />
     </div>
   );
 }

@@ -98,8 +98,8 @@ export class SettingsService {
       report_watermark: madrasa.reportWatermark,
       report_watermark_opacity: Number(madrasa.reportWatermarkOpacity),
       report_header_footer_enabled: !!madrasa.reportHeaderFooterEnabled,
-      report_header_text: madrasa.reportHeaderText,
-      report_footer_text: madrasa.reportFooterText,
+      report_header_image: madrasa.reportHeaderImage,
+      report_footer_image: madrasa.reportFooterImage,
       report_print_mode: madrasa.reportPrintMode || DEFAULT_REPORT_PRINT_MODE,
     };
   }
@@ -115,12 +115,18 @@ export class SettingsService {
       report_watermark,
       report_watermark_opacity,
       report_header_footer_enabled,
-      report_header_text,
-      report_footer_text,
+      report_header_image,
+      report_footer_image,
       report_print_mode,
     } = body;
 
-    for (const [key, value] of Object.entries({ report_logo, report_banner, report_watermark })) {
+    for (const [key, value] of Object.entries({
+      report_logo,
+      report_banner,
+      report_watermark,
+      report_header_image,
+      report_footer_image,
+    })) {
       if (value !== undefined && !storageProvider.isValidImage(value)) {
         throw new BadRequestError(`Invalid image for ${key}`);
       }
@@ -158,14 +164,6 @@ export class SettingsService {
       }
     }
 
-    if (report_header_text !== undefined && !isValidTextValue(report_header_text, MAX_TEMPLATE_LENGTH)) {
-      throw new BadRequestError(`Invalid report header text (max ${MAX_TEMPLATE_LENGTH} characters)`);
-    }
-
-    if (report_footer_text !== undefined && !isValidTextValue(report_footer_text, MAX_TEMPLATE_LENGTH)) {
-      throw new BadRequestError(`Invalid report footer text (max ${MAX_TEMPLATE_LENGTH} characters)`);
-    }
-
     if (
       report_print_mode !== undefined &&
       !(REPORT_PRINT_MODES as readonly string[]).includes(report_print_mode)
@@ -188,6 +186,12 @@ export class SettingsService {
       ...(report_watermark !== undefined && report_watermark !== null
         ? { reportWatermark: storageProvider.persistImage(report_watermark) }
         : {}),
+      ...(report_header_image !== undefined && report_header_image !== null
+        ? { reportHeaderImage: storageProvider.persistImage(report_header_image) }
+        : {}),
+      ...(report_footer_image !== undefined && report_footer_image !== null
+        ? { reportFooterImage: storageProvider.persistImage(report_footer_image) }
+        : {}),
       // Only touch opacity when the caller actually sent it - each field is
       // now saved independently (inline edit UI), so a save of e.g. just the
       // name must not silently reset this back to DEFAULT_WATERMARK_OPACITY.
@@ -195,8 +199,6 @@ export class SettingsService {
       ...(report_header_footer_enabled !== undefined
         ? { reportHeaderFooterEnabled: toBoolInt(report_header_footer_enabled) }
         : {}),
-      ...(report_header_text !== undefined ? { reportHeaderText: report_header_text } : {}),
-      ...(report_footer_text !== undefined ? { reportFooterText: report_footer_text } : {}),
       ...(report_print_mode !== undefined ? { reportPrintMode: report_print_mode } : {}),
     });
   }

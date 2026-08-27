@@ -88,6 +88,19 @@ import {
 } from "./important-link.controller";
 
 /* =========================
+   Vendor promo handlers (Dashboard "Hikmah IT" card + detail page)
+========================= */
+import {
+  getVendorPromoConfig,
+  saveVendorPromoConfig,
+  listVendorServices,
+  createVendorService,
+  updateVendorService,
+  deleteVendorService,
+  reorderVendorServices,
+} from "./vendor-promo.controller";
+
+/* =========================
    Document template handlers
 ========================= */
 import {
@@ -254,6 +267,17 @@ router.post("/important-links", superAdminMiddleware, createImportantLink);
 router.put("/important-links/reorder", superAdminMiddleware, reorderImportantLinks);
 router.put("/important-links/:id", superAdminMiddleware, updateImportantLink);
 router.delete("/important-links/:id", superAdminMiddleware, deleteImportantLink);
+
+/* =====================================================
+   Base: /api/super/vendor-promo
+===================================================== */
+router.get("/vendor-promo", superAdminMiddleware, getVendorPromoConfig);
+router.put("/vendor-promo", superAdminMiddleware, saveVendorPromoConfig);
+router.get("/vendor-promo/services", superAdminMiddleware, listVendorServices);
+router.post("/vendor-promo/services", superAdminMiddleware, createVendorService);
+router.put("/vendor-promo/services/reorder", superAdminMiddleware, reorderVendorServices);
+router.put("/vendor-promo/services/:id", superAdminMiddleware, updateVendorService);
+router.delete("/vendor-promo/services/:id", superAdminMiddleware, deleteVendorService);
 
 /* =====================================================
    DOCUMENT TEMPLATES (System Template Library)

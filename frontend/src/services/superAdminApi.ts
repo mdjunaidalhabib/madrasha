@@ -296,6 +296,42 @@ export async function checkPlatformEmailConnection() {
 }
 
 /* =========================
+   VENDOR PROMO CARD (Dashboard sidebar - Hikmah IT services + founder)
+========================= */
+
+export type VendorPromoConfig = {
+  is_enabled: boolean;
+  company_name: string;
+  tagline: string;
+  teaser_text: string;
+  detail_link_text: string;
+  hero_title: string;
+  hero_text: string;
+  founder_name: string;
+  founder_title: string;
+  founder_location: string;
+  founder_bio: string;
+  founder_skills: string;
+  founder_photo_url: string;
+  founder_facebook_url: string;
+  phone_display: string;
+  phone_intl: string;
+  email: string;
+  website: string;
+  address: string;
+};
+
+export async function getVendorPromoConfig() {
+  const res = await cachedGet("/super/vendor-promo");
+  return res.data.data as VendorPromoConfig;
+}
+
+export async function saveVendorPromoConfig(payload: Partial<VendorPromoConfig>) {
+  const res = await api.put("/super/vendor-promo", payload);
+  return res.data;
+}
+
+/* =========================
    TRASH MADRASAS
 ========================= */
 

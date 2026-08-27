@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fail, ok, requireTenant } from "../reports.response";
+import { fail, getDivisionClassFilters, ok, requireTenant } from "../reports.response";
 import { teacherReportService } from "./teacher-report.service";
 
 export const getTeacherListReport = async (req: Request, res: Response) => {
@@ -7,7 +7,7 @@ export const getTeacherListReport = async (req: Request, res: Response) => {
   if (!madrasaId) return;
 
   try {
-    const rows = await teacherReportService.getList(madrasaId);
+    const rows = await teacherReportService.getList(madrasaId, getDivisionClassFilters(req).divisionId);
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
     return fail(res, error);
@@ -19,7 +19,7 @@ export const getTeacherPhoneReport = async (req: Request, res: Response) => {
   if (!madrasaId) return;
 
   try {
-    const rows = await teacherReportService.getPhones(madrasaId);
+    const rows = await teacherReportService.getPhones(madrasaId, getDivisionClassFilters(req).divisionId);
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
     return fail(res, error);

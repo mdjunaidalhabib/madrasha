@@ -7,12 +7,21 @@ import { getDefaultPageMargins } from "../../components/Report/pagination/pageGe
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
-import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
+import { getRowClassId, getRowDivisionId, normalizeBanglaDigits } from "../../utils/reportUtils";
 import { logger } from "../../utils/logger";
 import { listTemplates, type TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
 import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
+
+// A Bangladeshi mobile number always starts 01[3-9] - so the search box's
+// phone match only kicks in once the typed digits themselves look like the
+// start of one AND are long enough to actually narrow the list down.
+// Otherwise a short, generic query like "1" or "17" would match almost
+// every phone number in the roster (nearly all of them contain "01" or
+// "17" somewhere) and flood the results with unrelated rows.
+const PHONE_QUERY_PATTERN = /^01[3-9]/;
+const PHONE_QUERY_MIN_DIGITS = 5;
 
 type ReportSubject = {
   book_id?: number | string;
@@ -91,9 +100,22 @@ const ReportShell = ({
   );
 
   // The "ফলাফল" / "ফলাফল (মেধাক্রম অনুযায়ী)" reports are the only ones whose
-  // endpoint understands division_id/class_id/page/page_size - every other
-  // report keeps filtering client-side only, exactly as before.
+  // endpoint understands page/page_size - every other report keeps loading
+  // its whole (division/class-narrowed) result set in one shot, exactly as
+  // before.
   const isPaginatedAcademicResult = activeReport.printable === "academic-result";
+  // Reports flagged requiresDivision (academic-result/result-notice/class
+  // -routine) can return a heavy, mostly-wasted payload with no division
+  // filter - see ReportMenuItem.requiresDivision.
+  const divisionRequired = !!activeReport.requiresDivision;
+  // On "ডকুমেন্ট সমূহ" (showSearch=true), the ID/নাম/মোবাইল box exists
+  // specifically to find one student without knowing their division/class
+  // first - so an active search bypasses the "pick a division" gate below
+  // and falls back to fetching the full (unfiltered) roster, exactly like
+  // before requiresDivision existed. Boolean, not the raw text, so typing
+  // more characters doesn't retrigger the fetch effect on every keystroke -
+  // narrowing further is still handled client-side by filteredRows.
+  const hasSearchQuery = search.trim().length > 0;
 
   const loadReport = async () => {
     if (!activeReport?.endpoint) return;
@@ -109,14 +131,23 @@ const ReportShell = ({
         return;
       }
 
+      if (divisionRequired && !selectedDivision && !hasSearchQuery) {
+        setRows([]);
+        setTotalCount(0);
+        setWarning("বিভাগ নির্বাচন করুন");
+        return;
+      }
+
       const params = new URLSearchParams();
       if (activeReport.requiresExam) params.set("exam_id", selectedExam);
       if (activeReport.extraParams) {
         Object.entries(activeReport.extraParams).forEach(([key, value]) => params.set(key, value));
       }
-      if (isPaginatedAcademicResult) {
-        if (selectedDivision) params.set("division_id", selectedDivision);
+      if (divisionRequired) {
+        if (selectedDivision && selectedDivision !== "all") params.set("division_id", selectedDivision);
         if (selectedClass) params.set("class_id", selectedClass);
+      }
+      if (isPaginatedAcademicResult) {
         params.set("page", String(page));
         params.set("page_size", String(pageSize));
       }
@@ -167,7 +198,7 @@ const ReportShell = ({
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
 
-    if (!divisionId) {
+    if (!divisionId || divisionId === "all") {
       setClasses([]);
       return;
     }
@@ -241,13 +272,14 @@ const ReportShell = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [printMode]);
 
-  // Non-paginated reports only ever need to refetch on activeKey/selectedExam
-  // change (division/class stay client-side filters). The paginated academic
-  // -result reports also refetch on division/class/page/pageSize, since
-  // those are now sent to the server - folded into one string so the effect
-  // fires exactly once per meaningful change instead of racing two effects.
-  const loadTrigger = isPaginatedAcademicResult
-    ? `${activeKey}|${selectedExam}|${selectedDivision}|${selectedClass}|${page}|${pageSize}`
+  // A requiresDivision report also refetches on division/class change, since
+  // those are sent to the server as real filters now - the paginated
+  // academic-result ones additionally refetch on page/pageSize, and
+  // hasSearchQuery re-triggers the one fetch a bypassed-gate search needs
+  // (see hasSearchQuery above). Folded into one string so the effect fires
+  // exactly once per meaningful change instead of racing two effects.
+  const loadTrigger = divisionRequired
+    ? `${activeKey}|${selectedExam}|${selectedDivision}|${selectedClass}|${hasSearchQuery}|${isPaginatedAcademicResult ? `${page}|${pageSize}` : ""}`
     : `${activeKey}|${selectedExam}`;
 
   useEffect(() => {
@@ -304,23 +336,22 @@ const ReportShell = ({
     return Array.from(map.entries()).map(([key, name]) => ({ key, name }));
   }, [rows, activeReport.hasSubjectFilter, selectedClass]);
 
-  const filteredRows = rows.filter((row) => {
-    const keyword = search.trim().toLowerCase();
-    const rowDivisionId = String(getRowDivisionId(row));
-    const rowClassId = String(getRowClassId(row));
+  const rawKeyword = search.trim();
+  const keyword = rawKeyword.toLowerCase();
+  const keywordDigits = normalizeBanglaDigits(rawKeyword).replace(/\D/g, "");
 
-    // Kept as two separate buckets instead of one joined string - id/roll
-    // are plain English-digit numbers, so a Bangla name search must never
-    // accidentally match them (or vice versa) just because they happened to
-    // sit next to each other in a combined string.
-    const idFields = [
-      row.id,
-      row.student_id,
-      row.roll,
-      row.teacher_id,
-      row.registration_no,
-      row.exam_year,
-    ]
+  const rowSearchInfo = rows.map((row) => {
+    // Kept as three separate buckets instead of one joined string:
+    // - registration_no is the only numeric field a bare digit query matches
+    //   directly - id/student_id/teacher_id are internal DB keys nobody
+    //   searches by, and roll numbers collide too easily across classes
+    //   (roll 4 exists in nearly every class), so both are deliberately
+    //   excluded here.
+    // - name/class/division/exam text never mixes with phone digits, so a
+    //   short numeric query can't accidentally "match" a row just because
+    //   its phone number happened to be glued onto the same search string.
+    // - phone numbers get their own stricter rule below (PHONE_QUERY_*).
+    const idFields = [row.registration_no]
       .filter((value) => value !== null && value !== undefined && value !== "")
       .map((value) => String(value).toLowerCase());
 
@@ -331,9 +362,6 @@ const ReportShell = ({
       row.teacher_name,
       row.father_name,
       row.mother_name,
-      row.guardian_phone,
-      row.mobile,
-      row.phone,
       row.class_name,
       row.division_name,
       row.exam_name,
@@ -343,17 +371,46 @@ const ReportShell = ({
       .join(" ")
       .toLowerCase();
 
-    const matchesKeyword =
-      !keyword ||
-      searchableText.includes(keyword) ||
-      idFields.some((value) => value.includes(keyword));
+    // Only treated as a phone search once the digits themselves look like
+    // the start of a Bangladeshi mobile number (01 then 3-9) and there are
+    // enough of them to be specific - see PHONE_QUERY_PATTERN/MIN_DIGITS.
+    const looksLikePhoneQuery =
+      keywordDigits.length >= PHONE_QUERY_MIN_DIGITS && PHONE_QUERY_PATTERN.test(keywordDigits);
+    const matchesPhone =
+      looksLikePhoneQuery &&
+      [row.guardian_phone, row.mobile, row.phone]
+        .filter((value) => value !== null && value !== undefined && value !== "")
+        .map((value) => normalizeBanglaDigits(String(value)).replace(/\D/g, ""))
+        .some((digits) => digits.includes(keywordDigits));
 
-    return (
-      matchesKeyword &&
-      (!selectedDivision || rowDivisionId === String(selectedDivision)) &&
-      (!selectedClass || rowClassId === String(selectedClass))
-    );
+    return {
+      row,
+      rowDivisionId: String(getRowDivisionId(row)),
+      rowClassId: String(getRowClassId(row)),
+      // An exact roll/registration/id hit - "৪" against roll "৪" itself.
+      isExactIdMatch: !!keyword && idFields.includes(keyword),
+      isFuzzyMatch:
+        !keyword || searchableText.includes(keyword) || idFields.some((value) => value.includes(keyword)) || matchesPhone,
+    };
   });
+
+  // A bare digit like "৪" substring-matching roll "৪১", "৪২", "৪৩" ... floods
+  // the result with everything that merely CONTAINS it. Once at least one row
+  // is an exact roll/registration/id hit, that's clearly what was meant - so
+  // the list narrows to just the exact hit(s) instead of also keeping every
+  // loose contains-match around it. Only falls back to the broader
+  // contains-match below when nothing matches exactly (e.g. a genuine partial
+  // registration-number search).
+  const hasExactIdMatch = rowSearchInfo.some((info) => info.isExactIdMatch);
+
+  const filteredRows = rowSearchInfo
+    .filter(({ isExactIdMatch, isFuzzyMatch }) => (hasExactIdMatch ? isExactIdMatch : isFuzzyMatch))
+    .filter(
+      ({ rowDivisionId, rowClassId }) =>
+        (!selectedDivision || selectedDivision === "all" || rowDivisionId === String(selectedDivision)) &&
+        (!selectedClass || rowClassId === String(selectedClass)),
+    )
+    .map(({ row }) => row);
 
   if (activeReport.printable === "teacher-list" || activeReport.printable === "teacher-phone-list") {
     filteredRows.sort(
@@ -437,6 +494,16 @@ const ReportShell = ({
     setPage(1);
   };
 
+  // Computed directly from filter state (not the async `warning` set inside
+  // loadReport) so the preview shows the right guidance the instant a report
+  // with no rows renders, rather than flashing the generic "কোনো ডাটা পাওয়া
+  // যায়নি" text until the fetch effect catches up.
+  const previewEmptyMessage = activeReport.requiresExam && !selectedExam
+    ? "রিপোর্ট দেখতে উপর থেকে পরীক্ষা নির্বাচন করুন"
+    : divisionRequired && !selectedDivision && !hasSearchQuery
+      ? "রিপোর্ট দেখতে বিভাগ নির্বাচন করুন (প্রয়োজনে শ্রেণিও নির্বাচন করতে পারেন)"
+      : warning || undefined;
+
   const totalRecords = isPaginatedAcademicResult ? totalCount : filteredRows.length;
   const pageStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(page * pageSize, totalCount);
@@ -476,6 +543,7 @@ const ReportShell = ({
         paperSize={paperSize}
         orientation={orientation}
         margins={margins}
+        emptyMessage={previewEmptyMessage}
       />
     );
   }
@@ -570,6 +638,7 @@ const ReportShell = ({
               classes={classes}
               exams={exams}
               activeReport={activeReport}
+              divisionRequired={divisionRequired}
               exportColumns={exportColumns}
               exportRows={exportRows}
               onSearchChange={setSearch}
@@ -620,6 +689,7 @@ const ReportShell = ({
               paperSize={paperSize}
               orientation={orientation}
               margins={margins}
+              emptyMessage={previewEmptyMessage}
             />
           </div>
         </main>

@@ -12,6 +12,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "ভর্তিকৃত শিক্ষার্থীর পূর্ণ তালিকা",
     endpoint: "/reports/academic/admissions",
     printable: "student-admission-list",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },
@@ -30,6 +31,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "অভিভাবকদের যোগাযোগ তালিকা",
     endpoint: "/reports/academic/guardian-phones",
     printable: "guardian-phone-list",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll", className: smallCol },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no", className: idCol },

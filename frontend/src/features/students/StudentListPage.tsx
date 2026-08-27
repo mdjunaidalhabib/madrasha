@@ -11,6 +11,7 @@ import { StudentFullRecord } from "../../types/student";
 import { useConfirmStore } from "../../store/confirmStore";
 import { useToastStore } from "../../store/toastStore";
 import { toBanglaDigits } from "../../utils/reportUtils";
+import { filterPeopleBySearch } from "../../utils/personSearch";
 import { type Session } from "../../services/sessionApi";
 import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
 
@@ -372,27 +373,17 @@ const StudentListPage = () => {
   const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
 
   const filteredStudents = useMemo(() => {
-    const searchText = search.trim().toLowerCase();
+    const searched = filterPeopleBySearch(students, search, (student) => ({
+      text: [student.name_bn, student.name],
+      registrationNo: student.registration_no,
+      phones: [student.guardian_phone, student.guardian_phone_2, student.alt_guardian_phone],
+    }));
 
-    return students.filter((student) => {
-      const studentId = String(student.id || "").toLowerCase();
-      const registrationNo = String(student.registration_no || "").toLowerCase();
-      const studentName = String(student.name_bn || student.name || "").toLowerCase();
-      const studentRoll = String(student.roll || "").toLowerCase();
-
-      const matchSearch =
-        !searchText ||
-        studentId.includes(searchText) ||
-        registrationNo.includes(searchText) ||
-        studentRoll.includes(searchText) ||
-        studentName.includes(searchText);
-
+    return searched.filter((student) => {
       const matchDivision =
         !selectedDivision || String(student.division_id) === String(selectedDivision);
-
       const matchClass = !selectedClass || String(student.class_id) === String(selectedClass);
-
-      return matchSearch && matchDivision && matchClass;
+      return matchDivision && matchClass;
     });
   }, [students, search, selectedDivision, selectedClass]);
 

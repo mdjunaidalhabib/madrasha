@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react";
 import { ReportMenuItem } from "../../../src/features/reports/types";
 import { SkeletonTable } from "../ui/Skeleton";
 import AcademicResultPrint from "./academic/AcademicResultPrint";
@@ -37,6 +38,11 @@ type ReportContentProps = {
   // academic-result only: pass/fail/absent counts for the whole class/exam
   // group this page belongs to (see PaginatedReportPreview.getResultStats).
   resultStats?: { total: number; pass: number; fail: number; absent: number };
+  // Context-aware replacement for the generic "কোনো ডাটা পাওয়া যায়নি" text -
+  // set by ReportShell when the reason rows are empty is a filter the user
+  // still needs to pick (exam/division), so the preview guides them instead
+  // of just looking broken.
+  emptyMessage?: string;
   // Explicitly-selected (non-default) document template id from
   // ReportFilterBar's template <select>, for the id-card/admit-card/
   // certificate/testimonial/transfer-letter reports. This component's only
@@ -58,6 +64,7 @@ const ReportContent = ({
   bodyTextOverride,
   resultStats,
   selectedTemplateId,
+  emptyMessage,
 }: ReportContentProps) => {
   const overrideTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
   const templateId = selectedTemplateId ?? overrideTemplateId;
@@ -75,8 +82,9 @@ const ReportContent = ({
     // page for a footer/signature that had no room left on the last page
     // of actual content, not a "this report has no data" state.
     return (
-      <div className="flex h-56 items-center justify-center bg-white text-sm text-slate-500">
-        কোনো ডাটা পাওয়া যায়নি
+      <div className="flex h-56 flex-col items-center justify-center gap-2 bg-white px-6 text-center">
+        <Inbox className="h-8 w-8 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">{emptyMessage || "কোনো ডাটা পাওয়া যায়নি"}</p>
       </div>
     );
   }

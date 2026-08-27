@@ -1,7 +1,13 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
-import { ReportBackground, ReportBrandFooter, ReportBrandHeader, ReportWatermark } from "./ReportBranding";
+import {
+  FOOTER_BAND_MM,
+  ReportBackground,
+  ReportBrandFooter,
+  ReportBrandHeader,
+  ReportWatermark,
+} from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { toBanglaDigits } from "../../utils/reportUtils";
 import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins } from "./pagination/pageGeometry";
@@ -22,6 +28,8 @@ type PaginatedReportPreviewProps = {
   orientation: Orientation;
   /** পেজের চার পাশের মার্জিন (mm) - না দিলে paperSize অনুযায়ী ডিফল্ট (a5=7mm, a4=10mm, চার পাশে সমান) ব্যবহৃত হয়, DataExportPrintActions-এর সাথে সামঞ্জস্যপূর্ণ। */
   margins?: PageMargins;
+  /** Context-aware "no rows yet" message (e.g. "বিভাগ নির্বাচন করুন") - see ReportContent's emptyMessage. */
+  emptyMessage?: string;
 };
 
 type ReportDensity = "comfortable" | "compact" | "dense" | "ultra-dense";
@@ -531,6 +539,7 @@ const PaginatedReportPreview = ({
   paperSize,
   orientation,
   margins: marginsProp,
+  emptyMessage,
 }: PaginatedReportPreviewProps) => {
   const margins = useMemo(
     () => marginsProp ?? getDefaultPageMargins(paperSize),
@@ -540,6 +549,16 @@ const PaginatedReportPreview = ({
   const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [previewScale, setPreviewScale] = useState(1);
   const [resolvedPages, setResolvedPages] = useState<ResolvedPage[] | null>(null);
+  // True once pagination has been measured AFTER fonts finished loading (see
+  // the effect below) - not just after the synchronous first pass, which
+  // can run against fallback-font metrics and produce a different row count
+  // than the font that actually ends up painted. `data-report-ready` (what
+  // the server-side PDF export's Playwright script waits for, see
+  // report-export.service.ts) must not fire on that first, possibly-wrong
+  // pass - a real, reproduced bug: the exported PDF's per-page footer
+  // ("পৃষ্ঠা: X/Y") would end up positioned right under a shorter/taller
+  // block of content than the page was actually paginated for.
+  const [pagesSettled, setPagesSettled] = useState(false);
 
   // exam-signature-number-sheet prints one table PER SUBJECT (signature +
   // hand-written mark column for that subject alone), not one wide table
@@ -578,10 +597,12 @@ const PaginatedReportPreview = ({
   // admit-card/certificate etc. which already brand themselves via their
   // own document-designer template, the marksheet's hardcoded fallback
   // layout (MarksheetList) has no such built-in branding of its own.
-  const showBrandAtAll =
-    (report.printable === "marksheet" || !hideBrandHeader) &&
-    !isLetterhead &&
-    report.printable !== "id-card";
+  // Letterhead no longer excludes the brand header here - ReportBrandHeader
+  // itself renders a blank HEADER_BAND_MM-tall spacer in that mode (instead
+  // of the logo/name/address or a custom image), so the space is still
+  // correctly reserved via the exact same measured-DOM-height mechanism as
+  // every other header variant.
+  const showBrandAtAll = (report.printable === "marksheet" || !hideBrandHeader) && report.printable !== "id-card";
   const columnsPerPage = config.columnsPerPage ?? 1;
   const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
   // Content width of ONE column in a columnsPerPage:2 report - the page's
@@ -676,17 +697,33 @@ const PaginatedReportPreview = ({
   useLayoutEffect(() => {
     if (loading || !rows.length) {
       setResolvedPages(null);
+      setPagesSettled(true); // nothing to paginate - not blocked on font load
       return;
     }
 
     let cancelled = false;
+    setPagesSettled(false);
 
     const runMeasurement = () => {
       if (cancelled) return;
 
       const paddingTopPx = margins.top * MM_TO_CSS_PX;
       const verticalPaddingPx = (margins.top + margins.bottom) * MM_TO_CSS_PX;
-      const availableHeightPx = getPaperHeightPx(paperSize, orientation) - verticalPaddingPx;
+      // ReportBrandFooter is absolutely positioned (tucked into the bottom
+      // margin, like the page-number footer) rather than sitting in normal
+      // flow, so - unlike the header - its height is never picked up by any
+      // of the firstRowOffsetPx/firstCardOffsetPx/footerReservePx DOM
+      // measurements below. Reserve it here instead, the one place that
+      // feeds every page kind's height budget, whenever it will actually
+      // render something (an uploaded image, or letterhead's blank spacer -
+      // see ReportBrandFooter) - never for the "enabled but nothing set yet"
+      // case, which correctly stays a real zero-height blank.
+      const footerBandReservedPx =
+        branding?.report_header_footer_enabled && (isLetterhead || !!branding?.report_footer_image)
+          ? FOOTER_BAND_MM * MM_TO_CSS_PX
+          : 0;
+      const availableHeightPx =
+        getPaperHeightPx(paperSize, orientation) - verticalPaddingPx - footerBandReservedPx;
 
       const nextPages: ResolvedPage[] = [];
       let globalStartIndex = 0;
@@ -840,7 +877,17 @@ const PaginatedReportPreview = ({
     runMeasurement();
 
     if (typeof document !== "undefined" && "fonts" in document) {
-      document.fonts.ready.then(runMeasurement).catch(() => {});
+      document.fonts.ready
+        .then(() => {
+          if (cancelled) return;
+          runMeasurement();
+          setPagesSettled(true);
+        })
+        .catch(() => {
+          if (!cancelled) setPagesSettled(true);
+        });
+    } else {
+      setPagesSettled(true);
     }
 
     return () => {
@@ -859,6 +906,7 @@ const PaginatedReportPreview = ({
     showBrandAtAll,
     measureTargets,
     idCardTemplateLoaded,
+    branding,
   ]);
 
   useLayoutEffect(() => {
@@ -938,7 +986,7 @@ const PaginatedReportPreview = ({
   // has actually produced resolvedPages - not just "loading is false", since
   // resolvedPages starts null and is filled in asynchronously after
   // `document.fonts.ready` (see the useLayoutEffect above).
-  const isReportReady = !loading && (rows.length === 0 || resolvedPages !== null);
+  const isReportReady = !loading && (rows.length === 0 || (resolvedPages !== null && pagesSettled));
 
   // columnsPerPage:2 only: fold the flat chunk sequence back into columns
   // (a column can hold several stacked chunks when classes packed together -
@@ -1026,9 +1074,9 @@ const PaginatedReportPreview = ({
                       <>
                         <ReportBackground />
                         <ReportWatermark />
-                        <ReportBrandFooter />
                       </>
                     )}
+                    <ReportBrandFooter />
                     <div className="report-page-footer">
                       <span className="report-page-footer-label">পৃষ্ঠা:</span>
                       <span className="report-page-footer-number">
@@ -1061,6 +1109,7 @@ const PaginatedReportPreview = ({
                               isLastPage={chunk.isLastPage}
                               bodyTextOverride={chunk.bodyTextOverride}
                               resultStats={chunk.resultStats}
+                              emptyMessage={emptyMessage}
                             />
                           </div>
                         ))}
@@ -1096,6 +1145,7 @@ const PaginatedReportPreview = ({
                               isLastPage={chunk.isLastPage}
                               bodyTextOverride={chunk.bodyTextOverride}
                               resultStats={chunk.resultStats}
+                              emptyMessage={emptyMessage}
                             />
                           </div>
                         ))}
@@ -1121,9 +1171,9 @@ const PaginatedReportPreview = ({
                       <>
                         <ReportBackground />
                         <ReportWatermark />
-                        <ReportBrandFooter />
                       </>
                     )}
+                    <ReportBrandFooter />
                     {showsBrandHeader && <ReportBrandHeader />}
                     <div className="report-page-footer">
                       <span className="report-page-footer-label">পৃষ্ঠা:</span>
@@ -1143,6 +1193,7 @@ const PaginatedReportPreview = ({
                         isLastPage={page.isLastPage}
                         bodyTextOverride={page.bodyTextOverride}
                         resultStats={page.resultStats}
+                        emptyMessage={emptyMessage}
                       />
                     </div>
                   </section>

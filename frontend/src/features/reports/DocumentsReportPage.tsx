@@ -19,6 +19,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/marksheets",
     printable: "marksheet",
     documentType: "MARKSHEET",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -40,6 +41,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
     documentType: "ID_CARD",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -57,6 +59,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     documentType: "ADMIT_CARD",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -68,6 +71,10 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
+    // No requiresDivision here on purpose - this always renders as exactly
+    // one static rules notice page (see PaginatedReportPreview's "single"
+    // config.kind), not a per-student roster, so making someone pick a
+    // division first would just be friction with no payload saved.
     key: "student-admit-cards-with-rules",
     title: "পরীক্ষার নিয়মাবলী",
     subtitle: "প্রবেশপত্রের সাথে দেওয়ার জন্য পরীক্ষার নিয়মাবলীর একটি মাত্র নোটিশ পৃষ্ঠা তৈরি ও প্রিন্ট",
@@ -91,6 +98,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/sanads",
     printable: "certificate",
     documentType: "CERTIFICATE",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -109,6 +117,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/certificates",
     printable: "testimonial",
     documentType: "TESTIMONIAL",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -127,6 +136,7 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/transfer-letters",
     printable: "transfer-letter",
     documentType: "CLEARANCE_CERTIFICATE",
+    requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },

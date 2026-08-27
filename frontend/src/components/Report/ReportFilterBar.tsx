@@ -32,6 +32,7 @@ type ReportFilterBarProps = {
   classes: ClassItem[];
   exams: ExamItem[];
   activeReport: ReportMenuItem;
+  divisionRequired?: boolean;
   exportColumns: ReportColumn[];
   exportRows: Record<string, any>[];
   onSearchChange: (value: string) => void;
@@ -64,6 +65,7 @@ const ReportFilterBar = ({
   classes,
   exams,
   activeReport,
+  divisionRequired = false,
   exportColumns,
   exportRows,
   onSearchChange,
@@ -119,7 +121,8 @@ const ReportFilterBar = ({
           onChange={(e) => onDivisionChange(e.target.value)}
           className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
         >
-          <option value="">সকল বিভাগ</option>
+          <option value="">{divisionRequired ? "বিভাগ নির্বাচন করুন" : "সকল বিভাগ"}</option>
+          {divisionRequired && <option value="all">সকল বিভাগ</option>}
           {divisions.map((division) => (
             <option key={division.division_id} value={division.division_id}>
               {division.division_name_bn}
@@ -127,19 +130,27 @@ const ReportFilterBar = ({
           ))}
         </select>
 
-        <select
-          value={selectedClass}
-          onChange={(e) => onClassChange(e.target.value)}
-          disabled={!selectedDivision}
-          className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
-        >
-          <option value="">{selectedDivision ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}</option>
-          {classes.map((cls) => (
-            <option key={cls.class_id} value={cls.class_id}>
-              {cls.class_name_bn}
+        {/* Teacher rows carry no class_id (teachers belong to a division, not
+            a single class) - selecting a class would silently filter every
+            row out, so this control just never shows for those two report
+            types. */}
+        {activeReport.printable !== "teacher-list" && activeReport.printable !== "teacher-phone-list" && (
+          <select
+            value={selectedClass}
+            onChange={(e) => onClassChange(e.target.value)}
+            disabled={!selectedDivision || selectedDivision === "all"}
+            className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
+          >
+            <option value="">
+              {selectedDivision && selectedDivision !== "all" ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}
             </option>
-          ))}
-        </select>
+            {classes.map((cls) => (
+              <option key={cls.class_id} value={cls.class_id}>
+                {cls.class_name_bn}
+              </option>
+            ))}
+          </select>
+        )}
 
         {activeReport.hasSubjectFilter && (
           <select
@@ -182,14 +193,16 @@ const ReportFilterBar = ({
           </Link>
         )}
 
-        <button
-          type="button"
-          onClick={onClear}
-          className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-200 px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          <X className="h-3 w-3" />
-          মুছুন
-        </button>
+        {(search || selectedDivision || selectedClass || selectedSubject) && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-200 px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <X className="h-3 w-3" />
+            মুছুন
+          </button>
+        )}
       </div>
 
       <DataExportPrintActions

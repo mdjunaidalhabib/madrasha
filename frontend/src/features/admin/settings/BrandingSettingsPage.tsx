@@ -30,8 +30,8 @@ export default function BrandingSettingsPage() {
   const [watermark, setWatermark] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(0.08);
   const [headerFooterEnabled, setHeaderFooterEnabled] = useState(false);
-  const [headerText, setHeaderText] = useState("");
-  const [footerText, setFooterText] = useState("");
+  const [headerImage, setHeaderImage] = useState<string | null>(null);
+  const [footerImage, setFooterImage] = useState<string | null>(null);
   const [printMode, setPrintMode] = useState<ReportPrintMode>("normal");
 
   const [loading, setLoading] = useState(true);
@@ -60,8 +60,8 @@ export default function BrandingSettingsPage() {
         : 0.08,
     );
     setHeaderFooterEnabled(!!branding.report_header_footer_enabled);
-    setHeaderText(branding.report_header_text ?? "");
-    setFooterText(branding.report_footer_text ?? "");
+    setHeaderImage(branding.report_header_image ?? null);
+    setFooterImage(branding.report_footer_image ?? null);
     setPrintMode(branding.report_print_mode ?? "normal");
   }, [branding]);
 
@@ -80,8 +80,8 @@ export default function BrandingSettingsPage() {
       if (patch.report_watermark !== undefined) setWatermark(patch.report_watermark);
       if (patch.report_watermark_opacity !== undefined) setOpacity(patch.report_watermark_opacity);
       if (patch.report_header_footer_enabled !== undefined) setHeaderFooterEnabled(patch.report_header_footer_enabled);
-      if (patch.report_header_text !== undefined) setHeaderText(patch.report_header_text || "");
-      if (patch.report_footer_text !== undefined) setFooterText(patch.report_footer_text || "");
+      if (patch.report_header_image !== undefined) setHeaderImage(patch.report_header_image);
+      if (patch.report_footer_image !== undefined) setFooterImage(patch.report_footer_image);
       if (patch.report_print_mode !== undefined) setPrintMode(patch.report_print_mode);
       setBranding({
         name,
@@ -93,8 +93,8 @@ export default function BrandingSettingsPage() {
         report_watermark: watermark,
         report_watermark_opacity: opacity,
         report_header_footer_enabled: headerFooterEnabled,
-        report_header_text: headerText,
-        report_footer_text: footerText,
+        report_header_image: headerImage,
+        report_footer_image: footerImage,
         report_print_mode: printMode,
         ...patch,
       });
@@ -106,7 +106,7 @@ export default function BrandingSettingsPage() {
   };
 
   const saveImageField = async (
-    field: "report_logo" | "report_banner" | "report_watermark",
+    field: "report_logo" | "report_banner" | "report_watermark" | "report_header_image" | "report_footer_image",
     value: string,
   ) => {
     if (!value) {
@@ -114,6 +114,8 @@ export default function BrandingSettingsPage() {
       if (field === "report_logo") setLogo(null);
       if (field === "report_banner") setBackground(null);
       if (field === "report_watermark") setWatermark(null);
+      if (field === "report_header_image") setHeaderImage(null);
+      if (field === "report_footer_image") setFooterImage(null);
       await fetchBranding(true);
       useToastStore.getState().show("ছবি মুছে ফেলা হয়েছে।", "success");
       return;
@@ -252,26 +254,17 @@ export default function BrandingSettingsPage() {
           <ToggleSwitch checked={headerFooterEnabled} onChange={toggleHeaderFooterEnabled} />
         </div>
 
+        {headerFooterEnabled && (
+          <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
+            চালু থাকায় ডিফল্ট লোগো-নাম-ঠিকানা হেডার আর দেখাবে না — নিচে ছবি না দিলে ওই জায়গা ফাঁকা থাকবে।
+          </p>
+        )}
+
         <div
           className={
             headerFooterEnabled ? "space-y-3" : "space-y-3 pointer-events-none opacity-40"
           }
         >
-          <InlineTextField
-            label="হেডার টেক্সট"
-            value={headerText}
-            multiline
-            placeholder="রিপোর্টের উপরে যা দেখাবে (লোগোর নিচে)"
-            onSave={(v) => patchBranding({ report_header_text: v })}
-          />
-          <InlineTextField
-            label="ফুটার টেক্সট"
-            value={footerText}
-            multiline
-            placeholder="প্রতি পেজের নিচে যা দেখাবে"
-            onSave={(v) => patchBranding({ report_footer_text: v })}
-          />
-
           <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
             <p className="mb-2 text-xs font-medium text-gray-500 dark:text-slate-400">প্রিন্ট মোড</p>
             <div className="flex flex-wrap gap-2">
@@ -299,10 +292,39 @@ export default function BrandingSettingsPage() {
               </button>
             </div>
             <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-              প্রেস পেপার মোডে লোগো, ব্যাকগ্রাউন্ড, ওয়াটারমার্ক ও হেডার-ফুটার কিছুই প্রিন্ট হবে না — শুধু মূল
-              লেখাগুলো প্রিন্ট হবে (আগে থেকে ছাপানো লেটারহেড কাগজে প্রিন্টের জন্য)।
+              প্রেস পেপার মোডে লোগো, ব্যাকগ্রাউন্ড, ওয়াটারমার্ক ও হেডার-ফুটার ছবি — কিছুই প্রিন্ট হবে না, শুধু মূল
+              লেখাগুলো প্রিন্ট হবে (আগে থেকে ছাপানো লেটারহেড কাগজে প্রিন্টের জন্য)। উপরে-নিচে হেডার-ফুটার ছবির
+              সমান জায়গা তবুও ফাঁকা রাখা হবে, যাতে লেখা গিয়ে ছাপানো লেটারহেডের উপর না পড়ে।
             </p>
           </div>
+
+          {printMode === "normal" ? (
+            <>
+              <InlineImageField
+                label="হেডার ছবি"
+                hint="প্রস্তাবিত সাইজ: ১৬০০×৩২০ পিক্সেল (৫:১ অনুপাত) — এই সাইজে দিলে A4 ও A5, দুই পেজেই ঠিকভাবে বসবে। অন্য অনুপাতেও দেওয়া যাবে (ছবি কখনো বিকৃত/কাটা হবে না), শুধু আশেপাশে কিছুটা ফাঁকা জায়গা থাকতে পারে।"
+                value={headerImage}
+                folder="branding"
+                shape="wide"
+                ratioLabel="৫:১ (১৬০০×৩২০px)"
+                onSave={(v) => saveImageField("report_header_image", v)}
+              />
+              <InlineImageField
+                label="ফুটার ছবি"
+                hint="প্রস্তাবিত সাইজ: ১৬০০×১৬০ পিক্সেল (১০:১ অনুপাত) — এই সাইজে দিলে A4 ও A5, দুই পেজেই ঠিকভাবে বসবে।"
+                value={footerImage}
+                folder="branding"
+                shape="wide"
+                ratioLabel="১০:১ (১৬০০×১৬০px)"
+                onSave={(v) => saveImageField("report_footer_image", v)}
+              />
+            </>
+          ) : (
+            <p className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+              প্রেস পেপার মোডে হেডার/ফুটার ছবি আপলোডের দরকার নেই — যেহেতু এটা প্রিন্ট হবেই না। আগে আপলোড করা ছবি
+              থাকলেও সেটা মুছে যাবে না, শুধু এই মোডে থাকা অবস্থায় প্রিন্ট হবে না।
+            </p>
+          )}
         </div>
       </SectionCard>
     </div>

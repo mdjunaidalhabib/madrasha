@@ -14,6 +14,7 @@ export default function InlineImageField({
   value,
   folder,
   shape,
+  ratioLabel,
   onSave,
 }: {
   label: string;
@@ -21,6 +22,7 @@ export default function InlineImageField({
   value: string | null | undefined;
   folder?: UploadFolder;
   shape?: "square" | "wide";
+  ratioLabel?: string;
   onSave: (value: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -132,6 +134,7 @@ export default function InlineImageField({
           hint={hint}
           folder={folder}
           shape={shape}
+          ratioLabel={ratioLabel}
           value={draft}
           onChange={setDraft}
           onUploaded={handleUploaded}

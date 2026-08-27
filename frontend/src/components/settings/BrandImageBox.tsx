@@ -15,6 +15,10 @@ type Props = {
    * configured (the base64 set via onChange is kept as a fallback then). */
   onUploaded?: (url: string | null) => void;
   shape?: "square" | "wide";
+  /** Overrides the shape-based default ratio badge ("১৬:৯"/"১:১") - for a
+   * shape whose real recommended ratio doesn't match either default (e.g.
+   * a report header/footer banner, much thinner than 16:9). */
+  ratioLabel?: string;
   folder?: UploadFolder;
 };
 
@@ -28,6 +32,7 @@ export default function BrandImageBox({
   onRemove,
   onUploaded,
   shape = "square",
+  ratioLabel: ratioLabelProp,
   folder = "branding",
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -76,7 +81,7 @@ export default function BrandImageBox({
     e.target.value = "";
   };
 
-  const ratioLabel = shape === "wide" ? "অনুপাত ১৬:৯" : "অনুপাত ১:১";
+  const ratioLabel = ratioLabelProp ?? (shape === "wide" ? "অনুপাত ১৬:৯" : "অনুপাত ১:১");
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">

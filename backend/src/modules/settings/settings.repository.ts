@@ -31,8 +31,8 @@ export class SettingsRepository {
         reportWatermark: true,
         reportWatermarkOpacity: true,
         reportHeaderFooterEnabled: true,
-        reportHeaderText: true,
-        reportFooterText: true,
+        reportHeaderImage: true,
+        reportFooterImage: true,
         reportPrintMode: true,
       },
     });
@@ -42,7 +42,11 @@ export class SettingsRepository {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
 
-  updateField(madrasaId: number, field: "reportLogo" | "reportBanner" | "reportWatermark", value: null) {
+  updateField(
+    madrasaId: number,
+    field: "reportLogo" | "reportBanner" | "reportWatermark" | "reportHeaderImage" | "reportFooterImage",
+    value: null,
+  ) {
     return prisma.madrasa.update({ where: { id: madrasaId }, data: { [field]: value } });
   }
 

@@ -26,6 +26,21 @@ export interface AcademicResultFilters {
   offset?: number;
 }
 
+/** Narrowing filters for the result-notice report (all optional - a request
+ * with none of them behaves exactly like the old unfiltered query). */
+export interface ResultNoticeFilters {
+  examId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the class-routine report. Routines have no exam
+ * concept (see the `routines` table) - only class/division apply. */
+export interface RoutineFilters {
+  classId?: number;
+  divisionId?: number;
+}
+
 /** Builds the extra `AND ...` SQL fragment + positional params (starting
  * after $1 = madrasaId) for RosterFilters, shared by every roster query
  * that accepts them. */
@@ -295,7 +310,26 @@ export class ReportsRepository {
     });
   }
 
-  async findAcademicResultNotice(madrasaId: number): Promise<OptionalQueryResult<any>> {
+  async findAcademicResultNotice(
+    madrasaId: number,
+    filters: ResultNoticeFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+
+    if (filters.examId !== undefined) {
+      params.push(filters.examId);
+      conditions.push(`AND rm.exam_id = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
     const result = await this.runOptionalQuery(
       `
       SELECT
@@ -329,41 +363,84 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         AND rm.status = 'PUBLISHED'
+        ${conditions.join("\n        ")}
       ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
-      [madrasaId],
+      params,
     );
 
     if (result.rows.length) return result;
-    return this.resultRosterFallback(madrasaId);
+    return this.resultRosterFallback(madrasaId, {
+      classId: filters.classId,
+      divisionId: filters.divisionId,
+    });
   }
 
-  async findAcademicRoutines(madrasaId: number): Promise<OptionalQueryResult<any>> {
+  async findAcademicRoutines(
+    madrasaId: number,
+    filters: RoutineFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
+    const routineParams: any[] = [madrasaId];
+    const routineConditions: string[] = [];
+    if (filters.classId !== undefined) {
+      routineParams.push(filters.classId);
+      routineConditions.push(`AND cr.class_id = $${routineParams.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      routineParams.push(filters.divisionId);
+      routineConditions.push(`AND c.division_id = $${routineParams.length}`);
+    }
+
+    // Reads from class_routines (see prisma/models/routine.prisma's
+    // ClassRoutine) - the actual weekly-schedule table entered via the
+    // "রুটিন সেটিংস" page. division_id isn't stored on the routine row
+    // itself (only class_id is), so it's read off the joined class instead,
+    // matching how the class's own division is looked up everywhere else.
     const routineResult = await this.runOptionalQuery(
       `
       SELECT
-        r.id,
-        r.division_id,
-        r.class_id,
-        r.day,
-        r.start_time,
-        r.end_time,
+        cr.id,
+        c.division_id,
+        cr.class_id,
+        CASE cr.day_of_week
+          WHEN 0 THEN 'রবিবার'
+          WHEN 1 THEN 'সোমবার'
+          WHEN 2 THEN 'মঙ্গলবার'
+          WHEN 3 THEN 'বুধবার'
+          WHEN 4 THEN 'বৃহস্পতিবার'
+          WHEN 5 THEN 'শুক্রবার'
+          WHEN 6 THEN 'শনিবার'
+        END AS day,
+        cr.start_time,
+        cr.end_time,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
-        COALESCE(b.name_bn, b.name) AS subject_name,
+        cr.subject AS subject_name,
         t.name_bn AS teacher_name
-      FROM routines r
-      LEFT JOIN classes c ON c.id = r.class_id
-      LEFT JOIN divisions d ON d.id = r.division_id
-      LEFT JOIN books b ON b.id = r.book_id
-      LEFT JOIN teachers t ON t.id = r.teacher_id
-      WHERE r.madrasa_id = $1
-      ORDER BY r.day, r.start_time
+      FROM class_routines cr
+      INNER JOIN classes c ON c.id = cr.class_id
+      LEFT JOIN divisions d ON d.id = c.division_id
+      LEFT JOIN teachers t ON t.id = cr.teacher_id
+      WHERE cr.madrasa_id = $1
+        AND cr.is_active = true
+        ${routineConditions.join("\n        ")}
+      ORDER BY cr.day_of_week, cr.start_time
       `,
-      [madrasaId],
+      routineParams,
     );
 
     if (routineResult.rows.length) return routineResult;
+
+    const assignmentParams: any[] = [madrasaId];
+    const assignmentConditions: string[] = [];
+    if (filters.classId !== undefined) {
+      assignmentParams.push(filters.classId);
+      assignmentConditions.push(`AND ta.class_id = $${assignmentParams.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      assignmentParams.push(filters.divisionId);
+      assignmentConditions.push(`AND t.division_id = $${assignmentParams.length}`);
+    }
 
     const assignmentRows = await this.runQuery(
       `
@@ -386,9 +463,10 @@ export class ReportsRepository {
       WHERE ta.madrasa_id = $1
         AND t.deleted_at IS NULL
         AND COALESCE(t.is_active, 1) = 1
+        ${assignmentConditions.join("\n        ")}
       ORDER BY d.id ASC, c.id ASC, b.id ASC, t.name_bn ASC
       `,
-      [madrasaId],
+      assignmentParams,
     );
 
     return {
@@ -397,7 +475,8 @@ export class ReportsRepository {
     };
   }
 
-  findAcademicAdmissions(madrasaId: number) {
+  findAcademicAdmissions(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runQuery(
       `
       SELECT
@@ -424,13 +503,15 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY s.admission_date DESC NULLS LAST, s.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 
-  findGuardianPhones(madrasaId: number) {
+  findGuardianPhones(madrasaId: number, filters: RosterFilters = {}) {
+    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
     return this.runQuery(
       `
       SELECT
@@ -451,9 +532,10 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions}
       ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
-      [madrasaId],
+      params,
     );
   }
 
@@ -462,7 +544,18 @@ export class ReportsRepository {
    * the madrasa's top grade band (highest min_mark) - matched dynamically
    * instead of a hardcoded grade name, since grade names are per-madrasa
    * configurable (see MadrasaGrade). */
-  findPrizeBookLabels(madrasaId: number, examId?: number, mumtazOnly?: boolean) {
+  findPrizeBookLabels(madrasaId: number, examId?: number, mumtazOnly?: boolean, filters: RosterFilters = {}) {
+    const params: any[] = [madrasaId, examId || null, !!mumtazOnly];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
     return this.runQuery(
       `
       WITH selected_exam AS (
@@ -509,13 +602,25 @@ export class ReportsRepository {
         AND rm.exam_id = e.id
         AND rs.rank_no IN (1, 2, 3)
         AND ($3::boolean IS NOT TRUE OR rs.madrasa_grade = (SELECT name FROM top_grade))
+        ${conditions.join("\n        ")}
       ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC
       `,
-      [madrasaId, examId || null, !!mumtazOnly],
+      params,
     );
   }
 
-  findExamSignatureSheet(madrasaId: number, examId?: number) {
+  findExamSignatureSheet(madrasaId: number, examId?: number, filters: RosterFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
     return this.runQuery(
       `
       WITH selected_exam AS (
@@ -562,6 +667,7 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions.join("\n        ")}
       GROUP BY
         s.id,
         s.registration_no,
@@ -582,11 +688,22 @@ export class ReportsRepository {
         e.year
       ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
-      [madrasaId, examId || null],
+      params,
     );
   }
 
-  findExamNumberSheet(madrasaId: number, examId?: number) {
+  findExamNumberSheet(madrasaId: number, examId?: number, filters: RosterFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
     return this.runQuery(
       `
       WITH selected_exam AS (
@@ -655,6 +772,7 @@ export class ReportsRepository {
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
+        ${conditions.join("\n        ")}
       GROUP BY
         s.id,
         s.registration_no,
@@ -679,7 +797,7 @@ export class ReportsRepository {
         rs.status
       ORDER BY s.division_id ASC, s.class_id ASC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
       `,
-      [madrasaId, examId || null],
+      params,
     );
   }
 
@@ -1010,7 +1128,14 @@ export class ReportsRepository {
 
   /* ================= TEACHER ================= */
 
-  findTeacherList(madrasaId: number) {
+  findTeacherList(madrasaId: number, divisionId?: number) {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+    if (divisionId !== undefined) {
+      params.push(divisionId);
+      conditions.push(`AND t.division_id = $${params.length}`);
+    }
+
     return this.runQuery(
       `
       SELECT
@@ -1032,13 +1157,21 @@ export class ReportsRepository {
       WHERE t.madrasa_id = $1
         AND t.deleted_at IS NULL
         AND COALESCE(t.is_active, 1) = 1
+        ${conditions.join("\n        ")}
       ORDER BY t.id DESC
       `,
-      [madrasaId],
+      params,
     );
   }
 
-  findTeacherPhones(madrasaId: number) {
+  findTeacherPhones(madrasaId: number, divisionId?: number) {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+    if (divisionId !== undefined) {
+      params.push(divisionId);
+      conditions.push(`AND t.division_id = $${params.length}`);
+    }
+
     return this.runQuery(
       `
       SELECT
@@ -1055,9 +1188,10 @@ export class ReportsRepository {
       WHERE t.madrasa_id = $1
         AND t.deleted_at IS NULL
         AND COALESCE(t.is_active, 1) = 1
+        ${conditions.join("\n        ")}
       ORDER BY t.name_bn ASC
       `,
-      [madrasaId],
+      params,
     );
   }
 }

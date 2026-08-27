@@ -16,6 +16,7 @@ const reports: ReportMenuItem[] = [
     printable: "academic-result",
     defaultOrientation: "portrait",
     requiresExam: true,
+    requiresDivision: true,
     columns: ACADEMIC_RESULT_COLUMNS,
   },
   {
@@ -26,6 +27,7 @@ const reports: ReportMenuItem[] = [
     printable: "academic-result",
     defaultOrientation: "portrait",
     requiresExam: true,
+    requiresDivision: true,
     columns: ACADEMIC_RESULT_COLUMNS,
   },
 
@@ -35,6 +37,8 @@ const reports: ReportMenuItem[] = [
     subtitle: "প্রকাশিত ফলাফলের প্রিন্টযোগ্য নোটিশ",
     endpoint: "/reports/academic/result-notice",
     printable: "result-notice",
+    requiresExam: true,
+    requiresDivision: true,
     columns: RESULT_NOTICE_COLUMNS,
   },
   {
@@ -43,6 +47,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "ক্লাস রুটিন, বিষয়, শিক্ষক, সময়",
     endpoint: "/reports/academic/routines",
     printable: "class-routine",
+    requiresDivision: true,
     columns: [
       { header: "দিন", key: "day", className: smallCol },
       { header: "শুরু", key: "start_time", className: smallCol },

@@ -21,6 +21,7 @@ import {
   Tags,
   BarChart3,
   Link2,
+  Megaphone,
 } from "lucide-react";
 
 type SuperAdminSidebarProps = {
@@ -40,6 +41,7 @@ export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/super-admin/catalog", label: "একাডেমিক ক্যাটালগ", icon: <Layers size={18} /> },
   { to: "/super-admin/fee-structure-templates", label: "ফি টেমপ্লেট", icon: <Wallet size={18} /> },
   { to: "/super-admin/important-links", label: "গুরুত্বপূর্ণ লিংক", icon: <Link2 size={18} /> },
+  { to: "/super-admin/vendor-promo", label: "Hikmah IT প্রোমো", icon: <Megaphone size={18} /> },
   { to: "/super-admin/websites", label: "ওয়েবসাইটসমূহ", icon: <Globe2 size={18} /> },
 
   // বিলিং (SMS/Email credit বিক্রয়)

@@ -31,6 +31,7 @@ const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoti
 // who never logs in — had to wait for the whole bundle before anything
 // rendered.
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
+const HikmahItPage = lazy(() => import("../features/vendor/HikmahItPage"));
 const StudentListPage = lazy(() => import("../features/students/StudentListPage"));
 const StudentProfilePage = lazy(() => import("../features/students/StudentProfilePage"));
 const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
@@ -133,6 +134,9 @@ const SuperAdminCatalogPage = lazy(
 const SuperAdminImportantLinksPage = lazy(
   () => import("../features/super-admin/important-links/SuperAdminImportantLinksPage"),
 );
+const SuperAdminVendorPromoPage = lazy(
+  () => import("../features/super-admin/vendor-promo/SuperAdminVendorPromoPage"),
+);
 const SuperAdminDefaultFeeStructuresPage = lazy(
   () => import("../features/super-admin/fee/SuperAdminDefaultFeeStructuresPage"),
 );
@@ -181,6 +185,9 @@ const madrasaAdminChildren = [
     path: "dashboard",
     element: <ModuleGuard module="dashboard">{withSuspense(<DashboardPage />)}</ModuleGuard>,
   },
+  // Not module-gated — every tenant admin can see who built/maintains their
+  // QMS, regardless of which modules their madrasa has activated.
+  { path: "hikmah-it", element: withSuspense(<HikmahItPage />) },
 
   {
     path: "ihtemam/pending",
@@ -521,6 +528,7 @@ export const router = createBrowserRouter([
       { path: "catalog", element: withSuspense(<SuperAdminCatalogPage />) },
       { path: "fee-structure-templates", element: withSuspense(<SuperAdminDefaultFeeStructuresPage />) },
       { path: "important-links", element: withSuspense(<SuperAdminImportantLinksPage />) },
+      { path: "vendor-promo", element: withSuspense(<SuperAdminVendorPromoPage />) },
       { path: "billing/sms-packages", element: withSuspense(<SuperAdminSmsPackagesPage />) },
       { path: "billing/email-packages", element: withSuspense(<SuperAdminEmailPackagesPage />) },
       { path: "billing/requests", element: withSuspense(<SuperAdminBillingRequestsPage />) },

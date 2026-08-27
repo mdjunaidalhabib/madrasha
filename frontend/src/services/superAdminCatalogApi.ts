@@ -112,3 +112,27 @@ export const importantLinkApi = {
   remove: (id: number) => api.delete(`/super/important-links/${id}`),
   reorder: (linkIds: number[]) => api.put("/super/important-links/reorder", { link_ids: linkIds }),
 };
+
+/* ================= VENDOR PROMO SERVICES (Hikmah IT card/page "সেবাসমূহ") ================= */
+
+export interface VendorServiceDto {
+  id: number;
+  label: string;
+  desc: string | null;
+  icon_key: string;
+  is_current: boolean;
+  is_active: boolean;
+}
+
+export const vendorServiceApi = {
+  list: () => cachedGet<{ data: VendorServiceDto[] }>("/super/vendor-promo/services"),
+  create: (payload: { label: string; desc?: string | null; icon_key?: string; is_current?: boolean }) =>
+    api.post("/super/vendor-promo/services", payload),
+  update: (
+    id: number,
+    payload: Partial<{ label: string; desc: string | null; icon_key: string; is_current: boolean; is_active: boolean }>,
+  ) => api.put(`/super/vendor-promo/services/${id}`, payload),
+  remove: (id: number) => api.delete(`/super/vendor-promo/services/${id}`),
+  reorder: (serviceIds: number[]) =>
+    api.put("/super/vendor-promo/services/reorder", { service_ids: serviceIds }),
+};

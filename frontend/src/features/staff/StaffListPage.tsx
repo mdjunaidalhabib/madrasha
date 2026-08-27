@@ -7,6 +7,7 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
+import { filterPeopleBySearch } from "../../utils/personSearch";
 
 type StaffColumnKey =
   | "registration"
@@ -202,25 +203,13 @@ const StaffListPage = () => {
   const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
 
   const filteredStaff = useMemo(() => {
-    const searchText = search.trim().toLowerCase();
+    const searched = filterPeopleBySearch(staffList, search, (s) => ({
+      text: [s.name_bn, s.name, s.designation],
+      registrationNo: s.registration_no,
+      phones: [s.phone, s.parent_phone],
+    }));
 
-    return staffList.filter((s) => {
-      const registrationNo = String(s.registration_no || "").toLowerCase();
-      const name = String(s.name_bn || s.name || "").toLowerCase();
-      const phone = String(s.phone || "").toLowerCase();
-      const designation = String(s.designation || "").toLowerCase();
-
-      const matchSearch =
-        !searchText ||
-        registrationNo.includes(searchText) ||
-        name.includes(searchText) ||
-        phone.includes(searchText) ||
-        designation.includes(searchText);
-
-      const matchGender = !selectedGender || String(s.gender) === String(selectedGender);
-
-      return matchSearch && matchGender;
-    });
+    return searched.filter((s) => !selectedGender || String(s.gender) === String(selectedGender));
   }, [staffList, search, selectedGender]);
 
   const exportStaff = useMemo(() => {

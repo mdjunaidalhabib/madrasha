@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AcademicResultFilters } from "../reports.repository";
-import { fail, ok, requireTenant } from "../reports.response";
+import { fail, getDivisionClassFilters, ok, requireTenant } from "../reports.response";
 import { academicReportService } from "./academic-report.service";
 
 const MAX_PAGE_SIZE = 500;
@@ -68,7 +68,11 @@ export const getAcademicResultNoticeReport = async (req: Request, res: Response)
   if (!madrasaId) return;
 
   try {
-    const { rows, warning } = await academicReportService.getResultNotice(madrasaId);
+    const examId = getOptionalPositiveInt(req.query.exam_id);
+    const { rows, warning } = await academicReportService.getResultNotice(madrasaId, {
+      examId,
+      ...getDivisionClassFilters(req),
+    });
     return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);
@@ -80,7 +84,10 @@ export const getAcademicRoutineReport = async (req: Request, res: Response) => {
   if (!madrasaId) return;
 
   try {
-    const { rows, warning } = await academicReportService.getRoutines(madrasaId);
+    const { rows, warning } = await academicReportService.getRoutines(
+      madrasaId,
+      getDivisionClassFilters(req),
+    );
     return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);
@@ -92,7 +99,7 @@ export const getAcademicAdmissionReport = async (req: Request, res: Response) =>
   if (!madrasaId) return;
 
   try {
-    const rows = await academicReportService.getAdmissions(madrasaId);
+    const rows = await academicReportService.getAdmissions(madrasaId, getDivisionClassFilters(req));
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
     return fail(res, error);
@@ -104,7 +111,7 @@ export const getGuardianPhoneReport = async (req: Request, res: Response) => {
   if (!madrasaId) return;
 
   try {
-    const rows = await academicReportService.getGuardianPhones(madrasaId);
+    const rows = await academicReportService.getGuardianPhones(madrasaId, getDivisionClassFilters(req));
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
     return fail(res, error);
@@ -162,6 +169,7 @@ export const getPrizeBookLabelsReport = async (req: Request, res: Response) => {
       madrasaId,
       getOptionalExamId(req),
       mumtazOnly,
+      getDivisionClassFilters(req),
     );
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
@@ -177,6 +185,7 @@ export const getExamSignatureSheetReport = async (req: Request, res: Response) =
     const rows = await academicReportService.getExamSignatureSheet(
       madrasaId,
       getOptionalExamId(req),
+      getDivisionClassFilters(req),
     );
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
@@ -189,7 +198,11 @@ export const getExamNumberSheetReport = async (req: Request, res: Response) => {
   if (!madrasaId) return;
 
   try {
-    const rows = await academicReportService.getExamNumberSheet(madrasaId, getOptionalExamId(req));
+    const rows = await academicReportService.getExamNumberSheet(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
     return ok(res, Array.isArray(rows) ? rows : []);
   } catch (error) {
     return fail(res, error);

@@ -22,6 +22,19 @@ export const fail = (res: Response, error: unknown) => {
   } satisfies ReportResponse);
 };
 
+const getOptionalPositiveInt = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+/** Reads division_id/class_id off req.query - shared by every report
+ * controller that narrows a roster-shaped query down to one division/class
+ * instead of always fetching every active student/teacher. */
+export const getDivisionClassFilters = (req: Request) => ({
+  divisionId: getOptionalPositiveInt(req.query.division_id),
+  classId: getOptionalPositiveInt(req.query.class_id),
+});
+
 export const requireTenant = (req: Request, res: Response): number => {
   const madrasaId = tenantId(req);
 

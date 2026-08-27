@@ -12,8 +12,8 @@ export type BrandingPayload = {
   report_watermark?: string | null;
   report_watermark_opacity?: number;
   report_header_footer_enabled?: boolean;
-  report_header_text?: string | null;
-  report_footer_text?: string | null;
+  report_header_image?: string | null;
+  report_footer_image?: string | null;
   report_print_mode?: ReportPrintMode;
 };
 
@@ -27,7 +27,9 @@ export async function saveBranding(payload: BrandingPayload) {
   return res.data;
 }
 
-export async function deleteBrandingImage(field: "report_logo" | "report_banner" | "report_watermark") {
+export async function deleteBrandingImage(
+  field: "report_logo" | "report_banner" | "report_watermark" | "report_header_image" | "report_footer_image",
+) {
   const res = await api.delete(`/settings/branding/${field}`);
   return res.data;
 }

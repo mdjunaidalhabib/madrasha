@@ -86,6 +86,61 @@ model PlatformEmailConfig {
   @@map("platform_email_configs")
 }
 
+/// Platform-wide "Hikmah IT" vendor promo card shown in every tenant's
+/// Dashboard sidebar + its detail page - every piece of copy is editable
+/// from Super Admin (see vendor-promo.* in super-admin/) so nothing about
+/// the vendor's own branding is hardcoded in the frontend. Same "at most
+/// one row" singleton shape as the Platform*Config rows above. Missing row
+/// / unset fields fall back to VendorPromoService's DEFAULTS.
+model PlatformVendorPromo {
+  id                 Int      @id @default(autoincrement())
+  isEnabled          Boolean  @default(true) @map("is_enabled")
+  companyName        String?  @map("company_name") @db.VarChar(150)
+  tagline            String?  @db.VarChar(200)
+  teaserText         String?  @map("teaser_text") @db.VarChar(300)
+  detailLinkText     String?  @map("detail_link_text") @db.VarChar(60)
+  heroTitle          String?  @map("hero_title") @db.VarChar(200)
+  heroText           String?  @map("hero_text") @db.Text
+  founderName        String?  @map("founder_name") @db.VarChar(150)
+  founderTitle       String?  @map("founder_title") @db.VarChar(100)
+  founderLocation    String?  @map("founder_location") @db.VarChar(150)
+  founderBio         String?  @map("founder_bio") @db.Text
+  /// Comma-separated skill tags (e.g. "React, Next.js, SEO").
+  founderSkills      String?  @map("founder_skills") @db.VarChar(300)
+  founderPhotoUrl    String?  @map("founder_photo_url") @db.VarChar(500)
+  founderFacebookUrl String?  @map("founder_facebook_url") @db.VarChar(300)
+  phoneDisplay       String?  @map("phone_display") @db.VarChar(30)
+  phoneIntl          String?  @map("phone_intl") @db.VarChar(30)
+  email              String?  @db.VarChar(200)
+  website            String?  @db.VarChar(200)
+  address            String?  @db.VarChar(250)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_vendor_promo")
+}
+
+/// One row per service in the vendor promo card/page's "আমাদের সেবাসমূহ"
+/// list (e.g. "ফুল ই-কমার্স ওয়েবসাইট") - same shared-catalog CRUD shape as
+/// ImportantLink above, managed from Super Admin.
+model PlatformVendorService {
+  id        Int      @id @default(autoincrement())
+  label     String   @db.VarChar(150)
+  desc      String?  @db.VarChar(300)
+  /// lucide-react icon component name (e.g. "ShoppingBag") - the frontend
+  /// maps this to an actual icon via a small fixed lookup, falling back to
+  /// a generic icon for unrecognized keys.
+  iconKey   String   @default("Sparkles") @map("icon_key") @db.VarChar(50)
+  /// Marks the one service every viewer here is already using (QMS itself)
+  /// so it renders with a "আপনি ব্যবহার করছেন" badge instead of as an upsell.
+  isCurrent Boolean  @default(false) @map("is_current")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_vendor_services")
+}
+
 model Plan {
   id           Int       @id @default(autoincrement())
   name         String    @unique(map: "uniq_plan_name") @db.VarChar(100)

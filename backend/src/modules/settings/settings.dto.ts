@@ -8,8 +8,8 @@ export interface UpdateBrandingRequestDto {
   report_watermark?: string | null;
   report_watermark_opacity?: number | string | null;
   report_header_footer_enabled?: unknown;
-  report_header_text?: string | null;
-  report_footer_text?: string | null;
+  report_header_image?: string | null;
+  report_footer_image?: string | null;
   report_print_mode?: string;
 }
 

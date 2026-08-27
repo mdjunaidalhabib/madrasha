@@ -46,6 +46,7 @@ import { useThemeStore } from "../../store/themeStore";
 import { useToastStore } from "../../store/toastStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
+import VendorPromoCard from "../vendor/VendorPromoCard";
 
 const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
 
@@ -292,7 +293,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="grid items-start gap-6 xl:grid-cols-4">
-        <div className="space-y-6 xl:col-span-3">
+        <div className="min-w-0 space-y-6 xl:col-span-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {loading
               ? Array.from({ length: 10 }).map((_, i) => (
@@ -649,7 +650,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="space-y-6 xl:col-span-1">
+        <div className="min-w-0 space-y-6 xl:col-span-1">
           <Card>
             <CardHeader
               title="দ্রুত কাজ"
@@ -823,6 +824,8 @@ export default function DashboardPage() {
               ))}
             </div>
           </Card>
+
+          <VendorPromoCard adminBase={adminBase} />
         </div>
       </div>
     </div>

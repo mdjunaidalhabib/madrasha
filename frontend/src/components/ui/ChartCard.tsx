@@ -44,7 +44,7 @@ export default function ChartCard({
           {emptyMessage}
         </p>
       ) : (
-        <div className={`${height} w-full`}>{children}</div>
+        <div className={`min-w-0 ${height} w-full`}>{children}</div>
       )}
     </Card>
   );

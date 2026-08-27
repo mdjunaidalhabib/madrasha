@@ -8,6 +8,7 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { logger } from "../../utils/logger";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { TeacherFullRecord } from "../../types/teacher";
+import { filterPeopleBySearch } from "../../utils/personSearch";
 import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
 
 type TeacherColumnKey =
@@ -251,28 +252,18 @@ const TeacherListPage = () => {
   const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
 
   const filteredTeachers = useMemo(() => {
-    const searchText = search.trim().toLowerCase();
+    const searched = filterPeopleBySearch(teachers, search, (teacher) => ({
+      text: [teacher.name_bn, teacher.name, teacher.designation],
+      registrationNo: teacher.registration_no,
+      phones: [teacher.phone, teacher.parent_phone],
+    }));
 
-    return teachers.filter((teacher) => {
-      const registrationNo = String(teacher.registration_no || "").toLowerCase();
-      const name = String(teacher.name_bn || teacher.name || "").toLowerCase();
-      const phone = String(teacher.phone || "").toLowerCase();
-      const designation = String(teacher.designation || "").toLowerCase();
-
-      const matchSearch =
-        !searchText ||
-        registrationNo.includes(searchText) ||
-        name.includes(searchText) ||
-        phone.includes(searchText) ||
-        designation.includes(searchText);
-
+    return searched.filter((teacher) => {
       const matchGender = !selectedGender || String(teacher.gender) === String(selectedGender);
-
       const matchAcademicDivision =
         !selectedAcademicDivision ||
         String(getAcademicDivisionId(teacher)) === String(selectedAcademicDivision);
-
-      return matchSearch && matchGender && matchAcademicDivision;
+      return matchGender && matchAcademicDivision;
     });
   }, [teachers, search, selectedGender, selectedAcademicDivision]);
 

@@ -56,15 +56,26 @@ model Madrasa {
   brandingPhones String[] @default([]) @map("branding_phones")
   brandingEmails String[] @default([]) @map("branding_emails")
 
-  // Custom report header/footer text, shown on every printed report/document
-  // instead of the default logo+name+address header when enabled. printMode
-  // "letterhead" suppresses the logo/background/watermark/header/footer
-  // entirely at print time (pre-printed press paper already has them) -
-  // "normal" prints them as configured.
+  // Custom report header/footer IMAGE, shown on every printed report/document
+  // INSTEAD of the default logo+name+address header when enabled - not text,
+  // so a madrasa can print its own pre-designed letterhead artwork at full
+  // upload quality (same untouched Cloudinary storage as reportLogo/
+  // reportBanner/reportWatermark - no server-side resize/compression).
+  // Enabling this hides the default header/footer entirely, even before an
+  // image is uploaded (the space simply renders blank until one is set).
+  // printMode "letterhead" suppresses the logo/background/watermark/header/
+  // footer entirely at print time (pre-printed press paper already has
+  // them) - "normal" prints them as configured.
   reportHeaderFooterEnabled Int?    @default(0) @map("report_header_footer_enabled")
-  reportHeaderText          String? @map("report_header_text") @db.Text
-  reportFooterText          String? @map("report_footer_text") @db.Text
-  reportPrintMode           String? @default("normal") @map("report_print_mode") @db.VarChar(20)
+  // Superseded by reportHeaderImage/reportFooterImage below (custom header/
+  // footer is now an uploaded image, not typed text) - columns kept so any
+  // madrasa that already set text before this change doesn't silently lose
+  // it, but no code reads/writes these two anymore.
+  reportHeaderText  String? @map("report_header_text") @db.Text
+  reportFooterText  String? @map("report_footer_text") @db.Text
+  reportHeaderImage String? @map("report_header_image")
+  reportFooterImage String? @map("report_footer_image")
+  reportPrintMode   String? @default("normal") @map("report_print_mode") @db.VarChar(20)
 
   // Per-section enabled/disabled state for the admin settings pages
   // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
