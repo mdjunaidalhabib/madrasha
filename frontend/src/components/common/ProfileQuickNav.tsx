@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { cachedGet } from "../../services/api";
 import { logger } from "../../utils/logger";
 import { normalizeBanglaDigits, toBanglaDigits } from "../../utils/reportUtils";
+import { filterPeopleBySearch } from "../../utils/personSearch";
 
 export type QuickNavRecord = {
   id: number | string;
@@ -28,8 +29,10 @@ type Props = {
   ariaLabel: string;
   /** ড্রপডাউনের দ্বিতীয় লাইন — খালি অংশগুলো বাদ পড়ে */
   metaParts: (record: QuickNavRecord) => (string | null | undefined | false)[];
-  /** নাম/রোল/রেজিস্ট্রেশনের বাইরে বাড়তি যেসব ফিল্ডে সার্চ মিলবে */
+  /** নাম/রেজিস্ট্রেশনের বাইরে বাড়তি যেসব টেক্সট ফিল্ডে (designation, class ইত্যাদি) সার্চ মিলবে */
   extraSearchFields?: (record: QuickNavRecord) => (string | number | null | undefined)[];
+  /** ফোন/মোবাইল ফিল্ড - আলাদা রাখা হয়েছে কারণ এগুলো stricter নিয়মে মেলে (দেখুন personSearch.ts) */
+  phoneFields?: (record: QuickNavRecord) => (string | number | null | undefined)[];
 };
 
 const MAX_SUGGESTIONS = 8;
@@ -89,6 +92,7 @@ const ProfileQuickNav = ({
   ariaLabel,
   metaParts,
   extraSearchFields,
+  phoneFields,
 }: Props) => {
   const navigate = useNavigate();
 
@@ -138,29 +142,16 @@ const ProfileQuickNav = ({
       : null;
 
   const suggestions = useMemo(() => {
-    // বাংলা সংখ্যায় রোল/রেজিস্ট্রেশন লিখলেও যেন মেলে।
-    const text = normalizeBanglaDigits(query.trim()).toLowerCase();
-    if (!text) return [];
+    if (!query.trim()) return [];
 
-    return sortedRecords
-      .filter((record) => {
-        if (String(record.id) === String(currentId)) return false;
+    const candidates = sortedRecords.filter((record) => String(record.id) !== String(currentId));
 
-        const haystack = [
-          recordName(record),
-          record.registration_no,
-          record.roll,
-          ...(extraSearchFields?.(record) ?? []),
-        ];
-
-        return haystack.some((field) =>
-          String(field ?? "")
-            .toLowerCase()
-            .includes(text),
-        );
-      })
-      .slice(0, MAX_SUGGESTIONS);
-  }, [sortedRecords, query, currentId, extraSearchFields]);
+    return filterPeopleBySearch(candidates, query, (record) => ({
+      text: [recordName(record), ...(extraSearchFields?.(record) ?? [])],
+      registrationNo: record.registration_no,
+      phones: phoneFields?.(record) ?? [],
+    })).slice(0, MAX_SUGGESTIONS);
+  }, [sortedRecords, query, currentId, extraSearchFields, phoneFields]);
 
   useEffect(() => {
     setHighlight(0);

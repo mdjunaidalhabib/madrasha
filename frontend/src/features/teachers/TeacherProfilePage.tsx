@@ -170,13 +170,11 @@ const TeacherProfilePage = () => {
   );
 
   const quickNavSearchFields = useCallback(
-    (record: QuickNavRecord) => [
-      record.designation as string,
-      record.phone as string,
-      record.qualification as string,
-    ],
+    (record: QuickNavRecord) => [record.designation as string, record.qualification as string],
     [],
   );
+
+  const quickNavPhoneFields = useCallback((record: QuickNavRecord) => [record.phone as string], []);
 
   // লোডিং অবস্থাতেও দেখানো হয় — এক প্রোফাইল থেকে আরেকটায় গেলে সার্চ বক্সটা
   // যেন হঠাৎ উধাও হয়ে না যায়।
@@ -189,6 +187,7 @@ const TeacherProfilePage = () => {
       ariaLabel="অন্য শিক্ষক খুঁজুন"
       metaParts={quickNavMeta}
       extraSearchFields={quickNavSearchFields}
+      phoneFields={quickNavPhoneFields}
     />
   ) : null;
 

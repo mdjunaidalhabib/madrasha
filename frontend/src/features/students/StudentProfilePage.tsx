@@ -266,6 +266,11 @@ const StudentProfilePage = () => {
     [],
   );
 
+  const quickNavPhoneFields = useCallback(
+    (record: QuickNavRecord) => [record.guardian_phone as string],
+    [],
+  );
+
   // লোডিং অবস্থাতেও কুইক নেভ দেখানো হয় — এক প্রোফাইল থেকে আরেকটায় গেলে
   // সার্চ বক্সটা যেন হঠাৎ উধাও হয়ে না যায়। `student` তখনও আগের রেকর্ড ধরে
   // রাখে, তাই সেশন স্কোপ ঠিক থাকে।
@@ -284,6 +289,7 @@ const StudentProfilePage = () => {
       ariaLabel="অন্য ছাত্র খুঁজুন"
       metaParts={quickNavMeta}
       extraSearchFields={quickNavSearchFields}
+      phoneFields={quickNavPhoneFields}
     />
   ) : null;
 

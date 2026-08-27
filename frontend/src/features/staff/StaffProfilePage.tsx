@@ -140,13 +140,11 @@ const StaffProfilePage = () => {
   );
 
   const quickNavSearchFields = useCallback(
-    (record: QuickNavRecord) => [
-      record.designation as string,
-      record.phone as string,
-      record.qualification as string,
-    ],
+    (record: QuickNavRecord) => [record.designation as string, record.qualification as string],
     [],
   );
+
+  const quickNavPhoneFields = useCallback((record: QuickNavRecord) => [record.phone as string], []);
 
   const quickNav = id ? (
     <ProfileQuickNav
@@ -157,6 +155,7 @@ const StaffProfilePage = () => {
       ariaLabel="অন্য স্টাফ খুঁজুন"
       metaParts={quickNavMeta}
       extraSearchFields={quickNavSearchFields}
+      phoneFields={quickNavPhoneFields}
     />
   ) : null;
 

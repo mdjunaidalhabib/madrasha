@@ -7,21 +7,13 @@ import { getDefaultPageMargins } from "../../components/Report/pagination/pageGe
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
-import { getRowClassId, getRowDivisionId, normalizeBanglaDigits } from "../../utils/reportUtils";
+import { getRowClassId, getRowDivisionId } from "../../utils/reportUtils";
+import { filterPeopleBySearch } from "../../utils/personSearch";
 import { logger } from "../../utils/logger";
 import { listTemplates, type TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
 import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
-
-// A Bangladeshi mobile number always starts 01[3-9] - so the search box's
-// phone match only kicks in once the typed digits themselves look like the
-// start of one AND are long enough to actually narrow the list down.
-// Otherwise a short, generic query like "1" or "17" would match almost
-// every phone number in the roster (nearly all of them contain "01" or
-// "17" somewhere) and flood the results with unrelated rows.
-const PHONE_QUERY_PATTERN = /^01[3-9]/;
-const PHONE_QUERY_MIN_DIGITS = 5;
 
 type ReportSubject = {
   book_id?: number | string;
@@ -336,26 +328,8 @@ const ReportShell = ({
     return Array.from(map.entries()).map(([key, name]) => ({ key, name }));
   }, [rows, activeReport.hasSubjectFilter, selectedClass]);
 
-  const rawKeyword = search.trim();
-  const keyword = rawKeyword.toLowerCase();
-  const keywordDigits = normalizeBanglaDigits(rawKeyword).replace(/\D/g, "");
-
-  const rowSearchInfo = rows.map((row) => {
-    // Kept as three separate buckets instead of one joined string:
-    // - registration_no is the only numeric field a bare digit query matches
-    //   directly - id/student_id/teacher_id are internal DB keys nobody
-    //   searches by, and roll numbers collide too easily across classes
-    //   (roll 4 exists in nearly every class), so both are deliberately
-    //   excluded here.
-    // - name/class/division/exam text never mixes with phone digits, so a
-    //   short numeric query can't accidentally "match" a row just because
-    //   its phone number happened to be glued onto the same search string.
-    // - phone numbers get their own stricter rule below (PHONE_QUERY_*).
-    const idFields = [row.registration_no]
-      .filter((value) => value !== null && value !== undefined && value !== "")
-      .map((value) => String(value).toLowerCase());
-
-    const searchableText = [
+  const searchedRows = filterPeopleBySearch(rows, search, (row) => ({
+    text: [
       row.name,
       row.name_bn,
       row.student_name,
@@ -366,51 +340,19 @@ const ReportShell = ({
       row.division_name,
       row.exam_name,
       row.status,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    ],
+    registrationNo: row.registration_no,
+    phones: [row.guardian_phone, row.mobile, row.phone],
+  }));
 
-    // Only treated as a phone search once the digits themselves look like
-    // the start of a Bangladeshi mobile number (01 then 3-9) and there are
-    // enough of them to be specific - see PHONE_QUERY_PATTERN/MIN_DIGITS.
-    const looksLikePhoneQuery =
-      keywordDigits.length >= PHONE_QUERY_MIN_DIGITS && PHONE_QUERY_PATTERN.test(keywordDigits);
-    const matchesPhone =
-      looksLikePhoneQuery &&
-      [row.guardian_phone, row.mobile, row.phone]
-        .filter((value) => value !== null && value !== undefined && value !== "")
-        .map((value) => normalizeBanglaDigits(String(value)).replace(/\D/g, ""))
-        .some((digits) => digits.includes(keywordDigits));
-
-    return {
-      row,
-      rowDivisionId: String(getRowDivisionId(row)),
-      rowClassId: String(getRowClassId(row)),
-      // An exact roll/registration/id hit - "৪" against roll "৪" itself.
-      isExactIdMatch: !!keyword && idFields.includes(keyword),
-      isFuzzyMatch:
-        !keyword || searchableText.includes(keyword) || idFields.some((value) => value.includes(keyword)) || matchesPhone,
-    };
+  const filteredRows = searchedRows.filter((row) => {
+    const rowDivisionId = String(getRowDivisionId(row));
+    const rowClassId = String(getRowClassId(row));
+    return (
+      (!selectedDivision || selectedDivision === "all" || rowDivisionId === String(selectedDivision)) &&
+      (!selectedClass || rowClassId === String(selectedClass))
+    );
   });
-
-  // A bare digit like "৪" substring-matching roll "৪১", "৪২", "৪৩" ... floods
-  // the result with everything that merely CONTAINS it. Once at least one row
-  // is an exact roll/registration/id hit, that's clearly what was meant - so
-  // the list narrows to just the exact hit(s) instead of also keeping every
-  // loose contains-match around it. Only falls back to the broader
-  // contains-match below when nothing matches exactly (e.g. a genuine partial
-  // registration-number search).
-  const hasExactIdMatch = rowSearchInfo.some((info) => info.isExactIdMatch);
-
-  const filteredRows = rowSearchInfo
-    .filter(({ isExactIdMatch, isFuzzyMatch }) => (hasExactIdMatch ? isExactIdMatch : isFuzzyMatch))
-    .filter(
-      ({ rowDivisionId, rowClassId }) =>
-        (!selectedDivision || selectedDivision === "all" || rowDivisionId === String(selectedDivision)) &&
-        (!selectedClass || rowClassId === String(selectedClass)),
-    )
-    .map(({ row }) => row);
 
   if (activeReport.printable === "teacher-list" || activeReport.printable === "teacher-phone-list") {
     filteredRows.sort(

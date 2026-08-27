@@ -43,7 +43,11 @@ export function filterPeopleBySearch<T>(
   if (!rawKeyword) return items;
 
   const keyword = rawKeyword.toLowerCase();
-  const keywordDigits = normalizeBanglaDigits(rawKeyword).replace(/\D/g, "");
+  // registration_no is numeric, so its match uses the Bangla-digit-normalized
+  // form of the query (typing "১২৩" finds registration_no "123") - text
+  // matching below stays on the raw keyword since names aren't digits.
+  const keywordNumeric = normalizeBanglaDigits(rawKeyword).toLowerCase();
+  const keywordDigits = keywordNumeric.replace(/\D/g, "");
   const looksLikePhoneQuery =
     keywordDigits.length >= PHONE_QUERY_MIN_DIGITS && PHONE_QUERY_PATTERN.test(keywordDigits);
 
@@ -52,15 +56,15 @@ export function filterPeopleBySearch<T>(
 
     const regNo =
       registrationNo !== null && registrationNo !== undefined && registrationNo !== ""
-        ? String(registrationNo).toLowerCase()
+        ? normalizeBanglaDigits(String(registrationNo)).toLowerCase()
         : "";
-    const isExactId = !!regNo && regNo === keyword;
+    const isExactId = !!regNo && regNo === keywordNumeric;
 
     const matchesText = text
       .filter((value) => value !== null && value !== undefined && value !== "")
       .some((value) => String(value).toLowerCase().includes(keyword));
 
-    const matchesIdSubstring = !!regNo && regNo.includes(keyword);
+    const matchesIdSubstring = !!regNo && regNo.includes(keywordNumeric);
 
     const matchesPhone =
       looksLikePhoneQuery &&
