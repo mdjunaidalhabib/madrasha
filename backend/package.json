@@ -11,7 +11,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky install",
+    "prepare": "node -e \"if(process.env.NODE_ENV!=='production'){require('child_process').execSync('husky install',{stdio:'inherit'})}\"",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
     "prisma:migrate": "prisma migrate dev",
