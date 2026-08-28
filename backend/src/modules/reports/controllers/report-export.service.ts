@@ -130,9 +130,24 @@ export class ReportExportService {
         },
         version: 0,
       };
-      await context.addInitScript((state) => {
-        localStorage.setItem("auth-storage", JSON.stringify(state));
-      }, authState);
+      // The print page's own API calls are baked at build time to the
+      // public API domain (Vite env vars are compile-time), which would
+      // otherwise make this headless page call back out to the internet and
+      // through the reverse proxy to reach a server it's already running
+      // inside of - the same hairpin-NAT problem internalFrontendUrl exists
+      // to avoid, just in the other direction. Since this Chromium instance
+      // is launched by the backend process itself (see getBrowser() above),
+      // its page can always reach the API via plain loopback, regardless of
+      // Docker network/proxy setup - apiConfig.ts checks for this global
+      // before falling back to the build-time public API URL.
+      const internalApiBaseUrl = `http://127.0.0.1:${config.app.port}/api`;
+      await context.addInitScript(
+        ({ authState, internalApiBaseUrl }) => {
+          localStorage.setItem("auth-storage", JSON.stringify(authState));
+          (window as any).__INTERNAL_API_BASE__ = internalApiBaseUrl;
+        },
+        { authState, internalApiBaseUrl },
+      );
 
       const page = await context.newPage();
 
