@@ -174,8 +174,19 @@ export class ReportExportService {
       url.searchParams.set("paper_size", params.paperSize);
       url.searchParams.set("orientation", params.orientation);
 
+      // "networkidle" (no in-flight requests for 500ms) is what was set here
+      // originally, but it waits on ALL network activity, not just the
+      // report's own data - it can never resolve if literally anything on
+      // the page (an analytics beacon, a background poll, even a slow/stuck
+      // request unrelated to the report itself) keeps a connection open,
+      // which is exactly what timed out in production even once
+      // internalFrontendUrl was reachable. "domcontentloaded" only needs the
+      // initial HTML parsed, which is enough to move on to the explicit
+      // `data-report-ready` wait below - that's what actually gates PDF
+      // generation on the report's data being loaded, so networkidle was
+      // never doing useful work here, only adding a way to hang.
       stage = "navigate";
-      await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 30_000 });
+      await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
       const navigatedAt = Date.now();
 
       stage = "render-wait";
