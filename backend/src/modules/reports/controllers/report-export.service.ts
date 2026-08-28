@@ -125,6 +125,7 @@ export class ReportExportService {
     // fixes, and previously indistinguishable from the client's 500 alone.
     let stage: "launch" | "navigate" | "render-wait" | "pdf" = "launch";
     let context: Awaited<ReturnType<Browser["newContext"]>> | undefined;
+    const pageIssues: string[] = [];
     try {
       const browser = await this.getBrowser();
       const launchedAt = Date.now();
@@ -159,6 +160,28 @@ export class ReportExportService {
       );
 
       const page = await context.newPage();
+
+      // Surfaces what actually happened *inside* the rendered page (failed
+      // API calls, JS exceptions, CORS blocks) in our own server logs - this
+      // is otherwise invisible: a broken/empty render still lets
+      // waitForSelector resolve and page.pdf() succeed, so nothing throws,
+      // it just silently produces a wrong-looking PDF. Capped so a page with
+      // a chatty console can't spam the log file.
+      const recordIssue = (issue: string) => {
+        if (pageIssues.length < 20) pageIssues.push(issue);
+      };
+      page.on("console", (msg) => {
+        if (msg.type() === "error") recordIssue(`console.error: ${msg.text()}`);
+      });
+      page.on("pageerror", (err) => recordIssue(`pageerror: ${err.message}`));
+      page.on("requestfailed", (req) =>
+        recordIssue(`requestfailed: ${req.method()} ${req.url()} - ${req.failure()?.errorText}`),
+      );
+      page.on("response", (res) => {
+        if (res.status() >= 400 && res.url().includes(`127.0.0.1:${config.app.port}`)) {
+          recordIssue(`response ${res.status()}: ${res.request().method()} ${res.url()}`);
+        }
+      });
 
       // internalFrontendUrl, not frontendBaseUrl - see env.ts's doc comment
       // on why this navigation must avoid the public domain when frontend
@@ -215,6 +238,10 @@ export class ReportExportService {
         renderWaitMs: readyAt - navigatedAt,
         pdfMs: pdfAt - readyAt,
         totalMs: pdfAt - startedAt,
+        // Present even on a "successful" export - a blank/wrong-looking PDF
+        // with no thrown error usually means the page rendered with failed
+        // API calls, which show up here instead of anywhere else.
+        pageIssues: pageIssues.length ? pageIssues : undefined,
       });
 
       return pdfBuffer;
@@ -224,6 +251,7 @@ export class ReportExportService {
         reportsPage: params.reportsPage,
         reportKey: params.reportKey,
         internalFrontendUrl: config.app.internalFrontendUrl,
+        pageIssues: pageIssues.length ? pageIssues : undefined,
         error,
       });
       const stageMessage: Record<typeof stage, string> = {
