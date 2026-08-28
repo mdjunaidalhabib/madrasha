@@ -115,6 +115,15 @@ export class ReportExportService {
     await this.slots.acquire();
     const acquiredAt = Date.now();
 
+    // Tracked separately from the try/catch so a failure's log line and
+    // thrown message can say exactly which step never finished, instead of
+    // a single generic "Failed to generate PDF" no matter where it broke -
+    // "navigate" timing out means the headless browser couldn't reach
+    // internalFrontendUrl at all (an infra/network problem), while
+    // "render-wait" timing out means the page loaded fine but the report's
+    // own data never became ready (an app/API problem) - very different
+    // fixes, and previously indistinguishable from the client's 500 alone.
+    let stage: "launch" | "navigate" | "render-wait" | "pdf" = "launch";
     let context: Awaited<ReturnType<Browser["newContext"]>> | undefined;
     try {
       const browser = await this.getBrowser();
@@ -165,12 +174,15 @@ export class ReportExportService {
       url.searchParams.set("paper_size", params.paperSize);
       url.searchParams.set("orientation", params.orientation);
 
+      stage = "navigate";
       await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 30_000 });
       const navigatedAt = Date.now();
 
+      stage = "render-wait";
       await page.waitForSelector('[data-report-ready="true"]', { timeout: 60_000 });
       const readyAt = Date.now();
 
+      stage = "pdf";
       const size = PAPER_SIZE_MM[params.paperSize];
       const pdfBuffer = await page.pdf({
         width: `${params.orientation === "landscape" ? size.height : size.width}mm`,
@@ -196,8 +208,22 @@ export class ReportExportService {
 
       return pdfBuffer;
     } catch (error) {
-      logger.error("PDF export failed:", error);
-      throw new ApiError("Failed to generate PDF", 500);
+      logger.error("PDF export failed", {
+        stage,
+        reportsPage: params.reportsPage,
+        reportKey: params.reportKey,
+        internalFrontendUrl: config.app.internalFrontendUrl,
+        error,
+      });
+      const stageMessage: Record<typeof stage, string> = {
+        launch: "PDF export failed: could not start the headless browser",
+        navigate:
+          "PDF export failed: could not reach the report page (internalFrontendUrl unreachable - check its value and that the frontend container is up)",
+        "render-wait":
+          "PDF export failed: the report page loaded but never finished loading its data (check the API base the print page is calling)",
+        pdf: "PDF export failed: could not render the loaded page to PDF",
+      };
+      throw new ApiError(stageMessage[stage], 500);
     } finally {
       // Only the context - the browser itself is shared, see getBrowser().
       await context?.close();
