@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
@@ -70,6 +70,13 @@ const ReportShell = ({
   const [loading, setLoading] = useState(true);
   const [examsLoaded, setExamsLoaded] = useState(false);
   const [warning, setWarning] = useState("");
+  // Print mode hydrates its filters (division/class/exam/...) from the URL
+  // in an effect below - false until that finishes (including its async
+  // loadClassesByDivision leg), so the data-fetch effect never fires on the
+  // pre-hydration "no division selected" state first. See that effect's own
+  // comment for the empty-PDF bug this was causing. Non-print mode has
+  // nothing to hydrate, so it starts (and stays) true.
+  const [hydrated, setHydrated] = useState(!printMode);
 
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
@@ -109,24 +116,37 @@ const ReportShell = ({
   // narrowing further is still handled client-side by filteredRows.
   const hasSearchQuery = search.trim().length > 0;
 
+  // Guards against an older, slower loadReport() call resolving AFTER a
+  // newer one (production network jitter makes this far more likely than
+  // it seems in dev) and clobbering fresh rows with a stale/empty result -
+  // every setRows/setWarning/setLoading below only applies if this call is
+  // still the most recent one by the time it gets there.
+  const loadRequestIdRef = useRef(0);
+
   const loadReport = async () => {
     if (!activeReport?.endpoint) return;
+    const requestId = ++loadRequestIdRef.current;
+    const isCurrent = () => requestId === loadRequestIdRef.current;
 
     try {
       setLoading(true);
       setWarning("");
 
       if (activeReport.requiresExam && !selectedExam) {
-        setRows([]);
-        setTotalCount(0);
-        setWarning("পরীক্ষা নির্বাচন করুন");
+        if (isCurrent()) {
+          setRows([]);
+          setTotalCount(0);
+          setWarning("পরীক্ষা নির্বাচন করুন");
+        }
         return;
       }
 
       if (divisionRequired && !selectedDivision && !hasSearchQuery) {
-        setRows([]);
-        setTotalCount(0);
-        setWarning("বিভাগ নির্বাচন করুন");
+        if (isCurrent()) {
+          setRows([]);
+          setTotalCount(0);
+          setWarning("বিভাগ নির্বাচন করুন");
+        }
         return;
       }
 
@@ -145,6 +165,8 @@ const ReportShell = ({
       }
       const query = params.toString();
       const res = await cachedGet(`${activeReport.endpoint}${query ? `?${query}` : ""}`);
+      if (!isCurrent()) return;
+
       const data =
         res.data?.data || res.data?.students || res.data?.teachers || res.data?.result || [];
 
@@ -155,11 +177,13 @@ const ReportShell = ({
       setWarning(res.data?.warning || "");
     } catch (error: any) {
       logger.error("REPORT LOAD ERROR:", error);
-      setRows([]);
-      setTotalCount(0);
-      setWarning(error?.response?.data?.message || "রিপোর্ট লোড করা যায়নি");
+      if (isCurrent()) {
+        setRows([]);
+        setTotalCount(0);
+        setWarning(error?.response?.data?.message || "রিপোর্ট লোড করা যায়নি");
+      }
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
@@ -259,7 +283,10 @@ const ReportShell = ({
       setSelectedDivision(divisionId);
       loadClassesByDivision(divisionId).then(() => {
         if (classId) setSelectedClass(classId);
+        setHydrated(true);
       });
+    } else {
+      setHydrated(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [printMode]);
@@ -275,6 +302,20 @@ const ReportShell = ({
     : `${activeKey}|${selectedExam}`;
 
   useEffect(() => {
+    // Print mode: don't fire on the pre-hydration state (selectedDivision
+    // etc still "") - the URL-hydration effect above hasn't set the real
+    // filters yet at the moment this effect first runs, since its own
+    // loadClassesByDivision leg is async. Without this guard, a
+    // divisionRequired report's early "no division picked" branch in
+    // loadReport() sets loading:false with empty rows almost instantly,
+    // which is indistinguishable from a genuinely-empty report to
+    // PaginatedReportPreview's data-report-ready attribute - so the
+    // server-side PDF export's headless browser can capture the PDF right
+    // in that window, producing a page with the report's structure but no
+    // data. See the loadRequestIdRef guard in loadReport() for the other
+    // half of this fix (an in-flight stale request finishing late).
+    if (printMode && !hydrated) return;
+
     // For an exam-requiring report, loadExams() auto-selects the first exam
     // once it resolves - but that's a separate async call from this effect,
     // so on mount selectedExam is still "" for a moment even though an exam
@@ -285,7 +326,7 @@ const ReportShell = ({
     if (activeReport.requiresExam && !selectedExam && !examsLoaded) return;
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadTrigger, examsLoaded]);
+  }, [loadTrigger, examsLoaded, hydrated]);
 
   useEffect(() => {
     const documentType = activeReport.documentType;
