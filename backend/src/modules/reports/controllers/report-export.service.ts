@@ -123,7 +123,7 @@ export class ReportExportService {
     // "render-wait" timing out means the page loaded fine but the report's
     // own data never became ready (an app/API problem) - very different
     // fixes, and previously indistinguishable from the client's 500 alone.
-    let stage: "launch" | "navigate" | "render-wait" | "pdf" = "launch";
+    let stage: "launch" | "navigate" | "render-wait" | "images-wait" | "pdf" = "launch";
     let context: Awaited<ReturnType<Browser["newContext"]>> | undefined;
     const pageIssues: string[] = [];
     try {
@@ -216,6 +216,28 @@ export class ReportExportService {
       await page.waitForSelector('[data-report-ready="true"]', { timeout: 60_000 });
       const readyAt = Date.now();
 
+      // data-report-ready only reflects the report's DATA/pagination being
+      // settled (see PaginatedReportPreview.tsx) - it has no way to know
+      // about the branding logo/banner/watermark/header/footer <img>
+      // elements ReportBranding.tsx renders independently of that, which can
+      // still be mid-fetch at this exact moment. That used to be masked by
+      // render-wait itself taking many seconds (slow API calls gave images
+      // plenty of time to finish loading in parallel) - now that render-wait
+      // routinely resolves in under a second, page.pdf() below was capturing
+      // pages with a missing logo often enough to notice. Best-effort, not a
+      // hard failure: a slow/broken branding image shouldn't block the whole
+      // export, so a timeout here just proceeds to print whatever state the
+      // images are in rather than throwing.
+      stage = "images-wait";
+      try {
+        await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), {
+          timeout: 15_000,
+        });
+      } catch {
+        recordIssue("images-wait: timed out waiting for all <img> elements to finish loading");
+      }
+      const imagesReadyAt = Date.now();
+
       stage = "pdf";
       const size = PAPER_SIZE_MM[params.paperSize];
       const pdfBuffer = await page.pdf({
@@ -236,7 +258,8 @@ export class ReportExportService {
         launchMs: launchedAt - acquiredAt,
         navigateMs: navigatedAt - launchedAt,
         renderWaitMs: readyAt - navigatedAt,
-        pdfMs: pdfAt - readyAt,
+        imagesWaitMs: imagesReadyAt - readyAt,
+        pdfMs: pdfAt - imagesReadyAt,
         totalMs: pdfAt - startedAt,
         // Present even on a "successful" export - a blank/wrong-looking PDF
         // with no thrown error usually means the page rendered with failed
@@ -260,6 +283,7 @@ export class ReportExportService {
           "PDF export failed: could not reach the report page (internalFrontendUrl unreachable - check its value and that the frontend container is up)",
         "render-wait":
           "PDF export failed: the report page loaded but never finished loading its data (check the API base the print page is calling)",
+        "images-wait": "PDF export failed: could not finish loading the report's branding images",
         pdf: "PDF export failed: could not render the loaded page to PDF",
       };
       throw new ApiError(stageMessage[stage], 500);
