@@ -122,6 +122,93 @@ export class AuthRepository {
   updateMyProfile(userId: number, madrasaId: number, data: Prisma.UserUncheckedUpdateInput) {
     return prisma.user.updateMany({ where: { id: userId, madrasaId }, data });
   }
+
+  /* ================= REFRESH TOKENS ================= */
+
+  createRefreshToken(data: {
+    madrasaId: number;
+    userId: number;
+    tokenHash: string;
+    expiresAt: Date;
+    deviceInfo?: string | null;
+  }) {
+    return prisma.refreshToken.create({ data });
+  }
+
+  findValidRefreshToken(tokenHash: string) {
+    return prisma.refreshToken.findFirst({
+      where: { tokenHash, revokedAt: null, expiresAt: { gt: new Date() } },
+    });
+  }
+
+  /** Every still-valid session for this user - powers the "logout from all
+   * devices" confirmation modal's device list. tokenHash is selected only
+   * so the caller can flag which row is the current browser's own session;
+   * it never leaves the service layer. */
+  findActiveRefreshTokensForUser(userId: number) {
+    return prisma.refreshToken.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true, tokenHash: true, deviceInfo: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /** Looks up the user a refresh token belongs to, re-checking the same
+   * active/madrasa conditions login() enforces - a user deactivated (or
+   * moved) after issuing the token must not be able to silently refresh
+   * their way back to a valid access token. */
+  findActiveUserForRefresh(userId: number, madrasaId: number) {
+    return prisma.user.findFirst({
+      where: { id: userId, madrasaId, isActive: 1 },
+      select: {
+        id: true,
+        madrasaId: true,
+        roleId: true,
+        lockedUntil: true,
+        role: { select: { keyName: true, nameBn: true } },
+      },
+    });
+  }
+
+  revokeRefreshToken(tokenHash: string) {
+    return prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /** The "logout from all devices" primitive - revokes every still-valid
+   * refresh token for this user, so no session can silently refresh past
+   * its current access token's expiry anymore. */
+  revokeAllRefreshTokensForUser(userId: number) {
+    return prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /** Same as above but leaves one token (the caller's own current session)
+   * alone - "logout from OTHER devices". */
+  revokeAllRefreshTokensForUserExcept(userId: number, exceptTokenHash: string) {
+    return prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null, tokenHash: { not: exceptTokenHash } },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /** Revokes exactly one session by its row id - scoped to `userId` so a
+   * user can only ever revoke their own sessions, never guess another
+   * user's session id. */
+  revokeRefreshTokenById(id: number, userId: number) {
+    return prisma.refreshToken.updateMany({
+      where: { id, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  purgeExpiredRefreshTokens(cutoff: Date = new Date()) {
+    return prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: cutoff } } });
+  }
 }
 
 export const authRepository = new AuthRepository();

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./router";
@@ -25,6 +26,7 @@ app.use(
 );
 app.use(express.json({ limit: config.upload.jsonBodyLimit })); // raised to allow branding logo/banner/watermark base64 uploads
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); // reads the httpOnly refresh-token cookie into req.cookies
 app.use(requestLogger);
 app.use(activityLoggerMiddleware);
 

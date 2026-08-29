@@ -32,7 +32,12 @@ export const env = {
       process.env.DB_PASS || "",
     )}@${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || ""}`,
   jwtSecret: required("JWT_SECRET"),
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  // Short-lived on purpose - this is now just the access token (see
+  // RefreshToken model / auth.service.ts#refreshAccessToken). A leaked
+  // access token is only usable for this long; long-lived sessions live in
+  // the DB-backed refresh token instead, which can be revoked server-side.
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "15m",
+  refreshTokenExpiresInDays: Number(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS || 30),
   rootDomain: process.env.ROOT_DOMAIN || "localhost",
   // Optional full override (e.g. "https://app.example.com") for building
   // links that point at the frontend (password reset emails, etc.) - this

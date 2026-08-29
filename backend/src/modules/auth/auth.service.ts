@@ -7,9 +7,11 @@ import { env } from "../../shared/config/env";
 import { emailService } from "../../shared/notifications/email.service";
 import { authRepository, AuthRepository } from "./auth.repository";
 import {
+  ActiveSession,
   LoginCredentials,
   LoginResult,
   MyProfile,
+  RefreshTokenResult,
   UnlockCredentials,
   UpdateMyProfileInput,
 } from "./auth.types";
@@ -29,7 +31,12 @@ const normalizeRoleKey = (value?: string | null) =>
 export class AuthService {
   constructor(private readonly repository: AuthRepository = authRepository) {}
 
-  async login({ email, password, madrasaId }: LoginCredentials): Promise<LoginResult> {
+  async login({
+    email,
+    password,
+    madrasaId,
+    deviceInfo,
+  }: LoginCredentials): Promise<LoginResult> {
     const user = await this.repository.findActiveUserByEmail(email, madrasaId);
     if (!user) {
       throw new BadRequestError("Invalid credentials");
@@ -75,9 +82,11 @@ export class AuthService {
       role_id: user.roleId,
       role: roleKey,
     });
+    const refreshToken = await this.issueRefreshToken(user.id, user.madrasaId, deviceInfo);
 
     return {
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -91,6 +100,124 @@ export class AuthService {
       permissions,
       modules,
     };
+  }
+
+  /* ================= REFRESH TOKEN / SESSIONS ================= */
+
+  /** Random opaque token (not a JWT - it's only ever used as a DB lookup
+   * key, so there's nothing to encode/verify statelessly). Same raw+hash
+   * pattern as forgotPassword()'s reset token. */
+  private async issueRefreshToken(
+    userId: number,
+    madrasaId: number,
+    deviceInfo?: string | null,
+  ): Promise<string> {
+    const rawToken = crypto.randomBytes(40).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(
+      Date.now() + env.refreshTokenExpiresInDays * 24 * 60 * 60 * 1000,
+    );
+
+    await this.repository.createRefreshToken({
+      madrasaId,
+      userId,
+      tokenHash,
+      expiresAt,
+      deviceInfo,
+    });
+
+    return rawToken;
+  }
+
+  /** Verifies a refresh token and rotates it: the old one is revoked and a
+   * new one issued alongside the new access token ("refresh token
+   * rotation") - so a stolen-and-reused-once token can't be replayed
+   * indefinitely in parallel with the legitimate session. */
+  async refreshAccessToken(
+    rawRefreshToken: string,
+    madrasaId: number,
+    deviceInfo?: string | null,
+  ): Promise<RefreshTokenResult> {
+    const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+    const tokenRow = await this.repository.findValidRefreshToken(tokenHash);
+    if (!tokenRow || tokenRow.madrasaId !== madrasaId) {
+      throw new BadRequestError("Invalid or expired refresh token");
+    }
+
+    const user = await this.repository.findActiveUserForRefresh(tokenRow.userId, madrasaId);
+    if (!user) {
+      await this.repository.revokeRefreshToken(tokenHash);
+      throw new BadRequestError("Invalid or expired refresh token");
+    }
+
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      await this.repository.revokeRefreshToken(tokenHash);
+      throw new BadRequestError("Account is locked");
+    }
+
+    await this.repository.revokeRefreshToken(tokenHash);
+    const refreshToken = await this.issueRefreshToken(user.id, madrasaId, deviceInfo);
+
+    const roleKey = normalizeRoleKey(user.role?.keyName || user.role?.nameBn);
+    const token = generateToken({
+      id: user.id,
+      madrasa_id: madrasaId,
+      role_id: user.roleId,
+      role: roleKey,
+    });
+
+    return { token, refreshToken };
+  }
+
+  /** Logs out a single session/device - revokes just this refresh token. */
+  async logout(rawRefreshToken: string): Promise<void> {
+    const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+    await this.repository.revokeRefreshToken(tokenHash);
+  }
+
+  /** "Logout from all devices" - revokes every refresh token this user has.
+   * When `exceptRawRefreshToken` (this browser's own cookie) is passed, that
+   * one session is left alone instead - "logout from OTHER devices", the
+   * user stays signed in here. */
+  async logoutAllDevices(userId: number, exceptRawRefreshToken?: string): Promise<void> {
+    if (exceptRawRefreshToken) {
+      const exceptTokenHash = crypto
+        .createHash("sha256")
+        .update(exceptRawRefreshToken)
+        .digest("hex");
+      await this.repository.revokeAllRefreshTokensForUserExcept(userId, exceptTokenHash);
+      return;
+    }
+    await this.repository.revokeAllRefreshTokensForUser(userId);
+  }
+
+  /** Revokes exactly one session (e.g. clicked from the device list) -
+   * scoped to `userId` so a user can only revoke their own sessions. */
+  async revokeSession(userId: number, sessionId: number): Promise<void> {
+    const result = await this.repository.revokeRefreshTokenById(sessionId, userId);
+    if (!result.count) throw new NotFoundError("Session not found");
+  }
+
+  /** Lists this user's still-valid sessions (for the "logout from all
+   * devices" confirmation modal) - `currentRawRefreshToken` (this browser's
+   * own cookie, if present) is hashed and matched so the UI can flag it. */
+  async listActiveSessions(
+    userId: number,
+    currentRawRefreshToken?: string,
+  ): Promise<ActiveSession[]> {
+    const currentTokenHash = currentRawRefreshToken
+      ? crypto.createHash("sha256").update(currentRawRefreshToken).digest("hex")
+      : null;
+
+    const rows = await this.repository.findActiveRefreshTokensForUser(userId);
+
+    return rows.map((row) => ({
+      id: row.id,
+      device_info: row.deviceInfo,
+      created_at: row.createdAt,
+      expires_at: row.expiresAt,
+      is_current: currentTokenHash !== null && row.tokenHash === currentTokenHash,
+    }));
   }
 
   async unlockScreen({ userId, madrasaId, password }: UnlockCredentials): Promise<void> {
@@ -200,6 +327,10 @@ export class AuthService {
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updateUserPasswordHash(resetToken.userId, passwordHash);
     await this.repository.markResetTokenUsed(resetToken.id);
+    // A password reset means any earlier session may have been compromised
+    // (that's why a reset was needed) - kill every refresh token so a
+    // leaked old session can't keep silently refreshing past this point.
+    await this.repository.revokeAllRefreshTokensForUser(resetToken.userId);
   }
 
   /* ================= MY PROFILE ================= */
@@ -261,6 +392,9 @@ export class AuthService {
 
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updateUserPasswordHash(userId, passwordHash);
+    // Same reasoning as resetPassword(): a fresh password should invalidate
+    // any session that might have been riding on the old one.
+    await this.repository.revokeAllRefreshTokensForUser(userId);
   }
 }
 

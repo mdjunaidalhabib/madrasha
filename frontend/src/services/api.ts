@@ -7,7 +7,11 @@ import { getTenantSlugFromPath, getTenantAdminBase } from "../utils/tenantSlug";
 
 const baseURL = API_BASE_URL;
 
-const api = axios.create({ baseURL, timeout: 20_000 });
+// withCredentials so the httpOnly refresh-token cookie (set by
+// /auth/login and /auth/refresh, scoped to /api/auth) is sent back on the
+// refresh/logout calls below - it's never readable from JS, only the
+// browser attaches it automatically.
+const api = axios.create({ baseURL, timeout: 20_000, withCredentials: true });
 
 const GET_CACHE_TTL_MS = 20_000;
 const GET_CACHE_MAX_ENTRIES = 80;
@@ -96,16 +100,74 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// A 401 during normal use almost always just means the short-lived access
+// token expired - /auth/refresh trades the httpOnly refresh-token cookie
+// for a new one, and the original request is retried once. Concurrent 401s
+// share a single in-flight refresh instead of each firing their own.
+let isRefreshing = false;
+let refreshWaiters: Array<(token: string | null) => void> = [];
+
+function waitForRefresh(): Promise<string | null> {
+  return new Promise((resolve) => refreshWaiters.push(resolve));
+}
+
+function settleRefreshWaiters(token: string | null) {
+  refreshWaiters.forEach((resolve) => resolve(token));
+  refreshWaiters = [];
+}
+
+const AUTH_ENDPOINTS_WITHOUT_REFRESH = ["/auth/login", "/auth/refresh", "/auth/logout"];
+
 api.interceptors.response.use(
   (res) => {
     const method = String(res.config.method || "get").toLowerCase();
     if (method !== "get") clearGetCache();
     return res;
   },
-  (err) => {
+  async (err) => {
     const status = err?.response?.status;
+    const originalRequest = err?.config;
+    const requestUrl = String(originalRequest?.url || "");
+    const canRetryWithRefresh =
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retriedAfterRefresh &&
+      !AUTH_ENDPOINTS_WITHOUT_REFRESH.some((path) => requestUrl.includes(path));
 
-    // 401 = bad/expired/mismatched session, 410 = madrasa gone (either
+    if (canRetryWithRefresh) {
+      originalRequest._retriedAfterRefresh = true;
+
+      if (isRefreshing) {
+        const token = await waitForRefresh();
+        if (!token) return Promise.reject(err);
+        originalRequest.headers = { ...originalRequest.headers, Authorization: `Bearer ${token}` };
+        return api(originalRequest);
+      }
+
+      isRefreshing = true;
+      try {
+        const tenantSlug = getTenantSlugFromPath();
+        const refreshRes = await axios.post(
+          `${baseURL}/auth/refresh`,
+          {},
+          { withCredentials: true, headers: tenantSlug ? { "X-Madrasa-Slug": tenantSlug } : {} },
+        );
+        const newToken = refreshRes.data?.token as string;
+        useAuthStore.getState().setToken(newToken);
+        settleRefreshWaiters(newToken);
+        originalRequest.headers = { ...originalRequest.headers, Authorization: `Bearer ${newToken}` };
+        return api(originalRequest);
+      } catch (refreshErr) {
+        settleRefreshWaiters(null);
+        // Falls through to the existing 401 handling below, which clears
+        // the (now-unrefreshable) session and redirects to /login.
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // 401 = bad/expired/mismatched session (or a failed refresh above),
+    // 410 = madrasa gone (either
     // never existed with this slug, or was trashed), 423 = madrasa
     // suspended. In all of these the locally-stored token is no longer
     // usable, so we clear it right away instead of leaving a stale session

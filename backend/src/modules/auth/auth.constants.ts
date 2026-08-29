@@ -29,8 +29,6 @@ export const MUHTAMIM_BASELINE_PERMISSIONS = [
   "activity.read",
 ] as const;
 
-export const DEFAULT_TOKEN_EXPIRY = "7d";
-
 /** How long a forgot-password link stays valid. */
 export const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 

@@ -5,6 +5,7 @@ import { trashService } from "../modules/trash/trash.service";
 import { activityRepository } from "../modules/activity/activity.repository";
 import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.constants";
 import { billingService } from "../modules/billing/billing.service";
+import { authRepository } from "../modules/auth/auth.repository";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -93,6 +94,29 @@ const runMessageSubscriptionExpirySync = async (): Promise<void> => {
 export const startMessageSubscriptionExpirySync = (): void => {
   setTimeout(runMessageSubscriptionExpirySync, MESSAGE_SUBSCRIPTION_SYNC_INITIAL_DELAY_MS).unref();
   setInterval(runMessageSubscriptionExpirySync, MESSAGE_SUBSCRIPTION_SYNC_INTERVAL_MS).unref();
+};
+
+const REFRESH_TOKEN_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const REFRESH_TOKEN_PURGE_INITIAL_DELAY_MS = 50 * 1000;
+
+const runRefreshTokenPurge = async (): Promise<void> => {
+  try {
+    const result = await authRepository.purgeExpiredRefreshTokens();
+    if (result.count) logger.info("Refresh token auto-purge complete", { deleted: result.count });
+  } catch (error) {
+    logger.error("Refresh token auto-purge failed", error);
+  }
+};
+
+/**
+ * Permanently removes refresh_tokens rows past their expiry (revoked-but-
+ * not-yet-expired rows are left alone - they're already inert, see
+ * findValidRefreshToken). Same setInterval pattern as the other schedulers
+ * here - no cron library in this codebase.
+ */
+export const startRefreshTokenPurgeScheduler = (): void => {
+  setTimeout(runRefreshTokenPurge, REFRESH_TOKEN_PURGE_INITIAL_DELAY_MS).unref();
+  setInterval(runRefreshTokenPurge, REFRESH_TOKEN_PURGE_INTERVAL_MS).unref();
 };
 
 /**

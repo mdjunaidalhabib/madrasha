@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAuthStore } from "../../store/authStore";
+import { logoutSession } from "../../services/profileApi";
 import { useBrandingStore } from "../../store/brandingStore";
 import LockButton from "../lock/LockButton";
 import Button from "../ui/Button";
@@ -15,6 +16,11 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const logout = useAuthStore((s) => s.logout);
   const branding = useBrandingStore((s) => s.branding);
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+
+  const handleLogout = () => {
+    logoutSession();
+    logout();
+  };
 
   useEffect(() => {
     fetchBranding();
@@ -66,7 +72,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
             <Button
               variant="danger"
-              onClick={logout}
+              onClick={handleLogout}
               className="flex items-center justify-center px-2"
             >
               <LogOut size={17} />
@@ -95,7 +101,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
           <Button
             variant="danger"
-            onClick={logout}
+            onClick={handleLogout}
             className="flex items-center justify-center px-3"
           >
             <LogOut size={18} />

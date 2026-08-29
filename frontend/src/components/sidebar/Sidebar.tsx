@@ -3,6 +3,7 @@ import { NavLink, useLocation, useParams } from "react-router-dom";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
+import { logoutSession } from "../../services/profileApi";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "../shell/AdminSidebarShell";
@@ -172,6 +173,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   type="button"
                   onClick={() => {
                     setAccountMenuOpen(false);
+                    logoutSession();
                     logout();
                   }}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"

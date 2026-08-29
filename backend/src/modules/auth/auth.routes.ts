@@ -8,10 +8,16 @@ import {
   getMe,
   updateMe,
   changeMyPassword,
+  refreshAccessToken,
+  logout,
+  logoutAllDevices,
+  revokeSession,
+  listSessions,
 } from "./auth.controller";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
+import { idParamSchema } from "../../shared/validators/common.validation";
 import {
   loginSchema,
   unlockSchema,
@@ -19,6 +25,9 @@ import {
   resetPasswordSchema,
   updateMeSchema,
   changeMyPasswordSchema,
+  refreshTokenSchema,
+  logoutSchema,
+  logoutAllSchema,
 } from "./auth.validation";
 
 const router = Router();
@@ -63,6 +72,45 @@ router.post(
   tenantMiddleware,
   validate(resetPasswordSchema),
   resetPassword,
+);
+
+/* REFRESH / LOGOUT - same stricter pre-auth rate limit as password reset:
+   /refresh and /logout are called with just a refresh token, no password. */
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many attempts. Please try again later." },
+});
+
+router.post(
+  "/refresh",
+  refreshLimiter,
+  tenantMiddleware,
+  validate(refreshTokenSchema),
+  refreshAccessToken,
+);
+router.post("/logout", refreshLimiter, tenantMiddleware, validate(logoutSchema), logout);
+
+/* LOGOUT FROM ALL DEVICES - body.keep_current=true revokes every OTHER
+   session and leaves this one signed in; omitted/false revokes this one too. */
+router.post(
+  "/logout-all",
+  tenantMiddleware,
+  authMiddleware,
+  validate(logoutAllSchema),
+  logoutAllDevices,
+);
+
+/* ACTIVE SESSIONS - device list shown on the profile page. */
+router.get("/sessions", tenantMiddleware, authMiddleware, listSessions);
+router.delete(
+  "/sessions/:id",
+  tenantMiddleware,
+  authMiddleware,
+  validate(idParamSchema),
+  revokeSession,
 );
 
 /* MY PROFILE - any authenticated user manages their own account here,

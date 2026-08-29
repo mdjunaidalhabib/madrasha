@@ -40,3 +40,26 @@ export const changeMyPasswordSchema = z.object({
     new_password: z.string().min(6, "Password must be at least 6 characters"),
   }),
 });
+
+// refreshToken is optional in the body since the browser client sends it as
+// an httpOnly cookie instead - the controller falls back to the cookie when
+// the body omits it. Kept in the schema for non-browser clients.
+export const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1).optional(),
+  }),
+});
+
+export const logoutSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1).optional(),
+  }),
+});
+
+// keep_current=true means "logout from OTHER devices" (this session stays
+// signed in); omitted/false means every session including this one.
+export const logoutAllSchema = z.object({
+  body: z.object({
+    keep_current: z.boolean().optional(),
+  }),
+});

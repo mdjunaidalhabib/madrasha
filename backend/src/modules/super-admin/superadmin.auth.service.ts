@@ -6,6 +6,12 @@ import { superAdminAuthRepository, SuperAdminAuthRepository } from "./superadmin
 import { SuperAdminLoginRequestDto } from "./superadmin.auth.dto";
 import { SuperAdminLoginResult } from "./superadmin.auth.types";
 
+// Explicit override: generateToken()'s default expiresIn is now the short
+// tenant-admin ACCESS token lifetime (see env.jwtExpiresIn / RefreshToken
+// model) - super admin has no refresh-token flow, so it must keep its own
+// long-lived expiry independent of that default.
+const SUPER_ADMIN_TOKEN_EXPIRY = "7d";
+
 export class SuperAdminAuthService {
   constructor(private readonly repository: SuperAdminAuthRepository = superAdminAuthRepository) {}
 
@@ -24,7 +30,7 @@ export class SuperAdminAuthService {
     const valid = await comparePassword(dto.password, admin.passwordHash);
     if (!valid) throw new BadRequestError("Invalid credentials");
 
-    const token = generateToken({ id: admin.id, role: "super_admin" });
+    const token = generateToken({ id: admin.id, role: "super_admin" }, SUPER_ADMIN_TOKEN_EXPIRY);
 
     return {
       token,

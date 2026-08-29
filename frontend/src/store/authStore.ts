@@ -28,6 +28,10 @@ type AuthState = {
   setAuth: (data: AuthPayload) => void;
   updateUser: (patch: Partial<AuthUser>) => void;
   setAccess: (permissions: string[], modules: string[]) => void;
+  /** Swaps in a freshly-issued access token without touching user/permissions
+   * (see api.ts's 401 response interceptor, which calls this after a
+   * successful /auth/refresh instead of a full re-login). */
+  setToken: (token: string) => void;
   logout: () => void;
 };
 
@@ -61,6 +65,10 @@ export const useAuthStore = create<AuthState>()(
       // an already-logged-in user without forcing them to log out first.
       setAccess: (permissions, modules) => {
         set({ permissions, modules });
+      },
+
+      setToken: (token) => {
+        set({ token });
       },
 
       logout: () => {
