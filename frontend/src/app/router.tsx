@@ -22,6 +22,7 @@ const GuardianDashboardPage = lazy(() => import("../features/guardian/GuardianDa
 const GuardianAttendancePage = lazy(() => import("../features/guardian/GuardianAttendancePage"));
 const GuardianResultsPage = lazy(() => import("../features/guardian/GuardianResultsPage"));
 const GuardianFeesPage = lazy(() => import("../features/guardian/GuardianFeesPage"));
+const MyChildProfile = lazy(() => import("../features/guardian/MyChildProfile"));
 const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoticesPage"));
 
 // All page-level components are lazy-loaded so that a visitor to any one
@@ -34,6 +35,7 @@ const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const HikmahItPage = lazy(() => import("../features/vendor/HikmahItPage"));
 const StudentListPage = lazy(() => import("../features/students/StudentListPage"));
 const StudentProfilePage = lazy(() => import("../features/students/StudentProfilePage"));
+const StudentProfile360 = lazy(() => import("../features/students/StudentProfile360"));
 const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
 const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
@@ -377,6 +379,10 @@ const madrasaAdminChildren = [
     path: "students/:id",
     element: <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>,
   },
+  {
+    path: "students/:id/profile",
+    element: <ModuleGuard module="students">{withSuspense(<StudentProfile360 />)}</ModuleGuard>,
+  },
 
   {
     path: "accounts/dashboard",
@@ -585,6 +591,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="dashboard" replace /> },
       { path: "dashboard", element: withSuspense(<GuardianDashboardPage />) },
+      { path: "profile", element: withSuspense(<MyChildProfile />) },
       { path: "attendance", element: withSuspense(<GuardianAttendancePage />) },
       { path: "results", element: withSuspense(<GuardianResultsPage />) },
       { path: "fees", element: withSuspense(<GuardianFeesPage />) },

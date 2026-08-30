@@ -7,6 +7,9 @@ import {
   getChildAttendance,
   getChildResults,
   getChildFees,
+  getChildLibrary,
+  getChildPromotion,
+  getChildProfile360,
   getNotices,
 } from "./guardian.controller";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
@@ -41,6 +44,9 @@ router.get("/me/children", tenantMiddleware, guardianAuthMiddleware, getMyChildr
 router.get("/students/:studentId/attendance", tenantMiddleware, guardianAuthMiddleware, getChildAttendance);
 router.get("/students/:studentId/results", tenantMiddleware, guardianAuthMiddleware, getChildResults);
 router.get("/students/:studentId/fees", tenantMiddleware, guardianAuthMiddleware, getChildFees);
+router.get("/students/:studentId/library", tenantMiddleware, guardianAuthMiddleware, getChildLibrary);
+router.get("/students/:studentId/promotion", tenantMiddleware, guardianAuthMiddleware, getChildPromotion);
+router.get("/students/:studentId/profile-360", tenantMiddleware, guardianAuthMiddleware, getChildProfile360);
 router.get("/notices", tenantMiddleware, guardianAuthMiddleware, getNotices);
 
 export default router;

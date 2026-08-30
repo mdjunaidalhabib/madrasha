@@ -16,6 +16,7 @@ import {
   expelStudent,
   transferStudentSession,
 } from "./student.controller";
+import { getStudentProfile360 } from "../student-profile/student-profile.controller";
 
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
@@ -122,6 +123,17 @@ router.get(
   rbacMiddleware("students.read"),
   validate(studentIdParamSchema),
   getStudentById,
+);
+
+// STUDENT 360 - composed view (academic + attendance + fee + library +
+// promotion history) aggregated from existing modules, read-only.
+router.get(
+  "/:id/profile-360",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.read"),
+  validate(studentIdParamSchema),
+  getStudentProfile360,
 );
 
 // UPDATE

@@ -332,6 +332,29 @@ export class ResultPanelRepository {
     return prisma.resultSummary.findFirst({ where: { resultMasterId }, select: { id: true } });
   }
 
+  /** Every exam summary row for one student across every result session
+   * (draft and published) for this tenant, newest exam first - powers
+   * Student 360's academic tab (admin view; guardians only ever see
+   * PUBLISHED rows via GuardianRepository.findPublishedResultsForStudent). */
+  findByStudent(madrasaId: number, studentId: number) {
+    return prisma.resultSummary.findMany({
+      where: {
+        studentId,
+        resultMaster: { madrasaId, deletedAt: null },
+      },
+      include: {
+        resultMaster: {
+          select: {
+            status: true,
+            exam: { select: { name: true } },
+            class: { select: { nameBn: true, name: true } },
+          },
+        },
+      },
+      orderBy: { resultMaster: { createdAt: "desc" } },
+    });
+  }
+
   /** Every active subject assigned to a class, regardless of whether any
    * student has a mark recorded for it yet. Used to build the full subject
    * list for the "edit a single student's marks" modal — deriving the

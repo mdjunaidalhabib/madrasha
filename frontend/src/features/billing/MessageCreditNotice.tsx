@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { billingApi, type SmsPreviewResult, type SubscriptionSummaryDto } from "../../services/billingApi";
+import { billingApi, type SmsEncoding, type SmsPreviewResult, type SubscriptionSummaryDto } from "../../services/billingApi";
 import { type NotificationChannel } from "../../services/phase4Api";
 import { logger } from "../../utils/logger";
 
@@ -8,6 +8,32 @@ interface MessageCreditNoticeProps {
   message: string;
   onDisabledChange?: (disabled: boolean) => void;
 }
+
+// Mirrors backend/src/shared/utils/sms-segment.util.ts's segment limits -
+// used here only to *display* the per-SMS cap the server already applied,
+// not to recompute billing.
+const SMS_SEGMENT_LIMITS: Record<SmsEncoding, { single: number; multipart: number }> = {
+  GSM_7: { single: 160, multipart: 153 },
+  UNICODE: { single: 70, multipart: 67 },
+};
+
+/** The per-segment character cap that's actually in effect for this message
+ * - once a message splits into multiple SMS, each part's usable length drops
+ * (space is reserved for the concatenation header), so the cap shown here
+ * flips from the single-SMS limit to the multipart limit automatically. */
+const perSmsLength = (encoding: SmsEncoding, segmentCount: number) => {
+  const limits = SMS_SEGMENT_LIMITS[encoding];
+  return segmentCount > 1 ? limits.multipart : limits.single;
+};
+
+const StatTile = ({ label, value }: { label: string; value: string | number }) => (
+  <div className="flex flex-col rounded-md bg-white px-2.5 py-1.5 dark:bg-slate-900/60">
+    <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500/80 dark:text-blue-400/70">
+      {label}
+    </span>
+    <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">{value}</span>
+  </div>
+);
 
 /** Shows remaining SMS/Email credit near the composer's send button, plus a
  * live SMS segment/cost preview (debounced, server-authoritative). Purely
@@ -94,20 +120,29 @@ const MessageCreditNotice = ({ channel, message, onDisabledChange }: MessageCred
         </div>
       )}
 
-      {channel === "SMS" && message.trim() && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-          {previewLoading || !preview ? (
-            "হিসাব হচ্ছে..."
-          ) : (
-            <>
-              আপনি লিখেছেন <strong>{preview.characterCount} অক্ষর</strong> (
-              {preview.encoding === "UNICODE" ? "বাংলা/বিশেষ অক্ষর ধরা পড়েছে" : "শুধু ইংরেজি/সংখ্যা"}) — এই মেসেজ
-              পাঠাতে <strong>{preview.segmentCount}টি SMS</strong> লাগবে (আনুমানিক খরচ ৳
-              {Number(preview.estimatedCost).toLocaleString("bn-BD")})
-            </>
-          )}
-        </div>
-      )}
+      {channel === "SMS" &&
+        (() => {
+          const hasMessage = !!message.trim();
+          const stillLoading = hasMessage && (previewLoading || !preview);
+          const encoding = preview?.encoding ?? "GSM_7";
+          const characterCount = hasMessage ? (preview?.characterCount ?? 0) : 0;
+          const segmentCount = hasMessage ? (preview?.segmentCount ?? 0) : 0;
+          const cost = hasMessage ? Number(preview?.estimatedCost ?? 0) : 0;
+
+          return (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                <StatTile label="ভাষা" value={encoding === "UNICODE" ? "বাংলা/বিশেষ" : "ইংরেজি"} />
+                <StatTile label="SMS Length" value={stillLoading ? "..." : characterCount} />
+                <StatTile label="Per SMS Length" value={perSmsLength(encoding, segmentCount)} />
+                <StatTile label="SMS Count" value={stillLoading ? "..." : segmentCount} />
+              </div>
+              <p className="mt-1.5 text-xs text-blue-700 dark:text-blue-300">
+                আনুমানিক খরচ: <strong>৳{stillLoading ? "..." : cost.toLocaleString("bn-BD")}</strong>
+              </p>
+            </div>
+          );
+        })()}
     </div>
   );
 };

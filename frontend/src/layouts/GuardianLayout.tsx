@@ -8,6 +8,7 @@ import Breadcrumbs from "../components/ui/Breadcrumbs";
 
 const NAV_ITEMS = [
   { to: "dashboard", label: "ড্যাশবোর্ড" },
+  { to: "profile", label: "প্রোফাইল" },
   { to: "attendance", label: "হাজিরা" },
   { to: "results", label: "ফলাফল" },
   { to: "fees", label: "ফি" },

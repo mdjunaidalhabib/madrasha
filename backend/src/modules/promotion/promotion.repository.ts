@@ -68,6 +68,22 @@ export class PromotionRepository {
     return tx.student.update({ where: { id: studentId }, data: { academicYear } });
   }
 
+  /** Every promotion/retention/transfer record for one student across every
+   * batch run for this tenant, newest batch first - powers Student 360's
+   * academic-history view. PromotionRecord has no madrasaId column of its
+   * own, so tenant scoping goes through its parent batch. */
+  getHistoryForStudent(studentId: number, madrasaId: number) {
+    return prisma.promotionRecord.findMany({
+      where: { studentId, batch: { madrasaId } },
+      include: {
+        batch: {
+          select: { fromClassId: true, toClassId: true, fromYear: true, toYear: true, createdAt: true },
+        },
+      },
+      orderBy: { batch: { createdAt: "desc" } },
+    });
+  }
+
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(fn);
   }

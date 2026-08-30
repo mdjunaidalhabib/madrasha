@@ -88,8 +88,13 @@ export class FeeRepository {
   }
 
   /** Creates one invoice per student, silently skipping any student who
-   * already has an invoice for this fee-structure+month (unique constraint
-   * makes re-running this safe). */
+   * already has an invoice for this fee-structure+month. Checked explicitly
+   * rather than relying on the DB's uniq_invoice_student_fee_month
+   * constraint, because Postgres treats every NULL as distinct - ONE_TIME/
+   * YEARLY fees (e.g. ভর্তি ফি) always store month: null, so that constraint
+   * silently lets duplicates through for them (caused real double-billing:
+   * admission fee billed once at submission, then again unfiltered at
+   * approval). */
   async generateInvoicesOnTx(
     tx: TransactionClient,
     rows: Array<{
@@ -104,6 +109,12 @@ export class FeeRepository {
   ) {
     let created = 0;
     for (const row of rows) {
+      const existing = await tx.invoice.findFirst({
+        where: { studentId: row.studentId, feeStructureId: row.feeStructureId, month: row.month },
+        select: { id: true },
+      });
+      if (existing) continue;
+
       try {
         await tx.invoice.create({ data: row as any });
         created += 1;

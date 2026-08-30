@@ -84,6 +84,42 @@ export const getChildFees = async (req: Request, res: Response) => {
   }
 };
 
+export const getChildLibrary = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const studentId = Number(req.params.studentId);
+    const data = await guardianService.getChildLibrary(guardianId, madrasa_id, studentId);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN LIBRARY ERROR:");
+  }
+};
+
+export const getChildPromotion = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const studentId = Number(req.params.studentId);
+    const data = await guardianService.getChildPromotion(guardianId, madrasa_id, studentId);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN PROMOTION ERROR:");
+  }
+};
+
+export const getChildProfile360 = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const studentId = Number(req.params.studentId);
+    const data = await guardianService.getChildProfile360(guardianId, madrasa_id, studentId);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN PROFILE 360 ERROR:");
+  }
+};
+
 export const getNotices = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;

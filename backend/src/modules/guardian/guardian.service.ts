@@ -4,6 +4,8 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/err
 import { logger } from "../../shared/logger/logger";
 import { attendanceService } from "../attendance/attendance.service";
 import { feeService } from "../fee/fee.service";
+import { libraryService } from "../library/library.service";
+import { promotionRepository } from "../promotion/promotion.repository";
 import { guardianRepository, GuardianRepository } from "./guardian.repository";
 import {
   ACCOUNT_LOCKOUT_DURATION_MS,
@@ -164,6 +166,52 @@ export class GuardianService {
   async getChildFees(guardianId: number, madrasaId: number, studentId: number) {
     await this.assertOwnsStudent(guardianId, studentId);
     return feeService.getStudentStatement(madrasaId, studentId);
+  }
+
+  async getChildLibrary(guardianId: number, madrasaId: number, studentId: number) {
+    await this.assertOwnsStudent(guardianId, studentId);
+    return libraryService.listBorrowRecords(madrasaId, { student_id: String(studentId) });
+  }
+
+  async getChildPromotion(guardianId: number, madrasaId: number, studentId: number) {
+    await this.assertOwnsStudent(guardianId, studentId);
+    return promotionRepository.getHistoryForStudent(studentId, madrasaId);
+  }
+
+  /** Combined read-only 360 view for the guardian's own child. Reuses each
+   * per-section method above rather than re-implementing their queries -
+   * every one of them re-checks ownership on its own (a cheap unique-index
+   * lookup), so this stays safe on its own even if a section's internals
+   * change later. Promise.allSettled means one section failing (e.g. the
+   * fee module having a hiccup) never blocks the rest of the profile. */
+  async getChildProfile360(guardianId: number, madrasaId: number, studentId: number) {
+    await this.assertOwnsStudent(guardianId, studentId);
+
+    const [attendance, results, fees, library, promotion] = await Promise.allSettled([
+      this.getChildAttendance(guardianId, madrasaId, studentId),
+      this.getChildResults(guardianId, madrasaId, studentId),
+      this.getChildFees(guardianId, madrasaId, studentId),
+      this.getChildLibrary(guardianId, madrasaId, studentId),
+      this.getChildPromotion(guardianId, madrasaId, studentId),
+    ]);
+
+    const settle = <T>(result: PromiseSettledResult<T>, fallback: T, label: string): T => {
+      if (result.status === "fulfilled") return result.value;
+      logger.error(`guardian getChildProfile360: ${label} failed`, result.reason);
+      return fallback;
+    };
+
+    return {
+      attendance: settle(attendance, null as any, "attendance"),
+      results: settle(results, [] as GuardianResultRow[], "results"),
+      fees: settle(
+        fees,
+        { invoices: [], summary: { totalBilled: 0, totalPaid: 0, totalWaived: 0, totalDue: 0 } } as any,
+        "fees",
+      ),
+      library: settle(library, [] as any[], "library"),
+      promotion: settle(promotion, [] as any[], "promotion"),
+    };
   }
 
   async getNotices(guardianId: number, madrasaId: number): Promise<GuardianNoticeRow[]> {
