@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toBanglaDigits } from "../../utils/reportUtils";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
@@ -24,16 +24,43 @@ import { assignStudentCard } from "../../services/phase1Api";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
+// StudentInfoProfile-এর ভেতরে dob থেকে age এবং division/class ফিল্ড
+// অটো-নরমালাইজ করার useEffect আছে — সেগুলো user edit না, কিন্তু student
+// state-কে original থেকে আলাদা করে দেয় বলে Update বাটন সবসময় active
+// দেখাত। fetch করার সময়েই একই নরমালাইজেশন করে student ও original দুটোকেই
+// সমান রাখা হচ্ছে, যাতে শুধু আসল edit হলেই isChanged() true হয়।
+const computeAge = (dob: any) => {
+  if (!dob) return undefined;
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age;
+};
+
+const normalizeStudent = (raw: any) => {
+  if (!raw) return raw;
+  return {
+    ...raw,
+    division_id: raw.division_id || raw.academicDivision,
+    class_id: raw.class_id || raw.currentClass,
+    previous_class_id: raw.previous_class_id || raw.previousClass,
+    age: raw.dob ? computeAge(raw.dob) : raw.age,
+  };
+};
+
 const StudentProfilePage = () => {
   const { id, madrasaSlug = "" } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const adminBase = getTenantAdminBase(madrasaSlug);
 
   const [student, setStudent] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
 
-  const [isEditMode, setIsEditMode] = useState(Boolean((location.state as any)?.autoEdit));
+  // এই পেজটা শুধু এডিট পেজ হিসেবেই কাজ করে — টগল করে রিড-মোডে যাওয়ার দরকার নেই।
+  const isEditMode = true;
   const [editableField, setEditableField] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -58,7 +85,7 @@ const StudentProfilePage = () => {
       setLoading(true);
 
       const res = await cachedGet(`/students/${id}`);
-      const data = res.data.data;
+      const data = normalizeStudent(res.data.data);
 
       setStudent(deepCopy(data));
       setOriginal(deepCopy(data));
@@ -115,7 +142,6 @@ const StudentProfilePage = () => {
 
       await fetchStudent();
 
-      setIsEditMode(false);
       setEditableField(null);
 
       useToastStore.getState().show("Updated successfully", "success");
@@ -323,35 +349,13 @@ const StudentProfilePage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {!isEditMode ? (
-            <button
-              onClick={() => setIsEditMode(true)}
-              className={`${actionButtonClass} bg-blue-500`}
-            >
-              Edit
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setIsEditMode(false);
-                setEditableField(null);
-                setStudent(deepCopy(original));
-              }}
-              className={`${actionButtonClass} bg-gray-500`}
-            >
-              Cancel
-            </button>
-          )}
-
-          {isEditMode && (
-            <button
-              onClick={handleUpdate}
-              disabled={!isChanged() || saving}
-              className={`${actionButtonClass} ${isChanged() && !saving ? "bg-green-500" : "bg-gray-400"}`}
-            >
-              {saving ? "Saving..." : "Update"}
-            </button>
-          )}
+          <button
+            onClick={handleUpdate}
+            disabled={!isChanged() || saving}
+            className={`${actionButtonClass} ${isChanged() && !saving ? "bg-green-500" : "bg-gray-400"}`}
+          >
+            {saving ? "Saving..." : "Update"}
+          </button>
 
           <AdmissionFormPrintButton row={student} className={outlineButtonClass} />
 
@@ -479,12 +483,18 @@ const StudentProfilePage = () => {
         </div>
       </Modal>
 
-      <Modal open={cardModalOpen} title="RFID কার্ড যুক্ত করুন" onClose={() => setCardModalOpen(false)}>
+      <Modal
+        open={cardModalOpen}
+        title="RFID কার্ড যুক্ত করুন"
+        onClose={() => setCardModalOpen(false)}
+      >
         <div className="flex flex-col gap-3">
           {student.card_uid && (
             <p className="text-xs text-gray-500 dark:text-slate-400">
               বর্তমান কার্ড:{" "}
-              <span className="font-medium text-gray-700 dark:text-slate-300">{student.card_uid}</span>
+              <span className="font-medium text-gray-700 dark:text-slate-300">
+                {student.card_uid}
+              </span>
             </p>
           )}
           <p className="text-xs text-gray-500 dark:text-slate-400">

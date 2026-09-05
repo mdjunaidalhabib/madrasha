@@ -705,7 +705,7 @@ const StudentListPage = () => {
                       onClick={() => navigate(`${adminBase}/students/${student.id}/profile`)}
                       className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                     >
-                      প্রোফাইল দেখুন
+                      প্রোফাইল
                     </button>
                   </div>
                 </div>
@@ -763,7 +763,7 @@ const StudentListPage = () => {
                               onClick={() => navigate(`${adminBase}/students/${student.id}/profile`)}
                               className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
                             >
-                              প্রোফাইল দেখুন
+                              প্রোফাইল
                             </button>
                           </div>
                         </td>
