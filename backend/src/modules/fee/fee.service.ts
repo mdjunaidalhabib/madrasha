@@ -18,7 +18,8 @@ import {
 } from "./fee.dto";
 import { FEE_FREQUENCIES, FEE_TYPES, PAYMENT_METHODS, PAYMENT_METHOD_TYPES } from "./fee.constants";
 
-const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
+const isEmpty = (value: unknown) =>
+  value === undefined || value === null || String(value).trim() === "";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -27,7 +28,8 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 
 const toAmount = (value: unknown, label: string): number => {
   const amount = Number(value);
-  if (Number.isNaN(amount) || amount <= 0) throw new BadRequestError(`${label} must be a positive number`);
+  if (Number.isNaN(amount) || amount <= 0)
+    throw new BadRequestError(`${label} must be a positive number`);
   return amount;
 };
 
@@ -66,17 +68,28 @@ const monthsInRange = (startDate: Date, endDate: Date): Array<{ year: number; mo
 
 /** Builds the invoice rows for one student from every active fee structure
  * that applies to their class + session, for use at admission/transfer
- * time. MONTHLY structures fan out into one invoice per month across the
- * session's actual start-end range (which need not be a calendar Jan-Dec
- * year), clamped to never bill before the student's admission/transfer
- * date - so a mid-session transfer never re-bills months the old session
- * already covered. */
+ * time and by the daily current-month billing scheduler (see
+ * generateCurrentMonthInvoices below). MONTHLY structures fan out into one
+ * invoice per month, clamped on both ends:
+ *  - never before the student's admission/transfer date, so a mid-session
+ *    transfer never re-bills months the old session already covered;
+ *  - PURE "BILL-AS-YOU-GO" (Option A): never past `today`, so approving an
+ *    admission (or any other call site) can only ever create invoices for
+ *    months that have actually started. "বকেয়া" (due) can therefore never
+ *    include a month that hasn't arrived yet. Months after `today` are
+ *    intentionally left ungenerated - they get created automatically, one
+ *    at a time, by generateCurrentMonthInvoices() as each real month
+ *    begins. This also makes re-running the same call later (e.g. the
+ *    "বিদ্যমান সব ছাত্রের ফি সেট করুন" backfill) naturally top up any
+ *    months that have since elapsed, since generateInvoicesOnTx skips
+ *    whatever already exists. */
 const buildAutoInvoiceRows = (
   madrasaId: number,
   studentId: number,
   structures: Array<{ id: number; name: string; amount: any; frequency: string }>,
   session: { startDate: Date; endDate: Date },
   admissionDate: Date,
+  today: Date = new Date(),
 ) => {
   const rows: Array<{
     madrasaId: number;
@@ -89,9 +102,14 @@ const buildAutoInvoiceRows = (
   }> = [];
 
   const effectiveStart = admissionDate > session.startDate ? admissionDate : session.startDate;
+  const billableEnd = session.endDate < today ? session.endDate : today;
 
   for (const structure of structures) {
     if (structure.frequency !== "MONTHLY") {
+      // ONE_TIME/YEARLY fees (admission fee, exam fee, etc.) are still
+      // billed in full immediately - only recurring MONTHLY fees get the
+      // bill-as-you-go treatment, since those are what compounded into a
+      // full year's worth of premature "due" before this change.
       rows.push({
         madrasaId,
         studentId,
@@ -104,10 +122,13 @@ const buildAutoInvoiceRows = (
       continue;
     }
 
-    const months = monthsInRange(effectiveStart, session.endDate);
+    if (effectiveStart > billableEnd) continue; // nothing billable has started yet
+
+    const months = monthsInRange(effectiveStart, billableEnd);
     for (const { year, month } of months) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-      const isFirstMonth = year === effectiveStart.getUTCFullYear() && month === effectiveStart.getUTCMonth() + 1;
+      const isFirstMonth =
+        year === effectiveStart.getUTCFullYear() && month === effectiveStart.getUTCMonth() + 1;
       const dueDate = isFirstMonth ? effectiveStart : new Date(Date.UTC(year, month - 1, 10));
       rows.push({
         madrasaId,
@@ -130,14 +151,20 @@ export class FeeService {
   /** Resolves the Session a request refers to: session_id takes priority;
    * academic_year is accepted as a legacy fallback, matched against an
    * existing Session's name. Mirrors StudentService.resolveSession. */
-  private async resolveSession(madrasaId: number, dto: { session_id?: number | string; academic_year?: string }) {
+  private async resolveSession(
+    madrasaId: number,
+    dto: { session_id?: number | string; academic_year?: string },
+  ) {
     if (!isEmpty(dto.session_id)) {
       const session = await this.repository.findSessionForTenant(madrasaId, Number(dto.session_id));
       if (!session) throw new BadRequestError("Selected session not found");
       return session;
     }
     if (!isEmpty(dto.academic_year)) {
-      const session = await this.repository.findSessionByNameForTenant(madrasaId, String(dto.academic_year));
+      const session = await this.repository.findSessionByNameForTenant(
+        madrasaId,
+        String(dto.academic_year),
+      );
       if (session) return session;
     }
     throw new BadRequestError("session_id is required");
@@ -145,7 +172,12 @@ export class FeeService {
 
   /* ================= FEE STRUCTURE ================= */
 
-  async listStructures(madrasaId: number, classId?: number, sessionId?: number, academicYear?: string) {
+  async listStructures(
+    madrasaId: number,
+    classId?: number,
+    sessionId?: number,
+    academicYear?: string,
+  ) {
     try {
       return await this.repository.findStructures(madrasaId, classId, sessionId, academicYear);
     } catch (err) {
@@ -160,7 +192,11 @@ export class FeeService {
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
       throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
     }
-    if (dto.fee_type !== undefined && !isEmpty(dto.fee_type) && !FEE_TYPES.includes(dto.fee_type as any)) {
+    if (
+      dto.fee_type !== undefined &&
+      !isEmpty(dto.fee_type) &&
+      !FEE_TYPES.includes(dto.fee_type as any)
+    ) {
       throw new BadRequestError(`fee_type must be one of: ${FEE_TYPES.join(", ")}`);
     }
     const amount = toAmount(dto.amount, "amount");
@@ -297,6 +333,107 @@ export class FeeService {
     return { totalStudents: students.length, studentsProcessed, invoicesCreated, failed };
   }
 
+  /** The other half of "pure Option A": runs once a day (see
+   * startCurrentMonthInvoiceScheduler in core/bootstrap.ts) and bills every
+   * currently-enrolled student, across every tenant, for whichever MONTHLY
+   * fees have just become due for the calendar month `today` falls in.
+   * ONE_TIME/YEARLY fees are untouched here - those are already billed in
+   * full at admission time (see buildAutoInvoiceRows).
+   *
+   * Deliberately a single cross-tenant query up front (findActiveStudents
+   * ForCurrentMonthBilling), same shape as TrashRepository.purgeExpired,
+   * rather than looping madrasa-by-madrasa - there's no per-tenant
+   * scheduling concern here, just a platform-wide "did the calendar roll
+   * over" check.
+   *
+   * Idempotent and safe to run more than once for the same day/month:
+   * generateInvoicesOnTx silently skips any (student, feeStructure, month)
+   * that already exists, so a re-run (e.g. after a server restart) never
+   * double-bills. Grouped by class+session so one session lookup and one
+   * fee-structure lookup is shared across every student in that group
+   * instead of querying per student - but each student still gets their
+   * OWN transaction (see the inner loop below). Batching every student's
+   * rows into one shared transaction was tried first and is wrong: Prisma
+   * interactive transactions have a short default timeout (5s), and once
+   * a group has more than a handful of students the sequential
+   * findFirst-then-create per row blows past it, so the transaction gets
+   * closed by Prisma mid-way and every row after that fails with
+   * "Transaction not found / refers to an old closed transaction" - which
+   * is the exact error this fixes. Per-student failures (including a
+   * timeout on one unusually large student) are counted, not thrown, so
+   * one bad student can't block billing for the rest of the group/platform. */
+  async generateCurrentMonthInvoices(today: Date = new Date()) {
+    const students = await this.repository.findActiveStudentsForCurrentMonthBilling(today);
+
+    const groups = new Map<
+      string,
+      { madrasaId: number; classId: number; sessionId: number; students: typeof students }
+    >();
+    for (const student of students) {
+      const key = `${student.madrasaId}:${student.classId}:${student.sessionId}`;
+      const group = groups.get(key);
+      if (group) group.students.push(student);
+      else
+        groups.set(key, {
+          madrasaId: student.madrasaId,
+          classId: student.classId,
+          sessionId: student.sessionId,
+          students: [student],
+        });
+    }
+
+    let invoicesCreated = 0;
+    let groupsFailed = 0;
+    let studentsFailed = 0;
+
+    for (const group of groups.values()) {
+      let session: Awaited<ReturnType<FeeRepository["findSessionForTenant"]>>;
+      let structures: Array<{ id: number; name: string; amount: any; frequency: string }>;
+      try {
+        session = await this.repository.findSessionForTenant(group.madrasaId, group.sessionId);
+        if (!session) continue;
+
+        structures = (
+          await this.repository.findActiveStructuresForBilling(
+            group.madrasaId,
+            group.classId,
+            group.sessionId,
+          )
+        ).filter((s) => s.frequency === "MONTHLY");
+        if (structures.length === 0) continue;
+      } catch (err) {
+        groupsFailed += 1;
+        logger.error("CURRENT-MONTH INVOICE GENERATION ERROR (group lookup):", err);
+        continue;
+      }
+
+      // One transaction PER STUDENT (a handful of rows, fast) - never one
+      // transaction for the whole group (see the doc comment above for why).
+      for (const student of group.students) {
+        const rows = buildAutoInvoiceRows(
+          group.madrasaId,
+          student.id,
+          structures,
+          session,
+          student.admissionDate ?? session.startDate,
+          today,
+        );
+        if (rows.length === 0) continue;
+
+        try {
+          invoicesCreated += await this.repository.runTransaction((tx) =>
+            this.repository.generateInvoicesOnTx(tx, rows as any),
+          );
+        } catch (err) {
+          studentsFailed += 1;
+          logger.error("CURRENT-MONTH INVOICE GENERATION ERROR (student):", err);
+        }
+      }
+    }
+
+    return { studentsChecked: students.length, invoicesCreated, groupsFailed, studentsFailed };
+  }
+
   async listInvoices(madrasaId: number, query: InvoiceQueryDto) {
     const where: Prisma.InvoiceWhereInput = {};
     if (query.student_id) where.studentId = Number(query.student_id);
@@ -333,7 +470,11 @@ export class FeeService {
       const result = await this.repository.clearPendingInvoices(madrasaId);
       return { cleared: result.count };
     } catch (err) {
-      return friendlyFailure("clearPendingInvoices error:", err, "Failed to clear the pending list");
+      return friendlyFailure(
+        "clearPendingInvoices error:",
+        err,
+        "Failed to clear the pending list",
+      );
     }
   }
 
@@ -377,7 +518,8 @@ export class FeeService {
     if (!isEmpty(dto.paid_at)) {
       const parsed = new Date(String(dto.paid_at));
       if (Number.isNaN(parsed.getTime())) throw new BadRequestError("paid_at is invalid");
-      if (parsed.getTime() > Date.now() + 60_000) throw new BadRequestError("paid_at cannot be in the future");
+      if (parsed.getTime() > Date.now() + 60_000)
+        throw new BadRequestError("paid_at cannot be in the future");
       paidAt = parsed;
     }
 
@@ -398,7 +540,9 @@ export class FeeService {
     const feeFund = incomeFunds[0]?.name;
     const feeCategory = incomeFunds[0]?.categories[0];
     if (!feeFund || !feeCategory) {
-      throw new BadRequestError("হিসাব বিভাগে কোনো আয় ফান্ড/খাত সেটআপ করা নেই - প্রথমে ফান্ড ও খাত সেটিংসে একটি যোগ করুন");
+      throw new BadRequestError(
+        "হিসাব বিভাগে কোনো আয় ফান্ড/খাত সেটআপ করা নেই - প্রথমে ফান্ড ও খাত সেটিংসে একটি যোগ করুন",
+      );
     }
 
     let result: {
@@ -412,7 +556,8 @@ export class FeeService {
       result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
         if (!invoice) throw new NotFoundError("Invoice not found");
-        if (invoice.status === "PAID") throw new BadRequestError("This invoice is already fully paid");
+        if (invoice.status === "PAID")
+          throw new BadRequestError("This invoice is already fully paid");
 
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
@@ -454,7 +599,9 @@ export class FeeService {
           paidAt,
           receivedById: receivedById ?? null,
           transactionRef: dto.transaction_ref?.trim() || null,
-          methodSettingId: dto.payment_method_setting_id ? Number(dto.payment_method_setting_id) : null,
+          methodSettingId: dto.payment_method_setting_id
+            ? Number(dto.payment_method_setting_id)
+            : null,
           methodLabel,
           note: dto.note?.trim() || null,
           accountEntryId: ledgerEntry.id,
@@ -511,7 +658,8 @@ export class FeeService {
       return await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
         if (!invoice) throw new NotFoundError("Invoice not found");
-        if (invoice.status === "PAID") throw new BadRequestError("This invoice is already fully paid");
+        if (invoice.status === "PAID")
+          throw new BadRequestError("This invoice is already fully paid");
 
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
@@ -523,7 +671,9 @@ export class FeeService {
           // not an increment on top of it.
           const maxWaivable = invoiceAmount - alreadyPaid;
           if (waiveAmount > maxWaivable + 0.01) {
-            throw new BadRequestError(`মওকুফের পরিমাণ চালানের বাকি টাকার (${maxWaivable}) চেয়ে বেশি হতে পারবে না`);
+            throw new BadRequestError(
+              `মওকুফের পরিমাণ চালানের বাকি টাকার (${maxWaivable}) চেয়ে বেশি হতে পারবে না`,
+            );
           }
           newWaivedAmount = waiveAmount;
         } else {

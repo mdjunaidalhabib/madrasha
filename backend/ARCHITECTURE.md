@@ -62,6 +62,19 @@ prisma/models/document-templates.prisma
 - Report data queries live in `reports/reports.repository.ts` and are reused (not duplicated) by `document-templates.service.ts`'s `generate()`/`getPreviewRow()`.
 - Permissions: `document_templates.read`, `document_templates.manage` (manage required for create/edit/publish/delete/clone/set-default/version-restore).
 
+## Fee billing - "bill-as-you-go" (pure Option A)
+
+MONTHLY fee structures (e.g. মাসিক বেতন) are billed one month at a time, not the whole remaining session upfront:
+
+- **Admission/transfer time** (`FeeService.autoGenerateInvoicesForStudent`, called from `StudentService.approveAdmission` and session-transfer): generates invoices from the admission/transfer month up through *today's* calendar month only - never for a month that hasn't started yet. ONE_TIME/YEARLY fees (admission fee, exam fee, etc.) are still billed in full immediately; this only changes MONTHLY fees.
+- **Every later month** (`FeeService.generateCurrentMonthInvoices`, run daily by `startCurrentMonthInvoiceScheduler` in `core/bootstrap.ts`): a single cross-tenant scheduler bills every currently-enrolled student for whichever MONTHLY fees have just become due for the current calendar month.
+
+Both paths share `buildAutoInvoiceRows()` and both go through `FeeRepository.generateInvoicesOnTx`, which skips any `(student, feeStructure, month)` already billed - so re-running either one (server restart, re-admission, the "বিদ্যমান সব ছাত্রের ফি সেট করুন" backfill) is always safe and never double-bills.
+
+Net effect: a student's "বকেয়া" (due) total (`FeeService.getStudentStatement`) can never include a future month's fee - only fees for months that have actually started can exist as invoices in the first place.
+
+Advance/prepayment (a guardian wanting to pay several months ahead of schedule) is not yet supported under this model - `FeeService.recordPayment` only accepts payment against an invoice that already exists. That needs either (a) a staff-triggered "generate N months ahead" action reusing `buildAutoInvoiceRows`, or (b) a separate prepaid balance/credit model that auto-settles each new invoice as `generateCurrentMonthInvoices` creates it.
+
 ## Report permission granularity
 
 `reports.read` remains a superset granting access to every report. Five narrower keys now scope a role to one category instead of all-or-nothing: `reports.academic`, `reports.exam`, `reports.student`, `reports.teacher`, `reports.attendance`. Existing `reports.read` holders are unaffected.

@@ -8,6 +8,7 @@ import {
   startActivityLogPurgeScheduler,
   startMessageSubscriptionExpirySync,
   startRefreshTokenPurgeScheduler,
+  startCurrentMonthInvoiceScheduler,
 } from "./bootstrap";
 
 async function start() {
@@ -22,6 +23,7 @@ async function start() {
   startActivityLogPurgeScheduler();
   startMessageSubscriptionExpirySync();
   startRefreshTokenPurgeScheduler();
+  startCurrentMonthInvoiceScheduler();
 }
 
 start();

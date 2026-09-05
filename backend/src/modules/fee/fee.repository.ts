@@ -65,6 +65,24 @@ export class FeeRepository {
     });
   }
 
+  /** Every currently-enrolled student across every tenant whose session is
+   * active on `today` - feeds the daily current-month billing scheduler
+   * (see FeeService.generateCurrentMonthInvoices). Deliberately not scoped
+   * to one madrasaId, same cross-tenant-query shape as
+   * TrashRepository.purgeExpired: the scheduler runs once for the whole
+   * platform, not once per tenant. */
+  findActiveStudentsForCurrentMonthBilling(today: Date) {
+    return prisma.student.findMany({
+      where: {
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        sessionRef: { startDate: { lte: today }, endDate: { gte: today } },
+      },
+      select: { id: true, madrasaId: true, classId: true, sessionId: true, admissionDate: true },
+    });
+  }
+
   /** Every active fee structure that applies to a student in this class +
    * session (classId null on the structure means "every class"), used to
    * auto-bill a single student right at admission/transfer time. Pass

@@ -6,6 +6,7 @@ import { activityRepository } from "../modules/activity/activity.repository";
 import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.constants";
 import { billingService } from "../modules/billing/billing.service";
 import { authRepository } from "../modules/auth/auth.repository";
+import { feeService } from "../modules/fee/fee.service";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -117,6 +118,37 @@ const runRefreshTokenPurge = async (): Promise<void> => {
 export const startRefreshTokenPurgeScheduler = (): void => {
   setTimeout(runRefreshTokenPurge, REFRESH_TOKEN_PURGE_INITIAL_DELAY_MS).unref();
   setInterval(runRefreshTokenPurge, REFRESH_TOKEN_PURGE_INTERVAL_MS).unref();
+};
+
+const CURRENT_MONTH_INVOICE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CURRENT_MONTH_INVOICE_INITIAL_DELAY_MS = 15 * 1000;
+
+const runCurrentMonthInvoiceGeneration = async (): Promise<void> => {
+  try {
+    const result = await feeService.generateCurrentMonthInvoices();
+    if (result.invoicesCreated) {
+      logger.info("Current-month fee invoice generation complete", result);
+    }
+  } catch (error) {
+    logger.error("Current-month fee invoice generation failed", error);
+  }
+};
+
+/**
+ * "Pure Option A" bill-as-you-go billing: bills every currently-enrolled
+ * student (across every tenant) for whichever MONTHLY fees have just
+ * become due for the current calendar month, so a student's "বকেয়া" never
+ * includes months that haven't started yet (see FeeService.
+ * generateCurrentMonthInvoices / buildAutoInvoiceRows for the full
+ * reasoning). Runs once shortly after boot, then daily - safe to run more
+ * than once a day since invoice generation is idempotent per (student,
+ * feeStructure, month). Same setInterval pattern as the other schedulers
+ * here - no cron library in this codebase, and daily is frequent enough
+ * that missing the exact 1st-of-month rollover by up to 24h is harmless.
+ */
+export const startCurrentMonthInvoiceScheduler = (): void => {
+  setTimeout(runCurrentMonthInvoiceGeneration, CURRENT_MONTH_INVOICE_INITIAL_DELAY_MS).unref();
+  setInterval(runCurrentMonthInvoiceGeneration, CURRENT_MONTH_INVOICE_INTERVAL_MS).unref();
 };
 
 /**

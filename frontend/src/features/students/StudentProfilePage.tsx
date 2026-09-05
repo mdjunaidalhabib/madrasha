@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toBanglaDigits } from "../../utils/reportUtils";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 
@@ -27,12 +27,13 @@ const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 const StudentProfilePage = () => {
   const { id, madrasaSlug = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const adminBase = getTenantAdminBase(madrasaSlug);
 
   const [student, setStudent] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
 
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(Boolean((location.state as any)?.autoEdit));
   const [editableField, setEditableField] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);

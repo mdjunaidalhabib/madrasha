@@ -1,0 +1,261 @@
+--- a/backend/src/modules/fee/fee.service.ts
++++ b/backend/src/modules/fee/fee.service.ts
+@@ -66,17 +66,28 @@
+ 
+ /** Builds the invoice rows for one student from every active fee structure
+  * that applies to their class + session, for use at admission/transfer
+- * time. MONTHLY structures fan out into one invoice per month across the
+- * session's actual start-end range (which need not be a calendar Jan-Dec
+- * year), clamped to never bill before the student's admission/transfer
+- * date - so a mid-session transfer never re-bills months the old session
+- * already covered. */
++ * time and by the daily current-month billing scheduler (see
++ * generateCurrentMonthInvoices below). MONTHLY structures fan out into one
++ * invoice per month, clamped on both ends:
++ *  - never before the student's admission/transfer date, so a mid-session
++ *    transfer never re-bills months the old session already covered;
++ *  - PURE "BILL-AS-YOU-GO" (Option A): never past `today`, so approving an
++ *    admission (or any other call site) can only ever create invoices for
++ *    months that have actually started. "বকেয়া" (due) can therefore never
++ *    include a month that hasn't arrived yet. Months after `today` are
++ *    intentionally left ungenerated - they get created automatically, one
++ *    at a time, by generateCurrentMonthInvoices() as each real month
++ *    begins. This also makes re-running the same call later (e.g. the
++ *    "বিদ্যমান সব ছাত্রের ফি সেট করুন" backfill) naturally top up any
++ *    months that have since elapsed, since generateInvoicesOnTx skips
++ *    whatever already exists. */
+ const buildAutoInvoiceRows = (
+   madrasaId: number,
+   studentId: number,
+   structures: Array<{ id: number; name: string; amount: any; frequency: string }>,
+   session: { startDate: Date; endDate: Date },
+   admissionDate: Date,
++  today: Date = new Date(),
+ ) => {
+   const rows: Array<{
+     madrasaId: number;
+@@ -89,9 +100,14 @@
+   }> = [];
+ 
+   const effectiveStart = admissionDate > session.startDate ? admissionDate : session.startDate;
++  const billableEnd = session.endDate < today ? session.endDate : today;
+ 
+   for (const structure of structures) {
+     if (structure.frequency !== "MONTHLY") {
++      // ONE_TIME/YEARLY fees (admission fee, exam fee, etc.) are still
++      // billed in full immediately - only recurring MONTHLY fees get the
++      // bill-as-you-go treatment, since those are what compounded into a
++      // full year's worth of premature "due" before this change.
+       rows.push({
+         madrasaId,
+         studentId,
+@@ -104,7 +120,9 @@
+       continue;
+     }
+ 
+-    const months = monthsInRange(effectiveStart, session.endDate);
++    if (effectiveStart > billableEnd) continue; // nothing billable has started yet
++
++    const months = monthsInRange(effectiveStart, billableEnd);
+     for (const { year, month } of months) {
+       const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+       const isFirstMonth = year === effectiveStart.getUTCFullYear() && month === effectiveStart.getUTCMonth() + 1;
+@@ -297,6 +315,83 @@
+     return { totalStudents: students.length, studentsProcessed, invoicesCreated, failed };
+   }
+ 
++  /** The other half of "pure Option A": runs once a day (see
++   * startCurrentMonthInvoiceScheduler in core/bootstrap.ts) and bills every
++   * currently-enrolled student, across every tenant, for whichever MONTHLY
++   * fees have just become due for the calendar month `today` falls in.
++   * ONE_TIME/YEARLY fees are untouched here - those are already billed in
++   * full at admission time (see buildAutoInvoiceRows).
++   *
++   * Deliberately a single cross-tenant query up front (findActiveStudents
++   * ForCurrentMonthBilling), same shape as TrashRepository.purgeExpired,
++   * rather than looping madrasa-by-madrasa - there's no per-tenant
++   * scheduling concern here, just a platform-wide "did the calendar roll
++   * over" check.
++   *
++   * Idempotent and safe to run more than once for the same day/month:
++   * generateInvoicesOnTx silently skips any (student, feeStructure, month)
++   * that already exists, so a re-run (e.g. after a server restart) never
++   * double-bills. Grouped by class+session so one fee-structure lookup is
++   * shared across every student in that group instead of querying per
++   * student. Per-group failures are counted, not thrown, so one bad
++   * class/session can't block billing for the rest of the platform. */
++  async generateCurrentMonthInvoices(today: Date = new Date()) {
++    const students = await this.repository.findActiveStudentsForCurrentMonthBilling(today);
++
++    const groups = new Map<
++      string,
++      { madrasaId: number; classId: number; sessionId: number; students: typeof students }
++    >();
++    for (const student of students) {
++      const key = `${student.madrasaId}:${student.classId}:${student.sessionId}`;
++      const group = groups.get(key);
++      if (group) group.students.push(student);
++      else
++        groups.set(key, {
++          madrasaId: student.madrasaId,
++          classId: student.classId,
++          sessionId: student.sessionId,
++          students: [student],
++        });
++    }
++
++    let invoicesCreated = 0;
++    let groupsFailed = 0;
++
++    for (const group of groups.values()) {
++      try {
++        const session = await this.repository.findSessionForTenant(group.madrasaId, group.sessionId);
++        if (!session) continue;
++
++        const structures = (
++          await this.repository.findActiveStructuresForBilling(group.madrasaId, group.classId, group.sessionId)
++        ).filter((s) => s.frequency === "MONTHLY");
++        if (structures.length === 0) continue;
++
++        const rows = group.students.flatMap((student) =>
++          buildAutoInvoiceRows(
++            group.madrasaId,
++            student.id,
++            structures,
++            session,
++            student.admissionDate ?? session.startDate,
++            today,
++          ),
++        );
++        if (rows.length === 0) continue;
++
++        invoicesCreated += await this.repository.runTransaction((tx) =>
++          this.repository.generateInvoicesOnTx(tx, rows as any),
++        );
++      } catch (err) {
++        groupsFailed += 1;
++        logger.error("CURRENT-MONTH INVOICE GENERATION ERROR:", err);
++      }
++    }
++
++    return { studentsChecked: students.length, invoicesCreated, groupsFailed };
++  }
++
+   async listInvoices(madrasaId: number, query: InvoiceQueryDto) {
+     const where: Prisma.InvoiceWhereInput = {};
+     if (query.student_id) where.studentId = Number(query.student_id);
+--- a/backend/src/modules/fee/fee.repository.ts
++++ b/backend/src/modules/fee/fee.repository.ts
+@@ -65,6 +65,24 @@
+     });
+   }
+ 
++  /** Every currently-enrolled student across every tenant whose session is
++   * active on `today` - feeds the daily current-month billing scheduler
++   * (see FeeService.generateCurrentMonthInvoices). Deliberately not scoped
++   * to one madrasaId, same cross-tenant-query shape as
++   * TrashRepository.purgeExpired: the scheduler runs once for the whole
++   * platform, not once per tenant. */
++  findActiveStudentsForCurrentMonthBilling(today: Date) {
++    return prisma.student.findMany({
++      where: {
++        isActive: 1,
++        deletedAt: null,
++        admissionStatus: "APPROVED",
++        sessionRef: { startDate: { lte: today }, endDate: { gte: today } },
++      },
++      select: { id: true, madrasaId: true, classId: true, sessionId: true, admissionDate: true },
++    });
++  }
++
+   /** Every active fee structure that applies to a student in this class +
+    * session (classId null on the structure means "every class"), used to
+    * auto-bill a single student right at admission/transfer time. Pass
+--- a/backend/src/core/bootstrap.ts
++++ b/backend/src/core/bootstrap.ts
+@@ -6,6 +6,7 @@
+ import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.constants";
+ import { billingService } from "../modules/billing/billing.service";
+ import { authRepository } from "../modules/auth/auth.repository";
++import { feeService } from "../modules/fee/fee.service";
+ 
+ /**
+  * Verifies the database is reachable at boot and logs the outcome.
+@@ -119,6 +120,37 @@
+   setInterval(runRefreshTokenPurge, REFRESH_TOKEN_PURGE_INTERVAL_MS).unref();
+ };
+ 
++const CURRENT_MONTH_INVOICE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
++const CURRENT_MONTH_INVOICE_INITIAL_DELAY_MS = 15 * 1000;
++
++const runCurrentMonthInvoiceGeneration = async (): Promise<void> => {
++  try {
++    const result = await feeService.generateCurrentMonthInvoices();
++    if (result.invoicesCreated) {
++      logger.info("Current-month fee invoice generation complete", result);
++    }
++  } catch (error) {
++    logger.error("Current-month fee invoice generation failed", error);
++  }
++};
++
++/**
++ * "Pure Option A" bill-as-you-go billing: bills every currently-enrolled
++ * student (across every tenant) for whichever MONTHLY fees have just
++ * become due for the current calendar month, so a student's "বকেয়া" never
++ * includes months that haven't started yet (see FeeService.
++ * generateCurrentMonthInvoices / buildAutoInvoiceRows for the full
++ * reasoning). Runs once shortly after boot, then daily - safe to run more
++ * than once a day since invoice generation is idempotent per (student,
++ * feeStructure, month). Same setInterval pattern as the other schedulers
++ * here - no cron library in this codebase, and daily is frequent enough
++ * that missing the exact 1st-of-month rollover by up to 24h is harmless.
++ */
++export const startCurrentMonthInvoiceScheduler = (): void => {
++  setTimeout(runCurrentMonthInvoiceGeneration, CURRENT_MONTH_INVOICE_INITIAL_DELAY_MS).unref();
++  setInterval(runCurrentMonthInvoiceGeneration, CURRENT_MONTH_INVOICE_INTERVAL_MS).unref();
++};
++
+ /**
+  * Wires SIGTERM/SIGINT to close the HTTP server and the Prisma
+  * connection pool cleanly instead of the process being killed mid-request.
+--- a/backend/src/core/server.ts
++++ b/backend/src/core/server.ts
+@@ -8,6 +8,7 @@
+   startActivityLogPurgeScheduler,
+   startMessageSubscriptionExpirySync,
+   startRefreshTokenPurgeScheduler,
++  startCurrentMonthInvoiceScheduler,
+ } from "./bootstrap";
+ 
+ async function start() {
+@@ -22,6 +23,7 @@
+   startActivityLogPurgeScheduler();
+   startMessageSubscriptionExpirySync();
+   startRefreshTokenPurgeScheduler();
++  startCurrentMonthInvoiceScheduler();
+ }
+ 
+ start();
+--- a/backend/ARCHITECTURE.md
++++ b/backend/ARCHITECTURE.md
+@@ -62,6 +62,19 @@
+ - Report data queries live in `reports/reports.repository.ts` and are reused (not duplicated) by `document-templates.service.ts`'s `generate()`/`getPreviewRow()`.
+ - Permissions: `document_templates.read`, `document_templates.manage` (manage required for create/edit/publish/delete/clone/set-default/version-restore).
+ 
++## Fee billing - "bill-as-you-go" (pure Option A)
++
++MONTHLY fee structures (e.g. মাসিক বেতন) are billed one month at a time, not the whole remaining session upfront:
++
++- **Admission/transfer time** (`FeeService.autoGenerateInvoicesForStudent`, called from `StudentService.approveAdmission` and session-transfer): generates invoices from the admission/transfer month up through *today's* calendar month only - never for a month that hasn't started yet. ONE_TIME/YEARLY fees (admission fee, exam fee, etc.) are still billed in full immediately; this only changes MONTHLY fees.
++- **Every later month** (`FeeService.generateCurrentMonthInvoices`, run daily by `startCurrentMonthInvoiceScheduler` in `core/bootstrap.ts`): a single cross-tenant scheduler bills every currently-enrolled student for whichever MONTHLY fees have just become due for the current calendar month.
++
++Both paths share `buildAutoInvoiceRows()` and both go through `FeeRepository.generateInvoicesOnTx`, which skips any `(student, feeStructure, month)` already billed - so re-running either one (server restart, re-admission, the "বিদ্যমান সব ছাত্রের ফি সেট করুন" backfill) is always safe and never double-bills.
++
++Net effect: a student's "বকেয়া" (due) total (`FeeService.getStudentStatement`) can never include a future month's fee - only fees for months that have actually started can exist as invoices in the first place.
++
++Advance/prepayment (a guardian wanting to pay several months ahead of schedule) is not yet supported under this model - `FeeService.recordPayment` only accepts payment against an invoice that already exists. That needs either (a) a staff-triggered "generate N months ahead" action reusing `buildAutoInvoiceRows`, or (b) a separate prepaid balance/credit model that auto-settles each new invoice as `generateCurrentMonthInvoices` creates it.
++
+ ## Report permission granularity
+ 
+ `reports.read` remains a superset granting access to every report. Five narrower keys now scope a role to one category instead of all-or-nothing: `reports.academic`, `reports.exam`, `reports.student`, `reports.teacher`, `reports.attendance`. Existing `reports.read` holders are unaffected.

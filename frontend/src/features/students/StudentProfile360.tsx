@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
+import api, { cachedGet } from "../../services/api";
 import { getTenantAdminBase } from "../../utils/tenantSlug";
 import { toBanglaDigits } from "../../utils/reportUtils";
 import PageHeader from "../../components/ui/PageHeader";
@@ -9,6 +9,9 @@ import EmptyState from "../../components/ui/EmptyState";
 import { SkeletonCard, SkeletonTable } from "../../components/ui/Skeleton";
 import { logger } from "../../utils/logger";
 import { useToastStore } from "../../store/toastStore";
+import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
+import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
+import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 
 const TABS = [
   { key: "overview", label: "ওভারভিউ" },
@@ -60,6 +63,10 @@ export default function StudentProfile360() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<TabKey>("overview");
 
+  // পূর্ণাঙ্গ (বিস্তারিত) তথ্য — ছাত্র/অভিভাবক/ঠিকানার সব ফিল্ড, শুধু দেখার জন্য (রিড-অনলি)
+  const [fullStudent, setFullStudent] = useState<any>(null);
+  const noop = () => {};
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -72,6 +79,18 @@ export default function StudentProfile360() {
         useToastStore.getState().show("প্রোফাইল লোড করা যায়নি", "error");
       } finally {
         setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const res = await cachedGet(`/students/${id}`);
+        setFullStudent(res.data?.data || null);
+      } catch (error) {
+        logger.error("FETCH STUDENT FULL DETAILS ERROR:", error);
       }
     })();
   }, [id]);
@@ -116,10 +135,10 @@ export default function StudentProfile360() {
           <>
             <button
               type="button"
-              onClick={() => navigate(`${adminBase}/students/${id}`)}
+              onClick={() => navigate(`${adminBase}/students/${id}`, { state: { autoEdit: true } })}
               className="h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              সম্পাদনা / বিস্তারিত তথ্য
+              সম্পাদনা
             </button>
             <button
               type="button"
@@ -199,6 +218,53 @@ export default function StudentProfile360() {
               </div>
             </dl>
           </div>
+
+          {fullStudent && (
+            <div className="sm:col-span-2 lg:col-span-4 space-y-4">
+              <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="border-b px-5 py-4 dark:border-slate-700">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">ছবি</h2>
+                </div>
+                <div className="flex justify-center p-5">
+                  <div
+                    className="h-40 w-40 overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 bg-cover bg-center dark:border-slate-600 dark:bg-slate-800"
+                    style={{ backgroundImage: fullStudent.image ? `url(${fullStudent.image})` : undefined }}
+                  >
+                    {!fullStudent.image && (
+                      <div className="flex h-full items-center justify-center text-center text-sm text-gray-400 dark:text-slate-500">
+                        ছবি নেই
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <StudentInfoProfile
+                student={fullStudent}
+                handleChange={noop}
+                setStudent={setFullStudent}
+                editableField={null}
+                setEditableField={noop}
+                isEditMode={false}
+              />
+
+              <ParentInfoProfile
+                student={fullStudent}
+                handleChange={noop}
+                editableField={null}
+                setEditableField={noop}
+                isEditMode={false}
+              />
+
+              <AddressInfoProfile
+                student={fullStudent}
+                handleChange={noop}
+                editableField={null}
+                setEditableField={noop}
+                isEditMode={false}
+              />
+            </div>
+          )}
         </div>
       )}
 
