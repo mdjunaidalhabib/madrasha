@@ -36,10 +36,13 @@ export class KioskService {
 
     const student = await this.repository.findStudentByCardUid(madrasaId, uid);
     // roll is always non-null here since the repository query is scoped to
-    // admissionStatus APPROVED (see kiosk.repository.ts).
+    // admissionStatus APPROVED (see kiosk.repository.ts). Rebuilt as a new
+    // object (rather than passing `student` through as-is) because TS
+    // doesn't carry a nested-property null-check into the containing
+    // object's type for a later call.
     if (!student || student.roll == null) throw new NotFoundError("কার্ড শনাক্ত হয়নি");
 
-    return this.markScan(madrasaId, student, "card");
+    return this.markScan(madrasaId, { ...student, roll: student.roll }, "card");
   }
 
   async scanFingerprint(madrasaId: number, fingerprintId: string): Promise<KioskScanResultDto> {
@@ -48,10 +51,13 @@ export class KioskService {
 
     const student = await this.repository.findStudentByFingerprintId(madrasaId, fid);
     // roll is always non-null here since the repository query is scoped to
-    // admissionStatus APPROVED (see kiosk.repository.ts).
+    // admissionStatus APPROVED (see kiosk.repository.ts). Rebuilt as a new
+    // object (rather than passing `student` through as-is) because TS
+    // doesn't carry a nested-property null-check into the containing
+    // object's type for a later call.
     if (!student || student.roll == null) throw new NotFoundError("আঙুলের ছাপ শনাক্ত হয়নি");
 
-    return this.markScan(madrasaId, student, "fingerprint");
+    return this.markScan(madrasaId, { ...student, roll: student.roll }, "fingerprint");
   }
 
   private async markScan(
