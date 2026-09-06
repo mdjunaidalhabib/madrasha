@@ -89,11 +89,20 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // ttlMs: 0 bypasses the shared GET cache entirely for this call. বকেয়া ফি
+  // (overdueFees) and every other summary number here come from this one
+  // payload, so caching it - even briefly - meant collecting a payment
+  // elsewhere and coming straight back to the dashboard could still show
+  // pre-payment numbers for up to GET_CACHE_TTL_MS. The dashboard is only
+  // loaded once per visit anyway, so there's no real de-dup benefit worth
+  // trading for that staleness.
+  const loadDashboard = useCallback(async () => {
+    const res = await cachedGet("/dashboard", undefined, 0);
+    setData(res.data);
+  }, []);
+
   useEffect(() => {
-    (async () => {
-      const res = await cachedGet("/dashboard");
-      setData(res.data);
-    })();
+    loadDashboard();
     (async () => {
       try {
         const res = await cachedGet<DashboardTrends>("/dashboard/trends?groupBy=monthly");
@@ -103,7 +112,14 @@ export default function DashboardPage() {
       }
     })();
     loadEvents();
-  }, [loadEvents]);
+
+    // Also refresh when the user comes back to this tab - covers the case
+    // where the dashboard was left open in the background while a payment
+    // was collected on another tab/page and the component never remounted.
+    const onFocus = () => loadDashboard();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadEvents, loadDashboard]);
 
   const loading = !data;
 

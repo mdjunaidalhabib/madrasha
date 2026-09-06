@@ -163,8 +163,11 @@ export default function AccountDashboardPage() {
   const gridColor = isDark ? "#334155" : "#e2e8f0";
   const axisColor = isDark ? "#64748b" : "#94a3b8";
 
+  // ttlMs: 0 - see DashboardPage.tsx for why this summary call skips the
+  // shared GET cache (বকেয়া ফি and the rest were showing pre-payment
+  // numbers for up to 20s after a payment collected on another page).
   const reloadSummary = useCallback(async () => {
-    const res = await cachedGet("/dashboard");
+    const res = await cachedGet("/dashboard", undefined, 0);
     setData(res.data);
   }, []);
 
@@ -178,6 +181,10 @@ export default function AccountDashboardPage() {
         setTrendsLoading(false);
       }
     })();
+
+    const onFocus = () => reloadSummary();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [reloadSummary]);
 
   const handleDelete = (row: AccountRow) => {
