@@ -35,7 +35,9 @@ export class KioskService {
     if (!uid) throw new BadRequestError("card_uid is required");
 
     const student = await this.repository.findStudentByCardUid(madrasaId, uid);
-    if (!student) throw new NotFoundError("কার্ড শনাক্ত হয়নি");
+    // roll is always non-null here since the repository query is scoped to
+    // admissionStatus APPROVED (see kiosk.repository.ts).
+    if (!student || student.roll == null) throw new NotFoundError("কার্ড শনাক্ত হয়নি");
 
     return this.markScan(madrasaId, student, "card");
   }
@@ -45,7 +47,9 @@ export class KioskService {
     if (!fid) throw new BadRequestError("fingerprint_id is required");
 
     const student = await this.repository.findStudentByFingerprintId(madrasaId, fid);
-    if (!student) throw new NotFoundError("আঙুলের ছাপ শনাক্ত হয়নি");
+    // roll is always non-null here since the repository query is scoped to
+    // admissionStatus APPROVED (see kiosk.repository.ts).
+    if (!student || student.roll == null) throw new NotFoundError("আঙুলের ছাপ শনাক্ত হয়নি");
 
     return this.markScan(madrasaId, student, "fingerprint");
   }

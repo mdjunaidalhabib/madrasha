@@ -79,10 +79,14 @@ export class StudentRepository {
    * constraint), so trashed rows are deliberately NOT excluded here. Only a
    * genuinely gone row (permanently deleted from Trash, or never existed)
    * counts as free. This is what lets a permanent-delete actually free up
-   * its roll for reuse instead of every deletion leaving a permanent gap. */
+   * its roll for reuse instead of every deletion leaving a permanent gap.
+   * PENDING/REJECTED applicants hold no roll at all (roll is null - see the
+   * field's doc-comment and StudentService.approveAdmission), so filtering
+   * those out here is what lets a rejected/cancelled application's number
+   * become available again immediately. */
   async getNextAvailableRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
     const rows = await prisma.student.findMany({
-      where: { madrasaId, classId, academicYear },
+      where: { madrasaId, classId, academicYear, roll: { not: null } },
       select: { roll: true },
       orderBy: { roll: "asc" },
     });
@@ -256,7 +260,7 @@ export class StudentRepository {
     academicYear: string,
   ): Promise<number> {
     const rows = await tx.student.findMany({
-      where: { madrasaId, classId, academicYear },
+      where: { madrasaId, classId, academicYear, roll: { not: null } },
       select: { roll: true },
       orderBy: { roll: "asc" },
     });

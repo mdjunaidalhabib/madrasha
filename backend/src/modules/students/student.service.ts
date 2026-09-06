@@ -248,11 +248,16 @@ export class StudentService {
         existing.roll
       ) {
         // Re-submitting the same class/session must not unnecessarily change
-        // the student's existing roll.
+        // the student's existing roll (they already hold it - this isn't a
+        // fresh allocation, see the else branch below).
         data.roll = existing.roll;
       } else {
-        await this.repository.lockRollScopeOnTx(tx, madrasaId, classId, academicYear);
-        data.roll = await this.repository.getNextAvailableRollOnTx(tx, madrasaId, classId, academicYear);
+        // No roll is handed out at submission time anymore - a PENDING (or
+        // later REJECTED) application must not occupy a class/session roll
+        // slot. A roll is only assigned once a Muhtamim approves this
+        // admission (see approveAdmission), which is also where it's
+        // actually allocated via getNextAvailableRollOnTx.
+        data.roll = null;
       }
 
       if (existing) {
@@ -264,7 +269,7 @@ export class StudentService {
           studentId: existing.id,
           action: "re_admitted" as const,
           previousAcademicYear: existing.academicYear,
-          roll: data.roll!,
+          roll: data.roll as number | null,
           registrationNo: existing.registrationNo!,
         };
       }
@@ -280,44 +285,16 @@ export class StudentService {
       return {
         studentId: created.id,
         action: "created" as const,
-        roll: data.roll!,
+        roll: data.roll as number | null,
         registrationNo: created.registrationNo!,
       };
     });
 
-    // A PENDING admission isn't a real enrolled student yet - guardian
-    // provisioning happens in approveAdmission() once a Muhtamim approves it.
-
-    // Bill the student for just the admission fee right away instead of
-    // waiting for Muhtamim approval, so the office (or the applicant, on the
-    // public site) can see/pay it while the application sits PENDING. Every
-    // other fee (tuition, exam, boarding...) only gets billed once approved
-    // (see approveAdmission) - the applicant isn't a real enrolled student
-    // yet. A billing failure must not fail the admission itself.
-    let invoices: AdmissionResult["invoices"] = [];
-    try {
-      await feeService.autoGenerateInvoicesForStudent(
-        madrasaId,
-        result.studentId,
-        classId,
-        session.id,
-        body.admission_date ? new Date(body.admission_date) : new Date(),
-        ["ADMISSION"],
-      );
-      const billed = await feeService.listInvoices(madrasaId, { student_id: String(result.studentId) });
-      invoices = billed.map((inv: any) => ({
-        id: inv.id,
-        title: inv.title,
-        amount: Number(inv.amount),
-        paidAmount: Number(inv.paidAmount),
-        waivedAmount: Number(inv.waivedAmount),
-        status: inv.status,
-      }));
-    } catch (err) {
-      logger.error("AUTO-GENERATE INVOICES ON ADMISSION ERROR:", err);
-    }
-
-    return { ...result, admissionStatus: "PENDING", invoices };
+    // A PENDING admission isn't a real enrolled student yet - no roll and no
+    // invoices (not even the admission fee) are created until a Muhtamim
+    // actually approves it (see approveAdmission). Guardian provisioning
+    // and all billing happen there, together with the roll assignment.
+    return { ...result, admissionStatus: "PENDING", invoices: [] };
   }
 
   async admitStudentsBulk(
@@ -842,7 +819,9 @@ export class StudentService {
       if (updated) {
         await notificationService.triggerEvent(madrasaId, "INFO_UPDATE", guardianPhone, {
           name: updated.nameBn,
-          roll: updated.roll,
+          // Still-PENDING applicants have no roll yet (see approveAdmission) -
+          // fall back to blank rather than "null" showing up in the SMS text.
+          roll: updated.roll ?? "",
         });
       }
     } catch (err) {
@@ -919,13 +898,16 @@ export class StudentService {
     );
   }
 
-  /** Approves a pending admission. Roll/registration number were already
-   * assigned at submission time by the existing admission flow, so approval
-   * only flips the status and stamps who reviewed it. Deliberately does NOT
-   * require the admission fee to be paid/waived first - a Muhtamim approves
-   * on the merits of the application, and হিসাব বিভাগ collects the fee
-   * afterward (through the "ভর্তি ফি পেন্ডিং" page, unaffected by admission
-   * approval status - see fee.repository.ts's findPendingInvoices). */
+  /** Approves a pending admission. Nothing is allocated for it at
+   * submission time anymore (see admitStudent) - approval is what actually
+   * turns the applicant into a real enrolled student: a roll is assigned
+   * (reusing the applicant's existing roll if a resubmission already had
+   * one), then every fee gets billed, including the admission fee.
+   * Deliberately does NOT require the admission fee to be paid/waived first
+   * - a Muhtamim approves on the merits of the application, and হিসাব
+   * বিভাগ collects the fee afterward (through the "ভর্তি ফি পেন্ডিং" page,
+   * unaffected by admission approval status - see fee.repository.ts's
+   * findPendingInvoices). */
   async approveAdmission(id: number, madrasaId: number | undefined, reviewerId: number | undefined) {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -935,13 +917,38 @@ export class StudentService {
       throw new BadRequestError("This admission is already approved");
     }
 
-    const result = await this.repository.updateManyForTenant(id, madrasaId, {
-      admissionStatus: "APPROVED",
-      reviewedBy: reviewerId ?? null,
-      reviewedAt: new Date(),
-      rejectionReason: null,
+    const assignedRoll = await this.repository.runTransaction(async (tx) => {
+      // Re-check inside the lock in case another request approved/changed
+      // this record between the read above and now.
+      await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
+      const locked = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
+      if (!locked) throw new StudentNotFoundError();
+      if (locked.admissionStatus === "APPROVED") {
+        throw new BadRequestError("This admission is already approved");
+      }
+
+      let roll = locked.roll;
+      if (!roll) {
+        await this.repository.lockRollScopeOnTx(tx, madrasaId, locked.classId, locked.academicYear);
+        roll = await this.repository.getNextAvailableRollOnTx(
+          tx,
+          madrasaId,
+          locked.classId,
+          locked.academicYear,
+        );
+      }
+
+      const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, {
+        admissionStatus: "APPROVED",
+        reviewedBy: reviewerId ?? null,
+        reviewedAt: new Date(),
+        rejectionReason: null,
+        roll,
+      });
+      if (!result.count) throw new StudentNotFoundError();
+
+      return roll;
     });
-    if (!result.count) throw new StudentNotFoundError();
 
     await guardianService.ensureGuardianForStudent(
       madrasaId,
@@ -951,11 +958,10 @@ export class StudentService {
     );
 
     // Now that the student is a real enrolled student (not just an
-    // applicant), bill everything besides the admission fee - monthly
-    // tuition, exam fee, boarding, etc. The admission-fee invoice already
-    // exists from submission time, so the unique (student, feeStructure,
-    // month) constraint silently skips re-billing it. Non-fatal: approval
-    // must not fail just because billing hiccuped.
+    // applicant) with a real roll, bill every fee for their class/session -
+    // admission fee included, since nothing was billed at submission time
+    // anymore (see admitStudent). Non-fatal: approval must not fail just
+    // because billing hiccuped.
     try {
       await feeService.autoGenerateInvoicesForStudent(
         madrasaId,
@@ -971,7 +977,7 @@ export class StudentService {
     await notificationService.triggerEvent(madrasaId, "ADMISSION", existing.guardianPhone, {
       name: existing.nameBn,
       class: (existing as any).classRef?.nameBn || "",
-      roll: existing.roll,
+      roll: assignedRoll,
     });
   }
 

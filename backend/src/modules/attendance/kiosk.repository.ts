@@ -15,16 +15,19 @@ export class KioskRepository {
     });
   }
 
+  // admissionStatus: "APPROVED" - a still-PENDING/REJECTED applicant (see
+  // approveAdmission) isn't a real enrolled student and has no roll yet, so
+  // it can't be scanned for attendance.
   findStudentByCardUid(madrasaId: number, cardUid: string) {
     return prisma.student.findFirst({
-      where: { madrasaId, cardUid, isActive: 1, deletedAt: null },
+      where: { madrasaId, cardUid, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
       select: { id: true, nameBn: true, roll: true, classId: true, image: true },
     });
   }
 
   findStudentByFingerprintId(madrasaId: number, fingerprintId: string) {
     return prisma.student.findFirst({
-      where: { madrasaId, fingerprintId, isActive: 1, deletedAt: null },
+      where: { madrasaId, fingerprintId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
       select: { id: true, nameBn: true, roll: true, classId: true, image: true },
     });
   }

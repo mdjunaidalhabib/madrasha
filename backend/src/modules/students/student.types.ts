@@ -82,15 +82,19 @@ export interface AdmissionResult {
   studentId: number;
   action: "created" | "re_admitted";
   previousAcademicYear?: string;
-  roll: number;
+  /** Null unless this submission reused an existing roll (see admitStudent)
+   * - a fresh admission gets no roll until a Muhtamim approves it. */
+  roll: number | null;
   registrationNo: number;
   /** Every admission now lands PENDING and waits on Muhtamim approval -
    * always "PENDING" today, but returned explicitly so callers don't have
    * to hardcode that assumption. */
   admissionStatus: "PENDING";
-  /** The class's default fees, billed immediately at submission time (see
-   * admitStudent) - surfaced so the admin-panel form can offer to collect
-   * payment right away, and the public site can show what's due. */
+  /** Always empty at submission time - nothing is billed until a Muhtamim
+   * approves the admission (see StudentService.approveAdmission). Kept as a
+   * field (rather than removed) so the admin-panel form and public site,
+   * which already guard on `invoices.length > 0`, don't need a contract
+   * change. */
   invoices: Array<{
     id: number;
     title: string;

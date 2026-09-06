@@ -95,7 +95,13 @@ model Student {
   /// forward-compatible lookup key for KioskService.scanFingerprint.
   fingerprintId String? @unique @map("fingerprint_id") @db.VarChar(100)
 
-  roll Int
+  /// Null while the admission is PENDING (or REJECTED) - a roll is only
+  /// ever assigned once a Muhtamim approves the admission (see
+  /// StudentService.approveAdmission), so an application sitting in review
+  /// (or turned down) never occupies a class/session roll slot. See
+  /// StudentRepository.getNextAvailableRoll(OnTx), which only counts
+  /// non-null rolls as "taken".
+  roll Int?
 
   /// Permanent, per-madrasa admission/registration number. Assigned once at
   /// first admission (never changes on re-admission/promotion), unlike
@@ -143,7 +149,10 @@ model Student {
   /// permanent delete (a real DELETE, see TrashRepository.permanentDeleteStudent)
   /// removes the row and actually frees the roll - see
   /// StudentRepository.getNextAvailableRoll(OnTx), which then picks that
-  /// freed number back up instead of leaving a permanent gap.
+  /// freed number back up instead of leaving a permanent gap. Postgres
+  /// treats every NULL as distinct for uniqueness purposes, so any number of
+  /// PENDING/REJECTED applicants (roll = null, see the field's doc-comment
+  /// above) can coexist here without ever colliding on this constraint.
   @@unique([madrasaId, classId, sessionId, roll], map: "unique_roll_per_class_session")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
   @@index([madrasaId], map: "idx_students_madrasa")

@@ -104,6 +104,7 @@ export class PromotionService {
             where: { id: studentId, madrasaId, deletedAt: null },
           });
           if (!student) continue; // silently skip students no longer valid for this tenant
+          if (student.roll == null) continue; // still-PENDING/REJECTED applicant (see approveAdmission) - not a real enrolled student to promote/retain/transfer
 
           if (decision.status === "PROMOTED") {
             const assignedRoll = nextRoll++;
