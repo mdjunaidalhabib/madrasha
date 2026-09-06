@@ -159,6 +159,7 @@ export class StudentService {
     if (filters.classId !== undefined) where.classId = filters.classId;
     if (filters.academicYear !== undefined) where.academicYear = filters.academicYear;
     if (filters.sessionId !== undefined) where.sessionId = filters.sessionId;
+    if (filters.gender !== undefined) where.gender = filters.gender;
 
     const rows = await this.repository.findMany(where);
 
@@ -251,8 +252,7 @@ export class StudentService {
         data.roll = existing.roll;
       } else {
         await this.repository.lockRollScopeOnTx(tx, madrasaId, classId, academicYear);
-        data.roll =
-          (await this.repository.getMaxRollOnTx(tx, madrasaId, classId, academicYear)) + 1;
+        data.roll = await this.repository.getNextAvailableRollOnTx(tx, madrasaId, classId, academicYear);
       }
 
       if (existing) {
@@ -803,9 +803,12 @@ export class StudentService {
 
       if (scopeChanged) {
         await this.repository.lockRollScopeOnTx(tx, madrasaId, targetClassId, targetAcademicYear);
-        data.roll =
-          (await this.repository.getMaxRollOnTx(tx, madrasaId, targetClassId, targetAcademicYear)) +
-          1;
+        data.roll = await this.repository.getNextAvailableRollOnTx(
+          tx,
+          madrasaId,
+          targetClassId,
+          targetAcademicYear,
+        );
       }
 
       if (!Object.keys(data).length) {
@@ -858,7 +861,7 @@ export class StudentService {
     if (!classId) throw new BadRequestError("class_id is required");
 
     const year = academicYear || String(new Date().getFullYear());
-    return (await this.repository.getMaxRoll(madrasaId, classId, year)) + 1;
+    return this.repository.getNextAvailableRoll(madrasaId, classId, year);
   }
 
   async deleteStudent(id: number, madrasaId: number | undefined) {
@@ -1042,8 +1045,12 @@ export class StudentService {
         if (rollTaken) throw new BadRequestError(`Roll ${requestedRoll} is already taken in the target session`);
         newRoll = requestedRoll;
       } else {
-        newRoll =
-          (await this.repository.getMaxRollOnTx(tx, madrasaId, existing.classId, targetSession.name)) + 1;
+        newRoll = await this.repository.getNextAvailableRollOnTx(
+          tx,
+          madrasaId,
+          existing.classId,
+          targetSession.name,
+        );
       }
 
       await this.repository.updateOnTx(tx, id, {

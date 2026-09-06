@@ -8,6 +8,8 @@ export interface StudentListFilters {
   divisionId?: number;
   academicYear?: string;
   sessionId?: number;
+  /** 1 = Male, 2 = Female */
+  gender?: number;
 }
 
 /**

@@ -137,6 +137,13 @@ model Student {
   sessionHistories     StudentSessionHistory[]
   libraryBorrowRecords LibraryBorrowRecord[]
 
+  /// A student in Trash still holds its roll - restoring it later must never
+  /// clash with someone who took "its" number in the meantime, so this stays
+  /// a plain (not partial/deletedAt-scoped) constraint on purpose. Only a
+  /// permanent delete (a real DELETE, see TrashRepository.permanentDeleteStudent)
+  /// removes the row and actually frees the roll - see
+  /// StudentRepository.getNextAvailableRoll(OnTx), which then picks that
+  /// freed number back up instead of leaving a permanent gap.
   @@unique([madrasaId, classId, sessionId, roll], map: "unique_roll_per_class_session")
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
   @@index([madrasaId], map: "idx_students_madrasa")

@@ -125,7 +125,7 @@ const initialState: AdmissionFormData = {
   arabicName: "",
   nameEn: "",
   nid: "",
-  gender: null,
+  gender: 1,
   dob: "",
   age: null,
   bloodGroup: "",

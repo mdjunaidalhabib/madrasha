@@ -204,6 +204,7 @@ const StudentListPage = () => {
   const [search, setSearch] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
 
   // Defaults to the madrasa's current session so the list opens scoped to
   // "এই বছরের ছাত্র" instead of dumping every session's students (promoted,
@@ -383,20 +384,21 @@ const StudentListPage = () => {
       const matchDivision =
         !selectedDivision || String(student.division_id) === String(selectedDivision);
       const matchClass = !selectedClass || String(student.class_id) === String(selectedClass);
-      return matchDivision && matchClass;
+      const matchGender = !selectedGender || String(student.gender) === String(selectedGender);
+      return matchDivision && matchClass && matchGender;
     });
-  }, [students, search, selectedDivision, selectedClass]);
+  }, [students, search, selectedDivision, selectedClass, selectedGender]);
 
   // ফিল্টার বদলালে আগের সিলেকশন (অন্য ভিউয়ের) যেন থেকে না যায়।
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [search, selectedDivision, selectedClass, selectedSessionId]);
+  }, [search, selectedDivision, selectedClass, selectedGender, selectedSessionId]);
 
   // ফিল্টার বা পেজ সাইজ বদলালে ১ নম্বর পাতায় ফিরে যাবে, নাহলে ফিল্টার করার পর
   // খালি পাতায় আটকে থাকতে পারে।
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedDivision, selectedClass, selectedSessionId, pageSize]);
+  }, [search, selectedDivision, selectedClass, selectedGender, selectedSessionId, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
 
@@ -578,6 +580,16 @@ const StudentListPage = () => {
                     {classItem.class_name_bn}
                   </option>
                 ))}
+              </select>
+
+              <select
+                value={selectedGender}
+                onChange={(event) => setSelectedGender(event.target.value)}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
+              >
+                <option value="">সব লিঙ্গ</option>
+                <option value={1}>ছেলে</option>
+                <option value={2}>মেয়ে</option>
               </select>
             </div>
 

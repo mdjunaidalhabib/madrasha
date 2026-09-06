@@ -2,6 +2,19 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 
+/** Smallest positive integer missing from a sorted (ascending) list of used
+ * roll numbers - i.e. the first reusable gap, or one past the current max
+ * if there's no gap. `rolls` is expected sorted by the caller's query. */
+const firstAvailableRoll = (rolls: (number | null)[]): number => {
+  let expected = 1;
+  for (const roll of rolls) {
+    if (roll == null || roll < expected) continue; // stale/duplicate data - ignore
+    if (roll > expected) break; // gap found at `expected`
+    expected++;
+  }
+  return expected;
+};
+
 export class StudentRepository {
   findMany(where: Prisma.StudentWhereInput) {
     return prisma.student.findMany({
@@ -45,13 +58,35 @@ export class StudentRepository {
   }
 
   /** Highest roll currently assigned within a class for an academic year,
-   * used to auto-assign the next roll when the admin doesn't specify one. */
+   * used to auto-assign the next roll when the admin doesn't specify one.
+   * @deprecated for "assign a brand-new roll" call sites - prefer
+   * getNextAvailableRoll, which reclaims a permanently-deleted student's
+   * number instead of leaving it as a permanent gap. Kept only for the
+   * (unrelated) bulk-admission batch counter, which intentionally hands out
+   * a clean run of consecutive numbers to a freshly-imported class list. */
   async getMaxRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
     const result = await prisma.student.aggregate({
       where: { madrasaId, classId, academicYear, deletedAt: null },
       _max: { roll: true },
     });
     return result._max.roll ?? 0;
+  }
+
+  /** Smallest positive roll number not currently held by ANY row - active
+   * OR trashed - in this class/year. A student in Trash still "holds" its
+   * roll (so restoring it later can never clash with someone else who took
+   * "its" number - see the doc-comment on the unique_roll_per_class_session
+   * constraint), so trashed rows are deliberately NOT excluded here. Only a
+   * genuinely gone row (permanently deleted from Trash, or never existed)
+   * counts as free. This is what lets a permanent-delete actually free up
+   * its roll for reuse instead of every deletion leaving a permanent gap. */
+  async getNextAvailableRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
+    const rows = await prisma.student.findMany({
+      where: { madrasaId, classId, academicYear },
+      select: { roll: true },
+      orderBy: { roll: "asc" },
+    });
+    return firstAvailableRoll(rows.map((row) => row.roll));
   }
 
   /** Highest registration number currently assigned within a madrasa, used
@@ -196,6 +231,8 @@ export class StudentRepository {
     return result._max.registrationNo ?? 0;
   }
 
+  /** @deprecated for "assign a brand-new roll" call sites - see getMaxRoll's
+   * doc-comment; use getNextAvailableRollOnTx instead. */
   async getMaxRollOnTx(
     tx: TransactionClient,
     madrasaId: number,
@@ -207,6 +244,23 @@ export class StudentRepository {
       _max: { roll: true },
     });
     return result._max.roll ?? 0;
+  }
+
+  /** Transaction-scoped twin of getNextAvailableRoll - see that method's
+   * doc-comment. Always call after lockRollScopeOnTx so concurrent requests
+   * for the same class/year can't both land on the same gap. */
+  async getNextAvailableRollOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    classId: number,
+    academicYear: string,
+  ): Promise<number> {
+    const rows = await tx.student.findMany({
+      where: { madrasaId, classId, academicYear },
+      select: { roll: true },
+      orderBy: { roll: "asc" },
+    });
+    return firstAvailableRoll(rows.map((row) => row.roll));
   }
 
   updateOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {

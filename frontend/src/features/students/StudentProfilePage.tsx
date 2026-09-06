@@ -7,6 +7,7 @@ import { getTenantAdminBase } from "../../utils/tenantSlug";
 import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfile";
 import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
+import AlternateGuardianInfoProfile from "../../components/studentProfile/AlternateGuardianInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 import ProfileQuickNav, { type QuickNavRecord } from "../../components/common/ProfileQuickNav";
 import {
@@ -393,6 +394,14 @@ const StudentProfilePage = () => {
       />
 
       <ParentInfoProfile
+        student={student}
+        handleChange={handleChange}
+        editableField={editableField}
+        setEditableField={setEditableField}
+        isEditMode={isEditMode}
+      />
+
+      <AlternateGuardianInfoProfile
         student={student}
         handleChange={handleChange}
         editableField={editableField}

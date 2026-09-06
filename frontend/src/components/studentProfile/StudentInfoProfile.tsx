@@ -298,6 +298,103 @@ const StudentInfoProfile = ({
             </p>
           )}
         </div>
+
+        <Field
+          label="পূর্ববর্তী প্রতিষ্ঠান"
+          name="previous_institution"
+          value={student.previous_institution || ""}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode}
+        />
+
+        <Field
+          label="পূর্বের ফলাফল"
+          name="previous_result"
+          value={student.previous_result || ""}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode}
+        />
+
+        {/* BLOOD GROUP */}
+        <div>
+          <label className="text-sm text-gray-500 dark:text-slate-400">রক্তের গ্রুপ</label>
+
+          {isEditMode ? (
+            <select
+              name="blood_group"
+              value={student.blood_group ?? ""}
+              onChange={handleChange}
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">নির্বাচন করুন</option>
+              {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bg) => (
+                <option key={bg} value={bg}>
+                  {bg}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {student.blood_group || "N/A"}
+            </p>
+          )}
+        </div>
+
+        {/* RESIDENCY TYPE */}
+        <div>
+          <label className="text-sm text-gray-500 dark:text-slate-400">আবাসিক/অনাবাসিক</label>
+
+          {isEditMode ? (
+            <select
+              name="residency_type"
+              value={student.residency_type ?? ""}
+              onChange={handleChange}
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">নির্বাচন করুন</option>
+              <option value={1}>আবাসিক</option>
+              <option value={2}>অনাবাসিক</option>
+            </select>
+          ) : (
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {Number(student.residency_type) === 1
+                ? "আবাসিক"
+                : Number(student.residency_type) === 2
+                  ? "অনাবাসিক"
+                  : "N/A"}
+            </p>
+          )}
+        </div>
+
+        {/* IS ORPHAN */}
+        <div>
+          <label className="text-sm text-gray-500 dark:text-slate-400">এতিম শিক্ষার্থী</label>
+
+          {isEditMode ? (
+            <select
+              name="is_orphan"
+              value={Number(student.is_orphan) === 1 ? "yes" : "no"}
+              onChange={(e) =>
+                setStudent((prev: any) => ({
+                  ...prev,
+                  is_orphan: e.target.value === "yes" ? 1 : 0,
+                }))
+              }
+              className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="no">না</option>
+              <option value="yes">হ্যাঁ</option>
+            </select>
+          ) : (
+            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {Number(student.is_orphan) === 1 ? "হ্যাঁ" : "না"}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

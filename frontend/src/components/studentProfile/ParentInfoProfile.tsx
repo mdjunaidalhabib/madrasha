@@ -120,6 +120,16 @@ const ParentInfoProfile = ({
           isEditMode={isEditMode} // ✅ pass
           numeric
         />
+        <Field
+          label="অভিভাবকের বিকল্প মোবাইল নম্বর"
+          name="guardian_phone_2"
+          value={student.guardian_phone_2}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode} // ✅ pass
+          numeric
+        />
       </div>
     </div>
   );

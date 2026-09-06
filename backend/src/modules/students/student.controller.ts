@@ -45,13 +45,14 @@ const respondWithError = (res: Response, error: unknown, logTag: string) => {
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const { class_id, division_id, academic_year, session_id } = req.query;
+    const { class_id, division_id, academic_year, session_id, gender } = req.query;
 
     const data = await studentService.listStudents(madrasaId, {
       classId: class_id ? Number(class_id) : undefined,
       divisionId: division_id ? Number(division_id) : undefined,
       academicYear: academic_year ? String(academic_year) : undefined,
       sessionId: session_id ? Number(session_id) : undefined,
+      gender: gender ? Number(gender) : undefined,
     });
 
     return res.json({ success: true, data });

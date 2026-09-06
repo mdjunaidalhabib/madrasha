@@ -1,5 +1,8 @@
 import { prisma } from "../../shared/database/prisma";
-import { DASHBOARD_RECENT_TRANSACTIONS_LIMIT, DASHBOARD_UPCOMING_EXAMS_LIMIT } from "./dashboard.constants";
+import {
+  DASHBOARD_RECENT_TRANSACTIONS_LIMIT,
+  DASHBOARD_UPCOMING_EXAMS_LIMIT,
+} from "./dashboard.constants";
 import {
   AttendanceTrendRow,
   FundBalanceRow,
@@ -25,12 +28,21 @@ const startOfTodayUTC = (): Date => {
 // approve the admission, so anything due today or earlier now counts.
 const endOfTodayUTC = (): Date => {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
+  );
 };
 
 export class DashboardRepository {
+  // A PENDING admission isn't a real enrolled student yet (see
+  // student.service.ts:admitStudent), and a REJECTED one never became one -
+  // only APPROVED admissions should count as "students" on the dashboard.
+  // isActive alone isn't enough to exclude these, since it defaults to 1
+  // regardless of admissionStatus at creation time.
   countActiveStudents(madrasaId: number) {
-    return prisma.student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+    return prisma.student.count({
+      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+    });
   }
 
   countActiveTeachers(madrasaId: number) {
@@ -40,7 +52,7 @@ export class DashboardRepository {
   countActiveStudentsByGender(madrasaId: number) {
     return prisma.student.groupBy({
       by: ["gender"],
-      where: { madrasaId, isActive: 1, deletedAt: null },
+      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
       _count: { _all: true },
     });
   }
@@ -140,13 +152,21 @@ export class DashboardRepository {
 
   /** Backs the dashboard's "বকেয়া ফি" widget - every unpaid/partially-paid
    * invoice due today or earlier (see endOfTodayUTC doc-comment above for
-   * why "today" is included, not just strictly-past due dates). */
+   * why "today" is included, not just strictly-past due dates).
+   *
+   * Excludes invoices belonging to REJECTED admissions: the admission-fee
+   * invoice is billed at submission time while the admission still sits
+   * PENDING (see student.service.ts:admitStudent), so it's meant to keep
+   * showing here until reviewed - but once a Muhtamim rejects it, the
+   * admission is cancelled and that fee is no longer collectible, so it
+   * must stop showing as outstanding. */
   async findOverdueInvoices(madrasaId: number) {
     return prisma.invoice.findMany({
       where: {
         madrasaId,
         dueDate: { lte: endOfTodayUTC() },
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+        student: { admissionStatus: { not: "REJECTED" } },
       },
       select: {
         id: true,
