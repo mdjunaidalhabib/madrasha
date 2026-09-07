@@ -152,6 +152,16 @@ export default function TrashPage() {
   });
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | number | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [selectedByTab, setSelectedByTab] = useState<Record<TabKey, Set<string | number>>>({
+    students: new Set(),
+    teachers: new Set(),
+    exams: new Set(),
+    divisions: new Set(),
+    classes: new Set(),
+    books: new Set(),
+    results: new Set(),
+  });
 
   // Load all three tabs up front (not just the active one) so the tab
   // counts are visible immediately instead of only appearing once a tab
@@ -189,11 +199,36 @@ export default function TrashPage() {
     loadAll();
   }, [loadAll]);
 
-  const removeRow = (tab: TabKey, id: string | number) => {
+  const removeRows = (tab: TabKey, ids: (string | number)[]) => {
+    const idSet = new Set(ids);
     setRowsByTab((prev) => ({
       ...prev,
-      [tab]: prev[tab].filter((row) => row.id !== id),
+      [tab]: prev[tab].filter((row) => !idSet.has(row.id)),
     }));
+    setSelectedByTab((prev) => {
+      const next = new Set(prev[tab]);
+      ids.forEach((id) => next.delete(id));
+      return { ...prev, [tab]: next };
+    });
+  };
+
+  const removeRow = (tab: TabKey, id: string | number) => removeRows(tab, [id]);
+
+  const toggleSelect = (tab: TabKey, id: string | number) => {
+    setSelectedByTab((prev) => {
+      const next = new Set(prev[tab]);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { ...prev, [tab]: next };
+    });
+  };
+
+  const toggleSelectAll = (tab: TabKey, ids: (string | number)[]) => {
+    setSelectedByTab((prev) => {
+      const current = prev[tab];
+      const allSelected = ids.length > 0 && ids.every((id) => current.has(id));
+      return { ...prev, [tab]: allSelected ? new Set() : new Set(ids) };
+    });
   };
 
   const handleRestore = (tab: TabKey, row: TrashRow) => {
@@ -243,7 +278,83 @@ export default function TrashPage() {
     });
   };
 
+  const handleBulkRestore = (tab: TabKey, targetRows: TrashRow[]) => {
+    if (targetRows.length === 0) return;
+    useConfirmStore.getState().show({
+      title: "ফিরিয়ে আনবেন?",
+      message: `নির্বাচিত ${toBanglaDigits(targetRows.length)}টি আইটেম ট্র্যাশ থেকে ফিরিয়ে আনতে চান? এগুলো আগের মতোই সক্রিয় হয়ে যাবে।`,
+      confirmText: "ফিরিয়ে আনুন",
+      onConfirm: async () => {
+        setBulkBusy(true);
+        try {
+          const results = await Promise.allSettled(
+            targetRows.map((row) => api.post(`/trash/${tab}/${row.id}/restore`)),
+          );
+          const succeededIds = targetRows
+            .filter((_, i) => results[i].status === "fulfilled")
+            .map((row) => row.id);
+          const failedCount = results.length - succeededIds.length;
+          if (succeededIds.length > 0) removeRows(tab, succeededIds);
+          if (failedCount === 0) {
+            useToastStore.getState().show("ফিরিয়ে আনা হয়েছে", "success");
+          } else if (succeededIds.length === 0) {
+            useToastStore.getState().show("ফিরিয়ে আনা যায়নি", "error");
+          } else {
+            useToastStore
+              .getState()
+              .show(
+                `${toBanglaDigits(succeededIds.length)}টি ফিরিয়ে আনা হয়েছে, ${toBanglaDigits(failedCount)}টি ব্যর্থ হয়েছে`,
+                "error",
+              );
+          }
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
+
+  const handleBulkDelete = (tab: TabKey, targetRows: TrashRow[]) => {
+    if (targetRows.length === 0) return;
+    useConfirmStore.getState().show({
+      title: "স্থায়ীভাবে মুছবেন?",
+      message: `নির্বাচিত ${toBanglaDigits(targetRows.length)}টি আইটেম স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি আর ফিরিয়ে আনা যাবে না — সম্পর্কিত সব তথ্য (রেজাল্ট, মার্কস ইত্যাদি) একসাথে মুছে যাবে।`,
+      confirmText: "স্থায়ীভাবে মুছে ফেলুন",
+      danger: true,
+      onConfirm: async () => {
+        setBulkBusy(true);
+        try {
+          const results = await Promise.allSettled(
+            targetRows.map((row) => api.delete(`/trash/${tab}/${row.id}`)),
+          );
+          const succeededIds = targetRows
+            .filter((_, i) => results[i].status === "fulfilled")
+            .map((row) => row.id);
+          const failedCount = results.length - succeededIds.length;
+          if (succeededIds.length > 0) removeRows(tab, succeededIds);
+          if (failedCount === 0) {
+            useToastStore.getState().show("স্থায়ীভাবে মুছে ফেলা হয়েছে", "success");
+          } else if (succeededIds.length === 0) {
+            useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
+          } else {
+            useToastStore
+              .getState()
+              .show(
+                `${toBanglaDigits(succeededIds.length)}টি মুছে ফেলা হয়েছে, ${toBanglaDigits(failedCount)}টি ব্যর্থ হয়েছে`,
+                "error",
+              );
+          }
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
+
   const rows = rowsByTab[activeTab];
+  const selected = selectedByTab[activeTab];
+  const selectedRows = rows.filter((row) => selected.has(row.id));
+  const allVisibleSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
@@ -282,6 +393,32 @@ export default function TrashPage() {
           ))}
         </div>
 
+        {selected.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
+            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              {toBanglaDigits(selected.size)}টি নির্বাচিত
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => handleBulkRestore(activeTab, selectedRows)}
+                className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
+              >
+                নির্বাচিতগুলো ফিরিয়ে আনুন
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => handleBulkDelete(activeTab, selectedRows)}
+                className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                নির্বাচিতগুলো স্থায়ী মুছুন
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {loading ? (
             <SkeletonTable rows={5} columns={4} />
@@ -294,7 +431,15 @@ export default function TrashPage() {
                 {rows.map((row) => (
                   <div key={row.id} className="rounded-lg border border-gray-200 p-3 shadow-sm dark:border-slate-700">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-gray-800 dark:text-slate-100">{getRowName(activeTab, row)}</span>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(row.id)}
+                          onChange={() => toggleSelect(activeTab, row.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span className="font-semibold text-gray-800 dark:text-slate-100">{getRowName(activeTab, row)}</span>
+                      </label>
                       {daysBadge(row.days_remaining)}
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
@@ -327,7 +472,7 @@ export default function TrashPage() {
                     <div className="mt-3 flex gap-2">
                       <button
                         type="button"
-                        disabled={busyId === row.id}
+                        disabled={busyId === row.id || bulkBusy}
                         onClick={() => handleRestore(activeTab, row)}
                         className="h-9 flex-1 rounded-md bg-green-600 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                       >
@@ -335,7 +480,7 @@ export default function TrashPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={busyId === row.id}
+                        disabled={busyId === row.id || bulkBusy}
                         onClick={() => handlePermanentDelete(activeTab, row)}
                         className="h-9 flex-1 rounded-md bg-red-600 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                       >
@@ -351,6 +496,14 @@ export default function TrashPage() {
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-800 dark:text-slate-400">
+                      <th className="px-3 py-2 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={() => toggleSelectAll(activeTab, rows.map((row) => row.id))}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </th>
                       <th className="px-3 py-2">নাম</th>
                       {activeTab === "students" && (
                         <>
@@ -380,6 +533,14 @@ export default function TrashPage() {
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.id} className="border-b border-gray-100 dark:border-slate-800">
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(row.id)}
+                            onChange={() => toggleSelect(activeTab, row.id)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </td>
                         <td className="px-3 py-2 font-medium text-gray-800 dark:text-slate-100">
                           {getRowName(activeTab, row)}
                         </td>
@@ -417,7 +578,7 @@ export default function TrashPage() {
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              disabled={busyId === row.id}
+                              disabled={busyId === row.id || bulkBusy}
                               onClick={() => handleRestore(activeTab, row)}
                               className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                             >
@@ -425,7 +586,7 @@ export default function TrashPage() {
                             </button>
                             <button
                               type="button"
-                              disabled={busyId === row.id}
+                              disabled={busyId === row.id || bulkBusy}
                               onClick={() => handlePermanentDelete(activeTab, row)}
                               className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                             >

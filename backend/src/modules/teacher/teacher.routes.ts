@@ -3,6 +3,7 @@ import {
   createTeacher,
   bulkCreateTeachers,
   getTeachers,
+  getTeacherDashboardSummary,
   getTeacherById,
   updateTeacher,
   updateTeachersBulk,
@@ -28,6 +29,9 @@ router.post("/bulk", rbacMiddleware("teachers.create"), bulkCreateTeachers);
 router.post("/bulk-update", rbacMiddleware("teachers.update"), updateTeachersBulk);
 
 router.get("/", rbacMiddleware("teachers.read"), getTeachers);
+// Must be registered before "/:id" below, otherwise "dashboard-summary"
+// would be parsed as an :id value.
+router.get("/dashboard-summary", rbacMiddleware("teachers.read"), getTeacherDashboardSummary);
 router.get("/:id", rbacMiddleware("teachers.read"), getTeacherById);
 
 router.put("/:id", rbacMiddleware("teachers.update"), updateTeacher);

@@ -20,6 +20,14 @@ export const getFeeStructures = asyncHandler(async (req: Request, res: Response)
   res.json({ success: true, data });
 });
 
+// Backs the "যুক্ত পরীক্ষা" picker on the ফি কাঠামো form - gated on fee.read
+// (not exam.read) so setting up an exam-linked fee never needs exam module
+// access (see FeeRepository.findExamsForTenant).
+export const getFeeStructureExams = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.listExamsForFeeLinking(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
 export const createFeeStructure = asyncHandler(async (req: Request, res: Response) => {
   await feeService.createStructure(getMadrasaId(req), req.body);
   return ApiResponse.message(res, "Fee structure created successfully");
@@ -35,6 +43,28 @@ export const deleteFeeStructure = asyncHandler(async (req: Request, res: Respons
   return ApiResponse.message(res, "Fee structure deleted successfully");
 });
 
+/* ================= ফি ধরণ ব্যবস্থাপনা (settings CRUD) ================= */
+
+export const getFeeCategories = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.getCategories(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
+export const createFeeCategory = asyncHandler(async (req: Request, res: Response) => {
+  await feeService.createCategory(getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "ফি ধরণ যোগ করা হয়েছে");
+});
+
+export const updateFeeCategory = asyncHandler(async (req: Request, res: Response) => {
+  await feeService.updateCategory(Number(req.params.id), getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "ফি ধরণ আপডেট করা হয়েছে");
+});
+
+export const deleteFeeCategory = asyncHandler(async (req: Request, res: Response) => {
+  await feeService.deleteCategory(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.message(res, "ফি ধরণ মুছে ফেলা হয়েছে");
+});
+
 /* ================= INVOICES ================= */
 
 export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
@@ -42,8 +72,18 @@ export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+export const getOverdueFees = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.listOverdueFees(getMadrasaId(req), req.query as any);
+  res.json({ success: true, data });
+});
+
 export const getPendingInvoices = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.listPendingInvoices(getMadrasaId(req), req.query as any);
+  res.json({ success: true, data });
+});
+
+export const getInvoiceSummary = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.getDashboardSummary(getMadrasaId(req));
   res.json({ success: true, data });
 });
 

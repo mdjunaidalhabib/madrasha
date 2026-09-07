@@ -497,6 +497,70 @@ export class ResultPanelService {
     return { divisions, exams: examRows, classes, statuses };
   }
 
+  /** Aggregate stats for the তালিমাত module's own dashboard - exam/publish
+   * counts plus, for the most recent active exam, a pass/fail/absent
+   * breakdown, average marks and grade distribution, and each class's
+   * entry status (entered vs total students). Separate from
+   * getResultOverview, which lists every division/exam/class for the
+   * marks-entry filters rather than summarizing outcomes. */
+  async getDashboardSummary(madrasaId: number) {
+    const [examsCount, publishGroups, overviewStatuses, latestExam] = await Promise.all([
+      this.repository.countActiveExams(madrasaId),
+      this.repository.countResultMastersByStatus(madrasaId),
+      this.repository.findOverviewStatuses(madrasaId),
+      this.repository.findLatestActiveExam(madrasaId),
+    ]);
+
+    const published = publishGroups.find((g) => g.status === "PUBLISHED")?._count._all || 0;
+    const draft = publishGroups.find((g) => g.status === "DRAFT")?._count._all || 0;
+
+    if (!latestExam) {
+      return {
+        latestExam: null,
+        examsCount,
+        published,
+        draft,
+        statusBreakdown: { pass: 0, fail: 0, absent: 0 },
+        averageMarks: 0,
+        studentsGraded: 0,
+        gradeDistribution: [] as { grade: string; count: number }[],
+        classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number }[],
+      };
+    }
+
+    const [statusGroups, gradeGroups, avgAgg] = await Promise.all([
+      this.repository.groupResultStatusForExam(madrasaId, latestExam.id),
+      this.repository.groupGeneralGradeForExam(madrasaId, latestExam.id),
+      this.repository.aggregateAverageForExam(madrasaId, latestExam.id),
+    ]);
+
+    const statusBreakdown = {
+      pass: statusGroups.find((g) => g.status === "PASS")?._count._all || 0,
+      fail: statusGroups.find((g) => g.status === "FAIL")?._count._all || 0,
+      absent: statusGroups.find((g) => g.status === "ABSENT")?._count._all || 0,
+    };
+
+    const classStatus = overviewStatuses
+      .filter((row: any) => row.exam_id === latestExam.id)
+      .map((row: any) => ({
+        ...row,
+        total_students: Number(row.total_students),
+        entered_students: Number(row.entered_students),
+      }));
+
+    return {
+      latestExam,
+      examsCount,
+      published,
+      draft,
+      statusBreakdown,
+      averageMarks: Math.round(Number(avgAgg._avg.average || 0) * 100) / 100,
+      studentsGraded: avgAgg._count._all,
+      gradeDistribution: gradeGroups.map((g) => ({ grade: g.generalGrade as string, count: g._count._all })),
+      classStatus,
+    };
+  }
+
   async getSummary(madrasaId: number, examId: number, classId: number) {
     if (!examId || !classId) {
       throw new BadRequestError("exam_id and class_id are required");

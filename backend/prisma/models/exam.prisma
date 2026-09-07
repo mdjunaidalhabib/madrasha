@@ -22,6 +22,10 @@ model Exam {
   resultsMaster ResultMaster[]
   marks         Mark[]
   examRoutines  ExamRoutine[]
+  /// পরীক্ষার ফি structures linked to this exam - see
+  /// FeeStructure.examId for why a fee structure links to a specific exam
+  /// instead of billing the whole session up front.
+  feeStructures FeeStructure[]
 
   @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
   @@map("exams")

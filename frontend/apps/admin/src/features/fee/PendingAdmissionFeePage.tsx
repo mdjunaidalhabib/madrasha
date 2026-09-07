@@ -393,7 +393,7 @@ const PendingAdmissionFeePage = () => {
                         <div className="truncate font-medium text-gray-800 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400">
                           {row.student?.nameBn || `ছাত্র #${row.studentId}`}
                           <span className="ml-1.5 font-normal text-gray-500 dark:text-slate-400">
-                            (রোল {row.student?.roll ?? "-"}
+                            (রোল {row.student?.roll ?? "-"} · রেজি. নং {row.student?.registrationNo ?? "-"}
                             {row.student?.classRef?.nameBn ? ` · ${row.student.classRef.nameBn}` : ""})
                           </span>
                         </div>

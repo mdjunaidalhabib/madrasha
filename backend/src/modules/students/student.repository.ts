@@ -119,6 +119,62 @@ export class StudentRepository {
     });
   }
 
+  countPendingAdmissions(madrasaId: number) {
+    return prisma.student.count({ where: { madrasaId, admissionStatus: "PENDING", deletedAt: null } });
+  }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  countApprovedActive(madrasaId: number) {
+    return prisma.student.count({
+      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+    });
+  }
+
+  groupByGender(madrasaId: number) {
+    return prisma.student.groupBy({
+      by: ["gender"],
+      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+      _count: { _all: true },
+    });
+  }
+
+  groupByClass(madrasaId: number) {
+    return prisma.student.groupBy({
+      by: ["classId"],
+      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+      _count: { _all: true },
+    });
+  }
+
+  findClassNames(classIds: number[]) {
+    return prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, nameBn: true } });
+  }
+
+  groupByAdmissionStatus(madrasaId: number) {
+    return prisma.student.groupBy({
+      by: ["admissionStatus"],
+      where: { madrasaId, deletedAt: null },
+      _count: { _all: true },
+    });
+  }
+
+  /** Monthly admission counts for the last `limit` months with at least one
+   * admission, newest first - feeds the শিক্ষার্থী dashboard's admission trend
+   * chart. Raw SQL since GROUP BY on a formatted date has no clean Prisma
+   * equivalent (same reasoning as dashboard.repository.ts's period-based
+   * queries). */
+  findAdmissionTrend(madrasaId: number, limit: number) {
+    return prisma.$queryRaw<{ period: string; count: bigint }[]>`
+      SELECT to_char(admission_date, 'YYYY-MM') AS period, COUNT(*) AS count
+      FROM students
+      WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL AND admission_date IS NOT NULL
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT ${limit}
+    `;
+  }
+
   // Soft delete — moves the student to Trash instead of hard-deleting.
   deleteManyForTenant(id: number, madrasaId: number) {
     return prisma.student.updateMany({

@@ -184,6 +184,44 @@ export class StaffService {
     const result = await this.repository.deleteManyForTenant(id, madrasaId);
     return result.count;
   }
+
+  /** Aggregate stats for the শিক্ষক ও স্টাফ module dashboard's স্টাফ half -
+   * active count, gender/designation breakdowns and a 12-month joining
+   * trend. See TeacherService.getDashboardSummary for the শিক্ষক half. */
+  async getDashboardSummary(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const [totalActive, genderGroups, designationGroups, trend] = await Promise.all([
+      this.repository.countActive(madrasaId),
+      this.repository.groupByGender(madrasaId),
+      this.repository.groupByDesignation(madrasaId),
+      this.repository.findJoiningTrend(madrasaId, 12),
+    ]);
+
+    const byGender = genderGroups.reduce(
+      (acc, group) => {
+        const count = group._count._all;
+        if (group.gender === 1) acc.male += count;
+        else if (group.gender === 2) acc.female += count;
+        else acc.unspecified += count;
+        return acc;
+      },
+      { male: 0, female: 0, unspecified: 0 },
+    );
+
+    const byDesignation = designationGroups
+      .map((group) => ({ designation: group.designation || "অনির্ধারিত", count: group._count._all }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      totalActiveStaff: totalActive,
+      byGender,
+      byDesignation,
+      joiningTrend: trend
+        .map((row) => ({ period: row.period, count: Number(row.count || 0) }))
+        .reverse(),
+    };
+  }
 }
 
 export const staffService = new StaffService();

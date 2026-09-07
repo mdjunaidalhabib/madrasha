@@ -20,6 +20,11 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   res.json({ success: true, data });
 });
 
+export const getNotificationDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const data = await notificationService.getDashboardSummary(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
 export const getAudienceStudents = asyncHandler(async (req: Request, res: Response) => {
   const data = await notificationService.getAudienceStudents(getMadrasaId(req), req.query as any);
   return ApiResponse.success(res, { data });

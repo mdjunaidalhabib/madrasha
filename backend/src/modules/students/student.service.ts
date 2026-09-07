@@ -270,23 +270,25 @@ export class StudentService {
           action: "re_admitted" as const,
           previousAcademicYear: existing.academicYear,
           roll: data.roll as number | null,
-          registrationNo: existing.registrationNo!,
+          registrationNo: existing.registrationNo,
         };
       }
 
-      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const nextRegistrationNo =
-        (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
+      // No registration number is handed out at submission time anymore -
+      // a PENDING (or later REJECTED) application must not occupy one. A
+      // registration number is only assigned once a Muhtamim approves this
+      // admission (see approveAdmission), which is also where it's
+      // actually allocated via getMaxRegistrationNoOnTx.
       const created = await this.repository.createOnTx(tx, {
         ...data,
-        registrationNo: nextRegistrationNo,
+        registrationNo: null,
       } as Prisma.StudentUncheckedCreateInput);
 
       return {
         studentId: created.id,
         action: "created" as const,
         roll: data.roll as number | null,
-        registrationNo: created.registrationNo!,
+        registrationNo: created.registrationNo,
       };
     });
 
@@ -417,6 +419,16 @@ export class StudentService {
           data.roll = nextRoll;
         }
 
+        // A NID matched here to a still-PENDING web/admin admission has no
+        // registration number yet (see admitStudent) - bulk admission has
+        // no PENDING state of its own, so backfill one now (and approve the
+        // record) instead of leaving it permanently null and stuck PENDING.
+        if (existing && !existing.registrationNo) {
+          nextRegistrationNo += 1;
+          data.registrationNo = nextRegistrationNo;
+          data.admissionStatus = "APPROVED";
+        }
+
         if (existing) {
           const updateData = { ...data } as Record<string, any>;
           delete updateData.madrasaId;
@@ -437,7 +449,7 @@ export class StudentService {
             previousAcademicYear: existing.academicYear ?? null,
             academicYear: data.academicYear,
             roll: data.roll!,
-            registrationNo: existing.registrationNo!,
+            registrationNo: data.registrationNo ?? existing.registrationNo!,
             changes,
           });
 
@@ -476,6 +488,9 @@ export class StudentService {
     // Outside the transaction, same reasoning as admitStudent(). One
     // guardian-provisioning failure must not affect (or roll back) the
     // student rows this bulk admission already committed - log and continue.
+    // Looked up once, not per-row - see FeeService.getAdmissionCategoryNames
+    // for why this replaces the old hardcoded ["ADMISSION"] filter.
+    const admissionFeeTypes = await feeService.getAdmissionCategoryNames(madrasaId);
     for (const row of result.preview) {
       const source = students[row.row - 1];
       if (!source) continue;
@@ -493,7 +508,7 @@ export class StudentService {
           prepared[row.row - 1].classId,
           prepared[row.row - 1].sessionId,
           source.admission_date ? new Date(source.admission_date) : new Date(),
-          ["ADMISSION"],
+          admissionFeeTypes,
         );
       } catch (err) {
         logger.error("AUTO-GENERATE INVOICES ON BULK ADMISSION ERROR:", err);
@@ -843,6 +858,66 @@ export class StudentService {
     return this.repository.getNextAvailableRoll(madrasaId, classId, year);
   }
 
+  /** Aggregate stats for the শিক্ষার্থী module's own dashboard - active
+   * student count, gender/class/admission-status breakdowns and a 12-month
+   * admission trend. Separate from the tenant-wide GET /dashboard summary,
+   * which only carries a couple of student numbers alongside every other
+   * module's stats. */
+  async getDashboardSummary(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const [totalActive, genderGroups, classGroups, admissionStatusGroups, trend, pendingAdmissionsCount] =
+      await Promise.all([
+        this.repository.countApprovedActive(madrasaId),
+        this.repository.groupByGender(madrasaId),
+        this.repository.groupByClass(madrasaId),
+        this.repository.groupByAdmissionStatus(madrasaId),
+        this.repository.findAdmissionTrend(madrasaId, 12),
+        this.repository.countPendingAdmissions(madrasaId),
+      ]);
+
+    const byGender = genderGroups.reduce(
+      (acc, group) => {
+        const count = group._count._all;
+        if (group.gender === 1) acc.male += count;
+        else if (group.gender === 2) acc.female += count;
+        else acc.unspecified += count;
+        return acc;
+      },
+      { male: 0, female: 0, unspecified: 0 },
+    );
+
+    const classIds = classGroups
+      .map((group) => group.classId)
+      .filter((id): id is number => id !== null);
+    const classNames = classIds.length ? await this.repository.findClassNames(classIds) : [];
+    const classNameById = new Map(classNames.map((c) => [c.id, c.nameBn]));
+    const byClass = classGroups
+      .map((group) => ({
+        classId: group.classId,
+        className: group.classId ? classNameById.get(group.classId) || "" : "অনির্ধারিত",
+        count: group._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const byAdmissionStatus = {
+      pending: admissionStatusGroups.find((g) => g.admissionStatus === "PENDING")?._count._all || 0,
+      approved: admissionStatusGroups.find((g) => g.admissionStatus === "APPROVED")?._count._all || 0,
+      rejected: admissionStatusGroups.find((g) => g.admissionStatus === "REJECTED")?._count._all || 0,
+    };
+
+    return {
+      totalActiveStudents: totalActive,
+      byGender,
+      byClass,
+      byAdmissionStatus,
+      admissionTrend: trend
+        .map((row) => ({ period: row.period, count: Number(row.count || 0) }))
+        .reverse(),
+      pendingAdmissionsCount,
+    };
+  }
+
   async deleteStudent(id: number, madrasaId: number | undefined) {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -900,9 +975,10 @@ export class StudentService {
 
   /** Approves a pending admission. Nothing is allocated for it at
    * submission time anymore (see admitStudent) - approval is what actually
-   * turns the applicant into a real enrolled student: a roll is assigned
-   * (reusing the applicant's existing roll if a resubmission already had
-   * one), then every fee gets billed, including the admission fee.
+   * turns the applicant into a real enrolled student: a roll and a
+   * registration number are assigned (reusing the applicant's existing
+   * roll/registration number if a resubmission already had one), then
+   * every fee gets billed, including the admission fee.
    * Deliberately does NOT require the admission fee to be paid/waived first
    * - a Muhtamim approves on the merits of the application, and হিসাব
    * বিভাগ collects the fee afterward (through the "ভর্তি ফি পেন্ডিং" page,
@@ -938,12 +1014,19 @@ export class StudentService {
         );
       }
 
+      let registrationNo = locked.registrationNo;
+      if (!registrationNo) {
+        await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+        registrationNo = (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
+      }
+
       const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, {
         admissionStatus: "APPROVED",
         reviewedBy: reviewerId ?? null,
         reviewedAt: new Date(),
         rejectionReason: null,
         roll,
+        registrationNo,
       });
       if (!result.count) throw new StudentNotFoundError();
 

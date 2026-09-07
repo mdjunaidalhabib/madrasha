@@ -17,6 +17,7 @@ import {
   returnBook,
   markBookLost,
   settleFine,
+  getLibraryDashboardSummary,
   getFinePerDay,
   setFinePerDay,
 } from "./library.controller";
@@ -49,6 +50,9 @@ router.post("/library/borrow-records", rbacMiddleware("library.issue"), issueBoo
 router.post("/library/borrow-records/:id/return", rbacMiddleware("library.issue"), returnBook);
 router.post("/library/borrow-records/:id/mark-lost", rbacMiddleware("library.manage"), markBookLost);
 router.post("/library/borrow-records/:id/settle-fine", rbacMiddleware("library.manage"), settleFine);
+
+/* ================= DASHBOARD SUMMARY ================= */
+router.get("/library/dashboard-summary", rbacMiddleware("library.read"), getLibraryDashboardSummary);
 
 /* ================= SETTINGS ================= */
 router.get("/library/settings/fine-per-day", rbacMiddleware("library.read"), getFinePerDay);

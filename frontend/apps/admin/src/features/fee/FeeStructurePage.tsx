@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
-import { feeStructureApi, invoiceApi, type FeeFrequency, type FeeType } from "../../services/phase2Api";
+import {
+  feeStructureApi,
+  feeCategoryApi,
+  invoiceApi,
+  type FeeFrequency,
+  type FeeType,
+  type FeeLinkableExam,
+  type FeeCategoryItem,
+} from "../../services/phase2Api";
 import { type Session } from "../../services/sessionApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -22,20 +31,14 @@ type FeeStructureRow = {
   isActive: boolean;
   classId?: number | null;
   class?: { nameBn?: string; division?: { nameBn?: string } | null } | null;
+  examId?: number | null;
+  exam?: { id: number; name: string; year: string } | null;
 };
 
 const FREQUENCY_LABELS: Record<FeeFrequency, string> = {
   ONE_TIME: "একবার",
   MONTHLY: "মাসিক",
   YEARLY: "বাৎসরিক",
-};
-
-const FEE_TYPE_LABELS: Record<FeeType, string> = {
-  ADMISSION: "ভর্তি ফি",
-  TUITION: "মাসিক বেতন",
-  EXAM: "পরীক্ষার ফি",
-  BOARDING: "বোর্ডিং ফি",
-  OTHER: "অন্যান্য",
 };
 
 const normalizeArray = (payload: any) => {
@@ -47,8 +50,9 @@ const emptyStructureForm = {
   name: "",
   amount: "",
   frequency: "MONTHLY" as FeeFrequency,
-  fee_type: "OTHER" as FeeType,
+  fee_type: "" as FeeType,
   session_id: "",
+  exam_id: "",
 };
 
 const FeeStructurePage = () => {
@@ -59,8 +63,11 @@ const FeeStructurePage = () => {
   const [classLoading, setClassLoading] = useState(false);
 
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [exams, setExams] = useState<FeeLinkableExam[]>([]);
+  const [categories, setCategories] = useState<FeeCategoryItem[]>([]);
 
   const [structures, setStructures] = useState<FeeStructureRow[]>([]);
+  const [structuresLoading, setStructuresLoading] = useState(true);
   const [structureForm, setStructureForm] = useState(emptyStructureForm);
   const [saving, setSaving] = useState(false);
 
@@ -137,6 +144,32 @@ const FeeStructurePage = () => {
     loadSessions();
   }, []);
 
+  useEffect(() => {
+    const loadExams = async () => {
+      try {
+        const res = await feeStructureApi.listExams();
+        setExams(normalizeArray(res));
+      } catch (err) {
+        logger.error("LOAD EXAMS FOR FEE LINKING ERROR:", err);
+        setExams([]);
+      }
+    };
+    loadExams();
+  }, []);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await feeCategoryApi.list();
+        setCategories(normalizeArray(res));
+      } catch (err) {
+        logger.error("LOAD FEE CATEGORIES ERROR:", err);
+        setCategories([]);
+      }
+    };
+    loadCategories();
+  }, []);
+
   const loadClasses = async (divisionId: string) => {
     setClassId("");
     if (!divisionId) {
@@ -157,11 +190,14 @@ const FeeStructurePage = () => {
 
   const loadStructures = useCallback(async () => {
     try {
+      setStructuresLoading(true);
       const res = await feeStructureApi.list(classId ? { class_id: Number(classId) } : undefined);
       setStructures(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD FEE STRUCTURES ERROR:", err);
       setStructures([]);
+    } finally {
+      setStructuresLoading(false);
     }
   }, [classId]);
 
@@ -178,6 +214,7 @@ const FeeStructurePage = () => {
     const structureSessionId = Number(structureForm.session_id);
     try {
       setSaving(true);
+      const examId = structureForm.exam_id ? Number(structureForm.exam_id) : undefined;
       await feeStructureApi.create({
         class_id: structureClassId,
         name: structureForm.name.trim(),
@@ -185,6 +222,7 @@ const FeeStructurePage = () => {
         frequency: structureForm.frequency,
         fee_type: structureForm.fee_type,
         session_id: structureSessionId,
+        exam_id: examId,
       });
       setStructureForm(emptyStructureForm);
       loadStructures();
@@ -193,7 +231,12 @@ const FeeStructurePage = () => {
       // applies to, so nobody has to remember a separate manual step -
       // matches the auto-billing-at-admission behavior new students
       // already get. A billing hiccup here doesn't mean the structure
-      // itself failed to save, so it's reported as its own toast.
+      // itself failed to save, so it's reported as its own toast. This is
+      // also the ONLY moment a নির্দিষ্ট পরীক্ষার সাথে যুক্ত ফি gets billed at
+      // all - future admission approvals skip it on purpose (see backend
+      // FeeService.autoGenerateInvoicesForStudent) so a newly-admitted
+      // student is never billed up front for an exam that hasn't happened
+      // yet; re-run "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন" later to catch them up.
       try {
         const res = await invoiceApi.backfill({
           class_id: structureClassId,
@@ -226,8 +269,9 @@ const FeeStructurePage = () => {
       name: structure.name,
       amount: String(structure.amount),
       frequency: structure.frequency,
-      fee_type: structure.feeType || "OTHER",
+      fee_type: structure.feeType || "",
       session_id: structure.sessionId ? String(structure.sessionId) : "",
+      exam_id: structure.examId ? String(structure.examId) : "",
     });
   };
 
@@ -245,6 +289,9 @@ const FeeStructurePage = () => {
         frequency: editForm.frequency,
         fee_type: editForm.fee_type,
         session_id: Number(editForm.session_id),
+        // সবসময় পাঠানো হয় (undefined না) যাতে "সাধারণ" নির্বাচন করে আগের যুক্ত
+        // পরীক্ষা সরিয়ে ফেলা যায় - দেখুন backend resolveExamId, "" মানে null।
+        exam_id: editForm.exam_id ? Number(editForm.exam_id) : "",
       });
       useToastStore.getState().show("ফি কাঠামো আপডেট হয়েছে", "success");
       setEditTarget(null);
@@ -334,6 +381,9 @@ const FeeStructurePage = () => {
     return [...result, ...divisionGroups];
   }, [structures]);
 
+  const isCreateFormValid =
+    structureForm.name.trim() !== "" && structureForm.amount !== "" && structureForm.session_id !== "";
+
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
@@ -395,65 +445,124 @@ const FeeStructurePage = () => {
             নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
           </h2>
           <p className="mb-3 -mt-1 text-xs text-gray-500 dark:text-slate-400">
-            তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে।
+            তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে। পরীক্ষার ফি
+            হলে চাইলে নির্দিষ্ট একটি পরীক্ষার সাথে যুক্ত করে দিন — তাহলে সেই ফি নতুন ভর্তির সাথে সাথেই বিল
+            হবে না, বরং শুধু তখনই বিল হবে যখন আপনি এটা তৈরি করবেন বা পরে "বিদ্যমান সব ছাত্রের ফি আবার সেট
+            করুন" চালাবেন — অর্থাৎ যখন পরীক্ষাটা সত্যিই আসন্ন।
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            <input
-              type="text"
-              placeholder="নাম (যেমন: মাসিক বেতন)"
-              value={structureForm.name}
-              onChange={(e) => setStructureForm((p) => ({ ...p, name: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
-            />
-            <input
-              type="number"
-              placeholder="পরিমাণ (৳)"
-              value={structureForm.amount}
-              onChange={(e) => setStructureForm((p) => ({ ...p, amount: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
-            />
-            <select
-              value={structureForm.frequency}
-              onChange={(e) =>
-                setStructureForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))
-              }
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
-            >
-              {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
-                <option key={f} value={f}>
-                  {FREQUENCY_LABELS[f]}
-                </option>
-              ))}
-            </select>
-            <select
-              value={structureForm.fee_type}
-              onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
-            >
-              {(Object.keys(FEE_TYPE_LABELS) as FeeType[]).map((t) => (
-                <option key={t} value={t}>
-                  {FEE_TYPE_LABELS[t]}
-                </option>
-              ))}
-            </select>
-            <select
-              value={structureForm.session_id}
-              onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
-            >
-              <option value="">সেশন</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.isCurrent ? " (চলমান)" : ""}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
+            <div className="w-full sm:w-[200px]">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                নাম <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="যেমন: মাসিক বেতন"
+                value={structureForm.name}
+                onChange={(e) => setStructureForm((p) => ({ ...p, name: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div className="w-full sm:w-[130px]">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                পরিমাণ (৳) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="পরিমাণ"
+                value={structureForm.amount}
+                onChange={(e) => setStructureForm((p) => ({ ...p, amount: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div className="w-full sm:w-[130px]">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                ফ্রিকোয়েন্সি
+              </label>
+              <select
+                value={structureForm.frequency}
+                onChange={(e) =>
+                  setStructureForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))
+                }
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
+                  <option key={f} value={f}>
+                    {FREQUENCY_LABELS[f]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full sm:w-[140px]">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-xs font-medium text-gray-600 dark:text-slate-400">
+                  ফি ধরণ
+                </label>
+                <Link
+                  to="/ihtemam/fee-categories"
+                  className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  ফি ধরণ ম্যানেজ করুন
+                </Link>
+              </div>
+              <select
+                value={structureForm.fee_type}
+                onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">নির্বাচন করুন</option>
+                {categories
+                  .filter((c) => c.isActive)
+                  .map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            {exams.length > 0 && (
+              <div className="w-full sm:w-[180px]">
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                  যুক্ত পরীক্ষা
+                </label>
+                <select
+                  value={structureForm.exam_id}
+                  onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
+                  title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে, নতুন ভর্তির জন্য পরে 'বিদ্যমান সব ছাত্রের ফি আবার সেট করুন' চালাতে হবে"
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
+                  {exams.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} ({ex.year})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="w-full sm:w-[140px]">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                সেশন <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={structureForm.session_id}
+                onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">সেশন নির্বাচন করুন</option>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.isCurrent ? " (চলমান)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || !isCreateFormValid}
               onClick={handleCreateStructure}
-              className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+              className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {saving ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
             </button>
@@ -461,7 +570,9 @@ const FeeStructurePage = () => {
         </div>
 
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-          {structures.length === 0 ? (
+          {structuresLoading ? (
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</div>
+          ) : structures.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো ফি কাঠামো নেই</div>
           ) : (
             <div className="space-y-5">
@@ -490,9 +601,17 @@ const FeeStructurePage = () => {
                                   {row.name} <span className="font-normal text-gray-500 dark:text-slate-400">৳{row.amount}</span>
                                 </div>
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  {row.feeType && row.feeType !== "OTHER" && (
+                                  {row.feeType && (
                                     <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-                                      {FEE_TYPE_LABELS[row.feeType]}
+                                      {row.feeType}
+                                    </span>
+                                  )}
+                                  {row.exam && (
+                                    <span
+                                      title="নির্দিষ্ট এই পরীক্ষার সাথে যুক্ত - ভর্তির সাথে সাথে বিল হয় না, শুধু তৈরি/আবার-সেট করার সময় বিল হয়"
+                                      className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
+                                    >
+                                      {row.exam.name} ({row.exam.year})
                                     </span>
                                   )}
                                   <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-slate-800 dark:text-slate-400">
@@ -636,13 +755,35 @@ const FeeStructurePage = () => {
               onChange={(e) => setEditForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              {(Object.keys(FEE_TYPE_LABELS) as FeeType[]).map((t) => (
-                <option key={t} value={t}>
-                  {FEE_TYPE_LABELS[t]}
-                </option>
-              ))}
+              <option value="">নির্বাচন করুন</option>
+              {categories
+                .filter((c) => c.isActive || c.name === editForm.fee_type)
+                .map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </div>
+          {exams.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                যুক্ত পরীক্ষা
+              </label>
+              <select
+                value={editForm.exam_id}
+                onChange={(e) => setEditForm((p) => ({ ...p, exam_id: e.target.value }))}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
+                {exams.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name} ({ex.year})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সেশন</label>
             <select

@@ -34,14 +34,14 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="animate-modalBackdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={title}
       onMouseDown={onClose} // overlay click
     >
       <div
-        className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col rounded-2xl bg-white shadow-xl dark:bg-slate-900`}
+        className={`animate-modalPanel flex max-h-[90vh] w-full ${maxWidthClassName} flex-col rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10`}
         onMouseDown={(e) => e.stopPropagation()} // prevent overlay close
       >
         <div className="flex shrink-0 items-center justify-between border-b px-5 py-4 dark:border-slate-800">

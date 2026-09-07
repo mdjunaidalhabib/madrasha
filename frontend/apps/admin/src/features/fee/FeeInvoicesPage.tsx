@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Wallet, CircleCheck, X, Pencil, Check } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
@@ -96,6 +97,11 @@ const emptyPayCommon = {
 type PayLine = { selected: boolean; amount: string };
 
 const FeeInvoicesPage = () => {
+  // "বকেয়া ফী" পেজ থেকে "?student_id=" দিয়ে সরাসরি এই ছাত্রকে বেছে নেওয়া
+  // অবস্থায় আসার জন্য - allStudents লোড হওয়ার পর একবার প্রয়োগ হয়।
+  const [searchParams] = useSearchParams();
+  const preselectStudentId = searchParams.get("student_id");
+
   // Every student's own fee data is loaded on demand only (searched by name
   // / roll / id), instead of pulling every invoice for every student up
   // front — that "everything at once" list was both slow and cluttered.
@@ -225,6 +231,13 @@ const FeeInvoicesPage = () => {
     setStudentQuery("");
     setShowSuggestions(false);
   };
+
+  useEffect(() => {
+    if (!preselectStudentId || selectedStudent || allStudents.length === 0) return;
+    const match = allStudents.find((s) => String(s.id) === preselectStudentId);
+    if (match) selectStudent(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectStudentId, allStudents, selectedStudent]);
 
   // Registration number is the student's permanent, unique identifier, so a
   // full exact match on it is unambiguous — select it immediately instead of

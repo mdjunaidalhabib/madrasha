@@ -13,25 +13,7 @@ import {
   TodayTotalsRow,
   UpcomingExamRow,
 } from "./dashboard.types";
-
-const startOfTodayUTC = (): Date => {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-};
-
-// One tick before tomorrow's startOfTodayUTC - i.e. the last instant of
-// today. Invoices generated on admission approval (admission fee + first
-// month's tuition, see buildAutoInvoiceRows) are stamped dueDate:
-// effectiveStart, which is *today* on approval day - so a strict `< today`
-// cutoff (as used everywhere else for "overdue") hid them from বকেয়া ফি
-// until tomorrow. Office staff expect to collect these the same day they
-// approve the admission, so anything due today or earlier now counts.
-const endOfTodayUTC = (): Date => {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
-  );
-};
+import { startOfTodayUTC, endOfTodayUTC } from "../../shared/utils/date.util";
 
 export class DashboardRepository {
   // A PENDING admission isn't a real enrolled student yet (see
@@ -170,9 +152,11 @@ export class DashboardRepository {
       },
       select: {
         id: true,
+        studentId: true,
         title: true,
         amount: true,
         paidAmount: true,
+        waivedAmount: true,
         dueDate: true,
         student: { select: { nameBn: true } },
       },

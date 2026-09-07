@@ -1,4 +1,5 @@
 import { prisma } from "../../shared/database/prisma";
+import { endOfTodayUTC } from "../../shared/utils/date.util";
 
 export class SidebarRepository {
   findRoleById(roleId: number) {
@@ -45,20 +46,41 @@ export class SidebarRepository {
   }
 
   /** Badge count for the হিসাব > ভর্তি ফি পেন্ডিং sidebar item - how many
-   * distinct students still owe their ADMISSION fee (counting students, not
+   * distinct students still owe their admission fee (counting students, not
    * invoices, so one student can't inflate it). Deliberately scoped to
-   * admission fees only, not every due invoice - routine monthly
-   * tuition/exam/boarding dues aren't "needs office follow-up" the way an
-   * unpaid admission fee is. Only APPROVED students - same reasoning as
-   * findPendingInvoices in fee.repository.ts. */
-  countPendingFeeStudents(madrasaId: number) {
+   * admission fees only (`admissionFeeTypes` - see
+   * FeeService.getAdmissionCategoryNames), not every due invoice - routine
+   * monthly tuition/exam/boarding dues aren't "needs office follow-up" the
+   * way an unpaid admission fee is. Only APPROVED students - same reasoning
+   * as findPendingInvoices in fee.repository.ts. */
+  countPendingFeeStudents(madrasaId: number, admissionFeeTypes: string[]) {
     return prisma.student.count({
       where: {
         madrasaId,
         deletedAt: null,
         admissionStatus: "APPROVED",
         invoices: {
-          some: { status: { in: ["UNPAID", "PARTIALLY_PAID"] }, feeStructure: { feeType: "ADMISSION" } },
+          some: { status: { in: ["UNPAID", "PARTIALLY_PAID"] }, feeStructure: { feeType: { in: admissionFeeTypes } } },
+        },
+      },
+    });
+  }
+
+  /** Badge count for the ফি ব্যবস্থাপনা > বকেয়া ফী sidebar item - how many
+   * distinct students have at least one overdue invoice (any fee type, due
+   * today or earlier), same "overdue" definition as
+   * FeeRepository.findOverdueInvoices/dashboard's বকেয়া ফি widget. */
+  countOverdueFeeStudents(madrasaId: number) {
+    return prisma.student.count({
+      where: {
+        madrasaId,
+        deletedAt: null,
+        admissionStatus: { not: "REJECTED" },
+        invoices: {
+          some: {
+            status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+            dueDate: { lte: endOfTodayUTC() },
+          },
         },
       },
     });

@@ -48,7 +48,6 @@ const ICONS: Record<string, any> = {
   website: Settings,
   website_settings: Settings,
   settings: Settings,
-  activity: ClipboardList,
   library: Library,
 };
 

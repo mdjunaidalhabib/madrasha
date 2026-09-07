@@ -6,13 +6,22 @@ import api from "./api";
  */
 
 export type FeeFrequency = "ONE_TIME" | "MONTHLY" | "YEARLY";
-export type FeeType = "ADMISSION" | "TUITION" | "EXAM" | "BOARDING" | "OTHER";
+export type FeeType = string;
 export type InvoiceStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "WAIVED";
 export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "ONLINE";
+
+export interface FeeLinkableExam {
+  id: number;
+  name: string;
+  year: string;
+}
 
 export const feeStructureApi = {
   list: (params?: { class_id?: number; session_id?: number; academic_year?: string }) =>
     api.get("/fee-structures", { params }),
+  // যুক্ত পরীক্ষা" পিকারের জন্য - fee.read দিয়েই কাজ করে, exam.read লাগে না
+  // (দেখুন backend FeeRepository.findExamsForTenant)।
+  listExams: () => api.get("/fee-structures/exams"),
   create: (payload: {
     class_id?: number;
     name: string;
@@ -20,10 +29,35 @@ export const feeStructureApi = {
     frequency: FeeFrequency;
     fee_type?: FeeType;
     session_id: number;
+    // নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে - দেখুন FeeStructure.examId।
+    exam_id?: number;
   }) => api.post("/fee-structures", payload),
   update: (id: number, payload: Record<string, unknown>) =>
     api.put(`/fee-structures/${id}`, payload),
   remove: (id: number) => api.delete(`/fee-structures/${id}`),
+};
+
+/* ================= FEE CATEGORY SETTINGS (ফি ধরণ সেটিংস) ================= */
+// ফি স্ট্রাকচারের "ফি ধরণ" এখন আর হার্ডকোডেড enum নয় - ট্যানেন্ট নিজে যোগ/এডিট/
+// ডিলিট করতে পারে, ফান্ড ও খাত সেটিংসের মতোই (তবে flat, কোনো nesting ছাড়া)।
+
+export interface FeeCategoryItem {
+  id: number;
+  name: string;
+  isAdmissionType: boolean;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export const feeCategoryApi = {
+  list: () => api.get("/fee-categories"),
+  create: (payload: { name: string; is_admission_type?: boolean }) =>
+    api.post("/fee-categories", payload),
+  update: (
+    id: number,
+    payload: { name?: string; is_admission_type?: boolean; sort_order?: number; is_active?: boolean },
+  ) => api.patch(`/fee-categories/${id}`, payload),
+  remove: (id: number) => api.delete(`/fee-categories/${id}`),
 };
 
 export const invoiceApi = {
@@ -32,6 +66,11 @@ export const invoiceApi = {
 
   pending: (params?: { limit?: number; offset?: number }) =>
     api.get("/invoices/pending", { params }),
+
+  // Grouped-per-student overdue fee summary (every fee type) for the
+  // dedicated "বকেয়া ফী" management page.
+  overdue: (params?: { search?: string; class_id?: number }) =>
+    api.get("/invoices/overdue", { params }),
 
   // "সব ক্লিয়ার করুন" - hides every row currently on the pending queue (for
   // every office user); the invoices themselves stay collectible from ছাত্র
@@ -59,6 +98,31 @@ export const invoiceApi = {
   // অপরিবর্তনীয় - এই ট্যানেন্টের সব ইনভয়েস (ও ক্যাসকেডে সব পেমেন্ট) স্থায়ীভাবে
   // মুছে দেয়। শুধু টেস্ট/ডেমো ডেটা পরিষ্কার করার জন্য, নিয়মিত ব্যবহারের জন্য নয়।
   deleteAll: (confirm: string) => api.post("/invoices/delete-all", { confirm }),
+};
+
+/* ================= PRE-APPROVAL FEE PREVIEW & DISCOUNTS ================= */
+
+// একজন পেন্ডিং আবেদনকারীর শ্রেণির জন্য নির্ধারিত ফি তালিকা - approve করার আগে
+// কোনো Invoice তৈরিই হয় না, তাই এটা FeeStructure থেকে সরাসরি প্রজেক্টেড।
+export interface FeePreviewRow {
+  feeStructureId: number;
+  name: string;
+  feeType: FeeType;
+  frequency: FeeFrequency;
+  amount: number;
+  waivedAmount: number;
+  reason: string | null;
+  // নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত পরীক্ষার ফি - এটা ভর্তি অনুমোদনের সাথে সাথে
+  // বিল হয় না, শুধু তথ্যের জন্য দেখানো হয় (দেখুন FeeStructure.examId)।
+  examLinked?: boolean;
+}
+
+export const studentFeeDiscountApi = {
+  preview: (studentId: number) => api.get(`/students/${studentId}/fee-preview`),
+  // amount: 0 দিলে ছাড়টা সরিয়ে দেয়। শুধু PENDING ভর্তির জন্য প্রযোজ্য - approve
+  // হওয়া ছাত্রের জন্য বিদ্যমান invoiceApi.waive ব্যবহার হয়।
+  setDiscount: (studentId: number, feeStructureId: number, payload: { amount: number; reason?: string }) =>
+    api.put(`/students/${studentId}/fee-preview/${feeStructureId}`, payload),
 };
 
 /* ================= MANUAL PAYMENT METHOD SETUP (admin panel) ================= */

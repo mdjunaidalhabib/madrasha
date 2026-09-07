@@ -67,9 +67,34 @@ export class DashboardService {
     const attendancePercentage =
       attendanceTotal > 0 ? Math.round(((PRESENT + LATE) / attendanceTotal) * 1000) / 10 : 0;
 
-    const overdueTotalDue = overdueInvoices.reduce(
-      (sum, invoice) => sum + (Number(invoice.amount) - Number(invoice.paidAmount)),
-      0
+    const remainingOf = (invoice: { amount: any; paidAmount: any; waivedAmount: any }) =>
+      Number(invoice.amount) - Number(invoice.paidAmount) - Number(invoice.waivedAmount || 0);
+
+    const overdueTotalDue = overdueInvoices.reduce((sum, invoice) => sum + remainingOf(invoice), 0);
+
+    // Grouped per student (not per invoice) - a student with several unpaid
+    // months should show up as one row with their total due, not one row per
+    // invoice cluttering the widget.
+    const overdueByStudent = new Map<number, DashboardSummary["overdueFees"]["list"][number]>();
+    for (const invoice of overdueInvoices) {
+      const remaining = remainingOf(invoice);
+      const existing = overdueByStudent.get(invoice.studentId);
+      if (existing) {
+        existing.remaining += remaining;
+        existing.invoiceCount += 1;
+        if (invoice.dueDate < existing.oldestDueDate) existing.oldestDueDate = invoice.dueDate;
+      } else {
+        overdueByStudent.set(invoice.studentId, {
+          studentId: invoice.studentId,
+          studentName: invoice.student.nameBn,
+          remaining,
+          invoiceCount: 1,
+          oldestDueDate: invoice.dueDate,
+        });
+      }
+    }
+    const overdueStudents = Array.from(overdueByStudent.values()).sort(
+      (a, b) => b.remaining - a.remaining
     );
 
     return {
@@ -100,14 +125,9 @@ export class DashboardService {
       pendingAdmissionsCount,
       overdueFees: {
         count: overdueInvoices.length,
+        studentCount: overdueStudents.length,
         totalDue: overdueTotalDue,
-        list: overdueInvoices.slice(0, DASHBOARD_OVERDUE_FEES_LIST_LIMIT).map((invoice) => ({
-          id: invoice.id,
-          title: invoice.title,
-          studentName: invoice.student.nameBn,
-          dueDate: invoice.dueDate,
-          remaining: Number(invoice.amount) - Number(invoice.paidAmount),
-        })),
+        list: overdueStudents.slice(0, DASHBOARD_OVERDUE_FEES_LIST_LIMIT),
       },
       upcomingExams,
       importantLinks: importantLinks.map((link) => ({

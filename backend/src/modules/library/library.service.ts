@@ -412,6 +412,65 @@ export class LibraryService {
       return friendlyFailure("setFinePerDay error:", err, "Failed to update the fine rate");
     }
   }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  /** Aggregate stats for the লাইব্রেরি module's own dashboard - book/copy
+   * totals, borrow-status breakdown, overdue count, unsettled fines and a
+   * 12-month circulation trend. */
+  async getDashboardSummary(madrasaId: number) {
+    try {
+      const [bookTotals, statusGroups, overdueCount, unsettledFines, categoryGroups, trend] =
+        await Promise.all([
+          this.repository.aggregateBookTotals(madrasaId),
+          this.repository.groupBorrowRecordsByStatus(madrasaId),
+          this.repository.countOverdueBorrows(madrasaId),
+          this.repository.aggregateUnsettledFines(madrasaId),
+          this.repository.groupBooksByCategory(madrasaId),
+          this.repository.findMonthlyBorrowTrend(madrasaId, 12),
+        ]);
+
+      const totalCopies = bookTotals._sum.copiesTotal || 0;
+      const availableCopies = bookTotals._sum.copiesAvailable || 0;
+
+      const statusBreakdown = {
+        borrowed: statusGroups.find((g) => g.status === "BORROWED")?._count._all || 0,
+        returned: statusGroups.find((g) => g.status === "RETURNED")?._count._all || 0,
+        lost: statusGroups.find((g) => g.status === "LOST")?._count._all || 0,
+      };
+
+      const categoryIds = categoryGroups
+        .map((group) => group.categoryId)
+        .filter((id): id is number => id !== null);
+      const categoryNames = categoryIds.length ? await this.repository.findCategoryNames(categoryIds) : [];
+      const categoryNameById = new Map(categoryNames.map((c) => [c.id, c.name]));
+      const byCategory = categoryGroups
+        .map((group) => ({
+          category: group.categoryId ? categoryNameById.get(group.categoryId) || "" : "শ্রেণিহীন",
+          count: group._count._all,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      return {
+        totalBooks: bookTotals._count._all,
+        totalCopies,
+        availableCopies,
+        onLoan: totalCopies - availableCopies,
+        statusBreakdown,
+        overdueCount,
+        unsettledFines: {
+          count: unsettledFines._count._all,
+          amount: Number(unsettledFines._sum.fineAmount || 0),
+        },
+        byCategory,
+        borrowTrend: trend
+          .map((row) => ({ period: row.period, count: Number(row.count || 0) }))
+          .reverse(),
+      };
+    } catch (err) {
+      return friendlyFailure("getDashboardSummary error:", err, "Failed to load library dashboard summary");
+    }
+  }
 }
 
 export const libraryService = new LibraryService();

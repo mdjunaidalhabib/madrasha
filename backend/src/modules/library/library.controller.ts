@@ -91,6 +91,13 @@ export const settleFine = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(res, { message: "Fine settled successfully", data });
 });
 
+/* ================= DASHBOARD SUMMARY ================= */
+
+export const getLibraryDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const data = await libraryService.getDashboardSummary(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
 /* ================= SETTINGS ================= */
 
 export const getFinePerDay = asyncHandler(async (req: Request, res: Response) => {

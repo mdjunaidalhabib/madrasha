@@ -1,4 +1,5 @@
 import { normalizeAppRole } from "../../shared/permissions";
+import { feeService } from "../fee/fee.service";
 import { sidebarRepository, SidebarRepository } from "./sidebar.repository";
 import { SidebarChildItem, SidebarModuleItem } from "./sidebar.types";
 import {
@@ -43,9 +44,14 @@ export class SidebarService {
     // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.
     // Filter it here so existing databases stop showing it immediately, even
     // before the seed is run again.
+    // "activity" (অ্যাক্টিভিটি লগ) used to be its own top-level module and is
+    // now a child of ইহতিমাম - filter any already-active DB row here so
+    // existing installations stop showing it as a separate sidebar entry
+    // immediately, even before the seed is run again (same reasoning as the
+    // "admission" filter above).
     let modules = madrasaModules
       .map((mm) => mm.module)
-      .filter((module) => module.keyName !== "admission");
+      .filter((module) => module.keyName !== "admission" && module.keyName !== "activity");
 
     // "attendance" (উপস্থিতি - manual bulk-mark + the RFID/fingerprint gate
     // kiosk and its device management) used to be children ("attendance_mark",
@@ -134,11 +140,17 @@ export class SidebarService {
     }
 
     const moduleIds = modules.map((m) => m.id);
-    const [features, pendingAdmissionsCount, pendingFeeStudentsCount] = await Promise.all([
-      this.repository.findFeaturesByModuleIds(moduleIds),
-      this.repository.countPendingAdmissions(madrasaId),
-      this.repository.countPendingFeeStudents(madrasaId),
-    ]);
+    // Resolved up front (not inside the Promise.all below) since
+    // countPendingFeeStudents needs it as an argument, not just another
+    // independent promise to await alongside the rest.
+    const admissionFeeTypes = await feeService.getAdmissionCategoryNames(madrasaId);
+    const [features, pendingAdmissionsCount, pendingFeeStudentsCount, overdueFeeStudentsCount] =
+      await Promise.all([
+        this.repository.findFeaturesByModuleIds(moduleIds),
+        this.repository.countPendingAdmissions(madrasaId),
+        this.repository.countPendingFeeStudents(madrasaId, admissionFeeTypes),
+        this.repository.countOverdueFeeStudents(madrasaId),
+      ]);
 
     return modules.map((mod) => {
       const disabled = !isModuleAllowed(roleKey, permissionKeys, mod.keyName || "");
@@ -214,6 +226,33 @@ export class SidebarService {
             disabled,
           });
         }
+
+        // "ফি ধরণ সেটিংস" - the FeeCategory picklist ফি সেটাপ's ফি ধরণ dropdown
+        // is now sourced from (see FeeCategory in fee.prisma) - surfaces it
+        // right next to ফি সেটাপ, same fallback reasoning as every entry in
+        // this block.
+        if (!children.some((child) => child.key === "fee_categories")) {
+          children.push({
+            id: -1007,
+            key: "fee_categories",
+            label: "ফি ধরণ সেটিংস",
+            sort_order: 4.5,
+            disabled,
+          });
+        }
+
+        // "অ্যাক্টিভিটি লগ" moved here from its own top-level module - surfaces
+        // it immediately in installations seeded before the move (same
+        // reasoning as fee_management above).
+        if (!children.some((child) => child.key === "activity")) {
+          children.push({
+            id: -1006,
+            key: "activity",
+            label: "অ্যাক্টিভিটি লগ",
+            sort_order: 5,
+            disabled,
+          });
+        }
       }
 
       // Same reasoning as ihtemam/attendance above - surfaces the moved
@@ -222,6 +261,11 @@ export class SidebarService {
       // before this module split existed.
       if (mod.keyName === "teacher_staff") {
         const fallbackTeacherStaffChildren: { key: string; label: string; sortOrder: number }[] = [
+          // Module-specific dashboard (active teacher/staff counts,
+          // gender/designation breakdowns, joining trend) - pinned first,
+          // same pattern as the শিক্ষার্থী/হিসাব/ফি/তালিমাত dashboard
+          // fallbacks elsewhere in this file.
+          { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
           { key: "teacher_admission", label: "নতুন শিক্ষক", sortOrder: 1 },
           { key: "all_teacher", label: "শিক্ষকসমূহ", sortOrder: 2 },
           { key: "staff_admission", label: "নতুন স্টাফ", sortOrder: 3 },
@@ -257,6 +301,10 @@ export class SidebarService {
         }
 
         const fallbackTalimatChildren: { key: string; label: string; sortOrder: number }[] = [
+          // Module-specific dashboard (pass/fail, average, grade
+          // distribution, class entry status) - pinned first, same pattern
+          // as the শিক্ষার্থী/হিসাব/ফি dashboard fallbacks elsewhere in this file.
+          { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
           { key: "routine", label: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
           { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
           { key: "settings", label: "সেটিং", sortOrder: 8 },
@@ -312,6 +360,20 @@ export class SidebarService {
         // "শিক্ষার্থী সমূহ" - relabel the already-seeded row immediately.
         const listChild = children.find((child) => child.key === "list");
         if (listChild) listChild.label = "শিক্ষার্থী সমূহ";
+
+        // Surfaces the new শিক্ষার্থী ড্যাশবোর্ড (module-specific dashboard)
+        // under শিক্ষার্থী in installations seeded before this feature
+        // existed. Same reasoning/pattern as the accounts dashboard fallback
+        // below - pinned first (sortOrder -1) so it always leads the menu.
+        if (!children.some((child) => child.key === "dashboard")) {
+          children.push({
+            id: -1006,
+            key: "dashboard",
+            label: "ড্যাশবোর্ড",
+            sort_order: -1,
+            disabled,
+          });
+        }
       }
 
       // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
@@ -349,8 +411,16 @@ export class SidebarService {
       // feature rows of its own yet. Badged with how many students still owe.
       if (mod.keyName === "fee") {
         const fallbackFeeChildren: { key: string; label: string; sortOrder: number }[] = [
+          // Module-specific dashboard (invoiced/collected/due totals, status
+          // breakdown, collection trend) - pinned first, same pattern as the
+          // শিক্ষার্থী/হিসাব dashboard fallbacks elsewhere in this file.
+          { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
           { key: "fee_collection", label: "ফি গ্রহণ", sortOrder: 1 },
           { key: "pending_fee", label: "ভর্তি ফি পেন্ডিং", sortOrder: 2 },
+          // "বকেয়া ফী" - every student with any overdue invoice (not just
+          // admission fees), grouped per student. Separate from pending_fee
+          // above (admission fees only, a "needs office follow-up" queue).
+          { key: "overdue_fee", label: "বকেয়া ফী", sortOrder: 3 },
         ];
         for (const fallback of fallbackFeeChildren) {
           if (!children.some((child) => child.key === fallback.key)) {
@@ -367,6 +437,11 @@ export class SidebarService {
         const pendingFeeChild = children.find((child) => child.key === "pending_fee");
         if (pendingFeeChild && pendingFeeStudentsCount > 0) {
           pendingFeeChild.count = pendingFeeStudentsCount;
+        }
+
+        const overdueFeeChild = children.find((child) => child.key === "overdue_fee");
+        if (overdueFeeChild && overdueFeeStudentsCount > 0) {
+          overdueFeeChild.count = overdueFeeStudentsCount;
         }
       }
 
@@ -426,6 +501,11 @@ export class SidebarService {
       if (mod.keyName === "communication") {
         const fallbackCommunicationChildren: { key: string; label: string; sortOrder: number }[] =
           [
+            // Module-specific dashboard (sent/failed/pending counts per
+            // channel, sending trend) - pinned first, same pattern as the
+            // শিক্ষার্থী/হিসাব/ফি/তালিমাত/শিক্ষক dashboard fallbacks elsewhere
+            // in this file.
+            { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
             { key: "single_send", label: "একক পাঠান", sortOrder: 1 },
             { key: "bulk_send", label: "বাল্ক পাঠান", sortOrder: 2 },
             { key: "history", label: "পাঠানোর ইতিহাস", sortOrder: 3 },
@@ -444,22 +524,31 @@ export class SidebarService {
         }
       }
 
-      // "settings" has no other real sidebar children in the DB yet - its
-      // sub-pages only exist as cards on the settings hub page (see
-      // SettingsPage.tsx). Same reasoning as reports/ihtemam/talimat/students
-      // above - surface them directly as an expandable submenu (matching how
-      // রিপোর্ট সমূহ already works) so jumping between settings pages doesn't
-      // require going back through the hub page every time.
+      // "library" has no dashboard fallback seeded yet - surfaces the new
+      // module-specific dashboard (book/copy totals, borrow-status
+      // breakdown, overdue count, unsettled fines, circulation trend)
+      // immediately, pinned first, same pattern as every other dashboard
+      // fallback in this file.
+      if (mod.keyName === "library" && !children.some((child) => child.key === "dashboard")) {
+        children.push({
+          id: -5200,
+          key: "dashboard",
+          label: "ড্যাশবোর্ড",
+          sort_order: -1,
+          disabled,
+        });
+      }
+
+      // "settings" only needs 2 sidebar entries now instead of one per
+      // sub-page: "ওয়েবসাইট সেটিংস" opens the website builder directly, and
+      // "সাধারণ সেটিংস" opens the settings hub (its own in-page tab menu -
+      // see SettingsLayout.tsx on the frontend - gives access to
+      // profile/branding/payment-methods/users/roles/plan/trash from there,
+      // no separate sidebar entry needed for each).
       if (mod.keyName === "settings") {
         const fallbackSettingsChildren: { key: string; label: string; sortOrder: number }[] = [
-          { key: "profile", label: "প্রোফাইল সেটিংস", sortOrder: -1 },
-          { key: "branding", label: "প্রতিষ্ঠান ব্র্যান্ডিং", sortOrder: -0.5 },
-          { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 0 },
-          { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", sortOrder: 1 },
-          { key: "users", label: "স্টাফ ব্যবস্থাপনা", sortOrder: 2 },
-          { key: "roles", label: "রোল ও পারমিশন", sortOrder: 3 },
-          { key: "plan", label: "প্ল্যান", sortOrder: 4 },
-          { key: "trash", label: "ট্র্যাশ", sortOrder: 5 },
+          { key: "profile", label: "সাধারণ সেটিংস", sortOrder: 0 },
+          { key: "website", label: "ওয়েবসাইট সেটিংস", sortOrder: 1 },
         ];
         for (const fallback of fallbackSettingsChildren) {
           if (!children.some((child) => child.key === fallback.key)) {

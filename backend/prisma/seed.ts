@@ -624,13 +624,6 @@ async function main() {
     },
     { keyName: "settings", name: "Settings", nameBn: "সেটিং", groupName: "core", sortOrder: 12 },
     {
-      keyName: "activity",
-      name: "Activity Log",
-      nameBn: "অ্যাক্টিভিটি লগ",
-      groupName: "core",
-      sortOrder: 13,
-    },
-    {
       keyName: "website",
       name: "Website Settings",
       nameBn: "ওয়েবসাইট সেটিংস",
@@ -671,6 +664,12 @@ async function main() {
         name: "Fee Setup",
         nameBn: "ফি সেটাপ",
         sortOrder: 2,
+      },
+      {
+        keyName: "activity",
+        name: "Activity Log",
+        nameBn: "অ্যাক্টিভিটি লগ",
+        sortOrder: 3,
       },
     ],
     // "teacher_admission"/"all_teacher" moved here from ইহতিমাম, joined by
@@ -742,6 +741,12 @@ async function main() {
         name: "Pending Admission Fee",
         nameBn: "ভর্তি ফি পেন্ডিং",
         sortOrder: 2,
+      },
+      {
+        keyName: "overdue_fee",
+        name: "Overdue Fee",
+        nameBn: "বকেয়া ফী",
+        sortOrder: 3,
       },
     ],
     // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
@@ -930,17 +935,20 @@ async function main() {
     if (!tier) continue;
 
     const safeKey = classKey.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    // feeType values match the FeeCategory names FEE_CATEGORY_DEFAULTS seeds
+    // for every tenant (see fee.constants.ts) - see FeeCategory in
+    // fee.prisma for why this is a free-text label, not an enum, now.
     const feeSpecs: {
       keyName: string;
       name: string;
       amount: number;
       frequency: "ONE_TIME" | "MONTHLY" | "YEARLY";
-      feeType: "ADMISSION" | "TUITION" | "EXAM" | "BOARDING";
+      feeType: string;
     }[] = [
-      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME", feeType: "ADMISSION" },
-      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY", feeType: "TUITION" },
-      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "EXAM" },
-      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY", feeType: "BOARDING" },
+      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME", feeType: "ভর্তি ফি" },
+      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY", feeType: "মাসিক বেতন" },
+      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "পরীক্ষার ফি" },
+      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY", feeType: "বোর্ডিং ফি" },
     ];
 
     for (const f of feeSpecs) {

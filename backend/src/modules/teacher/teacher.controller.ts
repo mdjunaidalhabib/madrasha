@@ -33,6 +33,12 @@ export const getTeachers = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(res, { data });
 });
 
+export const getTeacherDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const madrasaId = req.tenant?.madrasa_id;
+  const data = await teacherService.getDashboardSummary(madrasaId);
+  return ApiResponse.success(res, { data });
+});
+
 export const getTeacherById = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const data = await teacherService.getTeacherDetail(Number(req.params.id), madrasaId);

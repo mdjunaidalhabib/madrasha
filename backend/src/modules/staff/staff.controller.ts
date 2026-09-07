@@ -21,6 +21,12 @@ export const getStaffList = asyncHandler(async (req: Request, res: Response) => 
   return ApiResponse.success(res, { data });
 });
 
+export const getStaffDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const madrasaId = req.tenant?.madrasa_id;
+  const data = await staffService.getDashboardSummary(madrasaId);
+  return ApiResponse.success(res, { data });
+});
+
 export const getStaffById = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const data = await staffService.getStaffDetail(Number(req.params.id), madrasaId);

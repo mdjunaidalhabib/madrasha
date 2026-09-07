@@ -1,6 +1,7 @@
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   dashboard: () => import("../features/dashboard/DashboardPage"),
   "ihtemam/pending": () => import("../features/students/PendingAdmissionsPage"),
+  "ihtemam/fee-categories": () => import("../features/fee/FeeCategorySettingsPage"),
   "teacher_staff/teacher_admission": () => import("../features/teachers/TeacherPage"),
   "teacher_staff/all_teacher": () => import("../features/teachers/TeacherListPage"),
   "teacher_staff/staff_admission": () => import("../features/staff/StaffPage"),
@@ -24,6 +25,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "fee-management": () => import("../features/fee/FeeStructurePage"),
   "fee-collection": () => import("../features/fee/FeeInvoicesPage"),
   "fee/pending-fee": () => import("../features/fee/PendingAdmissionFeePage"),
+  "fee/overdue-fee": () => import("../features/fee/OverdueFeesPage"),
   "communication/single-send": () => import("../features/notifications/SingleSendPage"),
   "communication/bulk-send": () => import("../features/notifications/BulkSendPage"),
   "communication/history": () => import("../features/notifications/NotificationHistoryPage"),
@@ -38,10 +40,16 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "accounts/expense": () => import("../features/accounts/ExpensePage"),
   "accounts/transactions": () => import("../features/accounts/AccountListPage"),
   "accounts/funds": () => import("../features/accounts/AccountFundSettingsPage"),
+  settings: () => import("../features/admin/settings/SettingsLayout"),
+  "settings/profile": () => import("../features/admin/settings/ProfileSettingsPage"),
   "settings/branding": () => import("../features/admin/settings/BrandingSettingsPage"),
   "settings/plan": () => import("../features/admin/settings/PlanSettingsPage"),
   "settings/website": () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
-  activity: () => import("../features/activity/ActivityPage"),
+  "settings/payment-methods": () => import("../features/fee/PaymentMethodSettingsPage"),
+  "settings/roles": () => import("../features/roles/RolesPermissionsPage"),
+  "settings/users": () => import("../features/users/UsersPage"),
+  "settings/trash": () => import("../features/admin/TrashPage"),
+  "ihtemam/activity": () => import("../features/activity/ActivityPage"),
 };
 
 const prefetchedRoutes = new Set<string>();

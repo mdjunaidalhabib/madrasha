@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { endOfTodayUTC } from "../../shared/utils/date.util";
+import { FEE_CATEGORY_DEFAULTS } from "./fee.constants";
 
 export class FeeRepository {
   /* ================= FEE STRUCTURE ================= */
@@ -17,7 +19,20 @@ export class FeeRepository {
       include: {
         class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } },
         sessionRef: { select: { name: true, startDate: true, endDate: true } },
+        exam: { select: { id: true, name: true, year: true } },
       },
+    });
+  }
+
+  /** Every active (non-deleted) exam for this tenant, for the "যুক্ত পরীক্ষা"
+   * picker on the ফি কাঠামো form - a dedicated fee-module lookup so setting
+   * up an exam-linked fee never requires the exam.read permission (see
+   * ACCOUNTANT_DEFAULT_PERMISSION_KEYS, which has no exam.* grant). */
+  findExamsForTenant(madrasaId: number) {
+    return prisma.exam.findMany({
+      where: { madrasaId, deletedAt: null, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, year: true },
     });
   }
 
@@ -86,13 +101,22 @@ export class FeeRepository {
   /** Every active fee structure that applies to a student in this class +
    * session (classId null on the structure means "every class"), used to
    * auto-bill a single student right at admission/transfer time. Pass
-   * `feeTypes` to bill only specific fee categories (e.g. ["ADMISSION"] at
-   * submission time, before a Muhtamim has approved the admission). */
+   * `feeTypes` to bill only specific fee categories (e.g. the tenant's
+   * admission-flagged category names at submission time, before a Muhtamim
+   * has approved the admission - see FeeService.getAdmissionCategoryNames).
+   *
+   * `includeExamLinked` (default false) controls whether a পরীক্ষার ফি tied
+   * to a specific Exam (FeeStructure.examId) is included. Automatic
+   * admission/transfer billing always passes false, so a new student is
+   * never billed up front for exams that haven't happened yet - those get
+   * billed only through an explicit "generate" action (see
+   * FeeService.backfillInvoicesForAllStudents), which passes true. */
   findActiveStructuresForBilling(
     madrasaId: number,
     classId: number,
     sessionId: number,
     feeTypes?: string[],
+    includeExamLinked = false,
   ) {
     return prisma.feeStructure.findMany({
       where: {
@@ -101,7 +125,97 @@ export class FeeRepository {
         isActive: true,
         OR: [{ classId }, { classId: null }],
         ...(feeTypes && feeTypes.length ? { feeType: { in: feeTypes as any } } : {}),
+        ...(includeExamLinked ? {} : { examId: null }),
       },
+    });
+  }
+
+  /* ================= ফি ধরণ (FeeCategory) ================= */
+
+  countCategories(madrasaId: number) {
+    return prisma.feeCategory.count({ where: { madrasaId } });
+  }
+
+  findCategories(madrasaId: number, activeOnly = false) {
+    return prisma.feeCategory.findMany({
+      where: { madrasaId, ...(activeOnly ? { isActive: true } : {}) },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findCategoryForTenant(id: number, madrasaId: number) {
+    return prisma.feeCategory.findFirst({ where: { id, madrasaId } });
+  }
+
+  createCategory(data: Prisma.FeeCategoryUncheckedCreateInput) {
+    return prisma.feeCategory.create({ data });
+  }
+
+  updateCategory(id: number, data: Prisma.FeeCategoryUpdateInput) {
+    return prisma.feeCategory.update({ where: { id }, data });
+  }
+
+  deleteCategory(id: number) {
+    return prisma.feeCategory.delete({ where: { id } });
+  }
+
+  /** Lazily backfills the starter ফি ধরণ picklist for a tenant that has none
+   * yet (existing installs from before this feature, and brand-new madrasas
+   * alike) - called once from FeeService.getCategories(). Same pattern as
+   * AccountRepository.seedDefaultFunds. */
+  seedDefaultCategories(madrasaId: number) {
+    return prisma.$transaction(
+      FEE_CATEGORY_DEFAULTS.map((c, i) =>
+        prisma.feeCategory.create({
+          data: { madrasaId, name: c.name, isAdmissionType: c.isAdmissionType, sortOrder: i },
+        }),
+      ),
+    );
+  }
+
+  /** Active FeeCategory names flagged isAdmissionType for this tenant -
+   * replaces the old hardcoded `feeType: "ADMISSION"` filter (see
+   * FeeCategory in fee.prisma). Callers should go through
+   * FeeService.getAdmissionCategoryNames, which lazily seeds the starter
+   * picklist first so this is never empty for a real tenant. */
+  async findAdmissionCategoryNames(madrasaId: number) {
+    const rows = await prisma.feeCategory.findMany({
+      where: { madrasaId, isAdmissionType: true, isActive: true },
+      select: { name: true },
+    });
+    return rows.map((r) => r.name);
+  }
+
+  /* ================= STUDENT FEE DISCOUNTS ================= */
+
+  /** Every standing per-fee-structure discount set for one student (see
+   * FeeService.previewStudentFees/setStudentFeeDiscount) - merged onto the
+   * fee-structure preview shown before admission approval, and re-applied
+   * every time a new invoice is generated for that student+structure. */
+  findDiscountsForStudent(madrasaId: number, studentId: number) {
+    return prisma.studentFeeDiscount.findMany({ where: { madrasaId, studentId } });
+  }
+
+  /** Sets (or, when `waivedAmount` is zero, removes) the standing discount
+   * for one student+fee-structure pair. Keyed on the uniq_student_fee_discount
+   * constraint so re-setting a discount replaces the previous one outright. */
+  async upsertStudentFeeDiscount(
+    madrasaId: number,
+    studentId: number,
+    feeStructureId: number,
+    waivedAmount: number,
+    reason: string,
+    setById: number | undefined,
+  ) {
+    if (waivedAmount <= 0) {
+      await prisma.studentFeeDiscount.deleteMany({ where: { madrasaId, studentId, feeStructureId } });
+      return null;
+    }
+
+    return prisma.studentFeeDiscount.upsert({
+      where: { studentId_feeStructureId: { studentId, feeStructureId } },
+      create: { madrasaId, studentId, feeStructureId, waivedAmount, reason, setById },
+      update: { waivedAmount, reason, setById, setAt: new Date() },
     });
   }
 
@@ -146,6 +260,52 @@ export class FeeRepository {
     return created;
   }
 
+  /** Every UNPAID/PARTIALLY_PAID invoice due today-or-earlier, across every
+   * student - same "overdue" definition as the dashboard's বকেয়া ফি widget
+   * (see endOfTodayUTC), for the dedicated "বকেয়া ফী" management page.
+   * Unlike findPendingInvoices (admission fees only), this covers every fee
+   * type. Grouped per student in FeeService.listOverdueFees. */
+  findOverdueInvoices(madrasaId: number, classId?: number, search?: string) {
+    const trimmedSearch = search?.trim();
+    const numericSearch =
+      trimmedSearch && /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : undefined;
+
+    return prisma.invoice.findMany({
+      where: {
+        madrasaId,
+        dueDate: { lte: endOfTodayUTC() },
+        status: { in: ["UNPAID", "PARTIALLY_PAID"] },
+        student: {
+          admissionStatus: { not: "REJECTED" },
+          ...(classId ? { classId } : {}),
+          ...(trimmedSearch
+            ? {
+                OR: [
+                  { nameBn: { contains: trimmedSearch, mode: "insensitive" } },
+                  ...(numericSearch !== undefined
+                    ? [{ roll: numericSearch }, { registrationNo: numericSearch }]
+                    : []),
+                ],
+              }
+            : {}),
+        },
+      },
+      orderBy: { dueDate: "asc" },
+      include: {
+        student: {
+          select: {
+            id: true,
+            nameBn: true,
+            roll: true,
+            registrationNo: true,
+            guardianPhone: true,
+            classRef: { select: { nameBn: true } },
+          },
+        },
+      },
+    });
+  }
+
   findInvoices(madrasaId: number, where: Prisma.InvoiceWhereInput) {
     return prisma.invoice.findMany({
       where: { madrasaId, ...where },
@@ -157,24 +317,25 @@ export class FeeRepository {
     });
   }
 
-  /** Every unpaid/partially-paid ADMISSION-fee invoice across all students,
+  /** Every unpaid/partially-paid admission-fee invoice across all students,
    * oldest due date first - backs the dedicated "ভর্তি ফি পেন্ডিং" sidebar
    * page (separate from ফি গ্রহণ, which stays purely search-by-student).
-   * Deliberately scoped to admission fees only, not every due invoice -
-   * routine monthly tuition/exam/boarding dues are handled through normal
-   * fee collection, not this "needs office follow-up" list. Only APPROVED
+   * Deliberately scoped to admission fees only (`admissionFeeTypes` - see
+   * FeeService.getAdmissionCategoryNames), not every due invoice - routine
+   * monthly tuition/exam/boarding dues are handled through normal fee
+   * collection, not this "needs office follow-up" list. Only APPROVED
    * students - হিসাব বিভাগ can't collect an admission fee until a Muhtamim
    * has approved that application (PENDING isn't ready yet, REJECTED never
    * becomes a student - see StudentService.approveAdmission/rejectAdmission).
    * Fee collection is decoupled from approval itself (Muhtamim doesn't
    * collect payment, only optionally waives), so this list is what actually
    * gates when হিসাব বিভাগ's queue picks a student up. */
-  findPendingInvoices(madrasaId: number, limit: number, offset: number) {
+  findPendingInvoices(madrasaId: number, limit: number, offset: number, admissionFeeTypes: string[]) {
     return prisma.invoice.findMany({
       where: {
         madrasaId,
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
-        feeStructure: { feeType: "ADMISSION" },
+        feeStructure: { feeType: { in: admissionFeeTypes } },
         student: { admissionStatus: "APPROVED" },
         queueClearedAt: null,
       },
@@ -193,12 +354,12 @@ export class FeeRepository {
   /** "সব ক্লিয়ার করুন" - hides every invoice currently on the pending queue
    * from that queue only (queueClearedAt), for every office user. The
    * invoice itself is untouched and stays fully payable from ছাত্র ফি গ্রহণ. */
-  clearPendingInvoices(madrasaId: number) {
+  clearPendingInvoices(madrasaId: number, admissionFeeTypes: string[]) {
     return prisma.invoice.updateMany({
       where: {
         madrasaId,
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
-        feeStructure: { feeType: "ADMISSION" },
+        feeStructure: { feeType: { in: admissionFeeTypes } },
         student: { admissionStatus: "APPROVED" },
         queueClearedAt: null,
       },
@@ -238,6 +399,48 @@ export class FeeRepository {
 
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(fn);
+  }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  aggregateInvoiceTotals(madrasaId: number) {
+    return prisma.invoice.aggregate({
+      where: { madrasaId },
+      _sum: { amount: true, paidAmount: true, waivedAmount: true },
+      _count: { _all: true },
+    });
+  }
+
+  groupInvoicesByStatus(madrasaId: number) {
+    return prisma.invoice.groupBy({
+      by: ["status"],
+      where: { madrasaId },
+      _count: { _all: true },
+    });
+  }
+
+  aggregateOverdueInvoices(madrasaId: number) {
+    return prisma.invoice.aggregate({
+      where: { madrasaId, status: { in: ["UNPAID", "PARTIALLY_PAID"] }, dueDate: { lt: new Date() } },
+      _sum: { amount: true, paidAmount: true },
+      _count: { _all: true },
+    });
+  }
+
+  /** Monthly collected-payment totals for the last `limit` months with at
+   * least one payment, newest first - feeds the ফি ব্যবস্থাপনা dashboard's
+   * collection trend chart. Raw SQL since GROUP BY on a formatted date has
+   * no clean Prisma equivalent (same reasoning as
+   * dashboard.repository.ts's period-based queries). */
+  findMonthlyCollectionTrend(madrasaId: number, limit: number) {
+    return prisma.$queryRaw<{ period: string; total: Prisma.Decimal | number }[]>`
+      SELECT to_char(paid_at, 'YYYY-MM') AS period, SUM(amount) AS total
+      FROM payments
+      WHERE madrasa_id = ${madrasaId}
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT ${limit}
+    `;
   }
 
   /* ================= MANUAL PAYMENT METHOD SETUP ================= */

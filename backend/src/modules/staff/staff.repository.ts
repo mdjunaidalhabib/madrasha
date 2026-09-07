@@ -57,6 +57,42 @@ export class StaffRepository {
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(fn);
   }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  countActive(madrasaId: number) {
+    return prisma.staff.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+  }
+
+  groupByGender(madrasaId: number) {
+    return prisma.staff.groupBy({
+      by: ["gender"],
+      where: { madrasaId, isActive: 1, deletedAt: null },
+      _count: { _all: true },
+    });
+  }
+
+  groupByDesignation(madrasaId: number) {
+    return prisma.staff.groupBy({
+      by: ["designation"],
+      where: { madrasaId, isActive: 1, deletedAt: null, designation: { not: null } },
+      _count: { _all: true },
+    });
+  }
+
+  /** Monthly joining counts for the last `limit` months with at least one
+   * joining, newest first - feeds the শিক্ষক ও স্টাফ dashboard's joining
+   * trend chart. Mirrors TeacherRepository.findJoiningTrend. */
+  findJoiningTrend(madrasaId: number, limit: number) {
+    return prisma.$queryRaw<{ period: string; count: bigint }[]>`
+      SELECT to_char(joining_date, 'YYYY-MM') AS period, COUNT(*) AS count
+      FROM staff
+      WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL AND joining_date IS NOT NULL
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT ${limit}
+    `;
+  }
 }
 
 export const staffRepository = new StaffRepository();

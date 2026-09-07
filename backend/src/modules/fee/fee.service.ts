@@ -6,17 +6,26 @@ import { studentRepository } from "../students/student.repository";
 import { notificationService } from "../notifications/notification.service";
 import { accountService } from "../accounts/account.service";
 import {
+  CreateFeeCategoryRequestDto,
   CreateFeeStructureRequestDto,
   CreatePaymentMethodSettingRequestDto,
   DeleteAllInvoicesRequestDto,
   InvoiceQueryDto,
+  OverdueFeesQueryDto,
   PendingInvoicesQueryDto,
   RecordPaymentRequestDto,
+  SetStudentFeeDiscountRequestDto,
+  UpdateFeeCategoryRequestDto,
   UpdateFeeStructureRequestDto,
   UpdatePaymentMethodSettingRequestDto,
   WaiveInvoiceRequestDto,
 } from "./fee.dto";
-import { FEE_FREQUENCIES, FEE_TYPES, PAYMENT_METHODS, PAYMENT_METHOD_TYPES } from "./fee.constants";
+import {
+  DEFAULT_FEE_CATEGORY_NAME,
+  FEE_FREQUENCIES,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_TYPES,
+} from "./fee.constants";
 
 const isEmpty = (value: unknown) =>
   value === undefined || value === null || String(value).trim() === "";
@@ -83,6 +92,29 @@ const monthsInRange = (startDate: Date, endDate: Date): Array<{ year: number; mo
  *    "বিদ্যমান সব ছাত্রের ফি সেট করুন" backfill) naturally top up any
  *    months that have since elapsed, since generateInvoicesOnTx skips
  *    whatever already exists. */
+/** A standing discount (see StudentFeeDiscount) for one fee structure,
+ * applied to every invoice buildAutoInvoiceRows generates for it - both at
+ * admission approval and by the recurring monthly scheduler - so a
+ * discount set once keeps applying for as long as the fee is billed. */
+type FeeDiscount = { waivedAmount: number; reason: string; setById: number | null };
+
+const applyDiscount = (
+  row: { amount: any },
+  discount: FeeDiscount | undefined,
+): { waivedAmount: number; waiveReason: string | null; waivedById: number | null; waivedAt: Date | null; status: ReturnType<typeof deriveStatus> } => {
+  if (!discount) {
+    return { waivedAmount: 0, waiveReason: null, waivedById: null, waivedAt: null, status: "UNPAID" };
+  }
+  const waivedAmount = Math.min(discount.waivedAmount, Number(row.amount));
+  return {
+    waivedAmount,
+    waiveReason: discount.reason,
+    waivedById: discount.setById,
+    waivedAt: new Date(),
+    status: deriveStatus(Number(row.amount), 0, waivedAmount),
+  };
+};
+
 const buildAutoInvoiceRows = (
   madrasaId: number,
   studentId: number,
@@ -90,6 +122,7 @@ const buildAutoInvoiceRows = (
   session: { startDate: Date; endDate: Date },
   admissionDate: Date,
   today: Date = new Date(),
+  discountsByStructureId: Map<number, FeeDiscount> = new Map(),
 ) => {
   const rows: Array<{
     madrasaId: number;
@@ -99,12 +132,19 @@ const buildAutoInvoiceRows = (
     amount: any;
     dueDate: Date;
     month: string | null;
+    waivedAmount: number;
+    waiveReason: string | null;
+    waivedById: number | null;
+    waivedAt: Date | null;
+    status: ReturnType<typeof deriveStatus>;
   }> = [];
 
   const effectiveStart = admissionDate > session.startDate ? admissionDate : session.startDate;
   const billableEnd = session.endDate < today ? session.endDate : today;
 
   for (const structure of structures) {
+    const discount = discountsByStructureId.get(structure.id);
+
     if (structure.frequency !== "MONTHLY") {
       // ONE_TIME/YEARLY fees (admission fee, exam fee, etc.) are still
       // billed in full immediately - only recurring MONTHLY fees get the
@@ -118,6 +158,7 @@ const buildAutoInvoiceRows = (
         amount: structure.amount,
         dueDate: effectiveStart,
         month: null,
+        ...applyDiscount({ amount: structure.amount }, discount),
       });
       continue;
     }
@@ -138,6 +179,7 @@ const buildAutoInvoiceRows = (
         amount: structure.amount,
         dueDate,
         month: monthStr,
+        ...applyDiscount({ amount: structure.amount }, discount),
       });
     }
   }
@@ -185,6 +227,33 @@ export class FeeService {
     }
   }
 
+  /** Backs the "যুক্ত পরীক্ষা" picker on the ফি কাঠামো form - see
+   * FeeRepository.findExamsForTenant for why this is its own fee-scoped
+   * lookup rather than reusing GET /exams. */
+  async listExamsForFeeLinking(madrasaId: number) {
+    try {
+      return await this.repository.findExamsForTenant(madrasaId);
+    } catch (err) {
+      return friendlyFailure("listExamsForFeeLinking error:", err, "Failed to load exams");
+    }
+  }
+
+  /** Validates that `examId` (if given) belongs to this tenant, resolving it
+   * to a plain number (or null when omitted/cleared). Shared by
+   * createStructure/updateStructure - see FeeStructure.examId. */
+  private async resolveExamId(
+    madrasaId: number,
+    examId: CreateFeeStructureRequestDto["exam_id"],
+  ): Promise<number | null> {
+    if (isEmpty(examId)) return null;
+    const id = Number(examId);
+    const exams = await this.repository.findExamsForTenant(madrasaId);
+    if (!exams.some((e) => e.id === id)) {
+      throw new BadRequestError("নির্বাচিত পরীক্ষা খুঁজে পাওয়া যায়নি");
+    }
+    return id;
+  }
+
   async createStructure(madrasaId: number, dto: CreateFeeStructureRequestDto) {
     if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency)) {
       throw new BadRequestError("name, amount and frequency are required");
@@ -192,15 +261,9 @@ export class FeeService {
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
       throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
     }
-    if (
-      dto.fee_type !== undefined &&
-      !isEmpty(dto.fee_type) &&
-      !FEE_TYPES.includes(dto.fee_type as any)
-    ) {
-      throw new BadRequestError(`fee_type must be one of: ${FEE_TYPES.join(", ")}`);
-    }
     const amount = toAmount(dto.amount, "amount");
     const session = await this.resolveSession(madrasaId, dto);
+    const examId = await this.resolveExamId(madrasaId, dto.exam_id);
 
     try {
       await this.repository.createStructure(madrasaId, {
@@ -208,9 +271,10 @@ export class FeeService {
         name: String(dto.name).trim(),
         amount,
         frequency: dto.frequency,
-        feeType: isEmpty(dto.fee_type) ? "OTHER" : dto.fee_type,
+        feeType: isEmpty(dto.fee_type) ? DEFAULT_FEE_CATEGORY_NAME : String(dto.fee_type).trim(),
         sessionId: session.id,
         academicYear: session.name,
+        examId,
       });
     } catch (err) {
       return friendlyFailure("createFeeStructure error:", err, "Failed to create fee structure");
@@ -230,15 +294,15 @@ export class FeeService {
       data.frequency = dto.frequency;
     }
     if (dto.fee_type !== undefined) {
-      if (!FEE_TYPES.includes(dto.fee_type as any)) {
-        throw new BadRequestError(`fee_type must be one of: ${FEE_TYPES.join(", ")}`);
-      }
-      data.feeType = dto.fee_type;
+      data.feeType = isEmpty(dto.fee_type) ? DEFAULT_FEE_CATEGORY_NAME : String(dto.fee_type).trim();
     }
     if (dto.session_id !== undefined || dto.academic_year !== undefined) {
       const session = await this.resolveSession(madrasaId, dto);
       data.sessionId = session.id;
       data.academicYear = session.name;
+    }
+    if (dto.exam_id !== undefined) {
+      data.examId = await this.resolveExamId(madrasaId, dto.exam_id);
     }
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
 
@@ -261,6 +325,84 @@ export class FeeService {
     }
   }
 
+  /* ================= ফি ধরণ (FeeCategory) ================= */
+
+  /** Every ফি ধরণ for this tenant (active + inactive, for the settings
+   * page) - lazily seeds the starter picklist (see fee.constants.ts
+   * FEE_CATEGORY_DEFAULTS) the first time a tenant has none yet, same "seed
+   * once, then let the admin freely edit" pattern as
+   * AccountService.getOptions/seedDefaultFunds. */
+  async getCategories(madrasaId: number) {
+    try {
+      const count = await this.repository.countCategories(madrasaId);
+      if (count === 0) await this.repository.seedDefaultCategories(madrasaId);
+      return await this.repository.findCategories(madrasaId);
+    } catch (err) {
+      return friendlyFailure("getFeeCategories error:", err, "Failed to load fee categories");
+    }
+  }
+
+  /** Active category names flagged isAdmissionType - replaces the old
+   * hardcoded feeType === "ADMISSION" checks (see FeeCategory in
+   * fee.prisma). Goes through getCategories() first so a tenant that has
+   * never opened ফি ধরণ সেটিংস still gets the starter picklist seeded (and
+   * therefore still bills its ভর্তি ফি at admission submission)
+   * automatically. */
+  async getAdmissionCategoryNames(madrasaId: number) {
+    await this.getCategories(madrasaId);
+    return this.repository.findAdmissionCategoryNames(madrasaId);
+  }
+
+  async createCategory(madrasaId: number, dto: CreateFeeCategoryRequestDto) {
+    const name = String(dto.name || "").trim();
+    if (!name) throw new BadRequestError("নাম দিন");
+
+    try {
+      const count = await this.repository.countCategories(madrasaId);
+      await this.repository.createCategory({
+        madrasaId,
+        name,
+        isAdmissionType: Boolean(dto.is_admission_type),
+        sortOrder: count,
+      });
+    } catch (err) {
+      return friendlyFailure("createFeeCategory error:", err, "Failed to create fee category");
+    }
+  }
+
+  async updateCategory(id: number, madrasaId: number, dto: UpdateFeeCategoryRequestDto) {
+    const existing = await this.repository.findCategoryForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError("Fee category not found");
+
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) {
+      const name = String(dto.name).trim();
+      if (!name) throw new BadRequestError("নাম দিন");
+      data.name = name;
+    }
+    if (dto.is_admission_type !== undefined) data.isAdmissionType = Boolean(dto.is_admission_type);
+    if (dto.sort_order !== undefined) data.sortOrder = Number(dto.sort_order);
+    if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
+    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+
+    try {
+      await this.repository.updateCategory(id, data);
+    } catch (err) {
+      return friendlyFailure("updateFeeCategory error:", err, "Failed to update fee category");
+    }
+  }
+
+  async deleteCategory(id: number, madrasaId: number) {
+    const existing = await this.repository.findCategoryForTenant(id, madrasaId);
+    if (!existing) throw new NotFoundError("Fee category not found");
+
+    try {
+      await this.repository.deleteCategory(id);
+    } catch (err) {
+      return friendlyFailure("deleteFeeCategory error:", err, "Failed to delete fee category");
+    }
+  }
+
   /* ================= INVOICE GENERATION ================= */
 
   /** Auto-bills a single student right at admission/transfer: every active
@@ -279,6 +421,7 @@ export class FeeService {
     sessionId: number,
     admissionDate: Date,
     feeTypes?: string[],
+    includeExamLinked = false,
   ) {
     const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
     if (!session) return { created: 0 };
@@ -288,10 +431,27 @@ export class FeeService {
       classId,
       sessionId,
       feeTypes,
+      includeExamLinked,
     );
     if (structures.length === 0) return { created: 0 };
 
-    const rows = buildAutoInvoiceRows(madrasaId, studentId, structures, session, admissionDate);
+    const discounts = await this.repository.findDiscountsForStudent(madrasaId, studentId);
+    const discountsByStructureId = new Map(
+      discounts.map((d) => [
+        d.feeStructureId,
+        { waivedAmount: Number(d.waivedAmount), reason: d.reason, setById: d.setById },
+      ]),
+    );
+
+    const rows = buildAutoInvoiceRows(
+      madrasaId,
+      studentId,
+      structures,
+      session,
+      admissionDate,
+      undefined,
+      discountsByStructureId,
+    );
     if (rows.length === 0) return { created: 0 };
 
     const created = await this.repository.runTransaction((tx) =>
@@ -300,12 +460,108 @@ export class FeeService {
     return { created };
   }
 
+  /* ================= PRE-APPROVAL FEE PREVIEW & DISCOUNTS ================= */
+
+  /** The determined fee list for one student's class/session - every active
+   * FeeStructure that would get billed by autoGenerateInvoicesForStudent,
+   * merged with any standing StudentFeeDiscount already set for it. Used by
+   * the "পেন্ডিং ভর্তি অনুমোদন" page so a Muhtamim can see (and waive/reduce)
+   * what a pending applicant will owe before ever approving them - no
+   * Invoice rows exist yet at that point (see StudentService.approveAdmission). */
+  async previewStudentFees(madrasaId: number, studentId: number) {
+    const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
+    if (!student) throw new NotFoundError("Student not found");
+
+    // includeExamLinked: true - this is an informational preview shown
+    // before approval, so a পরীক্ষার ফি tied to a specific exam is still
+    // worth showing even though it won't actually be billed at approval
+    // (see autoGenerateInvoicesForStudent, which defaults to excluding it).
+    const structures = await this.repository.findActiveStructuresForBilling(
+      madrasaId,
+      student.classId,
+      student.sessionId,
+      undefined,
+      true,
+    );
+    const discounts = await this.repository.findDiscountsForStudent(madrasaId, studentId);
+    const discountByStructureId = new Map(discounts.map((d) => [d.feeStructureId, d]));
+
+    return structures.map((structure) => {
+      const discount = discountByStructureId.get(structure.id);
+      return {
+        feeStructureId: structure.id,
+        name: structure.name,
+        feeType: structure.feeType,
+        frequency: structure.frequency,
+        amount: Number(structure.amount),
+        waivedAmount: discount ? Number(discount.waivedAmount) : 0,
+        reason: discount?.reason ?? null,
+        examLinked: structure.examId != null,
+      };
+    });
+  }
+
+  /** Sets (amount > 0) or removes (amount 0) a standing discount against one
+   * fee structure for a pending applicant - see buildAutoInvoiceRows, which
+   * applies it to every invoice generated for that student+structure from
+   * here on, including future MONTHLY invoices from the daily scheduler.
+   * Deliberately scoped to PENDING admissions only: an already-approved
+   * student's existing invoices are waived one at a time via
+   * FeeService.waiveInvoice instead, which this intentionally does not
+   * touch. */
+  async setStudentFeeDiscount(
+    madrasaId: number,
+    studentId: number,
+    feeStructureId: number,
+    dto: SetStudentFeeDiscountRequestDto,
+    setById: number | undefined,
+  ) {
+    const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
+    if (!student) throw new NotFoundError("Student not found");
+    if (student.admissionStatus !== "PENDING") {
+      throw new BadRequestError("এই সুবিধা শুধুমাত্র পেন্ডিং ভর্তির জন্য প্রযোজ্য");
+    }
+
+    const structures = await this.repository.findActiveStructuresForBilling(
+      madrasaId,
+      student.classId,
+      student.sessionId,
+      undefined,
+      true,
+    );
+    if (!structures.some((s) => s.id === feeStructureId)) {
+      throw new BadRequestError("এই ছাত্রের জন্য এই ফি প্রযোজ্য নয়");
+    }
+
+    const amount = Number(dto.amount);
+    if (Number.isNaN(amount) || amount < 0) throw new BadRequestError("সঠিক পরিমাণ দিন");
+    if (amount > 0 && !dto.reason?.trim()) throw new BadRequestError("কারণ লিখুন");
+
+    await this.repository.upsertStudentFeeDiscount(
+      madrasaId,
+      studentId,
+      feeStructureId,
+      amount,
+      dto.reason?.trim() || "",
+      setById,
+    );
+
+    return this.previewStudentFees(madrasaId, studentId);
+  }
+
   /** "বিদ্যমান সব ছাত্রের ফি সেট করুন" - runs autoGenerateInvoicesForStudent
    * for every currently-enrolled student instead of just newly admitted
    * ones, so installations that already had students before auto-billing
    * existed (or transferred/promoted into a new session) can be backfilled
    * in one click. Per-student failures are counted, not thrown, so one bad
-   * student record can't abort billing for the rest of the class. */
+   * student record can't abort billing for the rest of the class.
+   *
+   * includeExamLinked: true - this is also what actually bills a পরীক্ষার ফি
+   * tied to a specific exam (see FeeStructure.examId): it runs automatically
+   * right after such a structure is created (see FeeStructurePage.tsx) and
+   * can be re-run any time office staff decides the exam is now upcoming, so
+   * this explicit action is the intended trigger point instead of the
+   * automatic admission-approval billing (which always excludes it). */
   async backfillInvoicesForAllStudents(madrasaId: number, classId?: number, sessionId?: number) {
     const students = await this.repository.findAllActiveStudents(madrasaId, classId, sessionId);
 
@@ -321,6 +577,8 @@ export class FeeService {
           student.classId,
           student.sessionId,
           student.admissionDate ?? new Date(),
+          undefined,
+          true,
         );
         invoicesCreated += result.created;
         studentsProcessed += 1;
@@ -410,6 +668,21 @@ export class FeeService {
       // One transaction PER STUDENT (a handful of rows, fast) - never one
       // transaction for the whole group (see the doc comment above for why).
       for (const student of group.students) {
+        let discountsByStructureId: Map<number, FeeDiscount>;
+        try {
+          const discounts = await this.repository.findDiscountsForStudent(group.madrasaId, student.id);
+          discountsByStructureId = new Map(
+            discounts.map((d) => [
+              d.feeStructureId,
+              { waivedAmount: Number(d.waivedAmount), reason: d.reason, setById: d.setById },
+            ]),
+          );
+        } catch (err) {
+          studentsFailed += 1;
+          logger.error("CURRENT-MONTH INVOICE GENERATION ERROR (discount lookup):", err);
+          continue;
+        }
+
         const rows = buildAutoInvoiceRows(
           group.madrasaId,
           student.id,
@@ -417,6 +690,7 @@ export class FeeService {
           session,
           student.admissionDate ?? session.startDate,
           today,
+          discountsByStructureId,
         );
         if (rows.length === 0) continue;
 
@@ -447,15 +721,90 @@ export class FeeService {
     }
   }
 
+  /** Dedicated "বকেয়া ফী" management page - every student with at least one
+   * overdue invoice (any fee type), grouped so office staff sees one row per
+   * student with their total due instead of hunting through invoices one by
+   * one. Sorted by total due, largest first. */
+  async listOverdueFees(madrasaId: number, query: OverdueFeesQueryDto) {
+    const classId = query.class_id ? Number(query.class_id) : undefined;
+
+    try {
+      const invoices = await this.repository.findOverdueInvoices(madrasaId, classId, query.search);
+
+      const byStudent = new Map<
+        number,
+        {
+          studentId: number;
+          studentName: string;
+          roll: number | null;
+          registrationNo: number | null;
+          className: string | null;
+          guardianPhone: string | null;
+          totalDue: number;
+          invoiceCount: number;
+          oldestDueDate: Date;
+          invoices: Array<{
+            id: number;
+            title: string;
+            dueDate: Date;
+            month: string | null;
+            remaining: number;
+          }>;
+        }
+      >();
+
+      for (const invoice of invoices) {
+        const remaining =
+          Number(invoice.amount) - Number(invoice.paidAmount) - Number(invoice.waivedAmount || 0);
+        const row = {
+          id: invoice.id,
+          title: invoice.title,
+          dueDate: invoice.dueDate,
+          month: invoice.month,
+          remaining,
+        };
+
+        const existing = byStudent.get(invoice.studentId);
+        if (existing) {
+          existing.totalDue += remaining;
+          existing.invoiceCount += 1;
+          existing.invoices.push(row);
+          if (invoice.dueDate < existing.oldestDueDate) existing.oldestDueDate = invoice.dueDate;
+        } else {
+          byStudent.set(invoice.studentId, {
+            studentId: invoice.studentId,
+            studentName: invoice.student.nameBn,
+            roll: invoice.student.roll,
+            registrationNo: invoice.student.registrationNo,
+            className: invoice.student.classRef?.nameBn || null,
+            guardianPhone: invoice.student.guardianPhone,
+            totalDue: remaining,
+            invoiceCount: 1,
+            oldestDueDate: invoice.dueDate,
+            invoices: [row],
+          });
+        }
+      }
+
+      const students = Array.from(byStudent.values()).sort((a, b) => b.totalDue - a.totalDue);
+      const totalDue = students.reduce((sum, s) => sum + s.totalDue, 0);
+
+      return { students, studentCount: students.length, invoiceCount: invoices.length, totalDue };
+    } catch (err) {
+      return friendlyFailure("listOverdueFees error:", err, "Failed to load overdue fees");
+    }
+  }
+
   /** Dedicated "ভর্তি ফি পেন্ডিং" page - every student with an unpaid/
-   * partially paid ADMISSION-fee invoice (see findPendingInvoices for why
+   * partially paid admission-fee invoice (see findPendingInvoices for why
    * it's scoped to just that fee type). */
   async listPendingInvoices(madrasaId: number, query: PendingInvoicesQueryDto) {
     const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 200);
     const offset = Math.max(Number(query.offset) || 0, 0);
 
     try {
-      return await this.repository.findPendingInvoices(madrasaId, limit, offset);
+      const admissionFeeTypes = await this.getAdmissionCategoryNames(madrasaId);
+      return await this.repository.findPendingInvoices(madrasaId, limit, offset, admissionFeeTypes);
     } catch (err) {
       return friendlyFailure("listPendingInvoices error:", err, "Failed to load pending invoices");
     }
@@ -467,7 +816,8 @@ export class FeeService {
    * exactly as due/collectible as before through ছাত্র ফি গ্রহণ. */
   async clearPendingInvoices(madrasaId: number) {
     try {
-      const result = await this.repository.clearPendingInvoices(madrasaId);
+      const admissionFeeTypes = await this.getAdmissionCategoryNames(madrasaId);
+      const result = await this.repository.clearPendingInvoices(madrasaId, admissionFeeTypes);
       return { cleared: result.count };
     } catch (err) {
       return friendlyFailure(
@@ -699,6 +1049,53 @@ export class FeeService {
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
       return friendlyFailure("waiveInvoice error:", err, "Failed to waive invoice");
+    }
+  }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  /** Aggregate stats for the ফি ব্যবস্থাপনা module's own dashboard - invoiced/
+   * collected/due totals, a status breakdown, overdue exposure and a
+   * 12-month collection trend. Separate from the tenant-wide GET /dashboard
+   * summary, which only carries overdue invoices among every other module's
+   * stats. */
+  async getDashboardSummary(madrasaId: number) {
+    try {
+      const [totals, statusGroups, overdue, trend] = await Promise.all([
+        this.repository.aggregateInvoiceTotals(madrasaId),
+        this.repository.groupInvoicesByStatus(madrasaId),
+        this.repository.aggregateOverdueInvoices(madrasaId),
+        this.repository.findMonthlyCollectionTrend(madrasaId, 12),
+      ]);
+
+      const totalInvoiced = Number(totals._sum.amount || 0);
+      const totalCollected = Number(totals._sum.paidAmount || 0);
+      const totalWaived = Number(totals._sum.waivedAmount || 0);
+
+      const statusBreakdown = {
+        unpaid: statusGroups.find((g) => g.status === "UNPAID")?._count._all || 0,
+        partiallyPaid: statusGroups.find((g) => g.status === "PARTIALLY_PAID")?._count._all || 0,
+        paid: statusGroups.find((g) => g.status === "PAID")?._count._all || 0,
+        waived: statusGroups.find((g) => g.status === "WAIVED")?._count._all || 0,
+      };
+
+      return {
+        totalInvoiced,
+        totalCollected,
+        totalDue: totalInvoiced - totalCollected - totalWaived,
+        totalWaived,
+        invoiceCount: totals._count._all,
+        statusBreakdown,
+        overdue: {
+          count: overdue._count._all,
+          amount: Number(overdue._sum.amount || 0) - Number(overdue._sum.paidAmount || 0),
+        },
+        collectionTrend: trend
+          .map((row) => ({ period: row.period, total: Number(row.total || 0) }))
+          .reverse(),
+      };
+    } catch (err) {
+      return friendlyFailure("getDashboardSummary error:", err, "Failed to load fee dashboard summary");
     }
   }
 

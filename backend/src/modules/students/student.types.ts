@@ -85,7 +85,11 @@ export interface AdmissionResult {
   /** Null unless this submission reused an existing roll (see admitStudent)
    * - a fresh admission gets no roll until a Muhtamim approves it. */
   roll: number | null;
-  registrationNo: number;
+  /** Null unless this submission reused an existing registration number (a
+   * re-admission whose earlier admission was already approved) - a fresh
+   * admission gets no registration number until a Muhtamim approves it (see
+   * StudentService.approveAdmission). */
+  registrationNo: number | null;
   /** Every admission now lands PENDING and waits on Muhtamim approval -
    * always "PENDING" today, but returned explicitly so callers don't have
    * to hardcode that assumption. */

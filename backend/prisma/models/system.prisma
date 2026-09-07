@@ -293,7 +293,10 @@ model DefaultFeeStructure {
   name      String       @db.VarChar(150)
   amount    Decimal      @db.Decimal(10, 2)
   frequency FeeFrequency
-  feeType   FeeType      @default(OTHER) @map("fee_type")
+  /// Free-text ফি ধরণ name (e.g. "ADMISSION") copied verbatim into each new
+  /// madrasa's own FeeStructure.feeType at tenant creation - see
+  /// FeeCategory in fee.prisma for why this isn't an enum/FK anymore.
+  feeType   String       @default("অন্যান্য") @map("fee_type") @db.VarChar(120)
   sortOrder Int          @default(0) @map("sort_order")
   isActive  Boolean      @default(true) @map("is_active")
   createdAt DateTime     @default(now()) @map("created_at")

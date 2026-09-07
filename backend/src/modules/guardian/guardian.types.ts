@@ -18,7 +18,7 @@ export interface GuardianChildSummary {
   id: number;
   nameBn: string;
   roll: number | null;
-  registrationNo: number;
+  registrationNo: number | null;
   className: string | null;
   image: string | null;
 }

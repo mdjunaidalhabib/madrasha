@@ -30,6 +30,7 @@ const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoti
 // rendered.
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const HikmahItPage = lazy(() => import("../features/vendor/HikmahItPage"));
+const StudentsDashboardPage = lazy(() => import("../features/students/StudentsDashboardPage"));
 const StudentListPage = lazy(() => import("../features/students/StudentListPage"));
 const StudentProfilePage = lazy(() => import("../features/students/StudentProfilePage"));
 const StudentProfile360 = lazy(() => import("../features/students/StudentProfile360"));
@@ -42,9 +43,12 @@ const AttendanceReportPage = lazy(() => import("../features/attendance/Attendanc
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
+const FeeDashboardPage = lazy(() => import("../features/fee/FeeDashboardPage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
+const FeeCategorySettingsPage = lazy(() => import("../features/fee/FeeCategorySettingsPage"));
 const FeeInvoicesPage = lazy(() => import("../features/fee/FeeInvoicesPage"));
 const PendingAdmissionFeePage = lazy(() => import("../features/fee/PendingAdmissionFeePage"));
+const OverdueFeesPage = lazy(() => import("../features/fee/OverdueFeesPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const PaymentMethodSettingsPage = lazy(() => import("../features/fee/PaymentMethodSettingsPage"));
 const RolesPermissionsPage = lazy(() => import("../features/roles/RolesPermissionsPage"));
@@ -52,16 +56,21 @@ const UsersPage = lazy(() => import("../features/users/UsersPage"));
 const SingleSendPage = lazy(() => import("../features/notifications/SingleSendPage"));
 const BulkSendPage = lazy(() => import("../features/notifications/BulkSendPage"));
 const NotificationHistoryPage = lazy(() => import("../features/notifications/NotificationHistoryPage"));
+const CommunicationDashboardPage = lazy(
+  () => import("../features/notifications/CommunicationDashboardPage"),
+);
 const AutoNotificationSettingsPage = lazy(
   () => import("../features/notifications/AutoNotificationSettingsPage"),
 );
 const BillingDashboardPage = lazy(() => import("../features/billing/BillingDashboardPage"));
 
+const LibraryDashboardPage = lazy(() => import("../features/library/LibraryDashboardPage"));
 const LibraryCatalogPage = lazy(() => import("../features/library/LibraryCatalogPage"));
 const LibraryCirculationPage = lazy(() => import("../features/library/LibraryCirculationPage"));
 const LibraryOverdueFinesPage = lazy(() => import("../features/library/LibraryOverdueFinesPage"));
 const LibrarySettingsPage = lazy(() => import("../features/library/LibrarySettingsPage"));
 
+const TeacherStaffDashboardPage = lazy(() => import("../features/teachers/TeacherStaffDashboardPage"));
 const TeacherAdmissionPage = lazy(() => import("../features/teachers/TeacherPage"));
 const TeacherListPage = lazy(() => import("../features/teachers/TeacherListPage"));
 const TeacherProfilePage = lazy(() => import("../features/teachers/TeacherProfilePage"));
@@ -82,6 +91,7 @@ const AccountListPage = lazy(() => import("../features/accounts/AccountListPage"
 const AccountDashboardPage = lazy(() => import("../features/accounts/AccountDashboardPage"));
 const AccountFundSettingsPage = lazy(() => import("../features/accounts/AccountFundSettingsPage"));
 
+const TalimatDashboardPage = lazy(() => import("../features/talimat/TalimatDashboardPage"));
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
@@ -101,6 +111,7 @@ const AdminWebsiteSettingsPage = lazy(
 const BrandingSettingsPage = lazy(() => import("../features/admin/settings/BrandingSettingsPage"));
 const ProfileSettingsPage = lazy(() => import("../features/admin/settings/ProfileSettingsPage"));
 const PlanSettingsPage = lazy(() => import("../features/admin/settings/PlanSettingsPage"));
+const SettingsLayout = lazy(() => import("../features/admin/settings/SettingsLayout"));
 const TrashPage = lazy(() => import("../features/admin/TrashPage"));
 
 const PublicWebsitePage = lazy(() => import("../features/public/website/PublicWebsitePage"));
@@ -139,7 +150,15 @@ const madrasaAdminChildren = [
     path: "ihtemam/pending",
     element: <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
   },
+  {
+    path: "ihtemam/fee-categories",
+    element: <ModuleGuard module="ihtemam">{withSuspense(<FeeCategorySettingsPage />)}</ModuleGuard>,
+  },
 
+  {
+    path: "teacher_staff/dashboard",
+    element: <ModuleGuard module="teacher_staff">{withSuspense(<TeacherStaffDashboardPage />)}</ModuleGuard>,
+  },
   {
     path: "teacher_staff/teacher_admission",
     element: <ModuleGuard module="teacher_staff">{withSuspense(<TeacherAdmissionPage />)}</ModuleGuard>,
@@ -211,6 +230,10 @@ const madrasaAdminChildren = [
   },
 
   {
+    path: "talimat/dashboard",
+    element: <ModuleGuard module="talimat">{withSuspense(<TalimatDashboardPage />)}</ModuleGuard>,
+  },
+  {
     path: "talimat/teacher_assignment",
     element: (
       <ModuleGuard module="talimat">
@@ -274,6 +297,10 @@ const madrasaAdminChildren = [
   { path: "talimat/transfer_letter", element: <Navigate to="../talimat/settings/documents" replace /> },
 
   {
+    path: "students/dashboard",
+    element: <ModuleGuard module="students">{withSuspense(<StudentsDashboardPage />)}</ModuleGuard>,
+  },
+  {
     path: "students/new_admission",
     element: <ModuleGuard module="students">{withSuspense(<AdmissionPage />)}</ModuleGuard>,
   },
@@ -333,8 +360,16 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="accounts">{withSuspense(<AccountDashboardPage />)}</ModuleGuard>,
   },
   {
+    path: "fee/dashboard",
+    element: <ModuleGuard module="fee">{withSuspense(<FeeDashboardPage />)}</ModuleGuard>,
+  },
+  {
     path: "fee/pending-fee",
     element: <ModuleGuard module="fee">{withSuspense(<PendingAdmissionFeePage />)}</ModuleGuard>,
+  },
+  {
+    path: "fee/overdue-fee",
+    element: <ModuleGuard module="fee">{withSuspense(<OverdueFeesPage />)}</ModuleGuard>,
   },
   {
     path: "accounts/report",
@@ -358,14 +393,8 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "settings/profile",
-    element: withSuspense(<ProfileSettingsPage />),
-  },
-  {
-    path: "settings/plan",
-    element: withSuspense(<PlanSettingsPage />),
-  },
-  {
+    // ওয়েবসাইট সেটিংস আলাদা, standalone পেজ - সাধারণ সেটিংস হাবের ট্যাব-মেনুর
+    // অংশ না (নিচের SettingsLayout দেখুন), নিজস্ব সরাসরি সাইডবার শর্টকাট আছে।
     path: "settings/website",
     element: (
       <ModuleGuard module="website">
@@ -374,38 +403,54 @@ const madrasaAdminChildren = [
     ),
   },
   {
-    path: "settings/branding",
-    element: (
-      <ModuleGuard module="settings">
-        <PermissionGuard permission="settings.manage">{withSuspense(<BrandingSettingsPage />)}</PermissionGuard>
-      </ModuleGuard>
-    ),
+    // সাধারণ সেটিংসের সব সাব-পেজ (website বাদে) একটা শেয়ার্ড লেআউটের নিচে -
+    // main content field-এ নিজস্ব মেনু (ট্যাব) দেখায় (দেখুন SettingsLayout.tsx,
+    // তালিমাত সেটিং লেআউটের একই প্যাটার্ন অনুসরণ করে)।
+    path: "settings",
+    element: withSuspense(<SettingsLayout />),
+    children: [
+      { index: true, element: <Navigate to="profile" replace /> },
+      { path: "profile", element: withSuspense(<ProfileSettingsPage />) },
+      { path: "plan", element: withSuspense(<PlanSettingsPage />) },
+      {
+        path: "branding",
+        element: (
+          <ModuleGuard module="settings">
+            <PermissionGuard permission="settings.manage">{withSuspense(<BrandingSettingsPage />)}</PermissionGuard>
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "payment-methods",
+        element: (
+          <ModuleGuard module="settings">{withSuspense(<PaymentMethodSettingsPage />)}</ModuleGuard>
+        ),
+      },
+      {
+        path: "roles",
+        element: (
+          <ModuleGuard module="settings">
+            <PermissionGuard permission="roles.manage">{withSuspense(<RolesPermissionsPage />)}</PermissionGuard>
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "users",
+        element: (
+          <ModuleGuard module="settings">
+            <PermissionGuard permission="users.read">{withSuspense(<UsersPage />)}</PermissionGuard>
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "trash",
+        element: <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>,
+      },
+    ],
   },
   {
-    path: "settings/payment-methods",
-    element: (
-      <ModuleGuard module="settings">{withSuspense(<PaymentMethodSettingsPage />)}</ModuleGuard>
-    ),
-  },
-  {
-    path: "settings/roles",
-    element: (
-      <ModuleGuard module="settings">
-        <PermissionGuard permission="roles.manage">{withSuspense(<RolesPermissionsPage />)}</PermissionGuard>
-      </ModuleGuard>
-    ),
-  },
-  {
-    path: "settings/users",
-    element: (
-      <ModuleGuard module="settings">
-        <PermissionGuard permission="users.read">{withSuspense(<UsersPage />)}</PermissionGuard>
-      </ModuleGuard>
-    ),
-  },
-  {
-    path: "settings/trash",
-    element: <ModuleGuard module="settings">{withSuspense(<TrashPage />)}</ModuleGuard>,
+    path: "communication/dashboard",
+    element: <ModuleGuard module="communication">{withSuspense(<CommunicationDashboardPage />)}</ModuleGuard>,
   },
   {
     path: "communication/single-send",
@@ -431,10 +476,16 @@ const madrasaAdminChildren = [
   },
 
   {
-    path: "activity",
-    element: <ModuleGuard module="activity">{withSuspense(<ActivityPage />)}</ModuleGuard>,
+    path: "ihtemam/activity",
+    element: <ModuleGuard module="ihtemam">{withSuspense(<ActivityPage />)}</ModuleGuard>,
   },
+  // Old top-level "/activity" bookmarks redirect to its new home under ইহতিমাম.
+  { path: "activity", element: <Navigate to="../ihtemam/activity" replace /> },
 
+  {
+    path: "library/dashboard",
+    element: <ModuleGuard module="library">{withSuspense(<LibraryDashboardPage />)}</ModuleGuard>,
+  },
   {
     path: "library/catalog",
     element: <ModuleGuard module="library">{withSuspense(<LibraryCatalogPage />)}</ModuleGuard>,

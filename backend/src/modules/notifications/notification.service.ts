@@ -244,6 +244,52 @@ export class NotificationService {
     });
   }
 
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  /** Aggregate stats for the SMS/ইমেইল module dashboard - sent/failed/
+   * pending totals per channel and a 14-day sending trend. Separate from
+   * BillingDashboardPage, which covers credit balance/subscriptions, not
+   * message-sending outcomes. */
+  async getDashboardSummary(madrasaId: number) {
+    try {
+      const [channelStatusGroups, trend] = await Promise.all([
+        this.repository.groupByChannelAndStatus(madrasaId),
+        this.repository.findDailyTrend(madrasaId, 14),
+      ]);
+
+      const byChannel: Record<"SMS" | "EMAIL", { sent: number; failed: number; pending: number }> = {
+        SMS: { sent: 0, failed: 0, pending: 0 },
+        EMAIL: { sent: 0, failed: 0, pending: 0 },
+      };
+      for (const group of channelStatusGroups) {
+        const bucket = byChannel[group.channel as "SMS" | "EMAIL"];
+        if (!bucket) continue;
+        const count = group._count._all;
+        if (group.status === "SENT") bucket.sent = count;
+        else if (group.status === "FAILED") bucket.failed = count;
+        else if (group.status === "PENDING") bucket.pending = count;
+      }
+
+      return {
+        totalSent: byChannel.SMS.sent + byChannel.EMAIL.sent,
+        totalFailed: byChannel.SMS.failed + byChannel.EMAIL.failed,
+        totalPending: byChannel.SMS.pending + byChannel.EMAIL.pending,
+        byChannel,
+        trend: trend.map((row) => ({
+          period: row.period,
+          sent: Number(row.sent || 0),
+          failed: Number(row.failed || 0),
+        })),
+      };
+    } catch (err) {
+      return friendlyFailure(
+        "getDashboardSummary error:",
+        err,
+        "Failed to load notification dashboard summary",
+      );
+    }
+  }
+
   /* ================= AUTO-TRIGGER (called from other modules) ================= */
 
   /** Fire-and-forget SMS for a business event (admission approved, student

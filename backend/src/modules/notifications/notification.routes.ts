@@ -5,6 +5,7 @@ import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   sendNotification,
   getNotifications,
+  getNotificationDashboardSummary,
   getAudienceStudents,
   getAudienceTeachers,
   getAudienceResults,
@@ -20,6 +21,7 @@ router.use(tenantMiddleware, authMiddleware);
 // shared/permissions/rbac-policy.ts).
 router.post("/send", rbacMiddleware("notifications.send"), sendNotification);
 router.get("/", rbacMiddleware("notifications.read"), getNotifications);
+router.get("/dashboard-summary", rbacMiddleware("notifications.read"), getNotificationDashboardSummary);
 
 router.get("/audience/students", rbacMiddleware("notifications.send"), getAudienceStudents);
 router.get("/audience/teachers", rbacMiddleware("notifications.send"), getAudienceTeachers);

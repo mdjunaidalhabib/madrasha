@@ -4,11 +4,18 @@ import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getFeeStructures,
+  getFeeStructureExams,
   createFeeStructure,
   updateFeeStructure,
   deleteFeeStructure,
+  getFeeCategories,
+  createFeeCategory,
+  updateFeeCategory,
+  deleteFeeCategory,
   getInvoices,
+  getOverdueFees,
   getPendingInvoices,
+  getInvoiceSummary,
   clearPendingInvoices,
   deleteAllInvoices,
   backfillInvoices,
@@ -30,9 +37,18 @@ router.use(tenantMiddleware, authMiddleware);
 
 /* ================= FEE STRUCTURE ================= */
 router.get("/fee-structures", rbacMiddleware("fee.read"), getFeeStructures);
+// Registered as its own literal path (not GET /fee-structures/:id) - backs
+// the "যুক্ত পরীক্ষা" picker without requiring exam.read (see fee.controller.ts).
+router.get("/fee-structures/exams", rbacMiddleware("fee.read"), getFeeStructureExams);
 router.post("/fee-structures", rbacMiddleware("fee.manage"), createFeeStructure);
 router.put("/fee-structures/:id", rbacMiddleware("fee.manage"), updateFeeStructure);
 router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStructure);
+
+/* ================= ফি ধরণ ব্যবস্থাপনা (settings CRUD) ================= */
+router.get("/fee-categories", rbacMiddleware("fee.read"), getFeeCategories);
+router.post("/fee-categories", rbacMiddleware("fee.manage"), createFeeCategory);
+router.patch("/fee-categories/:id", rbacMiddleware("fee.manage"), updateFeeCategory);
+router.delete("/fee-categories/:id", rbacMiddleware("fee.manage"), deleteFeeCategory);
 
 /* ================= INVOICES ================= */
 // Runs auto-billing for every currently-enrolled student in a class/session -
@@ -40,9 +56,14 @@ router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStru
 // existed, and called automatically right after a fee structure is created.
 router.post("/invoices/backfill", rbacMiddleware("fee.manage"), backfillInvoices);
 router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
+// Backs the dedicated "বকেয়া ফী" management page - every overdue invoice
+// across every fee type, grouped per student.
+router.get("/invoices/overdue", rbacMiddleware("fee.read"), getOverdueFees);
 // Registered as its own literal path (not GET /invoices/:id) - backs the
 // dedicated "ভর্তি ফি পেন্ডিং" sidebar page.
 router.get("/invoices/pending", rbacMiddleware("fee.read"), getPendingInvoices);
+// Aggregate stats for the ফি ব্যবস্থাপনা module dashboard.
+router.get("/invoices/summary", rbacMiddleware("fee.read"), getInvoiceSummary);
 // "সব ক্লিয়ার করুন" on that page - fee.manage (not fee.read) since it mutates
 // every currently-pending row, even though it's non-destructive.
 router.post("/invoices/pending/clear", rbacMiddleware("fee.manage"), clearPendingInvoices);

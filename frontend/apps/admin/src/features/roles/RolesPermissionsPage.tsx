@@ -27,7 +27,7 @@ const normalizeArray = (payload: any) => {
  * teacher list and তালিমাত's assignment screen), so it's shown - and independently
  * toggleable from - every module card it's relevant to. */
 const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
-  { key: "ihtemam", label: "ইহতিমাম", prefixes: ["students.approve_admission", "fee."] },
+  { key: "ihtemam", label: "ইহতিমাম", prefixes: ["students.approve_admission", "fee.", "activity."] },
   { key: "teacher_staff", label: "শিক্ষক ও স্টাফ", prefixes: ["teachers.", "staff."] },
   { key: "reports", label: "রিপোর্ট সমূহ", prefixes: ["reports."] },
   {
@@ -51,7 +51,6 @@ const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
   { key: "communication", label: "SMS/ইমেইল", prefixes: ["notifications."] },
   { key: "library", label: "লাইব্রেরি", prefixes: ["library."] },
   { key: "settings", label: "সেটিং", prefixes: ["settings.", "roles.manage", "users.", "website.manage"] },
-  { key: "activity", label: "অ্যাক্টিভিটি লগ", prefixes: ["activity."] },
   { key: "website", label: "ওয়েবসাইট সেটিংস", prefixes: ["website.manage"] },
 ];
 

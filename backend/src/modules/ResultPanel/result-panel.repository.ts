@@ -332,6 +332,55 @@ export class ResultPanelRepository {
     return prisma.resultSummary.findFirst({ where: { resultMasterId }, select: { id: true } });
   }
 
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  countActiveExams(madrasaId: number) {
+    return prisma.exam.count({ where: { madrasaId, deletedAt: null, isActive: true } });
+  }
+
+  /** Most recent active exam (by year, then sort order) - the তালিমাত
+   * dashboard's headline stats (pass/fail, average, grade distribution) are
+   * scoped to this exam rather than every exam ever created. */
+  findLatestActiveExam(madrasaId: number) {
+    return prisma.exam.findFirst({
+      where: { madrasaId, deletedAt: null, isActive: true },
+      orderBy: [{ year: "desc" }, { sortOrder: "desc" }, { id: "desc" }],
+      select: { id: true, name: true, year: true },
+    });
+  }
+
+  countResultMastersByStatus(madrasaId: number) {
+    return prisma.resultMaster.groupBy({
+      by: ["status"],
+      where: { madrasaId, deletedAt: null },
+      _count: { _all: true },
+    });
+  }
+
+  groupResultStatusForExam(madrasaId: number, examId: number) {
+    return prisma.resultSummary.groupBy({
+      by: ["status"],
+      where: { resultMaster: { madrasaId, examId, deletedAt: null } },
+      _count: { _all: true },
+    });
+  }
+
+  groupGeneralGradeForExam(madrasaId: number, examId: number) {
+    return prisma.resultSummary.groupBy({
+      by: ["generalGrade"],
+      where: { resultMaster: { madrasaId, examId, deletedAt: null }, generalGrade: { not: null } },
+      _count: { _all: true },
+    });
+  }
+
+  aggregateAverageForExam(madrasaId: number, examId: number) {
+    return prisma.resultSummary.aggregate({
+      where: { resultMaster: { madrasaId, examId, deletedAt: null } },
+      _avg: { average: true },
+      _count: { _all: true },
+    });
+  }
+
   /** Every exam summary row for one student across every result session
    * (draft and published) for this tenant, newest exam first - powers
    * Student 360's academic tab (admin view; guardians only ever see

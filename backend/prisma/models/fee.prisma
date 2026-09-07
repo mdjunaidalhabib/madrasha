@@ -8,17 +8,6 @@ enum FeeFrequency {
   YEARLY
 }
 
-/// Categorizes what a FeeStructure is for. ADMISSION is what admitStudent()
-/// bills immediately at submission time (see FeeService.autoGenerateInvoicesForStudent) -
-/// every other type only gets billed once a Muhtamim approves the admission.
-enum FeeType {
-  ADMISSION
-  TUITION
-  EXAM
-  BOARDING
-  OTHER
-}
-
 enum InvoiceStatus {
   UNPAID
   PARTIALLY_PAID
@@ -36,23 +25,64 @@ model FeeStructure {
   name         String       @db.VarChar(150)
   amount       Decimal      @db.Decimal(10, 2)
   frequency    FeeFrequency
-  feeType      FeeType      @default(OTHER) @map("fee_type")
+  /// The FeeCategory's *name* at the time this structure was created/last
+  /// set, same "plain string, decoupled from the picklist" pattern as
+  /// Account.fund/Account.category (see FeeCategory) - so renaming or
+  /// deleting a category later never corrupts an existing structure.
+  feeType      String       @default("অন্যান্য") @map("fee_type") @db.VarChar(120)
   /// Mirrored display string derived from `sessionRef.name` - see the same
   /// note on Student.academicYear.
   academicYear String       @map("academic_year") @db.VarChar(10)
   sessionId    Int          @map("session_id")
   isActive     Boolean      @default(true) @map("is_active")
+  /// Ties this structure to one specific Exam (ExamPanel) instead of the
+  /// whole session - only meaningful for a পরীক্ষার ফি. When set, this
+  /// structure is excluded from the automatic admission-approval billing
+  /// (see FeeService.buildAutoInvoiceRows/findActiveStructuresForBilling) so
+  /// a newly-admitted student is never billed up front for exams that
+  /// haven't happened yet. It's billed instead only when a staff member
+  /// explicitly generates it (right after creating this structure, or via
+  /// "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন") - i.e. once the exam is actually
+  /// upcoming, not at admission time. null keeps the old behaviour: a
+  /// generic yearly fee billed in full at admission.
+  examId       Int?         @map("exam_id")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at")
 
-  madrasa    Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  class      Class?    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  sessionRef Session   @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  invoices   Invoice[]
+  madrasa             Madrasa              @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  class               Class?               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sessionRef          Session              @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  exam                Exam?                @relation(fields: [examId], references: [id], onDelete: SetNull)
+  invoices            Invoice[]
+  studentFeeDiscounts StudentFeeDiscount[]
 
   @@index([madrasaId, classId, academicYear], map: "idx_fee_structure_madrasa_class_year")
   @@index([madrasaId, classId, sessionId], map: "idx_fee_structure_madrasa_class_session")
+  @@index([madrasaId, examId], map: "idx_fee_structure_madrasa_exam")
   @@map("fee_structures")
+}
+
+/// Per-tenant ফি ধরণ picklist that FeeStructure.feeType is set from - same
+/// "plain string on the entry, this table is only the picklist" pattern as
+/// AccountFund/AccountCategory (see accounts.prisma). `isAdmissionType`
+/// replaces the old hardcoded FeeType.ADMISSION enum value: any category
+/// flagged true here is what admitStudent() bills immediately at submission
+/// time (see FeeService.autoGenerateInvoicesForStudent) - every other
+/// category only gets billed once a Muhtamim approves the admission.
+model FeeCategory {
+  id              Int      @id @default(autoincrement())
+  madrasaId       Int      @map("madrasa_id")
+  name            String   @db.VarChar(120)
+  isAdmissionType Boolean  @default(false) @map("is_admission_type")
+  sortOrder       Int      @default(0) @map("sort_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId], map: "idx_fee_categories_madrasa")
+  @@map("fee_categories")
 }
 
 /// One billable charge for one student. Generated in bulk from a
@@ -129,6 +159,36 @@ model Payment {
 
   @@index([madrasaId, invoiceId], map: "idx_payment_madrasa_invoice")
   @@map("payments")
+}
+
+/// A standing per-student discount against one FeeStructure, set by a
+/// Muhtamim (typically while reviewing a pending admission - see
+/// StudentService/FeeService previewStudentFees/setStudentFeeDiscount) so
+/// the determined-fee list shown before approval can already reflect it,
+/// and so it keeps applying automatically to every invoice generated for
+/// that fee afterward - including future MONTHLY invoices from the daily
+/// billing scheduler, not just whatever gets created at approval time.
+model StudentFeeDiscount {
+  id             Int @id @default(autoincrement())
+  madrasaId      Int @map("madrasa_id")
+  studentId      Int @map("student_id")
+  feeStructureId Int @map("fee_structure_id")
+
+  waivedAmount Decimal  @map("waived_amount") @db.Decimal(10, 2)
+  reason       String   @db.VarChar(300)
+  setById      Int?     @map("set_by_id")
+  setAt        DateTime @default(now()) @map("set_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa      Madrasa      @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, feeStructureId], map: "uniq_student_fee_discount")
+  @@index([madrasaId], map: "idx_student_fee_discount_madrasa")
+  @@map("student_fee_discounts")
 }
 
 // ============================================================

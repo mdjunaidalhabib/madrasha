@@ -347,8 +347,8 @@ export default function DashboardPage() {
                   value={data.overdueFees.totalDue}
                   variant="currency"
                   tone="rose"
-                  subLabel={`${data.overdueFees.count} টি ইনভয়েস`}
-                  to={`/fee-management`}
+                  subLabel={`${data.overdueFees.studentCount} জন শিক্ষার্থীর বকেয়া`}
+                  to={`/fee/overdue-fee`}
                   size="sm"
                   icon={<AlertTriangle className="h-5 w-5" strokeWidth={1.75} />}
                 />
@@ -807,7 +807,7 @@ export default function DashboardPage() {
               actions={
                 <Link
                   className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
-                  to={`/fee-management`}
+                  to={`/fee/overdue-fee`}
                 >
                   সব দেখুন
                 </Link>
@@ -820,22 +820,23 @@ export default function DashboardPage() {
                 </p>
               )}
               {(data?.overdueFees?.list || []).map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800"
+                <Link
+                  key={item.studentId}
+                  to={`/fee/overdue-fee?student_id=${item.studentId}`}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-300">
                       {item.studentName}
                     </p>
                     <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                      {item.title}
+                      {item.invoiceCount} টি বকেয়া ফি
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-rose-600 dark:text-rose-400">
                     {money(item.remaining)}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </Card>

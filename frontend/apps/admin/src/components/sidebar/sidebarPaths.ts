@@ -17,6 +17,8 @@ export const FEATURE_PATHS: Record<string, string> = {
   exam_report: "exam_report",
   teacher_report: "teacher_report",
   pending_fee: "pending-fee",
+  overdue_fee: "overdue-fee",
+  fee_categories: "fee-categories",
 };
 
 // Some sidebar entries (moved here from plain action buttons on the ছাত্র

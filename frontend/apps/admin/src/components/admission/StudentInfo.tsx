@@ -246,118 +246,6 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">রোল নম্বর</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
-            </span>
-          </div>
-
-          <input
-            type="text"
-            value={formData.roll || ""}
-            placeholder="শ্রেণি নির্বাচন করলে সম্ভাব্য রোল দেখা যাবে"
-            readOnly
-            aria-readonly="true"
-            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির ধরন</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
-            </span>
-          </div>
-          <input
-            type="text"
-            value={isReturning ? "পুনঃভর্তি (পুরাতন)" : "নতুন"}
-            readOnly
-            aria-readonly="true"
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির তারিখ</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
-            </span>
-          </div>
-          <input
-            type="text"
-            value={formatAdmissionDate(formData.admissionDate)}
-            readOnly
-            aria-readonly="true"
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">লিঙ্গ</label>
-          <select
-            name="gender"
-            value={formData.gender ?? ""}
-            onChange={handleChange}
-            className={inputClass("gender")}
-          >
-            <option value="">নির্বাচন করুন</option>
-            <option value={1}>ছেলে</option>
-            <option value={2}>মেয়ে</option>
-          </select>
-        </div>
-
-        <div>
-          <CustomDatePicker
-            label="জন্ম তারিখ"
-            value={formData.dob || ""}
-            onChange={(date) => {
-              setFormData((prev) => ({
-                ...prev,
-                dob: date,
-                age: isValidDate(date) ? calculateAge(date) : null,
-              }));
-
-              clearError("dob");
-            }}
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বয়স</label>
-          <input
-            name="age"
-            value={formData.age || ""}
-            readOnly
-            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-          />
-        </div>
-
-        {/* শিক্ষাবর্ষ */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            শিক্ষাবর্ষ <span className="text-red-500 dark:text-red-400">*</span>
-          </label>
-          <select
-            name="academicYear"
-            value={formData.academicYear || ""}
-            onChange={handleChange}
-            className={inputClass("academicYear")}
-          >
-            <option value="">নির্বাচন করুন</option>
-            {sessions.map((session) => (
-              <option key={session.id} value={session.name}>
-                {session.name}
-                {session.isCurrent ? " (চলমান)" : ""}
-              </option>
-            ))}
-          </select>
-          <ErrorText field="academicYear" />
-        </div>
-
-        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
             বিভাগ <span className="text-red-500 dark:text-red-400">*</span>
           </label>
@@ -437,6 +325,118 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             onChange={handleChange}
             placeholder="যেমন: মুমতায/জায়্যিদ জিদ্দান"
             className={inputClass("previousResult")}
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">লিঙ্গ</label>
+          <select
+            name="gender"
+            value={formData.gender ?? ""}
+            onChange={handleChange}
+            className={inputClass("gender")}
+          >
+            <option value="">নির্বাচন করুন</option>
+            <option value={1}>ছেলে</option>
+            <option value={2}>মেয়ে</option>
+          </select>
+        </div>
+
+        <div>
+          <CustomDatePicker
+            label="জন্ম তারিখ"
+            value={formData.dob || ""}
+            onChange={(date) => {
+              setFormData((prev) => ({
+                ...prev,
+                dob: date,
+                age: isValidDate(date) ? calculateAge(date) : null,
+              }));
+
+              clearError("dob");
+            }}
+          />
+        </div>
+
+        {/* শিক্ষাবর্ষ */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            শিক্ষাবর্ষ <span className="text-red-500 dark:text-red-400">*</span>
+          </label>
+          <select
+            name="academicYear"
+            value={formData.academicYear || ""}
+            onChange={handleChange}
+            className={inputClass("academicYear")}
+          >
+            <option value="">নির্বাচন করুন</option>
+            {sessions.map((session) => (
+              <option key={session.id} value={session.name}>
+                {session.name}
+                {session.isCurrent ? " (চলমান)" : ""}
+              </option>
+            ))}
+          </select>
+          <ErrorText field="academicYear" />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">রোল নম্বর</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+
+          <input
+            type="text"
+            value={formData.roll || ""}
+            placeholder="শ্রেণি নির্বাচন করলে সম্ভাব্য রোল দেখা যাবে"
+            readOnly
+            aria-readonly="true"
+            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির ধরন</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+          <input
+            type="text"
+            value={isReturning ? "পুনঃভর্তি (পুরাতন)" : "নতুন"}
+            readOnly
+            aria-readonly="true"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির তারিখ</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+          <input
+            type="text"
+            value={formatAdmissionDate(formData.admissionDate)}
+            readOnly
+            aria-readonly="true"
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বয়স</label>
+          <input
+            name="age"
+            value={formData.age || ""}
+            readOnly
+            className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           />
         </div>
       </div>

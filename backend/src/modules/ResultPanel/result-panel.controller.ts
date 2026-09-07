@@ -102,6 +102,17 @@ export const getResultOverview = async (req: Request, res: Response) => {
   }
 };
 
+/* ================= DASHBOARD SUMMARY ================= */
+export const getResultDashboardSummary = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const data = await resultPanelService.getDashboardSummary(madrasa_id);
+    res.json({ success: true, data });
+  } catch (error) {
+    respondError(res, error, "getResultDashboardSummary error:", "Failed to fetch result dashboard summary");
+  }
+};
+
 /* ================= GET SUMMARY ================= */
 export const getSummary = async (req: Request, res: Response) => {
   try {

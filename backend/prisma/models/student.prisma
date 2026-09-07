@@ -103,12 +103,14 @@ model Student {
   /// non-null rolls as "taken".
   roll Int?
 
-  /// Permanent, per-madrasa admission/registration number. Assigned once at
-  /// first admission (never changes on re-admission/promotion), unlike
-  /// `roll` which changes every academic year. Distinct from `id`, which is
-  /// an internal, tenant-agnostic primary key and should never be shown to
-  /// users as a registration number.
-  registrationNo Int @map("registration_no")
+  /// Permanent, per-madrasa admission/registration number. Null while the
+  /// admission is PENDING (or REJECTED) - assigned only once a Muhtamim
+  /// approves the admission (see StudentService.approveAdmission), same as
+  /// `roll`. Once assigned it never changes on re-admission/promotion,
+  /// unlike `roll` which changes every academic year. Distinct from `id`,
+  /// which is an internal, tenant-agnostic primary key and should never be
+  /// shown to users as a registration number.
+  registrationNo Int? @map("registration_no")
 
   admissionDate DateTime? @default(now()) @map("admission_date")
 
@@ -139,6 +141,7 @@ model Student {
   marks                Mark[]
   promotionRecords     PromotionRecord[]
   invoices             Invoice[]
+  studentFeeDiscounts  StudentFeeDiscount[]
   guardianLinks        GuardianStudent[]
   sessionHistories     StudentSessionHistory[]
   libraryBorrowRecords LibraryBorrowRecord[]
@@ -154,6 +157,9 @@ model Student {
   /// PENDING/REJECTED applicants (roll = null, see the field's doc-comment
   /// above) can coexist here without ever colliding on this constraint.
   @@unique([madrasaId, classId, sessionId, roll], map: "unique_roll_per_class_session")
+  /// Same NULL-is-distinct reasoning as the roll constraint above - any
+  /// number of PENDING/REJECTED applicants (registrationNo = null) can
+  /// coexist here without colliding.
   @@unique([madrasaId, registrationNo], map: "uniq_registration_no")
   @@index([madrasaId], map: "idx_students_madrasa")
   @@index([classId], map: "idx_students_class")

@@ -4,6 +4,7 @@ import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { studentService } from "./student.service";
 import { MissingFieldsError } from "./student.types";
+import { feeService } from "../fee/fee.service";
 
 /**
  * Translates a thrown error into the exact `{ success: false, message, ... }`
@@ -92,6 +93,19 @@ export const lookupStudentByNid = async (req: Request, res: Response) => {
     return res.json({ success: true, found: Boolean(data), data });
   } catch (error) {
     return respondWithError(res, error, "LOOKUP STUDENT BY NID ERROR:");
+  }
+};
+
+/* =========================================================
+   DASHBOARD SUMMARY (শিক্ষার্থী module dashboard)
+========================================================= */
+export const getStudentsDashboardSummary = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.getDashboardSummary(madrasaId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "GET STUDENTS DASHBOARD SUMMARY ERROR:");
   }
 };
 
@@ -311,5 +325,35 @@ export const rejectAdmission = async (req: Request, res: Response) => {
     return res.json({ success: true, message: "Admission rejected successfully" });
   } catch (error) {
     return respondWithError(res, error, "REJECT ADMISSION ERROR:");
+  }
+};
+
+/** The determined fee list for a pending applicant's class/session, so a
+ * Muhtamim can see what will be billed before ever approving them. */
+export const getFeePreview = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = Number(req.tenant?.madrasa_id);
+    const data = await feeService.previewStudentFees(madrasaId, Number(req.params.id));
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "GET STUDENT FEE PREVIEW ERROR:");
+  }
+};
+
+/** Waives/reduces (or, with amount 0, removes) one fee structure's standing
+ * discount for a pending applicant - see FeeService.setStudentFeeDiscount. */
+export const setFeeDiscount = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = Number(req.tenant?.madrasa_id);
+    const data = await feeService.setStudentFeeDiscount(
+      madrasaId,
+      Number(req.params.id),
+      Number(req.params.feeStructureId),
+      req.body,
+      req.user?.id,
+    );
+    return res.json({ success: true, message: "ফি হালনাগাদ করা হয়েছে", data });
+  } catch (error) {
+    return respondWithError(res, error, "SET STUDENT FEE DISCOUNT ERROR:");
   }
 };

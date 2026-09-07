@@ -12,9 +12,12 @@ import {
   getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
+  getFeePreview,
+  setFeeDiscount,
   bulkDeleteStudents,
   expelStudent,
   transferStudentSession,
+  getStudentsDashboardSummary,
 } from "./student.controller";
 import { getStudentProfile360 } from "../student-profile/student-profile.controller";
 
@@ -69,6 +72,16 @@ router.get("/lookup", tenantMiddleware, authMiddleware, rbacMiddleware("students
 // "/lookup" above, must come before "/:id".
 router.get("/next-roll", tenantMiddleware, authMiddleware, rbacMiddleware("students.read"), getNextRoll);
 
+// DASHBOARD SUMMARY (শিক্ষার্থী module dashboard) - same ordering rule as
+// "/lookup" above, must come before "/:id".
+router.get(
+  "/dashboard-summary",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.read"),
+  getStudentsDashboardSummary,
+);
+
 // ADMISSION APPROVAL WORKFLOW - must also be registered before "/:id"
 router.get(
   "/admission/pending",
@@ -90,6 +103,27 @@ router.patch(
   authMiddleware,
   rbacMiddleware("students.approve_admission"),
   rejectAdmission,
+);
+
+// DETERMINED FEE LIST + PRE-APPROVAL DISCOUNT (see FeeService.previewStudentFees/
+// setStudentFeeDiscount) - lets a Muhtamim see and waive/reduce a pending
+// applicant's fees before ever approving them.
+router.get(
+  "/:id/fee-preview",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  getFeePreview,
+);
+router.put(
+  "/:id/fee-preview/:feeStructureId",
+  tenantMiddleware,
+  authMiddleware,
+  // Same "invoice.waive" gate as waiving an actual invoice - deliberately
+  // not under students.* / fee.* so only MUHTAMIM/SUPER_ADMIN (who bypass
+  // rbacMiddleware) can grant a discount.
+  rbacMiddleware("invoice.waive"),
+  setFeeDiscount,
 );
 
 // EXPEL / UN-EXPEL - status flag only, does not move the student to Trash.

@@ -14,6 +14,7 @@ import {
   getFullResultView,
   getClassStatus,
   getResultOverview,
+  getResultDashboardSummary,
 } from "./result-panel.controller";
 
 const router = express.Router();
@@ -41,6 +42,9 @@ router.get("/class-status", rbacMiddleware("result.read"), getClassStatus);
 
 /* ================= FULL OVERVIEW (all divisions/classes/exams) ================= */
 router.get("/overview", rbacMiddleware("result.read"), getResultOverview);
+
+/* ================= DASHBOARD SUMMARY (তালিমাত module dashboard) ================= */
+router.get("/dashboard-summary", rbacMiddleware("result.read"), getResultDashboardSummary);
 
 /* ================= PUBLISH ================= */
 router.post("/publish", rbacMiddleware("result.manage"), publishResult);

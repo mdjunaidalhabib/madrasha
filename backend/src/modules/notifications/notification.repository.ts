@@ -49,6 +49,33 @@ export class NotificationRepository {
       create: { madrasaId, eventKey, ...data },
     });
   }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  groupByChannelAndStatus(madrasaId: number) {
+    return prisma.notificationLog.groupBy({
+      by: ["channel", "status"],
+      where: { madrasaId },
+      _count: { _all: true },
+    });
+  }
+
+  /** Daily sent/failed counts for the last `limit` days with at least one
+   * notification, oldest first - feeds the SMS/ইমেইল dashboard's sending
+   * trend chart. Raw SQL since GROUP BY on a formatted date has no clean
+   * Prisma equivalent (same reasoning as dashboard.repository.ts's
+   * period-based queries). */
+  findDailyTrend(madrasaId: number, days: number) {
+    return prisma.$queryRaw<{ period: string; sent: bigint; failed: bigint }[]>`
+      SELECT to_char(created_at, 'YYYY-MM-DD') AS period,
+        COUNT(*) FILTER (WHERE status = 'SENT') AS sent,
+        COUNT(*) FILTER (WHERE status = 'FAILED') AS failed
+      FROM notification_logs
+      WHERE madrasa_id = ${madrasaId} AND created_at >= NOW() - (${days} || ' days')::interval
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+  }
 }
 
 export const notificationRepository = new NotificationRepository();

@@ -136,6 +136,69 @@ export class LibraryRepository {
       create: { name: LIBRARY_FINE_PER_DAY_SETTING_NAME, value, madrasaId },
     });
   }
+
+  /* ================= DASHBOARD SUMMARY ================= */
+
+  aggregateBookTotals(madrasaId: number) {
+    return prisma.libraryBook.aggregate({
+      where: { madrasaId, isActive: true },
+      _sum: { copiesTotal: true, copiesAvailable: true },
+      _count: { _all: true },
+    });
+  }
+
+  groupBorrowRecordsByStatus(madrasaId: number) {
+    return prisma.libraryBorrowRecord.groupBy({
+      by: ["status"],
+      where: { madrasaId },
+      _count: { _all: true },
+    });
+  }
+
+  countOverdueBorrows(madrasaId: number) {
+    return prisma.libraryBorrowRecord.count({
+      where: { madrasaId, status: "BORROWED", dueDate: { lt: new Date() } },
+    });
+  }
+
+  aggregateUnsettledFines(madrasaId: number) {
+    return prisma.libraryBorrowRecord.aggregate({
+      where: { madrasaId, status: "RETURNED", fineAmount: { gt: 0 }, fineSettled: false },
+      _sum: { fineAmount: true },
+      _count: { _all: true },
+    });
+  }
+
+  groupBooksByCategory(madrasaId: number) {
+    return prisma.libraryBook.groupBy({
+      by: ["categoryId"],
+      where: { madrasaId, isActive: true },
+      _count: { _all: true },
+    });
+  }
+
+  findCategoryNames(categoryIds: number[]) {
+    return prisma.libraryBookCategory.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true },
+    });
+  }
+
+  /** Monthly borrow counts for the last `limit` months with at least one
+   * borrow, newest first - feeds the লাইব্রেরি dashboard's circulation
+   * trend chart. Raw SQL since GROUP BY on a formatted date has no clean
+   * Prisma equivalent (same reasoning as dashboard.repository.ts's
+   * period-based queries). */
+  findMonthlyBorrowTrend(madrasaId: number, limit: number) {
+    return prisma.$queryRaw<{ period: string; count: bigint }[]>`
+      SELECT to_char(borrowed_at, 'YYYY-MM') AS period, COUNT(*) AS count
+      FROM library_borrow_records
+      WHERE madrasa_id = ${madrasaId}
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT ${limit}
+    `;
+  }
 }
 
 export const libraryRepository = new LibraryRepository();

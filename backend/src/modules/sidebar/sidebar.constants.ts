@@ -16,7 +16,7 @@ export const SIDEBAR_SUPER_ADMIN_ROLE = "SUPER_ADMIN";
  */
 export const MODULE_PERMISSION_PREFIXES: Record<string, string[]> = {
   dashboard: [],
-  ihtemam: ["students.approve_admission", "fee."],
+  ihtemam: ["students.approve_admission", "fee.", "activity."],
   teacher_staff: ["teachers.", "staff."],
   reports: ["reports."],
   talimat: [
@@ -37,6 +37,5 @@ export const MODULE_PERMISSION_PREFIXES: Record<string, string[]> = {
   communication: ["notifications.", "billing."],
   library: ["library."],
   settings: ["settings.", "roles.manage", "users.", "website.manage"],
-  activity: ["activity."],
   website: ["website.manage"],
 };

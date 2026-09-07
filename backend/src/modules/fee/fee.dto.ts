@@ -3,11 +3,15 @@ export interface CreateFeeStructureRequestDto {
   name: string;
   amount: number | string;
   frequency: string;
-  /** ADMISSION / TUITION / EXAM / BOARDING / OTHER - defaults to OTHER when omitted. */
+  /** Free-text ফি ধরণ name, from the tenant's own FeeCategory picklist (see
+   * fee-categories.* below) - defaults to "অন্যান্য" when omitted. */
   fee_type?: string;
   session_id?: number | string;
   /** @deprecated legacy fallback - resolved to a Session by matching name when session_id is absent. */
   academic_year?: string;
+  /** Links this structure to one specific Exam (পরীক্ষার ফি only) - see
+   * FeeStructure.examId. Pass "" or 0 on update to clear it. */
+  exam_id?: number | string | null;
 }
 
 export type UpdateFeeStructureRequestDto = Partial<CreateFeeStructureRequestDto> & {
@@ -23,6 +27,12 @@ export interface InvoiceQueryDto {
 export interface PendingInvoicesQueryDto {
   limit?: number | string;
   offset?: number | string;
+}
+
+export interface OverdueFeesQueryDto {
+  /// Matches student name (contains) or roll/registration no (exact).
+  search?: string;
+  class_id?: number | string;
 }
 
 export interface DeleteAllInvoicesRequestDto {
@@ -41,6 +51,13 @@ export interface WaiveInvoiceRequestDto {
   mode?: "add" | "set";
 }
 
+export interface SetStudentFeeDiscountRequestDto {
+  /** 0 removes the standing discount for this fee structure. */
+  amount: number | string;
+  /** Required when amount > 0. */
+  reason?: string;
+}
+
 export interface RecordPaymentRequestDto {
   amount: number | string;
   method: string;
@@ -51,6 +68,20 @@ export interface RecordPaymentRequestDto {
   /// Backdate the payment (e.g. cash collected yesterday, entered today).
   /// Defaults to now when omitted.
   paid_at?: string;
+}
+
+/* ================= ফি ধরণ ব্যবস্থাপনা (settings CRUD) ================= */
+
+export interface CreateFeeCategoryRequestDto {
+  name: string;
+  is_admission_type?: boolean;
+}
+
+export interface UpdateFeeCategoryRequestDto {
+  name?: string;
+  is_admission_type?: boolean;
+  sort_order?: number;
+  is_active?: boolean;
 }
 
 /* ================= MANUAL PAYMENT METHOD SETUP ================= */

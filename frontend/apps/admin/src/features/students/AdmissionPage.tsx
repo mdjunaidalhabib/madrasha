@@ -14,6 +14,7 @@ import BulkAdmissionModal, {
 import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 
 export interface AdmissionFormData {
   name: string;
@@ -118,6 +119,14 @@ type ClassItem = {
   division_id?: number;
 };
 
+interface AdmissionSuccessInfo {
+  isReAdmission: boolean;
+  registrationNo: string;
+  roll: string;
+  previousAcademicYear: string;
+  academicYear: string;
+}
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const initialState: AdmissionFormData = {
@@ -182,6 +191,8 @@ const AdmissionPage = () => {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkAdmissionResultData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<AdmissionSuccessInfo | null>(null);
+  const newFormButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -316,6 +327,20 @@ const AdmissionPage = () => {
       clearTimeout(timer);
     };
   }, [formData.currentClass, formData.academicYear]);
+
+  const handleStartNewAdmission = () => {
+    setFormData(initialState);
+    setErrors({});
+    setPreviousStudent(null);
+    setSuccessInfo(null);
+  };
+
+  // Auto-focus the "নতুন ভর্তি ফর্ম" button as soon as the success modal
+  // opens, so pressing Enter immediately starts a fresh form without
+  // requiring a mouse click.
+  useEffect(() => {
+    if (successInfo) newFormButtonRef.current?.focus();
+  }, [successInfo]);
 
   const handleDismissPreviousStudent = () => {
     setPreviousStudent(null);
@@ -602,7 +627,10 @@ const AdmissionPage = () => {
     e.preventDefault();
 
     const isValid = validateForm();
-    if (!isValid) return;
+    if (!isValid) {
+      useToastStore.getState().show("* চিহ্নিত প্রয়োজনীয় ফিল্ডগুলো পূরণ করুন", "error");
+      return;
+    }
 
     const payload = {
       name_bn: formData.name,
@@ -654,28 +682,18 @@ const AdmissionPage = () => {
 
       const res = await api.post("/students/admission", payload);
 
-      if (res.data?.action === "re_admitted") {
-        useToastStore
-          .getState()
-          .show(
-            `পুনঃভর্তি সফল হয়েছে ✅ (পূর্বের সেশন: ${res.data?.previousAcademicYear || "-"} → নতুন সেশন: ${formData.academicYear}) | রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"} — মুহতামিমের অনুমোদনের অপেক্ষায়`,
-            "success",
-          );
-      } else {
-        useToastStore
-          .getState()
-          .show(
-            `Admission Successful ✅ রেজিস্ট্রেশন: ${res.data?.registrationNo || "-"} | রোল: ${res.data?.roll || "-"} — মুহতামিমের অনুমোদনের অপেক্ষায়`,
-            "success",
-          );
-      }
-
       // Admission fee collection now happens from হিসাব বিভাগ's "ভর্তি ফি
       // পেন্ডিং" page after a Muhtamim reviews the application, not inline
-      // here at submission time - so the form just resets straight away.
-      setFormData(initialState);
-      setErrors({});
-      setPreviousStudent(null);
+      // here at submission time. The form is left as-is (rather than reset
+      // immediately) until the office staff dismisses the success modal
+      // below - see handleStartNewAdmission.
+      setSuccessInfo({
+        isReAdmission: res.data?.action === "re_admitted",
+        registrationNo: res.data?.registrationNo ? String(res.data.registrationNo) : "-",
+        roll: res.data?.roll ? String(res.data.roll) : "-",
+        previousAcademicYear: res.data?.previousAcademicYear || "-",
+        academicYear: formData.academicYear,
+      });
     } catch (err: any) {
       useToastStore.getState().show(err?.response?.data?.message || "Failed ❌", "error");
     } finally {
@@ -748,6 +766,50 @@ const AdmissionPage = () => {
         onSubmit={handleExcelSubmit}
         onDownloadTemplate={downloadTemplate}
       />
+
+      <Modal
+        open={Boolean(successInfo)}
+        title={successInfo?.isReAdmission ? "পুনঃভর্তি সফল হয়েছে ✅" : "ভর্তি সফল হয়েছে ✅"}
+        onClose={handleStartNewAdmission}
+        maxWidthClassName="max-w-md"
+      >
+        {successInfo && (
+          <div className="space-y-4">
+            {successInfo.isReAdmission && (
+              <p className="text-sm text-gray-600 dark:text-slate-400">
+                পূর্বের সেশন: <span className="font-semibold">{successInfo.previousAcademicYear}</span> → নতুন সেশন:{" "}
+                <span className="font-semibold">{successInfo.academicYear}</span>
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-gray-50 p-3 text-center dark:bg-slate-800">
+                <div className="text-xs text-gray-500 dark:text-slate-400">রেজিস্ট্রেশন নম্বর</div>
+                <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
+                  {successInfo.registrationNo}
+                </div>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3 text-center dark:bg-slate-800">
+                <div className="text-xs text-gray-500 dark:text-slate-400">রোল নম্বর</div>
+                <div className="text-lg font-bold text-gray-800 dark:text-slate-100">{successInfo.roll}</div>
+              </div>
+            </div>
+
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              মুহতামিমের অনুমোদনের অপেক্ষায়
+            </p>
+
+            <button
+              ref={newFormButtonRef}
+              type="button"
+              onClick={handleStartNewAdmission}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              নতুন ভর্তি ফর্ম
+            </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

@@ -42,15 +42,18 @@ export interface AttendanceTodaySummary {
 }
 
 export interface OverdueFeeListItem {
-  id: number;
-  title: string;
+  studentId: number;
   studentName: string;
-  dueDate: Date;
+  invoiceCount: number;
+  oldestDueDate: Date;
   remaining: number;
 }
 
 export interface OverdueFeesSummary {
+  /** Total unpaid invoices across every student (kept for backward compat). */
   count: number;
+  /** Distinct students with at least one overdue invoice. */
+  studentCount: number;
   totalDue: number;
   list: OverdueFeeListItem[];
 }
