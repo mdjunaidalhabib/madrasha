@@ -287,7 +287,7 @@ export class AuthService {
 
     const madrasa = await this.repository.findMadrasaSlug(madrasaId);
     const base = env.frontendBaseUrl || `https://${env.rootDomain}`;
-    const resetLink = `${base}/${madrasa?.slug || ""}/admin/reset-password?token=${rawToken}`;
+    const resetLink = `${base}/reset-password?token=${rawToken}&slug=${madrasa?.slug || ""}`;
 
     const emailResult = await emailService.send({
       to: user.email,

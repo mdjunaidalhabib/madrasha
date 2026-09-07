@@ -1,0 +1,156 @@
+import { useState } from "react";
+import { Pencil, Images } from "lucide-react";
+import Button from "@madrasha/shared-ui/src/components/ui/Button";
+import BrandImageBox from "./BrandImageBox";
+import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+import { CLOUD_NOT_CONFIGURED_MSG, getCloudinaryPublicId } from "../../utils/cloudUpload";
+import { uploadApi, type UploadFolder } from "../../services/phase4Api";
+import { logger } from "@madrasha/shared-ui/src/utils/logger";
+
+export default function InlineImageField({
+  label,
+  hint,
+  value,
+  folder,
+  shape,
+  ratioLabel,
+  onSave,
+}: {
+  label: string;
+  hint?: string;
+  value: string | null | undefined;
+  folder?: UploadFolder;
+  shape?: "square" | "wide";
+  ratioLabel?: string;
+  onSave: (value: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => {
+    setDraft(value || "");
+    setEditing(true);
+  };
+
+  const cancel = () => setEditing(false);
+
+  // Uploading already persists the file to cloud storage - as soon as that
+  // succeeds, save it as this field's value right away, no separate "Save"
+  // click needed. Cleans up the old Cloudinary asset it replaced too.
+  const handleUploaded = async (url: string | null) => {
+    if (!url) {
+      useToastStore.getState().show(CLOUD_NOT_CONFIGURED_MSG, "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(url);
+      const oldPublicId = getCloudinaryPublicId(value);
+      if (oldPublicId && oldPublicId !== getCloudinaryPublicId(url)) {
+        uploadApi
+          .deleteImage(oldPublicId)
+          .catch((err) => logger.error("OLD BRAND IMAGE CLEANUP ERROR:", err));
+      }
+      setEditing(false);
+    } catch {
+      // error toast already shown by onSave
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = () => {
+    useConfirmStore.getState().show({
+      title: "ছবি মুছুন",
+      message: `"${label}" মুছে ফেলা হবে। এগিয়ে যেতে চান?`,
+      confirmText: "মুছুন",
+      danger: true,
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await onSave("");
+          const oldPublicId = getCloudinaryPublicId(value);
+          if (oldPublicId) {
+            uploadApi
+              .deleteImage(oldPublicId)
+              .catch((err) => logger.error("BRAND IMAGE DELETE ERROR:", err));
+          }
+          setDraft("");
+          setEditing(false);
+        } catch {
+          // error toast already shown by onSave
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
+  };
+
+  if (!editing) {
+    return (
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
+        {value ? (
+          <img
+            src={value}
+            alt={label}
+            className={`shrink-0 rounded-lg border border-gray-200 bg-white object-contain dark:border-slate-700 ${
+              shape === "wide" ? "h-14 w-24" : "h-14 w-14"
+            }`}
+          />
+        ) : (
+          <div
+            className={`flex shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 dark:bg-slate-800 dark:text-slate-600 ${
+              shape === "wide" ? "h-14 w-24" : "h-14 w-14"
+            }`}
+          >
+            <Images size={20} />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
+          <p className="text-sm text-gray-900 dark:text-slate-100">
+            {value ? "আপলোড করা আছে" : <span className="text-gray-400 dark:text-slate-500">যোগ করা হয়নি</span>}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={startEdit}
+          className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
+          title="সম্পাদনা"
+        >
+          <Pencil size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+      <div className="max-w-xs">
+        <BrandImageBox
+          label={label}
+          hint={hint}
+          folder={folder}
+          shape={shape}
+          ratioLabel={ratioLabel}
+          value={draft}
+          onChange={setDraft}
+          onUploaded={handleUploaded}
+          onRemove={() => setDraft("")}
+        />
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
+          বাতিল
+        </Button>
+        {value && (
+          <Button type="button" variant="danger" disabled={saving} onClick={remove}>
+            {saving ? "মুছে ফেলা হচ্ছে..." : "মুছুন"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,391 @@
+import React, { useMemo, useRef } from "react";
+import {
+  toBanglaDigits,
+  normalizeBanglaDigits,
+  ABSENT_MARK,
+  ABSENT_MARK_LABEL,
+} from "@madrasha/shared-ui/src/utils/reportUtils";
+
+const displayNumber = (value: number | string | null | undefined) =>
+  value === null || value === undefined || value === "" ? "-" : toBanglaDigits(value);
+
+interface Student {
+  id: number;
+  name_bn: string;
+  roll?: number | string | null;
+  registration_no?: number | string | null;
+}
+
+interface Book {
+  book_id: number;
+  book_name_bn?: string;
+  name_bn?: string;
+  full_marks?: number;
+  is_miyari?: boolean;
+  pass_mark?: number | null;
+}
+
+interface Props {
+  students: Student[];
+  books: Book[];
+  marks: Record<number, Record<number, number | null>>;
+  setMarks: React.Dispatch<React.SetStateAction<Record<number, Record<number, number | null>>>>;
+  disabled?: boolean;
+  /** Fallback pass-mark threshold for subjects without their own override
+   * (Book.pass_mark). Compared directly against the raw mark — not scaled
+   * by full_marks — matching the backend's fail-mark semantics. Defaults to
+   * 33 (a common global fail mark). */
+  failMark?: number;
+  /** Called when the user commits a cell (Enter / moves to next field) so the
+   * parent can trigger an autosave. */
+  onCommit?: () => void;
+  /** Current autosave status, shown as a small indicator next to the progress bar. */
+  autosaveStatus?: "idle" | "saving" | "saved" | "error";
+}
+
+export default function MarksTable({
+  students,
+  books,
+  marks,
+  setMarks,
+  disabled = false,
+  failMark = 33,
+  onCommit,
+  autosaveStatus = "idle",
+}: Props) {
+  // 2D grid of input refs so Enter / Arrow keys can jump straight to the
+  // next cell without the user reaching for the mouse.
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const rowCount = students.length;
+  const colCount = books.length;
+
+  const cellKey = (row: number, col: number) => `${row}-${col}`;
+
+  const focusCell = (row: number, col: number) => {
+    if (row < 0 || row >= rowCount || col < 0 || col >= colCount) return;
+    const el = inputRefs.current[cellKey(row, col)];
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
+    switch (e.key) {
+      case "Enter": {
+        e.preventDefault();
+        // Move downward through the same subject first. After the last
+        // student, continue from the first student of the next subject.
+        if (row + 1 < rowCount) {
+          focusCell(row + 1, col);
+        } else if (col + 1 < colCount) {
+          focusCell(0, col + 1);
+        }
+        onCommit?.();
+        break;
+      }
+      case "ArrowRight":
+        if (
+          (e.target as HTMLInputElement).selectionStart ===
+          (e.target as HTMLInputElement).value.length
+        ) {
+          e.preventDefault();
+          focusCell(row, col + 1);
+        }
+        break;
+      case "ArrowLeft":
+        if ((e.target as HTMLInputElement).selectionStart === 0) {
+          e.preventDefault();
+          focusCell(row, col - 1);
+        }
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        focusCell(row + 1, col);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        focusCell(row - 1, col);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handle = (sid: number, bid: number, rawVal: string, max = 100) => {
+    // A lone "-" marks the student absent for this subject — the fast path
+    // for the common case, since the cell is select-all'd on focus, so this
+    // is always a single clean keystroke, not appended to existing digits.
+    if (rawVal === "-") {
+      setMarks((prev) => ({
+        ...prev,
+        [sid]: {
+          ...prev[sid],
+          [bid]: ABSENT_MARK,
+        },
+      }));
+      return;
+    }
+
+    // Digits only — typing stays plain ASCII, so strip anything else and
+    // normalize any stray Bengali digits (e.g. from a mobile OS keyboard).
+    const val = normalizeBanglaDigits(rawVal).replace(/\D/g, "");
+
+    if (val === "") {
+      // Keep the entry as `null` rather than deleting the key — this is what
+      // tells the parent's autosave to actually persist the clear as a
+      // delete instead of just quietly dropping the row from the payload.
+      setMarks((prev) => ({
+        ...prev,
+        [sid]: {
+          ...prev[sid],
+          [bid]: null,
+        },
+      }));
+      return;
+    }
+
+    const num = Number(val);
+
+    if (Number.isNaN(num)) return;
+    if (!Number.isInteger(num)) return;
+    if (num < 0 || num > max) return;
+
+    setMarks((prev) => ({
+      ...prev,
+      [sid]: {
+        ...prev[sid],
+        [bid]: num,
+      },
+    }));
+  };
+
+  // Overall completion stats for the little progress badge in the header.
+  const { filled, total } = useMemo(() => {
+    const totalCells = rowCount * colCount;
+    let filledCells = 0;
+
+    students.forEach((s) => {
+      books.forEach((b) => {
+        if (marks?.[s.id]?.[b.book_id] != null) filledCells += 1;
+      });
+    });
+
+    return { filled: filledCells, total: totalCells };
+  }, [students, books, marks, rowCount, colCount]);
+
+  const getCellStyle = (value: number | null | undefined, book: Book) => {
+    if (value == null) {
+      return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+    }
+
+    if (value === ABSENT_MARK) {
+      return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+    }
+
+    // A subject's own pass mark (set per-subject, e.g. 20 on a 50-mark
+    // হেফজ subject) takes priority over the madrasa's global fail mark —
+    // otherwise every subject would be checked against a threshold tuned
+    // for 100-mark subjects, regardless of what it's actually out of.
+    const threshold = book.pass_mark ?? failMark;
+
+    if (value < threshold) {
+      // Failing mark — red
+      return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400 dark:border-red-700 dark:bg-red-950/40 dark:text-red-400";
+    }
+
+    // Passing — green
+    return "border-green-400 bg-green-50 text-green-700 focus:ring-green-400 dark:border-green-700 dark:bg-green-950/40 dark:text-green-400";
+  };
+
+  return (
+    <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-700 dark:text-slate-200">📊 নম্বর এন্ট্রি</h2>
+
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {autosaveStatus !== "idle" && (
+            <span
+              className={`text-xs font-medium flex items-center gap-1 ${
+                autosaveStatus === "saving"
+                  ? "text-blue-500 dark:text-blue-400"
+                  : autosaveStatus === "saved"
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-red-500 dark:text-red-400"
+              }`}
+            >
+              {autosaveStatus === "saving" && "⏳ সংরক্ষণ হচ্ছে..."}
+              {autosaveStatus === "saved" && "✓ সংরক্ষিত"}
+              {autosaveStatus === "error" && "⚠ সংরক্ষণ ব্যর্থ"}
+            </span>
+          )}
+
+          {total > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-20 sm:w-32 h-2 bg-gray-200 rounded-full overflow-hidden dark:bg-slate-700">
+                <div
+                  className="h-full bg-blue-500 transition-all"
+                  style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+                {toBanglaDigits(filled)}/{toBanglaDigits(total)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {books.length > 0 && students.length > 0 && (
+        <p className="hidden sm:block text-xs text-gray-400 mb-2 dark:text-slate-500">
+          ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">⏎</kbd> চাপুন
+          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে।
+          কেউ পরীক্ষা না দিলে ঘরে শুধু{" "}
+          <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd> চাপুন — স্বয়ংক্রিয়ভাবে
+          "{ABSENT_MARK_LABEL}" (অনুপস্থিত) বসে যাবে।
+        </p>
+      )}
+
+      {/* Horizontally-scrollable on small screens, with the student-name
+          column pinned via sticky positioning so it stays visible while
+          scrolling through subjects — this is the main mobile ergonomics
+          win for a table that's inherently wide (one column per subject). */}
+      <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+        <table className="w-full border text-xs sm:text-sm dark:border-slate-700">
+          {/* HEADER */}
+          <thead className="bg-gray-100 sticky top-0 z-10 dark:bg-slate-800">
+            <tr>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রোল</th>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রেজি. নং</th>
+              <th className="border px-2 sm:px-3 py-2 text-left sticky left-0 z-20 bg-gray-100 min-w-[96px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                শিক্ষার্থীর নাম
+              </th>
+
+              {books.length > 0 ? (
+                books.map((b) => (
+                  <th key={b.book_id} className="border px-2 sm:px-3 py-2 whitespace-nowrap dark:border-slate-700 dark:text-slate-200">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span>{b.book_name_bn || b.name_bn || `বই ${toBanglaDigits(b.book_id)}`}</span>
+                      {b.is_miyari ? (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
+                          মিয়ারি
+                        </span>
+                      ) : null}
+                      {b.pass_mark != null && (
+                        <span
+                          className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
+                          title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                        >
+                          পাস {toBanglaDigits(b.pass_mark)}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400 dark:text-slate-500">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
+                    </div>
+                  </th>
+                ))
+              ) : (
+                <th className="border px-3 py-2 text-gray-400 dark:border-slate-700 dark:text-slate-500">বিষয়সমূহ এখানে দেখাবে</th>
+              )}
+            </tr>
+          </thead>
+
+          {/* BODY */}
+          <tbody>
+            {students.length === 0 || books.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={books.length > 0 ? books.length + 3 : 4}
+                  className="text-center py-10 text-gray-400 dark:text-slate-500"
+                >
+                  {disabled ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400" />
+                      <p className="text-sm">লোড হচ্ছে...</p>
+                    </div>
+                  ) : students.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl">🧑‍🎓</span>
+                      <p className="font-medium">এই শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl">📘</span>
+                      <p className="font-medium">এই শ্রেণির জন্য কোনো বই যুক্ত করা হয়নি</p>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ) : (
+              students.map((s, rowIndex) => (
+                <tr key={s.id} className="hover:bg-gray-50 transition dark:hover:bg-slate-800">
+                  <td className="border px-2 sm:px-3 py-2 text-center text-gray-600 whitespace-nowrap dark:border-slate-700 dark:text-slate-400">
+                    {displayNumber(s.roll)}
+                  </td>
+                  <td className="border px-2 sm:px-3 py-2 text-center text-gray-600 whitespace-nowrap dark:border-slate-700 dark:text-slate-400">
+                    {displayNumber(s.registration_no)}
+                  </td>
+                  <td className="border px-2 sm:px-3 py-2 font-medium text-gray-700 whitespace-nowrap sticky left-0 z-10 bg-white dark:border-slate-700 dark:text-slate-200 dark:bg-slate-900">
+                    {s.name_bn}
+                  </td>
+
+                  {books.map((b, colIndex) => {
+                    const value = marks?.[s.id]?.[b.book_id];
+                    const max = b.full_marks ?? 100;
+
+                    return (
+                      <td key={b.book_id} className="border px-1 sm:px-2 py-1 text-center dark:border-slate-700">
+                        <input
+                          ref={(el) => {
+                            inputRefs.current[cellKey(rowIndex, colIndex)] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="০"
+                          disabled={disabled}
+                          style={{ fontFamily: '"Noto Sans Bengali", "Hind Siliguri", sans-serif' }}
+                          className={`w-16 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
+                            disabled
+                              ? "bg-gray-100 cursor-not-allowed text-gray-400 dark:bg-slate-800 dark:text-slate-500"
+                              : getCellStyle(value, b)
+                          }`}
+                          value={
+                            value === ABSENT_MARK
+                              ? ABSENT_MARK_LABEL
+                              : value != null
+                                ? toBanglaDigits(value)
+                                : ""
+                          }
+                          onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
+                          onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                          onFocus={(e) => e.target.select()}
+                          onBlur={() => onCommit?.()}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {books.length > 0 && students.length > 0 && (
+        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-slate-400">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> ফেল
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block dark:bg-green-950/40 dark:border-green-700" />{" "}
+            পাশ
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
+            অনুপস্থিত
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

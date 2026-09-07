@@ -1,68 +1,83 @@
 # Frontend Architecture
 
-## Route groups
+The frontend is an npm-workspaces monorepo with 3 independently-deployable apps sharing one package, so each can run on its own subdomain/origin.
 
 ```txt
-/super-admin/*  Platform owner panel
-/admin/*        Madrasa management/admin panel
-/m/:slug        Public madrasa website
+frontend/
+  packages/
+    shared-ui/        @madrasha/shared-ui — design system (components/ui), the
+                       DocumentDesigner canvas engine, toast/theme/confirm
+                       stores, apiConfig, a couple of shared utils. No build
+                       step: apps import its .ts/.tsx source directly via
+                       `@madrasha/shared-ui/src/...`. Depended on by admin and
+                       super-admin only — landing has zero shared-ui usage.
+  apps/
+    landing/           Marketing site (QmsLandingPage) — dev port 5180. Owns
+                        only `/`. No API/store usage, fully standalone.
+    admin/              Tenant admin dashboard + guardian portal + each
+                        madrasa's public website + admission form + kiosk +
+                        print-only report views. Dev port 5181. Owns
+                        `/:madrasaSlug/*`, `/m/:madrasaSlug`, and the legacy
+                        `/login` `/admin/login` `/admin/*` redirects. Root `/`
+                        redirects to `/login`.
+    super-admin/        Platform-owner panel. Dev port 5182. Root-relative
+                        (`/login`, `/dashboard`, `/madrasas`, ... — no
+                        `/super-admin` prefix, since this app owns its own
+                        origin now).
 ```
 
-## Folder structure
+## Why 3 apps instead of 1
 
-```txt
-src/features/super-admin/
-  auth/                 Super Admin login
-  dashboard/            Platform overview
-  madrasa-management/   Create/manage/suspend/trash madrasas
-  subscriptions/        Plans and limits
-  website-control/      Global website active/limited/disabled control
+Originally a single SPA served all three areas from one origin via path
+prefixes (`/`, `/super-admin/*`, `/:madrasaSlug/*`). To deploy each on its own
+subdomain with independent builds/releases, the app was split along its
+natural seams — an audit found almost no cross-imports between the three
+areas beyond a small, well-defined shared surface (see `packages/shared-ui`).
 
-src/features/admin/
-  website-builder/      Madrasa admin website settings and content controls
+## Path-based tenant URLs (unchanged within the admin app)
 
-src/features/public/
-  website/              Public website rendered from database settings
-
-src/layouts/
-  SuperAdminLayout.tsx  Platform owner layout
-  AdminLayout.tsx       Madrasa admin layout
-  DashboardLayout.tsx   Legacy tenant/admin dashboard wrapper
-```
-
-## Login paths
-
-```txt
-/super-admin/login  Super Admin login
-/admin/login        Madrasa Admin login
-```
-
-## Path-based tenant URLs
-
-This version uses path-based tenancy for development and simple hosting:
-
-- Super Admin: `/super-admin/login`
-- Madrasa Admin: `/:madrasaSlug/admin/login`
-- Madrasa Admin Dashboard: `/:madrasaSlug/admin/dashboard`
+- Madrasa Admin: `/:madrasaSlug/admin/login`, `/:madrasaSlug/admin/dashboard`
+- Guardian: `/:madrasaSlug/guardian/login`, `/:madrasaSlug/guardian/dashboard`
 - Public Website: `/:madrasaSlug`
 
-Examples:
+The frontend reads the first URL segment as the tenant slug and sends it to
+the backend with the `X-Madrasa-Slug` header.
 
-- `/jamia/admin/login`
-- `/jamia/admin/dashboard`
-- `/jamia`
+## Running locally
 
-The frontend reads the first URL segment as the tenant slug and sends it to the backend with the `X-Madrasa-Slug` header.
+```
+npm run dev:landing --prefix frontend      # :5180
+npm run dev:admin --prefix frontend        # :5181
+npm run dev:super-admin --prefix frontend  # :5182
+```
+Or from the repo root, `npm run dev` starts the backend plus all three.
+
+Backend `CORS_ORIGINS` must list every origin that will call it (see
+`backend/.env.example`).
+
+## Deploying
+
+Each app has its own `Dockerfile` + `nginx.conf`. The build context for all
+three must be `frontend/` (the workspace root), not the app subfolder, so the
+shared package and root lockfile are visible:
+
+```
+docker build -f frontend/apps/landing/Dockerfile -t madrasha-landing frontend/
+docker build -f frontend/apps/admin/Dockerfile -t madrasha-admin frontend/
+docker build -f frontend/apps/super-admin/Dockerfile -t madrasha-super-admin frontend/
+```
+
+Point each container at its own subdomain and set the backend's
+`CORS_ORIGINS` / `FRONTEND_BASE_URL` accordingly.
 
 ## Document designer
 
 ```txt
-src/components/DocumentDesigner/      Canvas-based layout editor (layers, elements, render engine)
-src/features/talimat/
-  TenantDocumentTemplateLibrary.tsx   List/clone/set-default/delete templates
-  TenantDocumentDesignerPage.tsx      Edit one template's draft, publish, restore versions
+packages/shared-ui/src/components/DocumentDesigner/   Canvas-based layout editor
+  (layers, elements, render engine) — used by both the admin app's template
+  library (talimat/reports) and the super-admin app's system-template editor.
 ```
 
-Reachable at Talimat -> Settings -> Documents (`talimat/settings/documents`, editor at `talimat/settings/documents/:type/:id/edit`), gated by the `document_templates.read`/`document_templates.manage` permissions.
-
-Replaces the old per-type `id_card` / `admit_card` / `certificate` / `testimonial` / `transfer_letter` settings pages; those routes now redirect here. Print output in `components/Report/documents/*` resolves the tenant's default template through the backend and renders it with the same `DocumentDesigner` engine used for the designer's live preview.
+Reachable at Talimat -> Settings -> Documents (`talimat/settings/documents`,
+editor at `talimat/settings/documents/:type/:id/edit`) in the admin app, and
+at `/document-templates` in the super-admin app.
