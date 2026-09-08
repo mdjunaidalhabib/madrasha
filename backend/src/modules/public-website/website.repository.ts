@@ -27,7 +27,18 @@ export class WebsiteRepository {
         isActive: true,
         websiteStatus: true,
         reportLogo: true,
+        customDomain: true,
       },
+    });
+  }
+
+  /** Resolves a tenant's slug from the hostname a visitor arrived on (a
+   * madrasa's own custom domain, not the platform's path-based `/:slug`
+   * form) - used by the public "which madrasa owns this domain" endpoint. */
+  findSlugByCustomDomain(host: string) {
+    return prisma.madrasa.findFirst({
+      where: { customDomain: host, deletedAt: null, isActive: 1 },
+      select: { slug: true },
     });
   }
 
@@ -115,6 +126,7 @@ export class WebsiteRepository {
         email: true,
         address: true,
         websiteStatus: true,
+        customDomain: true,
       },
     });
   }

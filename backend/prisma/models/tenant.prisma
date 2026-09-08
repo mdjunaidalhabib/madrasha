@@ -38,7 +38,7 @@ model Madrasa {
   studentLimit  Int?          @default(100) @map("student_limit")
   userLimit     Int?          @default(5) @map("user_limit")
   websiteStatus WebsiteStatus @default(active) @map("website_status")
-  customDomain  String?       @map("custom_domain") @db.VarChar(190)
+  customDomain  String?       @unique @map("custom_domain") @db.VarChar(190)
   planStatus    PlanStatus    @default(active) @map("plan_status")
   isActive      Int?          @default(1) @map("is_active")
   deletedAt     DateTime?     @map("deleted_at")

@@ -44,6 +44,18 @@ export class SlugConflictError extends ConflictError {
   }
 }
 
+export class CustomDomainConflictError extends ConflictError {
+  constructor() {
+    super("This domain is already connected to another madrasa.");
+  }
+}
+
+export class InvalidCustomDomainError extends BadRequestError {
+  constructor() {
+    super("Invalid domain - enter a bare hostname like www.example.com");
+  }
+}
+
 export class UserLimitReachedError extends BadRequestError {
   constructor() {
     super("User limit reached. Upgrade the plan or increase the user limit.");

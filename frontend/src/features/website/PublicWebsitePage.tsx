@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { getPublicWebsite } from "../../services/publicWebsiteApi";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
+import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { accentStrong, accentText, initials, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
 import NoticeMarquee from "./NoticeMarquee";
@@ -112,9 +113,9 @@ function SectionHeader({
   );
 }
 
-export default function PublicWebsitePage() {
+export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } = {}) {
   const params = useParams();
-  const slug = params.madrasaSlug || params.slug || "";
+  const slug = slugProp || params.madrasaSlug || params.slug || "";
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -137,6 +138,7 @@ export default function PublicWebsitePage() {
   }, [slug]);
 
   const madrasa = data?.madrasa;
+  useCustomDomainRedirect(madrasa?.custom_domain);
   const settings = data?.settings || {};
   const notices = data?.notices || [];
   const teachers = data?.teachers || [];

@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import guardianApi from "../services/guardianApi";
 import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { getTenantGuardianBase } from "../utils/tenantSlug";
+import { useTenantSlug } from "../utils/useTenantSlug";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
 import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
 
@@ -16,7 +17,7 @@ const NAV_ITEMS = [
 ];
 
 export default function GuardianLayout() {
-  const { madrasaSlug = "" } = useParams();
+  const madrasaSlug = useTenantSlug();
   const base = getTenantGuardianBase(madrasaSlug);
   const nav = useNavigate();
   const location = useLocation();

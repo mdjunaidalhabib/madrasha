@@ -9,7 +9,7 @@ function normalizeSlug(value: unknown) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-function getSlugFromRequest(req: Request) {
+async function getSlugFromRequest(req: Request) {
   // Path-based tenant mode: frontend sends this header from /:madrasaSlug/admin/*
   const headerSlug = normalizeSlug(req.headers["x-madrasa-slug"]);
   if (headerSlug) return headerSlug;
@@ -32,12 +32,23 @@ function getSlugFromRequest(req: Request) {
     if (subdomain && !subdomain.includes(".")) return normalizeSlug(subdomain);
   }
 
+  // Defense-in-depth: a request landing directly on a tenant's own custom
+  // domain without an X-Madrasa-Slug header (e.g. a staff bookmark hitting
+  // an API route straight from that domain). The frontend's normal flow
+  // resolves this client-side first (see resolve-domain) and always sends
+  // the header afterwards - this DB lookup only covers requests that skip
+  // that step entirely.
+  if (host) {
+    const madrasa = await prisma.madrasa.findFirst({ where: { customDomain: host }, select: { slug: true } });
+    if (madrasa) return madrasa.slug;
+  }
+
   return "";
 }
 
 export const tenantMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const slug = getSlugFromRequest(req);
+    const slug = await getSlugFromRequest(req);
 
     if (!slug) {
       return res.status(400).json({

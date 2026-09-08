@@ -39,6 +39,7 @@ export class SuperAdminRepository {
         userLimit: true,
         isActive: true,
         websiteStatus: true,
+        customDomain: true,
         subscriptions: {
           where: { isActive: 1 },
           take: 1,
@@ -186,6 +187,13 @@ export class SuperAdminRepository {
   findActiveSlugConflict(slug: string, excludeId: number) {
     return prisma.madrasa.findFirst({
       where: { slug, deletedAt: null, id: { not: excludeId } },
+      select: { id: true },
+    });
+  }
+
+  findActiveCustomDomainConflict(customDomain: string, excludeId: number) {
+    return prisma.madrasa.findFirst({
+      where: { customDomain, deletedAt: null, id: { not: excludeId } },
       select: { id: true },
     });
   }
@@ -499,6 +507,7 @@ export class SuperAdminRepository {
         userLimit: true,
         isActive: true,
         websiteStatus: true,
+        customDomain: true,
         subscriptions: {
           where: { isActive: 1 },
           take: 1,

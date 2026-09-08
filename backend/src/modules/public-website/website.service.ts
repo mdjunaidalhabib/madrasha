@@ -93,6 +93,15 @@ export class WebsiteService {
     };
   }
 
+  /** Resolves the tenant slug for a visitor arriving on a madrasa's own
+   * custom domain (root `/`, no slug in the URL) - the frontend calls this
+   * once per page load when the hostname isn't the platform's own domain. */
+  async resolveDomainToSlug(host: string) {
+    const madrasa = await this.repository.findSlugByCustomDomain(host);
+    if (!madrasa) throw new NotFoundError("No madrasa is connected to this domain");
+    return { slug: madrasa.slug };
+  }
+
   async getWebsiteSettings(madrasaId: number) {
     const [madrasa, settings, pages, notices, gallery, slides, committee, admissions] = await Promise.all([
       this.repository.findMadrasaForAdmin(madrasaId),

@@ -6,6 +6,8 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./router";
 import { config } from "../shared/config";
+import { isKnownCustomDomain } from "../shared/config/customDomainCache";
+import { normalizeHost } from "../shared/utils/host.util";
 import { errorHandler, notFoundHandler } from "../shared/middleware/error.middleware";
 import { requestLogger } from "../shared/middleware/requestLogger.middleware";
 import { activityLoggerMiddleware } from "../shared/middleware/activityLogger.middleware";
@@ -17,8 +19,15 @@ app.use(helmet());
 app.use(compression());
 app.use(
   cors({
-    origin(origin, callback) {
+    async origin(origin, callback) {
       if (!origin || config.cors.origins.includes(origin)) return callback(null, true);
+
+      // Fallback for a tenant's connected custom domain, which can't be
+      // known ahead of time in a static CORS_ORIGINS list (see
+      // shared/config/customDomainCache.ts).
+      const host = normalizeHost(origin);
+      if (host && (await isKnownCustomDomain(host))) return callback(null, true);
+
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: config.cors.credentials,

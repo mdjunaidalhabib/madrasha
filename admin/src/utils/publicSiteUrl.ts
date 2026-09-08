@@ -10,10 +10,14 @@
 // app (admin), so reusing "frontend" here would read as the same thing.
 const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) || "";
 
-export function getPublicSiteUrl(slug: string) {
-  return `${PUBLIC_SITE_URL}/${slug}`;
+// customDomain (when the madrasa has connected one) is preferred over the
+// slug-path form - both still work (the slug-path URL auto-redirects to the
+// custom domain, see frontend's useCustomDomainRedirect), this just saves
+// that one extra hop for links built here.
+export function getPublicSiteUrl(slug: string, customDomain?: string | null) {
+  return customDomain ? `https://${customDomain}` : `${PUBLIC_SITE_URL}/${slug}`;
 }
 
-export function getPublicSiteKioskUrl(slug: string) {
-  return `${PUBLIC_SITE_URL}/${slug}/kiosk`;
+export function getPublicSiteKioskUrl(slug: string, customDomain?: string | null) {
+  return customDomain ? `https://${customDomain}/kiosk` : `${PUBLIC_SITE_URL}/${slug}/kiosk`;
 }

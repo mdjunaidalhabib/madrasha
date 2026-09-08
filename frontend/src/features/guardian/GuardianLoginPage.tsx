@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import guardianApi from "../../services/guardianApi";
 import { useGuardianAuthStore } from "../../store/guardianAuthStore";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
+import { useTenantSlug } from "../../utils/useTenantSlug";
 
 export default function GuardianLoginPage() {
   const [phone, setPhone] = useState("");
@@ -15,7 +16,7 @@ export default function GuardianLoginPage() {
 
   const setAuth = useGuardianAuthStore((s) => s.setAuth);
   const nav = useNavigate();
-  const { madrasaSlug = "" } = useParams();
+  const madrasaSlug = useTenantSlug();
   const base = getTenantGuardianBase(madrasaSlug);
 
   const handleLogin = async () => {

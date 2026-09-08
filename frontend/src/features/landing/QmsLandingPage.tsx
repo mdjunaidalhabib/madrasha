@@ -26,7 +26,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import ContactFab from "../../components/ContactFab";
+import ContactFab from "./ContactFab";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
 // the floating contact button and the Contact section below. Kept in one

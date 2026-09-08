@@ -22,6 +22,7 @@ export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => 
     // The public site's logo comes from branding settings (report_logo),
     // not the old website-settings logo_url field - see BrandingSettingsPage.
     logo_url: row.reportLogo ?? null,
+    custom_domain: row.customDomain ?? null,
   };
 };
 

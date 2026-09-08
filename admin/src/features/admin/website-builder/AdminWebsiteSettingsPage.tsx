@@ -284,7 +284,10 @@ export default function AdminWebsiteSettingsPage() {
   );
   const [savingCommitteeEdit, setSavingCommitteeEdit] = useState(false);
 
-  const publicUrl = useMemo(() => getPublicSiteUrl(slug), [slug]);
+  const publicUrl = useMemo(
+    () => getPublicSiteUrl(slug, (form as any).custom_domain),
+    [slug, (form as any).custom_domain],
+  );
 
   useEffect(() => {
     setLoading(true);

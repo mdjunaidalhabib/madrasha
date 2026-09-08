@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 
 import { scanCard } from "../../services/attendanceKioskApi";
+import { useTenantSlug } from "../../utils/useTenantSlug";
 
 type ScanResult =
   | { type: "success"; name: string; roll: string | number }
@@ -18,7 +18,7 @@ const OVERLAY_DURATION_MS = 4000;
 const SCAN_KEY_GAP_RESET_MS = 100;
 
 export default function AttendanceKioskPage() {
-  const { madrasaSlug = "" } = useParams();
+  const madrasaSlug = useTenantSlug();
   const storageKey = `kiosk_key_${madrasaSlug}`;
 
   const [kioskKey, setKioskKey] = useState<string | null>(null);

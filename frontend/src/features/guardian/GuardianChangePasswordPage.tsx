@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import guardianApi from "../../services/guardianApi";
 import { useGuardianAuthStore } from "../../store/guardianAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
+import { useTenantSlug } from "../../utils/useTenantSlug";
 
 export default function GuardianChangePasswordPage() {
   const [newPassword, setNewPassword] = useState("");
@@ -15,7 +16,7 @@ export default function GuardianChangePasswordPage() {
   const markPasswordChanged = useGuardianAuthStore((s) => s.markPasswordChanged);
   const toast = useToastStore();
   const nav = useNavigate();
-  const { madrasaSlug = "" } = useParams();
+  const madrasaSlug = useTenantSlug();
   const base = getTenantGuardianBase(madrasaSlug);
 
   const handleSubmit = async () => {

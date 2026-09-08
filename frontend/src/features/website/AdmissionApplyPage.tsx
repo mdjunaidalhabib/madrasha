@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CheckCircle2, ChevronLeft, GraduationCap, Loader2 } from "lucide-react";
 import { getPublicWebsite, submitFullAdmissionApplication } from "../../services/publicWebsiteApi";
+import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
+import { useTenantSlug } from "../../utils/useTenantSlug";
 import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
@@ -64,8 +66,7 @@ const inputClass = `${baseInputClass} border-slate-200`;
 const requiredMark = <span className="text-red-500">*</span>;
 
 export default function AdmissionApplyPage() {
-  const params = useParams();
-  const slug = params.madrasaSlug || params.slug || "";
+  const slug = useTenantSlug();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
@@ -89,6 +90,7 @@ export default function AdmissionApplyPage() {
   }, [slug]);
 
   const madrasa = data?.madrasa;
+  useCustomDomainRedirect(madrasa?.custom_domain);
   const settings = data?.settings || {};
   const divisions: DivisionItem[] = data?.divisions || [];
   const allClasses: ClassItem[] = data?.classes || [];

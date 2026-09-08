@@ -34,6 +34,7 @@ export type Madrasa = {
   student_limit: number;
   user_limit: number;
   website_status?: string;
+  custom_domain?: string | null;
   address?: string | null;
   phone?: string | null;
   start_date?: string | null;
@@ -443,6 +444,7 @@ function EditMadrasaModal({
     user_limit: Number(madrasa.user_limit || 0),
     is_active: Number(madrasa.is_active || 0),
     website_status: madrasa.website_status || "active",
+    custom_domain: madrasa.custom_domain || "",
     plan_id: madrasa.plan_id ? String(madrasa.plan_id) : "",
     start_date: toDateInputValue(madrasa.start_date),
   });
@@ -651,6 +653,21 @@ function EditMadrasaModal({
               value={form.address || ""}
               onChange={(e) => update("address", e.target.value)}
             />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
+              Custom Domain
+            </label>
+            <input
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="www.example.com"
+              value={form.custom_domain}
+              onChange={(e) => update("custom_domain", e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              এই মাদ্রাসার নিজস্ব ডোমেইন (DNS/SSL আলাদাভাবে সেট করতে হবে)। খালি রাখলে
+              slug-path URL-ই ব্যবহার হবে।
+            </p>
           </div>
         </div>
 

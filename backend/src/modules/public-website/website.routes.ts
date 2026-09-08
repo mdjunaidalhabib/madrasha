@@ -11,6 +11,7 @@ import {
   deleteWebsiteSlide,
   getPublicWebsite,
   getWebsiteSettings,
+  resolveDomain,
   saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
   saveWebsiteNotice,
@@ -25,6 +26,10 @@ import {
 
 const router = Router();
 
+// Registered before "/public/:slug" would be irrelevant anyway (different
+// prefix), but kept as its own top-level path on purpose so a real madrasa
+// slug can never collide with this literal route.
+router.get("/resolve-domain", resolveDomain);
 router.get("/public/:slug", getPublicWebsite);
 router.post("/public/:slug/admission", submitAdmissionApplication);
 router.post("/public/:slug/admission-full", submitFullAdmissionApplication);

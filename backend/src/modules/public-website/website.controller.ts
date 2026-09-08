@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ApiError, BadRequestError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { websiteService, resolveTenantId } from "./website.service";
+import { normalizeHost } from "../../shared/utils/host.util";
 
 const respondError = (res: Response, error: unknown) => {
   if (error instanceof ApiError) {
@@ -14,6 +15,18 @@ export const getPublicWebsite = async (req: Request, res: Response) => {
   try {
     const slug = String(req.params.slug || "").trim();
     const data = await websiteService.getPublicWebsite(slug);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const resolveDomain = async (req: Request, res: Response) => {
+  try {
+    const host = normalizeHost(req.headers.host);
+    if (!host) throw new BadRequestError("Host header required");
+
+    const data = await websiteService.resolveDomainToSlug(host);
     res.json({ data });
   } catch (error) {
     respondError(res, error);

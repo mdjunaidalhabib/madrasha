@@ -2,6 +2,7 @@ import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
 import { encryptSecret } from "../../shared/utils/crypto.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
+import { normalizeHost } from "../../shared/utils/host.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
@@ -17,7 +18,9 @@ import {
 import { DEFAULT_ROLE_PERMISSION_KEYS } from "../../shared/permissions/baseline-role-permissions";
 import { isMuhtamimRole } from "../../shared/permissions";
 import {
+  CustomDomainConflictError,
   DefaultUserProtectedError,
+  InvalidCustomDomainError,
   InvalidMadrasaIdError,
   InvalidPlanError,
   InvalidRoleError,
@@ -121,6 +124,7 @@ export class SuperAdminService {
         user_limit: m.userLimit,
         is_active: m.isActive,
         website_status: m.websiteStatus,
+        custom_domain: m.customDomain,
         plan_id: sub?.planId ?? null,
         plan_name: sub?.plan.name ?? null,
         start_date: sub?.startDate ?? null,
@@ -389,6 +393,20 @@ export class SuperAdminService {
       throw new InvalidWebsiteStatusError();
     }
 
+    // undefined = "not part of this update" (unchanged), null/"" = "clear it".
+    let normalizedCustomDomain: string | null | undefined;
+    if (dto.custom_domain !== undefined) {
+      if (dto.custom_domain === null || dto.custom_domain === "") {
+        normalizedCustomDomain = null;
+      } else {
+        normalizedCustomDomain = normalizeHost(dto.custom_domain);
+        if (!normalizedCustomDomain) throw new InvalidCustomDomainError();
+
+        const conflict = await this.repository.findActiveCustomDomainConflict(normalizedCustomDomain, id);
+        if (conflict) throw new CustomDomainConflictError();
+      }
+    }
+
     // Only touch divisions/modules/classes/books when the client actually
     // sent them (edit form) — undefined means "not part of this update".
     const divisionIds = dto.divisions !== undefined ? cleanNumberArray(dto.divisions) : null;
@@ -406,6 +424,7 @@ export class SuperAdminService {
         ...(Number(dto.user_limit) ? { userLimit: Number(dto.user_limit) } : {}),
         ...(dto.is_active === undefined ? {} : { isActive: Number(dto.is_active) }),
         ...(dto.website_status ? { websiteStatus: dto.website_status as WebsiteStatus } : {}),
+        ...(normalizedCustomDomain === undefined ? {} : { customDomain: normalizedCustomDomain }),
       });
 
       if (dto.plan_id) {
@@ -465,6 +484,7 @@ export class SuperAdminService {
       user_limit: madrasa.userLimit,
       is_active: madrasa.isActive,
       website_status: madrasa.websiteStatus,
+      custom_domain: madrasa.customDomain,
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
       start_date: madrasa.subscriptions[0]?.startDate ?? null,
       end_date: madrasa.subscriptions[0]?.endDate ?? null,

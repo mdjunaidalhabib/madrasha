@@ -27,6 +27,8 @@ export interface UpdateMadrasaRequestDto {
   user_limit?: number | string;
   is_active?: unknown;
   website_status?: string;
+  /** Hostname only (no protocol/path), e.g. "www.example.com" - null/"" clears it. */
+  custom_domain?: string | null;
   plan_id?: number | string;
   /** See CreateMadrasaRequestDto.start_date. */
   start_date?: string;
