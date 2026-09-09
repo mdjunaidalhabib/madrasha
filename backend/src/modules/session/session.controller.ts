@@ -12,7 +12,13 @@ const getMadrasaId = (req: Request): number => {
 
 export const getSessions = asyncHandler(async (req: Request, res: Response) => {
   const activeOnly = req.query.active_only === "true";
-  const data = await sessionService.list(getMadrasaId(req), activeOnly);
+  const divisionId =
+    req.query.division_id === undefined
+      ? undefined
+      : req.query.division_id === "" || req.query.division_id === "null"
+        ? null
+        : Number(req.query.division_id);
+  const data = await sessionService.list(getMadrasaId(req), activeOnly, divisionId);
   res.json({ success: true, data });
 });
 
@@ -34,4 +40,9 @@ export const setCurrentSession = asyncHandler(async (req: Request, res: Response
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
   await sessionService.delete(Number(req.params.id), getMadrasaId(req));
   return ApiResponse.message(res, "Session deleted successfully");
+});
+
+export const deleteUnusedFeeStructures = asyncHandler(async (req: Request, res: Response) => {
+  const count = await sessionService.deleteUnusedFeeStructures(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.success(res, { message: "ফি কাঠামোগুলো মুছে ফেলা হয়েছে", data: { count } });
 });

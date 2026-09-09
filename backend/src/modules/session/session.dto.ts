@@ -2,9 +2,12 @@ export interface CreateSessionRequestDto {
   name: string;
   start_date: string;
   end_date: string;
-  is_current?: boolean;
+  is_active?: boolean;
+  division_id?: number | string | null;
 }
 
-export type UpdateSessionRequestDto = Partial<CreateSessionRequestDto> & {
-  is_active?: boolean;
-};
+// isActive is never settable through a generic update - becoming "the"
+// active session for a division only happens through the dedicated
+// set-current transaction (see SessionService.setCurrent), which also
+// unsets whichever session was active before it.
+export type UpdateSessionRequestDto = Omit<Partial<CreateSessionRequestDto>, "is_active">;

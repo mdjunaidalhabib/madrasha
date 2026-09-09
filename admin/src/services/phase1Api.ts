@@ -14,6 +14,8 @@ export const admissionApi = {
   approve: (studentId: number) => api.patch(`/students/${studentId}/approve`),
   reject: (studentId: number, reason: string) =>
     api.patch(`/students/${studentId}/reject`, { reason }),
+  listRejected: () => cachedGet("/students/admission/rejected", undefined, 0),
+  permanentlyDeleteRejected: (studentId: number) => api.delete(`/students/${studentId}/rejected-application`),
 };
 
 /* ================= ATTENDANCE ================= */

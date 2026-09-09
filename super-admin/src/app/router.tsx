@@ -14,6 +14,9 @@ const SuperAdminMadrasasPage = lazy(
 const SuperAdminMadrasasTrashPage = lazy(
   () => import("../features/super-admin/madrasa-management/SuperAdminMadrasasTrashPage"),
 );
+const SuperAdminMadrasaStaffPage = lazy(
+  () => import("../features/super-admin/madrasa-management/SuperAdminMadrasaStaffPage"),
+);
 const SuperAdminPlansPage = lazy(
   () => import("../features/super-admin/subscriptions/SuperAdminPlansPage"),
 );
@@ -76,6 +79,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: withSuspense(<SuperAdminDashboardPage />) },
       { path: "madrasas", element: withSuspense(<SuperAdminMadrasasPage />) },
       { path: "madrasas/trash", element: withSuspense(<SuperAdminMadrasasTrashPage />) },
+      { path: "madrasas/:id/staff", element: withSuspense(<SuperAdminMadrasaStaffPage />) },
       { path: "plans", element: withSuspense(<SuperAdminPlansPage />) },
       { path: "document-templates", element: withSuspense(<SuperAdminDocumentTemplatesPage />) },
       {

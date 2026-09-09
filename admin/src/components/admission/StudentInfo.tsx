@@ -29,7 +29,8 @@ interface ClassItem {
 interface SessionItem {
   id: number;
   name: string;
-  isCurrent: boolean;
+  isActive: boolean;
+  divisionId: number | null;
 }
 
 const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors, isReturning }) => {
@@ -139,16 +140,6 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         const data = extractData(res);
         const list: SessionItem[] = Array.isArray(data) ? data : [];
         setSessions(list);
-
-        // Default-select the current session once, so admin doesn't have to
-        // pick it manually every admission - but never override a value the
-        // form already has (e.g. re-admission prefill, edit-in-progress).
-        if (!formData.academicYear) {
-          const current = list.find((s) => s.isCurrent);
-          if (current) {
-            setFormData((prev) => ({ ...prev, academicYear: current.name }));
-          }
-        }
       } catch (err) {
         logger.error("Session load error:", err);
         setSessions([]);
@@ -156,7 +147,6 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
     };
 
     fetchSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -191,6 +181,32 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
     return () => controller.abort();
   }, [formData.academicDivision]);
+
+  const selectedDivisionId = formData.academicDivision ? Number(formData.academicDivision) : null;
+  // Defense-in-depth: the fetch already asks the API for active_only=true,
+  // but never trust a stale/inactive session into the picker either way.
+  const activeSessions = sessions.filter((s) => s.isActive);
+
+  // শিক্ষাবর্ষ is fully automatic (see the read-only field below) - it is
+  // always derived from the selected বিভাগের নিজস্ব সক্রিয় সেশন (falling
+  // back to a সাধারণ/divisionId:null current session), never a manual
+  // choice, so this just keeps it in sync whenever বিভাগ or sessions change.
+  useEffect(() => {
+    if (!selectedDivisionId) {
+      if (formData.academicYear) setFormData((prev) => ({ ...prev, academicYear: "" }));
+      return;
+    }
+    if (!sessions.length) return;
+
+    const current =
+      activeSessions.find((s) => s.divisionId === selectedDivisionId) ||
+      activeSessions.find((s) => s.divisionId === null);
+    const nextValue = current ? current.name : "";
+    if (formData.academicYear !== nextValue) {
+      setFormData((prev) => ({ ...prev, academicYear: nextValue }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDivisionId, sessions]);
 
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
@@ -358,25 +374,22 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
           />
         </div>
 
-        {/* শিক্ষাবর্ষ */}
+        {/* শিক্ষাবর্ষ - বিভাগের চলমান সেশন অনুযায়ী সম্পূর্ণ স্বয়ংক্রিয়, ম্যানুয়ালি বদলানো যায় না */}
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            শিক্ষাবর্ষ <span className="text-red-500 dark:text-red-400">*</span>
-          </label>
-          <select
-            name="academicYear"
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">শিক্ষাবর্ষ</label>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              স্বয়ংক্রিয়
+            </span>
+          </div>
+          <input
+            type="text"
             value={formData.academicYear || ""}
-            onChange={handleChange}
-            className={inputClass("academicYear")}
-          >
-            <option value="">নির্বাচন করুন</option>
-            {sessions.map((session) => (
-              <option key={session.id} value={session.name}>
-                {session.name}
-                {session.isCurrent ? " (চলমান)" : ""}
-              </option>
-            ))}
-          </select>
+            placeholder={selectedDivisionId ? "কোনো সক্রিয় সেশন পাওয়া যায়নি" : "প্রথমে বিভাগ নির্বাচন করুন"}
+            readOnly
+            aria-readonly="true"
+            className={`${inputClass("academicYear")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
+          />
           <ErrorText field="academicYear" />
         </div>
 

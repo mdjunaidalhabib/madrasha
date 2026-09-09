@@ -63,10 +63,11 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   const [classes, setClasses] = useState<string[]>([]);
   const [books, setBooks] = useState<string[]>([]);
 
+  // তালিমাত/অ্যাকাউন্টেন্ট রোলের ডিফল্ট লগইন এখানে আর বানানো হয় না - মুহতামিম
+  // নিজেই dynamic Users/Roles সেটিংস থেকে যেকোনো রোলের স্টাফ তৈরি করতে পারেন।
+  // মুহতামিমের অ্যাকাউন্টটাই একমাত্র bootstrap করা জরুরি।
   const [defaultUsers, setDefaultUsers] = useState<DefaultUser[]>([
     { role: "muhtamim", enabled: true, email: "", password: "" },
-    { role: "talimat", enabled: false, email: "", password: "" },
-    { role: "accountant", enabled: false, email: "", password: "" },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});

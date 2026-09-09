@@ -145,7 +145,6 @@ model Madrasa {
   notificationLogs             NotificationLog[]
   notificationSettings         NotificationSetting[]
   guardians                    Guardian[]
-  cloudinaryConfig             MadrasaCloudinaryConfig?
   documentTemplates            DocumentTemplate[]
   tenantDocumentDefaults       TenantDocumentDefault[]
   kioskDevices                 KioskDevice[]
@@ -520,24 +519,3 @@ model WebsiteAdmissionApplication {
   @@map("website_admission_applications")
 }
 
-// ------------------------------------------------------------
-// PER-TENANT STORAGE (each madrasa's own Cloudinary account,
-// configured only by the super admin)
-// ------------------------------------------------------------
-
-/// One Cloudinary account per madrasa. `apiSecretEnc` holds an AES-256-GCM
-/// ciphertext (see backend/src/shared/utils/crypto.util.ts) - the plaintext
-/// secret is never stored and never returned to any client after saving.
-model MadrasaCloudinaryConfig {
-  id           Int      @id @default(autoincrement())
-  madrasaId    Int      @unique @map("madrasa_id")
-  cloudName    String   @map("cloud_name") @db.VarChar(100)
-  apiKey       String   @map("api_key") @db.VarChar(100)
-  apiSecretEnc String   @map("api_secret_enc") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-
-  @@map("madrasa_cloudinary_configs")
-}

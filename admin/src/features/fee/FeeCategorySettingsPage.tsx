@@ -24,7 +24,6 @@ const FeeCategorySettingsPage = () => {
   const [loading, setLoading] = useState(false);
 
   const [newName, setNewName] = useState("");
-  const [newIsAdmissionType, setNewIsAdmissionType] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -56,10 +55,9 @@ const FeeCategorySettingsPage = () => {
     }
     try {
       setCreating(true);
-      await feeCategoryApi.create({ name, is_admission_type: newIsAdmissionType });
+      await feeCategoryApi.create({ name });
       useToastStore.getState().show("ফি ধরণ যোগ করা হয়েছে", "success");
       setNewName("");
-      setNewIsAdmissionType(false);
       await loadCategories();
     } catch (err: any) {
       useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
@@ -97,18 +95,7 @@ const FeeCategorySettingsPage = () => {
     }
   };
 
-  const handleToggleAdmissionType = async (category: FeeCategoryItem) => {
-    try {
-      await feeCategoryApi.update(category.id, { is_admission_type: !category.isAdmissionType });
-      setCategories((prev) =>
-        prev.map((c) => (c.id === category.id ? { ...c, isAdmissionType: !c.isAdmissionType } : c)),
-      );
-    } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "আপডেট করতে সমস্যা হয়েছে"), "error");
-    }
-  };
-
-  const handleToggleActive = async (category: FeeCategoryItem) => {
+  const applyToggleActive = async (category: FeeCategoryItem) => {
     try {
       await feeCategoryApi.update(category.id, { is_active: !category.isActive });
       setCategories((prev) =>
@@ -117,6 +104,23 @@ const FeeCategorySettingsPage = () => {
     } catch (err: any) {
       useToastStore.getState().show(getErrorMessage(err, "আপডেট করতে সমস্যা হয়েছে"), "error");
     }
+  };
+
+  // বন্ধ/চালু করলে শুধু ড্রপডাউন থেকে লুকায় না - এই নামের সব বিদ্যমান ফি কাঠামোও
+  // একসাথে বন্ধ/চালু হয়ে যায় (দেখুন backend FeeService.updateCategory), তাই
+  // একাধিক কাঠামো প্রভাবিত হওয়ার আগে নিশ্চিত করে নেওয়া হচ্ছে।
+  const handleToggleActive = (category: FeeCategoryItem) => {
+    if (category.isActive) {
+      useConfirmStore.getState().show({
+        title: "ফি ধরণ বন্ধ করুন",
+        message: `"${category.name}" বন্ধ করলে এই ধরণ ব্যবহার করা সব ফি কাঠামোও (Fee Structure পেজে) বন্ধ হয়ে যাবে - সেগুলো আর কোনো ছাত্রের জন্য বিল হবে না। এগিয়ে যেতে চান?`,
+        confirmText: "বন্ধ করুন",
+        danger: true,
+        onConfirm: () => applyToggleActive(category),
+      });
+      return;
+    }
+    applyToggleActive(category);
   };
 
   const handleDelete = (category: FeeCategoryItem) => {
@@ -187,14 +191,12 @@ const FeeCategorySettingsPage = () => {
           )}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
-            <ToggleSwitch
-              checked={category.isAdmissionType}
-              onChange={() => handleToggleAdmissionType(category)}
-            />
-            ভর্তির সময় বিল হবে
-          </label>
-          <ToggleSwitch checked={category.isActive} onChange={() => handleToggleActive(category)} />
+          <ToggleSwitch
+            checked={category.isActive}
+            onChange={() => handleToggleActive(category)}
+            size="sm"
+            title="বন্ধ করলে এই ধরণের সব ফি কাঠামোও বন্ধ (আর বিল হবে না) হয়ে যাবে"
+          />
           <button
             type="button"
             onClick={() => startEdit(category)}
@@ -223,7 +225,7 @@ const FeeCategorySettingsPage = () => {
       <PageHeader
         title="ফি ধরণ সেটিংস"
         subtitle={
-          'ফি কাঠামো তৈরি করার সময় যেসব ধরণ (যেমন: ভর্তি ফি, মাসিক বেতন, পরীক্ষার ফি) ব্যবহার করা যায় সেগুলো এখান থেকে যোগ/এডিট/ডিলিট করুন। "ভর্তির সময় বিল হবে" চালু থাকা ধরণের ফি একজন ছাত্র ভর্তির আবেদন জমা দেওয়ার সাথে সাথেই বিল হয়ে যায় (মুহতামিম অনুমোদনের আগেই) — বাকি সব ধরণের ফি শুধু অনুমোদনের পরেই বিল হয়।'
+          'ফি কাঠামো তৈরি করার সময় যেসব ধরণ (যেমন: ভর্তি ফি, মাসিক বেতন, পরীক্ষার ফি) ব্যবহার করা যায় সেগুলো এখান থেকে যোগ/এডিট/ডিলিট করুন। সব ধরণের ফি মুহতামিম ভর্তি অনুমোদন করার পরই বিল হয় (আবেদন জমা দেওয়ার সময় কোনো বিল হয় না)। মাসিক বেতন-খাবার খরচের মতো মাসিক ফি-তে অনুমোদনের সাথে সাথে শুধু চলতি মাসেরটা বিল হয়, পরের মাসগুলো নিজে থেকেই প্রতি মাসের শুরুতে তৈরি হয়।'
         }
       />
 
@@ -235,10 +237,6 @@ const FeeCategorySettingsPage = () => {
             placeholder="নতুন ফি ধরণের নাম"
             className="h-9 min-w-[200px] flex-1 text-sm"
           />
-          <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
-            <ToggleSwitch checked={newIsAdmissionType} onChange={setNewIsAdmissionType} />
-            ভর্তির সময় বিল হবে
-          </label>
           <Button
             type="button"
             disabled={creating}

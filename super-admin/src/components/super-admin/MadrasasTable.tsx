@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { SkeletonList, SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import {
@@ -14,7 +15,6 @@ export default function MadrasasTable({
   onToggleActive,
   onDelete,
   onEdit,
-  onCloudinary,
   selectedIds,
   onToggleOne,
   onToggleAll,
@@ -27,11 +27,11 @@ export default function MadrasasTable({
   onToggleActive: (m: Madrasa) => Promise<void>;
   onDelete: (m: Madrasa) => void;
   onEdit: (m: Madrasa) => void;
-  onCloudinary: (m: Madrasa) => void;
   selectedIds: Set<number>;
   onToggleOne: (id: number) => void;
   onToggleAll: () => void;
 }) {
+  const navigate = useNavigate();
   const allSelected = items.length > 0 && items.every((m) => selectedIds.has(m.id));
   // While a bulk selection is active, single-row actions don't make sense
   // alongside it — lock them so the row's only usable control is its checkbox.
@@ -88,11 +88,11 @@ export default function MadrasasTable({
         </Button>
         <Button
           variant="secondary"
-          onClick={() => onCloudinary(m)}
+          onClick={() => navigate(`/madrasas/${m.id}/staff`)}
           disabled={locked}
           className="flex-1 sm:flex-none"
         >
-          Cloudinary
+          স্টাফ ও পারমিশন
         </Button>
       </div>
     );

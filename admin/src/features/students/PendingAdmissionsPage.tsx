@@ -399,13 +399,22 @@ const PendingAdmissionsPage = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(`/students/list`)}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
-          >
-            ছাত্র তালিকায় ফিরে যান
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <button
+              type="button"
+              onClick={() => navigate(`/students/admissions/rejected`)}
+              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
+            >
+              বাতিল হওয়া আবেদন
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/students/list`)}
+              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
+            >
+              ছাত্র তালিকায় ফিরে যান
+            </button>
+          </div>
         </div>
 
         {selectedIds.size > 0 && (

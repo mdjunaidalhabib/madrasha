@@ -1,6 +1,5 @@
 import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
-import { encryptSecret } from "../../shared/utils/crypto.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { normalizeHost } from "../../shared/utils/host.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
@@ -26,6 +25,8 @@ import {
   InvalidRoleError,
   InvalidWebsiteStatusError,
   MadrasaNotFoundError,
+  MuhtamimAlreadyExistsError,
+  MuhtamimRoleImmutableError,
   PlanIdRequiredError,
   SlugConflictError,
   TrashedMadrasaOperationError,
@@ -51,7 +52,6 @@ const getDefaultFullMark = (book: { name: string | null; class: { name: string |
 import {
   AssignPlanRequestDto,
   CreateMadrasaRequestDto,
-  SaveMadrasaCloudinaryConfigRequestDto,
   UpdateMadrasaRequestDto,
 } from "./superadmin.dto";
 
@@ -592,6 +592,12 @@ export class SuperAdminService {
 
     const role = await this.repository.findMadrasaRoleById(madrasaId, roleId);
     if (!role) throw new InvalidRoleError();
+    // Every madrasa gets its one Muhtamim at setup time (or via the
+    // dedicated credential-reset flow if that slot is ever empty) - creating
+    // a second login under the MUHTAMIM role here would leave two users
+    // sharing the role that every other guard in this file assumes is
+    // unique per madrasa.
+    if (role.keyName === DEFAULT_PROTECTED_ROLE_KEY) throw new MuhtamimAlreadyExistsError();
 
     const activeCount = await this.repository.countActiveUsersForMadrasa(madrasaId);
     if (activeCount >= (madrasa.userLimit ?? 0)) {
@@ -648,6 +654,110 @@ export class SuperAdminService {
     });
   }
 
+  // Super admin is the platform's trusted, privileged actor - unlike the
+  // tenant-side user.service.ts#adminResetPassword (which deliberately
+  // BLOCKS a fellow tenant admin from resetting the Muhtamim's password),
+  // this endpoint intentionally allows resetting the Muhtamim's email/
+  // password too. It's the only recovery path when a Muhtamim is locked
+  // out and can't use the tenant-side forgot-password email flow.
+  async updateMadrasaUserCredentials(
+    madrasaId: number,
+    userId: number,
+    dto: { name?: string; email?: string; password?: string },
+  ) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+    if (!userId) throw new BadRequestError("Invalid user id");
+
+    const user = await this.repository.findMadrasaUserById(userId, madrasaId);
+    if (!user) throw new UserNotFoundError();
+
+    const name = dto.name?.trim();
+    const email = dto.email?.trim();
+    const password = dto.password || "";
+
+    if (!name && !email && !password) {
+      throw new BadRequestError("name, email বা password অন্তত একটা দিতে হবে");
+    }
+
+    const data: Prisma.UserUncheckedUpdateInput = {};
+
+    if (name) data.name = name;
+
+    if (email) {
+      const existing = await this.repository.findMadrasaUserByEmail(madrasaId, email);
+      if (existing && existing.id !== userId) throw new UserEmailConflictError();
+      data.email = email;
+    }
+
+    if (password) {
+      if (password.length < 6) throw new UserPasswordTooShortError();
+      data.passwordHash = await hashPassword(password);
+    }
+
+    await this.repository.updateMadrasaUserCredentials(userId, data);
+
+    await this.repository.createActivityLog({
+      madrasaId,
+      action: "SUPER_ADMIN_USER_CREDENTIALS_RESET",
+      entity: "user",
+      entityId: userId,
+      details: JSON.stringify({
+        user_id: userId,
+        name_changed: !!name,
+        email_changed: !!email,
+        password_changed: !!password,
+      }),
+    });
+  }
+
+  // Lets the super admin change a staff member's role and/or active status
+  // - the tenant-facing Users page (user.service.ts#updateUser) refuses
+  // both for the Muhtamim ("only Super Admin may change it", see that
+  // file's comment); this is that promised override. Status may be
+  // toggled even for the Muhtamim (e.g. suspending a problematic owner),
+  // but their role is kept permanently immutable here too - reassigning
+  // it away would leave the madrasa with zero Muhtamims, an invariant every
+  // other guard in this module (deleteMadrasaUser, createMadrasaUser)
+  // assumes holds.
+  async updateMadrasaUserRoleStatus(
+    madrasaId: number,
+    userId: number,
+    dto: { role_id?: number | string; is_active?: boolean | number },
+  ) {
+    if (!madrasaId) throw new InvalidMadrasaIdError();
+    if (!userId) throw new BadRequestError("Invalid user id");
+
+    const user = await this.repository.findMadrasaUserById(userId, madrasaId);
+    if (!user) throw new UserNotFoundError();
+
+    const data: Prisma.UserUncheckedUpdateInput = {};
+
+    if (dto.role_id !== undefined) {
+      if (user.role?.keyName === DEFAULT_PROTECTED_ROLE_KEY) {
+        throw new MuhtamimRoleImmutableError();
+      }
+      const roleId = Number(dto.role_id);
+      const role = await this.repository.findMadrasaRoleById(madrasaId, roleId);
+      if (!role) throw new InvalidRoleError();
+      if (role.keyName === DEFAULT_PROTECTED_ROLE_KEY) throw new MuhtamimAlreadyExistsError();
+      data.roleId = roleId;
+    }
+
+    if (dto.is_active !== undefined) data.isActive = dto.is_active ? 1 : 0;
+
+    if (!Object.keys(data).length) throw new BadRequestError("role_id বা is_active অন্তত একটা দিতে হবে");
+
+    await this.repository.updateMadrasaUserCredentials(userId, data);
+
+    await this.repository.createActivityLog({
+      madrasaId,
+      action: "SUPER_ADMIN_USER_ROLE_STATUS_UPDATED",
+      entity: "user",
+      entityId: userId,
+      details: JSON.stringify(dto),
+    });
+  }
+
   async getMadrasaDeleteStats(id: number) {
     const [students, users, accounts] = await this.repository.countDeleteStats(id);
     return { students, users, accounts };
@@ -695,33 +805,6 @@ export class SuperAdminService {
     await this.repository.runTransaction((tx) => this.repository.permanentDeleteCascadeOnTx(tx, id));
   }
 
-  async getMadrasaCloudinaryConfig(id: number) {
-    if (!id) throw new InvalidMadrasaIdError();
-    const config = await this.repository.findCloudinaryConfig(id);
-    if (!config) return { configured: false, cloud_name: null, api_key: null };
-    return { configured: true, cloud_name: config.cloudName, api_key: config.apiKey };
-  }
-
-  async saveMadrasaCloudinaryConfig(id: number, dto: SaveMadrasaCloudinaryConfigRequestDto) {
-    if (!id) throw new InvalidMadrasaIdError();
-    if (!dto.cloud_name?.trim() || !dto.api_key?.trim() || !dto.api_secret?.trim()) {
-      throw new BadRequestError("cloud_name, api_key and api_secret are all required");
-    }
-
-    const madrasa = await this.repository.findMadrasaDetail(id);
-    if (!madrasa) throw new MadrasaNotFoundError();
-
-    await this.repository.upsertCloudinaryConfig(id, {
-      cloudName: dto.cloud_name.trim(),
-      apiKey: dto.api_key.trim(),
-      apiSecretEnc: encryptSecret(dto.api_secret.trim()),
-    });
-  }
-
-  async deleteMadrasaCloudinaryConfig(id: number) {
-    if (!id) throw new InvalidMadrasaIdError();
-    await this.repository.deleteCloudinaryConfig(id);
-  }
 }
 
 export const superAdminService = new SuperAdminService();

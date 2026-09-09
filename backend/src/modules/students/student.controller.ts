@@ -132,7 +132,7 @@ export const getNextRoll = async (req: Request, res: Response) => {
 export const createStudent = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
-    const result = await studentService.admitStudent(req.body || {}, madrasaId);
+    const result = await studentService.admitStudent(req.body || {}, madrasaId, req.user?.id);
 
     const message =
       result.action === "re_admitted"
@@ -325,6 +325,26 @@ export const rejectAdmission = async (req: Request, res: Response) => {
     return res.json({ success: true, message: "Admission rejected successfully" });
   } catch (error) {
     return respondWithError(res, error, "REJECT ADMISSION ERROR:");
+  }
+};
+
+export const getRejectedAdmissions = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.listRejectedAdmissions(madrasaId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "GET REJECTED ADMISSIONS ERROR:");
+  }
+};
+
+export const permanentlyDeleteRejectedApplication = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    await studentService.permanentlyDeleteRejectedApplication(Number(req.params.id), madrasaId);
+    return res.json({ success: true, message: "Rejected application permanently deleted" });
+  } catch (error) {
+    return respondWithError(res, error, "PERMANENTLY DELETE REJECTED APPLICATION ERROR:");
   }
 };
 

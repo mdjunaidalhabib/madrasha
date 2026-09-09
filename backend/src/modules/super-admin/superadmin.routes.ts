@@ -24,10 +24,31 @@ import {
   listMadrasaUsers,
   createMadrasaUser,
   deleteMadrasaUser,
-  getMadrasaCloudinaryConfig,
-  saveMadrasaCloudinaryConfig,
-  deleteMadrasaCloudinaryConfig,
+  updateMadrasaUserCredentials,
+  updateMadrasaUserRoleStatus,
 } from "./superadmin.controller";
+
+/* =========================
+   Madrasa role/permission handlers (mirror of the tenant Roles &
+   Permissions page, operable from the super-admin panel)
+========================= */
+import {
+  listMadrasaPermissionCatalog,
+  listMadrasaRolePermissions,
+  createMadrasaRole,
+  updateMadrasaRole,
+  deleteMadrasaRole,
+} from "./superadmin-role.controller";
+
+/* =========================
+   Super admin account handlers (manage other super-admin logins)
+========================= */
+import {
+  listSuperAdmins,
+  createSuperAdmin,
+  deactivateSuperAdmin,
+  reactivateSuperAdmin,
+} from "./superadmin-account.controller";
 
 /* =========================
    Plans handlers (Trash system)
@@ -172,14 +193,29 @@ router.get("/madrasas/:id/roles", superAdminMiddleware, listMadrasaRoles);
 router.get("/madrasas/:id/users", superAdminMiddleware, listMadrasaUsers);
 router.post("/madrasas/:id/users", superAdminMiddleware, createMadrasaUser);
 router.delete("/madrasas/:id/users/:userId", superAdminMiddleware, deleteMadrasaUser);
+router.patch("/madrasas/:id/users/:userId/credentials", superAdminMiddleware, updateMadrasaUserCredentials);
+router.patch("/madrasas/:id/users/:userId/role-status", superAdminMiddleware, updateMadrasaUserRoleStatus);
 
 /* =====================================================
-   MADRASA CLOUDINARY CONFIG (per-tenant storage account)
+   MADRASA ROLES & PERMISSIONS (full control mirror of the tenant page)
+   Base: /api/super/madrasas/:id
 ===================================================== */
 
-router.get("/madrasas/:id/cloudinary", superAdminMiddleware, getMadrasaCloudinaryConfig);
-router.put("/madrasas/:id/cloudinary", superAdminMiddleware, saveMadrasaCloudinaryConfig);
-router.delete("/madrasas/:id/cloudinary", superAdminMiddleware, deleteMadrasaCloudinaryConfig);
+router.get("/madrasas/:id/permission-catalog", superAdminMiddleware, listMadrasaPermissionCatalog);
+router.get("/madrasas/:id/role-permissions", superAdminMiddleware, listMadrasaRolePermissions);
+router.post("/madrasas/:id/role-permissions", superAdminMiddleware, createMadrasaRole);
+router.put("/madrasas/:id/role-permissions/:roleId", superAdminMiddleware, updateMadrasaRole);
+router.delete("/madrasas/:id/role-permissions/:roleId", superAdminMiddleware, deleteMadrasaRole);
+
+/* =====================================================
+   SUPER ADMIN ACCOUNTS (manage other super-admin logins)
+   Base: /api/super/admins
+===================================================== */
+
+router.get("/admins", superAdminMiddleware, listSuperAdmins);
+router.post("/admins", superAdminMiddleware, createSuperAdmin);
+router.patch("/admins/:id/deactivate", superAdminMiddleware, deactivateSuperAdmin);
+router.patch("/admins/:id/reactivate", superAdminMiddleware, reactivateSuperAdmin);
 
 /* =====================================================
    PLANS (TRASH SYSTEM)

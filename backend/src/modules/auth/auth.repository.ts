@@ -63,6 +63,10 @@ export class AuthRepository {
     return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { slug: true } });
   }
 
+  findMadrasaName(madrasaId: number) {
+    return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { name: true } });
+  }
+
   /** Invalidates any earlier, still-usable reset tokens for this user
    * before issuing a new one, so only the most recent link ever works. */
   invalidateExistingResetTokens(userId: number) {

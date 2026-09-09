@@ -23,6 +23,7 @@ import { guardianService } from "../guardian/guardian.service";
 import { feeService } from "../fee/fee.service";
 import { notificationService } from "../notifications/notification.service";
 import { logger } from "../../shared/logger/logger";
+import { logActivity } from "../../shared/utils/activity.util";
 
 const validateRequiredFields = (body: Record<string, unknown>): string[] => {
   return STUDENT_REQUIRED_FIELDS.filter((field) => {
@@ -114,7 +115,11 @@ export class StudentService {
    * as a fallback for any caller still on the legacy free-text field, by
    * matching it against an existing Session's name. Never auto-creates a
    * session - admins manage sessions explicitly via the Session page. */
-  private async resolveSession(madrasaId: number, body: Record<string, any>) {
+  private async resolveSession(
+    madrasaId: number,
+    body: Record<string, any>,
+    divisionId?: number | null,
+  ) {
     const sessionId = toNumber(body.session_id);
     if (sessionId) {
       const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
@@ -123,13 +128,18 @@ export class StudentService {
     }
     const academicYear = clean(body.academic_year) as string | null;
     if (academicYear) {
-      const session = await this.repository.findSessionByNameForTenant(madrasaId, academicYear);
+      const session = await this.repository.findSessionByNameForTenant(madrasaId, academicYear, divisionId);
       if (session) return session;
     }
     throw new BadRequestError("session_id is required");
   }
 
-  private async resolveSessionOnTx(tx: TransactionClient, madrasaId: number, body: Record<string, any>) {
+  private async resolveSessionOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    body: Record<string, any>,
+    divisionId?: number | null,
+  ) {
     const sessionId = toNumber(body.session_id);
     if (sessionId) {
       const session = await this.repository.findSessionForTenantOnTx(tx, madrasaId, sessionId);
@@ -138,7 +148,12 @@ export class StudentService {
     }
     const academicYear = clean(body.academic_year) as string | null;
     if (academicYear) {
-      const session = await this.repository.findSessionByNameForTenantOnTx(tx, madrasaId, academicYear);
+      const session = await this.repository.findSessionByNameForTenantOnTx(
+        tx,
+        madrasaId,
+        academicYear,
+        divisionId,
+      );
       if (session) return session;
     }
     throw new BadRequestError("session_id is required");
@@ -193,6 +208,7 @@ export class StudentService {
   async admitStudent(
     body: StudentAdmissionRequestDto,
     madrasaId: number | undefined,
+    createdById?: number,
   ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -213,7 +229,11 @@ export class StudentService {
     const classId = toNumber(body.class_id);
     if (!classId) throw new BadRequestError("class_id is required");
 
-    const session = await this.resolveSession(madrasaId, body);
+    // division_id is a required admission field (see STUDENT_REQUIRED_FIELDS,
+    // already validated above) - resolving the academic_year name within the
+    // student's own বিভাগ avoids ambiguity now that a session name can exist
+    // once per division.
+    const session = await this.resolveSession(madrasaId, body, toNumber(body.division_id));
     const academicYear = session.name;
 
     const result = await this.repository.runTransaction(async (tx) => {
@@ -292,6 +312,31 @@ export class StudentService {
       };
     });
 
+    // Hand-logged (not the generic body-field auto-logger - see
+    // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
+    // details column carries the student's id/name/class instead of just
+    // whatever name field happened to be in the request body. Non-fatal -
+    // the admission already committed above.
+    try {
+      const student = await this.repository.findByIdForTenant(result.studentId, madrasaId);
+      if (student) {
+        const actionText =
+          result.action === "re_admitted"
+            ? "পুরনো শিক্ষার্থীকে পুনরায় ভর্তি আবেদন জমা দেওয়া হয়েছে"
+            : "নতুন শিক্ষার্থী ভর্তির আবেদন জমা দেওয়া হয়েছে";
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: createdById ?? null,
+          action: "CREATE",
+          entity: "students/admission",
+          entity_id: result.studentId,
+          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${(student as any).classRef?.nameBn || "অজানা"} — ${actionText} (অবস্থা: পেন্ডিং, মুহতামিমের অনুমোদনের অপেক্ষায়)`,
+        });
+      }
+    } catch (err) {
+      logger.error("Activity log for student admission failed:", err);
+    }
+
     // A PENDING admission isn't a real enrolled student yet - no roll and no
     // invoices (not even the admission fee) are created until a Muhtamim
     // actually approves it (see approveAdmission). Guardian provisioning
@@ -328,7 +373,9 @@ export class StudentService {
       const classId = toNumber(student.class_id);
       if (!classId) throw new BadRequestError(`Row ${index + 1}: class_id is required`);
 
-      const session = await this.resolveSession(madrasaId, student);
+      // division_id is required per-row here too (validated above via
+      // validateRequiredFields) - same reasoning as admitStudent.
+      const session = await this.resolveSession(madrasaId, student, toNumber(student.division_id));
 
       prepared.push({ student, classId, academicYear: session.name, sessionId: session.id });
     }
@@ -783,7 +830,13 @@ export class StudentService {
       let targetSessionId = existing.sessionId;
       let targetAcademicYear = existing.academicYear;
       if (body.session_id !== undefined || body.academic_year !== undefined) {
-        const session = await this.resolveSessionOnTx(tx, madrasaId, body);
+        // Only thread a divisionId through when this request body actually
+        // carries one - an edit that touches session/academic_year without
+        // also sending division_id shouldn't have its division guessed from
+        // the existing record; undefined here falls back to a division-blind
+        // name lookup, matching today's existing (division-blind) behavior.
+        const divisionId = body.division_id !== undefined ? toNumber(body.division_id) : undefined;
+        const session = await this.resolveSessionOnTx(tx, madrasaId, body, divisionId);
         targetSessionId = session.id;
         targetAcademicYear = session.name;
         data.sessionId = session.id;
@@ -973,6 +1026,25 @@ export class StudentService {
     );
   }
 
+  /** Rejected admissions - unlike pending ones, never billed (see
+   * admitStudent), so there's no fee-status column to compute here. */
+  async listRejectedAdmissions(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const rows = await this.repository.findRejectedForTenant(madrasaId);
+    return rows.map(toStudentApiDto);
+  }
+
+  /** Permanently removes a rejected application - see
+   * StudentRepository.permanentDeleteRejectedApplication for why this is a
+   * hard delete rather than the usual soft-delete-to-Trash. */
+  async permanentlyDeleteRejectedApplication(id: number, madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const result = await this.repository.permanentDeleteRejectedApplication(id, madrasaId);
+    if (!result.count) throw new StudentNotFoundError();
+    return result.count;
+  }
+
   /** Approves a pending admission. Nothing is allocated for it at
    * submission time anymore (see admitStudent) - approval is what actually
    * turns the applicant into a real enrolled student: a roll and a
@@ -1062,6 +1134,23 @@ export class StudentService {
       class: (existing as any).classRef?.nameBn || "",
       roll: assignedRoll,
     });
+
+    // Hand-logged (not the generic body-field auto-logger - see
+    // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) since this
+    // route has no request body to derive details from - it's just a bare
+    // PATCH by id. Non-fatal - the approval already committed above.
+    try {
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: reviewerId ?? null,
+        action: "UPDATE",
+        entity: "students/approve",
+        entity_id: id,
+        details: `ছাত্র আইডি: ${id}, নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তি অনুমোদন করা হয়েছে (রোল: ${assignedRoll})`,
+      });
+    } catch (err) {
+      logger.error("Activity log for admission approval failed:", err);
+    }
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather
@@ -1088,6 +1177,23 @@ export class StudentService {
       rejectionReason: reason.trim(),
     });
     if (!result.count) throw new StudentNotFoundError();
+
+    // Hand-logged (not the generic body-field auto-logger - see
+    // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
+    // details column carries the student's id/name/class and the rejection
+    // reason. Non-fatal - the rejection already committed above.
+    try {
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: reviewerId ?? null,
+        action: "UPDATE",
+        entity: "students/reject",
+        entity_id: id,
+        details: `ছাত্র আইডি: ${id}, নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তির আবেদন বাতিল করা হয়েছে, কারণ: ${reason.trim()}`,
+      });
+    } catch (err) {
+      logger.error("Activity log for admission rejection failed:", err);
+    }
   }
 
   /* ================= SESSION TRANSFER ================= */

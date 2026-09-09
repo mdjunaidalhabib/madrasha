@@ -20,6 +20,7 @@ model Division {
   classes          Class[]
   students         Student[]
   teachers         Teacher[]
+  sessions         Session[]
 
   @@map("divisions")
 }

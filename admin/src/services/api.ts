@@ -213,11 +213,21 @@ api.interceptors.response.use(
       if (wasLoggedIn && typeof window !== "undefined") {
         window.location.href = "/login";
       }
+
+      // The redirect above (or the already-logged-out state) is all the
+      // feedback this needs - a generic "Something went wrong" toast on top
+      // just reads as a scary error immediately after a normal logout.
+      return Promise.reject(err);
     }
 
-    const msg = err?.response?.data?.message || err?.message || "Something went wrong";
-
-    useToastStore.getState().push("error", msg);
+    // /auth/logout is a best-effort, fire-and-forget call (see
+    // logoutSession in profileApi.ts, which swallows its own errors) - local
+    // logout proceeds regardless, so a failure here shouldn't surface an
+    // error toast to the user.
+    if (!requestUrl.includes("/auth/logout")) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong";
+      useToastStore.getState().push("error", msg);
+    }
 
     return Promise.reject(err);
   },

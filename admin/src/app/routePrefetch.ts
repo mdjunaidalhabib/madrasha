@@ -1,6 +1,7 @@
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   dashboard: () => import("../features/dashboard/DashboardPage"),
   "ihtemam/pending": () => import("../features/students/PendingAdmissionsPage"),
+  "ihtemam/rejected": () => import("../features/students/RejectedAdmissionsPage"),
   "ihtemam/fee-categories": () => import("../features/fee/FeeCategorySettingsPage"),
   "teacher_staff/teacher_admission": () => import("../features/teachers/TeacherPage"),
   "teacher_staff/all_teacher": () => import("../features/teachers/TeacherListPage"),
@@ -34,6 +35,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "students/promotion": () => import("../features/students/StudentPromotionPage"),
   "attendance/mark": () => import("../features/attendance/AttendanceMarkPage"),
   "students/admissions/pending": () => import("../features/students/PendingAdmissionsPage"),
+  "students/admissions/rejected": () => import("../features/students/RejectedAdmissionsPage"),
   "accounts/dashboard": () => import("../features/accounts/AccountDashboardPage"),
   "accounts/report": () => import("../features/accounts/ReportPage"),
   "accounts/income": () => import("../features/accounts/IncomePage"),

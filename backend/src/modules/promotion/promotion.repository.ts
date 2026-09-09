@@ -27,6 +27,12 @@ export class PromotionRepository {
     return result._max.roll ?? 0;
   }
 
+  /** The destination class's বিভাগ, needed to resolve the right (now
+   * division-scoped) Session by name for the promotion batch. */
+  getClassDivisionId(madrasaId: number, classId: number) {
+    return prisma.class.findFirst({ where: { id: classId }, select: { divisionId: true } });
+  }
+
   createBatchOnTx(
     tx: TransactionClient,
     data: {
@@ -57,15 +63,21 @@ export class PromotionRepository {
   promoteStudentOnTx(
     tx: TransactionClient,
     studentId: number,
-    data: { classId: number; previousClassId: number; academicYear: string; roll: number },
+    data: { classId: number; previousClassId: number; academicYear: string; roll: number; sessionId?: number },
   ) {
     return tx.student.update({ where: { id: studentId }, data });
   }
 
   /** Retained students stay in the same class but move to the new
-   * academic year, keeping their existing roll (class hasn't changed). */
-  retainStudentOnTx(tx: TransactionClient, studentId: number, academicYear: string) {
-    return tx.student.update({ where: { id: studentId }, data: { academicYear } });
+   * academic year, keeping their existing roll (class hasn't changed).
+   * sessionId is set alongside academicYear when the destination session
+   * could be resolved (see PromotionService.execute); it's optional so
+   * this stays backwards-compatible when no matching Session exists yet. */
+  retainStudentOnTx(tx: TransactionClient, studentId: number, academicYear: string, sessionId?: number) {
+    return tx.student.update({
+      where: { id: studentId },
+      data: { academicYear, ...(sessionId !== undefined ? { sessionId } : {}) },
+    });
   }
 
   /** Every promotion/retention/transfer record for one student across every

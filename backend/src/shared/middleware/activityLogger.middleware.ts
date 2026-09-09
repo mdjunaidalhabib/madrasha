@@ -16,6 +16,19 @@ const ACTION_BY_METHOD: Record<string, string> = {
 // duplicate rows for the same action.
 const SELF_LOGGED_ENTITIES = new Set(["users", "accounts", "document-templates", "activity"]);
 
+// Same idea as SELF_LOGGED_ENTITIES, but for individual sub-routes rather
+// than a whole top-level module - these hand-log a detailed, student-aware
+// message (student id/name/class + what happened) in FeeService/
+// StudentService, so letting the generic body-field fallback below log a
+// second, shallower row for the same request would just create a duplicate.
+const SELF_LOGGED_ENTITY_PATHS = new Set([
+  "invoices/pay",
+  "invoices/waive",
+  "students/admission",
+  "students/approve",
+  "students/reject",
+]);
+
 function deriveEntity(originalUrl: string): { entity: string; entityId: number | null } {
   const pathOnly = originalUrl.split("?")[0].replace(/^\/api\//, "");
   const segments = pathOnly.split("/").filter(Boolean);
@@ -71,7 +84,7 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
     if (!madrasaId || !userId) return;
 
     const { entity, entityId } = deriveEntity(req.originalUrl);
-    if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0])) return;
+    if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return;
 
     logActivity({
       madrasa_id: madrasaId,

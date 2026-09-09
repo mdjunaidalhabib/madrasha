@@ -44,8 +44,10 @@ export class FeeRepository {
     return prisma.session.findFirst({ where: { id, madrasaId } });
   }
 
-  findSessionByNameForTenant(madrasaId: number, name: string) {
-    return prisma.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
+  findSessionByNameForTenant(madrasaId: number, name: string, divisionId?: number | null) {
+    return prisma.session.findFirst({
+      where: { madrasaId, name, ...(divisionId !== undefined ? { divisionId } : {}) },
+    });
   }
 
   createStructure(madrasaId: number, data: Record<string, unknown>) {
@@ -54,6 +56,15 @@ export class FeeRepository {
 
   updateStructure(id: number, madrasaId: number, data: Record<string, unknown>) {
     return prisma.feeStructure.updateMany({ where: { id, madrasaId }, data });
+  }
+
+  /** Cascades a ফি ধরণ (FeeCategory) isActive toggle onto every FeeStructure
+   * currently tagged with that category's name (see
+   * FeeService.updateCategory) - so turning a category off actually stops
+   * it from being billed, not just hides it from the picklist. Matches by
+   * feeType text since FeeStructure.feeType is a decoupled plain string. */
+  updateStructuresActiveByFeeType(madrasaId: number, feeType: string, isActive: boolean) {
+    return prisma.feeStructure.updateMany({ where: { madrasaId, feeType }, data: { isActive } });
   }
 
   deleteStructure(id: number, madrasaId: number) {

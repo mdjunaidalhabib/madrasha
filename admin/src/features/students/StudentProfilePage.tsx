@@ -208,7 +208,7 @@ const StudentProfilePage = () => {
     setTransferReason("");
     setTransferModalOpen(true);
     try {
-      const res = await sessionApi.list(true);
+      const res = await sessionApi.list({ activeOnly: true });
       const data = (res.data as any)?.data || [];
       setSessions(
         (Array.isArray(data) ? data : []).filter((s: Session) => s.id !== student?.session_id),
@@ -442,7 +442,7 @@ const StudentProfilePage = () => {
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.isCurrent ? " (চলমান)" : ""}
+                  {s.isActive ? " (সক্রিয়)" : ""}
                 </option>
               ))}
             </select>

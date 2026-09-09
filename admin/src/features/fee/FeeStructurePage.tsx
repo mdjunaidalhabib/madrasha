@@ -16,6 +16,7 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -132,10 +133,6 @@ const FeeStructurePage = () => {
         const res = await cachedGet("/sessions?active_only=true");
         const list = normalizeArray(res) as unknown as Session[];
         setSessions(list);
-        const current = list.find((s) => s.isCurrent);
-        if (current) {
-          setStructureForm((prev) => (prev.session_id ? prev : { ...prev, session_id: String(current.id) }));
-        }
       } catch (err) {
         logger.error("LOAD SESSIONS ERROR:", err);
         setSessions([]);
@@ -143,6 +140,20 @@ const FeeStructurePage = () => {
     };
     loadSessions();
   }, []);
+
+  // নির্বাচিত বিভাগ অনুযায়ী ডিফল্ট সেশন — সেই বিভাগের নিজস্ব চলমান সেশন থাকলে
+  // সেটা, নাহলে "সাধারণ" (divisionId null) চলমান সেশন। ফিল্ড আগে থেকে খালি
+  // থাকলেই কেবল বসানো হয় (existing prev.session_id ? prev : ... ধরন), যাতে
+  // ব্যবহারকারীর ম্যানুয়াল বাছাই মুছে না যায়।
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    const divisionIdNum = division ? Number(division) : null;
+    const current =
+      (divisionIdNum !== null && sessions.find((s) => s.isActive && s.divisionId === divisionIdNum)) ||
+      sessions.find((s) => s.isActive && s.divisionId === null);
+    if (!current) return;
+    setStructureForm((prev) => (prev.session_id ? prev : { ...prev, session_id: String(current.id) }));
+  }, [division, sessions]);
 
   useEffect(() => {
     const loadExams = async () => {
@@ -311,6 +322,22 @@ const FeeStructurePage = () => {
       setStructures((prev) => prev.filter((row) => row.id !== id));
     } catch (err: any) {
       const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+      useToastStore.getState().show(msg, "error");
+    }
+  };
+
+  // ফি কাঠামো নিজে বন্ধ থাকলে ভর্তি-অনুমোদন/মাসিক অটো-বিলিং কোনোটাতেই এটা বিল
+  // হয় না (দেখুন backend FeeRepository.findActiveStructuresForBilling) - তাই
+  // এই টগলটাই একটা নির্দিষ্ট ফি কাঠামো বিলিং থেকে বাদ দেয়ার আসল উপায়।
+  const handleToggleStructureActive = async (row: FeeStructureRow) => {
+    const nextActive = !row.isActive;
+    try {
+      await feeStructureApi.update(row.id, { is_active: nextActive });
+      setStructures((prev) =>
+        prev.map((s) => (s.id === row.id ? { ...s, isActive: nextActive } : s)),
+      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -520,26 +547,30 @@ const FeeStructurePage = () => {
                   ))}
               </select>
             </div>
-            {exams.length > 0 && (
-              <div className="w-full sm:w-[180px]">
-                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                  যুক্ত পরীক্ষা
-                </label>
-                <select
-                  value={structureForm.exam_id}
-                  onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
-                  title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে, নতুন ভর্তির জন্য পরে 'বিদ্যমান সব ছাত্রের ফি আবার সেট করুন' চালাতে হবে"
-                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
-                  {exams.map((ex) => (
-                    <option key={ex.id} value={ex.id}>
-                      {ex.name} ({ex.year})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="w-full sm:w-[180px]">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                যুক্ত পরীক্ষা
+              </label>
+              <select
+                value={structureForm.exam_id}
+                onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
+                disabled={exams.length === 0}
+                title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে, নতুন ভর্তির জন্য পরে 'বিদ্যমান সব ছাত্রের ফি আবার সেট করুন' চালাতে হবে"
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+              >
+                <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
+                {exams.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name} ({ex.year})
+                  </option>
+                ))}
+              </select>
+              {exams.length === 0 && (
+                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  এখনো কোনো পরীক্ষা তৈরি করা নেই - এই ফি এখন ভর্তির সাথে সাথেই বিল হবে। পরীক্ষার ফি হলে, পরে পরীক্ষা তৈরি করে এখানে এসে এটি এডিট করে যুক্ত করে দিন।
+                </p>
+              )}
+            </div>
             <div className="w-full sm:w-[140px]">
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 সেশন <span className="text-rose-500">*</span>
@@ -553,7 +584,7 @@ const FeeStructurePage = () => {
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
-                    {s.isCurrent ? " (চলমান)" : ""}
+                    {s.isActive ? " (সক্রিয়)" : ""}
                   </option>
                 ))}
               </select>
@@ -627,7 +658,17 @@ const FeeStructurePage = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex shrink-0 gap-0.5">
+                              <div className="flex shrink-0 items-center gap-1">
+                                <ToggleSwitch
+                                  checked={row.isActive}
+                                  onChange={() => handleToggleStructureActive(row)}
+                                  size="sm"
+                                  title={
+                                    row.isActive
+                                      ? "বন্ধ করলে এই ফি কাঠামো আর কোনো ছাত্রের জন্য বিল হবে না"
+                                      : "চালু করুন"
+                                  }
+                                />
                                 <button
                                   type="button"
                                   title="এডিট"
@@ -765,25 +806,29 @@ const FeeStructurePage = () => {
                 ))}
             </select>
           </div>
-          {exams.length > 0 && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                যুক্ত পরীক্ষা
-              </label>
-              <select
-                value={editForm.exam_id}
-                onChange={(e) => setEditForm((p) => ({ ...p, exam_id: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
-                {exams.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.year})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              যুক্ত পরীক্ষা
+            </label>
+            <select
+              value={editForm.exam_id}
+              onChange={(e) => setEditForm((p) => ({ ...p, exam_id: e.target.value }))}
+              disabled={exams.length === 0}
+              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+            >
+              <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
+              {exams.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name} ({ex.year})
+                </option>
+              ))}
+            </select>
+            {exams.length === 0 && (
+              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                এখনো কোনো পরীক্ষা তৈরি করা নেই - এই ফি এখন ভর্তির সাথে সাথেই বিল হবে। পরীক্ষার ফি হলে, পরে পরীক্ষা তৈরি করে এখানে এসে এটি যুক্ত করে দিন।
+              </p>
+            )}
+          </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সেশন</label>
             <select
@@ -795,7 +840,7 @@ const FeeStructurePage = () => {
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.isCurrent ? " (চলমান)" : ""}
+                  {s.isActive ? " (সক্রিয়)" : ""}
                 </option>
               ))}
             </select>

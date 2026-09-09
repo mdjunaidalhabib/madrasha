@@ -49,8 +49,15 @@ export class StudentRepository {
     return prisma.session.findFirst({ where: { id, madrasaId } });
   }
 
-  findSessionByNameForTenant(madrasaId: number, name: string) {
-    return prisma.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
+  /** divisionId given -> that division's own session by name, falling back to the legacy
+   *  shared (divisionId: null) session of the same name if the division has none of its
+   *  own yet (mirrors SessionRepository.findCurrentSession's fallback). */
+  async findSessionByNameForTenant(madrasaId: number, name: string, divisionId?: number | null) {
+    const session = await prisma.session.findFirst({
+      where: { madrasaId, name, ...(divisionId !== undefined ? { divisionId } : {}) },
+    });
+    if (session || divisionId == null) return session;
+    return prisma.session.findFirst({ where: { madrasaId, name, divisionId: null } });
   }
 
   create(data: Prisma.StudentUncheckedCreateInput) {
@@ -121,6 +128,27 @@ export class StudentRepository {
 
   countPendingAdmissions(madrasaId: number) {
     return prisma.student.count({ where: { madrasaId, admissionStatus: "PENDING", deletedAt: null } });
+  }
+
+  /** Rejected admissions - kept as a record (rejectionReason/reviewedBy/
+   * reviewedAt) rather than deleted at reject time, but with no page of
+   * their own until now (see getRejectedAdmissions). */
+  findRejectedForTenant(madrasaId: number) {
+    return prisma.student.findMany({
+      where: { madrasaId, admissionStatus: "REJECTED", deletedAt: null },
+      include: { classRef: { select: { nameBn: true } } },
+      orderBy: { reviewedAt: "desc" },
+    });
+  }
+
+  /** Hard delete (not the usual soft-delete-to-Trash) - a rejected
+   * application never was a real enrolled student. Scoped to
+   * admissionStatus=REJECTED so this can never accidentally remove an
+   * approved/pending student even if a stale id is passed. */
+  permanentDeleteRejectedApplication(id: number, madrasaId: number) {
+    return prisma.student.deleteMany({
+      where: { id, madrasaId, admissionStatus: "REJECTED", deletedAt: null },
+    });
   }
 
   /* ================= DASHBOARD SUMMARY ================= */
@@ -230,8 +258,18 @@ export class StudentRepository {
     return tx.session.findFirst({ where: { id, madrasaId } });
   }
 
-  findSessionByNameForTenantOnTx(tx: TransactionClient, madrasaId: number, name: string) {
-    return tx.session.findUnique({ where: { madrasaId_name: { madrasaId, name } } });
+  /** See findSessionByNameForTenant - same divisionId -> null fallback, on a tx client. */
+  async findSessionByNameForTenantOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    name: string,
+    divisionId?: number | null,
+  ) {
+    const session = await tx.session.findFirst({
+      where: { madrasaId, name, ...(divisionId !== undefined ? { divisionId } : {}) },
+    });
+    if (session || divisionId == null) return session;
+    return tx.session.findFirst({ where: { madrasaId, name, divisionId: null } });
   }
 
   createSessionHistoryOnTx(tx: TransactionClient, data: Record<string, unknown>) {

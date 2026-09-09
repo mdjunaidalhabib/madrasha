@@ -194,6 +194,32 @@ export const deleteMadrasaUser = async (req: Request, res: Response) => {
   }
 };
 
+export const updateMadrasaUserCredentials = async (req: Request, res: Response) => {
+  try {
+    await superAdminService.updateMadrasaUserCredentials(
+      Number(req.params.id),
+      Number(req.params.userId),
+      req.body,
+    );
+    res.json({ message: "User credentials updated" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateMadrasaUserRoleStatus = async (req: Request, res: Response) => {
+  try {
+    await superAdminService.updateMadrasaUserRoleStatus(
+      Number(req.params.id),
+      Number(req.params.userId),
+      req.body,
+    );
+    res.json({ message: "User role/status updated" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 /* ================= PERMANENT DELETE ================= */
 export const permanentDeleteMadrasa = async (req: Request, res: Response) => {
   try {
@@ -204,30 +230,3 @@ export const permanentDeleteMadrasa = async (req: Request, res: Response) => {
   }
 };
 
-/* ================= PER-TENANT CLOUDINARY CONFIG ================= */
-export const getMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
-  try {
-    const data = await superAdminService.getMadrasaCloudinaryConfig(Number(req.params.id));
-    res.json({ data });
-  } catch (error) {
-    respondError(res, error);
-  }
-};
-
-export const saveMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
-  try {
-    await superAdminService.saveMadrasaCloudinaryConfig(Number(req.params.id), req.body);
-    res.json({ message: "Cloudinary config saved" });
-  } catch (error) {
-    respondError(res, error);
-  }
-};
-
-export const deleteMadrasaCloudinaryConfig = async (req: Request, res: Response) => {
-  try {
-    await superAdminService.deleteMadrasaCloudinaryConfig(Number(req.params.id));
-    res.json({ message: "Cloudinary config removed" });
-  } catch (error) {
-    respondError(res, error);
-  }
-};

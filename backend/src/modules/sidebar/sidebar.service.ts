@@ -194,6 +194,19 @@ export class SidebarService {
         });
       }
 
+      // Rejected admissions had no page at all until now (see
+      // student.service.ts listRejectedAdmissions) - surfaces right next to
+      // পেন্ডিং, same fallback reasoning.
+      if (mod.keyName === "ihtemam" && !children.some((child) => child.key === "rejected")) {
+        children.push({
+          id: -1008,
+          key: "rejected",
+          label: "বাতিল হওয়া আবেদন",
+          sort_order: 3.5,
+          disabled,
+        });
+      }
+
       // Badge the item with how many admissions are actually waiting, and
       // relabel it to "পেন্ডিং ভর্তি অনুমোদন" even for installs whose DB row
       // still has the old "পেন্ডিং" label from before students/pending_admission

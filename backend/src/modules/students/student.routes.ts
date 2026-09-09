@@ -12,6 +12,8 @@ import {
   getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
+  getRejectedAdmissions,
+  permanentlyDeleteRejectedApplication,
   getFeePreview,
   setFeeDiscount,
   bulkDeleteStudents,
@@ -103,6 +105,20 @@ router.patch(
   authMiddleware,
   rbacMiddleware("students.approve_admission"),
   rejectAdmission,
+);
+router.get(
+  "/admission/rejected",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  getRejectedAdmissions,
+);
+router.delete(
+  "/:id/rejected-application",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  permanentlyDeleteRejectedApplication,
 );
 
 // DETERMINED FEE LIST + PRE-APPROVAL DISCOUNT (see FeeService.previewStudentFees/

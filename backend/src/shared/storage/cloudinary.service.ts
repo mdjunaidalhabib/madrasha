@@ -15,7 +15,7 @@ export interface UploadImageInput {
   /// Sub-folder under env.cloudinaryUploadFolder, e.g. "students",
   /// "teachers", "branding". Keeps uploads organized per feature.
   folder: string;
-  /// This tenant's own Cloudinary account (see MadrasaCloudinaryConfig).
+  /// The platform-wide Cloudinary account (see PlatformCloudinaryConfig).
   credentials: CloudinaryCredentials;
 }
 
@@ -27,16 +27,13 @@ export interface UploadImageResult {
 }
 
 /**
- * Uploads an image to a tenant's own Cloudinary account. Credentials are
- * passed per-call (not via the global mutable `cloudinary.config(...)`)
- * because concurrent requests from different tenants must never share or
- * race on account credentials - the Cloudinary Node SDK accepts
- * cloud_name/api_key/api_secret directly in the upload options for exactly
- * this reason.
+ * Uploads an image to the platform's shared Cloudinary account. Credentials
+ * are passed per-call (not via the global mutable `cloudinary.config(...)`)
+ * so this stays safe for concurrent requests regardless of caller.
  *
- * Whether a tenant *has* Cloudinary configured at all is decided by the
- * caller (upload.service.ts, via MadrasaCloudinaryConfig) - this service
- * assumes valid credentials were already found.
+ * Whether Cloudinary is configured at all is decided by the caller
+ * (upload.service.ts, via PlatformCloudinaryConfig) - this service assumes
+ * valid credentials were already found.
  */
 export const cloudinaryService = {
   async uploadImage(input: UploadImageInput): Promise<UploadImageResult> {

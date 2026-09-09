@@ -451,7 +451,6 @@ export class SuperAdminRepository {
         name: year,
         startDate: new Date(Date.UTC(yearNum, 0, 1)),
         endDate: new Date(Date.UTC(yearNum, 11, 31)),
-        isCurrent: true,
         isActive: true,
       },
     });
@@ -599,6 +598,13 @@ export class SuperAdminRepository {
     return prisma.user.deleteMany({ where: { id, madrasaId } });
   }
 
+  // Ownership (id belongs to madrasaId) must already be verified by the
+  // caller via findMadrasaUserById before calling this - same trust pattern
+  // as updateMadrasaLimitsOnTx above.
+  updateMadrasaUserCredentials(id: number, data: Prisma.UserUncheckedUpdateInput) {
+    return prisma.user.update({ where: { id }, data });
+  }
+
   createActivityLog(data: Prisma.ActivityLogUncheckedCreateInput) {
     return prisma.activityLog.create({ data });
   }
@@ -629,24 +635,6 @@ export class SuperAdminRepository {
     })();
   }
 
-  findCloudinaryConfig(madrasaId: number) {
-    return prisma.madrasaCloudinaryConfig.findUnique({ where: { madrasaId } });
-  }
-
-  upsertCloudinaryConfig(
-    madrasaId: number,
-    data: { cloudName: string; apiKey: string; apiSecretEnc: string },
-  ) {
-    return prisma.madrasaCloudinaryConfig.upsert({
-      where: { madrasaId },
-      create: { madrasaId, ...data },
-      update: data,
-    });
-  }
-
-  deleteCloudinaryConfig(madrasaId: number) {
-    return prisma.madrasaCloudinaryConfig.deleteMany({ where: { madrasaId } });
-  }
 }
 
 export const superAdminRepository = new SuperAdminRepository();

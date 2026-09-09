@@ -5,7 +5,7 @@ interface Props {
 
 const SubmitButton: React.FC<Props> = ({ loading = false, isReAdmission = false }) => {
   return (
-    <div className="flex justify-center">
+    <div className="sticky bottom-0 sm:bottom-4 z-10 flex justify-center rounded-xl border border-gray-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900">
       <button
         type="submit"
         disabled={loading}

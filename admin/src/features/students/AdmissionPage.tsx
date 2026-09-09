@@ -142,7 +142,7 @@ const initialState: AdmissionFormData = {
   isOrphan: false,
   roll: "",
   admissionDate: todayIso(),
-  academicYear: String(new Date().getFullYear()),
+  academicYear: "",
   academicDivision: "",
   previousClass: "",
   previousInstitution: "",

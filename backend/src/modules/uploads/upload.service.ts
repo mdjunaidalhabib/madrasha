@@ -1,7 +1,6 @@
 import { BadRequestError } from "../../shared/errors";
-import { prisma } from "../../shared/database/prisma";
-import { decryptSecret } from "../../shared/utils/crypto.util";
 import { cloudinaryService, CloudinaryCredentials } from "../../shared/storage/cloudinary.service";
+import { platformSettingsService } from "../super-admin/platform-settings.service";
 import { UploadImageRequestDto, DeleteImageRequestDto } from "./upload.dto";
 
 const ALLOWED_FOLDERS = [
@@ -16,15 +15,12 @@ const ALLOWED_FOLDERS = [
 ];
 
 export class UploadService {
-  /** Each madrasa has its own Cloudinary account, set up by the super admin. */
-  private async getCredentials(madrasaId: number): Promise<CloudinaryCredentials | null> {
-    const config = await prisma.madrasaCloudinaryConfig.findUnique({ where: { madrasaId } });
-    if (!config) return null;
-    return {
-      cloudName: config.cloudName,
-      apiKey: config.apiKey,
-      apiSecret: decryptSecret(config.apiSecretEnc),
-    };
+  /** Every madrasa shares the single platform-wide Cloudinary account
+   * (configured by the super admin in Settings) - there used to be a
+   * per-madrasa override here, but that system was removed in favor of one
+   * shared account for everyone. */
+  private async getCredentials(): Promise<CloudinaryCredentials | null> {
+    return platformSettingsService.resolveCredentials();
   }
 
   async uploadImage(madrasaId: number, dto: UploadImageRequestDto) {
@@ -34,7 +30,7 @@ export class UploadService {
 
     const folder = ALLOWED_FOLDERS.includes(dto.folder || "") ? dto.folder! : "misc";
 
-    const credentials = await this.getCredentials(madrasaId);
+    const credentials = await this.getCredentials();
     if (!credentials) {
       // Not an error - the caller (frontend) should refuse to persist the
       // base64 it already has and tell the admin to contact the super
@@ -50,10 +46,10 @@ export class UploadService {
     return { uploaded: true, configured: true, url: result.url, public_id: result.publicId };
   }
 
-  async deleteImage(madrasaId: number, dto: DeleteImageRequestDto) {
+  async deleteImage(_madrasaId: number, dto: DeleteImageRequestDto) {
     if (!dto.public_id) throw new BadRequestError("public_id is required");
 
-    const credentials = await this.getCredentials(madrasaId);
+    const credentials = await this.getCredentials();
     if (!credentials) return { deleted: false };
 
     const result = await cloudinaryService.deleteImage(dto.public_id, credentials);

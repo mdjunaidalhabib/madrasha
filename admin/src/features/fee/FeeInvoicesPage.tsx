@@ -189,7 +189,7 @@ const FeeInvoicesPage = () => {
       try {
         const sessionsRes = await cachedGet("/sessions?active_only=true");
         const sessions = normalizeArray(sessionsRes) as unknown as Session[];
-        const currentSessionId = sessions.find((s) => s.isCurrent)?.id;
+        const currentSessionId = sessions.find((s) => s.isActive)?.id;
 
         const res = await cachedGet(
           currentSessionId ? `/students?session_id=${currentSessionId}` : "/students",

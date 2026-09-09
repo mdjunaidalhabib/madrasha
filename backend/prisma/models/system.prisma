@@ -17,10 +17,9 @@ model SuperAdmin {
   @@map("super_admins")
 }
 
-/// Platform-wide (not per-tenant) Cloudinary account, used for Super
-/// Admin's own uploads (System Template backgrounds) - the same shape and
-/// encryption approach as MadrasaCloudinaryConfig, just without a
-/// madrasaId since there's exactly one row for the whole platform.
+/// Platform-wide (not per-tenant) Cloudinary account - the single account
+/// every tenant's uploads use (backend/src/modules/uploads/upload.service.ts)
+/// as well as Super Admin's own uploads (System Template backgrounds).
 /// Configured from the Super Admin Settings page, not backend/.env.
 model PlatformCloudinaryConfig {
   id           Int      @id @default(autoincrement())

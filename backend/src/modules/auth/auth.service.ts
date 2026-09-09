@@ -71,9 +71,10 @@ export class AuthService {
     await this.repository.recordSuccessfulLogin(user.id);
 
     const roleKey = normalizeRoleKey(role?.keyName || role?.nameBn);
-    const [permissions, modules] = await Promise.all([
+    const [permissions, modules, madrasa] = await Promise.all([
       this.resolvePermissions(user.roleId, roleKey),
       this.resolveEnabledModules(user.madrasaId),
+      this.repository.findMadrasaName(user.madrasaId),
     ]);
 
     const token = generateToken({
@@ -99,6 +100,7 @@ export class AuthService {
       },
       permissions,
       modules,
+      madrasa_name: madrasa?.name || "",
     };
   }
 

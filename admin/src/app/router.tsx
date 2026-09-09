@@ -23,6 +23,7 @@ const StudentProfilePage = lazy(() => import("../features/students/StudentProfil
 const StudentProfile360 = lazy(() => import("../features/students/StudentProfile360"));
 const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
 const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
+const RejectedAdmissionsPage = lazy(() => import("../features/students/RejectedAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
 const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
@@ -133,6 +134,10 @@ const madrasaAdminChildren = [
   {
     path: "ihtemam/pending",
     element: <ModuleGuard module="ihtemam">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
+  },
+  {
+    path: "ihtemam/rejected",
+    element: <ModuleGuard module="ihtemam">{withSuspense(<RejectedAdmissionsPage />)}</ModuleGuard>,
   },
   {
     path: "ihtemam/fee-categories",
@@ -291,6 +296,10 @@ const madrasaAdminChildren = [
   {
     path: "students/admissions/pending",
     element: <ModuleGuard module="students">{withSuspense(<PendingAdmissionsPage />)}</ModuleGuard>,
+  },
+  {
+    path: "students/admissions/rejected",
+    element: <ModuleGuard module="students">{withSuspense(<RejectedAdmissionsPage />)}</ModuleGuard>,
   },
   {
     path: "students/list",

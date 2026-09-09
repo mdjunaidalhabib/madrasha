@@ -31,6 +31,10 @@ export interface LoginResult {
   user: AuthenticatedUserSummary;
   permissions: string[];
   modules: string[];
+  /** Display name of the madrasa logged into - lets the frontend's "saved
+   * device login" switcher show the institution's real name instead of just
+   * the slug/code the user typed in. */
+  madrasa_name: string;
 }
 
 export interface RefreshTokenResult {

@@ -14,7 +14,6 @@ import {
 import SearchPaginationBar from "../../../components/super-admin/SearchPaginationBar";
 import MadrasasTable from "../../../components/super-admin/MadrasasTable";
 import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/CreateMadrasaModal";
-import MadrasaCloudinaryModal from "../../../components/super-admin/MadrasaCloudinaryModal";
 import DivisionsSection from "../../../components/super-admin/create-madrasa/DivisionsSection";
 import ToggleSection from "../../../components/super-admin/create-madrasa/ToggleSection";
 import MadrasaUsersSection from "../../../components/super-admin/create-madrasa/MadrasaUsersSection";
@@ -83,7 +82,6 @@ export default function SuperAdminMadrasasPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Madrasa | null>(null);
-  const [cloudinaryFor, setCloudinaryFor] = useState<Madrasa | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -382,7 +380,6 @@ export default function SuperAdminMadrasasPage() {
         onToggleActive={onToggleActive}
         onDelete={onDelete}
         onEdit={setEditing}
-        onCloudinary={setCloudinaryFor}
         selectedIds={selectedIds}
         onToggleOne={toggleOne}
         onToggleAll={toggleAll}
@@ -407,9 +404,6 @@ export default function SuperAdminMadrasasPage() {
         />
       )}
 
-      {cloudinaryFor && (
-        <MadrasaCloudinaryModal madrasa={cloudinaryFor} onClose={() => setCloudinaryFor(null)} />
-      )}
     </div>
   );
 }
@@ -451,6 +445,25 @@ function EditMadrasaModal({
 
   const update = (key: keyof typeof form, value: string | number) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  // প্ল্যান বাছলে সেই প্ল্যানের নিজের student/user limit দিয়ে ফিল্ড সাথে সাথে
+  // ওভাররাইট হবে (Create Madrasa-র handlePlanChange-এর সাথে consistent) - এতে
+  // সেভ করার আগেই সুপার অ্যাডমিন আসল ভ্যালু দেখতে পান, ব্যাকএন্ড এমনিতেও প্ল্যান
+  // পাঠানো হলে limit ওভাররাইট করে দেয় (updateMadrasaLimitsOnTx)। "No change"
+  // বাছলে আগের/ম্যানুয়াল ভ্যালুই থাকে, editable থাকে।
+  const handlePlanChange = (id: string) => {
+    setForm((prev) => {
+      if (!id) return { ...prev, plan_id: id };
+      const plan = plans.find((p) => String(p.id) === id);
+      if (!plan) return { ...prev, plan_id: id };
+      return {
+        ...prev,
+        plan_id: id,
+        student_limit: plan.studentLimit,
+        user_limit: plan.userLimit,
+      };
+    });
+  };
 
   /* =========================
   System Setup (same fields as Create Madrasa)
@@ -580,7 +593,7 @@ function EditMadrasaModal({
             <select
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.plan_id}
-              onChange={(e) => update("plan_id", e.target.value)}
+              onChange={(e) => handlePlanChange(e.target.value)}
             >
               <option value="">No change</option>
               {plans.map((p) => (
@@ -589,6 +602,9 @@ function EditMadrasaModal({
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              প্ল্যান বাছলে Student/User Limit অটো-আপডেট হবে; কাস্টম লিমিট দিতে চাইলে "No change" রাখুন।
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
@@ -609,7 +625,8 @@ function EditMadrasaModal({
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
             <input
               type="number"
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              disabled={!!form.plan_id}
+              className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
               value={form.student_limit}
               onChange={(e) => update("student_limit", Number(e.target.value))}
             />
@@ -618,7 +635,8 @@ function EditMadrasaModal({
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">User Limit</label>
             <input
               type="number"
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              disabled={!!form.plan_id}
+              className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
               value={form.user_limit}
               onChange={(e) => update("user_limit", Number(e.target.value))}
             />

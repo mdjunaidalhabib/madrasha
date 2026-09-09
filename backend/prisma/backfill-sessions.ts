@@ -85,8 +85,7 @@ async function main() {
               name: year,
               startDate: dates.startDate,
               endDate: dates.endDate,
-              isCurrent: year === currentYear,
-              isActive: true,
+              isActive: year === currentYear,
             },
             select: { id: true },
           });

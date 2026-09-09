@@ -97,9 +97,9 @@ export const env = {
   smsParamMessage: process.env.SMS_PARAM_MESSAGE || "message",
 
   /* ================= FILE STORAGE (Cloudinary) ================= */
-  // Each madrasa (tenant) has its own Cloudinary account, configured by the
-  // super admin and stored in the `madrasa_cloudinary_configs` table (see
-  // MadrasaCloudinaryConfig in prisma/models/tenant.prisma) - the API secret
+  // Every madrasa (tenant) shares one platform-wide Cloudinary account,
+  // configured by the super admin in Settings and stored in
+  // PlatformCloudinaryConfig (prisma/models/system.prisma) - the API secret
   // is encrypted at rest with `secretsEncryptionKey` below, via
   // shared/utils/crypto.util.ts. These CLOUDINARY_* vars are unused
   // leftovers from the old single-tenant setup and are no longer read by

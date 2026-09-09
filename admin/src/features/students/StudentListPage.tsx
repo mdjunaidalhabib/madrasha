@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
@@ -180,10 +180,13 @@ type Student = {
   village?: string | null;
   admission_status?: string | null;
   admission_type?: string | null;
+  session_id?: number | string | null;
 };
 
 const StudentListPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get("session");
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -205,11 +208,14 @@ const StudentListPage = () => {
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedGender, setSelectedGender] = useState("");
 
-  // Defaults to the madrasa's current session so the list opens scoped to
-  // "এই বছরের ছাত্র" instead of dumping every session's students (promoted,
-  // passed-out, transferred) into one huge table. "" = সব সেশন (no filter).
+  // ডিফল্টে "সব সেশন" (কোনো ফিল্টার নয়) দেখানো হয় — null মানে সেশন তালিকা
+  // এখনো লোড হচ্ছে (প্রথম fetch আটকে থাকে), লোড শেষ হলে "" (সব সেশন) বসে।
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  // URL-এর ?session=<id> শুধু প্রথমবার প্রয়োগ হবে — এরপর বিভাগ-ভিত্তিক
+  // অটো-সিলেক্ট ইফেক্ট যেন এটাকে বারবার ওভাররাইড করতে না পারে (নিচে দেখুন)।
+  const urlSessionAppliedRef = useRef(false);
 
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
@@ -267,24 +273,60 @@ const StudentListPage = () => {
     }
   }, []);
 
-  // All sessions (not just active ones) so the office can still switch back
-  // to a past session's roster; defaults the filter to whichever session is
-  // marked current, or "সব সেশন" (no filter) if none is.
+  // শুধু চলমান (isActive) সেশনগুলো ড্রপডাউনে দেখানো হয় — পুরনো/অচল সেশন
+  // এখানে আসবে না। ব্যতিক্রম: URL থেকে ?session=<id> দিয়ে কোনো অচল সেশন
+  // নির্দিষ্টভাবে চাওয়া হলে (যেমন সেশন ডিলিটের আগে ছাত্র ট্রান্সফারের জন্য
+  // ডিপ-লিংক), সেটাকেও তালিকায় একবার যোগ করে দেওয়া হয় যাতে ড্রপডাউনে
+  // নির্বাচিত অবস্থায় দেখানো যায়।
   useEffect(() => {
     (async () => {
       try {
         const res = await cachedGet("/sessions");
-        const list = normalizeArray(res) as unknown as Session[];
+        const allSessions = normalizeArray(res) as unknown as Session[];
+        const activeList = allSessions.filter((s) => s.isActive);
+
+        let list = activeList;
+        if (urlSessionId && !activeList.some((s) => String(s.id) === urlSessionId)) {
+          const urlSession = allSessions.find((s) => String(s.id) === urlSessionId);
+          if (urlSession) {
+            list = [...activeList, urlSession];
+          }
+        }
+
         setSessions(list);
-        const current = list.find((s) => s.isCurrent);
-        setSelectedSessionId(current ? String(current.id) : "");
       } catch (err) {
         logger.error("LOAD SESSIONS ERROR:", err);
         setSessions([]);
-        setSelectedSessionId("");
+      } finally {
+        setSessionsLoaded(true);
       }
     })();
-  }, []);
+  }, [urlSessionId]);
+
+  // ডিফল্টে কোনো বিভাগ নির্বাচিত না থাকলে "সব সেশন" (কোনো ফিল্টার নয়)।
+  // কোনো বিভাগ নির্বাচন করা হলে সেই বিভাগের চলমান সেশন স্বয়ংক্রিয়ভাবে বসে;
+  // ব্যবহারকারী ম্যানুয়ালি সেশন বদলালে (বিভাগ না বদলানো পর্যন্ত) সেটা অপরিবর্তিত থাকে।
+  useEffect(() => {
+    if (!sessionsLoaded) return;
+
+    // প্রথমবার সেশন লোড হওয়ার পর URL-এ ?session=<id> থাকলে সেটাই বসবে —
+    // নিচের বিভাগ-ভিত্তিক ডিফল্ট লজিক এটাকে ওভাররাইড করবে না, শুধু একবারই।
+    if (!urlSessionAppliedRef.current) {
+      urlSessionAppliedRef.current = true;
+      if (urlSessionId) {
+        setSelectedSessionId(urlSessionId);
+        return;
+      }
+    }
+
+    if (!selectedDivision) {
+      setSelectedSessionId("");
+      return;
+    }
+    const divisionIdNum = Number(selectedDivision);
+    const current = sessions.find((s) => s.isActive && s.divisionId === divisionIdNum);
+    setSelectedSessionId(current ? String(current.id) : "");
+  }, [selectedDivision, sessions, sessionsLoaded, urlSessionId]);
 
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
@@ -537,7 +579,6 @@ const StudentListPage = () => {
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
-                    {s.isCurrent ? " (চলমান)" : ""}
                   </option>
                 ))}
               </select>

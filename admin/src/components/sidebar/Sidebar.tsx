@@ -167,9 +167,11 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 </NavLink>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setAccountMenuOpen(false);
-                    logoutSession();
+                    // Await the server-side revoke before clearing local
+                    // state - see Topbar.tsx's handleLogout for why.
+                    await logoutSession();
                     logout();
                   }}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"

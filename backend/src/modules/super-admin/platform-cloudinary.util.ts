@@ -3,12 +3,11 @@ import { cloudinaryService } from "../../shared/storage/cloudinary.service";
 import { platformSettingsService } from "./platform-settings.service";
 
 /**
- * Super Admin has no tenant, so the per-tenant MadrasaCloudinaryConfig
- * flow (upload.service.ts) doesn't apply to System Template backgrounds.
- * Credentials come from PlatformCloudinaryConfig (see
- * platform-settings.service.ts), configured from the Super Admin Settings
- * page - not from backend/.env (the CLOUDINARY_* env vars remain unused
- * leftovers, same as they always were for the per-tenant flow).
+ * This is the same platform-wide Cloudinary account that upload.service.ts
+ * now also uses for every tenant's uploads. Credentials come from
+ * PlatformCloudinaryConfig (see platform-settings.service.ts), configured
+ * from the Super Admin Settings page - not from backend/.env (the
+ * CLOUDINARY_* env vars remain unused leftovers).
  */
 export async function getPlatformCloudinaryCredentials() {
   const credentials = await platformSettingsService.resolveCredentials();

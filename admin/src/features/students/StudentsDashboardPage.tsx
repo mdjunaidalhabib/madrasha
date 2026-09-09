@@ -197,6 +197,14 @@ export default function StudentsDashboardPage() {
           >
             <ClipboardCheck size={16} /> পেন্ডিং ভর্তি অনুমোদন
           </Link>
+          {data && data.byAdmissionStatus.rejected > 0 && (
+            <Link
+              className="flex items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-rose-600"
+              to="/students/admissions/rejected"
+            >
+              <ClipboardCheck size={16} /> বাতিল হওয়া আবেদন
+            </Link>
+          )}
           <Link
             className="rounded-xl bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
             to="/students/list"

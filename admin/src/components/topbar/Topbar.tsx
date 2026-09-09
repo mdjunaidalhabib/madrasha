@@ -44,8 +44,12 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const { date: today, time: nowTime } = useNowLabels();
 
-  const handleLogout = () => {
-    logoutSession();
+  const handleLogout = async () => {
+    // Wait for the server-side revoke to finish before clearing local state
+    // and navigating away - otherwise the outgoing request can race the
+    // redirect and never land, leaving a stale "active" session behind
+    // (visible as a duplicate device on the profile page's session list).
+    await logoutSession();
     logout();
   };
 

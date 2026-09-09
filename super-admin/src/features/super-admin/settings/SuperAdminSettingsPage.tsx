@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Cloud, MessageSquare, Mail, RefreshCw } from "lucide-react";
+import { Cloud, MessageSquare, Mail, RefreshCw, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import {
@@ -14,7 +14,13 @@ import {
   savePlatformEmailConfig,
   deletePlatformEmailConfig,
   checkPlatformEmailConnection,
+  listSuperAdmins,
+  createSuperAdmin,
+  deactivateSuperAdmin,
+  reactivateSuperAdmin,
+  type SuperAdminAccountItem,
 } from "../../../services/superAdminApi";
+import { useAdminAuthStore } from "../../../store/adminAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
@@ -728,6 +734,225 @@ function EmailSettingsCard() {
   );
 }
 
+const emptyNewAdmin = { name: "", email: "", password: "" };
+
+/** Manage other super-admin logins (teammates) - previously there was
+ * exactly one hardcoded (.env-seeded) super admin with no way to add more.
+ * Deactivating (not deleting) is reversible and the backend blocks
+ * deactivating your own row or the last remaining active admin. */
+function SuperAdminAccountsCard() {
+  const toast = useToastStore((s) => s.show);
+  const currentAdminId = useAdminAuthStore((s) => s.admin?.id);
+
+  const [loading, setLoading] = useState(true);
+  const [admins, setAdmins] = useState<SuperAdminAccountItem[]>([]);
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [newAdmin, setNewAdmin] = useState(emptyNewAdmin);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await listSuperAdmins();
+      setAdmins(res?.data ?? []);
+    } catch (err) {
+      logger.error("LIST SUPER ADMINS ERROR:", err);
+      toast("অ্যাডমিন লিস্ট লোড করা যায়নি", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const activeCount = admins.filter((a) => a.is_active).length;
+
+  const create = async () => {
+    if (!newAdmin.name.trim()) return toast("নাম দিন", "error");
+    if (!newAdmin.email.trim()) return toast("Email দিন", "error");
+    if (newAdmin.password.length < 6) return toast("Password কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+
+    setCreating(true);
+    try {
+      await createSuperAdmin({
+        name: newAdmin.name.trim(),
+        email: newAdmin.email.trim(),
+        password: newAdmin.password,
+      });
+      toast("নতুন সুপার অ্যাডমিন যুক্ত হয়েছে", "success");
+      setNewAdmin(emptyNewAdmin);
+      setShowForm(false);
+      await load();
+    } catch (err: any) {
+      toast(err?.response?.data?.message || "যুক্ত করা যায়নি", "error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const reactivate = async (admin: SuperAdminAccountItem) => {
+    setBusyId(admin.id);
+    try {
+      await reactivateSuperAdmin(admin.id);
+      toast("সক্রিয় করা হয়েছে", "success");
+      await load();
+    } catch (err: any) {
+      toast(err?.response?.data?.message || "সক্রিয় করা যায়নি", "error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deactivate = (admin: SuperAdminAccountItem) => {
+    useConfirmStore.getState().show({
+      title: "সুপার অ্যাডমিন নিষ্ক্রিয় করুন",
+      message: `"${admin.name}" (${admin.email}) কে নিষ্ক্রিয় করতে চান? পরে আবার সক্রিয় করা যাবে।`,
+      confirmText: "নিষ্ক্রিয় করুন",
+      danger: true,
+      onConfirm: async () => {
+        setBusyId(admin.id);
+        try {
+          await deactivateSuperAdmin(admin.id);
+          toast("নিষ্ক্রিয় করা হয়েছে", "success");
+          await load();
+        } catch (err: any) {
+          toast(err?.response?.data?.message || "নিষ্ক্রিয় করা যায়নি", "error");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
+  };
+
+  const toggleActive = (admin: SuperAdminAccountItem) =>
+    admin.is_active ? deactivate(admin) : reactivate(admin);
+
+  return (
+    <div className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="rounded-xl bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            <ShieldCheck size={20} />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">সুপার অ্যাডমিন অ্যাকাউন্ট</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              এই প্যানেলে লগইন করতে পারা টিমমেটদের অ্যাকাউন্ট এখান থেকে যুক্ত/নিষ্ক্রিয় করুন।
+            </p>
+          </div>
+        </div>
+        <Button onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "বাতিল" : "+ নতুন অ্যাডমিন"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 space-y-2 rounded-lg border bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+          <input
+            placeholder="Name"
+            autoComplete="off"
+            value={newAdmin.name}
+            onChange={(e) => setNewAdmin((prev) => ({ ...prev, name: e.target.value }))}
+            className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            autoComplete="off"
+            value={newAdmin.email}
+            onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))}
+            className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <div className="relative">
+            <input
+              type={passwordVisible ? "text" : "password"}
+              placeholder="Password"
+              autoComplete="new-password"
+              value={newAdmin.password}
+              onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))}
+              className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <button
+              type="button"
+              onClick={() => setPasswordVisible((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+              aria-label={passwordVisible ? "Hide password" : "Show password"}
+              tabIndex={-1}
+            >
+              {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <Button onClick={create} disabled={creating} className="w-full sm:w-auto">
+            {creating ? "যুক্ত হচ্ছে..." : "যুক্ত করুন"}
+          </Button>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</p>
+      ) : (
+        <div className="space-y-2">
+          {admins.map((admin) => {
+            const isSelf = admin.id === currentAdminId;
+            const isLastActive = Boolean(admin.is_active) && activeCount <= 1;
+            const disableToggle = busyId === admin.id || (Boolean(admin.is_active) && (isSelf || isLastActive));
+
+            return (
+              <div
+                key={admin.id}
+                className="flex flex-col gap-2 rounded-lg border bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-slate-100">{admin.name}</span>
+                    {isSelf && (
+                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400">
+                        আপনি
+                      </span>
+                    )}
+                    {admin.is_active ? (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-gray-500 dark:text-slate-400">{admin.email}</div>
+                </div>
+
+                <Button
+                  variant={admin.is_active ? "danger" : "secondary"}
+                  onClick={() => toggleActive(admin)}
+                  disabled={disableToggle}
+                  title={
+                    admin.is_active && isSelf
+                      ? "নিজের অ্যাকাউন্ট নিজে নিষ্ক্রিয় করা যায় না"
+                      : admin.is_active && isLastActive
+                        ? "শেষ সক্রিয় অ্যাডমিন নিষ্ক্রিয় করা যায় না"
+                        : undefined
+                  }
+                  className="self-start sm:self-auto"
+                >
+                  {busyId === admin.id ? "..." : admin.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6">
@@ -735,6 +960,7 @@ export default function SuperAdminSettingsPage() {
       <CloudinarySettingsCard />
       <SmsSettingsCard />
       <EmailSettingsCard />
+      <SuperAdminAccountsCard />
     </div>
   );
 }

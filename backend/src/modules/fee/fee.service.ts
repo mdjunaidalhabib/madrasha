@@ -5,6 +5,7 @@ import { feeRepository, FeeRepository } from "./fee.repository";
 import { studentRepository } from "../students/student.repository";
 import { notificationService } from "../notifications/notification.service";
 import { accountService } from "../accounts/account.service";
+import { logActivity } from "../../shared/utils/activity.util";
 import {
   CreateFeeCategoryRequestDto,
   CreateFeeStructureRequestDto,
@@ -387,6 +388,16 @@ export class FeeService {
 
     try {
       await this.repository.updateCategory(id, data);
+      // Turning a ফি ধরণ off/on should also stop/resume billing for every
+      // FeeStructure already using it - not just hide it from the picklist
+      // (see FeeRepository.updateStructuresActiveByFeeType).
+      if (data.isActive !== undefined) {
+        await this.repository.updateStructuresActiveByFeeType(
+          madrasaId,
+          existing.name,
+          data.isActive as boolean,
+        );
+      }
     } catch (err) {
       return friendlyFailure("updateFeeCategory error:", err, "Failed to update fee category");
     }
@@ -901,6 +912,7 @@ export class FeeService {
       paidAmount: number;
       studentId: number;
       dueAmount: number;
+      invoiceTitle: string;
     };
     try {
       result = await this.repository.runTransaction(async (tx) => {
@@ -963,6 +975,7 @@ export class FeeService {
           paidAmount: newPaidAmount,
           studentId: invoice.studentId,
           dueAmount: Math.max(invoiceAmount - newPaidAmount - alreadyWaived, 0),
+          invoiceTitle: invoice.title,
         };
       });
     } catch (err) {
@@ -970,10 +983,10 @@ export class FeeService {
       return friendlyFailure("recordPayment error:", err, "Failed to record payment");
     }
 
-    // Fire-and-forget: notify the guardian a payment was recorded. Wrapped in
-    // its own try/catch, separate from the block above, so a failure here
-    // (including the lookup) can never be mistaken for a failed payment -
-    // the payment already committed by this point.
+    // Fire-and-forget: notify the guardian and write the activity log entry.
+    // Wrapped in its own try/catch, separate from the block above, so a
+    // failure here (including the lookup) can never be mistaken for a
+    // failed payment - the payment already committed by this point.
     try {
       const student = await studentRepository.findByIdForTenant(result.studentId, madrasaId);
       if (student?.guardianPhone) {
@@ -983,8 +996,22 @@ export class FeeService {
           due: result.dueAmount,
         });
       }
+      if (student) {
+        // Hand-logged (not the generic body-field auto-logger - see
+        // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
+        // details column carries the paying student's id/name/class instead
+        // of just the invoice id.
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: receivedById ?? null,
+          action: "CREATE",
+          entity: "invoices/pay",
+          entity_id: invoiceId,
+          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) এর জন্য ${paymentAmount} টাকা পরিশোধ করা হয়েছে, পদ্ধতি: ${methodLabel || dto.method}`,
+        });
+      }
     } catch (err) {
-      logger.error("FEE_PAYMENT notification lookup failed:", err);
+      logger.error("FEE_PAYMENT notification/activity log failed:", err);
     }
 
     return result;
@@ -1004,8 +1031,9 @@ export class FeeService {
     }
     const waiveAmount = toAmount(dto.amount, "amount");
 
+    let result: { invoiceStatus: string; waivedAmount: number; studentId: number; invoiceTitle: string };
     try {
-      return await this.repository.runTransaction(async (tx) => {
+      result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
         if (!invoice) throw new NotFoundError("Invoice not found");
         if (invoice.status === "PAID")
@@ -1044,12 +1072,39 @@ export class FeeService {
           status: newStatus,
         });
 
-        return { invoiceStatus: newStatus, waivedAmount: newWaivedAmount };
+        return {
+          invoiceStatus: newStatus,
+          waivedAmount: newWaivedAmount,
+          studentId: invoice.studentId,
+          invoiceTitle: invoice.title,
+        };
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
       return friendlyFailure("waiveInvoice error:", err, "Failed to waive invoice");
     }
+
+    // Hand-logged (not the generic body-field auto-logger - see
+    // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
+    // details column carries the student's id/name/class instead of just
+    // the invoice id. Non-fatal - the waiver already committed above.
+    try {
+      const student = await studentRepository.findByIdForTenant(result.studentId, madrasaId);
+      if (student) {
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: waivedById ?? null,
+          action: "CREATE",
+          entity: "invoices/waive",
+          entity_id: invoiceId,
+          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) থেকে ${waiveAmount} টাকা মওকুফ করা হয়েছে (মোট মওকুফ: ${result.waivedAmount} টাকা), কারণ: ${dto.reason.trim()}`,
+        });
+      }
+    } catch (err) {
+      logger.error("Activity log for invoice waiver failed:", err);
+    }
+
+    return result;
   }
 
   /* ================= DASHBOARD SUMMARY ================= */

@@ -5,33 +5,45 @@
 // like Apr-Mar). `academicYear` on Student/FeeStructure is kept as a
 // mirrored display string derived from Session.name - sessionId is now the
 // authoritative link.
+//
+// Sessions are division-scoped: `divisionId` lets each বিভাগ (e.g. Nurani
+// on a Jan-Dec calendar year vs Kitab/Hifz on an Arabic/Hijri year starting
+// ~March/April) keep its own "current" session. `divisionId = null` means
+// "সাধারণ/সকল বিভাগের জন্য" - a legacy/shared session that also acts as the
+// fallback current session for any division that has not yet been given its
+// own division-specific current session. Every pre-existing session row has
+// an implicit null divisionId, so this is a zero-behavior-change migration
+// for madrasas that don't opt into per-division sessions.
 // ============================================================
 
 model Session {
-  id        Int      @id @default(autoincrement())
-  madrasaId Int      @map("madrasa_id")
-  name      String   @db.VarChar(50)
-  startDate DateTime @map("start_date") @db.Date
-  endDate   DateTime @map("end_date") @db.Date
+  id         Int      @id @default(autoincrement())
+  madrasaId  Int      @map("madrasa_id")
+  divisionId Int?     @map("division_id")
+  name       String   @db.VarChar(50)
+  startDate  DateTime @map("start_date") @db.Date
+  endDate    DateTime @map("end_date") @db.Date
 
-  /// Exactly one session per madrasa should be current at a time -
+  /// Exactly one session per madrasa+division bucket should be active at a
+  /// time (the null-division bucket is its own "shared" active session) -
   /// enforced in the service layer (unset the old one inside the same
-  /// transaction as setting the new one), not at the DB level.
-  isCurrent Boolean @default(false) @map("is_current")
-  isActive  Boolean @default(true) @map("is_active")
+  /// transaction as setting the new one), not at the DB level. This is the
+  /// current/default session for the division; an inactive session is just
+  /// a past/other one kept for record-keeping.
+  isActive Boolean @default(false) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   madrasa       Madrasa                 @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  division      Division?               @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   students      Student[]
   feeStructures FeeStructure[]
   historyFrom   StudentSessionHistory[] @relation("SessionHistoryFrom")
   historyTo     StudentSessionHistory[] @relation("SessionHistoryTo")
 
-  @@unique([madrasaId, name], map: "uniq_session_madrasa_name")
-  @@index([madrasaId, isCurrent], map: "idx_session_madrasa_current")
-  @@index([madrasaId, isActive], map: "idx_session_madrasa_active")
+  @@unique([madrasaId, divisionId, name], map: "uniq_session_madrasa_division_name")
+  @@index([madrasaId, divisionId, isActive], map: "idx_session_madrasa_division_current")
   @@map("sessions")
 }
 

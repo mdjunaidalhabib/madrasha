@@ -1,6 +1,7 @@
 import { ApiError, BadRequestError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { promotionRepository, PromotionRepository } from "./promotion.repository";
+import { sessionRepository, SessionRepository } from "../session/session.repository";
 import {
   PromotionExecuteRequestDto,
   PromotionPreviewRequestDto,
@@ -13,7 +14,10 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 };
 
 export class PromotionService {
-  constructor(private readonly repository: PromotionRepository = promotionRepository) {}
+  constructor(
+    private readonly repository: PromotionRepository = promotionRepository,
+    private readonly sessions: SessionRepository = sessionRepository,
+  ) {}
 
   /**
    * Lists every active student in a class/year alongside a suggested
@@ -84,6 +88,17 @@ export class PromotionService {
     const fromYear = String(dto.from_year);
     const toYear = String(dto.to_year);
 
+    // Resolve the destination Session once for the whole batch (same
+    // toClassId/toYear for every student). Sessions are now scoped per
+    // বিভাগ, so we resolve via the destination class's division. If no
+    // Session row matches (e.g. the operator typed a to_year nobody has
+    // set up as a real Session yet for that division), toSession stays
+    // undefined and we fall back to the legacy academicYear-only behavior
+    // rather than blocking the promotion.
+    const toClassDivision = await this.repository.getClassDivisionId(madrasaId, toClassId);
+    const toSession = await this.sessions.findByNameForTenant(madrasaId, toYear, toClassDivision?.divisionId ?? undefined);
+    const toSessionId = toSession?.id;
+
     try {
       return await this.repository.runTransaction(async (tx) => {
         const batch = await this.repository.createBatchOnTx(tx, {
@@ -113,6 +128,7 @@ export class PromotionService {
               previousClassId: fromClassId,
               academicYear: toYear,
               roll: assignedRoll,
+              ...(toSessionId !== undefined ? { sessionId: toSessionId } : {}),
             });
             await this.repository.createRecordOnTx(tx, {
               batchId: batch.id,
@@ -123,7 +139,7 @@ export class PromotionService {
             });
             summary.promoted += 1;
           } else if (decision.status === "RETAINED") {
-            await this.repository.retainStudentOnTx(tx, studentId, toYear);
+            await this.repository.retainStudentOnTx(tx, studentId, toYear, toSessionId);
             await this.repository.createRecordOnTx(tx, {
               batchId: batch.id,
               studentId,

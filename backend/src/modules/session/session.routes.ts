@@ -2,7 +2,14 @@ import { Router } from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
-import { getSessions, createSession, updateSession, setCurrentSession, deleteSession } from "./session.controller";
+import {
+  getSessions,
+  createSession,
+  updateSession,
+  setCurrentSession,
+  deleteSession,
+  deleteUnusedFeeStructures,
+} from "./session.controller";
 
 const router = Router();
 
@@ -18,5 +25,10 @@ router.post("/", rbacMiddleware("students.session_manage"), createSession);
 router.put("/:id", rbacMiddleware("students.session_manage"), updateSession);
 router.patch("/:id/set-current", rbacMiddleware("students.session_manage"), setCurrentSession);
 router.delete("/:id", rbacMiddleware("students.session_manage"), deleteSession);
+router.delete(
+  "/:id/unused-fee-structures",
+  rbacMiddleware("students.session_manage"),
+  deleteUnusedFeeStructures,
+);
 
 export default router;

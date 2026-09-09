@@ -104,8 +104,64 @@ export class DefaultUserProtectedError extends ForbiddenError {
   }
 }
 
+export class MuhtamimRoleImmutableError extends ForbiddenError {
+  constructor() {
+    super("মুহতামিমের রোল পরিবর্তন করা যাবে না - প্রতিটি মাদ্রাসায় ঠিক একজন মুহতামিম থাকা আবশ্যক।");
+  }
+}
+
+export class MuhtamimAlreadyExistsError extends ConflictError {
+  constructor() {
+    super("এই মাদ্রাসায় ইতিমধ্যে একজন মুহতামিম আছেন - দ্বিতীয় মুহতামিম তৈরি করা যাবে না।");
+  }
+}
+
 export interface MadrasaListQuery {
   q?: string;
   page?: number | string;
   limit?: number | string;
+}
+
+/* ================= SUPER ADMIN ACCOUNTS ================= */
+
+export class SuperAdminNameRequiredError extends BadRequestError {
+  constructor() {
+    super("Name required");
+  }
+}
+
+export class SuperAdminEmailRequiredError extends BadRequestError {
+  constructor() {
+    super("Email required");
+  }
+}
+
+export class SuperAdminPasswordTooShortError extends BadRequestError {
+  constructor() {
+    super("Password must be at least 6 characters");
+  }
+}
+
+export class SuperAdminEmailConflictError extends ConflictError {
+  constructor() {
+    super("This email is already used by another super admin.");
+  }
+}
+
+export class SuperAdminNotFoundError extends NotFoundError {
+  constructor() {
+    super("Super admin not found");
+  }
+}
+
+export class CannotDeactivateSelfError extends ForbiddenError {
+  constructor() {
+    super("You cannot deactivate your own account.");
+  }
+}
+
+export class LastActiveSuperAdminError extends ForbiddenError {
+  constructor() {
+    super("At least one active super admin must remain.");
+  }
 }

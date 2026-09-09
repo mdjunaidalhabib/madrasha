@@ -6,6 +6,7 @@ import {
   deleteMadrasaUser,
   listMadrasaRoles,
   listMadrasaUsers,
+  updateMadrasaUserCredentials,
   type MadrasaRoleItem,
   type MadrasaUserItem,
 } from "../../../services/superAdminApi";
@@ -41,6 +42,52 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
   const toggleVisible = (roleId: number) =>
     setVisiblePasswords((prev) => ({ ...prev, [roleId]: !prev[roleId] }));
 
+  // মুহতামিম লক-আউট হলে সুপার অ্যাডমিন এখান থেকে সরাসরি ইমেইল/পাসওয়ার্ড রিসেট
+  // করতে পারেন - এটাই একমাত্র জায়গা যেখানে ডিফল্ট (মুহতামিম) ইউজারের ক্রেডেনশিয়াল
+  // বদলানো ইচ্ছাকৃতভাবে allowed।
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [credName, setCredName] = useState("");
+  const [credEmail, setCredEmail] = useState("");
+  const [credPassword, setCredPassword] = useState("");
+  const [credVisible, setCredVisible] = useState(false);
+  const [savingCreds, setSavingCreds] = useState(false);
+
+  const startEditCredentials = (u: MadrasaUserItem) => {
+    setEditingUserId(u.id);
+    setCredName(u.name);
+    setCredEmail(u.email);
+    setCredPassword("");
+    setCredVisible(false);
+  };
+
+  const cancelEditCredentials = () => setEditingUserId(null);
+
+  const saveCredentials = async (u: MadrasaUserItem) => {
+    const name = credName.trim();
+    const email = credEmail.trim();
+    if (!name) return show("নাম দিন", "error");
+    if (!email) return show("Email দিন", "error");
+    if (credPassword && credPassword.length < 6) {
+      return show("Password কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+    }
+
+    setSavingCreds(true);
+    try {
+      await updateMadrasaUserCredentials(madrasaId, u.id, {
+        name,
+        email,
+        ...(credPassword ? { password: credPassword } : {}),
+      });
+      show("ক্রেডেনশিয়াল আপডেট হয়েছে", "success");
+      setEditingUserId(null);
+      await load();
+    } catch (err: any) {
+      show(err?.response?.data?.message || "আপডেট করা যায়নি", "error");
+    } finally {
+      setSavingCreds(false);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -73,6 +120,15 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
     users.forEach((u) => map.set(u.role_id, u));
     return map;
   }, [users]);
+
+  // এখান থেকে শুধু মুহতামিমের (required, default) অ্যাকাউন্টই বানানো/দেখানো হয় -
+  // তালিমাত/হিসাবরক্ষকের মতো অন্য রোলের লগইন এখন মুহতামিম নিজেই তার dynamic
+  // Users/Roles সেটিংস থেকে বানান, তাই এখানে আলাদা "+ Add User" কার্ড দেখানো
+  // রিডানডেন্ট।
+  const visibleRoles = useMemo(
+    () => roles.filter((r) => r.key === DEFAULT_PROTECTED_ROLE_KEY),
+    [roles],
+  );
 
   const updateForm = (roleId: number, key: keyof FormState, value: string) =>
     setForms((prev) => ({
@@ -137,12 +193,12 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-slate-400">Loading users...</p>
-      ) : !roles.length ? (
+      ) : !visibleRoles.length ? (
         <div className="rounded-lg border p-4 dark:border-slate-700">
           <p className="text-sm text-gray-500 dark:text-slate-400">No roles found for this madrasa.</p>
         </div>
       ) : (
-        roles.map((role) => {
+        visibleRoles.map((role) => {
           const isDefault = role.key === DEFAULT_PROTECTED_ROLE_KEY;
           const existingUser = userByRoleId.get(role.id);
           const form = forms[role.id] || emptyForm;
@@ -181,9 +237,18 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                   </div>
 
                   {isDefault ? (
-                    <span className="self-start text-xs text-gray-400 dark:text-slate-500 sm:self-auto">
-                      Default user — cannot be deleted
-                    </span>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <span className="text-xs text-gray-400 dark:text-slate-500">
+                        Default user — cannot be deleted
+                      </span>
+                      <Button
+                        variant="secondary"
+                        onClick={() => startEditCredentials(existingUser)}
+                        className="whitespace-nowrap"
+                      >
+                        ইমেইল/পাসওয়ার্ড পরিবর্তন
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       variant="danger"
@@ -195,7 +260,60 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                     </Button>
                   )}
                 </div>
-              ) : (
+              ) : null}
+
+              {existingUser && editingUserId === existingUser.id && (
+                <div className="space-y-2 rounded-lg border bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                  <input
+                    placeholder="Name"
+                    autoComplete="off"
+                    value={credName}
+                    onChange={(e) => setCredName(e.target.value)}
+                    className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    autoComplete="off"
+                    value={credEmail}
+                    onChange={(e) => setCredEmail(e.target.value)}
+                    className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+
+                  <div className="relative">
+                    <input
+                      type={credVisible ? "text" : "password"}
+                      placeholder="নতুন Password (খালি রাখলে অপরিবর্তিত থাকবে)"
+                      autoComplete="new-password"
+                      value={credPassword}
+                      onChange={(e) => setCredPassword(e.target.value)}
+                      className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setCredVisible((v) => !v)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      aria-label={credVisible ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {credVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={cancelEditCredentials} disabled={savingCreds}>
+                      Cancel
+                    </Button>
+                    <Button onClick={() => saveCredentials(existingUser)} disabled={savingCreds}>
+                      {savingCreds ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {!existingUser && (
                 /* No account yet for this role — offer the add-user form. */
                 <div className="space-y-2">
                   <input

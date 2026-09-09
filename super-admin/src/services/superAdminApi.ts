@@ -135,33 +135,6 @@ export async function updateMadrasa(id: number, payload: any) {
   return res.data;
 }
 
-/* =========================
-   MADRASA CLOUDINARY CONFIG
-========================= */
-
-export type MadrasaCloudinaryConfig = {
-  configured: boolean;
-  cloud_name: string | null;
-  api_key: string | null;
-};
-
-export async function getMadrasaCloudinaryConfig(id: number) {
-  const res = await api.get(`/super/madrasas/${id}/cloudinary`);
-  return res.data.data as MadrasaCloudinaryConfig;
-}
-
-export async function saveMadrasaCloudinaryConfig(
-  id: number,
-  payload: { cloud_name: string; api_key: string; api_secret: string },
-) {
-  const res = await api.put(`/super/madrasas/${id}/cloudinary`, payload);
-  return res.data;
-}
-
-export async function deleteMadrasaCloudinaryConfig(id: number) {
-  const res = await api.delete(`/super/madrasas/${id}/cloudinary`);
-  return res.data;
-}
 
 /* =========================
    PLATFORM SETTINGS (Super Admin's own account-level config,
@@ -396,5 +369,102 @@ export async function createMadrasaUser(
 
 export async function deleteMadrasaUser(madrasaId: number, userId: number) {
   const res = await api.delete(`/super/madrasas/${madrasaId}/users/${userId}`);
+  return res.data;
+}
+
+export async function updateMadrasaUserCredentials(
+  madrasaId: number,
+  userId: number,
+  payload: { name?: string; email?: string; password?: string },
+) {
+  const res = await api.patch(`/super/madrasas/${madrasaId}/users/${userId}/credentials`, payload);
+  return res.data;
+}
+
+export async function updateMadrasaUserRoleStatus(
+  madrasaId: number,
+  userId: number,
+  payload: { role_id?: number; is_active?: boolean },
+) {
+  const res = await api.patch(`/super/madrasas/${madrasaId}/users/${userId}/role-status`, payload);
+  return res.data;
+}
+
+/* ================= MADRASA ROLES & PERMISSIONS (full control) ================= */
+
+export type PermissionCatalogItem = {
+  id: number;
+  keyName: string | null;
+  name: string | null;
+};
+
+export type MadrasaRolePermissionItem = {
+  id: number;
+  key_name: string | null;
+  name_bn: string | null;
+  is_protected: boolean;
+  user_count: number;
+  permission_keys: string[];
+};
+
+export async function listMadrasaPermissionCatalog(madrasaId: number) {
+  const res = await cachedGet(`/super/madrasas/${madrasaId}/permission-catalog`);
+  return res.data;
+}
+
+export async function listMadrasaRolePermissions(madrasaId: number) {
+  const res = await api.get(`/super/madrasas/${madrasaId}/role-permissions`);
+  return res.data;
+}
+
+export async function createMadrasaRole(
+  madrasaId: number,
+  payload: { name_bn: string; permission_keys?: string[] },
+) {
+  const res = await api.post(`/super/madrasas/${madrasaId}/role-permissions`, payload);
+  return res.data;
+}
+
+export async function updateMadrasaRole(
+  madrasaId: number,
+  roleId: number,
+  payload: { name_bn?: string; permission_keys?: string[] },
+) {
+  const res = await api.put(`/super/madrasas/${madrasaId}/role-permissions/${roleId}`, payload);
+  return res.data;
+}
+
+export async function deleteMadrasaRole(madrasaId: number, roleId: number) {
+  const res = await api.delete(`/super/madrasas/${madrasaId}/role-permissions/${roleId}`);
+  return res.data;
+}
+
+/* ================= SUPER ADMIN ACCOUNTS ================= */
+
+export type SuperAdminAccountItem = {
+  id: number;
+  name: string;
+  email: string;
+  is_active: number;
+  created_at: string;
+};
+
+export async function listSuperAdmins() {
+  const res = await api.get(`/super/admins`);
+  return res.data;
+}
+
+export async function createSuperAdmin(payload: { name: string; email: string; password: string }) {
+  const res = await api.post(`/super/admins`, payload);
+  return res.data;
+}
+
+export async function deactivateSuperAdmin(id: number) {
+  const res = await api.patch(`/super/admins/${id}/deactivate`);
+  return res.data;
+}
+
+export async function reactivateSuperAdmin(id: number) {
+  const res = await api.patch(`/super/admins/${id}/reactivate`);
   return res.data;
 }
