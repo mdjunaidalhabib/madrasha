@@ -25,6 +25,11 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
     hint: "পেরোল পেজে কোনো শিক্ষকের বেতন পরিশোধিত হিসেবে চিহ্নিত করলে তাকে স্বয়ংক্রিয়ভাবে SMS যাবে",
     placeholders: "{name} {amount} {month}",
   },
+  RESULT_PUBLISHED: {
+    title: "পরীক্ষার ফলাফল প্রকাশের পর",
+    hint: "তালিমাত প্যানেলে কোনো পরীক্ষার ফলাফল প্রকাশ করলে সংশ্লিষ্ট শ্রেণির প্রতিটি শিক্ষার্থীর অভিভাবককে স্বয়ংক্রিয়ভাবে SMS যাবে",
+    placeholders: "{name} {class} {exam}",
+  },
 };
 
 const AutoNotificationSettingsPage = () => {

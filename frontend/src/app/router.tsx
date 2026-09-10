@@ -18,6 +18,8 @@ const GuardianChangePasswordPage = lazy(
 const GuardianDashboardPage = lazy(() => import("../features/guardian/GuardianDashboardPage"));
 const GuardianAttendancePage = lazy(() => import("../features/guardian/GuardianAttendancePage"));
 const GuardianResultsPage = lazy(() => import("../features/guardian/GuardianResultsPage"));
+const GuardianMarksheetPage = lazy(() => import("../features/guardian/GuardianMarksheetPage"));
+const GuardianExamRoutinePage = lazy(() => import("../features/guardian/GuardianExamRoutinePage"));
 const GuardianFeesPage = lazy(() => import("../features/guardian/GuardianFeesPage"));
 const MyChildProfile = lazy(() => import("../features/guardian/MyChildProfile"));
 const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoticesPage"));
@@ -51,6 +53,8 @@ export const router = createBrowserRouter([
       { path: "profile", element: withSuspense(<MyChildProfile />) },
       { path: "attendance", element: withSuspense(<GuardianAttendancePage />) },
       { path: "results", element: withSuspense(<GuardianResultsPage />) },
+      { path: "results/:resultMasterId", element: withSuspense(<GuardianMarksheetPage />) },
+      { path: "exam-routine", element: withSuspense(<GuardianExamRoutinePage />) },
       { path: "fees", element: withSuspense(<GuardianFeesPage />) },
       { path: "notices", element: withSuspense(<GuardianNoticesPage />) },
       { path: "*", element: withSuspense(<NotFoundPage />) },

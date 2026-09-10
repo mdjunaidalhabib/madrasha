@@ -30,6 +30,17 @@ export class ResultPanelRepository {
     });
   }
 
+  /** Exam/class display names for the RESULT_PUBLISHED notification's
+   * {exam}/{class} placeholders - kept separate from findResultMasterById
+   * (whose scalar-only select is reused in several places that don't need
+   * these joins). */
+  findExamAndClassNames(examId: number, classId: number) {
+    return Promise.all([
+      prisma.exam.findUnique({ where: { id: examId }, select: { name: true } }),
+      prisma.class.findUnique({ where: { id: classId }, select: { nameBn: true, name: true } }),
+    ]);
+  }
+
   softDeleteResultMaster(id: number, madrasaId: number) {
     return prisma.resultMaster.updateMany({
       where: { id, madrasaId },

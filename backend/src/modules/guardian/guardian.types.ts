@@ -24,6 +24,7 @@ export interface GuardianChildSummary {
 }
 
 export interface GuardianResultRow {
+  resultMasterId: number;
   examName: string;
   className: string;
   total: number;
@@ -39,4 +40,42 @@ export interface GuardianNoticeRow {
   title: string;
   content: string | null;
   publishedAt: Date | null;
+}
+
+export interface GuardianExamRoutineRow {
+  id: number;
+  examName: string;
+  examYear: string;
+  className: string;
+  subject: string;
+  examDate: Date;
+  startTime: string;
+  endTime: string;
+  roomNo: string | null;
+}
+
+export interface GuardianMarksheetSubjectRow {
+  bookId: number;
+  subjectName: string;
+  mark: number | null;
+  isAbsent: boolean;
+  fullMarks: number | null;
+}
+
+export interface GuardianMarksheetDetail {
+  examName: string;
+  examYear: string;
+  className: string;
+  studentName: string;
+  roll: number | null;
+  registrationNo: number | null;
+  fatherName: string | null;
+  dob: Date | null;
+  total: number;
+  average: number;
+  generalGrade: string | null;
+  madrasaGrade: string | null;
+  status: string | null;
+  rankNo: number | null;
+  subjects: GuardianMarksheetSubjectRow[];
 }
