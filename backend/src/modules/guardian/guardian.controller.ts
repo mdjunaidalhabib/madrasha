@@ -72,6 +72,31 @@ export const getChildResults = async (req: Request, res: Response) => {
   }
 };
 
+export const getChildResultDetail = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const studentId = Number(req.params.studentId);
+    const resultMasterId = Number(req.params.resultMasterId);
+    const data = await guardianService.getChildResultDetail(guardianId, madrasa_id, studentId, resultMasterId);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN RESULT DETAIL ERROR:");
+  }
+};
+
+export const getChildExamRoutine = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const studentId = Number(req.params.studentId);
+    const data = await guardianService.getChildExamRoutine(guardianId, madrasa_id, studentId);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN EXAM ROUTINE ERROR:");
+  }
+};
+
 export const getChildFees = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;

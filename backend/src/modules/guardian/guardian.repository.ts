@@ -114,6 +114,51 @@ export class GuardianRepository {
       select: { id: true, title: true, content: true, publishedAt: true },
     });
   }
+
+  /** Student's current class id, scoped to the tenant - used to look up the
+   * class's exam routine. Ownership is already asserted by the caller
+   * (GuardianService#assertOwnsStudent) before this is ever called. */
+  async findStudentClassId(madrasaId: number, studentId: number): Promise<number | null> {
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, madrasaId, deletedAt: null },
+      select: { classId: true },
+    });
+    return student?.classId ?? null;
+  }
+
+  /** One PUBLISHED result's full marksheet detail for a student - mirrors
+   * findPublishedResultsForStudent's PUBLISHED-only filter so a guardian can
+   * never reach a DRAFT result's marksheet by guessing a resultMasterId. */
+  findResultSummaryDetail(madrasaId: number, studentId: number, resultMasterId: number) {
+    return prisma.resultSummary.findFirst({
+      where: {
+        studentId,
+        resultMasterId,
+        resultMaster: { madrasaId, status: "PUBLISHED", deletedAt: null },
+      },
+      include: {
+        resultMaster: {
+          include: {
+            exam: { select: { name: true, year: true } },
+            class: { select: { nameBn: true, name: true } },
+          },
+        },
+        student: {
+          select: { nameBn: true, roll: true, registrationNo: true, fatherName: true, dob: true },
+        },
+      },
+    });
+  }
+
+  /** Per-subject marks for one student within one result session - joined
+   * with the book/subject's display name for the marksheet's subject table. */
+  findMarksForResult(resultMasterId: number, studentId: number) {
+    return prisma.mark.findMany({
+      where: { resultMasterId, studentId },
+      include: { book: { select: { nameBn: true, name: true } } },
+      orderBy: { bookId: "asc" },
+    });
+  }
 }
 
 export const guardianRepository = new GuardianRepository();

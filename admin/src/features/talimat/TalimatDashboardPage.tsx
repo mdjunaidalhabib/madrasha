@@ -5,13 +5,29 @@ import { Award, BookOpen, CheckCircle2, ClipboardEdit, GraduationCap, XCircle } 
 import { cachedGet } from "../../services/api";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
+import Badge, { BadgeTone } from "@madrasha/shared-ui/src/components/ui/Badge";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
+
+type ExamStatus = "upcoming" | "ongoing" | "completed" | "no_routine";
+
+type ExamStatusRow = {
+  examId: number;
+  name: string;
+  year: string;
+  isActive: boolean;
+  status: ExamStatus;
+  startDate: string | null;
+  endDate: string | null;
+};
 
 type TalimatDashboardData = {
   latestExam: { id: number; name: string; year: number } | null;
-  examsCount: number;
+  totalExams: number;
+  activeExamsCount: number;
   published: number;
   draft: number;
+  examStatusBreakdown: { upcoming: number; ongoing: number; completed: number };
+  examStatusRows: ExamStatusRow[];
   statusBreakdown: { pass: number; fail: number; absent: number };
   averageMarks: number;
   studentsGraded: number;
@@ -64,6 +80,13 @@ const STAT_TONES = {
 } as const;
 
 type StatTone = keyof typeof STAT_TONES;
+
+const EXAM_STATUS_META: Record<ExamStatus, { label: string; tone: BadgeTone }> = {
+  upcoming: { label: "আসন্ন", tone: "blue" },
+  ongoing: { label: "চলমান", tone: "green" },
+  completed: { label: "সমাপ্ত", tone: "slate" },
+  no_routine: { label: "রুটিন নেই", tone: "yellow" },
+};
 
 const PremiumStat = ({
   icon,
@@ -147,6 +170,10 @@ export default function TalimatDashboardPage() {
     .map((row) => ({ ...row, className: classNameById.get(row.class_id) || `ক্লাস #${row.class_id}` }))
     .sort((a, b) => a.className.localeCompare(b.className, "bn"));
 
+  const examStatusRows = data?.examStatusRows || [];
+  const formatDate = (value: string | null) =>
+    value ? new Date(value).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" }) : "-";
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -201,10 +228,14 @@ export default function TalimatDashboardPage() {
 
         <Card className="sm:col-span-2">
           <CardHeader title="পরীক্ষা ও প্রকাশনার অবস্থা" />
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
             <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{loading ? "-" : bn(data.examsCount)}</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{loading ? "-" : bn(data.totalExams)}</p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">মোট পরীক্ষা</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{loading ? "-" : bn(data.activeExamsCount)}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">সক্রিয় পরীক্ষা</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{loading ? "-" : bn(data.published)}</p>
@@ -217,6 +248,50 @@ export default function TalimatDashboardPage() {
           </div>
         </Card>
       </div>
+
+      <Card padding="none" className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষার অবস্থা</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">রুটিন অনুযায়ী প্রতিটি পরীক্ষা আসন্ন, চলমান নাকি সমাপ্ত</p>
+          </div>
+          {!loading && data && (
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="blue">আসন্ন {bn(data.examStatusBreakdown.upcoming)}</Badge>
+              <Badge tone="green">চলমান {bn(data.examStatusBreakdown.ongoing)}</Badge>
+              <Badge tone="slate">সমাপ্ত {bn(data.examStatusBreakdown.completed)}</Badge>
+            </div>
+          )}
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {!loading && examStatusRows.length === 0 && (
+            <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">কোনো পরীক্ষা পাওয়া যায়নি</p>
+          )}
+          {examStatusRows.map((row) => {
+            const meta = EXAM_STATUS_META[row.status];
+            return (
+              <div key={row.examId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                    {row.name} <span className="text-slate-400 dark:text-slate-500">({row.year})</span>
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {row.startDate && row.endDate
+                      ? row.startDate === row.endDate
+                        ? formatDate(row.startDate)
+                        : `${formatDate(row.startDate)} - ${formatDate(row.endDate)}`
+                      : "পরীক্ষার রুটিন যোগ করা হয়নি"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {!row.isActive && <Badge tone="slate">ইনঅ্যাকটিভ</Badge>}
+                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard

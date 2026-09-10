@@ -1,5 +1,7 @@
 import { ResultPublishStatus } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { logger } from "../../shared/logger/logger";
+import { notificationService } from "../notifications/notification.service";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
 import { logActivity } from "../../shared/utils/activity.util";
 import {
@@ -785,29 +787,87 @@ export class ResultPanelService {
     return { divisions, exams: examRows, classes, statuses };
   }
 
+  /** Classifies every exam as upcoming/ongoing/completed by comparing today
+   * against the min/max ExamRoutine.examDate recorded for it. An exam with
+   * no routine rows at all gets status "no_routine" and is left out of the
+   * breakdown counts entirely - it's not upcoming/ongoing/completed, it
+   * just has no schedule yet, so counting it in any bucket would be a
+   * fabricated signal. */
+  private buildExamStatusRows(
+    exams: { id: number; name: string; year: string; isActive: boolean }[],
+    ranges: { examId: number; _min: { examDate: Date | null }; _max: { examDate: Date | null } }[],
+  ) {
+    const rangeByExamId = new Map(ranges.map((r) => [r.examId, r]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const examStatusBreakdown = { upcoming: 0, ongoing: 0, completed: 0 };
+
+    const examStatusRows = exams.map((exam) => {
+      const range = rangeByExamId.get(exam.id);
+      const minDate = range?._min.examDate ? new Date(range._min.examDate) : null;
+      const maxDate = range?._max.examDate ? new Date(range._max.examDate) : null;
+
+      let status: "upcoming" | "ongoing" | "completed" | "no_routine" = "no_routine";
+      if (minDate && maxDate) {
+        status = minDate > today ? "upcoming" : maxDate < today ? "completed" : "ongoing";
+        examStatusBreakdown[status] += 1;
+      }
+
+      return {
+        examId: exam.id,
+        name: exam.name,
+        year: exam.year,
+        isActive: exam.isActive,
+        status,
+        startDate: minDate ? minDate.toISOString().slice(0, 10) : null,
+        endDate: maxDate ? maxDate.toISOString().slice(0, 10) : null,
+      };
+    });
+
+    return { examStatusRows, examStatusBreakdown };
+  }
+
   /** Aggregate stats for the তালিমাত module's own dashboard - exam/publish
-   * counts plus, for the most recent active exam, a pass/fail/absent
-   * breakdown, average marks and grade distribution, and each class's
-   * entry status (entered vs total students). Separate from
-   * getResultOverview, which lists every division/exam/class for the
-   * marks-entry filters rather than summarizing outcomes. */
+   * counts, each exam's upcoming/ongoing/completed schedule status, plus
+   * for the most recent active exam a pass/fail/absent breakdown, average
+   * marks and grade distribution, and each class's entry status (entered
+   * vs total students). Separate from getResultOverview, which lists every
+   * division/exam/class for the marks-entry filters rather than
+   * summarizing outcomes. */
   async getDashboardSummary(madrasaId: number) {
-    const [examsCount, publishGroups, overviewStatuses, latestExam] = await Promise.all([
+    const [
+      totalExams,
+      activeExamsCount,
+      publishGroups,
+      overviewStatuses,
+      latestExam,
+      allExams,
+      routineRanges,
+    ] = await Promise.all([
+      this.repository.countAllExams(madrasaId),
       this.repository.countActiveExams(madrasaId),
       this.repository.countResultMastersByStatus(madrasaId),
       this.repository.findOverviewStatuses(madrasaId),
       this.repository.findLatestActiveExam(madrasaId),
+      this.repository.findAllExamsForStatus(madrasaId),
+      this.repository.findExamRoutineDateRangeByExam(madrasaId),
     ]);
 
     const published = publishGroups.find((g) => g.status === "PUBLISHED")?._count._all || 0;
     const draft = publishGroups.find((g) => g.status === "DRAFT")?._count._all || 0;
 
+    const { examStatusRows, examStatusBreakdown } = this.buildExamStatusRows(allExams, routineRanges);
+
     if (!latestExam) {
       return {
         latestExam: null,
-        examsCount,
+        totalExams,
+        activeExamsCount,
         published,
         draft,
+        examStatusBreakdown,
+        examStatusRows,
         statusBreakdown: { pass: 0, fail: 0, absent: 0 },
         averageMarks: 0,
         studentsGraded: 0,
@@ -838,9 +898,12 @@ export class ResultPanelService {
 
     return {
       latestExam,
-      examsCount,
+      totalExams,
+      activeExamsCount,
       published,
       draft,
+      examStatusBreakdown,
+      examStatusRows,
       statusBreakdown,
       averageMarks: Math.round(Number(avgAgg._avg.average || 0) * 100) / 100,
       studentsGraded: avgAgg._count._all,
@@ -913,6 +976,31 @@ export class ResultPanelService {
       entity: "results/publish",
       entity_id: resultMasterId,
     });
+
+    // Fire-and-forget: notify every guardian whose child has a result row in
+    // this exam/class that it's now published. Wrapped in its own try/catch,
+    // separate from the update above, so a notification failure (including
+    // the lookups below) can never be mistaken for a failed publish - the
+    // ResultMaster status has already committed by this point.
+    try {
+      const [names, audience] = await Promise.all([
+        this.repository.findExamAndClassNames(master.examId, master.classId),
+        notificationService.getAudienceResults(madrasaId, master.examId, master.classId),
+      ]);
+      const [exam, classRow] = names;
+      const examName = exam?.name || "";
+      const className = classRow?.nameBn || classRow?.name || "";
+
+      for (const row of audience) {
+        await notificationService.triggerEvent(madrasaId, "RESULT_PUBLISHED", row.phone, {
+          name: row.name,
+          class: className,
+          exam: examName,
+        });
+      }
+    } catch (err) {
+      logger.error("RESULT_PUBLISHED notification failed:", err);
+    }
 
     return { message: "Result published successfully" };
   }

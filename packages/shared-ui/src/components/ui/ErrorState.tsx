@@ -4,10 +4,15 @@ export default function ErrorState({
   title = "Something went wrong",
   message = "Please try again.",
   onRetry,
+  retryText = "Retry",
 }: {
   title?: string;
   message?: string;
   onRetry?: () => void;
+  /** Label for the retry button - callers in a Bangla-UI app should pass
+   * their own translated text; the English default is kept so existing
+   * generic callers (ErrorBoundary, RouteErrorBoundary) are unaffected. */
+  retryText?: string;
 }) {
   return (
     <div className="rounded-xl border border-red-100 bg-white p-8 text-center shadow-sm dark:border-red-900/40 dark:bg-slate-900">
@@ -18,7 +23,7 @@ export default function ErrorState({
       <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">{message}</p>
       {onRetry && (
         <div className="mt-5 flex justify-center">
-          <Button onClick={onRetry}>Retry</Button>
+          <Button onClick={onRetry}>{retryText}</Button>
         </div>
       )}
     </div>

@@ -46,7 +46,12 @@ export interface AudienceResult {
   status: string;
 }
 
-export type NotificationEventKey = "ADMISSION" | "INFO_UPDATE" | "FEE_PAYMENT" | "SALARY_PAYMENT";
+export type NotificationEventKey =
+  | "ADMISSION"
+  | "INFO_UPDATE"
+  | "FEE_PAYMENT"
+  | "SALARY_PAYMENT"
+  | "RESULT_PUBLISHED";
 
 export interface NotificationSettingItem {
   eventKey: NotificationEventKey;

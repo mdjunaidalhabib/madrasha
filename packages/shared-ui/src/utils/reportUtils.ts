@@ -21,8 +21,8 @@ export const WITHHELD_MARK = -3;
 export const WITHHELD_MARK_LABEL = "স্থগিত";
 
 const REPORT_TEXT_MAP: Record<string, string> = {
-  PASS: "PASS",
-  FAIL: "FAIL",
+  PASS: "পাশ",
+  FAIL: "ফেল",
   PRESENT: "উপস্থিত",
   ABSENT: "অনুপস্থিত",
   DRAFT: "খসড়া",

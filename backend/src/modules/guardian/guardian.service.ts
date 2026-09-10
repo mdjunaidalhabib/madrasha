@@ -6,6 +6,8 @@ import { attendanceService } from "../attendance/attendance.service";
 import { feeService } from "../fee/fee.service";
 import { libraryService } from "../library/library.service";
 import { promotionRepository } from "../promotion/promotion.repository";
+import { routineRepository } from "../routine/routine.repository";
+import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
 import { guardianRepository, GuardianRepository } from "./guardian.repository";
 import {
   ACCOUNT_LOCKOUT_DURATION_MS,
@@ -13,7 +15,14 @@ import {
   GUARDIAN_TOKEN_EXPIRY,
   MAX_FAILED_LOGIN_ATTEMPTS,
 } from "./guardian.constants";
-import { GuardianChildSummary, GuardianLoginResult, GuardianNoticeRow, GuardianResultRow } from "./guardian.types";
+import {
+  GuardianChildSummary,
+  GuardianExamRoutineRow,
+  GuardianLoginResult,
+  GuardianMarksheetDetail,
+  GuardianNoticeRow,
+  GuardianResultRow,
+} from "./guardian.types";
 
 const cleanPhone = (value: string | null | undefined) => String(value || "").trim();
 
@@ -152,6 +161,7 @@ export class GuardianService {
 
     const rows = await this.repository.findPublishedResultsForStudent(madrasaId, studentId);
     return rows.map((row) => ({
+      resultMasterId: row.resultMasterId,
       examName: row.resultMaster.exam.name,
       className: row.resultMaster.class.nameBn || row.resultMaster.class.name || "",
       total: row.total,
@@ -160,6 +170,81 @@ export class GuardianService {
       madrasaGrade: row.madrasaGrade,
       rankNo: row.rankNo,
       roll: row.roll,
+    }));
+  }
+
+  /** Full subject-wise marksheet for one PUBLISHED result of the guardian's
+   * own child - reuses the same PUBLISHED-only lookup as getChildResults, so
+   * a guardian can never view (or print) a DRAFT marksheet by guessing a
+   * resultMasterId that belongs to their child. */
+  async getChildResultDetail(
+    guardianId: number,
+    madrasaId: number,
+    studentId: number,
+    resultMasterId: number,
+  ): Promise<GuardianMarksheetDetail> {
+    await this.assertOwnsStudent(guardianId, studentId);
+
+    const detail = await this.repository.findResultSummaryDetail(madrasaId, studentId, resultMasterId);
+    if (!detail) throw new NotFoundError("প্রকাশিত ফলাফল পাওয়া যায়নি");
+
+    const [marks, subjects] = await Promise.all([
+      this.repository.findMarksForResult(resultMasterId, studentId),
+      resultPanelRepository.findActiveSubjectsForClass(madrasaId, detail.resultMaster.classId),
+    ]);
+
+    const fullMarksByBookId = new Map(subjects.filter((s) => s.book).map((s) => [s.book!.id, s.fullMark]));
+
+    return {
+      examName: detail.resultMaster.exam.name,
+      examYear: detail.resultMaster.exam.year,
+      className: detail.resultMaster.class.nameBn || detail.resultMaster.class.name || "",
+      studentName: detail.student.nameBn,
+      roll: detail.roll ?? detail.student.roll,
+      registrationNo: detail.student.registrationNo,
+      fatherName: detail.student.fatherName,
+      dob: detail.student.dob,
+      total: detail.total,
+      average: detail.average,
+      generalGrade: detail.generalGrade,
+      madrasaGrade: detail.madrasaGrade,
+      status: detail.status,
+      rankNo: detail.rankNo,
+      subjects: marks.map((m) => ({
+        bookId: m.bookId,
+        subjectName: m.book.nameBn || m.book.name || `বিষয় ${m.bookId}`,
+        mark: m.isAbsent ? null : Number(m.mark),
+        isAbsent: m.isAbsent,
+        fullMarks: fullMarksByBookId.get(m.bookId) ?? null,
+      })),
+    };
+  }
+
+  /** Exam-day schedule for the guardian's own child's current class - reuses
+   * RoutineRepository.findExamRoutines (the same query the admin Routine
+   * module lists from) filtered to just that class, so this never exposes
+   * anything beyond what's already visible admin-side. */
+  async getChildExamRoutine(
+    guardianId: number,
+    madrasaId: number,
+    studentId: number,
+  ): Promise<GuardianExamRoutineRow[]> {
+    await this.assertOwnsStudent(guardianId, studentId);
+
+    const classId = await this.repository.findStudentClassId(madrasaId, studentId);
+    if (!classId) return [];
+
+    const rows = await routineRepository.findExamRoutines(madrasaId, undefined, classId);
+    return rows.map((row) => ({
+      id: row.id,
+      examName: row.exam.name,
+      examYear: row.exam.year,
+      className: row.class.nameBn || row.class.name || "",
+      subject: row.subject,
+      examDate: row.examDate,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      roomNo: row.roomNo,
     }));
   }
 
