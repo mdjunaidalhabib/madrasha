@@ -6,6 +6,8 @@ import {
   getMyChildren,
   getChildAttendance,
   getChildResults,
+  getChildResultDetail,
+  getChildExamRoutine,
   getChildFees,
   getChildLibrary,
   getChildPromotion,
@@ -43,6 +45,18 @@ router.post(
 router.get("/me/children", tenantMiddleware, guardianAuthMiddleware, getMyChildren);
 router.get("/students/:studentId/attendance", tenantMiddleware, guardianAuthMiddleware, getChildAttendance);
 router.get("/students/:studentId/results", tenantMiddleware, guardianAuthMiddleware, getChildResults);
+router.get(
+  "/students/:studentId/results/:resultMasterId",
+  tenantMiddleware,
+  guardianAuthMiddleware,
+  getChildResultDetail,
+);
+router.get(
+  "/students/:studentId/exam-routine",
+  tenantMiddleware,
+  guardianAuthMiddleware,
+  getChildExamRoutine,
+);
 router.get("/students/:studentId/fees", tenantMiddleware, guardianAuthMiddleware, getChildFees);
 router.get("/students/:studentId/library", tenantMiddleware, guardianAuthMiddleware, getChildLibrary);
 router.get("/students/:studentId/promotion", tenantMiddleware, guardianAuthMiddleware, getChildPromotion);

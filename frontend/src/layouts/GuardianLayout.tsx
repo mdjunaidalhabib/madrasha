@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: "profile", label: "প্রোফাইল" },
   { to: "attendance", label: "হাজিরা" },
   { to: "results", label: "ফলাফল" },
+  { to: "exam-routine", label: "পরীক্ষার সময়সূচি" },
   { to: "fees", label: "ফি" },
   { to: "notices", label: "নোটিশ" },
 ];
@@ -38,6 +39,9 @@ export default function GuardianLayout() {
 
   const breadcrumbs = useMemo(() => {
     const home = { label: "হোম", to: `${base}/dashboard` };
+    if (location.pathname.startsWith(`${base}/results/`)) {
+      return [home, { label: "ফলাফল", to: `${base}/results` }, { label: "মার্কশিট" }];
+    }
     const current = NAV_ITEMS.find((item) => location.pathname === `${base}/${item.to}`);
     if (!current || current.to === "dashboard") return [home, { label: "ড্যাশবোর্ড" }];
     return [home, { label: current.label }];
@@ -60,9 +64,10 @@ export default function GuardianLayout() {
           <div className="flex flex-wrap items-center gap-2">
             {children.length > 1 && (
               <select
+                aria-label="সন্তান নির্বাচন করুন"
                 value={selectedStudentId ?? ""}
                 onChange={(e) => selectStudent(Number(e.target.value))}
-                className="rounded border px-2 py-1.5 text-sm"
+                className="rounded border px-2 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 {children.map((child) => (
                   <option key={child.id} value={child.id}>
@@ -73,7 +78,7 @@ export default function GuardianLayout() {
             )}
             <button
               onClick={handleLogout}
-              className="rounded bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white"
+              className="rounded bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               লগআউট
             </button>
@@ -86,7 +91,7 @@ export default function GuardianLayout() {
               key={item.to}
               to={`${base}/${item.to}`}
               className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium ${
+                `whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   isActive ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
                 }`
               }

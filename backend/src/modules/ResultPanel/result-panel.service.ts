@@ -1,4 +1,6 @@
 import { BadRequestError, NotFoundError } from "../../shared/errors";
+import { logger } from "../../shared/logger/logger";
+import { notificationService } from "../notifications/notification.service";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
 import {
   DEFAULT_FAIL_MARK,
@@ -662,6 +664,31 @@ export class ResultPanelService {
     if (!summary) throw new BadRequestError("Process result before publish");
 
     await this.repository.updateResultMasterStatus(resultMasterId, RESULT_STATUS.PUBLISHED);
+
+    // Fire-and-forget: notify every guardian whose child has a result row in
+    // this exam/class that it's now published. Wrapped in its own try/catch,
+    // separate from the update above, so a notification failure (including
+    // the lookups below) can never be mistaken for a failed publish - the
+    // ResultMaster status has already committed by this point.
+    try {
+      const [names, audience] = await Promise.all([
+        this.repository.findExamAndClassNames(master.examId, master.classId),
+        notificationService.getAudienceResults(madrasaId, master.examId, master.classId),
+      ]);
+      const [exam, classRow] = names;
+      const examName = exam?.name || "";
+      const className = classRow?.nameBn || classRow?.name || "";
+
+      for (const row of audience) {
+        await notificationService.triggerEvent(madrasaId, "RESULT_PUBLISHED", row.phone, {
+          name: row.name,
+          class: className,
+          exam: examName,
+        });
+      }
+    } catch (err) {
+      logger.error("RESULT_PUBLISHED notification failed:", err);
+    }
 
     return { message: "Result published successfully" };
   }
