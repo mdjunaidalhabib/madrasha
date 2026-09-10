@@ -38,6 +38,11 @@ export const reorderExams = asyncHandler(async (req: Request, res: Response) => 
   return ApiResponse.message(res, "Exam order updated successfully");
 });
 
+export const updateExamStatus = asyncHandler(async (req: Request, res: Response) => {
+  await examService.updateExamStatus(Number(req.params.id), getMadrasaId(req), req.body);
+  return ApiResponse.message(res, "Exam status updated successfully");
+});
+
 /* ================= GENERAL GRADES ================= */
 
 export const getGeneralGrades = asyncHandler(async (req: Request, res: Response) => {

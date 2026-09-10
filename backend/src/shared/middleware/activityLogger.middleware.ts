@@ -27,6 +27,25 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "students/admission",
   "students/approve",
   "students/reject",
+  // Marks/Result workflow (result-panel/result-workflow/result-correction/
+  // mark-component services) - each of these calls logActivity() itself
+  // with a richer, action-specific detail payload (see each service file),
+  // so letting the generic fallback log a second shallow row would create
+  // duplicates. "results/process" and "results/publish" are on the
+  // pre-existing result-panel.routes.ts routes, which only started
+  // self-logging once the process/publish status-transition rules were
+  // added here.
+  "results/process",
+  "results/publish",
+  "results/books/submit",
+  "results/books/verify",
+  "results/books/reject",
+  "results/verify-result",
+  "results/approve",
+  "results/lock",
+  "results/corrections",
+  "results/corrections/decide",
+  "results/mark-components",
 ]);
 
 function deriveEntity(originalUrl: string): { entity: string; entityId: number | null } {

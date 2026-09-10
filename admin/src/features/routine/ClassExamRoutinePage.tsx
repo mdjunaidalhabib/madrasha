@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cachedGet } from "../../services/api";
 import { classRoutineApi, examRoutineApi } from "../../services/phase1Api";
+import { examRoomApi, ExamRoomRow } from "../../services/examOperationsApi";
+import ExamInvigilatorPanel from "../exam-operations/ExamInvigilatorPanel";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -31,11 +33,21 @@ type ExamRoutineRow = {
   startTime: string;
   endTime: string;
   roomNo?: string | null;
+  roomId?: number | null;
+  maxCapacity?: number | null;
+  status?: string;
+  instructions?: string | null;
   class?: { nameBn?: string };
   exam?: { name?: string; year?: string | number };
+  room?: { name?: string } | null;
 };
 
 const DAY_LABELS = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র", "শনি"];
+const EXAM_ROUTINE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "খসড়া",
+  PUBLISHED: "প্রকাশিত",
+  CANCELLED: "বাতিল",
+};
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -43,7 +55,17 @@ const normalizeArray = (payload: any) => {
 };
 
 const emptyClassForm = { day_of_week: "0", subject: "", teacher_id: "", start_time: "", end_time: "" };
-const emptyExamForm = { subject: "", exam_date: "", start_time: "", end_time: "", room_no: "" };
+const emptyExamForm = {
+  subject: "",
+  exam_date: "",
+  start_time: "",
+  end_time: "",
+  room_no: "",
+  room_id: "",
+  max_capacity: "",
+  status: "DRAFT",
+  instructions: "",
+};
 
 const ClassExamRoutinePage = () => {
   const [tab, setTab] = useState<"class" | "exam">("class");
@@ -51,6 +73,8 @@ const ClassExamRoutinePage = () => {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [rooms, setRooms] = useState<ExamRoomRow[]>([]);
+  const [expandedRoutineId, setExpandedRoutineId] = useState<number | null>(null);
 
   // shared division/class picker
   const [division, setDivision] = useState("");
@@ -98,11 +122,22 @@ const ClassExamRoutinePage = () => {
     }
   }, []);
 
+  const loadRooms = useCallback(async () => {
+    try {
+      const res = await examRoomApi.list(true);
+      setRooms(normalizeArray(res));
+    } catch (err) {
+      logger.error("LOAD EXAM ROOMS ERROR:", err);
+      setRooms([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadDivisions();
     loadTeachers();
     loadExams();
-  }, [loadDivisions, loadTeachers, loadExams]);
+    loadRooms();
+  }, [loadDivisions, loadTeachers, loadExams, loadRooms]);
 
   const loadClasses = async (divisionId: string) => {
     setClassId("");
@@ -240,11 +275,16 @@ const ClassExamRoutinePage = () => {
       await examRoutineApi.create({
         exam_id: Number(selectedExamId),
         class_id: Number(classId),
+        division_id: division ? Number(division) : undefined,
         subject: examForm.subject.trim(),
         exam_date: examForm.exam_date,
         start_time: examForm.start_time,
         end_time: examForm.end_time,
         room_no: examForm.room_no.trim() || undefined,
+        room_id: examForm.room_id ? Number(examForm.room_id) : undefined,
+        max_capacity: examForm.max_capacity ? Number(examForm.max_capacity) : undefined,
+        status: examForm.status as any,
+        instructions: examForm.instructions.trim() || undefined,
       });
       useToastStore.getState().show("পরীক্ষার রুটিন যোগ করা হয়েছে", "success");
       setExamForm(emptyExamForm);
@@ -494,10 +534,46 @@ const ClassExamRoutinePage = () => {
                   />
                   <input
                     type="text"
-                    placeholder="রুম নং (ঐচ্ছিক)"
+                    placeholder="রুম নং (ঐচ্ছিক, ফ্রি-টেক্সট)"
                     value={examForm.room_no}
                     onChange={(e) => setExamForm((p) => ({ ...p, room_no: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[150px]"
+                  />
+                  <select
+                    value={examForm.room_id}
+                    onChange={(e) => setExamForm((p) => ({ ...p, room_id: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
+                  >
+                    <option value="">রুম (তালিকা থেকে, ঐচ্ছিক)</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.code})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="সর্বোচ্চ ধারণক্ষমতা"
+                    value={examForm.max_capacity}
+                    onChange={(e) => setExamForm((p) => ({ ...p, max_capacity: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
+                  />
+                  <select
+                    value={examForm.status}
+                    onChange={(e) => setExamForm((p) => ({ ...p, status: e.target.value }))}
                     className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[120px]"
+                  >
+                    <option value="DRAFT">খসড়া</option>
+                    <option value="PUBLISHED">প্রকাশিত</option>
+                    <option value="CANCELLED">বাতিল</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="নির্দেশনা (ঐচ্ছিক)"
+                    value={examForm.instructions}
+                    onChange={(e) => setExamForm((p) => ({ ...p, instructions: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
                   />
 
                   <button
@@ -529,28 +605,53 @@ const ClassExamRoutinePage = () => {
                   {sortedExamRoutines.map((row) => (
                     <div
                       key={row.id}
-                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
+                      className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 dark:border-slate-700"
                     >
-                      <div className="text-sm">
-                        <span className="font-semibold text-gray-800 dark:text-slate-100">
-                          {String(row.examDate).slice(0, 10)}
-                        </span>{" "}
-                        <span className="text-gray-600 dark:text-slate-400">
-                          {row.startTime}–{row.endTime}
-                        </span>{" "}
-                        <span className="font-medium text-gray-800 dark:text-slate-200">{row.subject}</span>
-                        {row.class?.nameBn && (
-                          <span className="text-gray-500 dark:text-slate-400"> · {row.class.nameBn}</span>
-                        )}
-                        {row.roomNo && <span className="text-gray-500 dark:text-slate-400"> · রুম {row.roomNo}</span>}
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-sm">
+                          <span className="font-semibold text-gray-800 dark:text-slate-100">
+                            {String(row.examDate).slice(0, 10)}
+                          </span>{" "}
+                          <span className="text-gray-600 dark:text-slate-400">
+                            {row.startTime}–{row.endTime}
+                          </span>{" "}
+                          <span className="font-medium text-gray-800 dark:text-slate-200">{row.subject}</span>
+                          {row.class?.nameBn && (
+                            <span className="text-gray-500 dark:text-slate-400"> · {row.class.nameBn}</span>
+                          )}
+                          {(row.room?.name || row.roomNo) && (
+                            <span className="text-gray-500 dark:text-slate-400"> · রুম {row.room?.name || row.roomNo}</span>
+                          )}
+                          {row.maxCapacity != null && (
+                            <span className="text-gray-500 dark:text-slate-400"> · ধারণক্ষমতা {row.maxCapacity}</span>
+                          )}
+                          {row.status && row.status !== "DRAFT" && (
+                            <span className="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+                              {EXAM_ROUTINE_STATUS_LABELS[row.status] || row.status}
+                            </span>
+                          )}
+                          {row.instructions && (
+                            <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">{row.instructions}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedRoutineId((prev) => (prev === row.id ? null : row.id))}
+                            className="h-8 w-full rounded-md border border-blue-300 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 sm:w-auto"
+                          >
+                            পরিদর্শক
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExamRoutine(row.id)}
+                            className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
+                          >
+                            মুছুন
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteExamRoutine(row.id)}
-                        className="h-8 w-full rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
-                      >
-                        মুছুন
-                      </button>
+                      {expandedRoutineId === row.id && <ExamInvigilatorPanel examRoutineId={row.id} />}
                     </div>
                   ))}
                 </div>

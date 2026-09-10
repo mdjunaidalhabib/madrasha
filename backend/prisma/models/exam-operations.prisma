@@ -1,0 +1,172 @@
+// ============================================================
+// EXAM OPERATIONS: ROOMS, INVIGILATORS, SEATING, EXAM ATTENDANCE
+// ============================================================
+//
+// Note on relations: madrasaId / examCandidateId below are deliberately
+// PLAIN scoped integer fields (no Prisma `@relation`), not because these
+// entities aren't conceptually tied to Madrasa/ExamCandidate, but because
+// tenant.prisma and exam-candidate.prisma are being actively edited by a
+// concurrent, uncommitted piece of work (Exam Core/Candidate module) at the
+// time this file was added, and Prisma requires every `@relation` to be
+// declared on both sides. This mirrors the existing generic-pointer
+// convention already used by Attendance.attendeeId (attendance.prisma).
+// Once that other work is committed and stable, these can be upgraded to
+// full relations (add `madrasa Madrasa @relation(...)` here + the matching
+// `examRooms ExamRoom[]` etc. back-reference on Madrasa/ExamCandidate).
+
+/// A physical exam room/hall, reusable across exams. Replaces the free-text
+/// ExamRoutine.roomNo with a real, capacity-aware catalog entry.
+model ExamRoom {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  name      String   @db.VarChar(100)
+  code      String   @db.VarChar(30)
+  capacity  Int      @default(0)
+  floor     String?  @db.VarChar(50)
+  location  String?  @db.VarChar(150)
+  isActive  Boolean  @default(true) @map("is_active")
+  notes     String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  examRoutines    ExamRoutine[]
+  seatAllocations SeatAllocation[]
+  examAttendances ExamAttendance[]
+
+  @@unique([madrasaId, code], map: "uniq_exam_room_madrasa_code")
+  @@index([madrasaId, isActive], map: "idx_exam_room_madrasa_active")
+  @@map("exam_rooms")
+}
+
+enum InvigilatorType {
+  TEACHER
+  STAFF
+}
+
+enum InvigilatorRole {
+  CHIEF
+  ASSISTANT
+}
+
+enum InvigilatorAssignmentStatus {
+  ASSIGNED
+  CONFIRMED
+  CANCELLED
+}
+
+/// One invigilator's assignment to one ExamRoutine slot. Uses a generic
+/// type+id pointer (like Attendance.attendeeType/attendeeId) since an
+/// invigilator may be a Teacher or a Staff member and neither of those
+/// models needs to be modified to support this. Cross-slot time-conflict
+/// (same person, two overlapping slots) is enforced in the service layer,
+/// not here - a DB constraint can't express a time-range overlap check.
+model ExamInvigilatorAssignment {
+  id              Int                         @id @default(autoincrement())
+  madrasaId       Int                         @map("madrasa_id")
+  examRoutineId   Int                         @map("exam_routine_id")
+  invigilatorType InvigilatorType             @map("invigilator_type")
+  invigilatorId   Int                         @map("invigilator_id")
+  role            InvigilatorRole             @default(ASSISTANT)
+  status          InvigilatorAssignmentStatus @default(ASSIGNED)
+  notes           String?                     @db.VarChar(300)
+  createdBy       Int?                        @map("created_by")
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  updatedAt       DateTime                    @default(now()) @updatedAt @map("updated_at")
+
+  examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
+
+  /// Prevents assigning the SAME person twice to the SAME slot.
+  @@unique([examRoutineId, invigilatorType, invigilatorId], map: "uniq_invigilator_per_slot")
+  @@index([madrasaId, examRoutineId], map: "idx_invigilator_madrasa_routine")
+  @@index([madrasaId, invigilatorType, invigilatorId], map: "idx_invigilator_madrasa_person")
+  @@map("exam_invigilator_assignments")
+}
+
+enum SeatAllocationStrategy {
+  SEQUENTIAL
+  ROLL_BASED
+  ALTERNATING
+  MANUAL
+}
+
+/// One candidate's seat for one ExamRoutine slot (one class+subject+date
+/// sitting). Keyed on examCandidateId (ExamCandidate, the exam-scoped
+/// registration/eligibility record from the Exam Core/Candidate module),
+/// not a raw studentId, so seat allocation naturally only ever seats
+/// registered candidates and the assigned seat number can be mirrored back
+/// onto ExamCandidate.candidateNo (that field's own doc-comment anticipates
+/// exactly this). See the file-level note above for why this is a plain
+/// field rather than a `@relation`.
+model SeatAllocation {
+  id               Int                    @id @default(autoincrement())
+  madrasaId        Int                    @map("madrasa_id")
+  examRoutineId    Int                    @map("exam_routine_id")
+  examCandidateId  Int                    @map("exam_candidate_id")
+  roomId           Int                    @map("room_id")
+  seatNo           String                 @map("seat_no") @db.VarChar(20)
+  rowNo            Int?                   @map("row_no")
+  columnNo         Int?                   @map("column_no")
+  strategy         SeatAllocationStrategy @default(MANUAL)
+  isManualOverride Boolean                @default(false) @map("is_manual_override")
+  createdBy        Int?                   @map("created_by")
+  updatedBy        Int?                   @map("updated_by")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at")
+
+  examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
+  room        ExamRoom    @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  /// One seat per candidate per slot - the core anti-double-booking rule.
+  @@unique([examRoutineId, examCandidateId], map: "uniq_seat_per_candidate_per_slot")
+  /// One seat number can't be reused twice in the same room for the same slot.
+  @@unique([examRoutineId, roomId, seatNo], map: "uniq_seat_no_per_room_per_slot")
+  @@index([madrasaId, examRoutineId], map: "idx_seat_madrasa_routine")
+  @@index([madrasaId, roomId], map: "idx_seat_madrasa_room")
+  @@index([examCandidateId], map: "idx_seat_exam_candidate")
+  @@map("exam_seat_allocations")
+}
+
+/// Exam-day attendance, deliberately NOT the generic Attendance model
+/// (attendance.prisma) - that model is one row per attendee per CALENDAR
+/// DAY (@@unique [madrasaId, attendeeType, attendeeId, date]), which cannot
+/// represent a candidate sitting two exam slots on the same date. This
+/// model is keyed per ExamRoutine slot instead, and per examCandidateId
+/// (see SeatAllocation's doc-comment for why) rather than raw studentId.
+enum ExamAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+  WITHHELD
+}
+
+model ExamAttendance {
+  id              Int                  @id @default(autoincrement())
+  madrasaId       Int                  @map("madrasa_id")
+  examRoutineId   Int                  @map("exam_routine_id")
+  examCandidateId Int                  @map("exam_candidate_id")
+  roomId          Int?                 @map("room_id")
+  status          ExamAttendanceStatus @default(PRESENT)
+  remarks         String?              @db.VarChar(300)
+  markedById      Int?                 @map("marked_by_id")
+  markedAt        DateTime             @default(now()) @map("marked_at")
+  /// Once true, this row can no longer be edited via the normal
+  /// mark/bulk-mark endpoints - only an explicit unlock
+  /// (exam.attendance.manage) can reopen it. Lock is always applied to
+  /// every row of a slot atomically (see exam-attendance.service.ts), so
+  /// checking any one row's isLocked reflects the whole slot's state.
+  isLocked        Boolean              @default(false) @map("is_locked")
+  lockedById      Int?                 @map("locked_by_id")
+  lockedAt        DateTime?            @map("locked_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at")
+
+  examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
+  room        ExamRoom?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@unique([examRoutineId, examCandidateId], map: "uniq_exam_attendance_per_slot")
+  @@index([madrasaId, examRoutineId], map: "idx_exam_attendance_madrasa_routine")
+  @@index([madrasaId, examRoutineId, status], map: "idx_exam_attendance_madrasa_routine_status")
+  @@index([examCandidateId], map: "idx_exam_attendance_exam_candidate")
+  @@map("exam_attendances")
+}

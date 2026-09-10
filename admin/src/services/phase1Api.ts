@@ -89,19 +89,28 @@ export const classRoutineApi = {
   remove: (id: number) => api.delete(`/class-routine/${id}`),
 };
 
+export type ExamRoutineStatus = "DRAFT" | "PUBLISHED" | "CANCELLED";
+
+export interface ExamRoutinePayload {
+  exam_id: number;
+  class_id: number;
+  division_id?: number;
+  subject: string;
+  exam_date: string;
+  start_time: string;
+  end_time: string;
+  room_no?: string;
+  room_id?: number;
+  max_capacity?: number;
+  status?: ExamRoutineStatus;
+  instructions?: string;
+}
+
 export const examRoutineApi = {
   list: (params: { exam_id?: number; class_id?: number }) =>
     api.get("/exam-routine", { params }),
-  create: (payload: {
-    exam_id: number;
-    class_id: number;
-    subject: string;
-    exam_date: string;
-    start_time: string;
-    end_time: string;
-    room_no?: string;
-  }) => api.post("/exam-routine", payload),
-  update: (id: number, payload: Record<string, unknown>) =>
+  create: (payload: ExamRoutinePayload) => api.post("/exam-routine", payload),
+  update: (id: number, payload: Partial<ExamRoutinePayload>) =>
     api.put(`/exam-routine/${id}`, payload),
   remove: (id: number) => api.delete(`/exam-routine/${id}`),
 };

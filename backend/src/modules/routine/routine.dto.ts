@@ -12,11 +12,16 @@ export type UpdateClassRoutineRequestDto = Partial<CreateClassRoutineRequestDto>
 export interface CreateExamRoutineRequestDto {
   exam_id: number | string;
   class_id: number | string;
+  division_id?: number | string;
   subject: string;
   exam_date: string;
   start_time: string;
   end_time: string;
   room_no?: string;
+  room_id?: number | string;
+  max_capacity?: number | string;
+  status?: string;
+  instructions?: string;
 }
 
 export type UpdateExamRoutineRequestDto = Partial<CreateExamRoutineRequestDto>;

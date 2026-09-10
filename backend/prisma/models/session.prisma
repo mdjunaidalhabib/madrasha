@@ -35,12 +35,13 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa       Madrasa                 @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  division      Division?               @relation(fields: [divisionId], references: [id], onDelete: SetNull)
-  students      Student[]
-  feeStructures FeeStructure[]
-  historyFrom   StudentSessionHistory[] @relation("SessionHistoryFrom")
-  historyTo     StudentSessionHistory[] @relation("SessionHistoryTo")
+  madrasa        Madrasa                 @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  division       Division?               @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  students       Student[]
+  feeStructures  FeeStructure[]
+  historyFrom    StudentSessionHistory[] @relation("SessionHistoryFrom")
+  historyTo      StudentSessionHistory[] @relation("SessionHistoryTo")
+  examCandidates ExamCandidate[]
 
   @@unique([madrasaId, divisionId, name], map: "uniq_session_madrasa_division_name")
   @@index([madrasaId, divisionId, isActive], map: "idx_session_madrasa_division_current")

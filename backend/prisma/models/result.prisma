@@ -2,15 +2,194 @@
 // RESULTS
 // ============================================================
 
+/// Full result-processing lifecycle for a ResultMaster (one exam+class
+/// session). DRAFT and PUBLISHED are the two original values (kept
+/// unchanged so existing data/guardian-portal queries keep working); the
+/// rest are additive states inserted by the marks/verification/approval
+/// workflow. There is deliberately no REJECTED value here - a rejection
+/// (marks-level or result-level) reverts the row to the nearest earlier
+/// resting state and is recorded via ResultMaster.rejectedAt/rejectedBy/
+/// rejectedReason instead, so "rejected" is an event, not a resting status.
 enum ResultPublishStatus {
   DRAFT
+  MARKS_SUBMITTED
+  MARKS_VERIFIED
+  PROCESSING
+  RESULT_VERIFIED
+  APPROVED
   PUBLISHED
+  LOCKED
 }
 
 enum ResultRowStatus {
   PASS
   FAIL
   ABSENT
+}
+
+/// Per-subject (book) marks submission/verification inside one ResultMaster.
+/// A teacher/examiner submits marks for a subject; a verifier then approves
+/// or rejects that subject's entries. ResultMaster.status advances to
+/// MARKS_SUBMITTED / MARKS_VERIFIED only once every active subject's
+/// MarkSubmission has reached that stage (see result-workflow.service.ts).
+enum MarkEntryStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model MarkSubmission {
+  id Int @id @default(autoincrement())
+
+  madrasaId      Int @map("madrasa_id")
+  resultMasterId Int @map("result_master_id")
+  bookId         Int @map("book_id")
+
+  status MarkEntryStatus @default(DRAFT)
+
+  submittedBy Int?      @map("submitted_by")
+  submittedAt DateTime? @map("submitted_at")
+  verifiedBy  Int?      @map("verified_by")
+  verifiedAt  DateTime? @map("verified_at")
+
+  comment String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  @@unique([resultMasterId, bookId], map: "uniq_mark_submission")
+  @@index([madrasaId], map: "idx_mark_submissions_madrasa")
+  @@index([resultMasterId], map: "idx_mark_submissions_result_master")
+  @@index([status], map: "idx_mark_submissions_status")
+  @@map("mark_submissions")
+}
+
+/// Configurable mark-distribution components for a subject (e.g. written /
+/// MCQ / practical / oral / assignment / class assessment). Optional and
+/// additive: a book with no MarkComponentConfig rows behaves exactly as
+/// before (a single total entered directly into Mark.mark). When components
+/// are configured, MarkComponentValue rows are entered per component and
+/// Mark.mark is kept as their auto-computed sum.
+enum MarkComponentType {
+  WRITTEN
+  MCQ
+  PRACTICAL
+  ORAL
+  ASSIGNMENT
+  CLASS_ASSESSMENT
+  OTHER
+}
+
+model MarkComponentConfig {
+  id Int @id @default(autoincrement())
+
+  madrasaId Int  @map("madrasa_id")
+  bookId    Int  @map("book_id")
+  /// Null = applies to this book for every exam; set to scope the
+  /// distribution to one specific exam only.
+  examId    Int? @map("exam_id")
+
+  component MarkComponentType
+  fullMark  Int               @map("full_mark")
+  sortOrder Int               @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // NOTE: examId is deliberately a plain scalar (no Prisma relation) so this
+  // model doesn't need a back-relation array on Exam - Exam Core owns
+  // exam.prisma and may be changing it concurrently. Referential validity
+  // (examId belongs to this madrasa) is enforced in the service layer.
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, bookId, examId, component], map: "uniq_mark_component_config")
+  @@index([madrasaId, bookId], map: "idx_mark_component_configs_madrasa_book")
+  @@map("mark_component_configs")
+}
+
+model MarkComponentValue {
+  id Int @id @default(autoincrement())
+
+  markId    Int               @map("mark_id")
+  component MarkComponentType
+  value     Float?
+
+  mark Mark @relation(fields: [markId], references: [id], onDelete: Cascade)
+
+  @@unique([markId, component], map: "uniq_mark_component_value")
+  @@map("mark_component_values")
+}
+
+/// Controlled correction workflow for marks/results that have already
+/// passed verification/approval/publish/lock. Every field-level change made
+/// through this path is recorded here (old value, new value, reason, who,
+/// when) instead of silently overwriting the live row - see
+/// result-correction.service.ts.
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  APPLIED
+}
+
+model ResultCorrection {
+  id Int @id @default(autoincrement())
+
+  madrasaId      Int  @map("madrasa_id")
+  resultMasterId Int  @map("result_master_id")
+  studentId      Int? @map("student_id")
+  bookId         Int? @map("book_id")
+
+  field    String  @db.VarChar(50)
+  oldValue String? @map("old_value") @db.Text
+  newValue String? @map("new_value") @db.Text
+  reason   String  @db.Text
+
+  status CorrectionStatus @default(PENDING)
+
+  requestedBy Int      @map("requested_by")
+  requestedAt DateTime @default(now()) @map("requested_at")
+
+  decidedBy    Int?      @map("decided_by")
+  decidedAt    DateTime? @map("decided_at")
+  decisionNote String?   @map("decision_note") @db.Text
+
+  appliedAt DateTime? @map("applied_at")
+
+  resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId], map: "idx_result_corrections_madrasa")
+  @@index([resultMasterId], map: "idx_result_corrections_result_master")
+  @@index([status], map: "idx_result_corrections_status")
+  @@map("result_corrections")
+}
+
+/// Immutable snapshot of a result's computed summary + marks, taken at
+/// publish time (and again on any later authorized correction). Protects
+/// historical published results from silently drifting if grade bands,
+/// fail-mark, or subject full-marks configuration changes afterwards -
+/// marksheets/portal views for a PUBLISHED/LOCKED result should render from
+/// the latest snapshot rather than recomputing from live config.
+model ResultSnapshot {
+  id Int @id @default(autoincrement())
+
+  madrasaId      Int    @map("madrasa_id")
+  resultMasterId Int    @map("result_master_id")
+  snapshotJson   String @map("snapshot_json") @db.Text
+  /// Why this snapshot was taken, e.g. "PUBLISH" or "CORRECTION".
+  reason         String @default("PUBLISH") @db.VarChar(30)
+
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
+
+  @@index([resultMasterId], map: "idx_result_snapshots_result_master")
+  @@map("result_snapshots")
 }
 
 model ResultMaster {
@@ -23,15 +202,46 @@ model ResultMaster {
 
   status ResultPublishStatus @default(DRAFT)
 
+  // ---- workflow timestamps/actors (one column per stage keeps the
+  // submission/verification/approval queue screens a plain status/actor
+  // filter on ResultMaster, with no extra joins) ----
+  submittedAt      DateTime? @map("submitted_at")
+  submittedBy      Int?      @map("submitted_by")
+  marksVerifiedAt  DateTime? @map("marks_verified_at")
+  marksVerifiedBy  Int?      @map("marks_verified_by")
+  processedAt      DateTime? @map("processed_at")
+  processedBy      Int?      @map("processed_by")
+  resultVerifiedAt DateTime? @map("result_verified_at")
+  resultVerifiedBy Int?      @map("result_verified_by")
+  approvedAt       DateTime? @map("approved_at")
+  approvedBy       Int?      @map("approved_by")
+  publishedAt      DateTime? @map("published_at")
+  publishedBy      Int?      @map("published_by")
+  lockedAt         DateTime? @map("locked_at")
+  lockedBy         Int?      @map("locked_by")
+
+  // ---- most recent rejection, if any (marks-level or result-level) ----
+  rejectedAt     DateTime? @map("rejected_at")
+  rejectedBy     Int?      @map("rejected_by")
+  rejectedReason String?   @map("rejected_reason") @db.Text
+
+  /// Latest verifier/approver remark, shown on the verification/approval
+  /// queues alongside status - not an audit trail by itself (ActivityLog +
+  /// ResultCorrection cover that), just the current note.
+  remarks String? @db.Text
+
   deletedAt DateTime? @map("deleted_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  exam    Exam            @relation(fields: [examId], references: [id], onDelete: Restrict)
-  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
-  summary ResultSummary[]
+  madrasa         Madrasa            @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam            Exam               @relation(fields: [examId], references: [id], onDelete: Restrict)
+  class           Class              @relation(fields: [classId], references: [id], onDelete: Restrict)
+  summary         ResultSummary[]
+  markSubmissions MarkSubmission[]
+  corrections     ResultCorrection[]
+  snapshots       ResultSnapshot[]
 
   // NOTE: uniqueness on [madrasaId, examId, classId] is enforced in the DB as a
   // PARTIAL unique index (WHERE deleted_at IS NULL, see migration
@@ -92,18 +302,28 @@ model Mark {
   classId        Int @map("class_id")
   bookId         Int @map("book_id")
 
-  mark     Float   @default(0)
-  isAbsent Boolean @default(false) @map("is_absent")
+  mark       Float   @default(0)
+  isAbsent   Boolean @default(false) @map("is_absent")
+  /// Exempted from this subject (e.g. medical/administrative waiver) - not
+  /// counted as attempted or absent; excluded from both totalFullMarks and
+  /// the absent-subject count in ResultPanelService.rebuildResultSummary.
+  isExempted Boolean @default(false) @map("is_exempted")
+  /// Result withheld for this subject (e.g. pending fee/discipline issue
+  /// from ExamCandidate, or an administrative hold) - entered mark is kept
+  /// but excluded from processing/publish until cleared.
+  isWithheld Boolean @default(false) @map("is_withheld")
+  note       String? @db.Text
 
   madrasaId Int @default(1) @map("madrasa_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Restrict)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
-  book    Book    @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  student         Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam            Exam                 @relation(fields: [examId], references: [id], onDelete: Restrict)
+  class           Class                @relation(fields: [classId], references: [id], onDelete: Restrict)
+  book            Book                 @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  componentValues MarkComponentValue[]
 
   @@unique([resultMasterId, studentId, classId, bookId], name: "uniq_mark", map: "uniq_mark")
   @@index([resultMasterId], map: "idx_marks_master")

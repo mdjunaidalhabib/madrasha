@@ -145,6 +145,7 @@ model Student {
   guardianLinks        GuardianStudent[]
   sessionHistories     StudentSessionHistory[]
   libraryBorrowRecords LibraryBorrowRecord[]
+  examCandidates       ExamCandidate[]
 
   /// A student in Trash still holds its roll - restoring it later must never
   /// clash with someone who took "its" number in the meantime, so this stays

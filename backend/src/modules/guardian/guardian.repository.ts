@@ -92,7 +92,10 @@ export class GuardianRepository {
     return prisma.resultSummary.findMany({
       where: {
         studentId,
-        resultMaster: { madrasaId, status: "PUBLISHED", deletedAt: null },
+        // A LOCKED result is still a published, final result (locking just
+        // freezes it against further corrections) - guardians should keep
+        // seeing it exactly like a PUBLISHED one.
+        resultMaster: { madrasaId, status: { in: ["PUBLISHED", "LOCKED"] }, deletedAt: null },
       },
       include: {
         resultMaster: {

@@ -319,8 +319,17 @@ export class SidebarService {
           // as the শিক্ষার্থী/হিসাব/ফি dashboard fallbacks elsewhere in this file.
           { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
           { key: "routine", label: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
-          { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
-          { key: "settings", label: "সেটিং", sortOrder: 8 },
+          // Exam Operations: Room/Hall, Seat Plan, Exam Attendance - routes
+          // live under exam-operations/* (see ABSOLUTE_CHILD_PATHS).
+          { key: "exam_rooms", label: "পরীক্ষার রুম/হল", sortOrder: 7 },
+          { key: "exam_seat_plan", label: "সিট প্ল্যান", sortOrder: 8 },
+          { key: "exam_attendance", label: "পরীক্ষার হাজিরা", sortOrder: 9 },
+          { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 10 },
+          // Route lives under students/exam-registration (see
+          // ABSOLUTE_CHILD_PATHS in admin/src/components/sidebar/sidebarPaths.ts),
+          // same "তালিমাত menu, students/ route" split as promotion above.
+          { key: "exam_registration", label: "পরীক্ষার্থী নিবন্ধন", sortOrder: 11 },
+          { key: "settings", label: "সেটিং", sortOrder: 12 },
         ];
         for (const fallback of fallbackTalimatChildren) {
           if (!children.some((child) => child.key === fallback.key)) {

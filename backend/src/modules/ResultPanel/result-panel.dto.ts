@@ -3,6 +3,11 @@ export interface CreateSessionRequestDto {
   class_id: number | string;
 }
 
+export interface MarkComponentValueDto {
+  component: string; // MarkComponentType member, e.g. "WRITTEN" | "MCQ" | ...
+  value: number | string | null;
+}
+
 export interface MarkRowDto {
   student_id: number | string;
   exam_id: number | string;
@@ -15,6 +20,17 @@ export interface MarkRowDto {
   // sent as 0 alongside this so the average calculation keeps counting the
   // subject (see ResultPanelService.rebuildResultSummary).
   is_absent?: boolean;
+  // Exempted from this subject (e.g. medical/administrative waiver) - server
+  // forces `mark` to 0 regardless of what's sent, same as is_absent.
+  is_exempted?: boolean;
+  // Result withheld for this subject pending an administrative hold -
+  // server forces `mark` to 0 regardless of what's sent.
+  is_withheld?: boolean;
+  note?: string | null;
+  // Present only for subjects with a configured MarkComponentConfig
+  // breakdown - when present, `mark` is ignored and recomputed server-side
+  // as the sum of these component values (see saveMarks).
+  components?: MarkComponentValueDto[];
 }
 
 export interface SaveMarksRequestDto {

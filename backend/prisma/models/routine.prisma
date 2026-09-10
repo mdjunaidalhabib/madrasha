@@ -27,28 +27,51 @@ model ClassRoutine {
   @@map("class_routines")
 }
 
+enum ExamRoutineStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
 /// One exam-day slot for a class/subject, linked to an existing Exam
 /// (ExamPanel). Distinct from ClassRoutine because exam routines are
 /// per-exam (date-bound), not weekly recurring.
+///
+/// divisionId is a plain scoped field (no `@relation`) rather than a FK to
+/// Division, since academic.prisma is being actively edited by a
+/// concurrent, uncommitted piece of work at the time this field was added -
+/// see the note at the top of exam-operations.prisma for the same reasoning
+/// applied to madrasaId/examCandidateId there.
 model ExamRoutine {
-  id        Int      @id @default(autoincrement())
-  madrasaId Int      @map("madrasa_id")
-  examId    Int      @map("exam_id")
-  classId   Int      @map("class_id")
-  subject   String   @db.VarChar(150)
-  examDate  DateTime @map("exam_date") @db.Date
-  startTime String   @map("start_time") @db.VarChar(10)
-  endTime   String   @map("end_time") @db.VarChar(10)
-  roomNo    String?  @map("room_no") @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id           Int               @id @default(autoincrement())
+  madrasaId    Int               @map("madrasa_id")
+  examId       Int               @map("exam_id")
+  classId      Int               @map("class_id")
+  divisionId   Int?              @map("division_id")
+  subject      String            @db.VarChar(150)
+  examDate     DateTime          @map("exam_date") @db.Date
+  startTime    String            @map("start_time") @db.VarChar(10)
+  endTime      String            @map("end_time") @db.VarChar(10)
+  roomNo       String?           @map("room_no") @db.VarChar(50)
+  roomId       Int?              @map("room_id")
+  maxCapacity  Int?              @map("max_capacity")
+  status       ExamRoutineStatus @default(DRAFT)
+  instructions String?           @db.VarChar(1000)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  madrasa Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam    Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class   Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  room    ExamRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  invigilatorAssignments ExamInvigilatorAssignment[]
+  seatAllocations        SeatAllocation[]
+  examAttendances        ExamAttendance[]
 
   @@index([madrasaId, examId], map: "idx_exam_routine_madrasa_exam")
   @@index([madrasaId, classId, examDate], map: "idx_exam_routine_madrasa_class_date")
+  @@index([madrasaId, roomId, examDate], map: "idx_exam_routine_madrasa_room_date")
   @@map("exam_routines")
 }
 

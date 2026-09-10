@@ -710,10 +710,13 @@ async function main() {
         sortOrder: 2,
       },
       { keyName: "results", name: "Results", nameBn: "রেজাল্ট", sortOrder: 4 },
-      { keyName: "routine", name: "Routine", nameBn: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
-      { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 7 },
-      { keyName: "settings", name: "Settings", nameBn: "সেটিং", sortOrder: 8 },
-      { keyName: "events", name: "Events", nameBn: "ইভেন্ট / কার্যক্রম", sortOrder: 9 },
+      { keyName: "routine", name: "Routine", nameBn: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 5 },
+      { keyName: "exam_rooms", name: "Exam Rooms", nameBn: "পরীক্ষার রুম/হল", sortOrder: 6 },
+      { keyName: "exam_seat_plan", name: "Seat Plan", nameBn: "সিট প্ল্যান", sortOrder: 7 },
+      { keyName: "exam_attendance", name: "Exam Attendance", nameBn: "পরীক্ষার হাজিরা", sortOrder: 8 },
+      { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 9 },
+      { keyName: "settings", name: "Settings", nameBn: "সেটিং", sortOrder: 10 },
+      { keyName: "events", name: "Events", nameBn: "ইভেন্ট / কার্যক্রম", sortOrder: 11 },
     ],
     accounts: [
       { keyName: "dashboard", name: "Dashboard", nameBn: "হিসাব ড্যাশবোর্ড", sortOrder: 0 },
@@ -851,8 +854,43 @@ async function main() {
 
     { keyName: "exam.read", name: "পরীক্ষা দেখুন" },
     { keyName: "exam.manage", name: "পরীক্ষা ব্যবস্থাপনা" },
+
+    // Exam Operations: Schedule, Room, Invigilator, Seat, Exam Attendance -
+    // a finer-grained namespace layered alongside exam.read/exam.manage
+    // (which stay for base Exam/ExamRoutine CRUD).
+    { keyName: "exam.schedule.read", name: "পরীক্ষার সময়সূচি দেখুন" },
+    { keyName: "exam.schedule.manage", name: "পরীক্ষার সময়সূচি ব্যবস্থাপনা" },
+    { keyName: "exam.room.read", name: "পরীক্ষার রুম দেখুন" },
+    { keyName: "exam.room.manage", name: "পরীক্ষার রুম ব্যবস্থাপনা" },
+    { keyName: "exam.invigilator.manage", name: "পরীক্ষার পরিদর্শক ব্যবস্থাপনা" },
+    { keyName: "exam.seat.manage", name: "পরীক্ষার সিট প্ল্যান ব্যবস্থাপনা" },
+    { keyName: "exam.attendance.read", name: "পরীক্ষার হাজিরা দেখুন" },
+    { keyName: "exam.attendance.manage", name: "পরীক্ষার হাজিরা ব্যবস্থাপনা" },
+
+    { keyName: "exam_candidate.read", name: "পরীক্ষার্থী নিবন্ধন দেখুন" },
+    { keyName: "exam_candidate.manage", name: "পরীক্ষার্থী নিবন্ধন ব্যবস্থাপনা" },
+    { keyName: "exam_eligibility.read", name: "পরীক্ষার যোগ্যতা দেখুন" },
+    { keyName: "exam_eligibility.manage", name: "পরীক্ষার যোগ্যতা ব্যবস্থাপনা" },
     { keyName: "result.read", name: "ফলাফল দেখুন" },
     { keyName: "result.manage", name: "ফলাফল ব্যবস্থাপনা" },
+
+    // Marks/Result workflow (submission -> verification -> processing ->
+    // result-verification -> approval -> publish -> lock, plus corrections)
+    // - added alongside the pre-existing result.read/result.manage above.
+    // Every endpoint gated on these also accepts the legacy result.manage
+    // as a fallback (see result-workflow/result-correction/mark-component
+    // .routes.ts), so a madrasa that customized roles before this shipped
+    // doesn't lose access.
+    { keyName: "marks.read", name: "নম্বর দেখুন" },
+    { keyName: "marks.manage", name: "নম্বর ব্যবস্থাপনা" },
+    { keyName: "marks.submit", name: "নম্বর জমাদান" },
+    { keyName: "marks.verify", name: "নম্বর যাচাই" },
+    { keyName: "result.process", name: "ফলাফল প্রসেসিং" },
+    { keyName: "result.verify", name: "ফলাফল যাচাই" },
+    { keyName: "result.approve", name: "ফলাফল অনুমোদন" },
+    { keyName: "result.publish", name: "ফলাফল প্রকাশ" },
+    { keyName: "result.lock", name: "ফলাফল লক" },
+    { keyName: "result.correct", name: "ফলাফল সংশোধন" },
 
     { keyName: "fee.read", name: "ফি/ইনভয়েস দেখুন" },
     { keyName: "fee.manage", name: "ফি কাঠামো ও ইনভয়েস ব্যবস্থাপনা" },

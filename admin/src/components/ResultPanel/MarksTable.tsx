@@ -1,10 +1,15 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   toBanglaDigits,
   normalizeBanglaDigits,
   ABSENT_MARK,
   ABSENT_MARK_LABEL,
+  EXEMPTED_MARK,
+  EXEMPTED_MARK_LABEL,
+  WITHHELD_MARK,
+  WITHHELD_MARK_LABEL,
 } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { submissionStatusBadge, type SubmissionStatus } from "./resultStatus";
 
 const displayNumber = (value: number | string | null | undefined) =>
   value === null || value === undefined || value === "" ? "-" : toBanglaDigits(value);
@@ -25,6 +30,16 @@ interface Book {
   pass_mark?: number | null;
 }
 
+export interface SubmissionInfo {
+  book_id: number;
+  status: SubmissionStatus;
+  submitted_by?: string | null;
+  submitted_at?: string | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  comment?: string | null;
+}
+
 interface Props {
   students: Student[];
   books: Book[];
@@ -41,6 +56,27 @@ interface Props {
   onCommit?: () => void;
   /** Current autosave status, shown as a small indicator next to the progress bar. */
   autosaveStatus?: "idle" | "saving" | "saved" | "error";
+  /** Per-cell free-text note (rare use — e.g. "re-checked on appeal"). */
+  notes?: Record<number, Record<number, string>>;
+  setNotes?: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
+  /** Per-subject submission status, keyed by book_id — drives the header
+   * badge and whether that subject's column is locked for editing. */
+  submissions?: Record<number, SubmissionInfo>;
+  /** Fired with a book_id when the user clicks "এই বিষয় জমা দিন" for that
+   * subject's column. */
+  onSubmitBook?: (bookId: number) => void;
+  /** book_id currently being submitted (disables just that column's button). */
+  submittingBookId?: number | null;
+  /** Whether the submit-subject action should be shown at all
+   * (marks.submit / result.manage permission check happens in the parent). */
+  canSubmit?: boolean;
+  /** Whether the verify/reject-subject actions should be shown
+   * (marks.verify / result.manage permission check happens in the parent). */
+  canVerify?: boolean;
+  onVerifyBook?: (bookId: number) => void;
+  /** Asks the parent to open its reject-reason prompt for this book — the
+   * actual reject call (which needs a required reason) happens there. */
+  onRequestRejectBook?: (bookId: number) => void;
 }
 
 export default function MarksTable({
@@ -52,18 +88,37 @@ export default function MarksTable({
   failMark = 33,
   onCommit,
   autosaveStatus = "idle",
+  notes = {},
+  setNotes,
+  submissions = {},
+  onSubmitBook,
+  submittingBookId = null,
+  canSubmit = false,
+  canVerify = false,
+  onVerifyBook,
+  onRequestRejectBook,
 }: Props) {
   // 2D grid of input refs so Enter / Arrow keys can jump straight to the
   // next cell without the user reaching for the mouse.
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Which cell's note popover is open, e.g. "studentId-bookId".
+  const [openNoteKey, setOpenNoteKey] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   const rowCount = students.length;
   const colCount = books.length;
 
   const cellKey = (row: number, col: number) => `${row}-${col}`;
+  const noteKey = (sid: number, bid: number) => `${sid}-${bid}`;
+
+  const isColLocked = (book: Book) => {
+    const status = submissions[book.book_id]?.status;
+    return status === "SUBMITTED" || status === "VERIFIED";
+  };
 
   const focusCell = (row: number, col: number) => {
     if (row < 0 || row >= rowCount || col < 0 || col >= colCount) return;
+    if (isColLocked(books[col])) return;
     const el = inputRefs.current[cellKey(row, col)];
     if (el) {
       el.focus();
@@ -128,6 +183,18 @@ export default function MarksTable({
       return;
     }
 
+    // "e" / "w" are the same one-keystroke shortcut for exempted / withheld
+    // — see the legend under the table.
+    const lower = rawVal.toLowerCase();
+    if (lower === "e") {
+      setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [bid]: EXEMPTED_MARK } }));
+      return;
+    }
+    if (lower === "w") {
+      setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [bid]: WITHHELD_MARK } }));
+      return;
+    }
+
     // Digits only — typing stays plain ASCII, so strip anything else and
     // normalize any stray Bengali digits (e.g. from a mobile OS keyboard).
     const val = normalizeBanglaDigits(rawVal).replace(/\D/g, "");
@@ -161,6 +228,20 @@ export default function MarksTable({
     }));
   };
 
+  const openNotePopover = (sid: number, bid: number) => {
+    setOpenNoteKey(noteKey(sid, bid));
+    setNoteDraft(notes?.[sid]?.[bid] || "");
+  };
+
+  const saveNote = (sid: number, bid: number) => {
+    setNotes?.((prev) => ({
+      ...prev,
+      [sid]: { ...prev[sid], [bid]: noteDraft },
+    }));
+    setOpenNoteKey(null);
+    onCommit?.();
+  };
+
   // Overall completion stats for the little progress badge in the header.
   const { filled, total } = useMemo(() => {
     const totalCells = rowCount * colCount;
@@ -184,6 +265,14 @@ export default function MarksTable({
       return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
     }
 
+    if (value === EXEMPTED_MARK) {
+      return "border-purple-400 bg-purple-50 text-purple-700 focus:ring-purple-400 dark:border-purple-700 dark:bg-purple-950/40 dark:text-purple-400";
+    }
+
+    if (value === WITHHELD_MARK) {
+      return "border-slate-400 bg-slate-100 text-slate-700 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300";
+    }
+
     // A subject's own pass mark (set per-subject, e.g. 20 on a 50-mark
     // হেফজ subject) takes priority over the madrasa's global fail mark —
     // otherwise every subject would be checked against a threshold tuned
@@ -197,6 +286,13 @@ export default function MarksTable({
 
     // Passing — green
     return "border-green-400 bg-green-50 text-green-700 focus:ring-green-400 dark:border-green-700 dark:bg-green-950/40 dark:text-green-400";
+  };
+
+  const cellDisplayValue = (value: number | null | undefined) => {
+    if (value === ABSENT_MARK) return ABSENT_MARK_LABEL;
+    if (value === EXEMPTED_MARK) return EXEMPTED_MARK_LABEL;
+    if (value === WITHHELD_MARK) return WITHHELD_MARK_LABEL;
+    return value != null ? toBanglaDigits(value) : "";
   };
 
   return (
@@ -241,9 +337,9 @@ export default function MarksTable({
         <p className="hidden sm:block text-xs text-gray-400 mb-2 dark:text-slate-500">
           ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">⏎</kbd> চাপুন
           একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে।
-          কেউ পরীক্ষা না দিলে ঘরে শুধু{" "}
-          <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd> চাপুন — স্বয়ংক্রিয়ভাবে
-          "{ABSENT_MARK_LABEL}" (অনুপস্থিত) বসে যাবে।
+          কেউ পরীক্ষা না দিলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd>,
+          মুক্ত হলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">e</kbd>,
+          স্থগিত হলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">w</kbd> চাপুন।
         </p>
       )}
 
@@ -263,27 +359,84 @@ export default function MarksTable({
               </th>
 
               {books.length > 0 ? (
-                books.map((b) => (
-                  <th key={b.book_id} className="border px-2 sm:px-3 py-2 whitespace-nowrap dark:border-slate-700 dark:text-slate-200">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span>{b.book_name_bn || b.name_bn || `বই ${toBanglaDigits(b.book_id)}`}</span>
-                      {b.is_miyari ? (
-                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                          মিয়ারি
-                        </span>
-                      ) : null}
-                      {b.pass_mark != null && (
-                        <span
-                          className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-                          title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
-                        >
-                          পাস {toBanglaDigits(b.pass_mark)}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-400 dark:text-slate-500">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
-                    </div>
-                  </th>
-                ))
+                books.map((b) => {
+                  const submission = submissions[b.book_id];
+                  const badgeInfo = submission ? submissionStatusBadge(submission.status) : null;
+                  const locked = isColLocked(b);
+                  return (
+                    <th
+                      key={b.book_id}
+                      className={`border px-2 sm:px-3 py-2 whitespace-nowrap dark:border-slate-700 dark:text-slate-200 ${
+                        locked ? "bg-gray-50 dark:bg-slate-800/60" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span>{b.book_name_bn || b.name_bn || `বই ${toBanglaDigits(b.book_id)}`}</span>
+                        {b.is_miyari ? (
+                          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
+                            মিয়ারি
+                          </span>
+                        ) : null}
+                        {b.pass_mark != null && (
+                          <span
+                            className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
+                            title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                          >
+                            পাস {toBanglaDigits(b.pass_mark)}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400 dark:text-slate-500">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
+
+                        {badgeInfo && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${badgeInfo.className}`}
+                            title={
+                              submission?.submitted_at
+                                ? `জমা: ${submission.submitted_by ?? ""} ${submission.submitted_at ?? ""}`
+                                : undefined
+                            }
+                          >
+                            {badgeInfo.label}
+                          </span>
+                        )}
+
+                        {canSubmit && onSubmitBook && !locked && (
+                          <button
+                            type="button"
+                            onClick={() => onSubmitBook(b.book_id)}
+                            disabled={submittingBookId === b.book_id}
+                            className="mt-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-400"
+                          >
+                            {submittingBookId === b.book_id ? "…" : "জমা দিন"}
+                          </button>
+                        )}
+
+                        {canVerify && submission?.status === "SUBMITTED" && (
+                          <div className="mt-0.5 flex gap-1">
+                            {onVerifyBook && (
+                              <button
+                                type="button"
+                                onClick={() => onVerifyBook(b.book_id)}
+                                className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-700"
+                              >
+                                যাচাই
+                              </button>
+                            )}
+                            {onRequestRejectBook && (
+                              <button
+                                type="button"
+                                onClick={() => onRequestRejectBook(b.book_id)}
+                                className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700"
+                              >
+                                বাতিল
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })
               ) : (
                 <th className="border px-3 py-2 text-gray-400 dark:border-slate-700 dark:text-slate-500">বিষয়সমূহ এখানে দেখাবে</th>
               )}
@@ -332,9 +485,13 @@ export default function MarksTable({
                   {books.map((b, colIndex) => {
                     const value = marks?.[s.id]?.[b.book_id];
                     const max = b.full_marks ?? 100;
+                    const locked = isColLocked(b);
+                    const cellIsDisabled = disabled || locked;
+                    const thisNoteKey = noteKey(s.id, b.book_id);
+                    const hasNote = Boolean(notes?.[s.id]?.[b.book_id]);
 
                     return (
-                      <td key={b.book_id} className="border px-1 sm:px-2 py-1 text-center dark:border-slate-700">
+                      <td key={b.book_id} className="relative border px-1 sm:px-2 py-1 text-center dark:border-slate-700">
                         <input
                           ref={(el) => {
                             inputRefs.current[cellKey(rowIndex, colIndex)] = el;
@@ -342,25 +499,64 @@ export default function MarksTable({
                           type="text"
                           inputMode="numeric"
                           placeholder="০"
-                          disabled={disabled}
+                          disabled={cellIsDisabled}
+                          title={locked ? "এই বিষয়টি জমা দেয়া হয়েছে — সম্পাদনা বন্ধ" : undefined}
                           style={{ fontFamily: '"Noto Sans Bengali", "Hind Siliguri", sans-serif' }}
                           className={`w-16 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
-                            disabled
+                            cellIsDisabled
                               ? "bg-gray-100 cursor-not-allowed text-gray-400 dark:bg-slate-800 dark:text-slate-500"
                               : getCellStyle(value, b)
                           }`}
-                          value={
-                            value === ABSENT_MARK
-                              ? ABSENT_MARK_LABEL
-                              : value != null
-                                ? toBanglaDigits(value)
-                                : ""
-                          }
+                          value={cellDisplayValue(value)}
                           onChange={(e) => handle(s.id, b.book_id, e.target.value, max)}
                           onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
                           onFocus={(e) => e.target.select()}
                           onBlur={() => onCommit?.()}
                         />
+
+                        {setNotes && (
+                          <button
+                            type="button"
+                            onClick={() => openNotePopover(s.id, b.book_id)}
+                            title={notes?.[s.id]?.[b.book_id] || "নোট যোগ করুন"}
+                            className={`absolute top-0 right-0 leading-none text-[10px] px-0.5 ${
+                              hasNote
+                                ? "text-blue-600 dark:text-blue-400"
+                                : "text-gray-300 opacity-0 hover:opacity-100 focus:opacity-100 dark:text-slate-600"
+                            }`}
+                          >
+                            📝
+                          </button>
+                        )}
+
+                        {setNotes && openNoteKey === thisNoteKey && (
+                          <div className="absolute z-30 top-full left-1/2 -translate-x-1/2 mt-1 w-40 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                            <textarea
+                              autoFocus
+                              value={noteDraft}
+                              onChange={(e) => setNoteDraft(e.target.value)}
+                              rows={2}
+                              className="w-full resize-none rounded border border-gray-200 p-1 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                              placeholder="নোট লিখুন..."
+                            />
+                            <div className="mt-1 flex justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setOpenNoteKey(null)}
+                                className="rounded px-1.5 py-0.5 text-[11px] text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                              >
+                                বাতিল
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveNote(s.id, b.book_id)}
+                                className="rounded bg-blue-600 px-1.5 py-0.5 text-[11px] text-white hover:bg-blue-700"
+                              >
+                                সংরক্ষণ
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </td>
                     );
                   })}
@@ -372,7 +568,7 @@ export default function MarksTable({
       </div>
 
       {books.length > 0 && students.length > 0 && (
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> ফেল
           </span>
@@ -382,7 +578,15 @@ export default function MarksTable({
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
-            অনুপস্থিত
+            অনুপস্থিত (-)
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-purple-50 border border-purple-400 inline-block dark:bg-purple-950/40 dark:border-purple-700" />{" "}
+            মুক্ত (e)
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-slate-100 border border-slate-400 inline-block dark:bg-slate-800 dark:border-slate-600" />{" "}
+            স্থগিত (w)
           </span>
         </div>
       )}

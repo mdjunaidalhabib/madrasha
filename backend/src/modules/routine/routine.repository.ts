@@ -34,7 +34,11 @@ export class RoutineRepository {
         ...(classId ? { classId } : {}),
       },
       orderBy: [{ examDate: "asc" }, { startTime: "asc" }],
-      include: { class: { select: { nameBn: true, name: true } }, exam: { select: { name: true, year: true } } },
+      include: {
+        class: { select: { nameBn: true, name: true } },
+        exam: { select: { name: true, year: true } },
+        room: { select: { name: true, code: true } },
+      },
     });
   }
 
@@ -48,6 +52,44 @@ export class RoutineRepository {
 
   deleteExamRoutine(id: number, madrasaId: number) {
     return prisma.examRoutine.deleteMany({ where: { id, madrasaId } });
+  }
+
+  findExamRoutineById(id: number, madrasaId: number) {
+    return prisma.examRoutine.findFirst({ where: { id, madrasaId } });
+  }
+
+  /** Other exam routines in the same room on the same date, for the
+   * service layer to run its time-overlap check against (see
+   * timeRangesOverlap in shared/utils/time-range.util.ts). */
+  findRoutinesByRoomAndDate(madrasaId: number, roomId: number, examDate: Date, excludeId?: number) {
+    return prisma.examRoutine.findMany({
+      where: {
+        madrasaId,
+        roomId,
+        examDate,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true, startTime: true, endTime: true },
+    });
+  }
+
+  findDuplicateClassSubject(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    subject: string,
+    excludeId?: number,
+  ) {
+    return prisma.examRoutine.findFirst({
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        subject: { equals: subject, mode: "insensitive" },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
   }
 }
 

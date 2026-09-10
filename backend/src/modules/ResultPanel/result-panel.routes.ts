@@ -1,7 +1,7 @@
 import express from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
-import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
+import { rbacMiddleware, requireAnyPermission } from "../../shared/middleware/rbac.middleware";
 import {
   createSession,
   saveMarks,
@@ -32,7 +32,7 @@ router.post("/marks", rbacMiddleware("result.manage"), saveMarks);
 router.get("/marks", rbacMiddleware("result.read"), getMarks);
 
 /* ================= RESULT PROCESS ================= */
-router.post("/process", rbacMiddleware("result.manage"), processResult);
+router.post("/process", requireAnyPermission("result.process", "result.manage"), processResult);
 
 /* ================= SUMMARY ================= */
 router.get("/summary", rbacMiddleware("result.read"), getSummary);
@@ -47,7 +47,7 @@ router.get("/overview", rbacMiddleware("result.read"), getResultOverview);
 router.get("/dashboard-summary", rbacMiddleware("result.read"), getResultDashboardSummary);
 
 /* ================= PUBLISH ================= */
-router.post("/publish", rbacMiddleware("result.manage"), publishResult);
+router.post("/publish", requireAnyPermission("result.publish", "result.manage"), publishResult);
 
 /* ================= APPLY ROLL BY RANK (merit-based roll reassignment) ================= */
 router.post("/apply-roll-by-rank", rbacMiddleware("result.manage"), applyRollByRank);

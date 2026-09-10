@@ -9,14 +9,14 @@ export class ExamRepository {
     });
   }
 
-  async createExam(madrasaId: number, name: string, year: string) {
+  async createExam(madrasaId: number, name: string, year: string, extra: Record<string, unknown> = {}) {
     const last = await prisma.exam.findFirst({
       where: { madrasaId },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
     return prisma.exam.create({
-      data: { name, year, madrasaId, sortOrder: (last?.sortOrder ?? -1) + 1 },
+      data: { name, year, madrasaId, sortOrder: (last?.sortOrder ?? -1) + 1, ...extra },
     });
   }
 
@@ -24,6 +24,13 @@ export class ExamRepository {
     return prisma.exam.updateMany({
       where: { id, madrasaId, deletedAt: null },
       data,
+    });
+  }
+
+  updateExamStatus(id: number, madrasaId: number, status: string) {
+    return prisma.exam.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { status: status as any },
     });
   }
 

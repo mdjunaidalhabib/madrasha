@@ -8,7 +8,8 @@ import {
   UpdateClassRoutineRequestDto,
   UpdateExamRoutineRequestDto,
 } from "./routine.dto";
-import { MIN_DAY_OF_WEEK, MAX_DAY_OF_WEEK, TIME_FORMAT_REGEX } from "./routine.constants";
+import { MIN_DAY_OF_WEEK, MAX_DAY_OF_WEEK, TIME_FORMAT_REGEX, EXAM_ROUTINE_STATUSES } from "./routine.constants";
+import { timeRangesOverlap } from "../../shared/utils/time-range.util";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -121,6 +122,49 @@ export class RoutineService {
     }
   }
 
+  /** Same room, same date, overlapping time - only checked when a roomId
+   * is actually set (free-text-only roomNo rows can't be reliably
+   * conflict-checked and are left as-is, no regression for existing data). */
+  private async assertNoRoomConflict(
+    madrasaId: number,
+    examDate: Date,
+    startTime: string,
+    endTime: string,
+    roomId?: number | null,
+    excludeId?: number,
+  ) {
+    if (!roomId) return;
+    const others = await this.repository.findRoutinesByRoomAndDate(madrasaId, roomId, examDate, excludeId);
+    const clash = others.find((o) => timeRangesOverlap(startTime, endTime, o.startTime, o.endTime));
+    if (clash) {
+      throw new ConflictError(
+        `This room is already booked for another exam routine (#${clash.id}) at an overlapping time`,
+      );
+    }
+  }
+
+  /** Same exam+class+subject can't be scheduled twice. */
+  private async assertNoClassSubjectDuplicate(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    subject: string,
+    excludeId?: number,
+  ) {
+    const existing = await this.repository.findDuplicateClassSubject(madrasaId, examId, classId, subject, excludeId);
+    if (existing) {
+      throw new ConflictError("This class already has an exam routine for this subject in this exam");
+    }
+  }
+
+  private validateStatus(status: unknown): string {
+    const value = String(status).toUpperCase();
+    if (!EXAM_ROUTINE_STATUSES.includes(value as (typeof EXAM_ROUTINE_STATUSES)[number])) {
+      throw new BadRequestError(`status must be one of ${EXAM_ROUTINE_STATUSES.join(", ")}`);
+    }
+    return value;
+  }
+
   async createExamRoutine(madrasaId: number, dto: CreateExamRoutineRequestDto) {
     if (isEmpty(dto.exam_id) || isEmpty(dto.class_id) || isEmpty(dto.subject) || isEmpty(dto.exam_date)) {
       throw new BadRequestError("exam_id, class_id, subject and exam_date are required");
@@ -130,15 +174,30 @@ export class RoutineService {
     const examDate = new Date(dto.exam_date);
     if (Number.isNaN(examDate.getTime())) throw new BadRequestError("exam_date is invalid");
 
+    const examId = Number(dto.exam_id);
+    const classId = Number(dto.class_id);
+    const subject = String(dto.subject).trim();
+    const roomId = dto.room_id ? Number(dto.room_id) : null;
+    const maxCapacity = dto.max_capacity !== undefined && dto.max_capacity !== "" ? Number(dto.max_capacity) : null;
+    const status = dto.status !== undefined ? this.validateStatus(dto.status) : "DRAFT";
+
+    await this.assertNoClassSubjectDuplicate(madrasaId, examId, classId, subject);
+    await this.assertNoRoomConflict(madrasaId, examDate, startStr, endStr, roomId);
+
     try {
       await this.repository.createExamRoutine(madrasaId, {
-        examId: Number(dto.exam_id),
-        classId: Number(dto.class_id),
-        subject: String(dto.subject).trim(),
+        examId,
+        classId,
+        divisionId: dto.division_id ? Number(dto.division_id) : null,
+        subject,
         examDate,
         startTime: startStr,
         endTime: endStr,
         roomNo: dto.room_no?.trim() || null,
+        roomId,
+        maxCapacity,
+        status,
+        instructions: dto.instructions?.trim() || null,
       });
     } catch (err) {
       return friendlyFailure("createExamRoutine error:", err, "Failed to create exam routine");
@@ -146,24 +205,63 @@ export class RoutineService {
   }
 
   async updateExamRoutine(id: number, madrasaId: number, dto: UpdateExamRoutineRequestDto) {
+    const existing = await this.repository.findExamRoutineById(id, madrasaId);
+    if (!existing) throw new NotFoundError("Exam routine not found");
+
     const data: Record<string, unknown> = {};
 
     if (dto.exam_id !== undefined) data.examId = Number(dto.exam_id);
     if (dto.class_id !== undefined) data.classId = Number(dto.class_id);
+    if (dto.division_id !== undefined) data.divisionId = dto.division_id ? Number(dto.division_id) : null;
     if (dto.subject !== undefined) data.subject = String(dto.subject).trim();
     if (dto.room_no !== undefined) data.roomNo = dto.room_no?.trim() || null;
+    if (dto.room_id !== undefined) data.roomId = dto.room_id ? Number(dto.room_id) : null;
+    if (dto.max_capacity !== undefined) {
+      data.maxCapacity = dto.max_capacity !== "" && dto.max_capacity !== null ? Number(dto.max_capacity) : null;
+    }
+    if (dto.status !== undefined) data.status = this.validateStatus(dto.status);
+    if (dto.instructions !== undefined) data.instructions = dto.instructions?.trim() || null;
     if (dto.exam_date !== undefined) {
       const examDate = new Date(dto.exam_date);
       if (Number.isNaN(examDate.getTime())) throw new BadRequestError("exam_date is invalid");
       data.examDate = examDate;
     }
     if (dto.start_time !== undefined || dto.end_time !== undefined) {
-      const { startStr, endStr } = validateTimeRange(dto.start_time, dto.end_time);
+      const { startStr, endStr } = validateTimeRange(
+        dto.start_time ?? existing.startTime,
+        dto.end_time ?? existing.endTime,
+      );
       data.startTime = startStr;
       data.endTime = endStr;
     }
 
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+
+    // Re-run conflict checks whenever a field that affects them changes,
+    // using the merged (existing + incoming) values.
+    const needsSubjectCheck = ["examId", "classId", "subject"].some((k) => k in data);
+    const needsRoomCheck = ["examDate", "startTime", "endTime", "roomId"].some((k) => k in data);
+
+    if (needsSubjectCheck) {
+      await this.assertNoClassSubjectDuplicate(
+        madrasaId,
+        (data.examId as number) ?? existing.examId,
+        (data.classId as number) ?? existing.classId,
+        (data.subject as string) ?? existing.subject,
+        id,
+      );
+    }
+    if (needsRoomCheck) {
+      const roomId = "roomId" in data ? (data.roomId as number | null) : existing.roomId;
+      await this.assertNoRoomConflict(
+        madrasaId,
+        (data.examDate as Date) ?? existing.examDate,
+        (data.startTime as string) ?? existing.startTime,
+        (data.endTime as string) ?? existing.endTime,
+        roomId,
+        id,
+      );
+    }
 
     try {
       const result = await this.repository.updateExamRoutine(id, madrasaId, data);

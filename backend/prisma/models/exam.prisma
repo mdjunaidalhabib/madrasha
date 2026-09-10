@@ -2,31 +2,64 @@
 // EXAMS
 // ============================================================
 
+/// Exam lifecycle. Adds a proper workflow state machine on top of the
+/// pre-existing `isActive` (a simple show/hide toggle used everywhere the
+/// exam list is displayed, kept as-is for backward compatibility) - the two
+/// are independent: an exam can be `isActive = true` while its `status`
+/// moves through the workflow below. Defaults to DRAFT so every
+/// pre-existing exam row (migrated with this default) reads as "still being
+/// set up", which is the safest interpretation for historical data.
+enum ExamStatus {
+  DRAFT
+  PLANNED
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  SCHEDULED
+  ONGOING
+  MARKS_ENTRY
+  VERIFICATION
+  RESULT_PROCESSING
+  RESULT_APPROVAL
+  PUBLISHED
+  LOCKED
+  CANCELLED
+}
+
 model Exam {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(100)
-  year      String    @db.VarChar(20)
-  isActive  Boolean   @default(true) @map("is_active")
-  madrasaId Int       @default(1) @map("madrasa_id")
+  id          Int        @id @default(autoincrement())
+  name        String     @db.VarChar(100)
+  year        String     @db.VarChar(20)
+  /// Exam type/category (e.g. "সাময়িক", "বার্ষিক", "নির্বাচনী") - free text
+  /// per-madrasa, same "plain string, no picklist table" pattern as
+  /// FeeStructure.feeType so this never blocks on a missing catalog row.
+  examType    String?    @map("exam_type") @db.VarChar(50)
+  startDate   DateTime?  @map("start_date") @db.Date
+  endDate     DateTime?  @map("end_date") @db.Date
+  status      ExamStatus @default(DRAFT)
+  description String?    @db.VarChar(500)
+  isActive    Boolean    @default(true) @map("is_active")
+  madrasaId   Int        @default(1) @map("madrasa_id")
   /// Display order within a madrasa (প্রথম সাময়িক, দ্বিতীয় সাময়িক, বার্ষিক, ...),
   /// user-adjustable via the "move up/down" controls in Exam Management.
   /// Everywhere this list is shown (Exam Panel, Result Preview, ...) sorts
   /// by this instead of id/creation time.
-  sortOrder Int       @default(0) @map("sort_order")
-  createdBy Int?      @map("created_by")
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdBy   Int?       @map("created_by")
+  deletedAt   DateTime?  @map("deleted_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at")
 
-  madrasa       Madrasa        @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  resultsMaster ResultMaster[]
-  marks         Mark[]
-  examRoutines  ExamRoutine[]
+  madrasa        Madrasa         @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  resultsMaster  ResultMaster[]
+  marks          Mark[]
+  examRoutines   ExamRoutine[]
   /// পরীক্ষার ফি structures linked to this exam - see
   /// FeeStructure.examId for why a fee structure links to a specific exam
   /// instead of billing the whole session up front.
-  feeStructures FeeStructure[]
+  feeStructures  FeeStructure[]
+  examCandidates ExamCandidate[]
 
   @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
+  @@index([madrasaId, status], map: "idx_exam_madrasa_status")
   @@map("exams")
 }

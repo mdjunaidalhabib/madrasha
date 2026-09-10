@@ -1,0 +1,442 @@
+import { Prisma } from "@prisma/client";
+import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { logActivity } from "../../shared/utils/activity.util";
+import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
+import { resultPanelRepository } from "./result-panel.repository";
+import { DEFAULT_FAIL_MARK, FAIL_MARK_SETTING_NAME } from "./result-panel.constants";
+
+const toBanglaDigits = (value: string | number) =>
+  String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
+
+/**
+ * Subject-level submission/verification queue (MarkSubmission) and the
+ * result-level verify/approve/lock progression on top of it. Marks-entry
+ * itself, and the grading engine, stay in result-panel.service.ts - this
+ * service only owns the status machine layered on top.
+ */
+export class ResultWorkflowService {
+  constructor(private readonly repository: ResultWorkflowRepository = resultWorkflowRepository) {}
+
+  private async assertMaster(madrasaId: number, resultMasterId: number) {
+    if (!resultMasterId) throw new BadRequestError("result_master_id is required");
+    const master = await this.repository.findResultMaster(resultMasterId, madrasaId);
+    if (!master) throw new NotFoundError("Result session not found");
+    return master;
+  }
+
+  private async assertActiveBook(madrasaId: number, classId: number, bookId: number) {
+    const subjects = await resultPanelRepository.findActiveSubjectsForClass(madrasaId, classId);
+    const active = subjects.some((s) => s.book && s.book.id === bookId);
+    if (!active) throw new BadRequestError("এই বিষয়টি এই শ্রেণির জন্য সক্রিয় নয়।");
+  }
+
+  /** Re-derives ResultMaster.status from the current MarkSubmission states
+   * after a submit or verify event - shared by both since a verify can also
+   * complete the "every subject submitted" milestone (e.g. the last
+   * remaining subject was submitted and verified in the same request
+   * sequence). Only ever advances forward; rejection moves the status
+   * backward separately (see rejectBook). */
+  private async recomputeAfterSubmissionEvent(
+    madrasaId: number,
+    resultMasterId: number,
+    classId: number,
+    actorId: number,
+  ) {
+    const [subjects, submissions] = await Promise.all([
+      resultPanelRepository.findActiveSubjectsForClass(madrasaId, classId),
+      this.repository.findMarkSubmissions(resultMasterId),
+    ]);
+
+    const bookIds = subjects.filter((s) => s.book).map((s) => s.book!.id);
+    if (!bookIds.length) return;
+
+    const statusByBook = new Map(submissions.map((s) => [s.bookId, s.status]));
+    const allVerified = bookIds.every((id) => statusByBook.get(id) === "VERIFIED");
+    const allSubmittedOrVerified = bookIds.every((id) => {
+      const st = statusByBook.get(id);
+      return st === "SUBMITTED" || st === "VERIFIED";
+    });
+
+    if (allVerified) {
+      await this.repository.updateResultMasterStatus(resultMasterId, {
+        status: "MARKS_VERIFIED",
+        marksVerifiedAt: new Date(),
+        marksVerifiedBy: actorId,
+      });
+    } else if (allSubmittedOrVerified) {
+      await this.repository.updateResultMasterStatus(resultMasterId, {
+        status: "MARKS_SUBMITTED",
+        submittedAt: new Date(),
+        submittedBy: actorId,
+      });
+    }
+  }
+
+  async getSubmissions(madrasaId: number, resultMasterId: number) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    const [subjects, submissions] = await Promise.all([
+      resultPanelRepository.findActiveSubjectsForClass(madrasaId, master.classId),
+      this.repository.findMarkSubmissions(resultMasterId),
+    ]);
+
+    const byBook = new Map(submissions.map((s) => [s.bookId, s]));
+
+    return subjects
+      .filter((s) => s.book)
+      .map((s) => {
+        const book = s.book!;
+        const sub = byBook.get(book.id);
+        return {
+          book_id: book.id,
+          book_name: book.nameBn || book.name || `বিষয় ${book.id}`,
+          status: sub?.status || "DRAFT",
+          submitted_by: sub?.submittedBy ?? null,
+          submitted_at: sub?.submittedAt ?? null,
+          verified_by: sub?.verifiedBy ?? null,
+          verified_at: sub?.verifiedAt ?? null,
+          comment: sub?.comment ?? null,
+        };
+      });
+  }
+
+  async submitBook(madrasaId: number, userId: number, resultMasterId: number, bookId: number) {
+    if (!bookId) throw new BadRequestError("book_id is required");
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+    await this.assertActiveBook(madrasaId, master.classId, bookId);
+
+    const existing = await this.repository.findMarkSubmission(resultMasterId, bookId);
+    if (existing && (existing.status === "SUBMITTED" || existing.status === "VERIFIED")) {
+      throw new ConflictError("এই বিষয়ের নম্বর ইতিমধ্যে জমা দেওয়া হয়েছে।");
+    }
+
+    const missing = await this.repository.findStudentsMissingMarkForBook(
+      madrasaId,
+      master.classId,
+      resultMasterId,
+      bookId,
+    );
+    if (missing.length) {
+      const examples = missing
+        .slice(0, 3)
+        .map(
+          (s) =>
+            `${s.nameBn || `শিক্ষার্থী ${s.id}`}${s.roll ? ` (রোল ${toBanglaDigits(s.roll)})` : ""}`,
+        )
+        .join(", ");
+      const more =
+        missing.length > 3 ? ` সহ আরও ${toBanglaDigits(missing.length - 3)} জন` : "";
+      throw new BadRequestError(
+        `${toBanglaDigits(missing.length)} জন শিক্ষার্থীর এই বিষয়ের নম্বর এখনও দেওয়া হয়নি — ${examples}${more}। জমা দেওয়ার আগে সবার নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) দিন।`,
+      );
+    }
+
+    await this.repository.upsertMarkSubmissionSubmitted(madrasaId, resultMasterId, bookId, userId);
+    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "SUBMIT",
+      entity: "results/submissions",
+      entity_id: resultMasterId,
+      details: JSON.stringify({ book_id: bookId }),
+    });
+
+    return { message: "নম্বর জমা দেওয়া হয়েছে", result_master_id: resultMasterId, book_id: bookId };
+  }
+
+  async verifyBook(
+    madrasaId: number,
+    userId: number,
+    resultMasterId: number,
+    bookId: number,
+    comment?: string,
+  ) {
+    if (!bookId) throw new BadRequestError("book_id is required");
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    const submission = await this.repository.findMarkSubmission(resultMasterId, bookId);
+    if (!submission || submission.status !== "SUBMITTED") {
+      throw new ConflictError("এই বিষয়ের নম্বর এখনও জমা দেওয়া হয়নি — যাচাই করার আগে জমা দিতে হবে।");
+    }
+
+    await this.repository.markSubmissionVerified(resultMasterId, bookId, userId, comment?.trim() || null);
+    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "VERIFY",
+      entity: "results/submissions",
+      entity_id: resultMasterId,
+      details: JSON.stringify({ book_id: bookId, comment: comment?.trim() || null }),
+    });
+
+    return { message: "নম্বর যাচাই সম্পন্ন হয়েছে", result_master_id: resultMasterId, book_id: bookId };
+  }
+
+  async rejectBook(
+    madrasaId: number,
+    userId: number,
+    resultMasterId: number,
+    bookId: number,
+    reason: string,
+  ) {
+    if (!bookId) throw new BadRequestError("book_id is required");
+    if (!reason || !reason.trim()) {
+      throw new BadRequestError("প্রত্যাখ্যানের কারণ উল্লেখ করা আবশ্যক।");
+    }
+
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    const submission = await this.repository.findMarkSubmission(resultMasterId, bookId);
+    if (!submission || (submission.status !== "SUBMITTED" && submission.status !== "VERIFIED")) {
+      throw new ConflictError("এই বিষয়ের নম্বর জমা/যাচাই অবস্থায় নেই — প্রত্যাখ্যান করা যাবে না।");
+    }
+
+    const trimmedReason = reason.trim();
+    await this.repository.markSubmissionRejected(resultMasterId, bookId, trimmedReason);
+
+    const data: Prisma.ResultMasterUpdateInput = {
+      rejectedAt: new Date(),
+      rejectedBy: userId,
+      rejectedReason: trimmedReason,
+    };
+    if (master.status === "MARKS_SUBMITTED" || master.status === "MARKS_VERIFIED") {
+      data.status = "DRAFT";
+    }
+    await this.repository.updateResultMasterStatus(resultMasterId, data);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "REJECT",
+      entity: "results/submissions",
+      entity_id: resultMasterId,
+      details: JSON.stringify({ book_id: bookId, reason: trimmedReason }),
+    });
+
+    return { message: "নম্বর প্রত্যাখ্যান করা হয়েছে", result_master_id: resultMasterId, book_id: bookId };
+  }
+
+  /** Result-level verification pass - a read-mostly sanity re-check of the
+   * grading engine's own output (never recomputes grading itself), plus a
+   * fail-open cross-check against ExamCandidate holds. Mutates status only
+   * when every check passes. */
+  async verifyResult(madrasaId: number, userId: number, resultMasterId: number, remarks?: string) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    if (master.status !== "PROCESSING" && master.status !== "RESULT_VERIFIED") {
+      throw new ConflictError(
+        "ফলাফল প্রসেস (PROCESSING) অবস্থায় থাকলেই কেবল ফলাফল যাচাই করা যায়।",
+      );
+    }
+
+    const [activeStudents, summaries, withheldRows, settings, candidateRows] = await Promise.all([
+      resultPanelRepository.findActiveStudentsInClass(madrasaId, master.classId),
+      this.repository.findResultSummaryRows(resultMasterId),
+      resultPanelRepository.findWithheldStudentIds(
+        madrasaId,
+        master.examId,
+        master.classId,
+        resultMasterId,
+      ),
+      resultPanelRepository.findSettings(madrasaId),
+      this.repository.findExamCandidatesReadOnly(madrasaId, master.examId),
+    ]);
+
+    const withheldSet = new Set(withheldRows.map((r) => Number(r.studentId)));
+    const summaryByStudent = new Map(summaries.map((s) => [Number(s.studentId), s]));
+    const failSetting = settings.find((s) => s.name === FAIL_MARK_SETTING_NAME);
+    const failMark = failSetting ? Number(failSetting.value) : DEFAULT_FAIL_MARK;
+
+    const issues: string[] = [];
+    let missingMarks = 0;
+    let invalidMarks = 0;
+    let missingGrades = 0;
+    let passCount = 0;
+    let failCount = 0;
+    let absentCount = 0;
+
+    for (const student of activeStudents) {
+      if (withheldSet.has(student.id)) continue;
+
+      const row = summaryByStudent.get(student.id);
+      const label = student.nameBn || `শিক্ষার্থী ${student.id}`;
+
+      if (!row) {
+        missingMarks += 1;
+        issues.push(`${label} এর ফলাফল প্রসেস করা হয়নি (কোনো ফলাফল সারাংশ নেই)।`);
+        continue;
+      }
+
+      if (row.status === null) {
+        missingGrades += 1;
+        issues.push(`${label} এর ফলাফলের অবস্থা (status) নির্ধারিত হয়নি।`);
+      }
+
+      const total = Number(row.total);
+      const average = Number(row.average);
+      if (!Number.isFinite(total) || total < 0 || !Number.isFinite(average) || average < 0) {
+        invalidMarks += 1;
+        issues.push(`${label} এর মোট/গড় নম্বর সঠিক নয়।`);
+      }
+
+      if (row.status === "PASS") {
+        passCount += 1;
+        if (average < failMark) {
+          invalidMarks += 1;
+          issues.push(`${label} কে পাস দেখানো হয়েছে কিন্তু গড় নম্বর পাস মার্কের নিচে।`);
+        }
+      } else if (row.status === "FAIL") {
+        failCount += 1;
+        if (average >= failMark) {
+          invalidMarks += 1;
+          issues.push(`${label} কে ফেল দেখানো হয়েছে কিন্তু গড় নম্বর পাস মার্কের সমান বা বেশি।`);
+        }
+      } else if (row.status === "ABSENT") {
+        absentCount += 1;
+      }
+    }
+
+    // Fail-open: an exam predating candidate registration has zero
+    // ExamCandidate rows, so skip this cross-check entirely rather than
+    // treating "no candidates registered" as an error.
+    if (candidateRows.length) {
+      const blockedStatuses = new Set(["WITHHELD", "INELIGIBLE", "CANCELLED"]);
+      const blockedStudentIds = new Set(
+        candidateRows
+          .filter((c) => blockedStatuses.has(c.status))
+          .map((c) => Number(c.studentId)),
+      );
+      for (const studentId of blockedStudentIds) {
+        const row = summaryByStudent.get(studentId);
+        if (row && (row.status === "PASS" || row.status === "FAIL")) {
+          issues.push(
+            `শিক্ষার্থী আইডি ${studentId} পরীক্ষায় WITHHELD/INELIGIBLE/CANCELLED হওয়া সত্ত্বেও স্বাভাবিক ফলাফল (${row.status}) দেখাচ্ছে।`,
+          );
+        }
+      }
+    }
+
+    const valid = issues.length === 0;
+
+    if (valid) {
+      await this.repository.updateResultMasterStatus(resultMasterId, {
+        status: "RESULT_VERIFIED",
+        resultVerifiedAt: new Date(),
+        resultVerifiedBy: userId,
+        ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+      });
+
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: userId,
+        action: "VERIFY_RESULT",
+        entity: "results/verify-result",
+        entity_id: resultMasterId,
+        details: JSON.stringify({ passCount, failCount, absentCount, withheldCount: withheldSet.size }),
+      });
+    }
+
+    return {
+      valid,
+      issues,
+      stats: {
+        totalStudents: activeStudents.length,
+        missingMarks,
+        invalidMarks,
+        missingGrades,
+        passCount,
+        failCount,
+        absentCount,
+        withheldCount: withheldSet.size,
+      },
+    };
+  }
+
+  async decideApproval(
+    madrasaId: number,
+    userId: number,
+    resultMasterId: number,
+    approve: boolean,
+    remarks?: string,
+  ) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    if (master.status !== "RESULT_VERIFIED") {
+      throw new ConflictError(
+        "ফলাফল যাচাই (RESULT_VERIFIED) সম্পন্ন না হলে অনুমোদন/প্রত্যাখ্যান করা যাবে না।",
+      );
+    }
+
+    if (approve) {
+      await this.repository.updateResultMasterStatus(resultMasterId, {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedBy: userId,
+        ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+      });
+
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: userId,
+        action: "APPROVE",
+        entity: "results/approve",
+        entity_id: resultMasterId,
+        details: JSON.stringify({ remarks: remarks || null }),
+      });
+
+      return { message: "ফলাফল অনুমোদিত হয়েছে", result_master_id: resultMasterId };
+    }
+
+    if (!remarks || !remarks.trim()) {
+      throw new BadRequestError("প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।");
+    }
+
+    await this.repository.updateResultMasterStatus(resultMasterId, {
+      status: "PROCESSING",
+      rejectedAt: new Date(),
+      rejectedBy: userId,
+      rejectedReason: remarks.trim(),
+    });
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "REJECT",
+      entity: "results/approve",
+      entity_id: resultMasterId,
+      details: JSON.stringify({ reason: remarks.trim() }),
+    });
+
+    return { message: "ফলাফল প্রত্যাখ্যান করা হয়েছে", result_master_id: resultMasterId };
+  }
+
+  async lock(madrasaId: number, userId: number, resultMasterId: number) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    if (master.status !== "PUBLISHED") {
+      throw new ConflictError("ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।");
+    }
+
+    await this.repository.updateResultMasterStatus(resultMasterId, {
+      status: "LOCKED",
+      lockedAt: new Date(),
+      lockedBy: userId,
+    });
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "LOCK",
+      entity: "results/lock",
+      entity_id: resultMasterId,
+    });
+
+    return { message: "ফলাফল লক করা হয়েছে", result_master_id: resultMasterId };
+  }
+}
+
+export const resultWorkflowService = new ResultWorkflowService();

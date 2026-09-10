@@ -1,5 +1,7 @@
-import { BadRequestError, NotFoundError } from "../../shared/errors";
+import { ResultPublishStatus } from "@prisma/client";
+import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
+import { logActivity } from "../../shared/utils/activity.util";
 import {
   DEFAULT_FAIL_MARK,
   DEFAULT_GENERAL_GRADE_FALLBACK,
@@ -148,11 +150,14 @@ export class ResultPanelService {
     classId: number,
     resultMasterId: number,
     config: ResultCalculationConfig,
+    statusOverride?: ResultPublishStatus,
   ) {
-    const [marks, activeSubjects, absentCounts] = await Promise.all([
+    const [marks, activeSubjects, absentCounts, exemptedMarks, withheldStudentRows] = await Promise.all([
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findActiveSubjectsForClass(madrasaId, classId),
       this.repository.countAbsentMarksByStudent(madrasaId, examId, classId, resultMasterId),
+      this.repository.findExemptedMarksByStudent(madrasaId, examId, classId, resultMasterId),
+      this.repository.findWithheldStudentIds(madrasaId, examId, classId, resultMasterId),
     ]);
 
     if (!marks.length) {
@@ -172,6 +177,34 @@ export class ResultPanelService {
     const totalFullMarks = activeSubjects
       .filter((subject) => subject.book)
       .reduce((sum, subject) => sum + Number(subject.fullMark || 100), 0);
+
+    // A subject marked isExempted for a student is treated as if it simply
+    // doesn't exist for them this exam: excluded from both their personal
+    // totalFullMarks denominator and their entered-subject count (so it
+    // never counts toward the "fully absent" detection below either).
+    // Exemption is per-student, not class-wide like totalFullMarks above, so
+    // resolve each affected student's own deduction from their exempted
+    // Mark rows individually.
+    const fullMarkByBookId = new Map<number, number>(
+      activeSubjects
+        .filter((subject) => subject.book)
+        .map((subject) => [Number(subject.book!.id), Number(subject.fullMark || 100)]),
+    );
+    const exemptedFullMarkByStudent = new Map<number, number>();
+    const exemptedCountByStudent = new Map<number, number>();
+    for (const row of exemptedMarks) {
+      const studentId = Number(row.studentId);
+      const fullMark = fullMarkByBookId.get(Number(row.bookId)) || 0;
+      exemptedFullMarkByStudent.set(studentId, (exemptedFullMarkByStudent.get(studentId) || 0) + fullMark);
+      exemptedCountByStudent.set(studentId, (exemptedCountByStudent.get(studentId) || 0) + 1);
+    }
+
+    // A subject marked isWithheld holds the STUDENT's entire result back
+    // from this processing round - they're excluded from ranking/grading
+    // (no ResultSummary row at all, so they don't appear in merit order or
+    // pass/fail counts) until the hold is cleared by re-entering without
+    // withheld.
+    const withheldStudentIds = new Set(withheldStudentRows.map((row) => Number(row.studentId)));
 
     // Each miyari subject fails a student individually if their mark is
     // below that subject's own pass mark — or, when the subject has no
@@ -198,7 +231,9 @@ export class ResultPanelService {
       failedMiyariRows.map((row) => Number(row.studentId)),
     );
 
-    const sorted = [...marks].sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
+    const sorted = [...marks]
+      .filter((row) => !withheldStudentIds.has(Number(row.studentId)))
+      .sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
 
     const studentIds = sorted.map((row) => Number(row.studentId));
     const students = await this.repository.findRollsByStudentIds(studentIds);
@@ -210,27 +245,35 @@ export class ResultPanelService {
     let rankCounter = 0;
 
     const summaryData = sorted.map((row) => {
+      const studentId = Number(row.studentId);
       const total = Number(row._sum.mark || 0);
-      const subjectCount = row._count._all || 0;
-      const rawAverage = totalFullMarks > 0 ? (total / totalFullMarks) * 100 : 0;
+      // Per-student denominator: the class-wide totalFullMarks minus this
+      // student's own exempted subjects' full marks (see comment above).
+      const studentExemptedFullMarks = exemptedFullMarkByStudent.get(studentId) || 0;
+      const studentTotalFullMarks = Math.max(0, totalFullMarks - studentExemptedFullMarks);
+      const subjectCount = Math.max(
+        0,
+        (row._count._all || 0) - (exemptedCountByStudent.get(studentId) || 0),
+      );
+      const rawAverage = studentTotalFullMarks > 0 ? (total / studentTotalFullMarks) * 100 : 0;
       // Keep exactly 2 decimal places so the stored value matches what's shown everywhere.
       const average = Math.round(rawAverage * 100) / 100;
 
-      // A student absent in every subject gets no PASS/FAIL/grade at all —
-      // one who's absent in only some subjects still gets graded normally,
-      // with those subjects counted as 0 in the average (handled above by
-      // `mark` already being 0 for absent rows).
-      const absentSubjectCount = absentCountByStudent.get(Number(row.studentId)) || 0;
+      // A student absent in every (non-exempted) subject gets no
+      // PASS/FAIL/grade at all — one who's absent in only some subjects
+      // still gets graded normally, with those subjects counted as 0 in the
+      // average (handled above by `mark` already being 0 for absent rows).
+      const absentSubjectCount = absentCountByStudent.get(studentId) || 0;
       const fullyAbsent = subjectCount > 0 && absentSubjectCount === subjectCount;
 
       const passed =
         !fullyAbsent &&
         average >= config.failMark &&
-        !studentsFailingMiyari.has(Number(row.studentId));
+        !studentsFailingMiyari.has(studentId);
 
       return {
         resultMasterId,
-        studentId: Number(row.studentId),
+        studentId,
         total,
         average,
         generalGrade: fullyAbsent
@@ -245,11 +288,11 @@ export class ResultPanelService {
             : DEFAULT_MADRASA_GRADE_FALLBACK,
         status: fullyAbsent ? MARK_STATUS.ABSENT : passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
         rankNo: fullyAbsent ? null : ++rankCounter,
-        roll: rollByStudentId.get(Number(row.studentId)) ?? null,
+        roll: rollByStudentId.get(studentId) ?? null,
       };
     });
 
-    await this.repository.saveResultSummaryInTransaction(resultMasterId, summaryData);
+    await this.repository.saveResultSummaryInTransaction(resultMasterId, summaryData, statusOverride);
     return true;
   }
 
@@ -283,6 +326,33 @@ export class ResultPanelService {
     }
 
     return { updated, skipped };
+  }
+
+  /** Public wrapper around the private grading engine, so
+   * result-correction.service.ts can re-run the exact same
+   * total/average/grade/rank computation after applying an approved
+   * mark-level correction — there must be exactly one grading
+   * implementation, never a second copy. Does not run the completeness
+   * gate (assertAllMarksEntered): a correction only fires on an
+   * already-processed, already-published result, so marks are by
+   * definition already complete. */
+  async reprocessResultMaster(madrasaId: number, resultMasterId: number) {
+    const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
+    if (!master) throw new NotFoundError("Result session not found");
+
+    const config = await this.loadCalculationConfig(madrasaId);
+    // Pass the session's CURRENT status back in as the override - a
+    // correction re-grades content (total/average/grade/rank) but must not
+    // silently rewind an already PUBLISHED/LOCKED result to DRAFT the way a
+    // fresh process run normally would.
+    await this.rebuildResultSummary(
+      madrasaId,
+      master.examId,
+      master.classId,
+      resultMasterId,
+      config,
+      master.status,
+    );
   }
 
   private async getOrCreateSessionId(madrasaId: number, examId: number, classId: number) {
@@ -327,6 +397,17 @@ export class ResultPanelService {
       throw new BadRequestError("exam_id and class_id are required in marks data");
     }
 
+    // Every row must identify a real student and subject — malformed rows
+    // (0/undefined ids) are rejected outright rather than silently written
+    // against studentId/bookId 0.
+    for (const row of data) {
+      if (!toNumber(row.student_id) || !toNumber(row.book_id)) {
+        throw new BadRequestError(
+          "অবৈধ শিক্ষার্থী বা বিষয় নির্বাচন করা হয়েছে — নম্বর সংরক্ষণ করা যায়নি।",
+        );
+      }
+    }
+
     const resultMasterId = result_master_id
       ? Number(result_master_id)
       : await this.getOrCreateSessionId(madrasaId, exam_id, class_id);
@@ -337,37 +418,194 @@ export class ResultPanelService {
     const upsertRows = data.filter((m) => !isCleared(m));
     const deleteRows = data.filter(isCleared);
 
+    const involvedBookIds = Array.from(
+      new Set(data.map((m) => toNumber(m.book_id)).filter((id) => id > 0)),
+    );
+
+    const subjects = await this.repository.findActiveSubjectsForClass(madrasaId, class_id);
+    const fullMarkByBookId = new Map<number, number>(
+      subjects.filter((s) => s.book).map((s) => [s.book!.id, Number(s.fullMark || 100)]),
+    );
+    const nameByBookId = new Map<number, string>(
+      subjects
+        .filter((s) => s.book)
+        .map((s) => [s.book!.id, s.book!.nameBn || s.book!.name || `বিষয় ${s.book!.id}`]),
+    );
+
+    // Once a subject's marks are SUBMITTED/VERIFIED, ordinary marks.manage
+    // edits are locked out — a verifier must reject-and-resubmit, or (once
+    // published/locked) the correction workflow takes over.
+    if (involvedBookIds.length) {
+      const submissions = await this.repository.findMarkSubmissionsForBooks(
+        resultMasterId,
+        involvedBookIds,
+      );
+      const lockedBookIds = submissions
+        .filter((s) => s.status === "SUBMITTED" || s.status === "VERIFIED")
+        .map((s) => s.bookId);
+
+      if (lockedBookIds.length) {
+        const names = lockedBookIds
+          .map((id) => nameByBookId.get(id) || `বিষয় ${id}`)
+          .join(", ");
+        throw new ConflictError(
+          `${names} বিষয়ের নম্বর ইতিমধ্যে জমা/যাচাই হয়ে গেছে — সরাসরি সম্পাদনা করা যাবে না। প্রয়োজনে যাচাইকারীর মাধ্যমে প্রত্যাখ্যান করিয়ে পুনরায় জমা দিন, অথবা প্রকাশের পর সংশোধন (correction) প্রক্রিয়া ব্যবহার করুন।`,
+        );
+      }
+    }
+
+    // Resolve each involved book's optional component breakdown, preferring
+    // an exam-specific config over a book-wide one.
+    const componentRows = await this.repository.findMarkComponentConfigsForBooks(
+      madrasaId,
+      involvedBookIds,
+      exam_id,
+    );
+    const componentsByBook = new Map<number, { specific: typeof componentRows; general: typeof componentRows }>();
+    for (const row of componentRows) {
+      const bucket = componentsByBook.get(row.bookId) || { specific: [], general: [] };
+      if (row.examId === exam_id) bucket.specific.push(row);
+      else if (row.examId === null) bucket.general.push(row);
+      componentsByBook.set(row.bookId, bucket);
+    }
+    const effectiveComponentsForBook = (bookId: number) => {
+      const bucket = componentsByBook.get(bookId);
+      if (!bucket) return null;
+      const list = bucket.specific.length ? bucket.specific : bucket.general;
+      return list.length ? list : null;
+    };
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const isValidDecimal = (n: number) => Math.abs(round2(n) - n) < 1e-6;
+
+    type PreparedRow = {
+      studentId: number;
+      bookId: number;
+      examId: number;
+      classId: number;
+      mark: number;
+      isAbsent: boolean;
+      isExempted: boolean;
+      isWithheld: boolean;
+      note: string | null;
+      components: { component: any; value: number }[] | null;
+    };
+
+    const prepared: PreparedRow[] = [];
+
+    for (const row of upsertRows) {
+      const studentId = toNumber(row.student_id);
+      const bookId = toNumber(row.book_id);
+      const rowExamId = toNumber(row.exam_id) || exam_id;
+      const rowClassId = toNumber(row.class_id) || class_id;
+      const isAbsent = Boolean(row.is_absent);
+      const isExempted = Boolean(row.is_exempted);
+      const isWithheld = Boolean(row.is_withheld);
+      const note = row.note != null ? String(row.note).trim() || null : null;
+      const forceZero = isAbsent || isExempted || isWithheld;
+      const bookName = nameByBookId.get(bookId) || `বিষয় ${bookId}`;
+
+      const config = effectiveComponentsForBook(bookId);
+      const effectiveFullMark = config
+        ? config.reduce((sum, c) => sum + c.fullMark, 0)
+        : fullMarkByBookId.get(bookId) ?? 100;
+
+      let finalMark: number;
+      let components: { component: any; value: number }[] | null = null;
+
+      if (forceZero) {
+        finalMark = 0;
+        // A forced-zero mark (absent/exempted/withheld) has no meaningful
+        // partial breakdown anymore — clear any previously entered
+        // components for a book that has a configured breakdown.
+        components = config ? [] : null;
+      } else if (config && Array.isArray(row.components) && row.components.length) {
+        const configByComponent = new Map(config.map((c) => [c.component, c.fullMark]));
+        let sum = 0;
+        const values: { component: any; value: number }[] = [];
+        for (const c of row.components) {
+          const compFullMark = configByComponent.get(c.component as any);
+          if (compFullMark === undefined) {
+            throw new BadRequestError(
+              `${bookName} বিষয়ে "${c.component}" নামের কোনো নম্বর বিভাজন কনফিগার করা নেই।`,
+            );
+          }
+          const v = c.value === null || c.value === undefined || c.value === "" ? 0 : Number(c.value);
+          if (!Number.isFinite(v) || !isValidDecimal(v) || v < 0 || v > compFullMark) {
+            throw new BadRequestError(
+              `${bookName} বিষয়ের "${c.component}" অংশে সর্বোচ্চ ${compFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`,
+            );
+          }
+          values.push({ component: c.component, value: v });
+          sum += v;
+        }
+        finalMark = round2(sum);
+        components = values;
+      } else {
+        const raw =
+          row.mark === null || row.mark === undefined || row.mark === "" ? NaN : Number(row.mark);
+        if (!Number.isFinite(raw) || !isValidDecimal(raw) || raw < 0 || raw > effectiveFullMark) {
+          throw new BadRequestError(
+            `${bookName} বিষয়ে সর্বোচ্চ ${effectiveFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`,
+          );
+        }
+        finalMark = round2(raw);
+      }
+
+      prepared.push({
+        studentId,
+        bookId,
+        examId: rowExamId,
+        classId: rowClassId,
+        mark: finalMark,
+        isAbsent,
+        isExempted,
+        isWithheld,
+        note,
+        components,
+      });
+    }
+
     // NOTE: original code did one bulk `INSERT ... ON DUPLICATE KEY UPDATE`.
     // Prisma has no native bulk-upsert, so this is N upserts inside a
     // single transaction against the (resultMasterId, studentId, classId,
     // bookId) unique constraint - same end result, one round trip per row
     // instead of one round trip total.
-    if (upsertRows.length) {
-      await this.repository.upsertMarksInTransaction(
-        upsertRows.map((m) => ({
-          where: {
-            uniq_mark: {
+    if (prepared.length) {
+      await this.repository.upsertMarksWithComponentsInTransaction(
+        prepared.map((p) => ({
+          upsertArgs: {
+            where: {
+              uniq_mark: {
+                resultMasterId,
+                studentId: p.studentId,
+                classId: p.classId,
+                bookId: p.bookId,
+              },
+            },
+            update: {
+              mark: p.mark,
+              examId: p.examId,
+              isAbsent: p.isAbsent,
+              isExempted: p.isExempted,
+              isWithheld: p.isWithheld,
+              note: p.note,
+            },
+            create: {
               resultMasterId,
-              studentId: toNumber(m.student_id),
-              classId: toNumber(m.class_id),
-              bookId: toNumber(m.book_id),
+              studentId: p.studentId,
+              examId: p.examId,
+              classId: p.classId,
+              bookId: p.bookId,
+              mark: p.mark,
+              isAbsent: p.isAbsent,
+              isExempted: p.isExempted,
+              isWithheld: p.isWithheld,
+              note: p.note,
+              madrasaId,
             },
           },
-          update: {
-            mark: toNumber(m.mark),
-            examId: toNumber(m.exam_id),
-            isAbsent: Boolean(m.is_absent),
-          },
-          create: {
-            resultMasterId,
-            studentId: toNumber(m.student_id),
-            examId: toNumber(m.exam_id),
-            classId: toNumber(m.class_id),
-            bookId: toNumber(m.book_id),
-            mark: toNumber(m.mark),
-            isAbsent: Boolean(m.is_absent),
-            madrasaId,
-          },
+          components: p.components,
         })),
       );
     }
@@ -410,13 +648,24 @@ export class ResultPanelService {
       book_id: row.bookId,
       mark: Number(row.mark),
       is_absent: Boolean(row.isAbsent),
+      is_exempted: Boolean(row.isExempted),
+      is_withheld: Boolean(row.isWithheld),
+      note: row.note ?? null,
       result_master_id: row.resultMasterId,
+      ...(row.componentValues && row.componentValues.length
+        ? {
+            components: row.componentValues.map((c) => ({
+              component: c.component,
+              value: c.value === null || c.value === undefined ? null : Number(c.value),
+            })),
+          }
+        : {}),
     }));
 
     return { result_master_id, data };
   }
 
-  async processResult(madrasaId: number, body: ProcessResultRequestDto) {
+  async processResult(madrasaId: number, userId: number, body: ProcessResultRequestDto) {
     const exam_id = toNumber(body.exam_id);
     const class_id = toNumber(body.class_id);
     let result_master_id = toNumber(body.result_master_id);
@@ -429,6 +678,34 @@ export class ResultPanelService {
       const master = await this.repository.findLatestResultMasterId(madrasaId, exam_id, class_id);
       if (!master) throw new NotFoundError("Result session not found");
       result_master_id = master.id;
+    }
+
+    const master = await this.repository.findResultMasterById(result_master_id, madrasaId);
+    if (!master) throw new NotFoundError("Result session not found");
+
+    // Reprocessing is fine any time between "marks fully verified" and
+    // "result verified" (inclusive) - but once a result has moved on to
+    // APPROVED/PUBLISHED/LOCKED, further changes must go through the
+    // correction workflow instead of silently rewinding an already
+    // sign-off'd result.
+    const reprocessable: string[] = [
+      RESULT_STATUS.MARKS_VERIFIED,
+      RESULT_STATUS.PROCESSING,
+      RESULT_STATUS.RESULT_VERIFIED,
+    ];
+    if (!reprocessable.includes(master.status)) {
+      if (
+        master.status === RESULT_STATUS.APPROVED ||
+        master.status === RESULT_STATUS.PUBLISHED ||
+        master.status === RESULT_STATUS.LOCKED
+      ) {
+        throw new ConflictError(
+          "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — এখন পরিবর্তনের জন্য 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।",
+        );
+      }
+      throw new ConflictError(
+        "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।",
+      );
     }
 
     await this.assertAllMarksEntered(
@@ -450,6 +727,17 @@ export class ResultPanelService {
     if (!processed) {
       throw new BadRequestError("No marks found to process");
     }
+
+    await this.repository.markResultMasterProcessed(result_master_id, userId);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "PROCESS",
+      entity: "results/process",
+      entity_id: result_master_id,
+      details: JSON.stringify({ exam_id, class_id }),
+    });
 
     return { message: "Result processed successfully", result_master_id };
   }
@@ -582,13 +870,19 @@ export class ResultPanelService {
     }));
   }
 
-  async publishResult(madrasaId: number, resultMasterId: number) {
+  async publishResult(madrasaId: number, userId: number, resultMasterId: number) {
     if (!resultMasterId) {
       throw new BadRequestError("result_master_id is required");
     }
 
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
+
+    if (master.status !== RESULT_STATUS.APPROVED) {
+      throw new ConflictError(
+        "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না।",
+      );
+    }
 
     await this.assertAllMarksEntered(
       madrasaId,
@@ -600,7 +894,25 @@ export class ResultPanelService {
     const summary = await this.repository.findResultSummaryExists(resultMasterId);
     if (!summary) throw new BadRequestError("Process result before publish");
 
-    await this.repository.updateResultMasterStatus(resultMasterId, RESULT_STATUS.PUBLISHED);
+    // Snapshot the full result at the moment of publish - an audit/
+    // integrity record only in this phase, NOT wired into any
+    // marksheet/report/guardian read path yet (those keep reading live
+    // ResultSummary/Mark rows as before).
+    const view = await this.getFullResultView(madrasaId, master.examId, master.classId, resultMasterId);
+    await this.repository.publishResultMasterWithSnapshot(
+      resultMasterId,
+      madrasaId,
+      userId,
+      JSON.stringify(view),
+    );
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "PUBLISH",
+      entity: "results/publish",
+      entity_id: resultMasterId,
+    });
 
     return { message: "Result published successfully" };
   }

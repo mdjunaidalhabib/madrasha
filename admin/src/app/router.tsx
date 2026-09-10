@@ -28,8 +28,14 @@ const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceM
 const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
+const ExamCandidateRegistrationPage = lazy(
+  () => import("../features/exam-registration/ExamCandidateRegistrationPage"),
+);
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
+const ExamRoomsPage = lazy(() => import("../features/exam-operations/ExamRoomsPage"));
+const SeatPlanPage = lazy(() => import("../features/exam-operations/SeatPlanPage"));
+const ExamAttendancePage = lazy(() => import("../features/exam-operations/ExamAttendancePage"));
 const FeeDashboardPage = lazy(() => import("../features/fee/FeeDashboardPage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
 const FeeCategorySettingsPage = lazy(() => import("../features/fee/FeeCategorySettingsPage"));
@@ -82,6 +88,7 @@ const TalimatDashboardPage = lazy(() => import("../features/talimat/TalimatDashb
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
+const ResultWorkflowPage = lazy(() => import("../features/talimat/ResultWorkflowPage"));
 const TalimatDocumentsPage = lazy(() => import("../features/talimat/TalimatDocumentsPage"));
 const TenantDocumentDesignerPage = lazy(() => import("../features/talimat/TenantDocumentDesignerPage"));
 const TalimatSettingsLayout = lazy(() => import("../features/talimat/settings/TalimatSettingsLayout"));
@@ -239,6 +246,10 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="talimat">{withSuspense(<ResultEntryPage />)}</ModuleGuard>,
   },
   {
+    path: "talimat/results/workflow",
+    element: <ModuleGuard module="talimat">{withSuspense(<ResultWorkflowPage />)}</ModuleGuard>,
+  },
+  {
     path: "talimat/settings",
     element: <ModuleGuard module="talimat">{withSuspense(<TalimatSettingsLayout />)}</ModuleGuard>,
     children: [
@@ -321,11 +332,43 @@ const madrasaAdminChildren = [
     path: "students/promotion",
     element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
   },
+  {
+    path: "students/exam-registration",
+    element: <ModuleGuard module="students">{withSuspense(<ExamCandidateRegistrationPage />)}</ModuleGuard>,
+  },
   // "সেশন সেটাপ" moved under তালিমাত > সেটিং - old link redirects there.
   { path: "students/sessions", element: <Navigate to="../talimat/settings/sessions" replace /> },
   {
     path: "routine",
-    element: <ModuleGuard module="students">{withSuspense(<ClassExamRoutinePage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="routine.read">{withSuspense(<ClassExamRoutinePage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "exam-operations/rooms",
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="exam.room.read">{withSuspense(<ExamRoomsPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "exam-operations/seat-plan",
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="exam.seat.manage">{withSuspense(<SeatPlanPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "exam-operations/attendance",
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="exam.attendance.read">{withSuspense(<ExamAttendancePage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "fee-management",

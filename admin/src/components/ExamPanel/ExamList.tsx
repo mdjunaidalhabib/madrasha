@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -7,16 +7,47 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
+import {
+  EXAM_STATUS_VALUES,
+  EXAM_STATUS_LABELS_BN,
+  examStatusApi,
+  type ExamStatus,
+} from "../../services/examCandidateApi";
 
-type ExamItem = { id: string | number; name: string; isActive: boolean };
+type ExamItem = {
+  id: string | number;
+  name: string;
+  isActive: boolean;
+  examType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: ExamStatus | null;
+  description?: string | null;
+};
 
 interface ExamListProps {
   exams: ExamItem[];
   reload: () => void;
 }
 
+// শুধু YYYY-MM-DD অংশটুকু <input type="date"> এ বসাতে হয় - সার্ভার থেকে
+// পুরো ISO datetime (টাইমজোন সহ) আসতে পারে।
+const toDateInputValue = (v?: string | null) => (v ? String(v).slice(0, 10) : "");
+
+const formatDateBn = (v?: string | null) => {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
+};
+
 export default function ExamList({ exams, reload }: ExamListProps) {
   const [name, setName] = useState("");
+  const [examType, setExamType] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [showAddDetails, setShowAddDetails] = useState(false);
   const [adding, setAdding] = useState(false);
 
   // Local, optimistically-reorderable copy of the list, so dragging feels
@@ -29,7 +60,12 @@ export default function ExamList({ exams, reload }: ExamListProps) {
 
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editExamType, setEditExamType] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [statusBusyId, setStatusBusyId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setItems(exams);
@@ -42,8 +78,19 @@ export default function ExamList({ exams, reload }: ExamListProps) {
 
     try {
       setAdding(true);
-      await api.post("/exams", { name: name.trim() });
+      await api.post("/exams", {
+        name: name.trim(),
+        exam_type: examType.trim() || undefined,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+        description: description.trim() || undefined,
+      });
       setName("");
+      setExamType("");
+      setStartDate("");
+      setEndDate("");
+      setDescription("");
+      setShowAddDetails(false);
       reload();
     } catch (err: any) {
       useToastStore
@@ -66,6 +113,25 @@ export default function ExamList({ exams, reload }: ExamListProps) {
     }
   };
 
+  const changeExamStatus = async (exam: ExamItem, status: ExamStatus) => {
+    if (status === exam.status) return;
+    const prevStatus = exam.status;
+    setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, status } : it)));
+
+    try {
+      setStatusBusyId(exam.id);
+      await examStatusApi.setStatus(exam.id, status);
+      useToastStore.getState().show("পরীক্ষার অবস্থা আপডেট হয়েছে", "success");
+    } catch (err: any) {
+      setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, status: prevStatus } : it)));
+      useToastStore
+        .getState()
+        .show(err?.response?.data?.message || "পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
   const deleteExam = (id: string | number, examName: string) => {
     useConfirmStore.getState().show({
       title: "পরীক্ষা মুছবেন?",
@@ -83,11 +149,19 @@ export default function ExamList({ exams, reload }: ExamListProps) {
   const startEdit = (exam: ExamItem) => {
     setEditingId(exam.id);
     setEditName(exam.name);
+    setEditExamType(exam.examType || "");
+    setEditStartDate(toDateInputValue(exam.startDate));
+    setEditEndDate(toDateInputValue(exam.endDate));
+    setEditDescription(exam.description || "");
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
+    setEditExamType("");
+    setEditStartDate("");
+    setEditEndDate("");
+    setEditDescription("");
   };
 
   const saveEdit = async (id: string | number) => {
@@ -97,7 +171,13 @@ export default function ExamList({ exams, reload }: ExamListProps) {
 
     try {
       setSaving(true);
-      await api.put(`/exams/${id}`, { name: editName.trim() });
+      await api.put(`/exams/${id}`, {
+        name: editName.trim(),
+        exam_type: editExamType.trim() || undefined,
+        start_date: editStartDate || undefined,
+        end_date: editEndDate || undefined,
+        description: editDescription.trim() || undefined,
+      });
       useToastStore.getState().show("পরীক্ষা আপডেট হয়েছে", "success");
       cancelEdit();
       reload();
@@ -148,6 +228,9 @@ export default function ExamList({ exams, reload }: ExamListProps) {
     persistOrder(items);
   };
 
+  const dateInputClass =
+    "h-9 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center gap-2">
@@ -155,16 +238,60 @@ export default function ExamList({ exams, reload }: ExamListProps) {
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষাসমূহ</h2>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
-          placeholder="পরীক্ষার নাম (যেমনঃ প্রথম সাময়িক পরীক্ষা)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
-          <Plus size={16} />
-          {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
-        </Button>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            placeholder="পরীক্ষার নাম (যেমনঃ প্রথম সাময়িক পরীক্ষা)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
+            <Plus size={16} />
+            {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAddDetails((v) => !v)}
+          className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+        >
+          {showAddDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showAddDetails ? "বিস্তারিত লুকান" : "বিস্তারিত যোগ করুন (ধরন, তারিখ, বিবরণ)"}
+        </button>
+
+        {showAddDetails && (
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <Input
+              placeholder="পরীক্ষার ধরন (যেমনঃ বার্ষিক)"
+              value={examType}
+              onChange={(e) => setExamType(e.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={dateInputClass}
+                title="শুরুর তারিখ"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className={dateInputClass}
+                title="শেষের তারিখ"
+              />
+            </div>
+            <textarea
+              placeholder="বিবরণ (ঐচ্ছিক)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:col-span-2"
+            />
+          </div>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -186,7 +313,7 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                 onDragOver={(ev) => handleDragOver(ev, e.id)}
                 onDrop={(ev) => ev.preventDefault()}
                 onDragEnd={handleDragEnd}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
+                className={`flex flex-col gap-3 rounded-xl border px-3 py-2.5 transition ${
                   draggingId === e.id
                     ? "border-blue-300 bg-blue-50 opacity-60 dark:border-blue-800 dark:bg-blue-950/40"
                     : dragOverId === e.id
@@ -196,77 +323,145 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 }`}
               >
-                {isEditing ? (
-                  <>
-                    <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                      <Input
-                        autoFocus
-                        value={editName}
-                        onChange={(ev) => setEditName(ev.target.value)}
-                        placeholder="পরীক্ষার নাম"
-                      />
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => saveEdit(e.id)}
-                        disabled={saving}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-950/40"
-                        aria-label="সংরক্ষণ করুন"
-                        title="সংরক্ষণ করুন"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
-                        onClick={cancelEdit}
-                        disabled={saving}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-                        aria-label="বাতিল করুন"
-                        title="বাতিল করুন"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
-                        title="টেনে সরান"
-                      >
-                        <GripVertical size={18} />
-                      </span>
-
-                      <div>
-                        <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
+                <div className="flex items-center justify-between gap-3">
+                  {isEditing ? (
+                    <>
+                      <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                        <Input
+                          autoFocus
+                          value={editName}
+                          onChange={(ev) => setEditName(ev.target.value)}
+                          placeholder="পরীক্ষার নাম"
+                        />
                       </div>
-                    </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      <ToggleSwitch
-                        checked={e.isActive}
-                        onChange={() => toggleActive(e)}
-                        title={e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => saveEdit(e.id)}
+                          disabled={saving}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-950/40"
+                          aria-label="সংরক্ষণ করুন"
+                          title="সংরক্ষণ করুন"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                          aria-label="বাতিল করুন"
+                          title="বাতিল করুন"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
+                          title="টেনে সরান"
+                        >
+                          <GripVertical size={18} />
+                        </span>
+
+                        <div>
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
+                          {(e.examType || e.startDate || e.endDate || e.description) && (
+                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                              {[
+                                e.examType,
+                                e.startDate || e.endDate
+                                  ? `${formatDateBn(e.startDate)}${e.endDate ? ` – ${formatDateBn(e.endDate)}` : ""}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
+                              {e.description ? (
+                                <span className="block truncate">{e.description}</span>
+                              ) : null}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        <ToggleSwitch
+                          checked={e.isActive}
+                          onChange={() => toggleActive(e)}
+                          title={e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                        />
+                        <button
+                          onClick={() => startEdit(e)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                          aria-label="সম্পাদনা করুন"
+                          title="সম্পাদনা করুন"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => deleteExam(e.id, e.name)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
+                          aria-label="মুছে ফেলুন"
+                          title="মুছে ফেলুন"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {isEditing && (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder="পরীক্ষার ধরন (যেমনঃ বার্ষিক)"
+                      value={editExamType}
+                      onChange={(ev) => setEditExamType(ev.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={editStartDate}
+                        onChange={(ev) => setEditStartDate(ev.target.value)}
+                        className={dateInputClass}
+                        title="শুরুর তারিখ"
                       />
-                      <button
-                        onClick={() => startEdit(e)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                        aria-label="সম্পাদনা করুন"
-                        title="সম্পাদনা করুন"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => deleteExam(e.id, e.name)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
-                        aria-label="মুছে ফেলুন"
-                        title="মুছে ফেলুন"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <input
+                        type="date"
+                        value={editEndDate}
+                        onChange={(ev) => setEditEndDate(ev.target.value)}
+                        className={dateInputClass}
+                        title="শেষের তারিখ"
+                      />
                     </div>
-                  </>
+                    <textarea
+                      placeholder="বিবরণ (ঐচ্ছিক)"
+                      value={editDescription}
+                      onChange={(ev) => setEditDescription(ev.target.value)}
+                      rows={2}
+                      className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:col-span-2"
+                    />
+                  </div>
+                )}
+
+                {!isEditing && e.status && (
+                  <div className="flex items-center gap-2 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">অবস্থা:</span>
+                    <select
+                      value={e.status}
+                      disabled={statusBusyId === e.id}
+                      onChange={(ev) => changeExamStatus(e, ev.target.value as ExamStatus)}
+                      className="h-7 rounded-md border border-slate-300 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      {EXAM_STATUS_VALUES.map((status) => (
+                        <option key={status} value={status}>
+                          {EXAM_STATUS_LABELS_BN[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
             );

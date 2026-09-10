@@ -69,7 +69,7 @@ export const getMarks = async (req: Request, res: Response) => {
 export const processResult = async (req: Request, res: Response) => {
   try {
     const madrasa_id = getMadrasaId(req);
-    const result = await resultPanelService.processResult(madrasa_id, req.body);
+    const result = await resultPanelService.processResult(madrasa_id, req.user!.id, req.body);
     res.json({ success: true, ...result });
   } catch (error) {
     respondError(res, error, "processResult error:", "Failed to process result");
@@ -136,7 +136,11 @@ export const getSummary = async (req: Request, res: Response) => {
 export const publishResult = async (req: Request, res: Response) => {
   try {
     const madrasa_id = getMadrasaId(req);
-    const result = await resultPanelService.publishResult(madrasa_id, toNumber(req.body.result_master_id));
+    const result = await resultPanelService.publishResult(
+      madrasa_id,
+      req.user!.id,
+      toNumber(req.body.result_master_id),
+    );
     res.json({ success: true, ...result });
   } catch (error) {
     respondError(res, error, "publishResult error:", "Failed to publish result");

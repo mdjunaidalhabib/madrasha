@@ -7,9 +7,10 @@ import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
   UpdateExamRequestDto,
+  UpdateExamStatusRequestDto,
   UpdateFailMarkRequestDto,
 } from "./exam.dto";
-import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK } from "./exam.constants";
+import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK, EXAM_STATUSES } from "./exam.constants";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -75,8 +76,10 @@ export class ExamService {
       throw new BadRequestError("No current session found. Please set a current session first.");
     }
 
+    const extra = this.buildExamMasterFields(dto);
+
     try {
-      await this.repository.createExam(madrasaId, String(dto.name).trim(), currentSession.name);
+      await this.repository.createExam(madrasaId, String(dto.name).trim(), currentSession.name, extra);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("createExam error:", err, "Failed to create exam");
@@ -84,7 +87,7 @@ export class ExamService {
   }
 
   async updateExam(id: number, madrasaId: number, dto: UpdateExamRequestDto) {
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = this.buildExamMasterFields(dto);
     if (dto.name !== undefined) {
       if (isEmpty(dto.name)) throw new BadRequestError("Name cannot be empty");
       data.name = String(dto.name).trim();
@@ -100,6 +103,42 @@ export class ExamService {
       if (err instanceof NotFoundError) throw err;
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("updateExam error:", err, "Failed to update exam");
+    }
+  }
+
+  /** Shared Exam Master field parsing for create/update - only ever
+   * includes keys the caller actually sent, so a partial update never
+   * clobbers fields it didn't mention. */
+  private buildExamMasterFields(dto: { exam_type?: string; start_date?: string; end_date?: string; description?: string }) {
+    const data: Record<string, unknown> = {};
+    if (dto.exam_type !== undefined) data.examType = isEmpty(dto.exam_type) ? null : String(dto.exam_type).trim();
+    if (dto.description !== undefined) data.description = isEmpty(dto.description) ? null : String(dto.description).trim();
+    if (dto.start_date !== undefined) data.startDate = this.parseDateOrNull(dto.start_date, "start_date");
+    if (dto.end_date !== undefined) data.endDate = this.parseDateOrNull(dto.end_date, "end_date");
+
+    if (data.startDate && data.endDate && data.startDate > data.endDate) {
+      throw new BadRequestError("start_date cannot be after end_date");
+    }
+    return data;
+  }
+
+  private parseDateOrNull(value: string, label: string): Date | null {
+    if (isEmpty(value)) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) throw new BadRequestError(`Invalid ${label}`);
+    return date;
+  }
+
+  async updateExamStatus(id: number, madrasaId: number, dto: UpdateExamStatusRequestDto) {
+    if (isEmpty(dto.status) || !EXAM_STATUSES.includes(dto.status as any)) {
+      throw new BadRequestError(`Invalid status "${dto.status}"`);
+    }
+    try {
+      const result = await this.repository.updateExamStatus(id, madrasaId, dto.status);
+      if (!result.count) throw new NotFoundError("Exam not found");
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      return friendlyFailure("updateExamStatus error:", err, "Failed to update exam status");
     }
   }
 

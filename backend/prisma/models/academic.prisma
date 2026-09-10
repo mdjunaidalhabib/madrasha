@@ -21,6 +21,7 @@ model Division {
   students         Student[]
   teachers         Teacher[]
   sessions         Session[]
+  examCandidates   ExamCandidate[]
 
   @@map("divisions")
 }
@@ -66,6 +67,7 @@ model Class {
   examRoutines         ExamRoutine[]
   feeStructures        FeeStructure[]
   defaultFeeStructures DefaultFeeStructure[]
+  examCandidates       ExamCandidate[]
 
   @@unique([divisionId, name], map: "uniq_division_class")
   @@map("classes")
@@ -82,10 +84,12 @@ model Book {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
-  madrasaBooks       MadrasaBook[]
-  teacherAssignments TeacherAssignment[]
-  marks              Mark[]
+  class                Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  madrasaBooks         MadrasaBook[]
+  teacherAssignments   TeacherAssignment[]
+  marks                Mark[]
+  markSubmissions      MarkSubmission[]
+  markComponentConfigs MarkComponentConfig[]
 
   @@unique([classId, name], map: "uniq_class_book")
   @@map("books")

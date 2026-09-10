@@ -1,0 +1,91 @@
+// ============================================================
+// EXAM CANDIDATE REGISTRATION & ELIGIBILITY
+// ============================================================
+
+/// Candidate lifecycle within one Exam. REGISTERED is the initial state;
+/// ELIGIBLE/INELIGIBLE mirror the last eligibility snapshot so the status
+/// column alone is filterable without joining eligibilityStatus. WITHHELD
+/// is a manual admin hold (e.g. disciplinary) distinct from the automatic
+/// eligibility engine. CANCELLED is a withdrawal - kept as a status instead
+/// of a soft-delete so the row (and its audit history) survives.
+enum ExamCandidateStatus {
+  REGISTERED
+  ELIGIBLE
+  INELIGIBLE
+  WITHHELD
+  CANCELLED
+  COMPLETED
+}
+
+/// Snapshot of the last eligibility check for a candidate. PENDING means no
+/// check has run yet (fresh registration, before the eligibility engine
+/// evaluates it).
+enum EligibilityStatus {
+  PENDING
+  ELIGIBLE
+  INELIGIBLE
+}
+
+/// One student's registration for one Exam (ExamPanel). class/division/
+/// session are captured at registration time (not read live off Student)
+/// so a later promotion/session change never rewrites history for an exam
+/// that already happened. Eligibility is computed by the centralized
+/// EligibilityService and snapshotted here (eligibilityStatus +
+/// eligibilityReasons) so list/export views never need to recompute it
+/// live - "recheck eligibility" (single or bulk) explicitly refreshes it.
+model ExamCandidate {
+  id         Int @id @default(autoincrement())
+  madrasaId  Int @map("madrasa_id")
+  examId     Int @map("exam_id")
+  studentId  Int @map("student_id")
+  sessionId  Int @map("session_id")
+  classId    Int @map("class_id")
+  divisionId Int @map("division_id")
+
+  /// Exam-scoped registration number, e.g. "REG-3-0007" - distinct from
+  /// Student.registrationNo (the permanent admission number). Assigned by
+  /// the server at registration time, sequential per exam.
+  registrationNo String? @map("registration_no") @db.VarChar(50)
+  /// Exam-day seat/candidate number - typically assigned later, once
+  /// registration closes and seating is finalized. Null until assigned.
+  candidateNo    String? @map("candidate_no") @db.VarChar(50)
+
+  status ExamCandidateStatus @default(REGISTERED)
+
+  eligibilityStatus    EligibilityStatus @default(PENDING) @map("eligibility_status")
+  /// JSON array of human-readable reason strings from the last eligibility
+  /// check (e.g. ["বকেয়া ফি আছে", "উপস্থিতির হার প্রয়োজনীয় মাত্রার কম"]) -
+  /// empty JSON array when eligible. Null until the first check runs.
+  eligibilityReasons   String?           @map("eligibility_reasons") @db.Text
+  eligibilityCheckedAt DateTime?         @map("eligibility_checked_at")
+
+  registrationDate DateTime @default(now()) @map("registration_date")
+  notes            String?  @db.VarChar(500)
+
+  createdBy Int? @map("created_by")
+  updatedBy Int? @map("updated_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa  Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam     Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session  Session  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  class    Class    @relation(fields: [classId], references: [id], onDelete: Restrict)
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+
+  /// One registration per student per exam - prevents duplicate
+  /// registration. Re-registering after a CANCELLED status re-uses this
+  /// same row (service layer flips status back) instead of inserting a
+  /// second one.
+  @@unique([examId, studentId], map: "uniq_exam_candidate_exam_student")
+  @@unique([madrasaId, examId, registrationNo], map: "uniq_exam_candidate_registration_no")
+  @@unique([madrasaId, examId, candidateNo], map: "uniq_exam_candidate_candidate_no")
+  @@index([madrasaId, examId], map: "idx_exam_candidate_madrasa_exam")
+  @@index([madrasaId, examId, classId], map: "idx_exam_candidate_madrasa_exam_class")
+  @@index([madrasaId, examId, status], map: "idx_exam_candidate_madrasa_exam_status")
+  @@index([madrasaId, examId, eligibilityStatus], map: "idx_exam_candidate_madrasa_exam_eligibility")
+  @@index([studentId], map: "idx_exam_candidate_student")
+  @@map("exam_candidates")
+}

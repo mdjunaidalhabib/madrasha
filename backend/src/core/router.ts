@@ -38,6 +38,9 @@ import superadminRoutes from "../modules/super-admin/superadmin.routes";
 import superAdminAuthRoutes from "../modules/super-admin/superadmin.auth.routes";
 import examRoutes from "../modules/ExamPanel/exam.routes";
 import resultsRoutes from "../modules/ResultPanel/result-panel.routes";
+import resultWorkflowRoutes from "../modules/ResultPanel/result-workflow.routes";
+import markComponentRoutes from "../modules/ResultPanel/mark-component.routes";
+import resultCorrectionRoutes from "../modules/ResultPanel/result-correction.routes";
 import websiteRoutes from "../modules/public-website/website.routes";
 
 // 🗓️ Phase 1: Attendance, Routine, Promotion
@@ -45,6 +48,13 @@ import attendanceRoutes from "../modules/attendance/attendance.routes";
 import routineRoutes from "../modules/routine/routine.routes";
 import promotionRoutes from "../modules/promotion/promotion.routes";
 import sessionRoutes from "../modules/session/session.routes";
+import examCandidateRoutes from "../modules/exam-candidate/exam-candidate.routes";
+
+// 🗓️ Exam Operations: Room, Invigilator, Seat, Exam Attendance
+import examRoomRoutes from "../modules/exam-room/exam-room.routes";
+import examInvigilatorRoutes from "../modules/exam-invigilator/exam-invigilator.routes";
+import examSeatRoutes from "../modules/exam-seat/exam-seat.routes";
+import examAttendanceRoutes from "../modules/exam-attendance/exam-attendance.routes";
 
 // 💰 Phase 2: Fee Management
 import feeRoutes from "../modules/fee/fee.routes";
@@ -171,7 +181,15 @@ router.use("/staff", staffRoutes);
 router.use("/accounts", accountRoutes);
 router.use("/talimat", talimatRoutes);
 router.use("/", examRoutes);
+router.use("/exam-candidates", examCandidateRoutes);
 router.use("/results", resultsRoutes);
+// Additive workflow/component/correction routers, mounted at the same
+// "/results" prefix as result-panel.routes above (see each router's own
+// file for its specific sub-paths - kept separate per concern instead of
+// growing result-panel.routes.ts into an unrelated grab-bag).
+router.use("/results", resultWorkflowRoutes);
+router.use("/results", markComponentRoutes);
+router.use("/results", resultCorrectionRoutes);
 
 router.use("/reports", reportsRoutes);
 
@@ -187,6 +205,14 @@ router.use("/sessions", sessionRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/", routineRoutes);
 router.use("/promotion", promotionRoutes);
+
+/* =========================
+   EXAM OPERATIONS: ROOM, INVIGILATOR, SEAT, EXAM ATTENDANCE
+========================= */
+router.use("/exam-rooms", examRoomRoutes);
+router.use("/exam-invigilators", examInvigilatorRoutes);
+router.use("/exam-seats", examSeatRoutes);
+router.use("/exam-attendance", examAttendanceRoutes);
 
 /* =========================
    PHASE 2: FEE MANAGEMENT

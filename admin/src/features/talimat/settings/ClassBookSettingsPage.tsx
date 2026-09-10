@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, GripVertical, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import MarkComponentsModal from "../../../components/ResultPanel/MarkComponentsModal";
 import api, { cachedGet } from "../../../services/api";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
@@ -47,6 +48,9 @@ export default function ClassBookSettingsPage() {
   const [showBookInput, setShowBookInput] = useState(false);
   const [dragBookId, setDragBookId] = useState<number | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [componentsModalBook, setComponentsModalBook] = useState<{ id: number; name: string } | null>(
+    null,
+  );
 
   /* ================= LOAD ================= */
 
@@ -788,6 +792,16 @@ export default function ClassBookSettingsPage() {
 
                       <div className="flex shrink-0 gap-0.5">
                         <button
+                          onClick={() =>
+                            setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })
+                          }
+                          aria-label="নম্বর বিভাজন"
+                          title="নম্বর বিভাজন (লিখিত/এমসিকিউ/...)"
+                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:text-slate-500 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 dark:active:bg-indigo-950/60"
+                        >
+                          <SlidersHorizontal size={14} />
+                        </button>
+                        <button
                           onClick={() => startEdit(book)}
                           aria-label="কিতাব এডিট করুন"
                           className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 dark:active:bg-blue-950/60"
@@ -838,6 +852,15 @@ export default function ClassBookSettingsPage() {
         )}
       </SectionCard>
       </div>
+
+      {componentsModalBook && (
+        <MarkComponentsModal
+          open
+          bookId={componentsModalBook.id}
+          bookLabel={componentsModalBook.name}
+          onClose={() => setComponentsModalBook(null)}
+        />
+      )}
     </div>
   );
 }

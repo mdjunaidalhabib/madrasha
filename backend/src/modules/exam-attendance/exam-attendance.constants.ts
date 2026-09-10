@@ -1,0 +1,1 @@
+export const EXAM_ATTENDANCE_STATUSES = ["PRESENT", "ABSENT", "LATE", "EXCUSED", "WITHHELD"] as const;

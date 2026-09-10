@@ -137,6 +137,7 @@ model Madrasa {
   feeCategories                FeeCategory[]
   invoices                     Invoice[]
   studentFeeDiscounts          StudentFeeDiscount[]
+  examCandidates               ExamCandidate[]
   payments                     Payment[]
   paymentMethodSettings        PaymentMethodSetting[]
   payrollRecords               PayrollRecord[]
@@ -518,4 +519,3 @@ model WebsiteAdmissionApplication {
   @@index([madrasaId, status, createdAt], map: "idx_website_admission_madrasa")
   @@map("website_admission_applications")
 }
-

@@ -1,4 +1,4 @@
-import { Prisma, ResultPublishStatus } from "@prisma/client";
+import { MarkComponentConfig, MarkComponentType, Prisma, ResultPublishStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { ClassStatusRow, OverviewStatusRow } from "./result-panel.types";
 
@@ -26,7 +26,7 @@ export class ResultPanelRepository {
   findResultMasterById(id: number, madrasaId: number) {
     return prisma.resultMaster.findFirst({
       where: { id, madrasaId, deletedAt: null },
-      select: { id: true, examId: true, classId: true },
+      select: { id: true, examId: true, classId: true, status: true },
     });
   }
 
@@ -41,13 +41,49 @@ export class ResultPanelRepository {
     return prisma.resultMaster.update({ where: { id }, data: { status } });
   }
 
-  upsertMarksInTransaction(rows: Prisma.MarkUpsertArgs[]) {
-    return prisma.$transaction(rows.map((row) => prisma.mark.upsert(row)));
+  /** Upserts a batch of Mark rows, and — when a row carries a `components`
+   * breakdown — replaces that mark's MarkComponentValue rows in the same
+   * step. Runs as one interactive transaction (rather than the old
+   * array-of-promises transaction) because each component upsert needs the
+   * markId produced by its own Mark upsert first. */
+  upsertMarksWithComponentsInTransaction(
+    rows: {
+      upsertArgs: Prisma.MarkUpsertArgs;
+      components?: { component: MarkComponentType; value: number }[] | null;
+    }[],
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const row of rows) {
+        const mark = await tx.mark.upsert(row.upsertArgs);
+        if (row.components) {
+          await tx.markComponentValue.deleteMany({ where: { markId: mark.id } });
+          if (row.components.length) {
+            await tx.markComponentValue.createMany({
+              data: row.components.map((c) => ({
+                markId: mark.id,
+                component: c.component,
+                value: c.value,
+              })),
+            });
+          }
+        }
+        results.push(mark);
+      }
+      return results;
+    });
   }
+
+  // NOTE: upsertArgs is intentionally typed `Prisma.MarkUpsertArgs`, not
+  // `any`, so a mismatched `where` key (e.g. a wrong compound-unique name)
+  // is caught at compile time instead of only surfacing as a runtime
+  // "Save failed" toast.
 
   /** Removes marks a teacher cleared back to blank in the entry grid — an
    * upsert has no "delete" verb, so cleared cells are carried through
-   * saveMarks() as their own batch instead of being silently dropped. */
+   * saveMarks() as their own batch instead of being silently dropped.
+   * MarkComponentValue rows cascade-delete automatically (onDelete: Cascade
+   * on the Mark relation). */
   deleteMarksInTransaction(
     resultMasterId: number,
     rows: { studentId: number; bookId: number }[],
@@ -60,11 +96,6 @@ export class ResultPanelRepository {
       ),
     );
   }
-
-  // NOTE: signature is intentionally `Prisma.MarkUpsertArgs[]`, not `any[]`,
-  // so a mismatched `where` key (e.g. a wrong compound-unique name) is
-  // caught at compile time instead of only surfacing as a runtime
-  // "Save failed" toast.
 
   findMarks(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
     return prisma.mark.findMany({
@@ -79,8 +110,51 @@ export class ResultPanelRepository {
           },
         },
       },
-      select: { studentId: true, bookId: true, mark: true, isAbsent: true, resultMasterId: true },
+      select: {
+        studentId: true,
+        bookId: true,
+        mark: true,
+        isAbsent: true,
+        isExempted: true,
+        isWithheld: true,
+        note: true,
+        resultMasterId: true,
+        componentValues: { select: { component: true, value: true } },
+      },
       orderBy: [{ studentId: "asc" }, { bookId: "asc" }],
+    });
+  }
+
+  /** Current MarkSubmission status for a set of books within one
+   * ResultMaster - used by saveMarks() to reject edits to a subject whose
+   * marks have already been submitted/verified. */
+  findMarkSubmissionsForBooks(resultMasterId: number, bookIds: number[]) {
+    if (!bookIds.length) return Promise.resolve([]);
+    return prisma.markSubmission.findMany({
+      where: { resultMasterId, bookId: { in: bookIds } },
+      select: { bookId: true, status: true },
+    });
+  }
+
+  /** MarkComponentConfig rows for a set of books, covering both
+   * exam-specific (examId = the given exam) and book-wide (examId = null)
+   * rows in one query - callers pick whichever set applies per book (prefer
+   * exam-specific, fall back to book-wide). Returns nothing for a book with
+   * no configured breakdown, meaning it behaves exactly as before (a flat
+   * `mark` field). */
+  findMarkComponentConfigsForBooks(
+    madrasaId: number,
+    bookIds: number[],
+    examId: number | null,
+  ): Promise<MarkComponentConfig[]> {
+    if (!bookIds.length) return Promise.resolve([]);
+    return prisma.markComponentConfig.findMany({
+      where: {
+        madrasaId,
+        bookId: { in: bookIds },
+        OR: [...(examId ? [{ examId }] : []), { examId: null }],
+      },
+      orderBy: [{ bookId: "asc" }, { sortOrder: "asc" }],
     });
   }
 
@@ -159,6 +233,89 @@ export class ResultPanelRepository {
     });
   }
 
+  /** Mark rows flagged isExempted within a session, one row per exempted
+   * (student, book) pair - used to compute each student's own personal
+   * totalFullMarks deduction (exemption is per-student, not class-wide) in
+   * ResultPanelService.rebuildResultSummary. */
+  findExemptedMarksByStudent(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+  ) {
+    return prisma.mark.findMany({
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        isExempted: true,
+        book: {
+          madrasaBooks: { some: { madrasaId, isActive: 1 } },
+        },
+        student: { madrasaId, classId, deletedAt: null, isActive: 1 },
+      },
+      select: { studentId: true, bookId: true },
+    });
+  }
+
+  /** Distinct studentIds with at least one isWithheld mark in this session -
+   * these students are excluded entirely from ResultSummary generation
+   * (no PASS/FAIL/ABSENT row, no rank) until the hold is cleared. */
+  findWithheldStudentIds(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
+    return prisma.mark.findMany({
+      where: {
+        madrasaId,
+        examId,
+        classId,
+        resultMasterId,
+        isWithheld: true,
+        student: { madrasaId, classId, deletedAt: null, isActive: 1 },
+      },
+      select: { studentId: true },
+      distinct: ["studentId"],
+    });
+  }
+
+  /** Advances a session to PROCESSING after a (re)process run. Clears any
+   * prior resultVerified/approved marks since the underlying content just
+   * changed and those sign-offs no longer apply to the new numbers. */
+  markResultMasterProcessed(resultMasterId: number, processedBy: number) {
+    return prisma.resultMaster.update({
+      where: { id: resultMasterId },
+      data: {
+        status: "PROCESSING",
+        processedAt: new Date(),
+        processedBy,
+        resultVerifiedAt: null,
+        resultVerifiedBy: null,
+        approvedAt: null,
+        approvedBy: null,
+      },
+    });
+  }
+
+  /** Publishes a session and writes an accompanying ResultSnapshot (audit /
+   * integrity record only in this phase - no read path renders from it yet)
+   * in the same transaction. */
+  publishResultMasterWithSnapshot(
+    resultMasterId: number,
+    madrasaId: number,
+    publishedBy: number,
+    snapshotJson: string,
+  ) {
+    const now = new Date();
+    return prisma.$transaction([
+      prisma.resultMaster.update({
+        where: { id: resultMasterId },
+        data: { status: "PUBLISHED", publishedAt: now, publishedBy },
+      }),
+      prisma.resultSnapshot.create({
+        data: { madrasaId, resultMasterId, snapshotJson, reason: "PUBLISH", createdBy: publishedBy },
+      }),
+    ]);
+  }
+
   findResultMastersByClass(madrasaId: number, classId: number) {
     return prisma.resultMaster.findMany({
       where: { madrasaId, classId, deletedAt: null },
@@ -216,14 +373,23 @@ export class ResultPanelRepository {
     ]);
   }
 
+  /** Rebuilds ResultSummary and, in the same transaction, writes
+   * `status` onto ResultMaster - defaulting to "DRAFT" (the original
+   * behavior every existing caller still relies on: a fresh/re-run process
+   * always lands back in draft for review). `reprocessResultMaster` (the
+   * correction-workflow reprocess) is the one caller that passes the
+   * session's CURRENT status back in instead, so re-grading after an
+   * approved correction doesn't silently rewind a PUBLISHED/LOCKED result
+   * to DRAFT. */
   saveResultSummaryInTransaction(
     resultMasterId: number,
     summaryData: Prisma.ResultSummaryCreateManyInput[],
+    status: ResultPublishStatus = "DRAFT",
   ) {
     return prisma.$transaction([
       prisma.resultSummary.deleteMany({ where: { resultMasterId } }),
       prisma.resultSummary.createMany({ data: summaryData }),
-      prisma.resultMaster.update({ where: { id: resultMasterId }, data: { status: "DRAFT" } }),
+      prisma.resultMaster.update({ where: { id: resultMasterId }, data: { status } }),
     ]);
   }
 
