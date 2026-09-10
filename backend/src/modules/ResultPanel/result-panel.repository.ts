@@ -338,6 +338,39 @@ export class ResultPanelRepository {
     return prisma.exam.count({ where: { madrasaId, deletedAt: null, isActive: true } });
   }
 
+  /** Every Exam row for the tenant regardless of isActive - the তালিমাত
+   * dashboard's "মোট পরীক্ষা" stat needs the true total, while
+   * countActiveExams() above stays scoped to active exams only. */
+  countAllExams(madrasaId: number) {
+    return prisma.exam.count({ where: { madrasaId, deletedAt: null } });
+  }
+
+  /** Every exam (active and inactive) for the তালিমাত dashboard's exam-status
+   * table - unlike findExams() (used for the marks-entry filters, active
+   * only), this intentionally includes inactive/archived exams so a past
+   * exam still shows up with its final "completed" status instead of just
+   * disappearing. */
+  findAllExamsForStatus(madrasaId: number) {
+    return prisma.exam.findMany({
+      where: { madrasaId, deletedAt: null },
+      select: { id: true, name: true, year: true, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  /** Min/max ExamRoutine.examDate per exam, used to classify each exam as
+   * upcoming/ongoing/completed on the তালিমাত dashboard. An exam with no
+   * routine rows simply has no entry in the returned array - the caller
+   * treats that as "no schedule yet" rather than an error. */
+  findExamRoutineDateRangeByExam(madrasaId: number) {
+    return prisma.examRoutine.groupBy({
+      by: ["examId"],
+      where: { madrasaId },
+      _min: { examDate: true },
+      _max: { examDate: true },
+    });
+  }
+
   /** Most recent active exam (by year, then sort order) - the তালিমাত
    * dashboard's headline stats (pass/fail, average, grade distribution) are
    * scoped to this exam rather than every exam ever created. */

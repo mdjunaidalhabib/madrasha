@@ -6,6 +6,8 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
+import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
+import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
 
 type ExamItem = { id: string | number; name: string; isActive: boolean };
@@ -13,9 +15,14 @@ type ExamItem = { id: string | number; name: string; isActive: boolean };
 interface ExamListProps {
   exams: ExamItem[];
   reload: () => void;
+  /** True while the parent's initial (or a full re-) fetch of the exam list
+   * is in flight. Only used to render skeleton rows before the first list
+   * ever arrives - once `exams` has data, a later reload() no longer blanks
+   * the list, so this is intentionally ignored past first load. */
+  loading?: boolean;
 }
 
-export default function ExamList({ exams, reload }: ExamListProps) {
+export default function ExamList({ exams, reload, loading = false }: ExamListProps) {
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -167,7 +174,13 @@ export default function ExamList({ exams, reload }: ExamListProps) {
         </Button>
       </div>
 
-      {items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-11 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <EmptyState title="কোনো পরীক্ষা যোগ করা হয়নি" hint="উপরে থেকে নতুন পরীক্ষা যোগ করুন" />
       ) : (
         <div className="space-y-2">
@@ -244,10 +257,13 @@ export default function ExamList({ exams, reload }: ExamListProps) {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
+                      <Badge tone={e.isActive ? "green" : "slate"}>
+                        {e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                      </Badge>
                       <ToggleSwitch
                         checked={e.isActive}
                         onChange={() => toggleActive(e)}
-                        title={e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                        title={e.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
                       />
                       <button
                         onClick={() => startEdit(e)}
