@@ -5,6 +5,7 @@ import { requireAnyPermission } from "../../shared/middleware/rbac.middleware";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { exportReportPdf } from "./controllers/report-export.controller";
 import {
+  getAbsentCandidatesReport,
   getAcademicAdmissionReport,
   getAcademicResultNoticeReport,
   getAcademicResultsByRankReport,
@@ -12,11 +13,18 @@ import {
   getAcademicRoutineReport,
   getDailyAttendanceReport,
   getDigitalAttendanceReport,
+  getExamCandidatesReport,
   getExamNumberSheetReport,
+  getExamRoutineByRoomReport,
+  getExamRoutineReport,
   getExamSignatureSheetReport,
+  getExamSummaryReport,
   getGuardianPhoneReport,
   getPrizeBookLabelsReport,
   getResidentialAttendanceReport,
+  getResultPublicationReport,
+  getResultsByStatusReport,
+  getSubjectPerformanceReport,
 } from "./controllers/academic-report.controller";
 import {
   getStudentAdmitCardsReport,
@@ -60,6 +68,14 @@ router.get("/academic/admissions", academicAccess, getAcademicAdmissionReport);
 router.get("/academic/guardian-phones", academicAccess, getGuardianPhoneReport);
 router.get("/academic/exam-signature-sheet", examAccess, getExamSignatureSheetReport);
 router.get("/academic/exam-number-sheet", examAccess, getExamNumberSheetReport);
+router.get("/academic/exam-routine", examAccess, getExamRoutineReport);
+router.get("/academic/exam-routine-by-room", examAccess, getExamRoutineByRoomReport);
+router.get("/academic/exam-candidates", examAccess, getExamCandidatesReport);
+router.get("/academic/exam-absentees", examAccess, getAbsentCandidatesReport);
+router.get("/academic/results-by-status", academicAccess, getResultsByStatusReport);
+router.get("/academic/subject-performance", academicAccess, getSubjectPerformanceReport);
+router.get("/academic/exam-summary", academicAccess, getExamSummaryReport);
+router.get("/academic/result-publication", academicAccess, getResultPublicationReport);
 router.get("/academic/residential-attendance", attendanceAccess, getResidentialAttendanceReport);
 router.get("/academic/daily-attendance", attendanceAccess, getDailyAttendanceReport);
 router.get("/academic/digital-attendance", attendanceAccess, getDigitalAttendanceReport);

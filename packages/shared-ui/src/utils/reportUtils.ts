@@ -10,8 +10,8 @@ export const ABSENT_MARK = -1;
 export const ABSENT_MARK_LABEL = "অনু";
 
 const REPORT_TEXT_MAP: Record<string, string> = {
-  PASS: "PASS",
-  FAIL: "FAIL",
+  PASS: "পাশ",
+  FAIL: "ফেল",
   PRESENT: "উপস্থিত",
   ABSENT: "অনুপস্থিত",
   DRAFT: "খসড়া",

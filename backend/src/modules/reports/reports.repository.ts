@@ -41,6 +41,55 @@ export interface RoutineFilters {
   divisionId?: number;
 }
 
+/** Narrowing filters shared by the exam-routine / room-wise-routine reports
+ * (exam_routines table) - examId is threaded separately (same convention as
+ * findExamSignatureSheet/findExamNumberSheet below), class/division narrow
+ * further exactly like every other roster-shaped report. */
+export interface ExamRoutineFilters {
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the absent-candidate report (marks table,
+ * is_absent = true). */
+export interface AbsentCandidateFilters {
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the pass/fail result-status lists - reuses the
+ * exact same shape as AcademicResultFilters minus pagination (these lists
+ * are small enough per exam+class to never need it). */
+export interface ResultStatusFilters {
+  examId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the subject-wise performance report (marks table,
+ * grouped by book). */
+export interface SubjectPerformanceFilters {
+  examId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the exam-summary report (results_master/summary,
+ * grouped by class within one exam). */
+export interface ExamSummaryFilters {
+  examId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the result-publication-status report
+ * (results_master rows, DRAFT vs PUBLISHED). No exam filter - the whole
+ * point of this report is to see every exam+class's publish state at once. */
+export interface ResultPublicationFilters {
+  classId?: number;
+  divisionId?: number;
+}
+
 /** Builds the extra `AND ...` SQL fragment + positional params (starting
  * after $1 = madrasaId) for RosterFilters, shared by every roster query
  * that accepts them. */
@@ -796,6 +845,391 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status
       ORDER BY s.division_id ASC, s.class_id ASC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
+      `,
+      params,
+    );
+  }
+
+  /** Shared by the exam-routine (chronological) and room-wise-routine
+   * (grouped/sorted by room) reports - same rows, just a different ORDER BY,
+   * exactly like findAcademicResults/findAcademicResultsByRank share
+   * academicResultsQuery above. Reads exam_routines (see
+   * prisma/models/routine.prisma's ExamRoutine) - per-subject exam-day slots
+   * with an optional room number, distinct from the weekly ClassRoutine. */
+  findExamRoutineList(
+    madrasaId: number,
+    examId: number | undefined,
+    filters: ExamRoutineFilters = {},
+    orderByRoom = false,
+  ) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND er.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND c.division_id = $${params.length}`);
+    }
+
+    const orderBySql = orderByRoom
+      ? "ORDER BY er.room_no ASC NULLS LAST, er.exam_date ASC, er.start_time ASC, c.id ASC"
+      : "ORDER BY er.exam_date ASC, er.start_time ASC, c.id ASC";
+
+    return this.runQuery(
+      `
+      SELECT
+        er.id,
+        er.exam_id,
+        er.class_id,
+        c.division_id,
+        er.subject AS subject_name,
+        er.exam_date,
+        er.start_time,
+        er.end_time,
+        er.room_no,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM exam_routines er
+      INNER JOIN classes c ON c.id = er.class_id
+      LEFT JOIN divisions d ON d.id = c.division_id
+      LEFT JOIN exams e ON e.id = er.exam_id
+      WHERE er.madrasa_id = $1
+        AND ($2::int IS NULL OR er.exam_id = $2::int)
+        ${conditions.join("\n        ")}
+      ${orderBySql}
+      `,
+      params,
+    );
+  }
+
+  /** The plain student roster for an exam+class - "who is sitting this
+   * exam", not a separate registration/eligibility table (there isn't one -
+   * see exam.prisma). Same shape as findExamSignatureSheet minus the
+   * per-subject `subjects` aggregation, since a candidate list has no
+   * subject columns of its own. */
+  findExamCandidateList(madrasaId: number, examId: number | undefined, filters: RosterFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      WITH selected_exam AS (
+        SELECT e.id, e.name, e.year
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
+        LIMIT 1
+      )
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.academic_year,
+        s.name_bn AS student_name,
+        s.father_name,
+        s.mother_name,
+        s.guardian_phone,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.id AS exam_id,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM students s
+      CROSS JOIN selected_exam e
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+        ${conditions.join("\n        ")}
+      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      `,
+      params,
+    );
+  }
+
+  /** Students marked absent (Mark.isAbsent) for an exam, one row per
+   * absent subject - there's no separate attendance-sheet table for exams
+   * (see exam.prisma), Mark.isAbsent is the only source of truth. */
+  findAbsentCandidates(madrasaId: number, examId: number | undefined, filters: AbsentCandidateFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND m.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND c.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        m.id,
+        s.id AS student_id,
+        s.registration_no,
+        s.roll,
+        s.division_id,
+        s.class_id,
+        s.name_bn AS student_name,
+        s.father_name,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        COALESCE(b.name_bn, b.name) AS subject_name,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM marks m
+      INNER JOIN students s ON s.id = m.student_id
+      INNER JOIN exams e ON e.id = m.exam_id
+      LEFT JOIN classes c ON c.id = m.class_id
+      LEFT JOIN divisions d ON d.id = c.division_id
+      LEFT JOIN books b ON b.id = m.book_id
+      WHERE m.madrasa_id = $1
+        AND m.is_absent = true
+        AND s.deleted_at IS NULL
+        AND ($2::int IS NULL OR m.exam_id = $2::int)
+        ${conditions.join("\n        ")}
+      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, b.id ASC
+      `,
+      params,
+    );
+  }
+
+  /** Published results filtered down to one status (PASS/FAIL) - the "ফেল
+   * তালিকা"/"পাশ তালিকা" reports. Deliberately lighter than
+   * academicResultsQuery (no per-subject jsonb aggregation) since these
+   * lists only need the summary columns. */
+  findResultsByStatus(
+    madrasaId: number,
+    status: "PASS" | "FAIL",
+    filters: ResultStatusFilters = {},
+  ) {
+    const params: any[] = [madrasaId, status];
+    const conditions: string[] = [];
+    if (filters.examId !== undefined) {
+      params.push(filters.examId);
+      conditions.push(`AND rm.exam_id = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        s.id,
+        s.id AS student_id,
+        s.registration_no,
+        COALESCE(rs.roll, s.roll) AS roll,
+        s.division_id,
+        s.class_id,
+        s.name_bn AS student_name,
+        s.father_name,
+        s.guardian_phone,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        rs.total,
+        rs.average,
+        rs.madrasa_grade,
+        rs.general_grade,
+        rs.status,
+        rs.rank_no
+      FROM results_summary rs
+      INNER JOIN students s ON s.id = rs.student_id
+      INNER JOIN results_master rm ON rm.id = rs.result_master_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN divisions d ON d.id = s.division_id
+      WHERE s.madrasa_id = $1
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+        AND rm.status = 'PUBLISHED'
+        AND rs.status = $2
+        ${conditions.join("\n        ")}
+      ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
+      `,
+      params,
+    );
+  }
+
+  /** Average/highest/lowest mark per subject (book) for an exam+class -
+   * "বিষয়ভিত্তিক ফলাফল বিশ্লেষণ". Reads directly from marks, not
+   * results_summary, so it works even before a result is published. */
+  findSubjectPerformance(madrasaId: number, filters: SubjectPerformanceFilters = {}) {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+    if (filters.examId !== undefined) {
+      params.push(filters.examId);
+      conditions.push(`AND m.exam_id = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND m.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND c.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        b.id AS book_id,
+        COALESCE(b.name_bn, b.name) AS subject_name,
+        COALESCE(mb.full_mark, 100) AS full_marks,
+        COUNT(m.id)::int AS candidate_count,
+        COUNT(*) FILTER (WHERE m.is_absent)::int AS absent_count,
+        ROUND(AVG(m.mark) FILTER (WHERE NOT m.is_absent)::numeric, 2) AS average_mark,
+        MAX(m.mark) FILTER (WHERE NOT m.is_absent) AS highest_mark,
+        MIN(m.mark) FILTER (WHERE NOT m.is_absent) AS lowest_mark,
+        COUNT(*) FILTER (WHERE NOT m.is_absent AND m.mark >= COALESCE(mb.pass_mark, 33))::int AS pass_count
+      FROM marks m
+      INNER JOIN books b ON b.id = m.book_id
+      LEFT JOIN classes c ON c.id = m.class_id
+      LEFT JOIN madrasa_books mb
+        ON mb.book_id = b.id
+        AND mb.madrasa_id = $1
+        AND COALESCE(mb.is_active, 1) = 1
+      WHERE m.madrasa_id = $1
+        ${conditions.join("\n        ")}
+      GROUP BY b.id, b.name_bn, b.name, mb.full_mark
+      ORDER BY b.id ASC
+      `,
+      params,
+    );
+  }
+
+  /** Per-class summary for one exam - candidate count, pass %, average,
+   * top scorer. Only counts classes whose result has been published
+   * (matches every other results_summary-driven report's PUBLISHED gate). */
+  findExamSummary(madrasaId: number, filters: ExamSummaryFilters = {}) {
+    const params: any[] = [madrasaId, filters.examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND rm.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND c.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        rm.id AS result_master_id,
+        rm.exam_id,
+        rm.class_id,
+        c.division_id,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        COUNT(rs.id)::int AS candidate_count,
+        COUNT(*) FILTER (WHERE rs.status = 'PASS')::int AS pass_count,
+        COUNT(*) FILTER (WHERE rs.status = 'FAIL')::int AS fail_count,
+        COUNT(*) FILTER (WHERE rs.status = 'ABSENT')::int AS absent_count,
+        ROUND(
+          (COUNT(*) FILTER (WHERE rs.status = 'PASS')::numeric / NULLIF(COUNT(rs.id), 0)) * 100,
+          2
+        ) AS pass_percentage,
+        ROUND(AVG(rs.average)::numeric, 2) AS average_mark,
+        topper.student_name AS top_scorer_name,
+        topper.total AS top_scorer_total
+      FROM results_master rm
+      INNER JOIN classes c ON c.id = rm.class_id
+      LEFT JOIN divisions d ON d.id = c.division_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
+      LEFT JOIN results_summary rs ON rs.result_master_id = rm.id
+      LEFT JOIN LATERAL (
+        SELECT s2.name_bn AS student_name, rs2.total
+        FROM results_summary rs2
+        INNER JOIN students s2 ON s2.id = rs2.student_id
+        WHERE rs2.result_master_id = rm.id
+        ORDER BY rs2.total DESC NULLS LAST
+        LIMIT 1
+      ) topper ON true
+      WHERE rm.madrasa_id = $1
+        AND rm.deleted_at IS NULL
+        AND rm.status = 'PUBLISHED'
+        AND ($2::int IS NULL OR rm.exam_id = $2::int)
+        ${conditions.join("\n        ")}
+      GROUP BY
+        rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
+        d.name_bn, d.name, e.name, e.year, topper.student_name, topper.total
+      ORDER BY c.id ASC
+      `,
+      params,
+    );
+  }
+
+  /** Which exam+class ResultMaster rows are DRAFT vs PUBLISHED, with how
+   * many students each has a summary row for - "ফলাফল প্রকাশনা প্রতিবেদন".
+   * No exam filter (see ResultPublicationFilters) since the point is
+   * seeing every exam+class's publish state at a glance. */
+  findResultPublicationStatus(madrasaId: number, filters: ResultPublicationFilters = {}) {
+    const params: any[] = [madrasaId];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND rm.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND c.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        rm.id,
+        rm.exam_id,
+        rm.class_id,
+        c.division_id,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year,
+        rm.status AS publish_status,
+        COUNT(rs.id)::int AS candidate_count,
+        rm.updated_at
+      FROM results_master rm
+      INNER JOIN classes c ON c.id = rm.class_id
+      LEFT JOIN divisions d ON d.id = c.division_id
+      LEFT JOIN exams e ON e.id = rm.exam_id
+      LEFT JOIN results_summary rs ON rs.result_master_id = rm.id
+      WHERE rm.madrasa_id = $1
+        AND rm.deleted_at IS NULL
+        ${conditions.join("\n        ")}
+      GROUP BY
+        rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
+        d.name_bn, d.name, e.name, e.year, rm.status, rm.updated_at
+      ORDER BY e.id DESC, c.id ASC
       `,
       params,
     );

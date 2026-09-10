@@ -40,6 +40,7 @@ export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
+  { header: "ফলাফল", key: "status", className: "min-w-24 text-center" },
   // Zero-width space between মেধা and ক্রম gives the browser a clean wrap
   // point (matching রোল/নম্বর's natural space-driven wrap) instead of
   // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
@@ -116,8 +117,8 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   total: 1.05,
   average: 1.12,
   madrasa_grade: 1.55,
+  status: 1.05,
   rank_no: 1.35,
-  status: 0.9,
 };
 
 const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no"]);
