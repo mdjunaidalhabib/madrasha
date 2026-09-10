@@ -1,10 +1,16 @@
 import {
+  AbsentCandidateFilters,
   AcademicResultFilters,
+  ExamRoutineFilters,
+  ExamSummaryFilters,
   reportsRepository,
   ReportsRepository,
   ResultNoticeFilters,
+  ResultPublicationFilters,
+  ResultStatusFilters,
   RosterFilters,
   RoutineFilters,
+  SubjectPerformanceFilters,
 } from "../reports.repository";
 
 export class AcademicReportService {
@@ -56,6 +62,38 @@ export class AcademicReportService {
 
   getDigitalAttendance(madrasaId: number) {
     return this.repository.findDigitalAttendance(madrasaId);
+  }
+
+  getExamRoutine(madrasaId: number, examId?: number, filters: ExamRoutineFilters = {}) {
+    return this.repository.findExamRoutineList(madrasaId, examId, filters, false);
+  }
+
+  getExamRoutineByRoom(madrasaId: number, examId?: number, filters: ExamRoutineFilters = {}) {
+    return this.repository.findExamRoutineList(madrasaId, examId, filters, true);
+  }
+
+  getExamCandidates(madrasaId: number, examId?: number, filters: RosterFilters = {}) {
+    return this.repository.findExamCandidateList(madrasaId, examId, filters);
+  }
+
+  getAbsentCandidates(madrasaId: number, examId?: number, filters: AbsentCandidateFilters = {}) {
+    return this.repository.findAbsentCandidates(madrasaId, examId, filters);
+  }
+
+  getResultsByStatus(madrasaId: number, status: "PASS" | "FAIL", filters: ResultStatusFilters = {}) {
+    return this.repository.findResultsByStatus(madrasaId, status, filters);
+  }
+
+  getSubjectPerformance(madrasaId: number, filters: SubjectPerformanceFilters = {}) {
+    return this.repository.findSubjectPerformance(madrasaId, filters);
+  }
+
+  getExamSummary(madrasaId: number, filters: ExamSummaryFilters = {}) {
+    return this.repository.findExamSummary(madrasaId, filters);
+  }
+
+  getResultPublicationStatus(madrasaId: number, filters: ResultPublicationFilters = {}) {
+    return this.repository.findResultPublicationStatus(madrasaId, filters);
   }
 }
 

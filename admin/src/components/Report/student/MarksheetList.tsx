@@ -56,6 +56,7 @@ const INFO_FIELDS = (row: Record<string, any>) => [
   { label: "পিতার নাম", value: cellValue(row, "father_name") },
   { label: "ফলাফল বিভাগ", value: cellValue(row, "madrasa_grade") },
   { label: "গ্রেড", value: cellValue(row, "general_grade") },
+  { label: "ফলাফল", value: cellValue(row, "status") },
   { label: "মেধাস্থান", value: formatMeritRank(row?.rank_no) },
 ];
 
@@ -65,7 +66,7 @@ const formatMark = (subject: SubjectMark) => {
   return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
 };
 
-const MarksheetList = ({ rows, isFirstPage = true }: MarksheetListProps) => {
+const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: MarksheetListProps) => {
   const row = rows[0] || {};
   const rowStatus = String(row?.status || "").toUpperCase();
   const failed = rowStatus === "FAIL";
@@ -108,9 +109,14 @@ const MarksheetList = ({ rows, isFirstPage = true }: MarksheetListProps) => {
   // own, so their row merges the (ক্রম + বিষয়ের নাম) and (প্রাপ্ত নম্বর +
   // পূর্ণমান) column pairs into two wide cells instead of leaving two of the
   // four columns empty.
+  // `average` is already stored as a percentage (total earned / total full
+  // marks * 100, see result-panel.service.ts) - shown here with a literal
+  // "%" suffix instead of a second "গড় নম্বর" row so the marksheet's
+  // percentage figure isn't left implicit.
+  const percentageValue = cellValue(row, "average");
   const summaryRows = [
     { label: "মোট নম্বর", value: cellValue(row, "total") },
-    { label: "গড় নম্বর", value: cellValue(row, "average") },
+    { label: "শতকরা নম্বর (%)", value: percentageValue === "—" ? percentageValue : `${percentageValue}%` },
   ];
 
   return (
@@ -177,6 +183,17 @@ const MarksheetList = ({ rows, isFirstPage = true }: MarksheetListProps) => {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {isLastPage && (
+        <div className="report-block-signature mt-6 flex justify-between px-2 text-black">
+          <div className="w-40 border-t border-black pt-0.5 text-center text-sm font-medium">
+            শ্রেণি শিক্ষকের স্বাক্ষর
+          </div>
+          <div className="w-40 border-t border-black pt-0.5 text-center text-sm font-medium">
+            মুহতামিমের স্বাক্ষর
+          </div>
         </div>
       )}
     </section>

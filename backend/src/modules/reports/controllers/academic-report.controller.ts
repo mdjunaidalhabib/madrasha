@@ -208,3 +208,136 @@ export const getExamNumberSheetReport = async (req: Request, res: Response) => {
     return fail(res, error);
   }
 };
+
+export const getExamRoutineReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getExamRoutine(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getExamRoutineByRoomReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getExamRoutineByRoom(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getExamCandidatesReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getExamCandidates(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getAbsentCandidatesReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getAbsentCandidates(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+/** Shared by the ফেল/পাশ তালিকা report pair - which list comes back is
+ * decided by `?status=PASS|FAIL` (see ExamReportPage/AcademicReportPage's
+ * extraParams), not two separate endpoints. Defaults to FAIL if the query
+ * param is missing/invalid so a stray request never silently returns PASS
+ * rows under a FAIL label. */
+export const getResultsByStatusReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const status = req.query.status === "PASS" ? "PASS" : "FAIL";
+    const examId = getOptionalExamId(req);
+    const rows = await academicReportService.getResultsByStatus(madrasaId, status, {
+      examId,
+      ...getDivisionClassFilters(req),
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getSubjectPerformanceReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const examId = getOptionalExamId(req);
+    const rows = await academicReportService.getSubjectPerformance(madrasaId, {
+      examId,
+      ...getDivisionClassFilters(req),
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getExamSummaryReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const examId = getOptionalExamId(req);
+    const rows = await academicReportService.getExamSummary(madrasaId, {
+      examId,
+      ...getDivisionClassFilters(req),
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getResultPublicationReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getResultPublicationStatus(
+      madrasaId,
+      getDivisionClassFilters(req),
+    );
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
