@@ -7,6 +7,12 @@ export const PAYMENT_METHOD_TYPES = ["CASH", "BKASH", "NAGAD", "BANK", "OTHER"] 
  * since it also has to match the "OTHER" row FEE_CATEGORY_DEFAULTS seeds. */
 export const DEFAULT_FEE_CATEGORY_NAME = "অন্যান্য";
 
+/** The পরীক্ষার ফি category name - kept as its own constant since it's
+ * matched by name (not id, same decoupled-string pattern as every
+ * FeeStructure.feeType) when linking a newly-seeded exam-fee structure to
+ * its Exam at madrasa-creation time (see superadmin.service.ts). */
+export const EXAM_FEE_CATEGORY_NAME = "পরীক্ষার ফি";
+
 /** Starter ফি ধরণ picklist, lazily seeded into a tenant's own FeeCategory
  * rows the first time anything needs one and none exist yet - see
  * FeeRepository.seedDefaultCategories/FeeService.getCategories, same "seed
@@ -17,7 +23,7 @@ export const DEFAULT_FEE_CATEGORY_NAME = "অন্যান্য";
 export const FEE_CATEGORY_DEFAULTS: Array<{ name: string; isAdmissionType: boolean }> = [
   { name: "ভর্তি ফি", isAdmissionType: true },
   { name: "মাসিক বেতন", isAdmissionType: false },
-  { name: "পরীক্ষার ফি", isAdmissionType: false },
+  { name: EXAM_FEE_CATEGORY_NAME, isAdmissionType: false },
   { name: "বোর্ডিং ফি", isAdmissionType: false },
   { name: DEFAULT_FEE_CATEGORY_NAME, isAdmissionType: false },
 ];

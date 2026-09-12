@@ -32,6 +32,10 @@ export const deleteExamSchema = z.object({
   params: idParamsSchema,
 });
 
+export const activateExamFeeSchema = z.object({
+  params: idParamsSchema,
+});
+
 export const reorderExamsSchema = z.object({
   body: z.object({
     ids: z.array(z.coerce.number().int().positive()).min(1),

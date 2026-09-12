@@ -64,6 +64,18 @@ export const EXAM_STATUS_LABELS_BN: Record<ExamStatus, string> = {
 export const examStatusApi = {
   setStatus: (examId: number | string, status: ExamStatus) =>
     api.put(`/exams/${examId}/status`, { status }),
+
+  // Activates a dormant exam's linked পরীক্ষার ফি structure: flips it and
+  // the exam itself active, bills every currently-enrolled student it
+  // covers, and notifies their guardians - see backend ExamService.
+  // activateExamFee. Same "own file for exam-master extras" reasoning as
+  // setStatus above.
+  activateFee: (examId: number | string) =>
+    api.post<{
+      success: boolean;
+      message: string;
+      data: { feeStructuresActivated: number; invoicesCreated: number; studentsNotified: number };
+    }>(`/exams/${examId}/activate-fee`),
 };
 
 /* ================= EXAM CANDIDATE STATUS ================= */

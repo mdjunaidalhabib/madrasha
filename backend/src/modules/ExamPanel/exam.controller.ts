@@ -43,6 +43,11 @@ export const updateExamStatus = asyncHandler(async (req: Request, res: Response)
   return ApiResponse.message(res, "Exam status updated successfully");
 });
 
+export const activateExamFee = asyncHandler(async (req: Request, res: Response) => {
+  const data = await examService.activateExamFee(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.success(res, { data, message: "Exam fee activated successfully" });
+});
+
 /* ================= GENERAL GRADES ================= */
 
 export const getGeneralGrades = asyncHandler(async (req: Request, res: Response) => {

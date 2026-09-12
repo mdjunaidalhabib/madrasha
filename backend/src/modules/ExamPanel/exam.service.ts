@@ -3,6 +3,7 @@ import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../s
 import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
+import { feeService } from "../fee/fee.service";
 import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
@@ -154,6 +155,56 @@ export class ExamService {
       if (err instanceof NotFoundError) throw err;
       return friendlyFailure("deleteExam error:", err, "Failed to delete exam");
     }
+  }
+
+  /** Bare isActive check for exam.hooks.ts's autoActivateExamFeeForRoutine -
+   * kept minimal (no fee/session joins) since it only needs to decide
+   * whether activateExamFee is worth calling at all. */
+  async findExamForRoutineHook(examId: number, madrasaId: number) {
+    const exam = await this.repository.findExamById(examId, madrasaId);
+    return exam ? { isActive: exam.isActive } : null;
+  }
+
+  /** Turns a dormant exam (see createDefaultExamsOnTx/the DormantExams
+   * spec) into a live one: activates the exam itself, activates its
+   * linked FeeStructure row(s), bills every currently-enrolled student
+   * covered by them, and notifies their guardians. Called either directly
+   * (POST /exams/:id/activate-fee) or automatically the first time this
+   * exam gets a routine (see exam.hooks.ts's autoActivateExamFeeForRoutine).
+   *
+   * Steps 2-4 each get their own try/catch: a fee/invoice/notification
+   * hiccup must never undo step 1 (the exam is already committed active by
+   * the time any of them run), and one failing must never block the next. */
+  async activateExamFee(examId: number, madrasaId: number) {
+    const exam = await this.repository.findExamById(examId, madrasaId);
+    if (!exam) throw new NotFoundError("Exam not found");
+
+    const result = await this.repository.updateExam(examId, madrasaId, { isActive: true });
+    if (!result.count) throw new NotFoundError("Exam not found");
+
+    let feeStructuresActivated = 0;
+    try {
+      feeStructuresActivated = await feeService.activateExamLinkedFee(madrasaId, examId);
+    } catch (err) {
+      logger.error("activateExamFee: fee-structure activation failed:", err);
+    }
+
+    let invoicesCreated = 0;
+    try {
+      const backfill = await feeService.backfillInvoicesForExam(madrasaId, examId);
+      invoicesCreated = backfill.invoicesCreated;
+    } catch (err) {
+      logger.error("activateExamFee: invoice backfill failed:", err);
+    }
+
+    let studentsNotified = 0;
+    try {
+      studentsNotified = await feeService.notifyGuardiansOfExamFee(madrasaId, examId, exam.name);
+    } catch (err) {
+      logger.error("activateExamFee: guardian notification failed:", err);
+    }
+
+    return { feeStructuresActivated, invoicesCreated, studentsNotified };
   }
 
   async reorderExams(madrasaId: number, ids: unknown) {

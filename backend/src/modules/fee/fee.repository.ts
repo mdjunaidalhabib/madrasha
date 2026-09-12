@@ -24,13 +24,19 @@ export class FeeRepository {
     });
   }
 
-  /** Every active (non-deleted) exam for this tenant, for the "যুক্ত পরীক্ষা"
-   * picker on the ফি কাঠামো form - a dedicated fee-module lookup so setting
-   * up an exam-linked fee never requires the exam.read permission (see
-   * ACCOUNTANT_DEFAULT_PERMISSION_KEYS, which has no exam.* grant). */
+  /** Every non-deleted exam for this tenant, for the "যুক্ত পরীক্ষা" picker on
+   * the ফি কাঠামো form - a dedicated fee-module lookup so setting up an
+   * exam-linked fee never requires the exam.read permission (see
+   * ACCOUNTANT_DEFAULT_PERMISSION_KEYS, which has no exam.* grant).
+   *
+   * Deliberately NOT filtered to isActive: true - a dormant exam (the
+   * default for a freshly-created one, see createDefaultExamsOnTx) still
+   * needs to be linkable here, since attaching its পরীক্ষার ফি structure
+   * ahead of time is exactly what keeps it dormant until the exam is
+   * actually scheduled (see ExamService.activateExamFee). */
   findExamsForTenant(madrasaId: number) {
     return prisma.exam.findMany({
-      where: { madrasaId, deletedAt: null, isActive: true },
+      where: { madrasaId, deletedAt: null },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       select: { id: true, name: true, year: true },
     });
@@ -69,6 +75,22 @@ export class FeeRepository {
 
   deleteStructure(id: number, madrasaId: number) {
     return prisma.feeStructure.deleteMany({ where: { id, madrasaId } });
+  }
+
+  /** Every FeeStructure linked to one specific Exam - drives
+   * ExamService.activateExamFee (find what to flip on + which classes/
+   * sessions to backfill invoices for). */
+  findStructuresByExam(madrasaId: number, examId: number) {
+    return prisma.feeStructure.findMany({
+      where: { madrasaId, examId },
+      select: { id: true, classId: true, sessionId: true, amount: true, name: true },
+    });
+  }
+
+  /** Flips every FeeStructure linked to this Exam active - see
+   * ExamService.activateExamFee. */
+  activateStructuresByExam(madrasaId: number, examId: number) {
+    return prisma.feeStructure.updateMany({ where: { madrasaId, examId }, data: { isActive: true } });
   }
 
   /* ================= INVOICES ================= */
@@ -138,6 +160,26 @@ export class FeeRepository {
         ...(feeTypes && feeTypes.length ? { feeType: { in: feeTypes as any } } : {}),
         ...(includeExamLinked ? {} : { examId: null }),
       },
+    });
+  }
+
+  /** Guardian phone/name for every currently-enrolled student in one
+   * session, optionally narrowed to a set of classes (undefined/empty means
+   * every class - a null-classId FeeStructure applies to all of them) - used
+   * to notify guardians right when an exam-linked fee is activated (see
+   * FeeService.notifyGuardiansOfExamFee). Same active/approved filter as
+   * findAllActiveStudents. */
+  findGuardianContactsForClasses(madrasaId: number, sessionId: number, classIds?: number[]) {
+    return prisma.student.findMany({
+      where: {
+        madrasaId,
+        sessionId,
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        ...(classIds && classIds.length ? { classId: { in: classIds } } : {}),
+      },
+      select: { id: true, nameBn: true, guardianPhone: true },
     });
   }
 

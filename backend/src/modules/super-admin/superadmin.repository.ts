@@ -366,7 +366,7 @@ export class SuperAdminRepository {
   findDefaultExamsOnTx(tx: TransactionClient) {
     return tx.defaultExam.findMany({
       where: { isActive: true },
-      select: { name: true },
+      select: { name: true, keyName: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -395,10 +395,25 @@ export class SuperAdminRepository {
     });
   }
 
+  // isActive: false - a brand-new madrasa's exams start as dormant
+  // placeholders (no schedule, no fee) until an admin manually activates
+  // one or its first ExamRoutine is created (see ExamService.activateExamFee
+  // and exam.hooks.ts's autoActivateExamFeeForRoutine).
   createDefaultExamsOnTx(tx: TransactionClient, madrasaId: number, names: string[], year: string) {
     return tx.exam.createMany({
-      data: names.map((name) => ({ madrasaId, name, year })),
+      data: names.map((name) => ({ madrasaId, name, year, isActive: false })),
       skipDuplicates: true,
+    });
+  }
+
+  /** Re-fetches the just-created default exams by name so the caller can
+   * link the exam-fee FeeStructure to a specific Exam.id - createMany
+   * doesn't return the created rows' ids. Scoped to `names` + madrasaId
+   * (fresh madrasa, so this is exactly the batch just inserted). */
+  findExamsByNamesOnTx(tx: TransactionClient, madrasaId: number, names: string[]) {
+    return tx.exam.findMany({
+      where: { madrasaId, name: { in: names } },
+      select: { id: true, name: true },
     });
   }
 
@@ -473,6 +488,12 @@ export class SuperAdminRepository {
       amount: Prisma.Decimal;
       frequency: string;
       feeType: string;
+      // Set only for the পরীক্ষার ফি structures, linking them to one of the
+      // exams just created by createDefaultExamsOnTx - see
+      // superadmin.service.ts. Every other structure omits both and keeps
+      // the schema defaults (examId null, isActive true).
+      examId?: number | null;
+      isActive?: boolean;
     }[],
     academicYear: string,
     sessionId: number,
@@ -487,6 +508,8 @@ export class SuperAdminRepository {
         feeType: s.feeType as any,
         academicYear,
         sessionId,
+        ...(s.examId !== undefined ? { examId: s.examId } : {}),
+        ...(s.isActive !== undefined ? { isActive: s.isActive } : {}),
       })),
     });
   }

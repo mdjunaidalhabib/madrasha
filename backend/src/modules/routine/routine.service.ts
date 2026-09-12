@@ -11,6 +11,7 @@ import {
 import { MIN_DAY_OF_WEEK, MAX_DAY_OF_WEEK, TIME_FORMAT_REGEX, EXAM_ROUTINE_STATUSES } from "./routine.constants";
 import { timeRangesOverlap } from "../../shared/utils/time-range.util";
 import { autoRegisterForRoutine } from "../exam-candidate/exam-candidate.hooks";
+import { autoActivateExamFeeForRoutine } from "../ExamPanel/exam.hooks";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -213,6 +214,19 @@ export class RoutineService {
       await autoRegisterForRoutine(madrasaId, examId, classId, divisionId, undefined);
     } catch (err) {
       logger.error("createExamRoutine auto exam-candidate registration failed:", err);
+    }
+
+    // Dormant-exam auto-activation (see exam.hooks.ts): a routine being
+    // scheduled means the exam is genuinely upcoming, so its fee (if any)
+    // activates now instead of waiting for a manual step. No-ops once the
+    // exam is already active, so a second/third routine for it never
+    // re-triggers invoices/notifications. Own try/catch, same guarantee as
+    // the registration side effect above - never surfaces as a routine-
+    // creation failure.
+    try {
+      await autoActivateExamFeeForRoutine(madrasaId, examId);
+    } catch (err) {
+      logger.error("createExamRoutine auto fee-activation failed:", err);
     }
   }
 

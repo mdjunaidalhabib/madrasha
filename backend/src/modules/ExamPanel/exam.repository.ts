@@ -10,6 +10,10 @@ export class ExamRepository {
     });
   }
 
+  findExamById(id: number, madrasaId: number) {
+    return prisma.exam.findFirst({ where: { id, madrasaId, deletedAt: null } });
+  }
+
   async createExam(madrasaId: number, name: string, year: string, extra: Record<string, unknown> = {}) {
     const last = await prisma.exam.findFirst({
       where: { madrasaId },

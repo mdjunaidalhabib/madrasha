@@ -16,6 +16,7 @@ import {
 } from "./superadmin.constants";
 import { DEFAULT_ROLE_PERMISSION_KEYS } from "../../shared/permissions/baseline-role-permissions";
 import { isMuhtamimRole } from "../../shared/permissions";
+import { EXAM_FEE_CATEGORY_NAME } from "../fee/fee.constants";
 import {
   CustomDomainConflictError,
   DefaultUserProtectedError,
@@ -253,32 +254,55 @@ export class SuperAdminService {
         );
       }
 
+      const currentYear = String(new Date().getFullYear());
       await this.repository.createDefaultExamsOnTx(
         tx,
         madrasaId,
         defaultExams.map((exam) => exam.name),
-        String(new Date().getFullYear()),
+        currentYear,
       );
       await this.repository.createDefaultGeneralGradesOnTx(tx, madrasaId, defaultGeneralGrades);
       await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
       await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
+      // Which just-created Exam.id every পরীক্ষার ফি structure below should
+      // link to. The catalog has no per-tier exam mapping, so per the
+      // dormant-exam design every exam-fee structure defaults to the
+      // "বার্ষিক" (annual) exam - see DormantExams spec §3.
+      const createdExams = await this.repository.findExamsByNamesOnTx(
+        tx,
+        madrasaId,
+        defaultExams.map((exam) => exam.name),
+      );
+      const examIdByName = new Map(createdExams.map((exam) => [exam.name, exam.id]));
+      const annualExamName = defaultExams.find((exam) => exam.keyName === "annual")?.name;
+      const annualExamId = annualExamName ? examIdByName.get(annualExamName) : undefined;
+
       /* ================= DEFAULT SESSION =================
          Every madrasa needs at least one Session before students can be
          admitted or fee structures attached - seed "the current calendar
          year" and mark it current. */
-      const currentYear = String(new Date().getFullYear());
       const defaultSession = await this.repository.createDefaultSessionOnTx(tx, madrasaId, currentYear);
 
       /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
          Optional, unlike the templates above - an empty set never blocks
          madrasa creation. Only copies class-specific templates for classes
          this madrasa actually activated (classIds); generic ones
-         (classId null) always copy. */
+         (classId null) always copy.
+
+         পরীক্ষার ফি structures are linked to the annual exam and created
+         dormant (isActive: false) - a new student is never billed for an
+         exam that hasn't been scheduled yet. They're activated later, either
+         by an admin (POST /exams/:id/activate-fee) or automatically once
+         that exam's first routine is created (see exam.hooks.ts). */
       const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
-      const relevantFeeStructures = defaultFeeStructures.filter(
-        (s) => s.classId === null || classIds.includes(s.classId),
-      );
+      const relevantFeeStructures = defaultFeeStructures
+        .filter((s) => s.classId === null || classIds.includes(s.classId))
+        .map((s) =>
+          s.feeType === EXAM_FEE_CATEGORY_NAME
+            ? { ...s, examId: annualExamId ?? null, isActive: false }
+            : s,
+        );
       if (relevantFeeStructures.length) {
         await this.repository.createDefaultFeeStructuresOnTx(
           tx,

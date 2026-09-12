@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, Wallet, X } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -25,6 +25,10 @@ type ExamItem = {
   endDate?: string | null;
   status?: ExamStatus | null;
   description?: string | null;
+  /** Whether a পরীক্ষার ফি FeeStructure is linked to this exam - see
+   * backend ExamRepository.findExams. Drives the "এখনই ফি চালু করুন" action
+   * for a dormant (isActive: false) exam. */
+  has_fee_link?: boolean;
 };
 
 interface ExamListProps {
@@ -73,6 +77,7 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
   const [editDescription, setEditDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [statusBusyId, setStatusBusyId] = useState<string | number | null>(null);
+  const [activatingFeeId, setActivatingFeeId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setItems(exams);
@@ -137,6 +142,34 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
     } finally {
       setStatusBusyId(null);
     }
+  };
+
+  const activateFee = (exam: ExamItem) => {
+    useConfirmStore.getState().show({
+      title: "পরীক্ষার ফি চালু করবেন?",
+      message: `"${exam.name}" পরীক্ষাটি সক্রিয় হবে, এর সাথে যুক্ত ফি বিদ্যমান সব ছাত্রের জন্য বিল হবে এবং অভিভাবকদের এসএমএস পাঠানো হবে। চালিয়ে যেতে চান?`,
+      confirmText: "চালু করুন",
+      onConfirm: async () => {
+        try {
+          setActivatingFeeId(exam.id);
+          const res = await examStatusApi.activateFee(exam.id);
+          const data = res.data?.data;
+          useToastStore
+            .getState()
+            .show(
+              `ফি চালু হয়েছে - ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি, ${data?.studentsNotified ?? 0} জন অভিভাবককে জানানো হয়েছে`,
+              "success",
+            );
+          reload();
+        } catch (err: any) {
+          useToastStore
+            .getState()
+            .show(err?.response?.data?.message || "ফি চালু করা যায়নি", "error");
+        } finally {
+          setActivatingFeeId(null);
+        }
+      },
+    });
   };
 
   const deleteExam = (id: string | number, examName: string) => {
@@ -399,10 +432,21 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                         <Badge tone={e.isActive ? "green" : "slate"}>
-                          {e.isActive ? "একটিভ" : "ইনঅ্যাকটিভ"}
+                          {e.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
                         </Badge>
+                        {!e.isActive && e.has_fee_link && (
+                          <button
+                            onClick={() => activateFee(e)}
+                            disabled={activatingFeeId === e.id}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                            title="এই পরীক্ষার ফি এখনই চালু করুন"
+                          >
+                            <Wallet size={14} />
+                            {activatingFeeId === e.id ? "চালু হচ্ছে..." : "এখনই ফি চালু করুন"}
+                          </button>
+                        )}
                         <ToggleSwitch
                           checked={e.isActive}
                           onChange={() => toggleActive(e)}

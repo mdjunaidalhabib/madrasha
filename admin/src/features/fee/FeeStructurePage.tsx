@@ -42,6 +42,11 @@ const FREQUENCY_LABELS: Record<FeeFrequency, string> = {
   YEARLY: "বাৎসরিক",
 };
 
+// Matches backend EXAM_FEE_CATEGORY_NAME (fee.constants.ts) - পরীক্ষার ফি is
+// billed only once explicitly activated (see FeeStructure.examId), so
+// exam_id must be picked for this category instead of staying optional.
+const EXAM_FEE_TYPE_NAME = "পরীক্ষার ফি";
+
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
   return Array.isArray(data) ? data : [];
@@ -221,6 +226,10 @@ const FeeStructurePage = () => {
       useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
       return;
     }
+    if (structureForm.fee_type === EXAM_FEE_TYPE_NAME && !structureForm.exam_id) {
+      useToastStore.getState().show("পরীক্ষার ফি এর জন্য যুক্ত পরীক্ষা নির্বাচন করুন", "error");
+      return;
+    }
     const structureClassId = classId ? Number(classId) : undefined;
     const structureSessionId = Number(structureForm.session_id);
     try {
@@ -290,6 +299,10 @@ const FeeStructurePage = () => {
     if (!editTarget) return;
     if (!editForm.name.trim() || !editForm.amount || !editForm.session_id) {
       useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
+      return;
+    }
+    if (editForm.fee_type === EXAM_FEE_TYPE_NAME && !editForm.exam_id) {
+      useToastStore.getState().show("পরীক্ষার ফি এর জন্য যুক্ত পরীক্ষা নির্বাচন করুন", "error");
       return;
     }
     try {
@@ -409,7 +422,16 @@ const FeeStructurePage = () => {
   }, [structures]);
 
   const isCreateFormValid =
-    structureForm.name.trim() !== "" && structureForm.amount !== "" && structureForm.session_id !== "";
+    structureForm.name.trim() !== "" &&
+    structureForm.amount !== "" &&
+    structureForm.session_id !== "" &&
+    (structureForm.fee_type !== EXAM_FEE_TYPE_NAME || structureForm.exam_id !== "");
+
+  const isEditFormValid =
+    editForm.name.trim() !== "" &&
+    editForm.amount !== "" &&
+    editForm.session_id !== "" &&
+    (editForm.fee_type !== EXAM_FEE_TYPE_NAME || editForm.exam_id !== "");
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
@@ -550,6 +572,9 @@ const FeeStructurePage = () => {
             <div className="w-full sm:w-[180px]">
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 যুক্ত পরীক্ষা
+                {structureForm.fee_type === EXAM_FEE_TYPE_NAME && (
+                  <span className="text-rose-500"> *</span>
+                )}
               </label>
               <select
                 value={structureForm.exam_id}
@@ -809,6 +834,7 @@ const FeeStructurePage = () => {
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
               যুক্ত পরীক্ষা
+              {editForm.fee_type === EXAM_FEE_TYPE_NAME && <span className="text-rose-500"> *</span>}
             </label>
             <select
               value={editForm.exam_id}
@@ -856,9 +882,9 @@ const FeeStructurePage = () => {
           </button>
           <button
             type="button"
-            disabled={editSaving}
+            disabled={editSaving || !isEditFormValid}
             onClick={handleUpdateStructure}
-            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
           </button>

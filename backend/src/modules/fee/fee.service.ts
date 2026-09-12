@@ -603,6 +603,76 @@ export class FeeService {
     return { totalStudents: students.length, studentsProcessed, invoicesCreated, failed };
   }
 
+  /* ================= EXAM-LINKED FEE ACTIVATION (see ExamService.activateExamFee) ================= */
+
+  /** Step 2 of activating an exam's fee - flips every FeeStructure linked to
+   * this exam active. Returns how many structures were touched. */
+  async activateExamLinkedFee(madrasaId: number, examId: number) {
+    const result = await this.repository.activateStructuresByExam(madrasaId, examId);
+    return result.count;
+  }
+
+  /** Step 3 of activating an exam's fee - bills every currently-enrolled
+   * student covered by this exam's FeeStructure row(s), reusing
+   * backfillInvoicesForAllStudents (already idempotent - a re-run, e.g. from
+   * a second routine on the same exam, never double-bills) once per distinct
+   * class+session the structures cover. A null classId on a structure means
+   * "every class", so that scope is run without a classId filter. */
+  async backfillInvoicesForExam(madrasaId: number, examId: number) {
+    const structures = await this.repository.findStructuresByExam(madrasaId, examId);
+
+    const scopes = new Map<string, { classId?: number; sessionId: number }>();
+    for (const s of structures) {
+      const key = `${s.classId ?? "all"}:${s.sessionId}`;
+      if (!scopes.has(key)) scopes.set(key, { classId: s.classId ?? undefined, sessionId: s.sessionId });
+    }
+
+    let invoicesCreated = 0;
+    let studentsProcessed = 0;
+    for (const scope of scopes.values()) {
+      const result = await this.backfillInvoicesForAllStudents(madrasaId, scope.classId, scope.sessionId);
+      invoicesCreated += result.invoicesCreated;
+      studentsProcessed += result.studentsProcessed;
+    }
+    return { invoicesCreated, studentsProcessed };
+  }
+
+  /** Step 4 of activating an exam's fee - fire-and-forget SMS to every
+   * guardian in the classes/sessions this exam's fee now covers
+   * (triggerEvent itself never throws, so a bad phone/template can't stop
+   * the rest of the loop). Returns how many guardians were targeted. */
+  async notifyGuardiansOfExamFee(madrasaId: number, examId: number, examName: string) {
+    const structures = await this.repository.findStructuresByExam(madrasaId, examId);
+    if (!structures.length) return 0;
+
+    const amount = Number(structures[0].amount);
+    const classIds = structures.map((s) => s.classId).filter((id): id is number => id != null);
+    // classIds.length < structures.length means at least one structure has
+    // classId: null ("every class"), so the class filter must be dropped
+    // entirely rather than narrowed to just the classes that do have one.
+    const coversEveryClass = classIds.length < structures.length;
+    const sessionIds = [...new Set(structures.map((s) => s.sessionId))];
+
+    let notified = 0;
+    for (const sessionId of sessionIds) {
+      const students = await this.repository.findGuardianContactsForClasses(
+        madrasaId,
+        sessionId,
+        coversEveryClass ? undefined : classIds,
+      );
+      for (const student of students) {
+        if (!student.guardianPhone) continue;
+        await notificationService.triggerEvent(madrasaId, "EXAM_FEE_ACTIVATED", student.guardianPhone, {
+          name: student.nameBn,
+          exam: examName,
+          amount,
+        });
+        notified += 1;
+      }
+    }
+    return notified;
+  }
+
   /** The other half of "pure Option A": runs once a day (see
    * startCurrentMonthInvoiceScheduler in core/bootstrap.ts) and bills every
    * currently-enrolled student, across every tenant, for whichever MONTHLY
