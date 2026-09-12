@@ -1080,7 +1080,7 @@ export class FeeService {
           action: "CREATE",
           entity: "invoices/pay",
           entity_id: invoiceId,
-          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) এর জন্য ${paymentAmount} টাকা পরিশোধ করা হয়েছে, পদ্ধতি: ${methodLabel || dto.method}`,
+          details: `নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) এর জন্য ${paymentAmount} টাকা পরিশোধ করা হয়েছে, পদ্ধতি: ${methodLabel || dto.method}`,
         });
       }
 
@@ -1193,7 +1193,7 @@ export class FeeService {
           action: "CREATE",
           entity: "invoices/waive",
           entity_id: invoiceId,
-          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) থেকে ${waiveAmount} টাকা মওকুফ করা হয়েছে (মোট মওকুফ: ${result.waivedAmount} টাকা), কারণ: ${dto.reason.trim()}`,
+          details: `নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) থেকে ${waiveAmount} টাকা মওকুফ করা হয়েছে (মোট মওকুফ: ${result.waivedAmount} টাকা), কারণ: ${dto.reason.trim()}`,
         });
       }
     } catch (err) {

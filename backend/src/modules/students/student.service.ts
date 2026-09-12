@@ -330,7 +330,7 @@ export class StudentService {
           action: "CREATE",
           entity: "students/admission",
           entity_id: result.studentId,
-          details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${(student as any).classRef?.nameBn || "অজানা"} — ${actionText} (অবস্থা: পেন্ডিং, মুহতামিমের অনুমোদনের অপেক্ষায়)`,
+          details: `নাম: ${student.nameBn}, শ্রেণি: ${(student as any).classRef?.nameBn || "অজানা"} — ${actionText} (অবস্থা: পেন্ডিং, মুহতামিমের অনুমোদনের অপেক্ষায়)`,
         });
       }
     } catch (err) {
@@ -1065,7 +1065,7 @@ export class StudentService {
       throw new BadRequestError("This admission is already approved");
     }
 
-    const assignedRoll = await this.repository.runTransaction(async (tx) => {
+    const { roll: assignedRoll, registrationNo: assignedRegistrationNo } = await this.repository.runTransaction(async (tx) => {
       // Re-check inside the lock in case another request approved/changed
       // this record between the read above and now.
       await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
@@ -1102,7 +1102,7 @@ export class StudentService {
       });
       if (!result.count) throw new StudentNotFoundError();
 
-      return roll;
+      return { roll, registrationNo };
     });
 
     await guardianService.ensureGuardianForStudent(
@@ -1146,7 +1146,7 @@ export class StudentService {
         action: "UPDATE",
         entity: "students/approve",
         entity_id: id,
-        details: `ছাত্র আইডি: ${id}, নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তি অনুমোদন করা হয়েছে (রোল: ${assignedRoll})`,
+        details: `নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তি অনুমোদন করা হয়েছে (রোল: ${assignedRoll}, রেজিস্ট্রেশন নম্বর: ${assignedRegistrationNo})`,
       });
     } catch (err) {
       logger.error("Activity log for admission approval failed:", err);
@@ -1189,7 +1189,7 @@ export class StudentService {
         action: "UPDATE",
         entity: "students/reject",
         entity_id: id,
-        details: `ছাত্র আইডি: ${id}, নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তির আবেদন বাতিল করা হয়েছে, কারণ: ${reason.trim()}`,
+        details: `নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তির আবেদন বাতিল করা হয়েছে, কারণ: ${reason.trim()}`,
       });
     } catch (err) {
       logger.error("Activity log for admission rejection failed:", err);

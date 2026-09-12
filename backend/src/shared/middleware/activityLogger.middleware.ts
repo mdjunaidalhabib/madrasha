@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { logActivity } from "../utils/activity.util";
 import { logger } from "../logger/logger";
+import { prisma } from "../database/prisma";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -71,7 +72,7 @@ function deriveEntity(originalUrl: string): { entity: string; entityId: number |
 const DETAIL_FIELD_CANDIDATES = ["name_bn", "name", "title", "designation"];
 const MAX_DETAIL_LENGTH = 190;
 
-function deriveDetails(body: unknown, entityId: number | null): string | null {
+function deriveBodyDetails(body: unknown): string | null {
   if (body && typeof body === "object" && !Array.isArray(body)) {
     const record = body as Record<string, unknown>;
     for (const key of DETAIL_FIELD_CANDIDATES) {
@@ -82,6 +83,42 @@ function deriveDetails(body: unknown, entityId: number | null): string | null {
       }
     }
   }
+  return null;
+}
+
+// The raw DB primary key means nothing to madrasa staff reading the log -
+// for a student row it's the roll/registration number they actually
+// recognize, so this looks those up instead of falling back to a bare
+// "আইডি: <id>" line for any student sub-route without a name-bearing body
+// (expel, transfer-session, delete, etc - see student.routes.ts).
+async function deriveStudentDetails(entityId: number, madrasaId: number): Promise<string | null> {
+  try {
+    const student = await prisma.student.findFirst({
+      where: { id: entityId, madrasaId },
+      select: { nameBn: true, roll: true, registrationNo: true },
+    });
+    if (!student) return null;
+    return `নাম: ${student.nameBn}, রোল: ${student.roll ?? "—"}, রেজিস্ট্রেশন নম্বর: ${student.registrationNo ?? "—"}`;
+  } catch (error) {
+    logger.error("Activity log student detail lookup failed", error);
+    return null;
+  }
+}
+
+async function deriveDetails(
+  body: unknown,
+  entity: string,
+  entityId: number | null,
+  madrasaId: number,
+): Promise<string | null> {
+  const bodyDetails = deriveBodyDetails(body);
+  if (bodyDetails) return bodyDetails;
+
+  if (entityId !== null && entity.split("/")[0] === "students") {
+    const studentDetails = await deriveStudentDetails(entityId, madrasaId);
+    if (studentDetails) return studentDetails;
+  }
+
   return entityId !== null ? `আইডি: ${entityId}` : null;
 }
 
@@ -105,14 +142,18 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
     const { entity, entityId } = deriveEntity(req.originalUrl);
     if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return;
 
-    logActivity({
-      madrasa_id: madrasaId,
-      user_id: userId,
-      action: ACTION_BY_METHOD[req.method] ?? req.method,
-      entity,
-      entity_id: entityId,
-      details: deriveDetails(req.body, entityId),
-    }).catch((error) => logger.error("Auto activity log failed", error));
+    deriveDetails(req.body, entity, entityId, madrasaId)
+      .then((details) =>
+        logActivity({
+          madrasa_id: madrasaId,
+          user_id: userId,
+          action: ACTION_BY_METHOD[req.method] ?? req.method,
+          entity,
+          entity_id: entityId,
+          details,
+        }),
+      )
+      .catch((error) => logger.error("Auto activity log failed", error));
   });
 
   next();

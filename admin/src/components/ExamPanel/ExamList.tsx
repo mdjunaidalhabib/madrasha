@@ -447,6 +447,14 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
                             {activatingFeeId === e.id ? "চালু হচ্ছে..." : "এখনই ফি চালু করুন"}
                           </button>
                         )}
+                        {!e.isActive && !e.has_fee_link && (
+                          <span
+                            className="text-xs text-slate-400 dark:text-slate-500"
+                            title="এই পরীক্ষার সাথে এখনো কোনো ফি স্ট্রাকচার যুক্ত নেই - ফি সেটআপ থেকে যুক্ত করুন"
+                          >
+                            ফি যুক্ত নেই
+                          </span>
+                        )}
                         <ToggleSwitch
                           checked={e.isActive}
                           onChange={() => toggleActive(e)}
