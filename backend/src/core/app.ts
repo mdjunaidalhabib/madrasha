@@ -31,6 +31,12 @@ app.use(
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: config.cors.credentials,
+    // Without this, browsers silently withhold Retry-After (and the
+    // RateLimit-* headers express-rate-limit sets) from cross-origin
+    // JS — it's not in the default CORS-safelisted response headers — so
+    // the frontend's 429 handler could never read a wait time even though
+    // the server was sending one correctly.
+    exposedHeaders: ["Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "RateLimit-Policy"],
   }),
 );
 app.use(express.json({ limit: config.upload.jsonBodyLimit })); // raised to allow branding logo/banner/watermark base64 uploads
@@ -50,6 +56,19 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 
+// GLOBAL rate limiter - an outer abuse/DDoS backstop covering every
+// /api/* route, not a functional per-endpoint limit. It's keyed per
+// signed-in user/tenant rather than raw IP (see rate-limit.config.ts's
+// keyGenerator), so it no longer punishes an entire office's NAT'd IP for
+// one busy tenant's normal traffic - a real credential-stuffing/scraping
+// burst from one actor still eventually trips it.
+// Sensitive pre-auth endpoints (login, forgot/reset-password, refresh) each
+// have their OWN much tighter, purpose-built limiter declared right on
+// their route in auth.routes.ts / guardian.routes.ts - those are the actual
+// brute-force protection and are unaffected by this one. Do not re-tighten
+// this global limiter to compensate for something that belongs on a
+// route-level limiter instead - that's what caused the cascading-lockout
+// bug this comment is here to prevent from coming back.
 app.use(rateLimit(config.rateLimit));
 
 app.get("/health", (_req, res) => {

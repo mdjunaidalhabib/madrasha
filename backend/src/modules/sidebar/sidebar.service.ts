@@ -34,12 +34,18 @@ export class SidebarService {
   }
 
   async getSidebarTree(madrasaId: number, roleId?: number): Promise<SidebarModuleItem[]> {
-    const [roleKey, permissionKeys] = await Promise.all([
+    // None of these four depend on each other's results, so they're resolved
+    // as one round trip instead of three sequential ones (role/perm, then
+    // madrasaModules, then admissionFeeTypes one after another) - each extra
+    // round trip to the DB directly added to how long the sidebar took to
+    // appear after login.
+    const [roleKey, permissionKeys, madrasaModules, admissionFeeTypes] = await Promise.all([
       this.resolveRoleKey(roleId),
       this.resolvePermissionKeys(roleId),
+      this.repository.findActiveMadrasaModules(madrasaId),
+      feeService.getAdmissionCategoryNames(madrasaId),
     ]);
 
-    const madrasaModules = await this.repository.findActiveMadrasaModules(madrasaId);
     // The old standalone `admission` module duplicated the "নতুন ভর্তি"
     // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.
     // Filter it here so existing databases stop showing it immediately, even
@@ -140,10 +146,6 @@ export class SidebarService {
     }
 
     const moduleIds = modules.map((m) => m.id);
-    // Resolved up front (not inside the Promise.all below) since
-    // countPendingFeeStudents needs it as an argument, not just another
-    // independent promise to await alongside the rest.
-    const admissionFeeTypes = await feeService.getAdmissionCategoryNames(madrasaId);
     const [features, pendingAdmissionsCount, pendingFeeStudentsCount, overdueFeeStudentsCount] =
       await Promise.all([
         this.repository.findFeaturesByModuleIds(moduleIds),

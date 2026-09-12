@@ -81,9 +81,26 @@ adminApi.interceptors.response.use(
     return res;
   },
   (err) => {
-    if (err?.response?.status === 401) {
+    const status = err?.response?.status;
+
+    if (status === 401) {
       clearGetCache();
       useAdminAuthStore.getState().logout();
+    }
+
+    // 429 = rate-limited (see backend/src/core/app.ts's global limiter).
+    // express-rate-limit always sets Retry-After (seconds) when
+    // standardHeaders is on - surface that instead of a generic message,
+    // and never auto-retry a 429.
+    if (status === 429) {
+      const retrySeconds = Number(err?.response?.headers?.["retry-after"]);
+      const baseMsg = err?.response?.data?.message || "Too many requests.";
+      const msg =
+        Number.isFinite(retrySeconds) && retrySeconds > 0
+          ? `${baseMsg} Please try again in ${retrySeconds}s.`
+          : baseMsg;
+      useToastStore.getState().push("error", msg);
+      return Promise.reject(err);
     }
 
     const msg = err?.response?.data?.message || err?.message || "Something went wrong";

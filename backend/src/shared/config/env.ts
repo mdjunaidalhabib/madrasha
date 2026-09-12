@@ -62,7 +62,17 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
-  rateLimitMax: Number(process.env.RATE_LIMIT_MAX || 300),
+  // This is the GLOBAL limiter's ceiling (see app.ts) - an abuse backstop
+  // covering every /api/* route, not a per-endpoint budget. It's now keyed
+  // per signed-in user/tenant rather than raw IP (see rate-limit.config.ts),
+  // so 1500 is per actor, not shared across an entire office's NAT'd IP - a
+  // normal dashboard session (sidebar + widgets + polling, possibly several
+  // staff at once) comfortably fits within this in a 15-minute window.
+  // Previously 300, which one moderately active session could exhaust on
+  // its own well before the window reset. Sensitive pre-auth endpoints
+  // (login, password reset, refresh) have their own much tighter,
+  // purpose-built limiters in their route files that are unaffected by this.
+  rateLimitMax: Number(process.env.RATE_LIMIT_MAX || 1500),
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || "15mb",
   // ~3MB base64 safety limit per inline image (branding logo/banner/watermark, student photo, ...)
   maxInlineImageLength: Number(process.env.MAX_INLINE_IMAGE_LENGTH || 3_000_000),

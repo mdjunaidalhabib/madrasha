@@ -19,6 +19,7 @@ import {
   X,
   Youtube,
 } from "lucide-react";
+import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { getPublicWebsite } from "../../services/publicWebsiteApi";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
@@ -226,8 +227,31 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3 text-slate-500">
+      <div className="min-h-screen bg-white text-slate-900">
+        {/* Navbar skeleton — mirrors the real header layout so it never renders blank */}
+        <header className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+              <div className="min-w-0 space-y-1.5">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 lg:flex">
+              <Skeleton className="h-9 w-28 rounded-xl" />
+              <Skeleton className="h-9 w-28 rounded-xl" />
+            </div>
+            <Skeleton className="h-9 w-9 shrink-0 rounded-lg lg:hidden" />
+          </div>
+          <div className="hidden items-center justify-center gap-6 border-t border-slate-100 px-4 py-3 lg:flex">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-3.5 w-16" />
+            ))}
+          </div>
+        </header>
+
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 pt-24 text-slate-500">
           <Loader2 size={32} className="animate-spin text-blue-600" />
           <p className="text-sm font-medium">Website লোড হচ্ছে...</p>
         </div>

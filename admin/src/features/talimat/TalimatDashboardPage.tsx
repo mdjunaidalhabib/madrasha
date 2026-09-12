@@ -176,26 +176,26 @@ export default function TalimatDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <PremiumStatSkeleton key={i} />)
-        ) : (
-          <>
-            <PremiumStat
-              label="সর্বশেষ পরীক্ষা"
-              value={data.latestExam ? data.latestExam.name : "নেই"}
-              subLabel={data.latestExam ? `শিক্ষাবর্ষ ${bn(data.latestExam.year)}` : undefined}
-              tone="indigo"
-              icon={<GraduationCap size={20} />}
-            />
-            <PremiumStat label="গড় নম্বর" value={bn(data.averageMarks)} subLabel={`${bn(data.studentsGraded)} জন মূল্যায়িত`} tone="amber" icon={<Award size={20} />} />
-            <PremiumStat label="পাস" value={bn(data.statusBreakdown.pass)} tone="emerald" icon={<CheckCircle2 size={20} />} />
-            <PremiumStat label="ফেল" value={bn(data.statusBreakdown.fail)} tone="rose" icon={<XCircle size={20} />} />
-          </>
-        )}
-      </div>
+      <div className="grid gap-4 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:col-span-4 xl:grid-cols-4">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => <PremiumStatSkeleton key={i} />)
+          ) : (
+            <>
+              <PremiumStat
+                label="সর্বশেষ পরীক্ষা"
+                value={data.latestExam ? data.latestExam.name : "নেই"}
+                subLabel={data.latestExam ? `শিক্ষাবর্ষ ${bn(data.latestExam.year)}` : undefined}
+                tone="indigo"
+                icon={<GraduationCap size={20} />}
+              />
+              <PremiumStat label="গড় নম্বর" value={bn(data.averageMarks)} subLabel={`${bn(data.studentsGraded)} জন মূল্যায়িত`} tone="amber" icon={<Award size={20} />} />
+              <PremiumStat label="পাস" value={bn(data.statusBreakdown.pass)} tone="emerald" icon={<CheckCircle2 size={20} />} />
+              <PremiumStat label="ফেল" value={bn(data.statusBreakdown.fail)} tone="rose" icon={<XCircle size={20} />} />
+            </>
+          )}
+        </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
         <Card className="flex flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             দ্রুত অ্যাকশন
@@ -225,29 +225,29 @@ export default function TalimatDashboardPage() {
             <BookOpen size={16} /> সেটিং
           </Link>
         </Card>
-
-        <Card className="sm:col-span-2">
-          <CardHeader title="পরীক্ষা ও প্রকাশনার অবস্থা" />
-          <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
-            <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{loading ? "-" : bn(data.totalExams)}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">মোট পরীক্ষা</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{loading ? "-" : bn(data.activeExamsCount)}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">সক্রিয় পরীক্ষা</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{loading ? "-" : bn(data.published)}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">প্রকাশিত</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{loading ? "-" : bn(data.draft)}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">খসড়া</p>
-            </div>
-          </div>
-        </Card>
       </div>
+
+      <Card>
+        <CardHeader title="পরীক্ষা ও প্রকাশনার অবস্থা" />
+        <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+          <div>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{loading ? "-" : bn(data.totalExams)}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">মোট পরীক্ষা</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{loading ? "-" : bn(data.activeExamsCount)}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">সক্রিয় পরীক্ষা</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{loading ? "-" : bn(data.published)}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">প্রকাশিত</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{loading ? "-" : bn(data.draft)}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">খসড়া</p>
+          </div>
+        </div>
+      </Card>
 
       <Card padding="none" className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">

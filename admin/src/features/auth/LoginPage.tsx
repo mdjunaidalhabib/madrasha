@@ -1,14 +1,23 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import api from "../../services/api";
+import api, { TENANT_BLOCK_STORAGE_KEY } from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useForceLightTheme } from "@madrasha/shared-ui/src/hooks/useForceLightTheme";
+import TenantBlockedScreen, {
+  type TenantBlockInfo,
+} from "@madrasha/shared-ui/src/components/ui/TenantBlockedScreen";
 import { getSavedAccounts, upsertSavedAccount, type SavedAccount } from "../../services/savedAccounts";
 import SavedAccountsList, { AccountAvatar } from "./SavedAccountsList";
+
+function readTenantBlockFromResponse(err: any): TenantBlockInfo | null {
+  const status = err?.response?.status;
+  if (status !== 410 && status !== 423) return null;
+  return { status, message: err?.response?.data?.message };
+}
 
 export default function LoginPage() {
   useForceLightTheme();
@@ -29,6 +38,14 @@ export default function LoginPage() {
   // Only start showing red borders on empty fields after a submit attempt -
   // not immediately on page load before the user has typed anything.
   const [attempted, setAttempted] = useState(false);
+  // Set either when a login attempt itself fails with 410/423 (madrasa
+  // suspended/deleted), or on mount when api.ts's response interceptor
+  // redirected here after that happened mid-session (see
+  // TENANT_BLOCK_STORAGE_KEY). While set, the login form is replaced
+  // entirely by TenantBlockedScreen - retrying login against a
+  // suspended/deleted tenant can't succeed, so there's no reason to leave
+  // the inputs usable.
+  const [tenantBlock, setTenantBlock] = useState<TenantBlockInfo | null>(null);
 
   const setAuth = useAuthStore((s) => s.setAuth);
   const toast = useToastStore();
@@ -36,6 +53,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     setSavedAccounts(getSavedAccounts());
+
+    try {
+      const stashed = window.sessionStorage.getItem(TENANT_BLOCK_STORAGE_KEY);
+      if (stashed) {
+        window.sessionStorage.removeItem(TENANT_BLOCK_STORAGE_KEY);
+        setTenantBlock(JSON.parse(stashed));
+      }
+    } catch {
+      // ignore storage/parse errors (e.g. private browsing mode)
+    }
   }, []);
 
   const hasSavedAccounts = savedAccounts.length > 0;
@@ -83,11 +110,13 @@ export default function LoginPage() {
     try {
       const trimmedCode = madrasaCode.trim();
       await doLogin(trimmedCode.toLowerCase(), email.trim(), password, trimmedCode);
-    } catch {
-      // No local toast here — the global api.ts response interceptor
-      // already shows the exact error from the server (e.g. wrong
-      // password, "madrasa suspended", "madrasa deleted"). Showing it
-      // again here was producing two identical toasts per failed login.
+    } catch (err) {
+      const block = readTenantBlockFromResponse(err);
+      if (block) setTenantBlock(block);
+      // Otherwise no local toast here — the global api.ts response
+      // interceptor already shows the exact error from the server (e.g.
+      // wrong password). Showing it again here was producing two identical
+      // toasts per failed login.
     } finally {
       setLoading(false);
     }
@@ -108,7 +137,9 @@ export default function LoginPage() {
         password,
         activeAccount.madrasaCode,
       );
-    } catch {
+    } catch (err) {
+      const block = readTenantBlockFromResponse(err);
+      if (block) setTenantBlock(block);
       // see handleManualLogin
     } finally {
       setLoading(false);
@@ -122,26 +153,37 @@ export default function LoginPage() {
     setEmail("");
     setPassword("");
     setAttempted(false);
+    setTenantBlock(null);
   };
 
   const pickAccount = (account: SavedAccount) => {
     setActiveAccount(account);
     setPassword("");
     setAttempted(false);
+    setTenantBlock(null);
   };
 
   const backToList = () => {
     setActiveAccount(null);
     setShowManualForm(false);
     setPassword("");
+    setTenantBlock(null);
   };
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-sm rounded bg-white p-6 shadow space-y-4">
-        <h2 className="text-xl font-bold">Madrasa Admin Login</h2>
+        {!tenantBlock && <h2 className="text-xl font-bold">Madrasa Admin Login</h2>}
 
-        {showingList && (
+        {tenantBlock && (
+          <TenantBlockedScreen
+            status={tenantBlock.status}
+            message={tenantBlock.message}
+            onBack={openManualForm}
+          />
+        )}
+
+        {!tenantBlock && showingList && (
           <div className="space-y-3">
             <p className="text-sm text-gray-500">এই ডিভাইসে সংরক্ষিত অ্যাকাউন্ট থেকে বেছে নিন</p>
 
@@ -161,7 +203,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {!showingList && activeAccount && (
+        {!tenantBlock && !showingList && activeAccount && (
           <form onSubmit={handleQuickLogin} className="space-y-4">
             <button
               type="button"
@@ -219,7 +261,7 @@ export default function LoginPage() {
           </form>
         )}
 
-        {!showingList && !activeAccount && (
+        {!tenantBlock && !showingList && !activeAccount && (
           <form onSubmit={handleManualLogin} className="space-y-4">
             {hasSavedAccounts && (
               <button

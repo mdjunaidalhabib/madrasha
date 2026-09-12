@@ -122,6 +122,10 @@ function settleRefreshWaiters(token: string | null) {
 
 const AUTH_ENDPOINTS_WITHOUT_REFRESH = ["/auth/login", "/auth/refresh", "/auth/logout"];
 
+// sessionStorage key LoginPage reads on mount to show TenantBlockedScreen
+// after a mid-session 410/423 redirect (see the response interceptor below).
+export const TENANT_BLOCK_STORAGE_KEY = "qms:tenant-block";
+
 api.interceptors.response.use(
   (res) => {
     const method = String(res.config.method || "get").toLowerCase();
@@ -210,13 +214,54 @@ api.interceptors.response.use(
         }
       }
 
+      // A 410/423 hit mid-session (the madrasa was suspended/deleted from
+      // the super-admin panel while this tab was open) needs more than a
+      // silent logout - the user was in the middle of using the dashboard
+      // and would otherwise just land back on a bare login form with no
+      // explanation. Stash the server's message in sessionStorage (it has
+      // to survive the full-page reload below) so LoginPage can read it on
+      // mount and show TenantBlockedScreen instead of the normal form. A
+      // 401 (plain expired/bad token) gets no such treatment - that's a
+      // routine "please log in again", not an account-level block.
+      if (wasLoggedIn && (status === 410 || status === 423) && typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(
+            TENANT_BLOCK_STORAGE_KEY,
+            JSON.stringify({ status, message: err?.response?.data?.message }),
+          );
+        } catch {
+          // ignore storage errors (e.g. private browsing mode)
+        }
+      }
+
       if (wasLoggedIn && typeof window !== "undefined") {
         window.location.href = "/login";
       }
 
       // The redirect above (or the already-logged-out state) is all the
       // feedback this needs - a generic "Something went wrong" toast on top
-      // just reads as a scary error immediately after a normal logout.
+      // just reads as a scary error immediately after a normal logout. A
+      // 410/423 hit while NOT logged in (i.e. a login attempt itself failed)
+      // falls through here too - LoginPage's own catch block reads
+      // err.response directly to show TenantBlockedScreen inline, so no
+      // toast is needed for that case either.
+      return Promise.reject(err);
+    }
+
+    // 429 = rate-limited (see backend/src/core/app.ts's global limiter, or
+    // one of the route-level ones on login/refresh/etc). express-rate-limit
+    // always sets Retry-After (seconds) when standardHeaders is on, so surface
+    // that instead of letting this fall through to the generic "Something
+    // went wrong" toast below - and never auto-retry a 429, immediately or
+    // otherwise, since the server just told us to back off.
+    if (status === 429) {
+      const retrySeconds = Number(err?.response?.headers?.["retry-after"]);
+      const baseMsg = err?.response?.data?.message || "অনেক বেশি অনুরোধ হয়েছে।";
+      const msg =
+        Number.isFinite(retrySeconds) && retrySeconds > 0
+          ? `${baseMsg} অনুগ্রহ করে ${retrySeconds} সেকেন্ড পর আবার চেষ্টা করুন।`
+          : baseMsg;
+      useToastStore.getState().push("error", msg);
       return Promise.reject(err);
     }
 

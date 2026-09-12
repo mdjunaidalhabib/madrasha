@@ -6,6 +6,7 @@ import { useAuthStore } from "../../store/authStore";
 import { logoutSession } from "../../services/profileApi";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
+import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
 
 import {
@@ -68,6 +69,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   // এই ইউজারের রোলে যে মডিউল/আইটেমের অনুমতি নেই, সেগুলো ধূসর করে দেখানোর
   // বদলে সম্পূর্ণ বাদ দেওয়া হয় - অনুমতি না থাকা জিনিস মেনুতেই দেখাবে না।
   const sidebarItems = useSidebarStore((s) => s.items);
+  const sidebarLoaded = useSidebarStore((s) => s.loaded);
   // `.filter()` on every render would create a new array reference even when
   // `sidebarItems` itself hasn't changed, which would retrigger the
   // active-module sync effect below on every unrelated re-render (toast,
@@ -204,6 +206,21 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
         </div>
       </div>
   );
+
+  if (!sidebarLoaded) {
+    return (
+      <AdminSidebarShell collapsed={collapsed} header={header}>
+        <div className="space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-2">
+              <Skeleton className="h-[18px] w-[18px] shrink-0 rounded-md" />
+              {!collapsed && <Skeleton className="h-4 flex-1" />}
+            </div>
+          ))}
+        </div>
+      </AdminSidebarShell>
+    );
+  }
 
   return (
     <AdminSidebarShell collapsed={collapsed} header={header}>

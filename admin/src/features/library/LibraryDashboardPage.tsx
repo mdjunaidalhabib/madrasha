@@ -74,23 +74,24 @@ const PremiumStat = ({
   const t = STAT_TONES[tone];
   const content = (
     <div
-      className={`group relative overflow-hidden rounded-2xl border ${t.border} bg-gradient-to-br ${t.bg} via-white to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${t.glow} dark:via-slate-900 dark:to-slate-900`}
+      className={`group relative h-full overflow-hidden rounded-2xl border ${t.border} bg-gradient-to-br ${t.bg} via-white to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${t.glow} dark:via-slate-900 dark:to-slate-900`}
     >
       <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full ${t.blob} blur-2xl transition-transform duration-300 group-hover:scale-110`} />
       <span className={`relative inline-flex rounded-2xl bg-gradient-to-br ${t.icon} p-3 text-white shadow-lg`}>{icon}</span>
       <p className="relative mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
       <p className="relative mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>
-      {subLabel && <p className="relative mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{subLabel}</p>}
+      <p className="relative mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{subLabel || " "}</p>
     </div>
   );
   return to ? <Link to={to}>{content}</Link> : content;
 };
 
 const PremiumStatSkeleton = () => (
-  <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+  <div className="h-full rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
     <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-700/70" />
     <div className="mt-4 h-4 w-20 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
     <div className="mt-2 h-7 w-28 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
+    <div className="mt-2 h-3 w-16 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
   </div>
 );
 
@@ -173,7 +174,7 @@ export default function LibraryDashboardPage() {
           )}
         </div>
 
-        <Card className="flex flex-col justify-center gap-2">
+        <Card className="flex h-full flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             দ্রুত অ্যাকশন
           </p>

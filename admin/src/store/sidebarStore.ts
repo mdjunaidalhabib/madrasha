@@ -17,10 +17,12 @@ export type SidebarItem = {
 
 type SidebarState = {
   items: SidebarItem[];
+  loaded: boolean;
   setItems: (items: SidebarItem[]) => void;
 };
 
 export const useSidebarStore = create<SidebarState>((set) => ({
   items: [],
-  setItems: (items) => set({ items }),
+  loaded: false,
+  setItems: (items) => set({ items, loaded: true }),
 }));

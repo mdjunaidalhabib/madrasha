@@ -39,6 +39,7 @@ export default function DashboardLayout() {
         setItems(data);
       } catch (err) {
         logger.error("Sidebar load failed:", err);
+        setItems([]);
       }
     };
 
