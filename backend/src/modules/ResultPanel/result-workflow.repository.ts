@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+import { resultPanelRepository } from "./result-panel.repository";
 
 /**
  * Data access for the subject-level submission/verification queue and the
@@ -71,22 +72,23 @@ export class ResultWorkflowRepository {
     });
   }
 
-  /** Active-class students who don't yet have ANY Mark row for one specific
-   * book (present/absent/exempted/withheld all count as "entered" — only a
-   * missing row is incomplete). Mirrors
+  /** Required-roster students (see result-panel.repository.ts's
+   * findRequiredStudentsInClass - the ExamCandidate roster for this
+   * exam+class, fail-open to "every active student in class" for exams
+   * predating candidate registration) who don't yet have ANY Mark row for
+   * one specific book (present/absent/exempted/withheld all count as
+   * "entered" — only a missing row is incomplete). Mirrors
    * ResultPanelService.getMarkCompleteness but scoped to a single bookId
    * instead of every active subject, for the per-book submit gate. */
   async findStudentsMissingMarkForBook(
     madrasaId: number,
+    examId: number,
     classId: number,
     resultMasterId: number,
     bookId: number,
   ) {
     const [students, entered] = await Promise.all([
-      prisma.student.findMany({
-        where: { madrasaId, classId, deletedAt: null, isActive: 1 },
-        select: { id: true, nameBn: true, roll: true },
-      }),
+      resultPanelRepository.findRequiredStudentsInClass(madrasaId, examId, classId),
       prisma.mark.findMany({
         where: { resultMasterId, bookId },
         select: { studentId: true },
@@ -97,8 +99,24 @@ export class ResultWorkflowRepository {
     return students.filter((s) => !enteredIds.has(s.id));
   }
 
-  updateResultMasterStatus(resultMasterId: number, data: Prisma.ResultMasterUpdateInput) {
-    return prisma.resultMaster.update({ where: { id: resultMasterId }, data });
+  /** DB-guarded status transition: only applies `data` when the row's
+   * CURRENT status is still one of `expectedStatuses` at write time (not
+   * just when the caller last read it) - closes the read-then-write race
+   * where two concurrent requests (e.g. a double-clicked "approve"/"lock")
+   * could otherwise both pass the earlier JS-level status check and both
+   * write. Returns false (no throw) when the guard didn't match, so the
+   * caller can raise its own domain-specific ConflictError message. */
+  async updateResultMasterStatus(
+    resultMasterId: number,
+    madrasaId: number,
+    expectedStatuses: string[],
+    data: Prisma.ResultMasterUpdateInput,
+  ): Promise<boolean> {
+    const result = await prisma.resultMaster.updateMany({
+      where: { id: resultMasterId, madrasaId, status: { in: expectedStatuses as any } },
+      data,
+    });
+    return result.count > 0;
   }
 
   findResultSummaryRows(resultMasterId: number) {
@@ -123,7 +141,7 @@ export class ResultWorkflowRepository {
   findExamCandidatesReadOnly(madrasaId: number, examId: number) {
     return prisma.examCandidate.findMany({
       where: { madrasaId, examId },
-      select: { studentId: true, status: true },
+      select: { studentId: true, status: true, eligibilityStatus: true },
     });
   }
 }

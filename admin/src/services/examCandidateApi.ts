@@ -161,6 +161,7 @@ export interface EligibilitySettings {
   requireActiveStudent: boolean;
   requireApprovedAdmission: boolean;
   checkDues: boolean;
+  scopeDuesToExamFee: boolean;
   checkAttendance: boolean;
   minAttendancePercent: number;
 }
@@ -183,15 +184,6 @@ export interface EligibleStudentsParams {
   search?: string;
 }
 
-export type BulkRegisterPayload =
-  | { exam_id: number; student_ids: number[] }
-  | { exam_id: number; class_id?: number; division_id?: number };
-
-export interface BulkRegisterResult {
-  registered: number;
-  skipped: Array<{ student_id: number; reason: string }>;
-}
-
 export const examCandidateApi = {
   list: (params: ExamCandidateListParams) =>
     api.get<{ success: boolean; data: ExamCandidateRow[]; pagination: ExamCandidatePagination }>(
@@ -206,18 +198,6 @@ export const examCandidateApi = {
     api.get<{ success: boolean; data: EligibleStudentPreview[] }>(
       "/exam-candidates/eligible-students",
       { params },
-    ),
-
-  register: (payload: { exam_id: number; student_id: number; notes?: string }) =>
-    api.post<{ success: boolean; message: string; data: ExamCandidateRow }>(
-      "/exam-candidates/register",
-      payload,
-    ),
-
-  bulkRegister: (payload: BulkRegisterPayload) =>
-    api.post<{ success: boolean; data: BulkRegisterResult }>(
-      "/exam-candidates/bulk-register",
-      payload,
     ),
 
   eligibilityCheck: (payload: { candidate_id: number } | { exam_id: number; student_id: number }) =>
@@ -239,6 +219,7 @@ export const examCandidateApi = {
     require_active_student?: boolean;
     require_approved_admission?: boolean;
     check_dues?: boolean;
+    scope_dues_to_exam_fee?: boolean;
     check_attendance?: boolean;
     min_attendance_percent?: number;
   }) =>

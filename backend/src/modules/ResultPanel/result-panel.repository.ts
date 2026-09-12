@@ -1,5 +1,6 @@
 import { MarkComponentConfig, MarkComponentType, Prisma, ResultPublishStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
 import { ClassStatusRow, OverviewStatusRow } from "./result-panel.types";
 
 export class ResultPanelRepository {
@@ -46,10 +47,6 @@ export class ResultPanelRepository {
       where: { id, madrasaId },
       data: { deletedAt: new Date() },
     });
-  }
-
-  updateResultMasterStatus(id: number, status: ResultPublishStatus) {
-    return prisma.resultMaster.update({ where: { id }, data: { status } });
   }
 
   /** Upserts a batch of Mark rows, and — when a row carries a `components`
@@ -290,10 +287,18 @@ export class ResultPanelRepository {
 
   /** Advances a session to PROCESSING after a (re)process run. Clears any
    * prior resultVerified/approved marks since the underlying content just
-   * changed and those sign-offs no longer apply to the new numbers. */
-  markResultMasterProcessed(resultMasterId: number, processedBy: number) {
-    return prisma.resultMaster.update({
-      where: { id: resultMasterId },
+   * changed and those sign-offs no longer apply to the new numbers.
+   * DB-guarded on `expectedStatuses` (the same reprocessable-status list the
+   * caller already checked in JS) so two concurrent process requests can't
+   * both apply - returns false instead of writing when the guard misses. */
+  async markResultMasterProcessed(
+    resultMasterId: number,
+    madrasaId: number,
+    expectedStatuses: string[],
+    processedBy: number,
+  ): Promise<boolean> {
+    const result = await prisma.resultMaster.updateMany({
+      where: { id: resultMasterId, madrasaId, status: { in: expectedStatuses as any } },
       data: {
         status: "PROCESSING",
         processedAt: new Date(),
@@ -304,27 +309,34 @@ export class ResultPanelRepository {
         approvedBy: null,
       },
     });
+    return result.count > 0;
   }
 
   /** Publishes a session and writes an accompanying ResultSnapshot (audit /
    * integrity record only in this phase - no read path renders from it yet)
-   * in the same transaction. */
-  publishResultMasterWithSnapshot(
+   * in the same transaction. DB-guarded: only publishes when the row is
+   * still APPROVED at write time - if a concurrent request already moved it
+   * elsewhere, the update matches zero rows, the snapshot is never created,
+   * and the transaction returns false instead of throwing. */
+  async publishResultMasterWithSnapshot(
     resultMasterId: number,
     madrasaId: number,
     publishedBy: number,
     snapshotJson: string,
-  ) {
-    const now = new Date();
-    return prisma.$transaction([
-      prisma.resultMaster.update({
-        where: { id: resultMasterId },
+  ): Promise<boolean> {
+    return prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const updated = await tx.resultMaster.updateMany({
+        where: { id: resultMasterId, madrasaId, status: "APPROVED" },
         data: { status: "PUBLISHED", publishedAt: now, publishedBy },
-      }),
-      prisma.resultSnapshot.create({
+      });
+      if (updated.count === 0) return false;
+
+      await tx.resultSnapshot.create({
         data: { madrasaId, resultMasterId, snapshotJson, reason: "PUBLISH", createdBy: publishedBy },
-      }),
-    ]);
+      });
+      return true;
+    });
   }
 
   findResultMastersByClass(madrasaId: number, classId: number) {
@@ -366,6 +378,53 @@ export class ResultPanelRepository {
       select: { id: true, roll: true, academicYear: true, nameBn: true },
       orderBy: [{ roll: "asc" }, { id: "asc" }],
     });
+  }
+
+  /** The ExamCandidate roster actually PARTICIPATING in one exam+class -
+   * once exam-candidate registration is in place, this is the definitive
+   * "who is really sitting this exam" list (100% of the class for free
+   * exams, only fee-payers for paid ones), unlike findActiveStudentsInClass
+   * above which just means "physically enrolled in the class" regardless of
+   * whether they're actually a candidate for this particular exam. Uses the
+   * canonical participation rule (exam-candidate.policy.ts's
+   * canCandidateParticipate/examCandidateParticipationSql): excludes
+   * CANCELLED/WITHHELD status and INELIGIBLE status/eligibilityStatus. Same
+   * raw-SQL join pattern as exam-attendance.repository.ts's
+   * findEligibleCandidatesForRoutine/findRosterForRoutine. May legitimately
+   * return an empty array for an exam that predates candidate registration
+   * - callers MUST fail open (see findRequiredStudentsInClass below)
+   * instead of treating an empty roster as "nobody needs to be marked". */
+  findParticipatingCandidatesInClass(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+  ): Promise<{ id: number; nameBn: string; roll: number | null }[]> {
+    return prisma.$queryRaw<{ id: number; nameBn: string; roll: number | null }[]>`
+      SELECT s.id AS id, s.name_bn AS "nameBn", s.roll AS roll
+      FROM exam_candidates ec
+      JOIN students s ON s.id = ec.student_id
+      WHERE ec.madrasa_id = ${madrasaId}
+        AND ec.exam_id = ${examId}
+        AND ec.class_id = ${classId}
+        AND ${Prisma.raw(examCandidateParticipationSql())}
+      ORDER BY s.roll ASC NULLS LAST
+    `;
+  }
+
+  /** Fail-open wrapper around findParticipatingCandidatesInClass: returns
+   * the participating-candidate roster for this exam+class when it's
+   * non-empty, else falls back to the legacy "every active student in
+   * class" roster (findActiveStudentsInClass) - so an exam that predates
+   * ExamCandidate registration (zero rows) keeps behaving exactly as it did
+   * before that feature existed, instead of suddenly reporting zero
+   * required students / trivially "complete". This is the single shared
+   * completeness-scoping rule used by getMarkCompleteness (this module) and
+   * result-workflow.repository.ts's findStudentsMissingMarkForBook - do not
+   * re-derive this fallback elsewhere. */
+  async findRequiredStudentsInClass(madrasaId: number, examId: number, classId: number) {
+    const candidates = await this.findParticipatingCandidatesInClass(madrasaId, examId, classId);
+    if (candidates.length) return candidates;
+    return this.findActiveStudentsInClass(madrasaId, classId);
   }
 
   /** Reassigns roll numbers in a single transaction using a two-phase

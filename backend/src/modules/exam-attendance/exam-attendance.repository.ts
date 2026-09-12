@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
 
 export class ExamAttendanceRepository {
   findRoutineForAttendance(id: number, madrasaId: number) {
@@ -8,10 +10,12 @@ export class ExamAttendanceRepository {
     });
   }
 
-  /** Registered/eligible candidates for a routine's exam+class(+division) -
-   * the roster "mark absent by default" fills in. Plain raw query since
-   * ExamCandidate isn't a Prisma relation from this module (see the
-   * file-level note in exam-operations.prisma). */
+  /** Candidates for a routine's exam+class(+division) allowed to be marked
+   * - the roster "mark absent by default" fills in. Uses the canonical
+   * participation rule (see exam-candidate.policy.ts): excludes CANCELLED/
+   * WITHHELD status AND eligibilityStatus = INELIGIBLE, not just status
+   * alone. Plain raw query since ExamCandidate isn't included via a Prisma
+   * `include` in this module's other queries. */
   findEligibleCandidatesForRoutine(madrasaId: number, examId: number, classId: number, divisionId: number | null) {
     return prisma.$queryRaw<{ id: number }[]>`
       SELECT ec.id AS id
@@ -20,7 +24,7 @@ export class ExamAttendanceRepository {
         AND ec.exam_id = ${examId}
         AND ec.class_id = ${classId}
         AND (${divisionId}::int IS NULL OR ec.division_id = ${divisionId})
-        AND ec.status IN ('REGISTERED', 'ELIGIBLE')
+        AND ${Prisma.raw(examCandidateParticipationSql())}
     `;
   }
 
@@ -28,7 +32,15 @@ export class ExamAttendanceRepository {
     return prisma.examAttendance.count({ where: { madrasaId, examRoutineId, isLocked: true } });
   }
 
-  upsertEntry(
+  /** Raw upsert (not Prisma's `.upsert()`) so the UPDATE branch can carry a
+   * `WHERE is_locked = false` guard directly on the write itself - the
+   * previous check-then-write (assertNotLocked, then a plain upsert) left a
+   * window where a concurrent lock() between the check and the write could
+   * still be overwritten. A brand new row can't already be locked, so the
+   * INSERT branch needs no guard; returns false (no throw) when an existing
+   * row was locked, so the caller can report it instead of silently
+   * "succeeding". */
+  async upsertEntry(
     madrasaId: number,
     examRoutineId: number,
     examCandidateId: number,
@@ -36,24 +48,27 @@ export class ExamAttendanceRepository {
     status: string,
     remarks: string | null,
     markedById: number | null,
-  ) {
-    return prisma.examAttendance.upsert({
-      where: { examRoutineId_examCandidateId: { examRoutineId, examCandidateId } },
-      create: {
-        madrasaId,
-        examRoutineId,
-        examCandidateId,
-        roomId,
-        status: status as any,
-        remarks,
-        markedById,
-      },
-      update: { status: status as any, remarks, markedById, markedAt: new Date() },
-    });
+  ): Promise<boolean> {
+    const rows = await prisma.$queryRaw<{ id: number }[]>`
+      INSERT INTO exam_attendances
+        (madrasa_id, exam_routine_id, exam_candidate_id, room_id, status, remarks, marked_by_id, marked_at, created_at, updated_at)
+      VALUES
+        (${madrasaId}, ${examRoutineId}, ${examCandidateId}, ${roomId}, ${status}::"ExamAttendanceStatus", ${remarks}, ${markedById}, now(), now(), now())
+      ON CONFLICT (exam_routine_id, exam_candidate_id)
+      DO UPDATE SET
+        status = EXCLUDED.status,
+        remarks = EXCLUDED.remarks,
+        marked_by_id = EXCLUDED.marked_by_id,
+        marked_at = now(),
+        updated_at = now()
+      WHERE exam_attendances.is_locked = false
+      RETURNING id
+    `;
+    return rows.length > 0;
   }
 
   updateOne(id: number, madrasaId: number, data: Record<string, unknown>) {
-    return prisma.examAttendance.updateMany({ where: { id, madrasaId }, data });
+    return prisma.examAttendance.updateMany({ where: { id, madrasaId, isLocked: false }, data });
   }
 
   findById(id: number, madrasaId: number) {
@@ -74,13 +89,17 @@ export class ExamAttendanceRepository {
     });
   }
 
-  /** Full roster view: every registered/eligible candidate for the
-   * routine's exam+class(+division), LEFT JOINed to this routine's
-   * ExamAttendance row (if marked yet) - so the marking UI sees the whole
-   * class, not just already-marked rows, exactly like a real roll-call
-   * sheet. Unmarked candidates come back with attendance_id = null and a
-   * default status of PRESENT (display-only default; nothing is persisted
-   * until an actual mark/bulk-mark call). */
+  /** Full roster view: every PARTICIPATING candidate (see
+   * exam-candidate.policy.ts's canCandidateParticipate) for the routine's
+   * exam+class(+division), LEFT JOINed to this routine's ExamAttendance row
+   * (if marked yet) - so the marking UI sees the whole eligible class, not
+   * just already-marked rows, exactly like a real roll-call sheet. Unmarked
+   * candidates come back with attendance_id = null and a default status of
+   * PRESENT (display-only default; nothing is persisted until an actual
+   * mark/bulk-mark call). CANCELLED/WITHHELD/INELIGIBLE candidates are
+   * excluded from this roster entirely - they were never issued an admit
+   * card or seat, so there's nothing for the invigilator to mark them
+   * present/absent against. */
   findRosterForRoutine(
     madrasaId: number,
     examRoutineId: number,
@@ -119,7 +138,7 @@ export class ExamAttendanceRepository {
         AND ec.exam_id = ${examId}
         AND ec.class_id = ${classId}
         AND (${divisionId}::int IS NULL OR ec.division_id = ${divisionId})
-        AND ec.status IN ('REGISTERED', 'ELIGIBLE')
+        AND ${Prisma.raw(examCandidateParticipationSql())}
         AND (${status}::text IS NULL OR COALESCE(ea.status::text, 'PRESENT') = ${status})
         AND (
           ${search}::text IS NULL

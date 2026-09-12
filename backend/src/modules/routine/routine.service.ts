@@ -10,6 +10,7 @@ import {
 } from "./routine.dto";
 import { MIN_DAY_OF_WEEK, MAX_DAY_OF_WEEK, TIME_FORMAT_REGEX, EXAM_ROUTINE_STATUSES } from "./routine.constants";
 import { timeRangesOverlap } from "../../shared/utils/time-range.util";
+import { autoRegisterForRoutine } from "../exam-candidate/exam-candidate.hooks";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -176,6 +177,7 @@ export class RoutineService {
 
     const examId = Number(dto.exam_id);
     const classId = Number(dto.class_id);
+    const divisionId = dto.division_id ? Number(dto.division_id) : null;
     const subject = String(dto.subject).trim();
     const roomId = dto.room_id ? Number(dto.room_id) : null;
     const maxCapacity = dto.max_capacity !== undefined && dto.max_capacity !== "" ? Number(dto.max_capacity) : null;
@@ -188,7 +190,7 @@ export class RoutineService {
       await this.repository.createExamRoutine(madrasaId, {
         examId,
         classId,
-        divisionId: dto.division_id ? Number(dto.division_id) : null,
+        divisionId,
         subject,
         examDate,
         startTime: startStr,
@@ -201,6 +203,16 @@ export class RoutineService {
       });
     } catch (err) {
       return friendlyFailure("createExamRoutine error:", err, "Failed to create exam routine");
+    }
+
+    // Free-exam auto-registration side effect (fee-linked exams opt out
+    // internally - see autoRegisterForRoutine). Its own try/catch: a
+    // registration hiccup here must never surface as a routine-creation
+    // failure, since the routine itself already committed successfully.
+    try {
+      await autoRegisterForRoutine(madrasaId, examId, classId, divisionId, undefined);
+    } catch (err) {
+      logger.error("createExamRoutine auto exam-candidate registration failed:", err);
     }
   }
 
@@ -269,6 +281,22 @@ export class RoutineService {
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       return friendlyFailure("updateExamRoutine error:", err, "Failed to update exam routine");
+    }
+
+    // Only re-run the free-exam auto-registration side effect when this
+    // update actually moved the routine to a different class/division -
+    // any other field change (time, room, subject, status, ...) has no
+    // bearing on which students should be candidates. Own try/catch, same
+    // reasoning as createExamRoutine above.
+    if ("classId" in data || "divisionId" in data) {
+      try {
+        const finalExamId = (data.examId as number) ?? existing.examId;
+        const finalClassId = "classId" in data ? (data.classId as number) : existing.classId;
+        const finalDivisionId = "divisionId" in data ? (data.divisionId as number | null) : existing.divisionId;
+        await autoRegisterForRoutine(madrasaId, finalExamId, finalClassId, finalDivisionId, undefined);
+      } catch (err) {
+        logger.error("updateExamRoutine auto exam-candidate registration failed:", err);
+      }
     }
   }
 

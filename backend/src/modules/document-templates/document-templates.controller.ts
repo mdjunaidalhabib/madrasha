@@ -136,6 +136,7 @@ export const generateDocuments = asyncHandler(async (req: Request, res: Response
       classId: body.class_id ? Number(body.class_id) : undefined,
       divisionId: body.division_id ? Number(body.division_id) : undefined,
       studentIds: Array.isArray(body.student_ids) ? body.student_ids.map(Number) : undefined,
+      examId: body.exam_id ? Number(body.exam_id) : undefined,
     },
     ensureMigrated,
   );

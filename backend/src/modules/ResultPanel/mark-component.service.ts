@@ -1,6 +1,6 @@
 import { MarkComponentType } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
-import { BadRequestError } from "../../shared/errors";
+import { BadRequestError, ConflictError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
 
 export interface SaveMarkComponentsRequestDto {
@@ -79,6 +79,36 @@ export class MarkComponentService {
     if (sum !== madrasaBook.fullMark) {
       throw new BadRequestError(
         `মোট নম্বর ${sum} বিষয়ের পূর্ণ নম্বর ${madrasaBook.fullMark} এর সাথে মিলছে না।`,
+      );
+    }
+
+    // Changing a component's fullMark changes the effective denominator
+    // saveMarks() uses to compute a mark from its component breakdown - if
+    // this book already has marks entered for a PUBLISHED/LOCKED result
+    // (scoped to this exam when exam-specific, or any exam when this is the
+    // book-wide fallback config), that result's grading would silently
+    // drift out from under it. Block the same way saveMarks blocks direct
+    // edits to a published/locked session. Mark has no `resultMaster`
+    // relation declared (only the resultMasterId scalar), so this is a
+    // manual two-step lookup rather than a nested relation filter.
+    const marksForBook = await prisma.mark.findMany({
+      where: { madrasaId, bookId, ...(examId ? { examId } : {}) },
+      select: { resultMasterId: true },
+      distinct: ["resultMasterId"],
+    });
+    const affectedPublishedMark = marksForBook.length
+      ? await prisma.resultMaster.findFirst({
+          where: {
+            id: { in: marksForBook.map((m) => m.resultMasterId) },
+            status: { in: ["PUBLISHED", "LOCKED"] },
+            deletedAt: null,
+          },
+          select: { id: true },
+        })
+      : null;
+    if (affectedPublishedMark) {
+      throw new ConflictError(
+        "এই বিষয়ের নম্বর বিভাজন পরিবর্তন করা যাবে না — এটি ইতিমধ্যে প্রকাশিত/লক করা একটি ফলাফলে ব্যবহৃত হয়েছে। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।",
       );
     }
 

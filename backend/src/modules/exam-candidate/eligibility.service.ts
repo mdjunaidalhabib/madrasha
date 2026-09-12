@@ -11,6 +11,7 @@ export interface EligibilitySettings {
   requireActiveStudent: boolean;
   requireApprovedAdmission: boolean;
   checkDues: boolean;
+  scopeDuesToExamFee: boolean;
   checkAttendance: boolean;
   minAttendancePercent: number;
 }
@@ -51,6 +52,10 @@ export class EligibilityService {
         ELIGIBILITY_DEFAULTS.requireApprovedAdmission,
       ),
       checkDues: toBool(rows.get(ELIGIBILITY_SETTING_KEYS.CHECK_DUES), ELIGIBILITY_DEFAULTS.checkDues),
+      scopeDuesToExamFee: toBool(
+        rows.get(ELIGIBILITY_SETTING_KEYS.SCOPE_DUES_TO_EXAM_FEE),
+        ELIGIBILITY_DEFAULTS.scopeDuesToExamFee,
+      ),
       checkAttendance: toBool(
         rows.get(ELIGIBILITY_SETTING_KEYS.CHECK_ATTENDANCE),
         ELIGIBILITY_DEFAULTS.checkAttendance,
@@ -75,6 +80,12 @@ export class EligibilityService {
     }
     if (dto.check_dues !== undefined) {
       writes.push([ELIGIBILITY_SETTING_KEYS.CHECK_DUES, String(Boolean(dto.check_dues))]);
+    }
+    if (dto.scope_dues_to_exam_fee !== undefined) {
+      writes.push([
+        ELIGIBILITY_SETTING_KEYS.SCOPE_DUES_TO_EXAM_FEE,
+        String(Boolean(dto.scope_dues_to_exam_fee)),
+      ]);
     }
     if (dto.check_attendance !== undefined) {
       writes.push([ELIGIBILITY_SETTING_KEYS.CHECK_ATTENDANCE, String(Boolean(dto.check_attendance))]);
@@ -125,9 +136,25 @@ export class EligibilityService {
 
     if (settings.checkDues) {
       const statement = await this.fees.getStudentStatement(madrasaId, params.studentId);
-      const totalDue = statement.summary.totalDue;
+      let dueLabel = "বকেয়া ফি আছে";
+      let totalDue = statement.summary.totalDue;
+
+      if (settings.scopeDuesToExamFee) {
+        // Only meaningful when this exam actually has a linked fee - a free
+        // exam has no "own fee" to scope to, so fall back to the whole
+        // account exactly like scopeDuesToExamFee=false would.
+        const feeStructureIds = await this.repository.findFeeStructureIdsForExam(madrasaId, params.examId);
+        if (feeStructureIds.length > 0) {
+          const linked = new Set(feeStructureIds);
+          totalDue = statement.invoices
+            .filter((inv) => inv.feeStructureId != null && linked.has(inv.feeStructureId))
+            .reduce((sum, inv) => sum + (Number(inv.amount) - Number(inv.paidAmount) - Number(inv.waivedAmount)), 0);
+          dueLabel = "এই পরীক্ষার ফি বকেয়া আছে";
+        }
+      }
+
       if (totalDue > 0) {
-        reasons.push(`বকেয়া ফি আছে (৳${totalDue.toLocaleString("bn-BD")})`);
+        reasons.push(`${dueLabel} (৳${totalDue.toLocaleString("bn-BD")})`);
       }
     }
 

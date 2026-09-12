@@ -58,6 +58,7 @@ model MarkSubmission {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  madrasa      Madrasa      @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
   book         Book         @relation(fields: [bookId], references: [id], onDelete: Restrict)
 
@@ -100,11 +101,9 @@ model MarkComponentConfig {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // NOTE: examId is deliberately a plain scalar (no Prisma relation) so this
-  // model doesn't need a back-relation array on Exam - Exam Core owns
-  // exam.prisma and may be changing it concurrently. Referential validity
-  // (examId belongs to this madrasa) is enforced in the service layer.
-  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  exam    Exam?   @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, bookId, examId, component], map: "uniq_mark_component_config")
   @@index([madrasaId, bookId], map: "idx_mark_component_configs_madrasa_book")
@@ -160,8 +159,21 @@ model ResultCorrection {
 
   appliedAt DateTime? @map("applied_at")
 
+  madrasa      Madrasa      @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
 
+  // A duplicate/competing PENDING request for the same (resultMasterId,
+  // studentId, bookId, field) is blocked in the DB as a PARTIAL unique index
+  // on (result_master_id, student_id, COALESCE(book_id, -1), field) WHERE
+  // status = 'PENDING' (see migration 20260911140000_result_tenant_fk_and_
+  // correction_index - the COALESCE matters because book_id is NULL for
+  // every summary-level field, and plain NULL columns don't collide under a
+  // unique index) instead of a Prisma @@unique, since Prisma can't express a
+  // partial/functional unique index natively - same pattern already used for
+  // results_master's uniq_session index (see migration
+  // 20260805100000_add_trash_columns_division_class_book_result). This still
+  // allows unlimited APPROVED/REJECTED/APPLIED history rows for the same
+  // target field.
   @@index([madrasaId], map: "idx_result_corrections_madrasa")
   @@index([resultMasterId], map: "idx_result_corrections_result_master")
   @@index([status], map: "idx_result_corrections_status")
@@ -186,6 +198,7 @@ model ResultSnapshot {
   createdBy Int?     @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
 
+  madrasa      Madrasa      @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   resultMaster ResultMaster @relation(fields: [resultMasterId], references: [id], onDelete: Cascade)
 
   @@index([resultMasterId], map: "idx_result_snapshots_result_master")
@@ -314,7 +327,7 @@ model Mark {
   isWithheld Boolean @default(false) @map("is_withheld")
   note       String? @db.Text
 
-  madrasaId Int @default(1) @map("madrasa_id")
+  madrasaId Int @map("madrasa_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")

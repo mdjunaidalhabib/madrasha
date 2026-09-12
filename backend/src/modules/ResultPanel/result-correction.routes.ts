@@ -2,7 +2,9 @@ import express from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { requireAnyPermission } from "../../shared/middleware/rbac.middleware";
+import { validate } from "../../shared/middleware/validate.middleware";
 import { requestCorrection, listCorrections, decideCorrection } from "./result-correction.controller";
+import { requestCorrectionSchema, decideCorrectionSchema } from "./result-correction.validation";
 
 const router = express.Router();
 
@@ -12,6 +14,7 @@ router.use(tenantMiddleware, authMiddleware);
 router.post(
   "/:resultMasterId/corrections",
   requireAnyPermission("result.correct", "result.manage"),
+  validate(requestCorrectionSchema),
   requestCorrection,
 );
 router.get(
@@ -24,6 +27,7 @@ router.get(
 router.post(
   "/corrections/:correctionId/decide",
   requireAnyPermission("result.approve", "result.manage"),
+  validate(decideCorrectionSchema),
   decideCorrection,
 );
 

@@ -121,6 +121,8 @@ export class ExamCandidateRepository {
       where: {
         madrasaId,
         deletedAt: null,
+        isActive: 1,
+        admissionStatus: "APPROVED",
         ...(filters.classId ? { classId: filters.classId } : {}),
         ...(filters.divisionId ? { divisionId: filters.divisionId } : {}),
         ...(filters.search
@@ -156,6 +158,19 @@ export class ExamCandidateRepository {
     return `REG-${examId}-${String(count + 1).padStart(4, "0")}`;
   }
 
+  /** Same numbering scheme as `nextRegistrationNo`, but reserves `count`
+   * sequential numbers in one go (one count query instead of one per
+   * candidate) - for batch auto-registration via `registerBatch`. */
+  async nextRegistrationNoBatch(
+    tx: TransactionClient,
+    madrasaId: number,
+    examId: number,
+    count: number,
+  ): Promise<string[]> {
+    const current = await tx.examCandidate.count({ where: { madrasaId, examId } });
+    return Array.from({ length: count }, (_, i) => `REG-${examId}-${String(current + i + 1).padStart(4, "0")}`);
+  }
+
   createCandidateOnTx(
     tx: TransactionClient,
     data: {
@@ -171,6 +186,46 @@ export class ExamCandidateRepository {
     },
   ) {
     return tx.examCandidate.create({ data });
+  }
+
+  /** Bulk-inserts candidate rows for automatic registration (routine-driven
+   * free exams, or a single invoice-paid trigger). `skipDuplicates` relies
+   * on the `uniq_exam_candidate_exam_student` unique constraint on
+   * [examId, studentId] so a race with another trigger can never create a
+   * second row for the same student+exam. */
+  createCandidatesOnTx(
+    tx: TransactionClient,
+    rows: Array<{
+      madrasaId: number;
+      examId: number;
+      studentId: number;
+      sessionId: number;
+      classId: number;
+      divisionId: number;
+      registrationNo: string;
+      createdBy?: number | null;
+    }>,
+  ): Promise<{ count: number }> {
+    return tx.examCandidate.createMany({ data: rows, skipDuplicates: true });
+  }
+
+  /** Whether this exam has an active, linked fee structure - a fee-linked
+   * exam's candidates are only ever auto-registered on full payment
+   * (see `autoRegisterOnInvoicePaid`), never from routine creation. */
+  async examHasFeeLink(madrasaId: number, examId: number): Promise<boolean> {
+    const count = await prisma.feeStructure.count({ where: { madrasaId, examId, isActive: true } });
+    return count > 0;
+  }
+
+  /** FeeStructure ids linked to this exam - used by eligibility.service.ts
+   * to scope a dues check to just this exam's own fee(s) instead of the
+   * whole account, when scopeDuesToExamFee is on. */
+  async findFeeStructureIdsForExam(madrasaId: number, examId: number): Promise<number[]> {
+    const rows = await prisma.feeStructure.findMany({
+      where: { madrasaId, examId, isActive: true },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
   }
 
   /** Flips a CANCELLED registration back to REGISTERED instead of creating

@@ -19,6 +19,10 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/marksheets",
     printable: "marksheet",
     documentType: "MARKSHEET",
+    // Without an exam selection, a student with multiple published exams
+    // would get every exam's marksheet mixed together in one print run
+    // (see findStudentMarksheets's doc-comment) - require picking one.
+    requiresExam: true,
     requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
@@ -59,6 +63,12 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     documentType: "ADMIT_CARD",
+    // Admit cards are scoped to ONE exam's registered candidates (see
+    // reports.repository.ts's findStudentAdmitCards) - without
+    // requiresExam, the page never sent exam_id at all and the backend
+    // silently defaulted to the most recent exam. Now the user must
+    // explicitly pick which exam's admit cards to print.
+    requiresExam: true,
     requiresDivision: true,
     columns: [
       { header: "রোল নম্বর", key: "roll" },
@@ -71,10 +81,13 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
-    // No requiresDivision here on purpose - this always renders as exactly
-    // one static rules notice page (see PaginatedReportPreview's "single"
-    // config.kind), not a per-student roster, so making someone pick a
-    // division first would just be friction with no payload saved.
+    // No requiresDivision AND no requiresExam here on purpose - this always
+    // renders as exactly one static rules notice page (see
+    // PaginatedReportPreview's "single" config.kind), not a per-student/
+    // per-exam roster, so the fetched rows' exam scope is irrelevant to
+    // what's actually rendered - forcing an exam pick first would just be
+    // friction with no payload saved. See "student-admit-cards" above for
+    // the actual per-candidate admit-card report, which DOES require one.
     key: "student-admit-cards-with-rules",
     title: "পরীক্ষার নিয়মাবলী",
     subtitle: "প্রবেশপত্রের সাথে দেওয়ার জন্য পরীক্ষার নিয়মাবলীর একটি মাত্র নোটিশ পৃষ্ঠা তৈরি ও প্রিন্ট",

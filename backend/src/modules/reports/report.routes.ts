@@ -13,6 +13,7 @@ import {
   getAcademicRoutineReport,
   getDailyAttendanceReport,
   getDigitalAttendanceReport,
+  getExamAttendanceSheetReport,
   getExamCandidatesReport,
   getExamNumberSheetReport,
   getExamRoutineByRoomReport,
@@ -20,10 +21,12 @@ import {
   getExamSignatureSheetReport,
   getExamSummaryReport,
   getGuardianPhoneReport,
+  getInvigilatorListReport,
   getPrizeBookLabelsReport,
   getResidentialAttendanceReport,
   getResultPublicationReport,
   getResultsByStatusReport,
+  getSeatPlanReport,
   getSubjectPerformanceReport,
 } from "./controllers/academic-report.controller";
 import {
@@ -70,6 +73,9 @@ router.get("/academic/exam-signature-sheet", examAccess, getExamSignatureSheetRe
 router.get("/academic/exam-number-sheet", examAccess, getExamNumberSheetReport);
 router.get("/academic/exam-routine", examAccess, getExamRoutineReport);
 router.get("/academic/exam-routine-by-room", examAccess, getExamRoutineByRoomReport);
+router.get("/academic/seat-plan", examAccess, getSeatPlanReport);
+router.get("/academic/invigilator-list", examAccess, getInvigilatorListReport);
+router.get("/academic/exam-attendance-sheet", examAccess, getExamAttendanceSheetReport);
 router.get("/academic/exam-candidates", examAccess, getExamCandidatesReport);
 router.get("/academic/exam-absentees", examAccess, getAbsentCandidatesReport);
 router.get("/academic/results-by-status", academicAccess, getResultsByStatusReport);

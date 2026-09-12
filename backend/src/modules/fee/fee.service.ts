@@ -6,6 +6,7 @@ import { studentRepository } from "../students/student.repository";
 import { notificationService } from "../notifications/notification.service";
 import { accountService } from "../accounts/account.service";
 import { logActivity } from "../../shared/utils/activity.util";
+import { autoRegisterOnInvoicePaid } from "../exam-candidate/exam-candidate.hooks";
 import {
   CreateFeeCategoryRequestDto,
   CreateFeeStructureRequestDto,
@@ -913,6 +914,7 @@ export class FeeService {
       studentId: number;
       dueAmount: number;
       invoiceTitle: string;
+      feeStructureId: number | null;
     };
     try {
       result = await this.repository.runTransaction(async (tx) => {
@@ -976,6 +978,7 @@ export class FeeService {
           studentId: invoice.studentId,
           dueAmount: Math.max(invoiceAmount - newPaidAmount - alreadyWaived, 0),
           invoiceTitle: invoice.title,
+          feeStructureId: invoice.feeStructureId,
         };
       });
     } catch (err) {
@@ -1009,6 +1012,29 @@ export class FeeService {
           entity_id: invoiceId,
           details: `ছাত্র আইডি: ${student.id}, নাম: ${student.nameBn}, শ্রেণি: ${student.classRef?.nameBn || "অজানা"} — ইনভয়েস #${invoiceId} (${result.invoiceTitle}) এর জন্য ${paymentAmount} টাকা পরিশোধ করা হয়েছে, পদ্ধতি: ${methodLabel || dto.method}`,
         });
+      }
+
+      // Fee-linked exam auto-registration trigger (B): only fires once the
+      // invoice reaches full PAID status - never on a partial payment, and
+      // never from waiveInvoice (which can only ever land on WAIVED or
+      // PARTIALLY_PAID). Reuses the same `student` lookup above instead of
+      // querying twice. Own try/catch, separate from the notification/log
+      // block above, so a registration hiccup here can never be mistaken
+      // for (or mask) a notification failure.
+      if (result.invoiceStatus === "PAID" && result.feeStructureId && student) {
+        try {
+          const link = await this.repository.findFeeStructureExamLink(madrasaId, result.feeStructureId);
+          if (link?.examId) {
+            await autoRegisterOnInvoicePaid(madrasaId, link.examId, {
+              id: student.id,
+              sessionId: student.sessionId,
+              classId: student.classId,
+              divisionId: student.divisionId ?? null,
+            });
+          }
+        } catch (err) {
+          logger.error("auto exam-candidate registration on payment failed:", err);
+        }
       }
     } catch (err) {
       logger.error("FEE_PAYMENT notification/activity log failed:", err);

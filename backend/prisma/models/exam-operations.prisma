@@ -2,17 +2,17 @@
 // EXAM OPERATIONS: ROOMS, INVIGILATORS, SEATING, EXAM ATTENDANCE
 // ============================================================
 //
-// Note on relations: madrasaId / examCandidateId below are deliberately
-// PLAIN scoped integer fields (no Prisma `@relation`), not because these
-// entities aren't conceptually tied to Madrasa/ExamCandidate, but because
-// tenant.prisma and exam-candidate.prisma are being actively edited by a
-// concurrent, uncommitted piece of work (Exam Core/Candidate module) at the
-// time this file was added, and Prisma requires every `@relation` to be
-// declared on both sides. This mirrors the existing generic-pointer
-// convention already used by Attendance.attendeeId (attendance.prisma).
-// Once that other work is committed and stable, these can be upgraded to
-// full relations (add `madrasa Madrasa @relation(...)` here + the matching
-// `examRooms ExamRoom[]` etc. back-reference on Madrasa/ExamCandidate).
+// madrasaId / examCandidateId used to be plain scoped integer fields (no
+// Prisma `@relation`) because tenant.prisma and exam-candidate.prisma were
+// being actively edited by a concurrent, uncommitted piece of work (Exam
+// Core/Candidate module) at the time this file was added, and Prisma
+// requires every `@relation` to be declared on both sides. That other work
+// is now committed and stable, so these were promoted to full relations -
+// see the `madrasa`/`examCandidate` fields below and the matching
+// `examRooms`/`examInvigilatorAssignments`/`seatAllocations`/
+// `examAttendances` back-references on Madrasa (tenant.prisma) and
+// `seatAllocations`/`examAttendances` on ExamCandidate
+// (exam-candidate.prisma).
 
 /// A physical exam room/hall, reusable across exams. Replaces the free-text
 /// ExamRoutine.roomNo with a real, capacity-aware catalog entry.
@@ -28,6 +28,8 @@ model ExamRoom {
   notes     String?  @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
 
   examRoutines    ExamRoutine[]
   seatAllocations SeatAllocation[]
@@ -73,6 +75,7 @@ model ExamInvigilatorAssignment {
   createdAt       DateTime                    @default(now()) @map("created_at")
   updatedAt       DateTime                    @default(now()) @updatedAt @map("updated_at")
 
+  madrasa     Madrasa     @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
   examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
 
   /// Prevents assigning the SAME person twice to the SAME slot.
@@ -113,8 +116,10 @@ model SeatAllocation {
   createdAt        DateTime               @default(now()) @map("created_at")
   updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at")
 
-  examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
-  room        ExamRoom    @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  madrasa       Madrasa        @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  examRoutine   ExamRoutine    @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
+  examCandidate ExamCandidate  @relation(fields: [examCandidateId], references: [id], onDelete: Cascade)
+  room          ExamRoom       @relation(fields: [roomId], references: [id], onDelete: Restrict)
 
   /// One seat per candidate per slot - the core anti-double-booking rule.
   @@unique([examRoutineId, examCandidateId], map: "uniq_seat_per_candidate_per_slot")
@@ -161,8 +166,10 @@ model ExamAttendance {
   createdAt       DateTime             @default(now()) @map("created_at")
   updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at")
 
-  examRoutine ExamRoutine @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
-  room        ExamRoom?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  madrasa       Madrasa       @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  examRoutine   ExamRoutine   @relation(fields: [examRoutineId], references: [id], onDelete: Cascade)
+  examCandidate ExamCandidate @relation(fields: [examCandidateId], references: [id], onDelete: Cascade)
+  room          ExamRoom?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   @@unique([examRoutineId, examCandidateId], map: "uniq_exam_attendance_per_slot")
   @@index([madrasaId, examRoutineId], map: "idx_exam_attendance_madrasa_routine")

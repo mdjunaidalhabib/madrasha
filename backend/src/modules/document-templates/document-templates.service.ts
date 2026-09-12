@@ -510,7 +510,9 @@ export class DocumentTemplateService {
       return (rows as Record<string, unknown>[])[0] ?? null;
     }
     if (type === "ADMIT_CARD") {
-      const result = await this.reports.findStudentAdmitCards(tenantId, {});
+      // No exam is selected in this preview context - falls back to the
+      // most recent exam (see findStudentAdmitCards's doc-comment).
+      const result = await this.reports.findStudentAdmitCards(tenantId, undefined, {});
       return (result.rows as Record<string, unknown>[])[0] ?? null;
     }
     if (type === "CERTIFICATE") {
@@ -526,7 +528,11 @@ export class DocumentTemplateService {
       return (rows as Record<string, unknown>[])[0] ?? null;
     }
     if (type === "MARKSHEET") {
-      const result = await this.reports.findStudentMarksheets(tenantId, {});
+      // No exam is selected in this preview context - falls back to every
+      // published exam mixed together, same as before exam scoping existed
+      // (see findStudentMarksheets's doc-comment); only the first row is
+      // used anyway, as a design-time sample.
+      const result = await this.reports.findStudentMarksheets(tenantId, undefined, {});
       return (result.rows as Record<string, unknown>[])[0] ?? null;
     }
     return null;
@@ -555,7 +561,18 @@ export class DocumentTemplateService {
       const result = await this.reports.findStudentIdCards(tenantId, filters);
       rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
     } else if (type === "ADMIT_CARD") {
-      const result = await this.reports.findStudentAdmitCards(tenantId, filters);
+      // filters.examId is threaded straight through to findStudentAdmitCards
+      // - an explicit selection always wins; omitting it falls back to the
+      // most recent exam (see that method's doc-comment), the same legacy
+      // behavior as before exam scoping existed. The current admin UI
+      // (DocumentsReportPage.tsx's "student-admit-cards" report) does NOT
+      // call this generate() endpoint at all - it fetches directly from
+      // GET /reports/student/admit-cards with requiresExam: true (an
+      // explicit exam picker) and renders client-side. This path exists as
+      // a real, correct API for any other/future caller of bulk document
+      // generation - it must not silently mix another exam's candidates in
+      // just because it's less-travelled.
+      const result = await this.reports.findStudentAdmitCards(tenantId, filters.examId, filters);
       rows = (result as any)?.rows ?? [];
     } else if (type === "CERTIFICATE") {
       const result = await this.reports.findStudentSanads(tenantId, filters);
@@ -567,7 +584,11 @@ export class DocumentTemplateService {
       const result = await this.reports.findStudentTransferLetters(tenantId, filters);
       rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
     } else if (type === "MARKSHEET") {
-      const result = await this.reports.findStudentMarksheets(tenantId, filters);
+      // filters.examId (same GenerateFilters field ADMIT_CARD uses) is
+      // threaded straight through - an explicit selection always wins;
+      // omitting it mixes every published exam together (see
+      // findStudentMarksheets's doc-comment).
+      const result = await this.reports.findStudentMarksheets(tenantId, filters.examId, filters);
       rows = (result as any)?.rows ?? [];
     } else {
       throw new BadRequestError(`Bulk generation for ${type} is not wired up yet`);

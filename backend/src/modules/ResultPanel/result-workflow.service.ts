@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
+import { isPrivilegedActor } from "../../shared/utils/rbac.util";
+import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
 import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
 import { resultPanelRepository } from "./result-panel.repository";
 import { DEFAULT_FAIL_MARK, FAIL_MARK_SETTING_NAME } from "./result-panel.constants";
@@ -57,14 +59,22 @@ export class ResultWorkflowService {
       return st === "SUBMITTED" || st === "VERIFIED";
     });
 
+    // Best-effort: only advances while the session is still in the
+    // marks-submission phase, so a race against a later stage (e.g. this
+    // recompute firing just as the result gets published elsewhere) can't
+    // regress an already-advanced status. Not throwing on a missed guard
+    // here - unlike the user-facing transitions below - since this is a
+    // background side-effect of submit/verify, not the primary action the
+    // caller asked for.
+    const inSubmissionPhase = ["DRAFT", "MARKS_SUBMITTED", "MARKS_VERIFIED"];
     if (allVerified) {
-      await this.repository.updateResultMasterStatus(resultMasterId, {
+      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
         status: "MARKS_VERIFIED",
         marksVerifiedAt: new Date(),
         marksVerifiedBy: actorId,
       });
     } else if (allSubmittedOrVerified) {
-      await this.repository.updateResultMasterStatus(resultMasterId, {
+      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
         status: "MARKS_SUBMITTED",
         submittedAt: new Date(),
         submittedBy: actorId,
@@ -112,6 +122,7 @@ export class ResultWorkflowService {
 
     const missing = await this.repository.findStudentsMissingMarkForBook(
       madrasaId,
+      master.examId,
       master.classId,
       resultMasterId,
       bookId,
@@ -161,6 +172,12 @@ export class ResultWorkflowService {
       throw new ConflictError("এই বিষয়ের নম্বর এখনও জমা দেওয়া হয়নি — যাচাই করার আগে জমা দিতে হবে।");
     }
 
+    if (submission.submittedBy === userId && !(await isPrivilegedActor(userId))) {
+      throw new ConflictError(
+        "নিজের জমা করা নম্বর নিজে যাচাই করা যাবে না — ভিন্ন ব্যবহারকারীর মাধ্যমে যাচাই করাতে হবে।",
+      );
+    }
+
     await this.repository.markSubmissionVerified(resultMasterId, bookId, userId, comment?.trim() || null);
     await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
 
@@ -206,7 +223,12 @@ export class ResultWorkflowService {
     if (master.status === "MARKS_SUBMITTED" || master.status === "MARKS_VERIFIED") {
       data.status = "DRAFT";
     }
-    await this.repository.updateResultMasterStatus(resultMasterId, data);
+    const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, [master.status], data);
+    if (!ok) {
+      throw new ConflictError(
+        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+      );
+    }
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -222,8 +244,12 @@ export class ResultWorkflowService {
 
   /** Result-level verification pass - a read-mostly sanity re-check of the
    * grading engine's own output (never recomputes grading itself), plus a
-   * fail-open cross-check against ExamCandidate holds. Mutates status only
-   * when every check passes. */
+   * fail-open cross-check against ExamCandidate holds. The missing-marks
+   * check itself is scoped to active students who are also participating
+   * ExamCandidates when that roster is non-empty for this exam+class,
+   * falling back to every active student for exams that predate candidate
+   * registration (see the candidateRoster/requiredStudents computation
+   * below). Mutates status only when every check passes. */
   async verifyResult(madrasaId: number, userId: number, resultMasterId: number, remarks?: string) {
     const master = await this.assertMaster(madrasaId, resultMasterId);
 
@@ -233,23 +259,43 @@ export class ResultWorkflowService {
       );
     }
 
-    const [activeStudents, summaries, withheldRows, settings, candidateRows] = await Promise.all([
-      resultPanelRepository.findActiveStudentsInClass(madrasaId, master.classId),
-      this.repository.findResultSummaryRows(resultMasterId),
-      resultPanelRepository.findWithheldStudentIds(
-        madrasaId,
-        master.examId,
-        master.classId,
-        resultMasterId,
-      ),
-      resultPanelRepository.findSettings(madrasaId),
-      this.repository.findExamCandidatesReadOnly(madrasaId, master.examId),
-    ]);
+    const [activeStudents, summaries, withheldRows, settings, candidateRows, candidateRoster] =
+      await Promise.all([
+        resultPanelRepository.findActiveStudentsInClass(madrasaId, master.classId),
+        this.repository.findResultSummaryRows(resultMasterId),
+        resultPanelRepository.findWithheldStudentIds(
+          madrasaId,
+          master.examId,
+          master.classId,
+          resultMasterId,
+        ),
+        resultPanelRepository.findSettings(madrasaId),
+        this.repository.findExamCandidatesReadOnly(madrasaId, master.examId),
+        resultPanelRepository.findParticipatingCandidatesInClass(
+          madrasaId,
+          master.examId,
+          master.classId,
+        ),
+      ]);
 
     const withheldSet = new Set(withheldRows.map((r) => Number(r.studentId)));
     const summaryByStudent = new Map(summaries.map((s) => [Number(s.studentId), s]));
     const failSetting = settings.find((s) => s.name === FAIL_MARK_SETTING_NAME);
     const failMark = failSetting ? Number(failSetting.value) : DEFAULT_FAIL_MARK;
+
+    // Missing-marks scoping: when this exam+class has a non-empty
+    // ExamCandidate roster, only students who are BOTH active AND actually
+    // participating candidates are required to have a result row - an
+    // active-but-non-candidate student (e.g. an unpaid fee-exam student) is
+    // legitimately expected to have no marks at all, so checking them here
+    // would falsely flag "missing marks". Fail-open: an exam predating
+    // candidate registration has zero ExamCandidate rows for this
+    // exam+class, so keep today's exact behavior of checking every active
+    // student.
+    const candidateIdSet = new Set(candidateRoster.map((c) => c.id));
+    const requiredStudents = candidateIdSet.size
+      ? activeStudents.filter((s) => candidateIdSet.has(s.id))
+      : activeStudents;
 
     const issues: string[] = [];
     let missingMarks = 0;
@@ -259,7 +305,7 @@ export class ResultWorkflowService {
     let failCount = 0;
     let absentCount = 0;
 
-    for (const student of activeStudents) {
+    for (const student of requiredStudents) {
       if (withheldSet.has(student.id)) continue;
 
       const row = summaryByStudent.get(student.id);
@@ -304,17 +350,23 @@ export class ResultWorkflowService {
     // ExamCandidate rows, so skip this cross-check entirely rather than
     // treating "no candidates registered" as an error.
     if (candidateRows.length) {
-      const blockedStatuses = new Set(["WITHHELD", "INELIGIBLE", "CANCELLED"]);
+      // Uses the canonical participation rule (exam-candidate.policy.ts)
+      // instead of only checking candidate.status - status alone missed
+      // the far more common case of a REGISTERED candidate the automatic
+      // eligibility engine had already flagged eligibilityStatus =
+      // INELIGIBLE (that flow never touches `status`, see exam-candidate.
+      // service.ts's checkEligibility/bulkCheckEligibility), so those
+      // candidates previously sailed through this check unflagged.
       const blockedStudentIds = new Set(
         candidateRows
-          .filter((c) => blockedStatuses.has(c.status))
+          .filter((c) => !canCandidateParticipate(c.status, c.eligibilityStatus))
           .map((c) => Number(c.studentId)),
       );
       for (const studentId of blockedStudentIds) {
         const row = summaryByStudent.get(studentId);
         if (row && (row.status === "PASS" || row.status === "FAIL")) {
           issues.push(
-            `শিক্ষার্থী আইডি ${studentId} পরীক্ষায় WITHHELD/INELIGIBLE/CANCELLED হওয়া সত্ত্বেও স্বাভাবিক ফলাফল (${row.status}) দেখাচ্ছে।`,
+            `শিক্ষার্থী আইডি ${studentId} পরীক্ষায় অংশগ্রহণের অনুমতি না থাকা সত্ত্বেও (WITHHELD/INELIGIBLE/CANCELLED) স্বাভাবিক ফলাফল (${row.status}) দেখাচ্ছে।`,
           );
         }
       }
@@ -323,12 +375,22 @@ export class ResultWorkflowService {
     const valid = issues.length === 0;
 
     if (valid) {
-      await this.repository.updateResultMasterStatus(resultMasterId, {
-        status: "RESULT_VERIFIED",
-        resultVerifiedAt: new Date(),
-        resultVerifiedBy: userId,
-        ...(remarks !== undefined ? { remarks: remarks || null } : {}),
-      });
+      const ok = await this.repository.updateResultMasterStatus(
+        resultMasterId,
+        madrasaId,
+        ["PROCESSING", "RESULT_VERIFIED"],
+        {
+          status: "RESULT_VERIFIED",
+          resultVerifiedAt: new Date(),
+          resultVerifiedBy: userId,
+          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+        },
+      );
+      if (!ok) {
+        throw new ConflictError(
+          "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+        );
+      }
 
       await logActivity({
         madrasa_id: madrasaId,
@@ -344,7 +406,7 @@ export class ResultWorkflowService {
       valid,
       issues,
       stats: {
-        totalStudents: activeStudents.length,
+        totalStudents: requiredStudents.length,
         missingMarks,
         invalidMarks,
         missingGrades,
@@ -371,13 +433,33 @@ export class ResultWorkflowService {
       );
     }
 
+    if (
+      master.resultVerifiedBy != null &&
+      master.resultVerifiedBy === userId &&
+      !(await isPrivilegedActor(userId))
+    ) {
+      throw new ConflictError(
+        "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।",
+      );
+    }
+
     if (approve) {
-      await this.repository.updateResultMasterStatus(resultMasterId, {
-        status: "APPROVED",
-        approvedAt: new Date(),
-        approvedBy: userId,
-        ...(remarks !== undefined ? { remarks: remarks || null } : {}),
-      });
+      const ok = await this.repository.updateResultMasterStatus(
+        resultMasterId,
+        madrasaId,
+        ["RESULT_VERIFIED"],
+        {
+          status: "APPROVED",
+          approvedAt: new Date(),
+          approvedBy: userId,
+          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+        },
+      );
+      if (!ok) {
+        throw new ConflictError(
+          "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+        );
+      }
 
       await logActivity({
         madrasa_id: madrasaId,
@@ -395,12 +477,22 @@ export class ResultWorkflowService {
       throw new BadRequestError("প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।");
     }
 
-    await this.repository.updateResultMasterStatus(resultMasterId, {
-      status: "PROCESSING",
-      rejectedAt: new Date(),
-      rejectedBy: userId,
-      rejectedReason: remarks.trim(),
-    });
+    const rejectOk = await this.repository.updateResultMasterStatus(
+      resultMasterId,
+      madrasaId,
+      ["RESULT_VERIFIED"],
+      {
+        status: "PROCESSING",
+        rejectedAt: new Date(),
+        rejectedBy: userId,
+        rejectedReason: remarks.trim(),
+      },
+    );
+    if (!rejectOk) {
+      throw new ConflictError(
+        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+      );
+    }
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -421,11 +513,16 @@ export class ResultWorkflowService {
       throw new ConflictError("ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।");
     }
 
-    await this.repository.updateResultMasterStatus(resultMasterId, {
+    const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
       status: "LOCKED",
       lockedAt: new Date(),
       lockedBy: userId,
     });
+    if (!ok) {
+      throw new ConflictError(
+        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+      );
+    }
 
     await logActivity({
       madrasa_id: madrasaId,

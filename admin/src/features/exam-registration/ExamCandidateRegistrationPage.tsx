@@ -29,8 +29,14 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
-type ExamOption = { id: number; name: string; year: string | number; status?: ExamStatus | null };
-type TabKey = "registered" | "register";
+type ExamOption = {
+  id: number;
+  name: string;
+  year: string | number;
+  status?: ExamStatus | null;
+  has_fee_link?: boolean;
+};
+type TabKey = "registered" | "pending";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -54,9 +60,8 @@ const selectClass =
   "h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[170px]";
 
 /** যোগ্যতা ব্যাজ - hover করলে title-এ কারণ দেখায়, ক্লিক করলে পুরো তালিকা
- * (একাধিক কারণ থাকলে) একটা ছোট popover-এ খুলে দেখায়। রেজিস্টার্ড ট্যাব
- * (persisted eligibilityStatus থেকে) এবং রেজিস্ট্রেশন ট্যাব (live preview
- * eligible boolean) - দুই জায়গাতেই ব্যবহৃত হয়।*/
+ * (একাধিক কারণ থাকলে) একটা ছোট popover-এ খুলে দেখায়। "নিবন্ধিত প্রার্থী"
+ * ট্যাবে persisted eligibilityStatus থেকে eligible boolean বানিয়ে দেখানো হয়।*/
 function EligibilityBadge({ eligible, reasons }: { eligible: boolean | null; reasons: string[] }) {
   const [open, setOpen] = useState(false);
   const label = eligible === true ? "যোগ্য" : eligible === false ? "অযোগ্য" : "পেন্ডিং";
@@ -148,15 +153,9 @@ const ExamCandidateRegistrationPage = () => {
   const [rowStatusBusyId, setRowStatusBusyId] = useState<number | null>(null);
   const [rowEligBusyId, setRowEligBusyId] = useState<number | null>(null);
 
-  // ============ শিক্ষার্থী নিবন্ধন করুন ============
+  // ============ এখনও ফি পরিশোধ করেননি (fee-linked পরীক্ষায় পেন্ডিং তালিকা, read-only) ============
   const [eligibleRows, setEligibleRows] = useState<EligibleStudentPreview[]>([]);
   const [eligibleLoading, setEligibleLoading] = useState(false);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-  const [registering, setRegistering] = useState(false);
-  const [skippedResult, setSkippedResult] = useState<{
-    registered: number;
-    skipped: Array<{ student_id: number; reason: string }>;
-  } | null>(null);
 
   // ============ যোগ্যতা সেটিং ============
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -222,7 +221,6 @@ const ExamCandidateRegistrationPage = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-    setSelectedStudentIds(new Set());
   }, [selectedExamId]);
 
   const loadCandidates = useCallback(async () => {
@@ -268,7 +266,6 @@ const ExamCandidateRegistrationPage = () => {
         search: debouncedSearch || undefined,
       });
       setEligibleRows(res.data?.data || []);
-      setSelectedStudentIds(new Set());
     } catch (err) {
       logger.error("LOAD ELIGIBLE STUDENTS ERROR:", err);
       setEligibleRows([]);
@@ -282,8 +279,18 @@ const ExamCandidateRegistrationPage = () => {
   }, [activeTab, canRead, loadCandidates]);
 
   useEffect(() => {
-    if (activeTab === "register" && canRead) loadEligibleStudents();
+    if (activeTab === "pending" && canRead) loadEligibleStudents();
   }, [activeTab, canRead, loadEligibleStudents]);
+
+  // ফি-লিংকড না এমন পরীক্ষার জন্য "পেন্ডিং" ট্যাব থাকে না - সিলেক্ট করা পরীক্ষা
+  // বদলে গিয়ে fee link হারালে (বা শুরুতেই না থাকলে) স্বয়ংক্রিয়ভাবে "নিবন্ধিত
+  // প্রার্থী" ট্যাবে ফিরিয়ে আনে, নাহলে অস্তিত্বহীন ট্যাব সক্রিয় থেকে যেতে পারে।
+  useEffect(() => {
+    const exam = exams.find((e) => String(e.id) === selectedExamId);
+    if (activeTab === "pending" && !exam?.has_fee_link) {
+      setActiveTab("registered");
+    }
+  }, [selectedExamId, exams, activeTab]);
 
   /* ================= রেজিস্টার্ড প্রার্থী - রো/বাল্ক অ্যাকশন ================= */
 
@@ -446,82 +453,6 @@ const ExamCandidateRegistrationPage = () => {
     });
   };
 
-  /* ================= শিক্ষার্থী নিবন্ধন করুন ================= */
-
-  const allEligibleSelected =
-    eligibleRows.length > 0 && eligibleRows.every((s) => selectedStudentIds.has(String(s.student_id)));
-
-  const toggleSelectAllEligible = () => {
-    setSelectedStudentIds(
-      allEligibleSelected ? new Set() : new Set(eligibleRows.map((s) => String(s.student_id))),
-    );
-  };
-
-  const toggleSelectStudent = (id: number) => {
-    const key = String(id);
-    setSelectedStudentIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const showRegisterResult = (data: { registered: number; skipped: Array<{ student_id: number; reason: string }> }) => {
-    setSkippedResult(data);
-    useToastStore
-      .getState()
-      .show(
-        `${toBanglaDigits(data.registered)} জন নিবন্ধিত হয়েছে${
-          data.skipped.length ? `, ${toBanglaDigits(data.skipped.length)} জন বাদ পড়েছে` : ""
-        }`,
-        data.skipped.length ? "info" : "success",
-      );
-  };
-
-  const handleRegisterSelected = async () => {
-    const ids = Array.from(selectedStudentIds).map(Number);
-    if (ids.length === 0 || !selectedExamId) return;
-
-    try {
-      setRegistering(true);
-      const res = await examCandidateApi.bulkRegister({ exam_id: Number(selectedExamId), student_ids: ids });
-      showRegisterResult(res.data.data);
-      loadEligibleStudents();
-    } catch (err: any) {
-      useToastStore.getState().show(err?.response?.data?.message || "নিবন্ধন করা যায়নি", "error");
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const handleRegisterAllFiltered = () => {
-    if (!selectedExamId) return;
-
-    useConfirmStore.getState().show({
-      title: "সবাইকে নিবন্ধন করবেন?",
-      message:
-        "বর্তমান ফিল্টার (শ্রেণি/বিভাগ) অনুযায়ী এখনও নিবন্ধিত হয়নি এমন সকল শিক্ষার্থীকে এই পরীক্ষায় নিবন্ধন করা হবে। নিশ্চিত?",
-      confirmText: "সবাইকে নিবন্ধন করুন",
-      onConfirm: async () => {
-        try {
-          setRegistering(true);
-          const res = await examCandidateApi.bulkRegister({
-            exam_id: Number(selectedExamId),
-            class_id: selectedClass ? Number(selectedClass) : undefined,
-            division_id: selectedDivision ? Number(selectedDivision) : undefined,
-          });
-          showRegisterResult(res.data.data);
-          loadEligibleStudents();
-        } catch (err: any) {
-          useToastStore.getState().show(err?.response?.data?.message || "নিবন্ধন করা যায়নি", "error");
-        } finally {
-          setRegistering(false);
-        }
-      },
-    });
-  };
-
   /* ================= যোগ্যতা সেটিং ================= */
 
   const openSettings = async () => {
@@ -546,6 +477,7 @@ const ExamCandidateRegistrationPage = () => {
         require_active_student: settings.requireActiveStudent,
         require_approved_admission: settings.requireApprovedAdmission,
         check_dues: settings.checkDues,
+        scope_dues_to_exam_fee: settings.scopeDuesToExamFee,
         check_attendance: settings.checkAttendance,
         min_attendance_percent: settings.minAttendancePercent,
       });
@@ -605,10 +537,10 @@ const ExamCandidateRegistrationPage = () => {
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
-              পরীক্ষার্থী নিবন্ধন ও যোগ্যতা
+              পরীক্ষার প্রার্থী ও যোগ্যতা
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              পরীক্ষার জন্য শিক্ষার্থী নিবন্ধন করুন এবং যোগ্যতা যাচাই করুন
+              পরীক্ষার প্রার্থী তালিকা দেখুন এবং যোগ্যতা যাচাই করুন
             </p>
           </div>
 
@@ -648,7 +580,7 @@ const ExamCandidateRegistrationPage = () => {
         ) : !selectedExamId ? (
           <EmptyState
             title="একটি পরীক্ষা নির্বাচন করুন"
-            hint="উপর থেকে পরীক্ষা নির্বাচন করলে প্রার্থী তালিকা ও নিবন্ধন অপশন দেখা যাবে"
+            hint="উপর থেকে পরীক্ষা নির্বাচন করলে প্রার্থী তালিকা ও যোগ্যতার তথ্য দেখা যাবে"
           />
         ) : (
           <>
@@ -732,17 +664,19 @@ const ExamCandidateRegistrationPage = () => {
                 >
                   নিবন্ধিত প্রার্থী {rows.length > 0 && `(${toBanglaDigits(total)})`}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("register")}
-                  className={`px-3 py-2 text-sm font-medium transition ${
-                    activeTab === "register"
-                      ? "border-b-2 border-blue-600 text-blue-700 dark:text-blue-400"
-                      : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                  }`}
-                >
-                  শিক্ষার্থী নিবন্ধন করুন
-                </button>
+                {selectedExam?.has_fee_link && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("pending")}
+                    className={`px-3 py-2 text-sm font-medium transition ${
+                      activeTab === "pending"
+                        ? "border-b-2 border-blue-600 text-blue-700 dark:text-blue-400"
+                        : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    এখনও ফি পরিশোধ করেননি {eligibleRows.length > 0 && `(${toBanglaDigits(eligibleRows.length)})`}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -818,7 +752,10 @@ const ExamCandidateRegistrationPage = () => {
                 {rowsLoading ? (
                   <SkeletonTable rows={8} columns={9} />
                 ) : rows.length === 0 ? (
-                  <EmptyState title="কোনো প্রার্থী পাওয়া যায়নি" hint="ফিল্টার পরিবর্তন করুন অথবা নতুন নিবন্ধন করুন" />
+                  <EmptyState
+                    title="কোনো প্রার্থী পাওয়া যায়নি"
+                    hint="এই পরীক্ষার ক্লাসের জন্য রুটিন তৈরি করুন, অথবা (ফি থাকলে) শিক্ষার্থীর ফি পরিশোধ সম্পন্ন হওয়ার অপেক্ষা করুন।"
+                  />
                 ) : (
                   <>
                     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -955,50 +892,31 @@ const ExamCandidateRegistrationPage = () => {
               </>
             )}
 
-            {/* ============ TAB: শিক্ষার্থী নিবন্ধন করুন ============ */}
-            {activeTab === "register" && (
+            {/* ============ TAB: এখনও ফি পরিশোধ করেননি (fee-linked পরীক্ষা, read-only) ============ */}
+            {activeTab === "pending" && selectedExam?.has_fee_link && (
               <>
-                {canManageCandidate && (
-                  <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-950/20">
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                      {selectedStudentIds.size > 0
-                        ? `${toBanglaDigits(selectedStudentIds.size)} জন নির্বাচিত`
-                        : "এখনো কেউ নির্বাচিত হয়নি"}
-                    </p>
-                    <Button onClick={handleRegisterSelected} disabled={registering || selectedStudentIds.size === 0}>
-                      {registering ? "নিবন্ধন হচ্ছে..." : "নিবন্ধন করুন"}
-                    </Button>
-                    <Button variant="secondary" onClick={handleRegisterAllFiltered} disabled={registering}>
-                      সব নিবন্ধন করুন (ফিল্টার অনুযায়ী)
-                    </Button>
-                  </div>
-                )}
+                <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
+                  এই তালিকার শিক্ষার্থীরা এখনও এই পরীক্ষার ফি সম্পূর্ণ পরিশোধ করেননি, তাই তারা এখনও প্রার্থী হিসেবে
+                  নিবন্ধিত হননি। ফি পরিশোধ (PAID) সম্পন্ন হলে স্বয়ংক্রিয়ভাবে "নিবন্ধিত প্রার্থী" তালিকায় যুক্ত হয়ে যাবে -
+                  এখানে কোনো ম্যানুয়াল কাজ করার প্রয়োজন নেই।
+                </p>
 
                 {eligibleLoading ? (
                   <SkeletonList items={6} />
                 ) : eligibleRows.length === 0 ? (
                   <EmptyState
-                    title="নিবন্ধনযোগ্য কোনো শিক্ষার্থী নেই"
-                    hint="সবাই ইতিমধ্যে নিবন্ধিত অথবা এই ফিল্টারে কোনো সক্রিয় শিক্ষার্থী নেই"
+                    title="সবাই ফি পরিশোধ করেছেন"
+                    hint="এই ফিল্টারে ফি বাকি রেখে থাকা কোনো শিক্ষার্থী নেই"
                   />
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                    <table className="w-full min-w-[760px] border-collapse text-center text-sm">
+                    <table className="w-full min-w-[600px] border-collapse text-center text-sm">
                       <thead className="bg-blue-800 text-xs text-white">
                         <tr>
-                          <th className="border p-2 dark:border-slate-700">
-                            <input
-                              type="checkbox"
-                              checked={allEligibleSelected}
-                              onChange={toggleSelectAllEligible}
-                              className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
-                            />
-                          </th>
                           <th className="border p-2 dark:border-slate-700">রোল</th>
                           <th className="border p-2 dark:border-slate-700">নাম</th>
                           <th className="border p-2 dark:border-slate-700">শ্রেণি</th>
                           <th className="border p-2 dark:border-slate-700">বিভাগ</th>
-                          <th className="border p-2 dark:border-slate-700">যোগ্যতা (প্রিভিউ)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1007,21 +925,10 @@ const ExamCandidateRegistrationPage = () => {
                             key={s.student_id}
                             className="border-t transition hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800"
                           >
-                            <td className="border p-2 dark:border-slate-700">
-                              <input
-                                type="checkbox"
-                                checked={selectedStudentIds.has(String(s.student_id))}
-                                onChange={() => toggleSelectStudent(s.student_id)}
-                                className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
-                              />
-                            </td>
                             <td className="border p-2 dark:border-slate-700">{s.roll ?? "-"}</td>
                             <td className="border p-2 text-left dark:border-slate-700">{s.name_bn}</td>
                             <td className="border p-2 dark:border-slate-700">{classNameById(s.class_id)}</td>
                             <td className="border p-2 dark:border-slate-700">{divisionNameById(s.division_id)}</td>
-                            <td className="border p-2 dark:border-slate-700">
-                              <EligibilityBadge eligible={s.eligible} reasons={s.reasons || []} />
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1033,35 +940,6 @@ const ExamCandidateRegistrationPage = () => {
           </>
         )}
       </div>
-
-      {/* নিবন্ধনের ফলাফল (registered/skipped) */}
-      <Modal open={!!skippedResult} title="নিবন্ধনের ফলাফল" onClose={() => setSkippedResult(null)}>
-        {skippedResult && (
-          <div className="space-y-3 text-sm text-gray-700 dark:text-slate-300">
-            <p>
-              <strong className="text-green-700 dark:text-green-400">{toBanglaDigits(skippedResult.registered)}</strong>{" "}
-              জন সফলভাবে নিবন্ধিত হয়েছে।
-            </p>
-            {skippedResult.skipped.length > 0 && (
-              <div>
-                <p className="mb-1 font-medium text-amber-700 dark:text-amber-400">
-                  {toBanglaDigits(skippedResult.skipped.length)} জন বাদ পড়েছে:
-                </p>
-                <ul className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2 text-xs dark:border-slate-700">
-                  {skippedResult.skipped.map((s, i) => (
-                    <li key={i}>
-                      শিক্ষার্থী #{toBanglaDigits(s.student_id)} — {s.reason}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="flex justify-end">
-              <Button onClick={() => setSkippedResult(null)}>ঠিক আছে</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* যোগ্যতা সেটিং */}
       <Modal open={settingsOpen} title="যোগ্যতা নির্ধারণের সেটিং" onClose={() => setSettingsOpen(false)}>
@@ -1090,6 +968,17 @@ const ExamCandidateRegistrationPage = () => {
                 onChange={(v) => setSettings({ ...settings, checkDues: v })}
               />
             </label>
+            {settings.checkDues && (
+              <label className="flex items-center justify-between gap-3 pl-4">
+                <span className="text-sm text-gray-600 dark:text-slate-400">
+                  শুধু এই পরীক্ষার ফি-টুকু দেখা হবে (অন্য বকেয়া বাদ)
+                </span>
+                <ToggleSwitch
+                  checked={settings.scopeDuesToExamFee}
+                  onChange={(v) => setSettings({ ...settings, scopeDuesToExamFee: v })}
+                />
+              </label>
+            )}
             <label className="flex items-center justify-between gap-3">
               <span className="text-sm text-gray-700 dark:text-slate-300">উপস্থিতির হার যাচাই করুন</span>
               <ToggleSwitch

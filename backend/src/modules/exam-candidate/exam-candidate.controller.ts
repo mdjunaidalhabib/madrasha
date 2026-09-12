@@ -32,18 +32,6 @@ export const getEligibleStudents = asyncHandler(async (req: Request, res: Respon
   res.json({ success: true, data });
 });
 
-/* ================= REGISTRATION ================= */
-
-export const registerCandidate = asyncHandler(async (req: Request, res: Response) => {
-  const data = await examCandidateService.register(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.created(res, data, "Candidate registered successfully");
-});
-
-export const bulkRegisterCandidates = asyncHandler(async (req: Request, res: Response) => {
-  const data = await examCandidateService.bulkRegister(getMadrasaId(req), req.user?.id, req.body);
-  res.json({ success: true, data });
-});
-
 /* ================= ELIGIBILITY ================= */
 
 export const checkEligibility = asyncHandler(async (req: Request, res: Response) => {

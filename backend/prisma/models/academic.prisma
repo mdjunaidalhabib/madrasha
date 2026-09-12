@@ -22,6 +22,7 @@ model Division {
   teachers         Teacher[]
   sessions         Session[]
   examCandidates   ExamCandidate[]
+  examRoutines     ExamRoutine[]
 
   @@map("divisions")
 }

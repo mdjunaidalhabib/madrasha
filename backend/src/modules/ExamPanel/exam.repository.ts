@@ -6,6 +6,7 @@ export class ExamRepository {
     return prisma.exam.findMany({
       where: { madrasaId, deletedAt: null, ...(activeOnly ? { isActive: true } : {}) },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      include: { _count: { select: { feeStructures: { where: { isActive: true } } } } },
     });
   }
 

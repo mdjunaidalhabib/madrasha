@@ -1,0 +1,4 @@
+
+# E2E verification scratch state (JWTs, never commit)
+scripts/e2e/.token-cache.json
+scripts/e2e/.fixture-state.json

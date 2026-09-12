@@ -36,12 +36,6 @@ enum ExamRoutineStatus {
 /// One exam-day slot for a class/subject, linked to an existing Exam
 /// (ExamPanel). Distinct from ClassRoutine because exam routines are
 /// per-exam (date-bound), not weekly recurring.
-///
-/// divisionId is a plain scoped field (no `@relation`) rather than a FK to
-/// Division, since academic.prisma is being actively edited by a
-/// concurrent, uncommitted piece of work at the time this field was added -
-/// see the note at the top of exam-operations.prisma for the same reasoning
-/// applied to madrasaId/examCandidateId there.
 model ExamRoutine {
   id           Int               @id @default(autoincrement())
   madrasaId    Int               @map("madrasa_id")
@@ -60,10 +54,11 @@ model ExamRoutine {
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  exam    Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
-  class   Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
-  room    ExamRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  exam     Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  division Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  room     ExamRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   invigilatorAssignments ExamInvigilatorAssignment[]
   seatAllocations        SeatAllocation[]

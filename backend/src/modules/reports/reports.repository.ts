@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/database/prisma";
 import { MISSING_TABLE_OR_COLUMN_CODES, REPORT_MISSING_TABLE_WARNING } from "./reports.constants";
 import { OptionalQueryResult } from "./reports.types";
+import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
 
 /** Optional narrowing filters accepted by roster-shaped queries (id cards,
  * admit cards) so document-templates.service.ts can generate for a single
@@ -90,6 +91,30 @@ export interface ResultPublicationFilters {
   divisionId?: number;
 }
 
+/** Narrowing filters for the seat-plan report (exam_seat_allocations). */
+export interface SeatPlanFilters {
+  roomId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
+/** Narrowing filters for the invigilator-list report
+ * (exam_invigilator_assignments). */
+export interface InvigilatorListFilters {
+  roomId?: number;
+}
+
+/** Narrowing filters for the exam-day attendance sheet (exam_attendances) -
+ * deliberately a separate report/filter shape from AbsentCandidateFilters
+ * (marks.is_absent), which answers a different question ("who has no marks
+ * recorded for a subject") than this one ("who was physically present at
+ * the exam hall roll-call"). */
+export interface ExamAttendanceSheetFilters {
+  roomId?: number;
+  classId?: number;
+  divisionId?: number;
+}
+
 /** Builds the extra `AND ...` SQL fragment + positional params (starting
  * after $1 = madrasaId) for RosterFilters, shared by every roster query
  * that accepts them. */
@@ -122,6 +147,10 @@ const RESULT_FALLBACK_WARNING =
   "এখনো ফলাফল প্রকাশ করা হয়নি। শিক্ষার্থী তালিকা দেখানো হচ্ছে; ফলাফল এন্ট্রি ও প্রকাশ হলে পূর্ণ রিপোর্ট দেখা যাবে।";
 const ROUTINE_FALLBACK_WARNING =
   "ক্লাস রুটিন এখনো সংরক্ষণ করা হয়নি। শিক্ষক-কিতাব বণ্টনের তথ্য দিয়ে প্রাথমিক তালিকা দেখানো হচ্ছে।";
+const ADMIT_CARD_FALLBACK_WARNING =
+  "এই পরীক্ষার জন্য কোনো নিবন্ধিত প্রার্থী পাওয়া যায়নি। বর্তমান শিক্ষার্থী তালিকা দিয়ে অ্যাডমিট কার্ড তৈরি করা হয়েছে - আসন/কক্ষের তথ্য দেখাবে না।";
+const EXAM_CANDIDATE_LIST_FALLBACK_WARNING =
+  "এই পরীক্ষার জন্য কোনো নিবন্ধিত প্রার্থী পাওয়া যায়নি (এক্সাম ক্যান্ডিডেট নিবন্ধন ব্যবহার করা হয়নি)। বর্তমান শিক্ষার্থী তালিকা দেখানো হচ্ছে।";
 const ATTENDANCE_FALLBACK_WARNING =
   "হাজিরার রেকর্ড এখনো সংরক্ষণ করা হয়নি। বর্তমান শিক্ষার্থী তালিকা দিয়ে প্রিন্টযোগ্য হাজিরা খাতা তৈরি করা হয়েছে।";
 
@@ -906,24 +935,240 @@ export class ReportsRepository {
     );
   }
 
-  /** The plain student roster for an exam+class - "who is sitting this
-   * exam", not a separate registration/eligibility table (there isn't one -
-   * see exam.prisma). Same shape as findExamSignatureSheet minus the
-   * per-subject `subjects` aggregation, since a candidate list has no
-   * subject columns of its own. */
-  findExamCandidateList(madrasaId: number, examId: number | undefined, filters: RosterFilters = {}) {
+  /** Seat plan: one row per candidate per exam-day slot, reading the real
+   * SeatAllocation/ExamRoom data the exam-operations phase populates -
+   * previously there was no report at all surfacing this table. */
+  findSeatPlan(madrasaId: number, examId: number | undefined, filters: SeatPlanFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.roomId !== undefined) {
+      params.push(filters.roomId);
+      conditions.push(`AND room.id = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND ec.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND ec.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        esa.id,
+        esa.seat_no,
+        esa.row_no,
+        esa.column_no,
+        er.id AS exam_routine_id,
+        er.exam_date,
+        er.start_time,
+        er.end_time,
+        er.subject AS subject_name,
+        room.id AS room_id,
+        room.name AS room_name,
+        room.code AS room_code,
+        ec.id AS exam_candidate_id,
+        ec.registration_no,
+        ec.candidate_no,
+        s.id AS student_id,
+        s.name_bn AS student_name,
+        s.roll,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM exam_seat_allocations esa
+      INNER JOIN exam_routines er ON er.id = esa.exam_routine_id
+      INNER JOIN exam_rooms room ON room.id = esa.room_id
+      INNER JOIN exam_candidates ec ON ec.id = esa.exam_candidate_id
+      INNER JOIN students s ON s.id = ec.student_id
+      LEFT JOIN classes c ON c.id = ec.class_id
+      LEFT JOIN divisions d ON d.id = ec.division_id
+      LEFT JOIN exams e ON e.id = er.exam_id
+      WHERE esa.madrasa_id = $1
+        AND ($2::int IS NULL OR er.exam_id = $2::int)
+        ${conditions.join("\n        ")}
+      ORDER BY room.name ASC NULLS LAST, er.exam_date ASC, er.start_time ASC, esa.seat_no ASC
+      `,
+      params,
+    );
+  }
+
+  /** Invigilator list: one row per assignment per exam-day slot, reading
+   * ExamInvigilatorAssignment - previously there was no report surfacing
+   * this table at all. invigilator_type/invigilator_id is a generic
+   * type+id pointer (no Prisma relation, see exam-operations.prisma), so
+   * the name/phone are resolved with a LEFT JOIN per possible type instead
+   * of a single FK join. */
+  findInvigilatorList(madrasaId: number, examId: number | undefined, filters: InvigilatorListFilters = {}) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.roomId !== undefined) {
+      params.push(filters.roomId);
+      conditions.push(`AND room.id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        eia.id,
+        eia.invigilator_type,
+        eia.invigilator_id,
+        eia.role,
+        eia.status,
+        er.id AS exam_routine_id,
+        er.exam_date,
+        er.start_time,
+        er.end_time,
+        er.subject AS subject_name,
+        room.id AS room_id,
+        room.name AS room_name,
+        room.code AS room_code,
+        COALESCE(t.name_bn, st.name_bn) AS invigilator_name,
+        COALESCE(t.phone, st.phone) AS invigilator_phone,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM exam_invigilator_assignments eia
+      INNER JOIN exam_routines er ON er.id = eia.exam_routine_id
+      LEFT JOIN exam_rooms room ON room.id = er.room_id
+      LEFT JOIN teachers t ON t.id = eia.invigilator_id AND eia.invigilator_type = 'TEACHER'
+      LEFT JOIN staff st ON st.id = eia.invigilator_id AND eia.invigilator_type = 'STAFF'
+      LEFT JOIN exams e ON e.id = er.exam_id
+      WHERE eia.madrasa_id = $1
+        AND ($2::int IS NULL OR er.exam_id = $2::int)
+        AND eia.status != 'CANCELLED'
+        ${conditions.join("\n        ")}
+      ORDER BY er.exam_date ASC, er.start_time ASC, room.name ASC NULLS LAST, eia.role ASC
+      `,
+      params,
+    );
+  }
+
+  /** Exam-day roll-call/attendance sheet - reads the real ExamAttendance
+   * model (per exam-routine slot, PRESENT/ABSENT/LATE/EXCUSED/WITHHELD),
+   * NOT the generic daily Attendance table (that's findDailyAttendance/
+   * findDigitalAttendance above, a different report for a different
+   * purpose) and NOT Mark.isAbsent (that's findAbsentCandidates - "missing
+   * marks", not "who sat in the exam hall"). Previously there was no report
+   * reading exam_attendances at all. */
+  findExamAttendanceSheet(
+    madrasaId: number,
+    examId: number | undefined,
+    filters: ExamAttendanceSheetFilters = {},
+  ) {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.roomId !== undefined) {
+      params.push(filters.roomId);
+      conditions.push(`AND COALESCE(room.id, ea.room_id) = $${params.length}`);
+    }
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND ec.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND ec.division_id = $${params.length}`);
+    }
+
+    return this.runQuery(
+      `
+      SELECT
+        ea.id,
+        ea.status,
+        ea.remarks,
+        ea.marked_at,
+        ea.is_locked,
+        er.id AS exam_routine_id,
+        er.exam_date,
+        er.start_time,
+        er.end_time,
+        er.subject AS subject_name,
+        room.id AS room_id,
+        room.name AS room_name,
+        room.code AS room_code,
+        ec.id AS exam_candidate_id,
+        ec.registration_no,
+        ec.candidate_no,
+        s.id AS student_id,
+        s.name_bn AS student_name,
+        s.roll,
+        COALESCE(c.name_bn, c.name) AS class_name,
+        COALESCE(d.name_bn, d.name) AS division_name,
+        e.name AS exam_name,
+        e.year AS exam_year
+      FROM exam_attendances ea
+      INNER JOIN exam_routines er ON er.id = ea.exam_routine_id
+      INNER JOIN exam_candidates ec ON ec.id = ea.exam_candidate_id
+      INNER JOIN students s ON s.id = ec.student_id
+      LEFT JOIN exam_rooms room ON room.id = ea.room_id
+      LEFT JOIN classes c ON c.id = ec.class_id
+      LEFT JOIN divisions d ON d.id = ec.division_id
+      LEFT JOIN exams e ON e.id = er.exam_id
+      WHERE ea.madrasa_id = $1
+        AND ($2::int IS NULL OR er.exam_id = $2::int)
+        ${conditions.join("\n        ")}
+      ORDER BY er.exam_date ASC, er.start_time ASC, s.roll ASC NULLS LAST
+      `,
+      params,
+    );
+  }
+
+  /** The exam candidate roster - candidates actually REGISTERED for this
+   * exam (exam_candidates), not just "every active student in this class"
+   * (same fix as findStudentAdmitCards, see its doc-comment for the full
+   * rationale: a student who never registered, or whose registration was
+   * CANCELLED, must not appear as an exam candidate).
+   *
+   * Filters (class_id/division_id) are applied against the CANDIDATE's
+   * snapshotted ec.class_id/ec.division_id, not the student's current
+   * s.class_id/s.division_id - ExamCandidate captures class/division/session
+   * at registration time specifically so a later promotion never rewrites
+   * an already-registered candidate's exam-time class/division (see
+   * exam-candidate.prisma's model doc-comment). ec.session_id is also
+   * surfaced in the row for the same reason: it's the session the
+   * candidate was actually registered under, which may differ from the
+   * session on their live Student row if a promotion/session change
+   * happened after registration.
+   *
+   * This is a MANAGEMENT ROSTER, not a participation list - it
+   * intentionally excludes only CANCELLED (true withdrawals), keeping
+   * WITHHELD/INELIGIBLE candidates visible (with their status/
+   * eligibility_status columns) so office staff can see and act on them.
+   * Contrast with findStudentAdmitCards, exam-seat/exam-attendance's
+   * "eligible candidates" queries, etc., which use the stricter
+   * canCandidateParticipate() rule (see exam-candidate.policy.ts) since
+   * those grant actual participation (an admit card, a seat, an attendance
+   * mark), not just visibility.
+   *
+   * Falls back to the plain active-student roster (old behavior, no
+   * candidate/session/status columns) with a warning when the resolved
+   * exam has zero ExamCandidate rows - a madrasa that never adopted exam
+   * candidate registration must keep seeing a usable roster here, not a
+   * suddenly-empty report. */
+  async findExamCandidateList(
+    madrasaId: number,
+    examId: number | undefined,
+    filters: RosterFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
     const params: any[] = [madrasaId, examId || null];
     const conditions: string[] = [];
     if (filters.classId !== undefined) {
       params.push(filters.classId);
-      conditions.push(`AND s.class_id = $${params.length}`);
+      conditions.push(`AND ec.class_id = $${params.length}`);
     }
     if (filters.divisionId !== undefined) {
       params.push(filters.divisionId);
-      conditions.push(`AND s.division_id = $${params.length}`);
+      conditions.push(`AND ec.division_id = $${params.length}`);
+    }
+    if (filters.studentIds !== undefined && filters.studentIds.length > 0) {
+      params.push(filters.studentIds);
+      conditions.push(`AND s.id = ANY($${params.length}::int[])`);
     }
 
-    return this.runQuery(
+    const result = await this.runOptionalQuery(
       `
       WITH selected_exam AS (
         SELECT e.id, e.name, e.year
@@ -939,8 +1184,9 @@ export class ReportsRepository {
         s.id AS student_id,
         s.registration_no,
         s.roll,
-        s.division_id,
-        s.class_id,
+        ec.division_id,
+        ec.class_id,
+        ec.session_id,
         s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
@@ -950,19 +1196,59 @@ export class ReportsRepository {
         COALESCE(d.name_bn, d.name) AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
-        e.year AS exam_year
+        e.year AS exam_year,
+        ec.id AS exam_candidate_id,
+        ec.registration_no AS exam_registration_no,
+        ec.candidate_no,
+        ec.status AS candidate_status,
+        ec.eligibility_status
       FROM students s
       CROSS JOIN selected_exam e
-      LEFT JOIN classes c ON c.id = s.class_id
-      LEFT JOIN divisions d ON d.id = s.division_id
+      INNER JOIN exam_candidates ec
+        ON ec.student_id = s.id AND ec.exam_id = e.id AND ec.madrasa_id = $1
+      LEFT JOIN classes c ON c.id = ec.class_id
+      LEFT JOIN divisions d ON d.id = ec.division_id
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
-        AND s.is_active = 1
+        AND ec.status != 'CANCELLED'
         ${conditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      ORDER BY d.id ASC, c.id ASC, COALESCE(s.roll, 0) ASC, s.name_bn ASC
       `,
       params,
     );
+
+    if (result.rows.length) return result;
+
+    // Same distinction as findStudentAdmitCards's fallback guard (see its
+    // comment): only fall back to the plain roster when this exam has NO
+    // ExamCandidate rows at all, not when every registered candidate
+    // happens to be CANCELLED right now.
+    if (await this.examHasAnyCandidates(madrasaId, examId)) {
+      return result;
+    }
+    return this.examCandidateRosterFallback(madrasaId, filters);
+  }
+
+  private async examCandidateRosterFallback(
+    madrasaId: number,
+    filters: RosterFilters,
+  ): Promise<OptionalQueryResult<any>> {
+    const roster = await this.findActiveStudentRoster(madrasaId, filters);
+    return {
+      rows: roster.map((row: any) => ({
+        ...row,
+        session_id: null,
+        exam_id: null,
+        exam_name: "—",
+        exam_year: row.academic_year || "—",
+        exam_candidate_id: null,
+        exam_registration_no: null,
+        candidate_no: null,
+        candidate_status: null,
+        eligibility_status: null,
+      })),
+      warning: EXAM_CANDIDATE_LIST_FALLBACK_WARNING,
+    };
   }
 
   /** Students marked absent (Mark.isAbsent) for an exam, one row per
@@ -1318,11 +1604,23 @@ export class ReportsRepository {
     return this.findActiveStudentRoster(madrasaId, filters);
   }
 
+  /** Marksheets for every PUBLISHED result the student has. Without an
+   * examId, a student with multiple published exams (e.g. প্রথম সাময়িক AND
+   * বার্ষিক) gets ALL of them mixed together in one result set, ordered
+   * most-recent-first - fine for an "all of this student's history" view,
+   * but almost never what "print marksheets for THIS exam" actually wants.
+   * Pass examId to scope to exactly one exam's results (see
+   * DocumentsReportPage.tsx's "student-marksheets" report, which now sets
+   * requiresExam so the admin UI always passes one). */
   async findStudentMarksheets(
     madrasaId: number,
+    examId?: number,
     filters: RosterFilters = {},
   ): Promise<OptionalQueryResult<any>> {
-    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
+    const { conditions: filterConditions, params: filterParams } = buildRosterFilterSql(madrasaId, filters);
+    const params = [...filterParams, examId || null];
+    const examIdParamIndex = params.length;
+    const conditions = `${filterConditions}\n        AND ($${examIdParamIndex}::int IS NULL OR rm.exam_id = $${examIdParamIndex}::int)`;
     const result = await this.runOptionalQuery(
       `
       SELECT
@@ -1450,16 +1748,63 @@ export class ReportsRepository {
     );
   }
 
-  findStudentAdmitCards(madrasaId: number, filters: RosterFilters = {}) {
-    const { conditions, params } = buildRosterFilterSql(madrasaId, filters);
-    return this.runOptionalQuery(
+  /** Admit cards for candidates actually REGISTERED for an exam (exam_candidates),
+   * not just "every active student" - a student who never registered, or
+   * whose registration was cancelled/found ineligible, must not get a card.
+   * Respects an explicit examId the same way findExamSignatureSheet/
+   * findExamNumberSheet do (selected_exam CTE: matches the requested exam,
+   * falls back to the most recent one only when none is given), unlike the
+   * old version of this query which ignored examId entirely and always used
+   * `ORDER BY id DESC LIMIT 1`. Seat/room come from the candidate's
+   * EARLIEST exam_routine slot's seat allocation - most madrasas keep one
+   * room+seat for a candidate across the whole exam, so this is shown as
+   * "the" seat; a candidate whose room/seat changes per subject will only
+   * see their first slot's assignment here (the seat-plan report is the
+   * authoritative per-slot source).
+   *
+   * Falls back to the plain active-student roster (same shape as before
+   * this fix, no seat/room, exam_name "—") with a warning when zero
+   * candidates are registered for the resolved exam - a madrasa that never
+   * adopted exam candidate registration must keep getting admit cards for
+   * its whole roster, not a suddenly-empty report. */
+  async findStudentAdmitCards(
+    madrasaId: number,
+    examId?: number,
+    filters: RosterFilters = {},
+  ): Promise<OptionalQueryResult<any>> {
+    const params: any[] = [madrasaId, examId || null];
+    const conditions: string[] = [];
+    if (filters.classId !== undefined) {
+      params.push(filters.classId);
+      conditions.push(`AND s.class_id = $${params.length}`);
+    }
+    if (filters.divisionId !== undefined) {
+      params.push(filters.divisionId);
+      conditions.push(`AND s.division_id = $${params.length}`);
+    }
+    if (filters.studentIds !== undefined && filters.studentIds.length > 0) {
+      params.push(filters.studentIds);
+      conditions.push(`AND s.id = ANY($${params.length}::int[])`);
+    }
+
+    const result = await this.runOptionalQuery(
       `
-      WITH latest_exam AS (
-        SELECT id
-        FROM exams
-        WHERE madrasa_id = $1 AND deleted_at IS NULL
-        ORDER BY id DESC
+      WITH selected_exam AS (
+        SELECT e.id, e.name, e.year
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
         LIMIT 1
+      ),
+      candidate_seat AS (
+        SELECT DISTINCT ON (esa.exam_candidate_id)
+          esa.exam_candidate_id, esa.seat_no, esa.room_id
+        FROM exam_seat_allocations esa
+        INNER JOIN exam_routines er ON er.id = esa.exam_routine_id
+        WHERE esa.madrasa_id = $1
+        ORDER BY esa.exam_candidate_id, er.exam_date ASC, er.start_time ASC
       )
       SELECT
         s.id,
@@ -1473,21 +1818,102 @@ export class ReportsRepository {
         s.image,
         COALESCE(c.name_bn, c.name) AS class_name,
         COALESCE(d.name_bn, d.name) AS division_name,
+        e.id AS exam_id,
         e.name AS exam_name,
-        e.year AS exam_year
+        e.year AS exam_year,
+        ec.id AS exam_candidate_id,
+        ec.registration_no AS exam_registration_no,
+        ec.candidate_no,
+        ec.status AS candidate_status,
+        cs.seat_no,
+        room.id AS room_id,
+        room.name AS room_name,
+        room.code AS room_code
       FROM students s
+      CROSS JOIN selected_exam e
+      INNER JOIN exam_candidates ec
+        ON ec.student_id = s.id AND ec.exam_id = e.id AND ec.madrasa_id = $1
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
-      LEFT JOIN latest_exam le ON true
-      LEFT JOIN exams e ON e.id = le.id
+      LEFT JOIN candidate_seat cs ON cs.exam_candidate_id = ec.id
+      LEFT JOIN exam_rooms room ON room.id = cs.room_id
       WHERE s.madrasa_id = $1
         AND s.deleted_at IS NULL
         AND s.is_active = 1
-        ${conditions}
+        AND ${examCandidateParticipationSql()}
+        ${conditions.join("\n        ")}
       ORDER BY s.roll ASC NULLS LAST, s.id DESC
       `,
       params,
     );
+
+    if (result.rows.length) return result;
+
+    // Only fall back to "every active student" when this exam has NO
+    // ExamCandidate rows at all (a madrasa that never adopted candidate
+    // registration - see the doc-comment above). If candidates ARE
+    // registered but every one of them is currently excluded by
+    // canCandidateParticipate (CANCELLED/WITHHELD/INELIGIBLE - e.g. every
+    // candidate temporarily withheld), the correct answer is genuinely
+    // zero admit cards, NOT the full school roster including students who
+    // were never registered for this exam at all.
+    if (await this.examHasAnyCandidates(madrasaId, examId)) {
+      return result;
+    }
+    return this.admitCardRosterFallback(madrasaId, filters);
+  }
+
+  /** Resolves the same "requested exam, or most recent if omitted" exam
+   * this file's selected_exam CTEs use, and checks whether it has ANY
+   * ExamCandidate rows (regardless of status/eligibility) - used to tell
+   * "candidate registration was never used for this exam" (fall back to
+   * the plain roster) apart from "candidates exist but none currently
+   * participate" (the correct answer is an honest empty result, not the
+   * whole school roster). */
+  private async examHasAnyCandidates(madrasaId: number, examId?: number): Promise<boolean> {
+    const rows = await this.runQuery<{ exists: boolean }>(
+      `
+      WITH selected_exam AS (
+        SELECT e.id
+        FROM exams e
+        WHERE e.madrasa_id = $1
+          AND e.deleted_at IS NULL
+          AND ($2::int IS NULL OR e.id = $2::int)
+        ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
+        LIMIT 1
+      )
+      SELECT EXISTS (
+        SELECT 1 FROM exam_candidates ec, selected_exam e
+        WHERE ec.madrasa_id = $1 AND ec.exam_id = e.id
+      ) AS exists
+      `,
+      [madrasaId, examId || null],
+    );
+    return Boolean(rows[0]?.exists);
+  }
+
+  private async admitCardRosterFallback(
+    madrasaId: number,
+    filters: RosterFilters,
+  ): Promise<OptionalQueryResult<any>> {
+    const roster = await this.findActiveStudentRoster(madrasaId, filters);
+    return {
+      rows: roster.map((row: any) => ({
+        ...row,
+        exam_id: null,
+        exam_name: "—",
+        exam_year: row.academic_year || "—",
+        exam_candidate_id: null,
+        exam_registration_no: null,
+        candidate_no: null,
+        candidate_status: null,
+        seat_no: null,
+        room_id: null,
+        room_name: null,
+        room_code: null,
+      })),
+      warning: ADMIT_CARD_FALLBACK_WARNING,
+    };
   }
 
   findStudentSanads(madrasaId: number, filters: RosterFilters = {}) {

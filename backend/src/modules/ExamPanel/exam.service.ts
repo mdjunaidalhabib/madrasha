@@ -60,7 +60,11 @@ export class ExamService {
 
   async listExams(madrasaId: number, activeOnly = false) {
     try {
-      return await this.repository.findExams(madrasaId, activeOnly);
+      const exams = await this.repository.findExams(madrasaId, activeOnly);
+      return exams.map((exam) => {
+        const { _count, ...rest } = exam as typeof exam & { _count: { feeStructures: number } };
+        return { ...rest, has_fee_link: _count.feeStructures > 0 };
+      });
     } catch (err) {
       return friendlyFailure("getExams error:", err, "Failed to load exams");
     }

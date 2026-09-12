@@ -94,4 +94,12 @@ export interface GenerateFilters {
   classId?: number;
   divisionId?: number;
   studentIds?: number[];
+  /** Which exam to scope generation to - meaningful for type ===
+   * "ADMIT_CARD" (falls back to the most recent exam when omitted, see
+   * findStudentAdmitCards's doc-comment) and type === "MARKSHEET" (falls
+   * back to every published exam mixed together when omitted, see
+   * findStudentMarksheets's doc-comment). Optional for backward
+   * compatibility with callers that predate exam scoping - callers that
+   * want a SPECIFIC exam must pass this explicitly. */
+  examId?: number;
 }

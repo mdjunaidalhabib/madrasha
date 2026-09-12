@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fail, getDivisionClassFilters, ok, requireTenant } from "../reports.response";
+import { fail, getDivisionClassFilters, getOptionalExamId, ok, requireTenant } from "../reports.response";
 import { studentReportService } from "./student-report.service";
 
 export const getStudentIdCardsReport = async (req: Request, res: Response) => {
@@ -19,7 +19,11 @@ export const getStudentMarksheetsReport = async (req: Request, res: Response) =>
   if (!madrasaId) return;
 
   try {
-    const { rows, warning } = await studentReportService.getMarksheets(madrasaId, getDivisionClassFilters(req));
+    const { rows, warning } = await studentReportService.getMarksheets(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
     return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);
@@ -43,7 +47,11 @@ export const getStudentAdmitCardsReport = async (req: Request, res: Response) =>
   if (!madrasaId) return;
 
   try {
-    const { rows, warning } = await studentReportService.getAdmitCards(madrasaId, getDivisionClassFilters(req));
+    const { rows, warning } = await studentReportService.getAdmitCards(
+      madrasaId,
+      getOptionalExamId(req),
+      getDivisionClassFilters(req),
+    );
     return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);

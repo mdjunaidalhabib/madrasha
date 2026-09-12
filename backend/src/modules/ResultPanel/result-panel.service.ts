@@ -69,7 +69,12 @@ export class ResultPanelService {
   ) {
     const [subjects, students, groupedMarks] = await Promise.all([
       this.repository.findActiveSubjectsForClass(madrasaId, classId),
-      this.repository.findActiveStudentsInClass(madrasaId, classId),
+      // Scoped to the ExamCandidate roster (who's really sitting this
+      // exam) instead of every active student in the class, with a
+      // fail-open fallback to the old "every active student" behavior for
+      // exams that predate candidate registration (zero ExamCandidate
+      // rows) - see findRequiredStudentsInClass.
+      this.repository.findRequiredStudentsInClass(madrasaId, examId, classId),
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
     ]);
 
@@ -410,9 +415,37 @@ export class ResultPanelService {
       }
     }
 
-    const resultMasterId = result_master_id
-      ? Number(result_master_id)
-      : await this.getOrCreateSessionId(madrasaId, exam_id, class_id);
+    // Resolve the result master WITHOUT ever trusting a client-supplied
+    // result_master_id at face value — every other mutation in this service
+    // looks it up scoped to the caller's own madrasaId first
+    // (findResultMasterById), but this one previously used the raw id
+    // directly, letting a cross-tenant id silently upsert Mark rows into
+    // another madrasa's result session. getOrCreateSessionId is already
+    // madrasaId-scoped, so only the "id was supplied" branch needed this.
+    let master: { id: number; examId: number; classId: number; status: ResultPublishStatus } | null;
+    if (result_master_id) {
+      master = await this.repository.findResultMasterById(Number(result_master_id), madrasaId);
+      if (!master) {
+        throw new NotFoundError("Result session not found");
+      }
+    } else {
+      const createdId = await this.getOrCreateSessionId(madrasaId, exam_id, class_id);
+      master = await this.repository.findResultMasterById(createdId, madrasaId);
+      if (!master) {
+        throw new NotFoundError("Result session not found");
+      }
+    }
+    const resultMasterId = master.id;
+
+    // A subject with no MarkSubmission row yet (e.g. added to the class
+    // after this result was published) would otherwise slip past the
+    // per-book lock check below — block the whole batch the moment the
+    // session itself has moved past marks-editing entirely.
+    if (master.status === RESULT_STATUS.PUBLISHED || master.status === RESULT_STATUS.LOCKED) {
+      throw new ConflictError(
+        "এই ফলাফল ইতিমধ্যে প্রকাশিত/লক করা হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।",
+      );
+    }
 
     // A cleared cell arrives as mark: null/"" — that's a delete, not an
     // upsert-to-zero, so split the batch before writing.
@@ -730,7 +763,25 @@ export class ResultPanelService {
       throw new BadRequestError("No marks found to process");
     }
 
-    await this.repository.markResultMasterProcessed(result_master_id, userId);
+    // Guarded on "DRAFT", not `reprocessable` - rebuildResultSummary just
+    // above already unconditionally set status to DRAFT as its own
+    // intermediate step (saveResultSummaryInTransaction's statusOverride
+    // defaults to "DRAFT" when rebuildResultSummary is called without one,
+    // which is exactly how processResult calls it - a fresh process run,
+    // not a correction re-grade). Guarding on `reprocessable` here would
+    // reject this call every single time, since the status it's checking
+    // for was already overwritten one step earlier in this same request.
+    const ok = await this.repository.markResultMasterProcessed(
+      result_master_id,
+      madrasaId,
+      ["DRAFT"],
+      userId,
+    );
+    if (!ok) {
+      throw new ConflictError(
+        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+      );
+    }
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -962,12 +1013,17 @@ export class ResultPanelService {
     // marksheet/report/guardian read path yet (those keep reading live
     // ResultSummary/Mark rows as before).
     const view = await this.getFullResultView(madrasaId, master.examId, master.classId, resultMasterId);
-    await this.repository.publishResultMasterWithSnapshot(
+    const published = await this.repository.publishResultMasterWithSnapshot(
       resultMasterId,
       madrasaId,
       userId,
       JSON.stringify(view),
     );
+    if (!published) {
+      throw new ConflictError(
+        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+      );
+    }
 
     await logActivity({
       madrasa_id: madrasaId,

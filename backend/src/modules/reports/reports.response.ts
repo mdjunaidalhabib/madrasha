@@ -35,6 +35,15 @@ export const getDivisionClassFilters = (req: Request) => ({
   classId: getOptionalPositiveInt(req.query.class_id),
 });
 
+/** Reads exam_id off req.query - shared by every report controller that
+ * scopes a roster-shaped query to one exam (moved here from
+ * academic-report.controller.ts so student-report.controller.ts's admit-card
+ * report can use the exact same parsing instead of a second copy). */
+export const getOptionalExamId = (req: Request) => {
+  const examId = Number(req.query.exam_id);
+  return Number.isInteger(examId) && examId > 0 ? examId : undefined;
+};
+
 export const requireTenant = (req: Request, res: Response): number => {
   const madrasaId = tenantId(req);
 

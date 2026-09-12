@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AcademicResultFilters } from "../reports.repository";
-import { fail, getDivisionClassFilters, ok, requireTenant } from "../reports.response";
+import { fail, getDivisionClassFilters, getOptionalExamId, ok, requireTenant } from "../reports.response";
 import { academicReportService } from "./academic-report.service";
 
 const MAX_PAGE_SIZE = 500;
@@ -154,11 +154,6 @@ export const getDigitalAttendanceReport = async (req: Request, res: Response) =>
   }
 };
 
-const getOptionalExamId = (req: Request) => {
-  const examId = Number(req.query.exam_id);
-  return Number.isInteger(examId) && examId > 0 ? examId : undefined;
-};
-
 export const getPrizeBookLabelsReport = async (req: Request, res: Response) => {
   const madrasaId = requireTenant(req, res);
   if (!madrasaId) return;
@@ -241,17 +236,65 @@ export const getExamRoutineByRoomReport = async (req: Request, res: Response) =>
   }
 };
 
+export const getSeatPlanReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { divisionId, classId } = getDivisionClassFilters(req);
+    const rows = await academicReportService.getSeatPlan(madrasaId, getOptionalExamId(req), {
+      roomId: getOptionalPositiveInt(req.query.room_id),
+      classId,
+      divisionId,
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getInvigilatorListReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const rows = await academicReportService.getInvigilatorList(madrasaId, getOptionalExamId(req), {
+      roomId: getOptionalPositiveInt(req.query.room_id),
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+export const getExamAttendanceSheetReport = async (req: Request, res: Response) => {
+  const madrasaId = requireTenant(req, res);
+  if (!madrasaId) return;
+
+  try {
+    const { divisionId, classId } = getDivisionClassFilters(req);
+    const rows = await academicReportService.getExamAttendanceSheet(madrasaId, getOptionalExamId(req), {
+      roomId: getOptionalPositiveInt(req.query.room_id),
+      classId,
+      divisionId,
+    });
+    return ok(res, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 export const getExamCandidatesReport = async (req: Request, res: Response) => {
   const madrasaId = requireTenant(req, res);
   if (!madrasaId) return;
 
   try {
-    const rows = await academicReportService.getExamCandidates(
+    const { rows, warning } = await academicReportService.getExamCandidates(
       madrasaId,
       getOptionalExamId(req),
       getDivisionClassFilters(req),
     );
-    return ok(res, Array.isArray(rows) ? rows : []);
+    return ok(res, rows, warning);
   } catch (error) {
     return fail(res, error);
   }

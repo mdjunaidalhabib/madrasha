@@ -1,17 +1,15 @@
 import { ExamCandidateStatus } from "@prisma/client";
-import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { ApiError, BadRequestError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { examCandidateRepository, ExamCandidateRepository } from "./exam-candidate.repository";
 import { eligibilityService, EligibilityService } from "./eligibility.service";
 import { EXAM_CANDIDATE_STATUSES } from "./exam-candidate.constants";
 import {
   BulkEligibilityCheckRequestDto,
-  BulkRegisterRequestDto,
   BulkUpdateStatusRequestDto,
   EligibilityCheckRequestDto,
   EligibleStudentsQueryDto,
   ListExamCandidatesQueryDto,
-  RegisterCandidateRequestDto,
   UpdateCandidateStatusRequestDto,
 } from "./exam-candidate.dto";
 
@@ -20,11 +18,17 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
   throw new ApiError(friendlyMessage, 500);
 };
 
-// Exams in one of these states are no longer accepting new registrations -
-// everything earlier in the lifecycle (DRAFT..RESULT_APPROVAL) still can,
-// so a madrasa that never bothers flicking every intermediate status keeps
-// working exactly as before.
-const REGISTRATION_BLOCKED_STATUSES = new Set(["CANCELLED", "LOCKED", "PUBLISHED"]);
+// Caps every bulk exam-candidate endpoint's batch size - these process
+// sequentially with per-item DB round trips (no native Prisma bulk-upsert
+// for this shape), so an unbounded array is an easy request-timeout/DoS
+// vector. 200 comfortably covers a full class list with room to spare.
+const MAX_BULK_ITEMS = 200;
+
+const assertBulkSize = (count: number, label: string) => {
+  if (count > MAX_BULK_ITEMS) {
+    throw new BadRequestError(`একসাথে সর্বোচ্চ ${MAX_BULK_ITEMS}টি ${label} প্রক্রিয়া করা যায়।`);
+  }
+};
 
 const toId = (value: unknown, label: string): number => {
   const id = Number(value);
@@ -114,141 +118,151 @@ export class ExamCandidateService {
     }
   }
 
-  /* ================= REGISTRATION ================= */
+  /* ================= REGISTRATION (automatic only - see class doc) ================= */
 
-  private assertRegistrationOpen(exam: { status: string; name: string }) {
-    if (REGISTRATION_BLOCKED_STATUSES.has(exam.status)) {
-      throw new BadRequestError(`"${exam.name}" is ${exam.status.toLowerCase()} - no new registration allowed`);
-    }
-  }
+  /**
+   * Core registration loop shared by both automatic triggers -
+   * `autoRegisterForRoutine` (free exam, whole class/division) and
+   * `autoRegisterOnInvoicePaid` (fee-linked exam, one student on full
+   * payment). Manual registration was removed entirely: candidates are now
+   * only ever created by one of those two triggers, both of which funnel
+   * through here.
+   *
+   * Registration numbers are reserved in one batch query, then all rows are
+   * inserted in one `createMany` (relying on `skipDuplicates` +
+   * `uniq_exam_candidate_exam_student` to make this safe under a race with
+   * another trigger), inside a single transaction. The eligibility
+   * evaluation afterwards stays per-row - unchanged from the old
+   * register/bulkRegister behavior - since it's a read-heavy check
+   * (fees/attendance) that doesn't benefit from batching.
+   */
+  private async registerBatch(
+    madrasaId: number,
+    examId: number,
+    students: Array<{ id: number; sessionId: number; classId: number; divisionId: number | null }>,
+    createdBy?: number,
+  ): Promise<{ created: number }> {
+    // ExamCandidate.divisionId is a required column - Student.divisionId is
+    // likewise non-null in the schema, so this is defensive only (guards
+    // the `number | null` shape this method's callers are typed with,
+    // e.g. a payment-driven trigger reading a plain Student row) rather
+    // than something expected to actually trigger.
+    const valid = students.filter((s): s is typeof s & { divisionId: number } => {
+      if (s.divisionId != null) return true;
+      logger.error(`examCandidate.registerBatch: skipping student ${s.id} - no divisionId (exam ${examId})`);
+      return false;
+    });
+    if (!valid.length) return { created: 0 };
 
-  async register(madrasaId: number, userId: number | undefined, dto: RegisterCandidateRequestDto) {
-    const examId = toId(dto.exam_id, "exam_id");
-    const studentId = toId(dto.student_id, "student_id");
-
-    const exam = await this.repository.findExam(madrasaId, examId);
-    if (!exam) throw new NotFoundError("Exam not found");
-    this.assertRegistrationOpen(exam);
-
-    const student = await this.repository.findStudentForEligibility(madrasaId, studentId);
-    if (!student) throw new NotFoundError("Student not found");
-
-    try {
-      const existing = await this.repository.findCandidateByExamStudent(madrasaId, examId, studentId);
-      if (existing && existing.status !== ExamCandidateStatus.CANCELLED) {
-        throw new ConflictError("This student is already registered for this exam");
-      }
-
-      const candidate = await this.repository.runTransaction(async (tx) => {
-        if (existing) {
-          return this.repository.reactivateCandidateOnTx(tx, existing.id, {
-            notes: dto.notes ?? null,
-            updatedBy: userId,
-          });
-        }
-        const registrationNo = await this.repository.nextRegistrationNo(tx, madrasaId, examId);
-        return this.repository.createCandidateOnTx(tx, {
+    const registrationNos = await this.repository.runTransaction(async (tx) => {
+      const numbers = await this.repository.nextRegistrationNoBatch(tx, madrasaId, examId, valid.length);
+      await this.repository.createCandidatesOnTx(
+        tx,
+        valid.map((student, i) => ({
           madrasaId,
           examId,
-          studentId,
+          studentId: student.id,
           sessionId: student.sessionId,
           classId: student.classId,
           divisionId: student.divisionId,
-          registrationNo,
-          notes: dto.notes ?? null,
-          createdBy: userId ?? null,
-        });
-      });
+          registrationNo: numbers[i],
+          createdBy: createdBy ?? null,
+        })),
+      );
+      return numbers;
+    });
 
-      const evaluation = await this.eligibility.evaluate(madrasaId, {
-        examId,
-        studentId,
-        isRegistered: true,
-        requireRegistration: true,
-      });
-      await this.repository.updateEligibility(candidate.id, {
-        eligibilityStatus: this.eligibility.eligibilityStatusFrom(evaluation),
-        eligibilityReasons: JSON.stringify(evaluation.reasons),
-      });
-
-      return this.repository.findCandidateById(madrasaId, candidate.id);
-    } catch (err) {
-      if (err instanceof ConflictError || err instanceof NotFoundError) throw err;
-      return friendlyFailure("examCandidate.register error:", err, "Failed to register candidate");
-    }
-  }
-
-  async bulkRegister(madrasaId: number, userId: number | undefined, dto: BulkRegisterRequestDto) {
-    const examId = toId(dto.exam_id, "exam_id");
-    const exam = await this.repository.findExam(madrasaId, examId);
-    if (!exam) throw new NotFoundError("Exam not found");
-    this.assertRegistrationOpen(exam);
-
-    let studentIds: number[];
-    if (dto.student_ids?.length) {
-      studentIds = dto.student_ids.map((id) => Number(id));
-    } else if (dto.class_id || dto.division_id) {
-      const pool = await this.repository.findEligibleStudentPool(madrasaId, {
-        examId,
-        classId: dto.class_id ? Number(dto.class_id) : undefined,
-        divisionId: dto.division_id ? Number(dto.division_id) : undefined,
-      });
-      studentIds = pool.map((s) => s.id);
-    } else {
-      throw new BadRequestError("student_ids or class_id/division_id is required");
-    }
-
-    if (!studentIds.length) return { registered: 0, skipped: [] as Array<{ student_id: number; reason: string }> };
-
-    const registeredIds: number[] = [];
-    const skipped: Array<{ student_id: number; reason: string }> = [];
-
-    try {
-      for (const studentId of studentIds) {
-        const student = await this.repository.findStudentForEligibility(madrasaId, studentId);
-        if (!student) {
-          skipped.push({ student_id: studentId, reason: "শিক্ষার্থী পাওয়া যায়নি" });
-          continue;
-        }
-        const existing = await this.repository.findCandidateByExamStudent(madrasaId, examId, studentId);
-        if (existing && existing.status !== ExamCandidateStatus.CANCELLED) {
-          skipped.push({ student_id: studentId, reason: "ইতিমধ্যে নিবন্ধিত" });
-          continue;
-        }
-
-        const candidate = await this.repository.runTransaction(async (tx) => {
-          if (existing) {
-            return this.repository.reactivateCandidateOnTx(tx, existing.id, { updatedBy: userId });
-          }
-          const registrationNo = await this.repository.nextRegistrationNo(tx, madrasaId, examId);
-          return this.repository.createCandidateOnTx(tx, {
-            madrasaId,
-            examId,
-            studentId,
-            sessionId: student.sessionId,
-            classId: student.classId,
-            divisionId: student.divisionId,
-            registrationNo,
-            createdBy: userId ?? null,
-          });
-        });
-
+    for (const student of valid) {
+      try {
         const evaluation = await this.eligibility.evaluate(madrasaId, {
           examId,
-          studentId,
+          studentId: student.id,
           isRegistered: true,
           requireRegistration: true,
         });
-        await this.repository.updateEligibility(candidate.id, {
-          eligibilityStatus: this.eligibility.eligibilityStatusFrom(evaluation),
-          eligibilityReasons: JSON.stringify(evaluation.reasons),
-        });
-        registeredIds.push(candidate.id);
+        const candidate = await this.repository.findCandidateByExamStudent(madrasaId, examId, student.id);
+        if (candidate) {
+          await this.repository.updateEligibility(candidate.id, {
+            eligibilityStatus: this.eligibility.eligibilityStatusFrom(evaluation),
+            eligibilityReasons: JSON.stringify(evaluation.reasons),
+          });
+        }
+      } catch (err) {
+        // One student's eligibility check failing must never roll back or
+        // block the rest of the batch's registrations - they're already
+        // committed above.
+        logger.error("examCandidate.registerBatch eligibility evaluation failed:", err);
+      }
+    }
+
+    return { created: registrationNos.length };
+  }
+
+  /**
+   * Trigger (A): free exam (no linked fee structure) - every active
+   * student in the routine's class(+division) auto-becomes a candidate
+   * whenever an ExamRoutine is created/updated for that class. Called as a
+   * side effect from routine.service.ts (via exam-candidate.hooks.ts) -
+   * never throws, since a registration hiccup must never block routine
+   * creation itself.
+   */
+  async autoRegisterForRoutine(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    divisionId: number | null,
+    createdBy?: number,
+  ): Promise<void> {
+    try {
+      if (await this.repository.examHasFeeLink(madrasaId, examId)) return;
+
+      const exam = await this.repository.findExam(madrasaId, examId);
+      if (!exam) {
+        logger.error(`examCandidate.autoRegisterForRoutine: exam ${examId} not found (madrasa ${madrasaId})`);
+        return;
       }
 
-      return { registered: registeredIds.length, skipped };
+      const pool = await this.repository.findEligibleStudentPool(madrasaId, {
+        examId,
+        classId,
+        // findEligibleStudentPool's filter takes `number | undefined` (no
+        // division filter = whole class); the routine's own divisionId is
+        // `number | null` ("no specific division" recorded as null).
+        divisionId: divisionId ?? undefined,
+      });
+      if (!pool.length) return;
+
+      await this.registerBatch(
+        madrasaId,
+        examId,
+        pool.map((s) => ({ id: s.id, sessionId: s.sessionId, classId: s.classId, divisionId: s.divisionId })),
+        createdBy,
+      );
     } catch (err) {
-      return friendlyFailure("examCandidate.bulkRegister error:", err, "Failed to bulk-register candidates");
+      logger.error("examCandidate.autoRegisterForRoutine failed:", err);
+    }
+  }
+
+  /**
+   * Trigger (B): fee-linked exam - a student auto-becomes a candidate only
+   * once their invoice for that exam's fee structure reaches full PAID
+   * status (never on invoice creation, PARTIALLY_PAID, or a waiver). Called
+   * as a side effect from fee.service.ts's recordPayment() (via
+   * exam-candidate.hooks.ts) - never throws, a registration hiccup must
+   * never surface as a payment failure.
+   */
+  async autoRegisterOnInvoicePaid(
+    madrasaId: number,
+    examId: number,
+    student: { id: number; sessionId: number; classId: number; divisionId: number | null },
+  ): Promise<void> {
+    try {
+      const existing = await this.repository.findCandidateByExamStudent(madrasaId, examId, student.id);
+      if (existing) return;
+
+      await this.registerBatch(madrasaId, examId, [student]);
+    } catch (err) {
+      logger.error("examCandidate.autoRegisterOnInvoicePaid failed:", err);
     }
   }
 
@@ -299,6 +313,7 @@ export class ExamCandidateService {
     if (!exam) throw new NotFoundError("Exam not found");
 
     const candidateIds = dto.candidate_ids?.length ? dto.candidate_ids.map((id) => Number(id)) : undefined;
+    if (candidateIds) assertBulkSize(candidateIds.length, "প্রার্থী");
 
     try {
       const candidates = await this.repository.findCandidatesByExam(madrasaId, examId, candidateIds);
@@ -358,6 +373,7 @@ export class ExamCandidateService {
 
   async bulkUpdateStatus(madrasaId: number, userId: number | undefined, dto: BulkUpdateStatusRequestDto) {
     if (!Array.isArray(dto.ids) || !dto.ids.length) throw new BadRequestError("ids must be a non-empty array");
+    assertBulkSize(dto.ids.length, "প্রার্থী");
     if (!EXAM_CANDIDATE_STATUSES.includes(dto.status as any)) {
       throw new BadRequestError(`Invalid status "${dto.status}"`);
     }

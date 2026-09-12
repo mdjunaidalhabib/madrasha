@@ -16,19 +16,6 @@ export interface EligibleStudentsQueryDto {
   search?: string;
 }
 
-export interface RegisterCandidateRequestDto {
-  exam_id: number | string;
-  student_id: number | string;
-  notes?: string;
-}
-
-export interface BulkRegisterRequestDto {
-  exam_id: number | string;
-  student_ids?: Array<number | string>;
-  class_id?: number | string;
-  division_id?: number | string;
-}
-
 export interface EligibilityCheckRequestDto {
   exam_id?: number | string;
   student_id?: number | string;
@@ -55,6 +42,7 @@ export interface UpdateEligibilitySettingsRequestDto {
   require_active_student?: boolean;
   require_approved_admission?: boolean;
   check_dues?: boolean;
+  scope_dues_to_exam_fee?: boolean;
   check_attendance?: boolean;
   min_attendance_percent?: number | string;
 }

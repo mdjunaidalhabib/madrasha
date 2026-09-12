@@ -7,16 +7,16 @@ export class StudentReportService {
     return this.repository.findStudentIdCards(madrasaId, filters);
   }
 
-  getMarksheets(madrasaId: number, filters: RosterFilters = {}) {
-    return this.repository.findStudentMarksheets(madrasaId, filters);
+  getMarksheets(madrasaId: number, examId?: number, filters: RosterFilters = {}) {
+    return this.repository.findStudentMarksheets(madrasaId, examId, filters);
   }
 
   getCertificates(madrasaId: number, filters: RosterFilters = {}) {
     return this.repository.findStudentCertificates(madrasaId, filters);
   }
 
-  getAdmitCards(madrasaId: number, filters: RosterFilters = {}) {
-    return this.repository.findStudentAdmitCards(madrasaId, filters);
+  getAdmitCards(madrasaId: number, examId?: number, filters: RosterFilters = {}) {
+    return this.repository.findStudentAdmitCards(madrasaId, examId, filters);
   }
 
   getSanads(madrasaId: number, filters: RosterFilters = {}) {

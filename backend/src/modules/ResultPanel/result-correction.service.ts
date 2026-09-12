@@ -2,6 +2,7 @@ import { CorrectionStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
+import { isPrivilegedActor } from "../../shared/utils/rbac.util";
 import { resultPanelRepository } from "./result-panel.repository";
 import { resultPanelService } from "./result-panel.service";
 
@@ -85,20 +86,33 @@ export class ResultCorrectionService {
     const newValue =
       body.new_value === null || body.new_value === undefined ? null : String(body.new_value);
 
-    const created = await prisma.resultCorrection.create({
-      data: {
-        madrasaId,
-        resultMasterId,
-        studentId,
-        bookId,
-        field,
-        oldValue,
-        newValue,
-        reason,
-        status: "PENDING",
-        requestedBy: userId,
-      },
-    });
+    let created;
+    try {
+      created = await prisma.resultCorrection.create({
+        data: {
+          madrasaId,
+          resultMasterId,
+          studentId,
+          bookId,
+          field,
+          oldValue,
+          newValue,
+          reason,
+          status: "PENDING",
+          requestedBy: userId,
+        },
+      });
+    } catch (err: any) {
+      // uniq_pending_result_correction (partial unique index, see the
+      // result.prisma ResultCorrection doc-comment) blocks a second PENDING
+      // request for the same (resultMasterId, studentId, bookId, field).
+      if (err?.code === "P2002") {
+        throw new ConflictError(
+          "এই একই বিষয়ের জন্য ইতিমধ্যে একটি সংশোধনের অনুরোধ অপেক্ষমাণ (PENDING) আছে — আগেরটি সিদ্ধান্ত না হওয়া পর্যন্ত নতুন অনুরোধ দেওয়া যাবে না।",
+        );
+      }
+      throw err;
+    }
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -163,9 +177,17 @@ export class ResultCorrectionService {
       throw new ConflictError("এই সংশোধনের অনুরোধ ইতিমধ্যে সিদ্ধান্ত নেওয়া হয়ে গেছে।");
     }
 
+    if (correction.requestedBy === userId && !(await isPrivilegedActor(userId))) {
+      throw new ConflictError(
+        "নিজের অনুরোধ করা সংশোধন নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর সিদ্ধান্ত প্রয়োজন।",
+      );
+    }
+
     if (!approve) {
-      await prisma.resultCorrection.update({
-        where: { id: correctionId },
+      // Guarded on status: "PENDING" so two concurrent decide() calls on
+      // the same request can't both apply - only the first write matches.
+      const rejected = await prisma.resultCorrection.updateMany({
+        where: { id: correctionId, status: "PENDING" },
         data: {
           status: "REJECTED",
           decidedBy: userId,
@@ -173,6 +195,9 @@ export class ResultCorrectionService {
           decisionNote: decisionNote?.trim() || null,
         },
       });
+      if (rejected.count === 0) {
+        throw new ConflictError("এই সংশোধনের অনুরোধ ইতিমধ্যে সিদ্ধান্ত নেওয়া হয়ে গেছে।");
+      }
 
       await logActivity({
         madrasa_id: madrasaId,
@@ -184,6 +209,26 @@ export class ResultCorrectionService {
       });
 
       return { message: "সংশোধনের অনুরোধ প্রত্যাখ্যান করা হয়েছে" };
+    }
+
+    // Atomically claim the PENDING row (guarded the same way as the reject
+    // path above) BEFORE applying any field change, so two concurrent
+    // approve() calls on the same request can't both mutate live data - the
+    // loser's updateMany matches zero rows and bails out here instead of
+    // double-applying the correction. Uses APPROVED as a transient
+    // "claimed, applying now" marker; the field mutation below then
+    // advances it to APPLIED.
+    const claimed = await prisma.resultCorrection.updateMany({
+      where: { id: correctionId, status: "PENDING" },
+      data: {
+        status: "APPROVED",
+        decidedBy: userId,
+        decidedAt: new Date(),
+        decisionNote: decisionNote?.trim() || null,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new ConflictError("এই সংশোধনের অনুরোধ ইতিমধ্যে সিদ্ধান্ত নেওয়া হয়ে গেছে।");
     }
 
     const isMarkField = MARK_FIELDS.has(correction.field);
@@ -213,13 +258,7 @@ export class ResultCorrectionService {
 
     await prisma.resultCorrection.update({
       where: { id: correctionId },
-      data: {
-        status: "APPLIED",
-        decidedBy: userId,
-        decidedAt: new Date(),
-        decisionNote: decisionNote?.trim() || null,
-        appliedAt: new Date(),
-      },
+      data: { status: "APPLIED", appliedAt: new Date() },
     });
 
     if (isMarkField) {

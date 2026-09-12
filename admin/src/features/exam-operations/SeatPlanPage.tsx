@@ -11,6 +11,8 @@ import {
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { useAuthStore } from "../../store/authStore";
+import { hasPermission } from "../../utils/permissions";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -37,6 +39,15 @@ const STRATEGY_LABELS: Record<SeatAllocationStrategy, string> = {
 };
 
 const SeatPlanPage = () => {
+  // Route-level guard now accepts exam.seat.read OR exam.seat.manage (see
+  // router.tsx) so a view-only role can open this page - hide/disable the
+  // allocate/clear/manual-adjust controls for anyone without .manage, since
+  // the backend would reject those mutations anyway (this just avoids a
+  // confusing "click button, get a 403 toast" experience).
+  const user = useAuthStore((s) => s.user);
+  const permissions = useAuthStore((s) => s.permissions);
+  const canManage = hasPermission(user, permissions, "exam.seat.manage");
+
   const [exams, setExams] = useState<Exam[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -55,6 +66,7 @@ const SeatPlanPage = () => {
   const [seats, setSeats] = useState<SeatAllocationRow[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [allocating, setAllocating] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -69,6 +81,7 @@ const SeatPlanPage = () => {
         setRooms(normalizeArray(roomRes));
       } catch (err) {
         logger.error("SEAT PLAN INIT LOAD ERROR:", err);
+        useToastStore.getState().show("পরীক্ষা/বিভাগ/রুমের তালিকা লোড করতে সমস্যা হয়েছে", "error");
       }
     })();
   }, []);
@@ -156,14 +169,17 @@ const SeatPlanPage = () => {
   };
 
   const handleClear = async () => {
-    if (!routineId) return;
+    if (!routineId || clearing) return;
     try {
+      setClearing(true);
       await examSeatApi.clear(Number(routineId));
       useToastStore.getState().show("আসন বণ্টন মুছে ফেলা হয়েছে", "success");
       loadSeats();
     } catch (err: any) {
       const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -254,7 +270,7 @@ const SeatPlanPage = () => {
           </div>
         </div>
 
-        {routineId && (
+        {routineId && canManage && (
           <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
             <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">স্বয়ংক্রিয় বণ্টন</h2>
             <div className="mb-3 flex flex-wrap gap-3">
@@ -293,8 +309,9 @@ const SeatPlanPage = () => {
               </button>
               <button
                 type="button"
+                disabled={clearing}
                 onClick={handleClear}
-                className="h-9 w-full rounded-md border border-red-300 bg-red-50 px-4 text-sm font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 sm:w-auto"
+                className="h-9 w-full rounded-md border border-red-300 bg-red-50 px-4 text-sm font-medium text-red-700 disabled:opacity-60 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 sm:w-auto"
               >
                 সব মুছুন
               </button>
@@ -331,18 +348,20 @@ const SeatPlanPage = () => {
                           >
                             <div className="font-semibold text-gray-800 dark:text-slate-100">আসন {seat.seatNo}</div>
                             <div className="text-gray-500 dark:text-slate-400">প্রার্থী #{seat.examCandidateId}</div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newSeatNo = window.prompt("নতুন আসন নম্বর দিন", seat.seatNo);
-                                if (newSeatNo && newSeatNo.trim() && newSeatNo !== seat.seatNo) {
-                                  handleManualUpdate(seat, seat.roomId, newSeatNo.trim());
-                                }
-                              }}
-                              className="mt-1 text-blue-600 hover:underline dark:text-blue-400"
-                            >
-                              পরিবর্তন
-                            </button>
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newSeatNo = window.prompt("নতুন আসন নম্বর দিন", seat.seatNo);
+                                  if (newSeatNo && newSeatNo.trim() && newSeatNo !== seat.seatNo) {
+                                    handleManualUpdate(seat, seat.roomId, newSeatNo.trim());
+                                  }
+                                }}
+                                className="mt-1 text-blue-600 hover:underline dark:text-blue-400"
+                              >
+                                পরিবর্তন
+                              </button>
+                            )}
                           </div>
                         ))}
                     </div>

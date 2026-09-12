@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { prisma } from "../../shared/database/prisma";
 import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { timeRangesOverlap } from "../../shared/utils/time-range.util";
@@ -10,6 +11,12 @@ const isEmpty = (value: unknown) => value === undefined || value === null || Str
 
 const isDuplicateError = (err: unknown) =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+
+// Postgres SQLSTATE 40001 ("could not serialize access due to concurrent
+// update") - the expected, retryable failure mode of a SERIALIZABLE
+// transaction losing a real conflict, not a bug.
+const isSerializationFailure = (err: unknown) =>
+  err instanceof Prisma.PrismaClientUnknownRequestError && /40001/.test(err.message);
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -48,18 +55,42 @@ export class ExamInvigilatorService {
     const routine = await this.repository.findRoutineDateTime(examRoutineId, madrasaId);
     if (!routine) throw new NotFoundError("Exam routine not found");
 
-    await this.assertNoInvigilatorConflict(madrasaId, invigilatorType, invigilatorId, routine);
+    const invigilatorExists = await this.repository.invigilatorExists(madrasaId, invigilatorType, invigilatorId);
+    if (!invigilatorExists) throw new NotFoundError(`${invigilatorType.toLowerCase()} not found`);
 
+    // The overlap check (a read) and the create (a write) run inside one
+    // SERIALIZABLE transaction, re-checking overlap against the
+    // transaction's own snapshot right before the insert - Postgres will
+    // abort one side with a serialization failure (40001) rather than let
+    // two concurrent requests both pass the check and double-book the same
+    // person into overlapping slots. The exact-duplicate-slot case is still
+    // caught separately via the DB unique constraint (P2002) below.
     try {
-      await this.repository.create(madrasaId, {
-        examRoutineId,
-        invigilatorType,
-        invigilatorId,
-        role,
-        notes: dto.notes?.trim() || null,
-      });
+      await prisma.$transaction(
+        async (tx) => {
+          await this.assertNoInvigilatorConflict(madrasaId, invigilatorType, invigilatorId, routine, tx);
+          await this.repository.create(
+            madrasaId,
+            {
+              examRoutineId,
+              invigilatorType,
+              invigilatorId,
+              role,
+              notes: dto.notes?.trim() || null,
+            },
+            tx,
+          );
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This person is already assigned to this exam slot");
+      if (err instanceof ConflictError) throw err;
+      if (isSerializationFailure(err)) {
+        throw new ConflictError(
+          "একই সময়ে অন্য একটি অনুরোধের সাথে সংঘর্ষ হয়েছে — আবার চেষ্টা করুন।",
+        );
+      }
       return friendlyFailure("assign error:", err, "Failed to assign invigilator");
     }
   }
@@ -93,6 +124,7 @@ export class ExamInvigilatorService {
     invigilatorType: string,
     invigilatorId: number,
     targetRoutine: TargetRoutine,
+    tx?: Prisma.TransactionClient,
   ) {
     const others = await this.repository.findOtherAssignmentsForPersonOnDate(
       madrasaId,
@@ -100,6 +132,7 @@ export class ExamInvigilatorService {
       invigilatorId,
       targetRoutine.examDate,
       targetRoutine.id,
+      tx,
     );
     const clash = others.find((o) =>
       timeRangesOverlap(

@@ -1,8 +1,10 @@
 import {
   AbsentCandidateFilters,
   AcademicResultFilters,
+  ExamAttendanceSheetFilters,
   ExamRoutineFilters,
   ExamSummaryFilters,
+  InvigilatorListFilters,
   reportsRepository,
   ReportsRepository,
   ResultNoticeFilters,
@@ -10,6 +12,7 @@ import {
   ResultStatusFilters,
   RosterFilters,
   RoutineFilters,
+  SeatPlanFilters,
   SubjectPerformanceFilters,
 } from "../reports.repository";
 
@@ -70,6 +73,18 @@ export class AcademicReportService {
 
   getExamRoutineByRoom(madrasaId: number, examId?: number, filters: ExamRoutineFilters = {}) {
     return this.repository.findExamRoutineList(madrasaId, examId, filters, true);
+  }
+
+  getSeatPlan(madrasaId: number, examId?: number, filters: SeatPlanFilters = {}) {
+    return this.repository.findSeatPlan(madrasaId, examId, filters);
+  }
+
+  getInvigilatorList(madrasaId: number, examId?: number, filters: InvigilatorListFilters = {}) {
+    return this.repository.findInvigilatorList(madrasaId, examId, filters);
+  }
+
+  getExamAttendanceSheet(madrasaId: number, examId?: number, filters: ExamAttendanceSheetFilters = {}) {
+    return this.repository.findExamAttendanceSheet(madrasaId, examId, filters);
   }
 
   getExamCandidates(madrasaId: number, examId?: number, filters: RosterFilters = {}) {

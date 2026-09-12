@@ -38,7 +38,7 @@ model Exam {
   status      ExamStatus @default(DRAFT)
   description String?    @db.VarChar(500)
   isActive    Boolean    @default(true) @map("is_active")
-  madrasaId   Int        @default(1) @map("madrasa_id")
+  madrasaId   Int        @map("madrasa_id")
   /// Display order within a madrasa (প্রথম সাময়িক, দ্বিতীয় সাময়িক, বার্ষিক, ...),
   /// user-adjustable via the "move up/down" controls in Exam Management.
   /// Everywhere this list is shown (Exam Panel, Result Preview, ...) sorts
@@ -58,6 +58,7 @@ model Exam {
   /// instead of billing the whole session up front.
   feeStructures  FeeStructure[]
   examCandidates ExamCandidate[]
+  markComponentConfigs MarkComponentConfig[]
 
   @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
   @@index([madrasaId, status], map: "idx_exam_madrasa_status")

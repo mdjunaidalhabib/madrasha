@@ -46,6 +46,10 @@ export interface TemplateListItemDto {
   is_active: boolean;
   is_system_default: boolean;
   is_tenant_default: boolean;
+  /// Always null from the list endpoint today (resolved lazily per-template
+  /// by the detail call) - typed loosely since its shape mirrors a
+  /// backend-only canvas-background JSON type not mirrored on this side.
+  thumbnail: { width: number; height: number; background: unknown } | null;
   updated_at: string;
 }
 
@@ -161,6 +165,11 @@ export async function generateDocuments(payload: {
   class_id?: number;
   division_id?: number;
   student_ids?: number[];
+  /** Required in practice for type === "ADMIT_CARD" - omitting it falls
+   * back to the backend's most-recently-created exam (see
+   * document-templates.service.ts's generate()), which is almost never
+   * what a caller actually wants once a madrasa has more than one exam. */
+  exam_id?: number;
 }): Promise<GenerateResultDto> {
   const res = await api.post("/document-templates/generate", payload);
   return res.data.data;

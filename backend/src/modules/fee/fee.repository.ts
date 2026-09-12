@@ -390,6 +390,15 @@ export class FeeRepository {
     return tx.invoice.findFirst({ where: { id, madrasaId } });
   }
 
+  /** Whether an invoice's fee structure is linked to an exam - drives the
+   * fee-linked exam-candidate auto-registration trigger in fee.service.ts's
+   * recordPayment(). Returns null when the fee structure has no exam link
+   * (or doesn't exist/belong to this tenant), in which case the caller
+   * skips the hook entirely. */
+  findFeeStructureExamLink(madrasaId: number, feeStructureId: number) {
+    return prisma.feeStructure.findFirst({ where: { id: feeStructureId, madrasaId }, select: { examId: true } });
+  }
+
   updateInvoiceOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {
     return tx.invoice.update({ where: { id }, data });
   }

@@ -1,4 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 export class ExamInvigilatorRepository {
   findByRoutine(madrasaId: number, examRoutineId: number) {
@@ -8,8 +11,8 @@ export class ExamInvigilatorRepository {
     });
   }
 
-  create(madrasaId: number, data: Record<string, unknown>) {
-    return prisma.examInvigilatorAssignment.create({ data: { ...data, madrasaId } as any });
+  create(madrasaId: number, data: Record<string, unknown>, db: Db = prisma) {
+    return db.examInvigilatorAssignment.create({ data: { ...data, madrasaId } as any });
   }
 
   updateStatus(id: number, madrasaId: number, data: Record<string, unknown>) {
@@ -27,6 +30,18 @@ export class ExamInvigilatorRepository {
     });
   }
 
+  /** Confirms the Teacher/Staff id being assigned as invigilator actually
+   * belongs to this tenant, before an assignment row is created pointing at
+   * it - see exam-invigilator.service.ts's assign(). */
+  async invigilatorExists(madrasaId: number, invigilatorType: string, invigilatorId: number): Promise<boolean> {
+    if (invigilatorType === "TEACHER") {
+      const teacher = await prisma.teacher.findFirst({ where: { id: invigilatorId, madrasaId, deletedAt: null } });
+      return !!teacher;
+    }
+    const staff = await prisma.staff.findFirst({ where: { id: invigilatorId, madrasaId, deletedAt: null } });
+    return !!staff;
+  }
+
   /** Other slots this person is already assigned to on the same date, for
    * the service layer's time-overlap check (see time-range.util.ts). */
   findOtherAssignmentsForPersonOnDate(
@@ -35,8 +50,9 @@ export class ExamInvigilatorRepository {
     invigilatorId: number,
     examDate: Date,
     excludeExamRoutineId: number,
+    db: Db = prisma,
   ) {
-    return prisma.examInvigilatorAssignment.findMany({
+    return db.examInvigilatorAssignment.findMany({
       where: {
         madrasaId,
         invigilatorType: invigilatorType as any,

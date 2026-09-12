@@ -188,7 +188,9 @@ const madrasaAdminChildren = [
     path: "reports/academic-report",
     element: (
       <ModuleGuard module="reports">
-        <PermissionGuard permission="reports.read">{withSuspense(<AcademicReportPage />)}</PermissionGuard>
+        <PermissionGuard permission={["reports.read", "reports.academic", "reports.attendance"]}>
+          {withSuspense(<AcademicReportPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },
@@ -196,7 +198,12 @@ const madrasaAdminChildren = [
     path: "reports/student_report",
     element: (
       <ModuleGuard module="reports">
-        <PermissionGuard permission="reports.read">{withSuspense(<StudentReportPage />)}</PermissionGuard>
+        {/* StudentReportPage's own reports (admissions, guardian-phones) are
+            served by the /academic/* endpoints, gated backend-side by
+            reports.academic - not reports.student (see report.routes.ts). */}
+        <PermissionGuard permission={["reports.read", "reports.academic"]}>
+          {withSuspense(<StudentReportPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },
@@ -204,7 +211,9 @@ const madrasaAdminChildren = [
     path: "reports/exam_report",
     element: (
       <ModuleGuard module="reports">
-        <PermissionGuard permission="reports.read">{withSuspense(<ExamReportPage />)}</PermissionGuard>
+        <PermissionGuard permission={["reports.read", "reports.exam"]}>
+          {withSuspense(<ExamReportPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },
@@ -212,7 +221,9 @@ const madrasaAdminChildren = [
     path: "reports/teacher_report",
     element: (
       <ModuleGuard module="reports">
-        <PermissionGuard permission="reports.read">{withSuspense(<TeacherReportPage />)}</PermissionGuard>
+        <PermissionGuard permission={["reports.read", "reports.teacher"]}>
+          {withSuspense(<TeacherReportPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },
@@ -220,7 +231,9 @@ const madrasaAdminChildren = [
     path: "reports/documents",
     element: (
       <ModuleGuard module="reports">
-        <PermissionGuard permission="reports.read">{withSuspense(<DocumentsReportPage />)}</PermissionGuard>
+        <PermissionGuard permission={["reports.read", "reports.student", "reports.academic"]}>
+          {withSuspense(<DocumentsReportPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },
@@ -239,15 +252,44 @@ const madrasaAdminChildren = [
   },
   {
     path: "talimat/results",
-    element: <ModuleGuard module="talimat">{withSuspense(<ResultPreviewPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission="result.read">{withSuspense(<ResultPreviewPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "talimat/results/entry",
-    element: <ModuleGuard module="talimat">{withSuspense(<ResultEntryPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard permission={["result.read", "result.manage", "marks.submit", "marks.verify"]}>
+          {withSuspense(<ResultEntryPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "talimat/results/workflow",
-    element: <ModuleGuard module="talimat">{withSuspense(<ResultWorkflowPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="talimat">
+        <PermissionGuard
+          permission={[
+            "result.read",
+            "result.manage",
+            "marks.submit",
+            "marks.verify",
+            "result.process",
+            "result.verify",
+            "result.approve",
+            "result.publish",
+            "result.lock",
+            "result.correct",
+          ]}
+        >
+          {withSuspense(<ResultWorkflowPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "talimat/settings",
@@ -334,7 +376,13 @@ const madrasaAdminChildren = [
   },
   {
     path: "students/exam-registration",
-    element: <ModuleGuard module="students">{withSuspense(<ExamCandidateRegistrationPage />)}</ModuleGuard>,
+    element: (
+      <ModuleGuard module="students">
+        <PermissionGuard permission={["exam_candidate.read", "exam_candidate.manage"]}>
+          {withSuspense(<ExamCandidateRegistrationPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   // "সেশন সেটাপ" moved under তালিমাত > সেটিং - old link redirects there.
   { path: "students/sessions", element: <Navigate to="../talimat/settings/sessions" replace /> },
@@ -358,7 +406,9 @@ const madrasaAdminChildren = [
     path: "exam-operations/seat-plan",
     element: (
       <ModuleGuard module="talimat">
-        <PermissionGuard permission="exam.seat.manage">{withSuspense(<SeatPlanPage />)}</PermissionGuard>
+        <PermissionGuard permission={["exam.seat.read", "exam.seat.manage"]}>
+          {withSuspense(<SeatPlanPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },

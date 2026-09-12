@@ -75,6 +75,9 @@ model ExamCandidate {
   class    Class    @relation(fields: [classId], references: [id], onDelete: Restrict)
   division Division @relation(fields: [divisionId], references: [id], onDelete: Restrict)
 
+  seatAllocations SeatAllocation[]
+  examAttendances ExamAttendance[]
+
   /// One registration per student per exam - prevents duplicate
   /// registration. Re-registering after a CANCELLED status re-uses this
   /// same row (service layer flips status back) instead of inserting a

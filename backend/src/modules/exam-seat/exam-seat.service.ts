@@ -74,8 +74,17 @@ export class ExamSeatService {
       strategy: strategy as SeatStrategy,
     });
 
+    const roomCodeById = new Map(rooms.map((r) => [r.id, r.code]));
+
     try {
-      await this.repository.replaceAllocations(madrasaId, examRoutineId, plan, strategy, preserveManualOverrides);
+      await this.repository.replaceAllocations(
+        madrasaId,
+        examRoutineId,
+        plan,
+        strategy,
+        preserveManualOverrides,
+        roomCodeById,
+      );
     } catch (err) {
       return friendlyFailure("autoAllocate error:", err, "Failed to allocate seats");
     }
@@ -91,10 +100,14 @@ export class ExamSeatService {
     if (!existing) throw new NotFoundError("Seat allocation not found");
 
     const seatNo = String(dto.seat_no).trim();
+    const roomId = Number(dto.room_id);
 
     try {
+      const [room] = await this.repository.findRoomsByIds(madrasaId, [roomId]);
+      if (!room) throw new BadRequestError("Selected room was not found or is inactive");
+
       const result = await this.repository.updateSeat(id, madrasaId, {
-        roomId: Number(dto.room_id),
+        roomId,
         seatNo,
         rowNo: dto.row_no !== undefined && dto.row_no !== "" ? Number(dto.row_no) : null,
         columnNo: dto.column_no !== undefined && dto.column_no !== "" ? Number(dto.column_no) : null,
@@ -102,7 +115,7 @@ export class ExamSeatService {
         strategy: "MANUAL",
       });
       if (!result.count) throw new NotFoundError("Seat allocation not found");
-      await this.repository.setCandidateNo(existing.examCandidateId, seatNo);
+      await this.repository.setCandidateNo(madrasaId, existing.examCandidateId, room.code, seatNo);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       if (isDuplicateError(err)) throw new ConflictError("This seat is already taken in this room for this exam slot");
