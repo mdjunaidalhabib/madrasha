@@ -56,3 +56,15 @@ export const deleteExamRoutine = asyncHandler(async (req: Request, res: Response
   await routineService.deleteExamRoutine(Number(req.params.id), getMadrasaId(req));
   return ApiResponse.message(res, "Exam routine deleted successfully");
 });
+
+/* ================= OVERVIEW ================= */
+
+export const getClassRoutineOverview = asyncHandler(async (req: Request, res: Response) => {
+  const data = await routineService.getClassRoutineOverview(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
+export const getExamRoutineOverview = asyncHandler(async (req: Request, res: Response) => {
+  const data = await routineService.getExamRoutineOverview(getMadrasaId(req));
+  res.json({ success: true, data });
+});

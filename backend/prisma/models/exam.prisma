@@ -11,18 +11,7 @@
 /// set up", which is the safest interpretation for historical data.
 enum ExamStatus {
   DRAFT
-  PLANNED
-  REGISTRATION_OPEN
-  REGISTRATION_CLOSED
-  SCHEDULED
-  ONGOING
-  MARKS_ENTRY
-  VERIFICATION
-  RESULT_PROCESSING
-  RESULT_APPROVAL
   PUBLISHED
-  LOCKED
-  CANCELLED
 }
 
 model Exam {

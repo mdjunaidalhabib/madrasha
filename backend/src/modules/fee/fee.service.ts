@@ -651,12 +651,25 @@ export class FeeService {
     const structures = await this.repository.findStructuresByExam(madrasaId, examId);
     if (!structures.length) return 0;
 
-    const amount = Number(structures[0].amount);
-    const classIds = structures.map((s) => s.classId).filter((id): id is number => id != null);
-    // classIds.length < structures.length means at least one structure has
-    // classId: null ("every class"), so the class filter must be dropped
-    // entirely rather than narrowed to just the classes that do have one.
-    const coversEveryClass = classIds.length < structures.length;
+    // Per-class amount lookup so a guardian is always texted the amount
+    // that actually applies to *their* child's class, instead of a single
+    // structure's amount being broadcast to every guardian regardless of
+    // class (see notes above - different classes can carry different
+    // exam-fee amounts, e.g. নাযেরা vs কিতাব). A structure with
+    // classId: null means "every class" and acts as the fallback amount
+    // for any class that doesn't have its own more specific structure.
+    const amountByClassId = new Map<number, number>();
+    let fallbackAmount: number | null = null;
+    for (const s of structures) {
+      if (s.classId == null) {
+        fallbackAmount = Number(s.amount);
+      } else {
+        amountByClassId.set(s.classId, Number(s.amount));
+      }
+    }
+
+    const classIds = [...amountByClassId.keys()];
+    const coversEveryClass = fallbackAmount != null;
     const sessionIds = [...new Set(structures.map((s) => s.sessionId))];
 
     let notified = 0;
@@ -668,6 +681,9 @@ export class FeeService {
       );
       for (const student of students) {
         if (!student.guardianPhone) continue;
+        const amount = amountByClassId.get(student.classId) ?? fallbackAmount;
+        if (amount == null) continue; // no structure actually covers this student's class
+
         await notificationService.triggerEvent(madrasaId, "EXAM_FEE_ACTIVATED", student.guardianPhone, {
           name: student.nameBn,
           exam: examName,

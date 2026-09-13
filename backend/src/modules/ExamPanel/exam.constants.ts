@@ -6,18 +6,8 @@ export const MAX_MARK = 100;
 // Mirrors the Prisma ExamStatus enum (exam.prisma) - kept as a plain string
 // array here too so the service layer can validate an incoming status
 // value without importing the Prisma enum type into the DTO layer.
-export const EXAM_STATUSES = [
-  "DRAFT",
-  "PLANNED",
-  "REGISTRATION_OPEN",
-  "REGISTRATION_CLOSED",
-  "SCHEDULED",
-  "ONGOING",
-  "MARKS_ENTRY",
-  "VERIFICATION",
-  "RESULT_PROCESSING",
-  "RESULT_APPROVAL",
-  "PUBLISHED",
-  "LOCKED",
-  "CANCELLED",
-] as const;
+// Deliberately just two values - this field is an informational label only
+// (nothing in the backend gates behavior on it; the real, enforced workflow
+// state machine lives on ResultMaster.status instead), so the finer-grained
+// 12-step pipeline was dropped as unused complexity.
+export const EXAM_STATUSES = ["DRAFT", "PUBLISHED"] as const;

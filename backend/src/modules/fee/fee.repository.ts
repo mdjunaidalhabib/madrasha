@@ -176,7 +176,7 @@ export class FeeRepository {
         admissionStatus: "APPROVED",
         ...(classIds && classIds.length ? { classId: { in: classIds } } : {}),
       },
-      select: { id: true, nameBn: true, guardianPhone: true },
+      select: { id: true, nameBn: true, guardianPhone: true, classId: true },
     });
   }
 

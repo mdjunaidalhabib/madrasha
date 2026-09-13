@@ -91,6 +91,103 @@ export class RoutineRepository {
       select: { id: true },
     });
   }
+
+  /* ================= OVERVIEW (routine landing page) ================= */
+
+  /** Every active class for this madrasa, alongside how many weekly
+   * class-routine periods already exist for it - lets the frontend show
+   * "রুটিন আছে/নেই" at a glance without picking a division/class first. */
+  async findClassRoutineOverview(madrasaId: number) {
+    const [madrasaClasses, counts] = await Promise.all([
+      prisma.madrasaClass.findMany({
+        where: { madrasaId, deletedAt: null, isActive: 1 },
+        include: { class: { include: { division: { select: { name: true, nameBn: true } } } } },
+        orderBy: [{ sortOrder: "asc" }],
+      }),
+      prisma.classRoutine.groupBy({ by: ["classId"], where: { madrasaId }, _count: { _all: true } }),
+    ]);
+
+    const countByClassId = new Map(counts.map((c) => [c.classId, c._count._all]));
+
+    return madrasaClasses
+      .filter((mc) => mc.class)
+      .map((mc) => ({
+        classId: mc.classId,
+        className: mc.class!.nameBn || mc.class!.name,
+        divisionId: mc.class!.divisionId,
+        divisionName: mc.class!.division?.nameBn || mc.class!.division?.name || null,
+        periodCount: countByClassId.get(mc.classId) || 0,
+      }));
+  }
+
+  /** Every active exam x active class combination, alongside how many exam
+   * routine entries already exist and their combined status - the same
+   * "cross-join + left-join" idea as the Result panel's overview, so the
+   * routine builder page can show class-by-class progress on load. */
+  async findExamRoutineOverview(madrasaId: number) {
+    const [madrasaClasses, exams, routines] = await Promise.all([
+      prisma.madrasaClass.findMany({
+        where: { madrasaId, deletedAt: null, isActive: 1 },
+        include: { class: { include: { division: { select: { name: true, nameBn: true } } } } },
+        orderBy: [{ sortOrder: "asc" }],
+      }),
+      prisma.exam.findMany({
+        where: { madrasaId, isActive: true },
+        orderBy: [{ sortOrder: "asc" }],
+        select: { id: true, name: true, year: true },
+      }),
+      prisma.examRoutine.findMany({
+        where: { madrasaId, exam: { madrasaId, isActive: true } },
+        select: { examId: true, classId: true, status: true },
+      }),
+    ]);
+
+    const byKey = new Map<string, { count: number; statuses: Set<string> }>();
+    for (const r of routines) {
+      const key = `${r.examId}:${r.classId}`;
+      const entry = byKey.get(key) || { count: 0, statuses: new Set<string>() };
+      entry.count += 1;
+      entry.statuses.add(r.status);
+      byKey.set(key, entry);
+    }
+
+    const classRows = madrasaClasses.filter((mc) => mc.class);
+    const rows: Array<{
+      examId: number;
+      examName: string;
+      examYear: string;
+      classId: number;
+      className: string | null;
+      divisionId: number | null;
+      divisionName: string | null;
+      subjectCount: number;
+      status: "NONE" | "DRAFT" | "PUBLISHED" | "CANCELLED" | "MIXED";
+    }> = [];
+
+    for (const exam of exams) {
+      for (const mc of classRows) {
+        const entry = byKey.get(`${exam.id}:${mc.classId}`);
+        const statuses = entry ? Array.from(entry.statuses) : [];
+        let status: "NONE" | "DRAFT" | "PUBLISHED" | "CANCELLED" | "MIXED" = "NONE";
+        if (statuses.length) {
+          status = statuses.every((s) => s === statuses[0]) ? (statuses[0] as any) : "MIXED";
+        }
+        rows.push({
+          examId: exam.id,
+          examName: exam.name,
+          examYear: exam.year,
+          classId: mc.classId,
+          className: mc.class!.nameBn || mc.class!.name,
+          divisionId: mc.class!.divisionId,
+          divisionName: mc.class!.division?.nameBn || mc.class!.division?.name || null,
+          subjectCount: entry?.count || 0,
+          status,
+        });
+      }
+    }
+
+    return rows;
+  }
 }
 
 export const routineRepository = new RoutineRepository();

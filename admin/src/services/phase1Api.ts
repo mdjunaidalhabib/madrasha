@@ -76,6 +76,7 @@ export const assignStudentCard = (studentId: number, cardUid: string) =>
 export const classRoutineApi = {
   list: (classId?: number) =>
     api.get("/class-routine", { params: classId ? { class_id: classId } : {} }),
+  overview: () => api.get("/class-routine/overview"),
   create: (payload: {
     class_id: number;
     day_of_week: number;
@@ -109,6 +110,7 @@ export interface ExamRoutinePayload {
 export const examRoutineApi = {
   list: (params: { exam_id?: number; class_id?: number }) =>
     api.get("/exam-routine", { params }),
+  overview: () => api.get("/exam-routine/overview"),
   create: (payload: ExamRoutinePayload) => api.post("/exam-routine", payload),
   update: (id: number, payload: Partial<ExamRoutinePayload>) =>
     api.put(`/exam-routine/${id}`, payload),

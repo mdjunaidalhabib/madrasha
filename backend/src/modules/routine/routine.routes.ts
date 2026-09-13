@@ -11,6 +11,8 @@ import {
   createExamRoutine,
   updateExamRoutine,
   deleteExamRoutine,
+  getClassRoutineOverview,
+  getExamRoutineOverview,
 } from "./routine.controller";
 
 const router = Router();
@@ -19,6 +21,13 @@ router.use(tenantMiddleware, authMiddleware);
 
 // NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware, and TALIMAT
 // has a fallback covering routine.* (see rbac-policy.ts).
+
+/* ================= OVERVIEW ================= */
+// Registered before the "/class-routine"/"/exam-routine" list routes only
+// for readability - these are literal sub-paths ("/overview"), not ":id"
+// params, so route order can't actually shadow them either way.
+router.get("/class-routine/overview", rbacMiddleware("routine.read"), getClassRoutineOverview);
+router.get("/exam-routine/overview", rbacMiddleware("routine.read"), getExamRoutineOverview);
 
 /* ================= CLASS ROUTINE ================= */
 router.get("/class-routine", rbacMiddleware("routine.read"), getClassRoutines);

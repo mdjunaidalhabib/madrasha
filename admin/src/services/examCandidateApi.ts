@@ -10,52 +10,16 @@ import api from "./api";
 
 /* ================= SHARED EXAM STATUS (Exam Master) ================= */
 
-export type ExamStatus =
-  | "DRAFT"
-  | "PLANNED"
-  | "REGISTRATION_OPEN"
-  | "REGISTRATION_CLOSED"
-  | "SCHEDULED"
-  | "ONGOING"
-  | "MARKS_ENTRY"
-  | "VERIFICATION"
-  | "RESULT_PROCESSING"
-  | "RESULT_APPROVAL"
-  | "PUBLISHED"
-  | "LOCKED"
-  | "CANCELLED";
+// Deliberately just two values - this is an informational label only
+// (nothing gates behavior on it; the actually-enforced workflow lives on
+// ResultMaster.status instead), so the old 12-step pipeline was dropped.
+export type ExamStatus = "DRAFT" | "PUBLISHED";
 
-// Exact lifecycle order, as documented by the backend.
-export const EXAM_STATUS_VALUES: ExamStatus[] = [
-  "DRAFT",
-  "PLANNED",
-  "REGISTRATION_OPEN",
-  "REGISTRATION_CLOSED",
-  "SCHEDULED",
-  "ONGOING",
-  "MARKS_ENTRY",
-  "VERIFICATION",
-  "RESULT_PROCESSING",
-  "RESULT_APPROVAL",
-  "PUBLISHED",
-  "LOCKED",
-  "CANCELLED",
-];
+export const EXAM_STATUS_VALUES: ExamStatus[] = ["DRAFT", "PUBLISHED"];
 
 export const EXAM_STATUS_LABELS_BN: Record<ExamStatus, string> = {
   DRAFT: "খসড়া",
-  PLANNED: "পরিকল্পিত",
-  REGISTRATION_OPEN: "নিবন্ধন চলছে",
-  REGISTRATION_CLOSED: "নিবন্ধন বন্ধ",
-  SCHEDULED: "সময়সূচি নির্ধারিত",
-  ONGOING: "চলমান",
-  MARKS_ENTRY: "নম্বর ইনপুট চলছে",
-  VERIFICATION: "যাচাই চলছে",
-  RESULT_PROCESSING: "ফলাফল প্রক্রিয়াকরণ",
-  RESULT_APPROVAL: "ফলাফল অনুমোদন",
-  PUBLISHED: "ফলাফল প্রকাশিত",
-  LOCKED: "লকড",
-  CANCELLED: "বাতিল",
+  PUBLISHED: "প্রকাশিত",
 };
 
 // Lives beside the existing Exam Master CRUD in ExamList.tsx (which still

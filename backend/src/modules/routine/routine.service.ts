@@ -323,6 +323,24 @@ export class RoutineService {
       return friendlyFailure("deleteExamRoutine error:", err, "Failed to delete exam routine");
     }
   }
+
+  /* ================= OVERVIEW ================= */
+
+  async getClassRoutineOverview(madrasaId: number) {
+    try {
+      return await this.repository.findClassRoutineOverview(madrasaId);
+    } catch (err) {
+      return friendlyFailure("getClassRoutineOverview error:", err, "Failed to load class routine overview");
+    }
+  }
+
+  async getExamRoutineOverview(madrasaId: number) {
+    try {
+      return await this.repository.findExamRoutineOverview(madrasaId);
+    } catch (err) {
+      return friendlyFailure("getExamRoutineOverview error:", err, "Failed to load exam routine overview");
+    }
+  }
 }
 
 export const routineService = new RoutineService();
