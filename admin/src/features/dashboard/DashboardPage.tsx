@@ -42,6 +42,7 @@ import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import EventCalendar, { CalendarItem } from "../../components/dashboard/EventCalendar";
+import SetupChecklist from "../../components/Dashboard/SetupChecklist";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -308,6 +309,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <SetupChecklist />
+
       <div className="grid items-start gap-6 xl:grid-cols-4">
         <div className="min-w-0 space-y-6 xl:col-span-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

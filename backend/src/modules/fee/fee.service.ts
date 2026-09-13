@@ -433,7 +433,6 @@ export class FeeService {
     sessionId: number,
     admissionDate: Date,
     feeTypes?: string[],
-    includeExamLinked = false,
   ) {
     const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
     if (!session) return { created: 0 };
@@ -443,7 +442,6 @@ export class FeeService {
       classId,
       sessionId,
       feeTypes,
-      includeExamLinked,
     );
     if (structures.length === 0) return { created: 0 };
 
@@ -484,16 +482,10 @@ export class FeeService {
     const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
     if (!student) throw new NotFoundError("Student not found");
 
-    // includeExamLinked: true - this is an informational preview shown
-    // before approval, so a পরীক্ষার ফি tied to a specific exam is still
-    // worth showing even though it won't actually be billed at approval
-    // (see autoGenerateInvoicesForStudent, which defaults to excluding it).
     const structures = await this.repository.findActiveStructuresForBilling(
       madrasaId,
       student.classId,
       student.sessionId,
-      undefined,
-      true,
     );
     const discounts = await this.repository.findDiscountsForStudent(madrasaId, studentId);
     const discountByStructureId = new Map(discounts.map((d) => [d.feeStructureId, d]));
@@ -538,8 +530,6 @@ export class FeeService {
       madrasaId,
       student.classId,
       student.sessionId,
-      undefined,
-      true,
     );
     if (!structures.some((s) => s.id === feeStructureId)) {
       throw new BadRequestError("এই ছাত্রের জন্য এই ফি প্রযোজ্য নয়");
@@ -568,12 +558,12 @@ export class FeeService {
    * in one click. Per-student failures are counted, not thrown, so one bad
    * student record can't abort billing for the rest of the class.
    *
-   * includeExamLinked: true - this is also what actually bills a পরীক্ষার ফি
-   * tied to a specific exam (see FeeStructure.examId): it runs automatically
-   * right after such a structure is created (see FeeStructurePage.tsx) and
-   * can be re-run any time office staff decides the exam is now upcoming, so
-   * this explicit action is the intended trigger point instead of the
-   * automatic admission-approval billing (which always excludes it). */
+   * This is also what backfills a পরীক্ষার ফি tied to a specific exam (see
+   * FeeStructure.examId) for already-enrolled students right after such a
+   * structure is activated (see FeeStructurePage.tsx) - autoGenerateInvoicesForStudent
+   * now bills any active fee structure regardless of exam link, so a fresh
+   * admission after activation is covered automatically and this remains
+   * the explicit trigger for backfilling students admitted before that. */
   async backfillInvoicesForAllStudents(madrasaId: number, classId?: number, sessionId?: number) {
     const students = await this.repository.findAllActiveStudents(madrasaId, classId, sessionId);
 
@@ -589,8 +579,6 @@ export class FeeService {
           student.classId,
           student.sessionId,
           student.admissionDate ?? new Date(),
-          undefined,
-          true,
         );
         invoicesCreated += result.created;
         studentsProcessed += 1;

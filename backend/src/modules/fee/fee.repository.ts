@@ -138,18 +138,16 @@ export class FeeRepository {
    * admission-flagged category names at submission time, before a Muhtamim
    * has approved the admission - see FeeService.getAdmissionCategoryNames).
    *
-   * `includeExamLinked` (default false) controls whether a পরীক্ষার ফি tied
-   * to a specific Exam (FeeStructure.examId) is included. Automatic
-   * admission/transfer billing always passes false, so a new student is
-   * never billed up front for exams that haven't happened yet - those get
-   * billed only through an explicit "generate" action (see
-   * FeeService.backfillInvoicesForAllStudents), which passes true. */
+   * পরীক্ষার ফি (FeeStructure.examId set) is included like any other fee
+   * here - isActive already separates a dormant exam fee (not yet linked
+   * to a scheduled exam) from an activated one, so a student admitted
+   * after activation is billed for it automatically, same as any other
+   * active fee. */
   findActiveStructuresForBilling(
     madrasaId: number,
     classId: number,
     sessionId: number,
     feeTypes?: string[],
-    includeExamLinked = false,
   ) {
     return prisma.feeStructure.findMany({
       where: {
@@ -158,7 +156,6 @@ export class FeeRepository {
         isActive: true,
         OR: [{ classId }, { classId: null }],
         ...(feeTypes && feeTypes.length ? { feeType: { in: feeTypes as any } } : {}),
-        ...(includeExamLinked ? {} : { examId: null }),
       },
     });
   }

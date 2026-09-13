@@ -265,18 +265,15 @@ export class SuperAdminService {
       await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
       await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
-      // Which just-created Exam.id every পরীক্ষার ফি structure below should
-      // link to. The catalog has no per-tier exam mapping, so per the
-      // dormant-exam design every exam-fee structure defaults to the
-      // "বার্ষিক" (annual) exam - see DormantExams spec §3.
+      // Which just-created Exam.id(s) every পরীক্ষার ফি structure below should
+      // link to. Fanned out one dormant row per exam so each activates
+      // independently once that specific exam is scheduled/activated - see
+      // DormantExams spec §3.
       const createdExams = await this.repository.findExamsByNamesOnTx(
         tx,
         madrasaId,
         defaultExams.map((exam) => exam.name),
       );
-      const examIdByName = new Map(createdExams.map((exam) => [exam.name, exam.id]));
-      const annualExamName = defaultExams.find((exam) => exam.keyName === "annual")?.name;
-      const annualExamId = annualExamName ? examIdByName.get(annualExamName) : undefined;
 
       /* ================= DEFAULT SESSION =================
          Every madrasa needs at least one Session before students can be
@@ -290,18 +287,20 @@ export class SuperAdminService {
          this madrasa actually activated (classIds); generic ones
          (classId null) always copy.
 
-         পরীক্ষার ফি structures are linked to the annual exam and created
-         dormant (isActive: false) - a new student is never billed for an
-         exam that hasn't been scheduled yet. They're activated later, either
-         by an admin (POST /exams/:id/activate-fee) or automatically once
-         that exam's first routine is created (see exam.hooks.ts). */
+         পরীক্ষার ফি structures get one dormant row (isActive: false) per
+         created exam, each linked to its own Exam.id - a new student is
+         never billed for an exam that hasn't been scheduled yet, and each
+         exam's fee activates independently of the others. They're activated
+         later, either by an admin (POST /exams/:id/activate-fee) or
+         automatically once that exam's first routine is created (see
+         exam.hooks.ts). */
       const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
       const relevantFeeStructures = defaultFeeStructures
         .filter((s) => s.classId === null || classIds.includes(s.classId))
-        .map((s) =>
+        .flatMap((s) =>
           s.feeType === EXAM_FEE_CATEGORY_NAME
-            ? { ...s, examId: annualExamId ?? null, isActive: false }
-            : s,
+            ? createdExams.map((exam) => ({ ...s, examId: exam.id, isActive: false }))
+            : [s],
         );
       if (relevantFeeStructures.length) {
         await this.repository.createDefaultFeeStructuresOnTx(
