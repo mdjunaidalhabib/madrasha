@@ -19,7 +19,7 @@ export class FeeRepository {
       include: {
         class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } },
         sessionRef: { select: { name: true, startDate: true, endDate: true } },
-        exam: { select: { id: true, name: true, year: true } },
+        exam: { select: { id: true, name: true, year: true, sortOrder: true } },
       },
     });
   }

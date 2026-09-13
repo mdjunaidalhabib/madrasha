@@ -312,6 +312,67 @@ export class SuperAdminService {
         );
       }
 
+      /* ================= DEFAULT EXAM ROUTINE (DEMO) =================
+         Gives every freshly created madrasa a ready-to-edit exam schedule
+         instead of a blank one - one placeholder routine per class/subject
+         per default exam, spaced a month+ apart so the four exams don't
+         collide on the calendar. Deliberately does NOT touch Exam.isActive:
+         these default exams stay dormant (see DormantExams note above)
+         until an admin genuinely activates one, exactly like today - a demo
+         routine existing is not the same as an admin scheduling a real one,
+         so it must never itself trigger fee/invoice/guardian-notification
+         side effects. Written straight to the DB (not through
+         routineService.createExamRoutine) specifically to bypass those
+         hooks. All rows land as DRAFT so nothing looks "published" to
+         students/guardians until an admin reviews and publishes it. */
+      const routineSeedBooks = await this.repository.findBooksForRoutineSeedOnTx(tx, bookIds);
+      const booksByClassId = new Map<number, { subject: string; divisionId: number | null }[]>();
+      for (const b of routineSeedBooks) {
+        const list = booksByClassId.get(b.classId) ?? [];
+        list.push({ subject: b.nameBn || b.name || "বিষয়", divisionId: b.class?.divisionId ?? null });
+        booksByClassId.set(b.classId, list);
+      }
+
+      const examIdByName = new Map(createdExams.map((e) => [e.name, e.id]));
+      // Days from madrasa-creation date to that exam's first demo day - kept
+      // a month+ apart purely so the four exams don't overlap on the
+      // calendar; admins are expected to edit these to real dates anyway.
+      const DEMO_EXAM_START_OFFSET_DAYS: Record<string, number> = {
+        monthly: 7,
+        first_term: 45,
+        second_term: 135,
+        annual: 225,
+      };
+
+      const routineRows: Prisma.ExamRoutineCreateManyInput[] = [];
+      for (const defExam of defaultExams) {
+        const examId = examIdByName.get(defExam.name);
+        if (!examId) continue;
+
+        const baseDate = new Date();
+        baseDate.setDate(baseDate.getDate() + (DEMO_EXAM_START_OFFSET_DAYS[defExam.keyName] ?? 30));
+
+        for (const [classId, books] of booksByClassId) {
+          books.forEach((book, dayIndex) => {
+            const examDate = new Date(baseDate);
+            examDate.setDate(examDate.getDate() + dayIndex);
+            routineRows.push({
+              madrasaId,
+              examId,
+              classId,
+              divisionId: book.divisionId,
+              subject: book.subject,
+              examDate,
+              startTime: "10:00",
+              endTime: "12:00",
+              status: "DRAFT",
+            });
+          });
+        }
+      }
+
+      await this.repository.createExamRoutinesOnTx(tx, routineRows);
+
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));

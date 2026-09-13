@@ -13,9 +13,10 @@ import {
 const prisma = new PrismaClient();
 
 const defaultExams = [
-  { keyName: "first_term", name: "প্রথম সাময়িক পরীক্ষা", sortOrder: 1 },
-  { keyName: "second_term", name: "দ্বিতীয় সাময়িক পরীক্ষা", sortOrder: 2 },
-  { keyName: "annual", name: "বার্ষিক পরীক্ষা", sortOrder: 3 },
+  { keyName: "monthly", name: "মাসিক পরীক্ষা", sortOrder: 1 },
+  { keyName: "first_term", name: "প্রথম সাময়িক পরীক্ষা", sortOrder: 2 },
+  { keyName: "second_term", name: "দ্বিতীয় সাময়িক পরীক্ষা", sortOrder: 3 },
+  { keyName: "annual", name: "বার্ষিক পরীক্ষা", sortOrder: 4 },
 ];
 
 const defaultGeneralGrades = [
@@ -962,12 +963,12 @@ async function main() {
      edited/added through that UI. */
   const feeTierByDivision: Record<
     string,
-    { admission: number; tuition: number; exam: number; boarding: number }
+    { admission: number; form: number; tuition: number; exam: number; boarding: number }
   > = {
-    nurani: { admission: 300, tuition: 200, exam: 150, boarding: 500 },
-    nazera_hifz: { admission: 500, tuition: 300, exam: 200, boarding: 600 },
-    kitab: { admission: 700, tuition: 400, exam: 300, boarding: 800 },
-    takhassus: { admission: 1000, tuition: 600, exam: 400, boarding: 1000 },
+    nurani: { admission: 300, form: 100, tuition: 200, exam: 150, boarding: 500 },
+    nazera_hifz: { admission: 500, form: 150, tuition: 300, exam: 200, boarding: 600 },
+    kitab: { admission: 700, form: 200, tuition: 400, exam: 300, boarding: 800 },
+    takhassus: { admission: 1000, form: 300, tuition: 600, exam: 400, boarding: 1000 },
   };
   for (const [classKey, classId] of Object.entries(classIds)) {
     const [divisionKey] = classKey.split("/");
@@ -985,10 +986,11 @@ async function main() {
       frequency: "ONE_TIME" | "MONTHLY" | "YEARLY";
       feeType: string;
     }[] = [
+      { keyName: `form_${safeKey}`, name: "ভর্তি ফরম", amount: tier.form, frequency: "ONE_TIME", feeType: "ভর্তি ফরম" },
       { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME", feeType: "ভর্তি ফি" },
       { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY", feeType: "মাসিক বেতন" },
-      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "পরীক্ষার ফি" },
       { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY", feeType: "বোর্ডিং ফি" },
+      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "পরীক্ষার ফি" },
     ];
 
     for (const f of feeSpecs) {

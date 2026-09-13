@@ -223,7 +223,25 @@ export class FeeService {
     academicYear?: string,
   ) {
     try {
-      return await this.repository.findStructures(madrasaId, classId, sessionId, academicYear);
+      const [structures, categories] = await Promise.all([
+        this.repository.findStructures(madrasaId, classId, sessionId, academicYear),
+        this.getCategories(madrasaId),
+      ]);
+      // Display order follows ফি ধরণ সেটিংস (FeeCategory.sortOrder), not
+      // FeeStructure.id - feeType is a free-text label decoupled from
+      // FeeCategory (see fee.constants.ts), so it's matched by name here.
+      // Same-category rows (e.g. one পরীক্ষার ফি per exam) then fall back to
+      // their linked Exam's sortOrder (মাসিক/প্রথম/দ্বিতীয়/বার্ষিক).
+      const categoryOrder = new Map(categories.map((c) => [c.name, c.sortOrder]));
+      return [...structures].sort((a, b) => {
+        const orderA = categoryOrder.get(a.feeType) ?? Number.MAX_SAFE_INTEGER;
+        const orderB = categoryOrder.get(b.feeType) ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        const examOrderA = a.exam?.sortOrder ?? 0;
+        const examOrderB = b.exam?.sortOrder ?? 0;
+        if (examOrderA !== examOrderB) return examOrderA - examOrderB;
+        return a.id - b.id;
+      });
     } catch (err) {
       return friendlyFailure("listFeeStructures error:", err, "Failed to load fee structures");
     }

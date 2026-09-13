@@ -21,9 +21,10 @@ export const EXAM_FEE_CATEGORY_NAME = "পরীক্ষার ফি";
  * the old hardcoded FeeType.ADMISSION enum value - see FeeCategory in
  * fee.prisma. */
 export const FEE_CATEGORY_DEFAULTS: Array<{ name: string; isAdmissionType: boolean }> = [
+  { name: "ভর্তি ফরম", isAdmissionType: true },
   { name: "ভর্তি ফি", isAdmissionType: true },
   { name: "মাসিক বেতন", isAdmissionType: false },
-  { name: EXAM_FEE_CATEGORY_NAME, isAdmissionType: false },
   { name: "বোর্ডিং ফি", isAdmissionType: false },
+  { name: EXAM_FEE_CATEGORY_NAME, isAdmissionType: false },
   { name: DEFAULT_FEE_CATEGORY_NAME, isAdmissionType: false },
 ];

@@ -363,6 +363,23 @@ export class SuperAdminRepository {
     });
   }
 
+  /** Books being activated for this madrasa, grouped by class - the raw
+   * material for the demo exam-routine seed below (one routine row per
+   * class/book). Ordered by the global catalog's own sortOrder so the demo
+   * schedule follows the same order admins see in তালিমাত সেটিংস. */
+  findBooksForRoutineSeedOnTx(tx: TransactionClient, bookIds: number[]) {
+    return tx.book.findMany({
+      where: { id: { in: bookIds } },
+      select: { id: true, classId: true, name: true, nameBn: true, class: { select: { divisionId: true } } },
+      orderBy: [{ classId: "asc" }, { sortOrder: "asc" }],
+    });
+  }
+
+  createExamRoutinesOnTx(tx: TransactionClient, rows: Prisma.ExamRoutineCreateManyInput[]) {
+    if (!rows.length) return Promise.resolve({ count: 0 });
+    return tx.examRoutine.createMany({ data: rows });
+  }
+
   findDefaultExamsOnTx(tx: TransactionClient) {
     return tx.defaultExam.findMany({
       where: { isActive: true },
