@@ -42,7 +42,7 @@ import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import EventCalendar, { CalendarItem } from "../../components/dashboard/EventCalendar";
-import SetupChecklist from "../../components/Dashboard/SetupChecklist";
+import SetupChecklist from "../../components/dashboard/SetupChecklist";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
