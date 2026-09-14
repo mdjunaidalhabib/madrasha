@@ -31,6 +31,7 @@ import type { BackendDocumentType } from "@madrasha/shared-ui/src/components/Doc
 import {
   ADMIT_CARD_RULE_TOKENS,
   DEFAULT_ADMIT_CARD_RULES,
+  DEFAULT_CUSTOM_NOTICE,
   DEFAULT_SANAD_TEMPLATE,
   DEFAULT_TESTIMONIAL_TEMPLATE,
   DEFAULT_TRANSFER_LETTER_TEMPLATE,
@@ -44,7 +45,8 @@ type TemplateKey =
   | "sanad_template"
   | "testimonial_template"
   | "transfer_letter_template"
-  | "admit_card_rules";
+  | "admit_card_rules"
+  | "custom_notice_template";
 
 type DocType = {
   key: string;
@@ -65,6 +67,15 @@ const docTypes: DocType[] = [
     title: "আইডি কার্ড",
     subtitle: "শিক্ষার্থীর পরিচয়পত্র",
     dataFields: ["ছবি", "নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "পিতা", "মোবাইল"],
+  },
+  {
+    key: "custom-notice",
+    title: "নোটিশ (দেয়ালে টানানোর জন্য)",
+    subtitle: "যেকোনো কাস্টম নোটিশ লিখে প্রিন্ট করুন",
+    dataFields: [],
+    templateKey: "custom_notice_template",
+    tokens: [],
+    fallback: DEFAULT_CUSTOM_NOTICE,
   },
   {
     key: "admit-card",

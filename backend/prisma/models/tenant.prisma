@@ -97,6 +97,7 @@ model Madrasa {
   testimonialTemplate    String? @map("testimonial_template") @db.Text
   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
   admitCardRules         String? @map("admit_card_rules") @db.Text
+  customNoticeTemplate   String? @map("custom_notice_template") @db.Text
 
   idCardDesign          String? @map("id_card_design") @db.VarChar(20)
   idCardBackgroundImage String? @map("id_card_background_image") @db.Text

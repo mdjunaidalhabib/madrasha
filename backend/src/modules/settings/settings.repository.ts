@@ -59,6 +59,7 @@ export class SettingsRepository {
         testimonialTemplate: true,
         transferLetterTemplate: true,
         admitCardRules: true,
+        customNoticeTemplate: true,
       },
     });
   }

@@ -376,18 +376,26 @@ export class SettingsService {
       testimonial_template: madrasa.testimonialTemplate,
       transfer_letter_template: madrasa.transferLetterTemplate,
       admit_card_rules: madrasa.admitCardRules,
+      custom_notice_template: madrasa.customNoticeTemplate,
       tokens: TEMPLATE_TOKENS,
     };
   }
 
   async updateDocumentTemplates(madrasaId: number, body: UpdateDocumentTemplatesRequestDto) {
-    const { sanad_template, testimonial_template, transfer_letter_template, admit_card_rules } = body;
+    const {
+      sanad_template,
+      testimonial_template,
+      transfer_letter_template,
+      admit_card_rules,
+      custom_notice_template,
+    } = body;
 
     for (const [key, value] of Object.entries({
       sanad_template,
       testimonial_template,
       transfer_letter_template,
       admit_card_rules,
+      custom_notice_template,
     })) {
       if (value !== undefined && !isValidTemplateValue(value)) {
         throw new BadRequestError(`Invalid text for ${key} (max ${MAX_TEMPLATE_LENGTH} characters)`);
@@ -401,6 +409,7 @@ export class SettingsService {
         ? { transferLetterTemplate: transfer_letter_template }
         : {}),
       ...(admit_card_rules !== undefined ? { admitCardRules: admit_card_rules } : {}),
+      ...(custom_notice_template !== undefined ? { customNoticeTemplate: custom_notice_template } : {}),
     });
   }
 

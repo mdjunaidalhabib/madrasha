@@ -9,6 +9,7 @@ import ResidentialAttendancePrint from "./academic/ResidentialAttendancePrint";
 import ResultNoticeList from "./academic/ResultNoticeList";
 import AdmitCardGrid from "./documents/AdmitCardGrid";
 import AdmitCardRulesPage from "./documents/AdmitCardRulesPage";
+import CustomNoticePage from "./documents/CustomNoticePage";
 import BookLabelGrid from "./documents/BookLabelGrid";
 import IdCardGrid from "./documents/IdCardGrid";
 import SanadList from "./documents/SanadList";
@@ -106,6 +107,7 @@ const ReportContent = ({
   if (report.printable === "id-card") return <IdCardGrid rows={rows} templateId={templateId} />;
   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} templateId={templateId} />;
   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
+  if (report.printable === "custom-notice") return <CustomNoticePage rows={rows} />;
   if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
   if (report.printable === "certificate") {
     return (

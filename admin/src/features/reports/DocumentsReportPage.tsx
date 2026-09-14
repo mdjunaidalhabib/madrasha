@@ -105,6 +105,22 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
+    key: "custom-notice",
+    title: "নোটিশ",
+    subtitle: "লেখা কাস্টম নোটিশ প্রিন্ট করুন — মাদ্রাসায় টানিয়ে দেওয়ার জন্য",
+    // Reuses the admit-cards endpoint purely to get one row back so the
+    // "single" printable kind has something to render against - the
+    // fetched data itself is unused (custom_notice_template has no data
+    // tokens). Same trick admit-card-with-rules already relies on.
+    endpoint: "/reports/student/admit-cards",
+    printable: "custom-notice",
+    documentType: "ADMIT_CARD",
+    columns: [
+      { header: "রোল নম্বর", key: "roll" },
+      { header: "শিক্ষার্থীর নাম", key: "student_name" },
+    ],
+  },
+  {
     key: "student-sanads",
     title: "সনদ / সার্টিফিকেট",
     subtitle: "শিক্ষার্থীদের শিক্ষাগত সনদ তৈরি ও প্রিন্ট",

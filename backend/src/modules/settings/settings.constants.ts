@@ -21,6 +21,7 @@ export const TEMPLATE_TOKENS: Record<string, string[]> = {
     "academic_year",
   ],
   admit_card_rules: ["exam_name", "academic_year"],
+  custom_notice_template: [],
 };
 
 export const MAX_TEMPLATE_LENGTH = 4000;

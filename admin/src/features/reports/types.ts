@@ -44,6 +44,7 @@ export type ReportMenuItem = {
     | "id-card"
     | "admit-card"
     | "admit-card-with-rules"
+    | "custom-notice"
     | "certificate"
     | "testimonial"
     | "transfer-letter"

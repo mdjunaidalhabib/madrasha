@@ -1,0 +1,260 @@
+--- a/backend/prisma/models/tenant.prisma	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/prisma/models/tenant.prisma	2026-09-14 02:26:05.006980217 +0000
+@@ -97,6 +97,7 @@
+   testimonialTemplate    String? @map("testimonial_template") @db.Text
+   transferLetterTemplate String? @map("transfer_letter_template") @db.Text
+   admitCardRules         String? @map("admit_card_rules") @db.Text
++  customNoticeTemplate   String? @map("custom_notice_template") @db.Text
+ 
+   idCardDesign          String? @map("id_card_design") @db.VarChar(20)
+   idCardBackgroundImage String? @map("id_card_background_image") @db.Text
+--- a/backend/src/modules/settings/settings.types.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/src/modules/settings/settings.types.ts	2026-09-14 02:26:42.488241306 +0000
+@@ -43,6 +43,7 @@
+   testimonial_template: string | null;
+   transfer_letter_template: string | null;
+   admit_card_rules: string | null;
++  custom_notice_template: string | null;
+   tokens: Record<string, string[]>;
+ }
+ 
+--- a/backend/src/modules/settings/settings.dto.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/src/modules/settings/settings.dto.ts	2026-09-14 02:26:44.265453660 +0000
+@@ -43,6 +43,7 @@
+   testimonial_template?: string | null;
+   transfer_letter_template?: string | null;
+   admit_card_rules?: string | null;
++  custom_notice_template?: string | null;
+ }
+ 
+ export interface UpdateIdCardDesignRequestDto {
+--- a/backend/src/modules/settings/settings.repository.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/src/modules/settings/settings.repository.ts	2026-09-14 02:26:45.965491767 +0000
+@@ -59,6 +59,7 @@
+         testimonialTemplate: true,
+         transferLetterTemplate: true,
+         admitCardRules: true,
++        customNoticeTemplate: true,
+       },
+     });
+   }
+--- a/backend/src/modules/settings/settings.service.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/src/modules/settings/settings.service.ts	2026-09-14 02:26:57.229544898 +0000
+@@ -376,18 +376,26 @@
+       testimonial_template: madrasa.testimonialTemplate,
+       transfer_letter_template: madrasa.transferLetterTemplate,
+       admit_card_rules: madrasa.admitCardRules,
++      custom_notice_template: madrasa.customNoticeTemplate,
+       tokens: TEMPLATE_TOKENS,
+     };
+   }
+ 
+   async updateDocumentTemplates(madrasaId: number, body: UpdateDocumentTemplatesRequestDto) {
+-    const { sanad_template, testimonial_template, transfer_letter_template, admit_card_rules } = body;
++    const {
++      sanad_template,
++      testimonial_template,
++      transfer_letter_template,
++      admit_card_rules,
++      custom_notice_template,
++    } = body;
+ 
+     for (const [key, value] of Object.entries({
+       sanad_template,
+       testimonial_template,
+       transfer_letter_template,
+       admit_card_rules,
++      custom_notice_template,
+     })) {
+       if (value !== undefined && !isValidTemplateValue(value)) {
+         throw new BadRequestError(`Invalid text for ${key} (max ${MAX_TEMPLATE_LENGTH} characters)`);
+@@ -401,6 +409,7 @@
+         ? { transferLetterTemplate: transfer_letter_template }
+         : {}),
+       ...(admit_card_rules !== undefined ? { admitCardRules: admit_card_rules } : {}),
++      ...(custom_notice_template !== undefined ? { customNoticeTemplate: custom_notice_template } : {}),
+     });
+   }
+ 
+--- a/backend/src/modules/settings/settings.constants.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/backend/src/modules/settings/settings.constants.ts	2026-09-14 02:26:47.886682842 +0000
+@@ -21,6 +21,7 @@
+     "academic_year",
+   ],
+   admit_card_rules: ["exam_name", "academic_year"],
++  custom_notice_template: [],
+ };
+ 
+ export const MAX_TEMPLATE_LENGTH = 4000;
+--- a/packages/shared-ui/src/utils/documentTemplates.tsx	2026-09-14 01:56:19.000000000 +0000
++++ b/packages/shared-ui/src/utils/documentTemplates.tsx	2026-09-14 02:27:05.206819232 +0000
+@@ -58,6 +58,8 @@
+ export const DEFAULT_ADMIT_CARD_RULES =
+   "১. পরীক্ষার হলে অবশ্যই প্রবেশপত্র সাথে আনতে হবে।\n২. নির্ধারিত সময়ের ১৫ মিনিট পূর্বে কেন্দ্রে উপস্থিত হতে হবে।\n৩. পরীক্ষার হলে মোবাইল ফোন বা কোনো ইলেকট্রনিক ডিভাইস আনা সম্পূর্ণ নিষিদ্ধ।\n৪. নকল বা অসদুপায় অবলম্বন করলে পরীক্ষা বাতিল বলে গণ্য হবে।";
+ 
++export const DEFAULT_CUSTOM_NOTICE = "";
++
+ const TOKEN_REGEX = /\{\{\s*([a-zA-Z_]+)\s*\}\}/g;
+ 
+ /**
+--- a/admin/src/services/documentTemplateApi.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/services/documentTemplateApi.ts	2026-09-14 02:27:08.477317842 +0000
+@@ -5,6 +5,7 @@
+   testimonial_template?: string | null;
+   transfer_letter_template?: string | null;
+   admit_card_rules?: string | null;
++  custom_notice_template?: string | null;
+ };
+ 
+ export type DocumentTemplateResponse = DocumentTemplatePayload & {
+--- a/admin/src/features/talimat/TalimatDocumentsPage.tsx	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/features/talimat/TalimatDocumentsPage.tsx	2026-09-14 02:27:20.949092579 +0000
+@@ -31,6 +31,7 @@
+ import {
+   ADMIT_CARD_RULE_TOKENS,
+   DEFAULT_ADMIT_CARD_RULES,
++  DEFAULT_CUSTOM_NOTICE,
+   DEFAULT_SANAD_TEMPLATE,
+   DEFAULT_TESTIMONIAL_TEMPLATE,
+   DEFAULT_TRANSFER_LETTER_TEMPLATE,
+@@ -44,7 +45,8 @@
+   | "sanad_template"
+   | "testimonial_template"
+   | "transfer_letter_template"
+-  | "admit_card_rules";
++  | "admit_card_rules"
++  | "custom_notice_template";
+ 
+ type DocType = {
+   key: string;
+@@ -67,6 +69,15 @@
+     dataFields: ["ছবি", "নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "পিতা", "মোবাইল"],
+   },
+   {
++    key: "custom-notice",
++    title: "নোটিশ (দেয়ালে টানানোর জন্য)",
++    subtitle: "যেকোনো কাস্টম নোটিশ লিখে প্রিন্ট করুন",
++    dataFields: [],
++    templateKey: "custom_notice_template",
++    tokens: [],
++    fallback: DEFAULT_CUSTOM_NOTICE,
++  },
++  {
+     key: "admit-card",
+     title: "প্রবেশপত্র",
+     subtitle: "পরীক্ষার প্রবেশপত্র",
+--- a/admin/src/features/reports/types.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/features/reports/types.ts	2026-09-14 02:27:38.361758917 +0000
+@@ -44,6 +44,7 @@
+     | "id-card"
+     | "admit-card"
+     | "admit-card-with-rules"
++    | "custom-notice"
+     | "certificate"
+     | "testimonial"
+     | "transfer-letter"
+--- a/admin/src/components/Report/pagination/printableConfig.ts	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/components/Report/pagination/printableConfig.ts	2026-09-14 02:27:42.375640300 +0000
+@@ -99,6 +99,12 @@
+     return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
+   }
+ 
++  if (printable === "custom-notice") {
++    // Same as admit-card-with-rules: exactly one static page, ignores the
++    // fetched rows' content entirely.
++    return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
++  }
++
+   if (
+     printable === "marksheet" ||
+     printable === "certificate" ||
+--- a/admin/src/components/Report/ReportContent.tsx	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/components/Report/ReportContent.tsx	2026-09-14 02:27:48.073666171 +0000
+@@ -9,6 +9,7 @@
+ import ResultNoticeList from "./academic/ResultNoticeList";
+ import AdmitCardGrid from "./documents/AdmitCardGrid";
+ import AdmitCardRulesPage from "./documents/AdmitCardRulesPage";
++import CustomNoticePage from "./documents/CustomNoticePage";
+ import BookLabelGrid from "./documents/BookLabelGrid";
+ import IdCardGrid from "./documents/IdCardGrid";
+ import SanadList from "./documents/SanadList";
+@@ -106,6 +107,7 @@
+   if (report.printable === "id-card") return <IdCardGrid rows={rows} templateId={templateId} />;
+   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} templateId={templateId} />;
+   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
++  if (report.printable === "custom-notice") return <CustomNoticePage rows={rows} />;
+   if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
+   if (report.printable === "certificate") {
+     return (
+--- a/admin/src/features/reports/DocumentsReportPage.tsx	2026-09-14 01:56:19.000000000 +0000
++++ b/admin/src/features/reports/DocumentsReportPage.tsx	2026-09-14 02:27:56.613964768 +0000
+@@ -105,6 +105,22 @@
+     ],
+   },
+   {
++    key: "custom-notice",
++    title: "নোটিশ",
++    subtitle: "লেখা কাস্টম নোটিশ প্রিন্ট করুন — মাদ্রাসায় টানিয়ে দেওয়ার জন্য",
++    // Reuses the admit-cards endpoint purely to get one row back so the
++    // "single" printable kind has something to render against - the
++    // fetched data itself is unused (custom_notice_template has no data
++    // tokens). Same trick admit-card-with-rules already relies on.
++    endpoint: "/reports/student/admit-cards",
++    printable: "custom-notice",
++    documentType: "ADMIT_CARD",
++    columns: [
++      { header: "রোল নম্বর", key: "roll" },
++      { header: "শিক্ষার্থীর নাম", key: "student_name" },
++    ],
++  },
++  {
+     key: "student-sanads",
+     title: "সনদ / সার্টিফিকেট",
+     subtitle: "শিক্ষার্থীদের শিক্ষাগত সনদ তৈরি ও প্রিন্ট",
+--- /dev/null	2026-09-10 23:25:17.326000358 +0000
++++ b/admin/src/components/Report/documents/CustomNoticePage.tsx	2026-09-14 02:27:31.220907572 +0000
+@@ -0,0 +1,44 @@
++import { useDocumentTemplate } from "./engine/useDocumentTemplate";
++import { useLetterDesign } from "./engine/useLetterDesign";
++import LetterDocument from "./engine/LetterDocument";
++import { DEFAULT_CUSTOM_NOTICE } from "@madrasha/shared-ui/src/utils/documentTemplates";
++
++type CustomNoticePageProps = {
++  rows: Record<string, any>[];
++};
++
++/**
++ * A single, ad-hoc printable notice page — staff write free text in
++ * Talimat's "নোটিশ" template editor (see TalimatDocumentsPage), then print
++ * this page (with the madrasa's letterhead) to post physically on the
++ * notice board. Shares the same letter design/frame as the other
++ * letter-style documents (Sanad/Testimonial/Transfer/admit-card-rules)
++ * instead of hardcoding its own look. Only one current notice is kept —
++ * writing a new one overwrites the last, there's no history.
++ */
++const CustomNoticePage = ({ rows }: CustomNoticePageProps) => {
++  const template = useDocumentTemplate("custom_notice_template", DEFAULT_CUSTOM_NOTICE);
++  const { design, backgroundImage } = useLetterDesign();
++  const row = rows[0] || {};
++
++  return (
++    <LetterDocument
++      row={row}
++      showBismillah
++      heading="নোটিশ"
++      headingClassName="mb-8 text-center text-2xl font-bold"
++      bodyClassName="whitespace-pre-line text-lg leading-9 text-slate-800"
++      template={template}
++      design={design}
++      backgroundImage={backgroundImage}
++      footer={
++        <div className="mt-16 flex justify-between text-sm font-semibold">
++          <span>তারিখ: ........................</span>
++          <span>প্রধান শিক্ষকের স্বাক্ষর ও সীল</span>
++        </div>
++      }
++    />
++  );
++};
++
++export default CustomNoticePage;

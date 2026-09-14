@@ -99,6 +99,12 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
     return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
   }
 
+  if (printable === "custom-notice") {
+    // Same as admit-card-with-rules: exactly one static page, ignores the
+    // fetched rows' content entirely.
+    return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
+  }
+
   if (
     printable === "marksheet" ||
     printable === "certificate" ||

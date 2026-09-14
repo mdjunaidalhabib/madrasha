@@ -43,6 +43,7 @@ export interface UpdateDocumentTemplatesRequestDto {
   testimonial_template?: string | null;
   transfer_letter_template?: string | null;
   admit_card_rules?: string | null;
+  custom_notice_template?: string | null;
 }
 
 export interface UpdateIdCardDesignRequestDto {
