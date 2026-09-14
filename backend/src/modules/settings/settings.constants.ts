@@ -66,6 +66,8 @@ export const BRAND_LAYOUT_DEFAULTS = {
   address_color: "#000000",
   logo_size: 95,
   logo_position: "left" as const,
+  logo_offset_x: 0,
+  logo_offset_y: 0,
   header_height: null as number | null,
   footer_text: null as string | null,
   footer_font_size: 10,
@@ -80,6 +82,11 @@ export const BRAND_LAYOUT_LIMITS = {
   name_font_size: { min: 12, max: 48 },
   address_font_size: { min: 10, max: 28 },
   logo_size: { min: 40, max: 160 },
+  // Fine nudge range, independent of logo_position - lets the logo be
+  // shifted a little from its base spot (left/center/right) instead of
+  // only jumping between the three presets.
+  logo_offset_x: { min: -80, max: 80 }, // px
+  logo_offset_y: { min: -40, max: 40 }, // px
   header_height: { min: 20, max: 80 }, // mm
   footer_font_size: { min: 8, max: 20 },
   footer_height: { min: 8, max: 40 }, // mm

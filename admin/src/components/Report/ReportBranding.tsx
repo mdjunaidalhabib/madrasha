@@ -214,16 +214,40 @@ export function ReportBrandHeader({
     logoStyle.width = layout.logo_size;
     logoStyle.height = layout.logo_size;
   }
+  // Fine nudge (logo_offset_x/y) layers on top of the left/center/right
+  // base position - expressed as an extra translate so it composes with
+  // whichever base transform that position already needs (center's
+  // horizontal -50% centering, everyone's vertical -50% overhang centering).
+  const offsetX = layout.logo_offset_x || 0;
+  const offsetY = layout.logo_offset_y || 0;
   if (layout.logo_position === "center") {
     logoStyle.left = "50%";
-    logoStyle.transform = "translate(-50%, -50%)";
+    logoStyle.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
   } else if (layout.logo_position === "right") {
     logoStyle.left = "auto";
-    logoStyle.right = 28;
+    logoStyle.right = 28 - offsetX;
+    if (offsetY) logoStyle.transform = `translateY(calc(-50% + ${offsetY}px))`;
+  } else {
+    if (offsetX) logoStyle.left = 28 + offsetX;
+    if (offsetY) logoStyle.transform = `translateY(calc(-50% + ${offsetY}px))`;
   }
 
   const headerStyle: CSSProperties = {};
   if (layout.header_height !== null) headerStyle.minHeight = `${layout.header_height}mm`;
+  // The logo overhangs below the header's own flow box (see
+  // .report-brand-logo's top:105%/translateY(-50%) in index.css), so
+  // roughly half its height needs reserving as margin or the report's
+  // heading right below would render underneath it. The shipped CSS
+  // (.report-brand-header--with-logo) reserves a fixed amount sized for the
+  // *default* 95px logo - once the logo is resized or nudged vertically,
+  // that fixed reservation is wrong (too little if bigger/lower, wastefully
+  // too much if smaller/higher, which is exactly the "empty gap under the
+  // header" this covers). Only override once something is actually
+  // customized, so an untouched madrasa keeps the exact old CSS-driven gap.
+  if (showLogo && (layout.logo_size !== BRAND_LAYOUT_DEFAULTS.logo_size || offsetY !== 0)) {
+    const overhangPx = layout.logo_size / 2 + Math.max(0, offsetY);
+    headerStyle.marginBottom = `${Math.ceil(overhangPx + 6)}px`;
+  }
 
   return (
     <div

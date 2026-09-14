@@ -11,6 +11,8 @@ export interface BrandLayoutData {
   address_color: string; // hex
   logo_size: number; // px (square)
   logo_position: "left" | "center" | "right";
+  logo_offset_x: number; // px, fine nudge on top of logo_position, +right/-left
+  logo_offset_y: number; // px, fine nudge, +down/-up
   header_height: number | null; // mm, null = auto (content-driven, old behaviour)
   footer_text: string | null; // default text footer, null/empty = off
   footer_font_size: number; // px

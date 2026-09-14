@@ -372,21 +372,24 @@ input[type="number"]::-webkit-inner-spin-button {
      .report-brand-header--with-logo below is what actually keeps that from
      happening in the normal case. */
   z-index: 2;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   gap: 2px;
 }
 
 /* Only applied when a logo actually renders (ReportBrandHeader sets this
-   modifier class) - a madrasa with no uploaded logo keeps the compact 10px
+   modifier class) - a madrasa with no uploaded logo keeps the compact 6px
    margin above instead of wasting this space. The logo is centered on the
    header's own bottom edge (see .report-brand-logo's top:105% +
    translateY(-50%)), so roughly half its own height always overhangs past
    the header's text-driven flow height regardless of how much name/address
    text there is. This margin must clear that overhang (half the logo
    height + a small buffer) or the report's own heading text directly below
-   renders underneath/behind the logo. */
+   renders underneath/behind the logo. Kept as tight as that math allows -
+   ReportBrandHeader overrides this inline with an exact per-logo-size value
+   the moment the logo size/position is customized (see its marginBottom
+   comment), so this default only matters for an untouched madrasa. */
 .report-brand-header--with-logo {
-  margin-bottom: 54px;
+  margin-bottom: 50px;
 }
 
 .report-brand-logo {
@@ -799,7 +802,7 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-header--with-logo {
-  margin-bottom: 48px;
+  margin-bottom: 45px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-logo {
@@ -823,7 +826,7 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-header--with-logo {
-  margin-bottom: 40px;
+  margin-bottom: 37px;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-logo {

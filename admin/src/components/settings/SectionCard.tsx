@@ -7,6 +7,7 @@ export default function SectionCard({
   children,
   toggle,
   badge,
+  actions,
 }: {
   title: string;
   hint?: string;
@@ -16,6 +17,8 @@ export default function SectionCard({
   toggle?: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean };
   /** হেডারের ডান পাশে একটি ছোট কাউন্ট/লেবেল ব্যাজ (যেমনঃ মোট কয়টি আইটেম আছে)। */
   badge?: ReactNode;
+  /** হেডারের ডান পাশে বাটনের মতো একটি অ্যাকশন (যেমনঃ "ডিফল্টে ফিরুন")। */
+  actions?: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -29,6 +32,7 @@ export default function SectionCard({
             {badge}
           </span>
         )}
+        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         {toggle && (
           <div className="flex shrink-0 items-center gap-2">
             {!toggle.checked && (

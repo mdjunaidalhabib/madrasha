@@ -115,6 +115,20 @@ function mergeBrandLayoutPatch(
     next.logo_position = patch.logo_position as BrandLayoutData["logo_position"];
   }
 
+  const logoOffsetX = parseBoundedNumber(
+    patch.logo_offset_x,
+    BRAND_LAYOUT_LIMITS.logo_offset_x,
+    "logo_offset_x",
+  );
+  if (logoOffsetX !== undefined) next.logo_offset_x = logoOffsetX;
+
+  const logoOffsetY = parseBoundedNumber(
+    patch.logo_offset_y,
+    BRAND_LAYOUT_LIMITS.logo_offset_y,
+    "logo_offset_y",
+  );
+  if (logoOffsetY !== undefined) next.logo_offset_y = logoOffsetY;
+
   if (patch.header_height !== undefined) {
     if (patch.header_height === null || patch.header_height === "") {
       next.header_height = null; // back to auto

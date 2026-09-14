@@ -8,6 +8,8 @@ export interface UpdateBrandLayoutRequestDto {
   address_color?: string | null;
   logo_size?: number | string;
   logo_position?: string;
+  logo_offset_x?: number | string;
+  logo_offset_y?: number | string;
   header_height?: number | string | null;
   footer_text?: string | null;
   footer_font_size?: number | string;

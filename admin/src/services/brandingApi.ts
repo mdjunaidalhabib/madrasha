@@ -14,6 +14,8 @@ export type BrandLayout = {
   address_color: string;
   logo_size: number;
   logo_position: BrandLogoPosition;
+  logo_offset_x: number;
+  logo_offset_y: number;
   header_height: number | null;
   footer_text: string | null;
   footer_font_size: number;
@@ -33,6 +35,8 @@ export const BRAND_LAYOUT_DEFAULTS: BrandLayout = {
   address_color: "#000000",
   logo_size: 95,
   logo_position: "left",
+  logo_offset_x: 0,
+  logo_offset_y: 0,
   header_height: null,
   footer_text: null,
   footer_font_size: 10,

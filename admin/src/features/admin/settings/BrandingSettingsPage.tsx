@@ -1,7 +1,21 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Droplets, FileText, LayoutTemplate } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Droplets,
+  FileText,
+  Image as ImageIcon,
+  LayoutTemplate,
+  MapPin,
+  Move,
+  RotateCcw,
+  Type,
+} from "lucide-react";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineListField from "../../../components/settings/InlineListField";
@@ -70,6 +84,13 @@ function LayoutSliderRow({
     </div>
   );
 }
+
+// Pixels nudged per arrow-button click on the logo's fine-position pad -
+// matches backend/src/modules/settings/settings.constants.ts's
+// BRAND_LAYOUT_LIMITS.logo_offset_x/y clamp range.
+const LOGO_NUDGE_STEP = 4;
+const LOGO_OFFSET_X_LIMIT = 80;
+const LOGO_OFFSET_Y_LIMIT = 40;
 
 // Small shared row: label + native color swatch input, saved immediately on
 // change (color pickers don't have the "drag spam" problem sliders do).
@@ -241,6 +262,41 @@ export default function BrandingSettingsPage() {
     setBrandLayout((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Fine logo nudge: each arrow click adds a few px on top of whatever
+  // left/center/right base position is already picked, clamped to the same
+  // range the backend enforces. Saves immediately (no drag-in-progress
+  // state to debounce here, unlike the sliders).
+  const nudgeLogo = (dx: number, dy: number) => {
+    const nextX = Math.max(-LOGO_OFFSET_X_LIMIT, Math.min(LOGO_OFFSET_X_LIMIT, brandLayout.logo_offset_x + dx));
+    const nextY = Math.max(-LOGO_OFFSET_Y_LIMIT, Math.min(LOGO_OFFSET_Y_LIMIT, brandLayout.logo_offset_y + dy));
+    setLayoutDraft("logo_offset_x", nextX);
+    setLayoutDraft("logo_offset_y", nextY);
+    patchBrandLayout({ logo_offset_x: nextX, logo_offset_y: nextY });
+  };
+
+  const resetLogoOffset = () => {
+    setLayoutDraft("logo_offset_x", 0);
+    setLayoutDraft("logo_offset_y", 0);
+    patchBrandLayout({ logo_offset_x: 0, logo_offset_y: 0 });
+  };
+
+  // Resets every knob in "ডিফল্ট হেডার-ফুটার ডিজাইন" (name/address size &
+  // color, logo size/position/offset, header height, footer text/size/
+  // color/height) back to BRAND_LAYOUT_DEFAULTS in one shot, after an
+  // explicit confirmation since it overwrites everything at once.
+  const resetBrandLayoutToDefault = () => {
+    useConfirmStore.getState().show({
+      title: "ডিফল্টে ফিরিয়ে আনুন",
+      message:
+        "নাম-ঠিকানার সাইজ/রঙ, লোগোর সাইজ-অবস্থান, হেডারের জায়গা এবং ফুটার — এই সেকশনের সব সেটিং ডিফল্ট মানে ফিরে যাবে। এগিয়ে যেতে চান?",
+      confirmText: "ডিফল্টে ফিরিয়ে আনুন",
+      danger: true,
+      onConfirm: async () => {
+        await patchBranding({ report_brand_layout: BRAND_LAYOUT_DEFAULTS });
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -316,82 +372,194 @@ export default function BrandingSettingsPage() {
       <SectionCard
         title="ডিফল্ট হেডার-ফুটার ডিজাইন"
         hint="উপরের 'কাস্টম হেডার-ফুটার' বন্ধ থাকলে এই সেটিং অনুযায়ী লোগো-নাম-ঠিকানা হেডার এবং (ঐচ্ছিক) ফুটার দেখাবে — চালু থাকলে এই সেটিং প্রযোজ্য হবে না"
+        actions={
+          <button
+            type="button"
+            onClick={resetBrandLayoutToDefault}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+          >
+            <RotateCcw size={13} />
+            ডিফল্টে ফিরিয়ে আনুন
+          </button>
+        }
       >
-        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <LayoutSliderRow
-            label="মাদ্রাসার নামের সাইজ"
-            value={brandLayout.name_font_size}
-            unit="px"
-            min={12}
-            max={48}
-            onDraft={(v) => setLayoutDraft("name_font_size", v)}
-            onCommit={(v) => patchBrandLayout({ name_font_size: v })}
-          />
-          <LayoutSliderRow
-            label="ঠিকানার সাইজ"
-            value={brandLayout.address_font_size}
-            unit="px"
-            min={10}
-            max={28}
-            onDraft={(v) => setLayoutDraft("address_font_size", v)}
-            onCommit={(v) => patchBrandLayout({ address_font_size: v })}
-          />
-          <ColorPickerRow
-            label="নামের রঙ"
-            value={brandLayout.name_color}
-            onChange={(v) => {
-              setLayoutDraft("name_color", v);
-              patchBrandLayout({ name_color: v });
-            }}
-          />
-          <ColorPickerRow
-            label="ঠিকানার রঙ"
-            value={brandLayout.address_color}
-            onChange={(v) => {
-              setLayoutDraft("address_color", v);
-              patchBrandLayout({ address_color: v });
-            }}
-          />
-          <LayoutSliderRow
-            label="লোগোর সাইজ"
-            value={brandLayout.logo_size}
-            unit="px"
-            min={40}
-            max={160}
-            onDraft={(v) => setLayoutDraft("logo_size", v)}
-            onCommit={(v) => patchBrandLayout({ logo_size: v })}
-          />
-          <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
-            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">লোগোর পজিশন</p>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { key: "left", label: "বামে" },
-                  { key: "center", label: "মাঝে" },
-                  { key: "right", label: "ডানে" },
-                ] as { key: BrandLogoPosition; label: string }[]
-              ).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => {
-                    setLayoutDraft("logo_position", opt.key);
-                    patchBrandLayout({ logo_position: opt.key });
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                    brandLayout.logo_position === opt.key
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
-                      : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+        <div className="space-y-4">
+          {/* নাম */}
+          <div className="rounded-xl border border-gray-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
+              <Type size={14} className="text-gray-400 dark:text-slate-500" />
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">মাদ্রাসার নাম</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+              <LayoutSliderRow
+                label="নামের সাইজ"
+                value={brandLayout.name_font_size}
+                unit="px"
+                min={12}
+                max={48}
+                onDraft={(v) => setLayoutDraft("name_font_size", v)}
+                onCommit={(v) => patchBrandLayout({ name_font_size: v })}
+              />
+              <ColorPickerRow
+                label="নামের রঙ"
+                value={brandLayout.name_color}
+                onChange={(v) => {
+                  setLayoutDraft("name_color", v);
+                  patchBrandLayout({ name_color: v });
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ঠিকানা */}
+          <div className="rounded-xl border border-gray-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
+              <MapPin size={14} className="text-gray-400 dark:text-slate-500" />
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">ঠিকানা</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+              <LayoutSliderRow
+                label="ঠিকানার সাইজ"
+                value={brandLayout.address_font_size}
+                unit="px"
+                min={10}
+                max={28}
+                onDraft={(v) => setLayoutDraft("address_font_size", v)}
+                onCommit={(v) => patchBrandLayout({ address_font_size: v })}
+              />
+              <ColorPickerRow
+                label="ঠিকানার রঙ"
+                value={brandLayout.address_color}
+                onChange={(v) => {
+                  setLayoutDraft("address_color", v);
+                  patchBrandLayout({ address_color: v });
+                }}
+              />
+            </div>
+          </div>
+
+          {/* লোগো */}
+          <div className="rounded-xl border border-gray-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
+              <ImageIcon size={14} className="text-gray-400 dark:text-slate-500" />
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">লোগো</p>
+            </div>
+            <div className="space-y-3 p-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <LayoutSliderRow
+                  label="লোগোর সাইজ"
+                  value={brandLayout.logo_size}
+                  unit="px"
+                  min={40}
+                  max={160}
+                  onDraft={(v) => setLayoutDraft("logo_size", v)}
+                  onCommit={(v) => patchBrandLayout({ logo_size: v })}
+                />
+                <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+                  <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">মূল অবস্থান</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { key: "left", label: "বামে" },
+                        { key: "center", label: "মাঝে" },
+                        { key: "right", label: "ডানে" },
+                      ] as { key: BrandLogoPosition; label: string }[]
+                    ).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          setLayoutDraft("logo_position", opt.key);
+                          patchBrandLayout({ logo_position: opt.key });
+                        }}
+                        className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          brandLayout.logo_position === opt.key
+                            ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
+                            : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
+                    <Move size={14} className="text-gray-400 dark:text-slate-500" />
+                    সূক্ষ্মভাবে সরান
+                  </p>
+                  {(brandLayout.logo_offset_x !== 0 || brandLayout.logo_offset_y !== 0) && (
+                    <button
+                      type="button"
+                      onClick={resetLogoOffset}
+                      className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      <RotateCcw size={12} />
+                      মূল জায়গায় ফিরুন
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="grid grid-cols-3 grid-rows-3 gap-1">
+                    <span />
+                    <button
+                      type="button"
+                      onClick={() => nudgeLogo(0, -LOGO_NUDGE_STEP)}
+                      aria-label="লোগো উপরে সরান"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <span />
+                    <button
+                      type="button"
+                      onClick={() => nudgeLogo(-LOGO_NUDGE_STEP, 0)}
+                      aria-label="লোগো বামে সরান"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                    >
+                      <ArrowLeft size={15} />
+                    </button>
+                    <span className="flex items-center justify-center rounded-lg bg-gray-50 dark:bg-slate-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-slate-600" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => nudgeLogo(LOGO_NUDGE_STEP, 0)}
+                      aria-label="লোগো ডানে সরান"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                    >
+                      <ArrowRight size={15} />
+                    </button>
+                    <span />
+                    <button
+                      type="button"
+                      onClick={() => nudgeLogo(0, LOGO_NUDGE_STEP)}
+                      aria-label="লোগো নিচে সরান"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+                    <span />
+                  </div>
+                  <p className="text-xs leading-5 text-gray-500 dark:text-slate-400">
+                    বামে/ডানে: {brandLayout.logo_offset_x}px
+                    <br />
+                    উপরে/নিচে: {brandLayout.logo_offset_y}px
+                  </p>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                  উপরে বেছে নেওয়া মূল অবস্থান থেকে সামান্য সরিয়ে (চাপ দিলেই কয়েক পিক্সেল করে) ঠিক জায়গায় বসাতে
+                  ব্যবহার করুন।
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mb-3 rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+        <div className="mt-4 rounded-xl border border-gray-100 p-4 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
               <LayoutTemplate size={14} className="text-gray-400 dark:text-slate-500" />
@@ -437,7 +605,7 @@ export default function BrandingSettingsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
+        <div className="mt-4 rounded-xl border border-gray-100 p-4 dark:border-slate-800">
           <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">ডিফল্ট ফুটার (ঐচ্ছিক)</p>
           <textarea
             rows={2}
