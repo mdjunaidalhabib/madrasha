@@ -128,7 +128,7 @@ const emptyExamForm = {
 
 // একটাই ইনপুট/সিলেক্ট স্টাইল সবখানে — ফর্মজুড়ে একই লুক বজায় রাখতে।
 const inputClass =
-  "h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
+  "h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-800 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
 
 function Field({
   label,
@@ -141,7 +141,7 @@ function Field({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</span>
+      <span className="text-sm font-medium text-gray-500 dark:text-slate-400">{label}</span>
       {children}
     </div>
   );
@@ -171,6 +171,10 @@ const ClassExamRoutinePage = () => {
   const [expandedRoutineId, setExpandedRoutineId] = useState<number | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // ওভারভিউয়ের কোনো বক্সে ক্লিক করলে বা "রুটিন তৈরি করুন" বাটনে ক্লিক করলে
+  // এই মোডালেই বিভাগ/শ্রেণি(/পরীক্ষা) বাছাই, নতুন রুটিন যোগ ও তালিকা — সবকিছু
+  // দেখানো হয়, যাতে মূল পেজটা শুধু ওভারভিউ হিসেবেই পরিষ্কার থাকে।
+  const [showEntryModal, setShowEntryModal] = useState(false);
 
   // পেজে ঢুকলেই (কোনো বিভাগ/শ্রেণি নির্বাচনের আগেই) কোন ক্লাসের রুটিন তৈরি
   // হয়েছে/হয়নি তা এক নজরে দেখানোর জন্য — রেজাল্ট প্যানেলের ওভারভিউ পেজের
@@ -385,21 +389,64 @@ const ClassExamRoutinePage = () => {
     [exams, selectedExamId],
   );
 
-  // পরীক্ষা-ভিত্তিক ওভারভিউ রো-গুলো পরীক্ষা অনুযায়ী গ্রুপ করা — ব্যাকএন্ড
-  // ইতিমধ্যে পরীক্ষা ও ক্লাস দুটোই sortOrder অনুসারে সাজিয়ে পাঠায়, তাই এখানে
-  // শুধু গ্রুপ করলেই ক্রম ঠিক থাকে।
-  const examOverviewGrouped = useMemo(() => {
+  // ক্লাস রুটিনের ওভারভিউ — রেজাল্ট প্যানেলের OverviewGrid-এর ধাঁচেই বিভাগ
+  // অনুযায়ী ভাগ করা হয় (প্রতিটা বিভাগের নিচে সেই বিভাগের ক্লাসগুলো)।
+  const classOverviewGrouped = useMemo(() => {
     const map = new Map<
       number,
-      { examId: number; examName: string; examYear: string | number; rows: ExamRoutineOverviewRow[] }
+      { divisionId: number; divisionName: string; rows: ClassRoutineOverviewRow[] }
     >();
-    for (const row of examOverview) {
-      if (!map.has(row.examId)) {
-        map.set(row.examId, { examId: row.examId, examName: row.examName, examYear: row.examYear, rows: [] });
+    for (const row of classOverview) {
+      const divId = row.divisionId ?? -1;
+      if (!map.has(divId)) {
+        map.set(divId, { divisionId: divId, divisionName: row.divisionName || "বিভাগ নির্ধারিত নেই", rows: [] });
       }
-      map.get(row.examId)!.rows.push(row);
+      map.get(divId)!.rows.push(row);
     }
     return Array.from(map.values());
+  }, [classOverview]);
+
+  // পরীক্ষা-ভিত্তিক ওভারভিউ রো-গুলো প্রথমে পরীক্ষা অনুযায়ী, তারপর প্রতিটা
+  // পরীক্ষার ভিতরে বিভাগ অনুযায়ী গ্রুপ করা — রেজাল্ট প্যানেলের OverviewGrid-এ
+  // যেমন প্রতিটা পরীক্ষার কার্ডের ভিতরে বিভাগ অনুযায়ী সেকশন থাকে, ঠিক সেই
+  // ধাঁচে। ব্যাকএন্ড ইতিমধ্যে পরীক্ষা ও ক্লাস দুটোই sortOrder অনুসারে সাজিয়ে
+  // পাঠায়, তাই এখানে শুধু গ্রুপ করলেই ক্রম ঠিক থাকে।
+  const examOverviewGrouped = useMemo(() => {
+    const examMap = new Map<
+      number,
+      {
+        examId: number;
+        examName: string;
+        examYear: string | number;
+        divisionMap: Map<number, { divisionId: number; divisionName: string; rows: ExamRoutineOverviewRow[] }>;
+      }
+    >();
+    for (const row of examOverview) {
+      if (!examMap.has(row.examId)) {
+        examMap.set(row.examId, {
+          examId: row.examId,
+          examName: row.examName,
+          examYear: row.examYear,
+          divisionMap: new Map(),
+        });
+      }
+      const examGroup = examMap.get(row.examId)!;
+      const divId = row.divisionId ?? -1;
+      if (!examGroup.divisionMap.has(divId)) {
+        examGroup.divisionMap.set(divId, {
+          divisionId: divId,
+          divisionName: row.divisionName || "বিভাগ নির্ধারিত নেই",
+          rows: [],
+        });
+      }
+      examGroup.divisionMap.get(divId)!.rows.push(row);
+    }
+    return Array.from(examMap.values()).map((group) => ({
+      examId: group.examId,
+      examName: group.examName,
+      examYear: group.examYear,
+      divisionGroups: Array.from(group.divisionMap.values()),
+    }));
   }, [examOverview]);
 
   // ওভারভিউ কার্ডে ক্লিক করলে সরাসরি সেই বিভাগ/শ্রেণি (ও পরীক্ষা) বেছে নিয়ে
@@ -411,6 +458,7 @@ const ClassExamRoutinePage = () => {
     setDivision(divStr);
     loadClasses(divStr);
     setClassId(String(row.classId));
+    setShowEntryModal(true);
   };
 
   const jumpToExamClass = (row: ExamRoutineOverviewRow) => {
@@ -420,6 +468,18 @@ const ClassExamRoutinePage = () => {
     loadClasses(divStr);
     setClassId(String(row.classId));
     setSelectedExamId(String(row.examId));
+    setShowEntryModal(true);
+  };
+
+  // "রুটিন তৈরি করুন" বাটনে ক্লিক করলে ফাঁকা সিলেকশন নিয়ে সরাসরি এন্ট্রি
+  // মোডাল খোলা হয় — ব্যবহারকারী নিজে বিভাগ/শ্রেণি বেছে নতুন রুটিন শুরু করতে
+  // পারেন, ওভারভিউতে আগে থেকে কোনো ক্লাস থাকা লাগে না।
+  const openCreateEntry = () => {
+    setDivision("");
+    setClasses([]);
+    setClassId("");
+    setSelectedExamId("");
+    setShowEntryModal(true);
   };
 
   const handleAddClassRoutine = async () => {
@@ -562,44 +622,55 @@ const ClassExamRoutinePage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ক্লাস ও পরীক্ষার রুটিন</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">সাপ্তাহিক ক্লাস রুটিন ও পরীক্ষার সময়সূচি তৈরি করুন</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">ক্লাস ও পরীক্ষার রুটিন</h1>
+          <p className="mt-1 text-base text-gray-500 dark:text-slate-400">সাপ্তাহিক ক্লাস রুটিন ও পরীক্ষার সময়সূচি তৈরি করুন</p>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-4 inline-flex rounded-xl bg-gray-100 p-1 dark:bg-slate-900">
+        {/* Tabs + রুটিন তৈরি করার বাটন */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-xl bg-gray-100 p-1 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => setTab("class")}
+              className={`flex h-9 items-center gap-1.5 rounded-lg px-4 text-base font-medium transition ${
+                tab === "class"
+                  ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <CalendarDays size={15} />
+              ক্লাস রুটিন
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("exam")}
+              className={`flex h-9 items-center gap-1.5 rounded-lg px-4 text-base font-medium transition ${
+                tab === "exam"
+                  ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <ClipboardList size={15} />
+              পরীক্ষার রুটিন
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setTab("class")}
-            className={`flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition ${
-              tab === "class"
-                ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
+            onClick={openCreateEntry}
+            className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700"
           >
-            <CalendarDays size={15} />
-            ক্লাস রুটিন
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("exam")}
-            className={`flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition ${
-              tab === "exam"
-                ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <ClipboardList size={15} />
-            পরীক্ষার রুটিন
+            <Plus size={16} />
+            রুটিন তৈরি করুন
           </button>
         </div>
 
         {/* Overview — পেজে ঢুকেই, কোনো বিভাগ/শ্রেণি না বেছেই কোন ক্লাসের
             রুটিন তৈরি হয়েছে/হয়নি এক নজরে দেখা যায় (রেজাল্ট প্যানেলের
-            ওভারভিউ পেজের ধাঁচে) — কার্ডে ক্লিক করলে সরাসরি সেই ক্লাসের
-            এডিটিং ভিউতে চলে যাওয়া যায়। */}
+            ওভারভিউ পেজের ধাঁচে — বিভাগ অনুযায়ী ভাগ করা) — বক্সে ক্লিক করলে
+            সরাসরি সেই ক্লাসের এন্ট্রি ফর্ম মোডাল খুলে যায়। */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
+          <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
             <ClipboardList size={15} className="text-blue-600 dark:text-blue-400" />
             {tab === "class" ? "কোন ক্লাসের রুটিন তৈরি হয়েছে" : "কোন ক্লাসের পরীক্ষার রুটিন তৈরি হয়েছে"}
           </h2>
@@ -607,94 +678,117 @@ const ClassExamRoutinePage = () => {
           {overviewLoading ? (
             <SkeletonList items={4} />
           ) : tab === "class" ? (
-            classOverview.length === 0 ? (
-              <p className="py-4 text-center text-sm text-gray-400 dark:text-slate-500">
+            classOverviewGrouped.length === 0 ? (
+              <p className="py-4 text-center text-base text-gray-400 dark:text-slate-500">
                 কোনো সক্রিয় শ্রেণি পাওয়া যায়নি
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {classOverview.map((row) => {
-                  const has = row.periodCount > 0;
-                  const isActive = String(row.classId) === classId && String(row.divisionId) === division;
-                  return (
-                    <button
-                      key={row.classId}
-                      type="button"
-                      onClick={() => jumpToClass(row)}
-                      className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
-                        isActive
-                          ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
-                          : "border-gray-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <span className="truncate text-[11px] text-gray-400 dark:text-slate-500">
-                        {row.divisionName || "—"}
-                      </span>
-                      <span className="truncate text-sm font-semibold text-gray-800 dark:text-slate-100">
-                        {row.className || "—"}
-                      </span>
-                      <span
-                        className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          has ? EXAM_ROUTINE_STATUS_STYLES.PUBLISHED : OVERVIEW_STATUS_STYLES.NONE
-                        }`}
-                      >
-                        {has ? `রুটিন আছে (${row.periodCount})` : "রুটিন নেই"}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="flex flex-col gap-4">
+                {classOverviewGrouped.map((divGroup) => (
+                  <div key={divGroup.divisionId}>
+                    <h3 className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-gray-600 dark:text-slate-400">
+                      📂 {divGroup.divisionName}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {divGroup.rows.map((row) => {
+                        const has = row.periodCount > 0;
+                        const isActive = String(row.classId) === classId && String(row.divisionId) === division;
+                        return (
+                          <button
+                            key={row.classId}
+                            type="button"
+                            onClick={() => jumpToClass(row)}
+                            className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
+                              isActive
+                                ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
+                                : "border-gray-200 dark:border-slate-700"
+                            }`}
+                          >
+                            <span className="truncate text-base font-semibold text-gray-800 dark:text-slate-100">
+                              {row.className || "—"}
+                            </span>
+                            <span
+                              className={`w-fit rounded-full px-2 py-0.5 text-sm font-semibold ${
+                                has ? EXAM_ROUTINE_STATUS_STYLES.PUBLISHED : OVERVIEW_STATUS_STYLES.NONE
+                              }`}
+                            >
+                              {has ? `রুটিন আছে (${row.periodCount})` : "রুটিন নেই"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )
           ) : examOverviewGrouped.length === 0 ? (
-            <p className="py-4 text-center text-sm text-gray-400 dark:text-slate-500">
+            <p className="py-4 text-center text-base text-gray-400 dark:text-slate-500">
               কোনো সক্রিয় পরীক্ষা পাওয়া যায়নি
             </p>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {examOverviewGrouped.map((group) => (
                 <div key={group.examId}>
-                  <p className="mb-1.5 text-xs font-semibold text-gray-500 dark:text-slate-400">
-                    {group.examName} — {group.examYear}
+                  <p className="mb-2 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                    📝 {group.examName} — {group.examYear}
                   </p>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                    {group.rows.map((row) => {
-                      const isActive =
-                        String(row.classId) === classId &&
-                        String(row.divisionId) === division &&
-                        String(row.examId) === selectedExamId;
-                      return (
-                        <button
-                          key={`${row.examId}-${row.classId}`}
-                          type="button"
-                          onClick={() => jumpToExamClass(row)}
-                          className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
-                            isActive
-                              ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
-                              : "border-gray-200 dark:border-slate-700"
-                          }`}
-                        >
-                          <span className="truncate text-[11px] text-gray-400 dark:text-slate-500">
-                            {row.divisionName || "—"}
-                          </span>
-                          <span className="truncate text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            {row.className || "—"}
-                          </span>
-                          <span
-                            className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${OVERVIEW_STATUS_STYLES[row.status]}`}
-                          >
-                            {OVERVIEW_STATUS_LABELS[row.status]}
-                            {row.status !== "NONE" ? ` (${row.subjectCount})` : ""}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-col gap-3 pl-1">
+                    {group.divisionGroups.map((divGroup) => (
+                      <div key={divGroup.divisionId}>
+                        <h3 className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-gray-600 dark:text-slate-400">
+                          📂 {divGroup.divisionName}
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                          {divGroup.rows.map((row) => {
+                            const isActive =
+                              String(row.classId) === classId &&
+                              String(row.divisionId) === division &&
+                              String(row.examId) === selectedExamId;
+                            return (
+                              <button
+                                key={`${row.examId}-${row.classId}`}
+                                type="button"
+                                onClick={() => jumpToExamClass(row)}
+                                className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
+                                  isActive
+                                    ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
+                                    : "border-gray-200 dark:border-slate-700"
+                                }`}
+                              >
+                                <span className="truncate text-base font-semibold text-gray-800 dark:text-slate-100">
+                                  {row.className || "—"}
+                                </span>
+                                <span
+                                  className={`w-fit rounded-full px-2 py-0.5 text-sm font-semibold ${OVERVIEW_STATUS_STYLES[row.status]}`}
+                                >
+                                  {OVERVIEW_STATUS_LABELS[row.status]}
+                                  {row.status !== "NONE" ? ` (${row.subjectCount})` : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
 
+      {/* এন্ট্রি মোডাল — ওভারভিউয়ের বক্সে ক্লিক করলে বা "রুটিন তৈরি করুন"
+          বাটনে ক্লিক করলে এখানেই বিভাগ/শ্রেণি(/পরীক্ষা) বাছাই, নতুন রুটিন
+          যোগ করা ও বিদ্যমান তালিকা দেখা যায় — মূল পেজ শুধু ওভারভিউ দেখানোর
+          জন্যই আলাদা থাকে (রেজাল্ট প্যানেলের Preview vs Entry পেজের ধাঁচে)। */}
+      <Modal
+        open={showEntryModal}
+        title={tab === "class" ? "ক্লাস রুটিন এন্ট্রি" : "পরীক্ষার রুটিন এন্ট্রি"}
+        onClose={() => setShowEntryModal(false)}
+        maxWidthClassName="max-w-4xl"
+      >
         {/* Division/Class/Exam picker (shared) */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -758,7 +852,7 @@ const ClassExamRoutinePage = () => {
             {/* Add class routine form */}
             {classId && (
               <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-                <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
+                <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
                   <Plus size={15} className="text-blue-600 dark:text-blue-400" />
                   নতুন ক্লাস রুটিন যোগ করুন
                 </h2>
@@ -831,7 +925,7 @@ const ClassExamRoutinePage = () => {
                       type="button"
                       disabled={saving}
                       onClick={handleAddClassRoutine}
-                      className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+                      className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                     >
                       <Plus size={15} />
                       যোগ করুন
@@ -844,21 +938,21 @@ const ClassExamRoutinePage = () => {
             {/* List */}
             <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
               {!classId ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <Layers size={22} className="text-gray-300 dark:text-slate-700" />
                   রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedClassRoutines.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <CalendarDays size={22} className="text-gray-300 dark:text-slate-700" />
                   এই শ্রেণিতে এখনো কোনো রুটিন যোগ করা হয়নি
                 </div>
               ) : (
                 <>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3 dark:border-slate-800">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-gray-800 dark:text-slate-100">
                         <Layers size={14} className="text-blue-600 dark:text-blue-400" />
                         {selectedDivisionName}
@@ -871,7 +965,7 @@ const ClassExamRoutinePage = () => {
                     <button
                       type="button"
                       onClick={() => setShowPreview(true)}
-                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       <Eye size={13} />
                       প্রিভিউ
@@ -884,14 +978,14 @@ const ClassExamRoutinePage = () => {
                       className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 transition hover:border-blue-200 dark:border-slate-700 dark:hover:border-blue-800 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
+                        <span className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-sm font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
                           {DAY_LABELS[row.dayOfWeek]}বার
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          <p className="truncate text-base font-semibold text-gray-800 dark:text-slate-100">
                             {row.subject}
                           </p>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-slate-400">
+                          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-gray-500 dark:text-slate-400">
                             <span className="inline-flex items-center gap-1">
                               <Clock size={12} />
                               {row.startTime}–{row.endTime}
@@ -908,7 +1002,7 @@ const ClassExamRoutinePage = () => {
                       <button
                         type="button"
                         onClick={() => handleDeleteClassRoutine(row.id)}
-                        className="flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
+                        className="flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
                       >
                         <Trash2 size={13} />
                         মুছুন
@@ -925,7 +1019,7 @@ const ClassExamRoutinePage = () => {
             {/* Add exam routine form */}
             {selectedExamId && classId && (
               <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-                <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
+                <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
                   <Plus size={15} className="text-blue-600 dark:text-blue-400" />
                   নতুন পরীক্ষার রুটিন যোগ করুন
                 </h2>
@@ -1033,7 +1127,7 @@ const ClassExamRoutinePage = () => {
                       type="button"
                       disabled={saving}
                       onClick={handleAddExamRoutine}
-                      className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+                      className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                     >
                       <Plus size={15} />
                       যোগ করুন
@@ -1046,26 +1140,26 @@ const ClassExamRoutinePage = () => {
             {/* List */}
             <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
               {!classId ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <Layers size={22} className="text-gray-300 dark:text-slate-700" />
                   রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
                 </div>
               ) : !selectedExamId ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <GraduationCap size={22} className="text-gray-300 dark:text-slate-700" />
                   এবার উপরে থেকে একটি পরীক্ষা নির্বাচন করুন — তাহলে এই শ্রেণির রুটিন দেখা ও যোগ করা যাবে
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedExamRoutines.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-gray-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <ClipboardList size={22} className="text-gray-300 dark:text-slate-700" />
                   এই পরীক্ষা ও শ্রেণির জন্য এখনো কোনো রুটিন যোগ করা হয়নি
                 </div>
               ) : (
                 <>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3 dark:border-slate-800">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-gray-800 dark:text-slate-100">
                         <Layers size={14} className="text-blue-600 dark:text-blue-400" />
                         {selectedDivisionName}
@@ -1087,7 +1181,7 @@ const ClassExamRoutinePage = () => {
                         disabled={statusBusy}
                         title="রুটিনের স্ট্যাটাস পরিবর্তন করুন"
                         onChange={(e) => handleChangeClassExamStatus(e.target.value)}
-                        className={`h-8 rounded-full border-0 px-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 ${EXAM_ROUTINE_STATUS_STYLES[classExamStatus] || "bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300"}`}
+                        className={`h-8 rounded-full border-0 px-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 ${EXAM_ROUTINE_STATUS_STYLES[classExamStatus] || "bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300"}`}
                       >
                         {classExamStatus === "MIXED" && <option value="">বিভিন্ন</option>}
                         {Object.keys(EXAM_ROUTINE_STATUS_LABELS).map((s) => (
@@ -1099,33 +1193,33 @@ const ClassExamRoutinePage = () => {
                       <button
                         type="button"
                         onClick={() => setShowPreview(true)}
-                        className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         <Eye size={13} />
                         প্রিভিউ
                       </button>
                     </div>
                   </div>
-                  <p className="mb-1.5 text-center text-[11px] text-gray-400 dark:text-slate-500 sm:hidden">
+                  <p className="mb-1.5 text-center text-sm text-gray-400 dark:text-slate-500 sm:hidden">
                     ⟷ টেবিলটি পাশে স্ক্রল করে বাকি কলাম দেখুন
                   </p>
                   <div className="overflow-x-auto rounded-lg border border-gray-300 dark:border-slate-700">
-                    <table className="w-full min-w-[700px] border-collapse text-sm">
+                    <table className="w-full min-w-[700px] border-collapse text-base">
                       <thead>
                         <tr>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-xs font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             বার
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-xs font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             তারিখ ও সময়
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-xs font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             বিষয়
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-xs font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             রুম / ধারণক্ষমতা
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-center text-xs font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-center text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             কার্যক্রম
                           </th>
                         </tr>
@@ -1135,30 +1229,30 @@ const ClassExamRoutinePage = () => {
                           return (
                             <Fragment key={row.id}>
                               <tr className="transition hover:bg-blue-50/50 dark:hover:bg-slate-800/50">
-                                <td className="border border-gray-300 px-3 py-2.5 align-top text-sm font-semibold text-indigo-700 dark:border-slate-700 dark:text-indigo-400">
+                                <td className="border border-gray-300 px-3 py-2.5 align-top text-base font-semibold text-indigo-700 dark:border-slate-700 dark:text-indigo-400">
                                   {getExamDayLabel(row.examDate)}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2.5 align-top dark:border-slate-700">
-                                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                                  <div className="text-base font-medium text-gray-800 dark:text-slate-100">
                                     {formatExamDateFull(row.examDate)}
                                   </div>
-                                  <div className="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
+                                  <div className="mt-0.5 inline-flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400">
                                     <Clock size={12} />
                                     {row.startTime}–{row.endTime}
                                   </div>
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2.5 align-top dark:border-slate-700">
-                                  <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                                  <div className="text-base font-semibold text-gray-800 dark:text-slate-100">
                                     {row.subject}
                                   </div>
                                   {row.instructions && (
-                                    <div className="mt-1 flex items-start gap-1 text-xs text-gray-500 dark:text-slate-400">
+                                    <div className="mt-1 flex items-start gap-1 text-sm text-gray-500 dark:text-slate-400">
                                       <CalendarClock size={12} className="mt-0.5 shrink-0" />
                                       {row.instructions}
                                     </div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 px-3 py-2.5 align-top text-xs text-gray-600 dark:border-slate-700 dark:text-slate-300">
+                                <td className="border border-gray-300 px-3 py-2.5 align-top text-sm text-gray-600 dark:border-slate-700 dark:text-slate-300">
                                   <div className="flex flex-col gap-0.5">
                                     {(row.room?.name || row.roomNo) && (
                                       <span className="inline-flex items-center gap-1">
@@ -1180,7 +1274,7 @@ const ClassExamRoutinePage = () => {
                                     <button
                                       type="button"
                                       onClick={() => setExpandedRoutineId((prev) => (prev === row.id ? null : row.id))}
-                                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-blue-300 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400"
+                                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-blue-300 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400"
                                     >
                                       <UserCheck size={13} />
                                       পরিদর্শক
@@ -1188,7 +1282,7 @@ const ClassExamRoutinePage = () => {
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteExamRoutine(row.id)}
-                                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+                                      className="flex h-8 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
                                     >
                                       <Trash2 size={13} />
                                       মুছুন
@@ -1214,7 +1308,7 @@ const ClassExamRoutinePage = () => {
             </div>
           </>
         )}
-      </div>
+      </Modal>
 
       <Modal
         open={showPreview}
@@ -1228,16 +1322,16 @@ const ClassExamRoutinePage = () => {
           <ReportBrandHeader />
 
           <div className="report-content-body relative text-black">
-            <h2 className="mb-1 text-center text-xl font-bold">
+            <h2 className="mb-1 text-center text-2xl font-bold">
               {tab === "class" ? "সাপ্তাহিক ক্লাস রুটিন" : "পরীক্ষার রুটিন"}
             </h2>
             {tab === "exam" && selectedExam && (
-              <p className="mb-3 text-center text-sm font-semibold">
+              <p className="mb-3 text-center text-base font-semibold">
                 {selectedExam.name} — {selectedExam.year}
               </p>
             )}
 
-            <div className="mb-3 grid grid-cols-2 text-[13px]">
+            <div className="mb-3 grid grid-cols-2 text-base">
               <div className="flex min-h-9 items-center border border-black px-2">
                 <b className="mr-1">বিভাগ:</b> {selectedDivisionName || "—"}
               </div>
@@ -1249,14 +1343,14 @@ const ClassExamRoutinePage = () => {
             <table className="w-full table-fixed border-collapse border border-black text-center">
               <thead>
                 <tr>
-                  <th className="border border-black px-1 py-2 text-sm font-bold">বার</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">বার</th>
                   {tab === "exam" && (
-                    <th className="border border-black px-1 py-2 text-sm font-bold">তারিখ</th>
+                    <th className="border border-black px-1 py-2 text-base font-bold">তারিখ</th>
                   )}
-                  <th className="border border-black px-1 py-2 text-sm font-bold">শুরু</th>
-                  <th className="border border-black px-1 py-2 text-sm font-bold">শেষ</th>
-                  <th className="border border-black px-1 py-2 text-sm font-bold">বিষয়</th>
-                  <th className="border border-black px-1 py-2 text-sm font-bold">
+                  <th className="border border-black px-1 py-2 text-base font-bold">শুরু</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">শেষ</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">বিষয়</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">
                     {tab === "class" ? "শিক্ষক" : "রুম"}
                   </th>
                 </tr>
@@ -1264,20 +1358,20 @@ const ClassExamRoutinePage = () => {
               <tbody>
                 {(tab === "class" ? sortedClassRoutines : sortedExamRoutines).map((row: any) => (
                   <tr key={row.id}>
-                    <td className="border border-black px-1 py-1.5 text-sm font-semibold">
+                    <td className="border border-black px-1 py-1.5 text-base font-semibold">
                       {tab === "class" ? `${DAY_LABELS[row.dayOfWeek]}বার` : getExamDayLabel(row.examDate)}
                     </td>
                     {tab === "exam" && (
-                      <td className="border border-black px-1 py-1.5 text-sm">
+                      <td className="border border-black px-1 py-1.5 text-base">
                         {formatExamDateFull(row.examDate)}
                       </td>
                     )}
-                    <td className="border border-black px-1 py-1.5 text-sm">{row.startTime}</td>
-                    <td className="border border-black px-1 py-1.5 text-sm">{row.endTime}</td>
-                    <td className="border border-black px-1 py-1.5 text-left text-sm font-semibold">
+                    <td className="border border-black px-1 py-1.5 text-base">{row.startTime}</td>
+                    <td className="border border-black px-1 py-1.5 text-base">{row.endTime}</td>
+                    <td className="border border-black px-1 py-1.5 text-left text-base font-semibold">
                       {row.subject}
                     </td>
-                    <td className="border border-black px-1 py-1.5 text-left text-sm">
+                    <td className="border border-black px-1 py-1.5 text-left text-base">
                       {tab === "class" ? row.teacher?.nameBn || "—" : row.room?.name || row.roomNo || "—"}
                     </td>
                   </tr>

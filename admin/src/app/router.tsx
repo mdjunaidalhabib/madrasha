@@ -88,7 +88,6 @@ const TalimatDashboardPage = lazy(() => import("../features/talimat/TalimatDashb
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
-const ResultWorkflowPage = lazy(() => import("../features/talimat/ResultWorkflowPage"));
 const TalimatDocumentsPage = lazy(() => import("../features/talimat/TalimatDocumentsPage"));
 const TenantDocumentDesignerPage = lazy(() => import("../features/talimat/TenantDocumentDesignerPage"));
 const TalimatSettingsLayout = lazy(() => import("../features/talimat/settings/TalimatSettingsLayout"));
@@ -264,29 +263,6 @@ const madrasaAdminChildren = [
       <ModuleGuard module="talimat">
         <PermissionGuard permission={["result.read", "result.manage", "marks.submit", "marks.verify"]}>
           {withSuspense(<ResultEntryPage />)}
-        </PermissionGuard>
-      </ModuleGuard>
-    ),
-  },
-  {
-    path: "talimat/results/workflow",
-    element: (
-      <ModuleGuard module="talimat">
-        <PermissionGuard
-          permission={[
-            "result.read",
-            "result.manage",
-            "marks.submit",
-            "marks.verify",
-            "result.process",
-            "result.verify",
-            "result.approve",
-            "result.publish",
-            "result.lock",
-            "result.correct",
-          ]}
-        >
-          {withSuspense(<ResultWorkflowPage />)}
         </PermissionGuard>
       </ModuleGuard>
     ),

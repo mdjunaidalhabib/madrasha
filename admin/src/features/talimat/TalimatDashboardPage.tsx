@@ -213,12 +213,6 @@ export default function TalimatDashboardPage() {
             ফলাফল প্রিভিউ
           </Link>
           <Link
-            className="rounded-xl bg-purple-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
-            to="/talimat/results/workflow"
-          >
-            🗂 ফলাফল কার্যপ্রবাহ
-          </Link>
-          <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
             to="/talimat/settings"
           >

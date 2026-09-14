@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -328,12 +328,6 @@ export default function ResultPreviewPage() {
         <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-slate-100">🎓 Result Preview</h1>
 
         <div className="flex w-full sm:w-auto flex-wrap gap-2">
-          <Link
-            to="/talimat/results/workflow"
-            className="flex-1 sm:flex-none text-center bg-indigo-600 text-white px-5 py-2 rounded hover:bg-indigo-700"
-          >
-            🗂 কার্যপ্রবাহ
-          </Link>
           <button
             onClick={goToEntry}
             className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2 rounded"

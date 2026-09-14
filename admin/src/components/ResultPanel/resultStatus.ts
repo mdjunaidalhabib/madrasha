@@ -1,8 +1,8 @@
 // Shared Bangla labels + badge color classes for every status enum used
-// across the Marks/Result workflow screens (ResultWorkflowPage, the
-// per-subject submission badges in MarksTable, and the correction list).
-// Centralised here so every screen renders the same label/color for the
-// same status instead of each screen inventing its own copy.
+// across the Marks/Result screens (the per-subject submission badges in
+// MarksTable, and other result status displays). Centralised here so every
+// screen renders the same label/color for the same status instead of each
+// screen inventing its own copy.
 
 export type ResultMasterStatus =
   | "DRAFT"
