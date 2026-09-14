@@ -99,9 +99,10 @@ export const getPrintableConfig = (report: ReportMenuItem): PrintableConfig => {
     return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
   }
 
-  if (printable === "custom-notice") {
-    // Same as admit-card-with-rules: exactly one static page, ignores the
-    // fetched rows' content entirely.
+  if (printable === "notice-board") {
+    // Same idea as admit-card-with-rules: exactly one page, ignoring
+    // whatever rows the endpoint happened to return - NoticeBoardReportView
+    // manages its own list of saved notices and which one is on display.
     return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
   }
 

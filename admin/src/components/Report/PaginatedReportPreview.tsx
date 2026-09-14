@@ -602,7 +602,12 @@ const PaginatedReportPreview = ({
   // of the logo/name/address or a custom image), so the space is still
   // correctly reserved via the exact same measured-DOM-height mechanism as
   // every other header variant.
-  const showBrandAtAll = (report.printable === "marksheet" || !hideBrandHeader) && report.printable !== "id-card";
+  // notice-board joins marksheet here for the same reason a wall notice
+  // needs the letterhead (madrasa name/address/logo) to always show, even
+  // though this whole report page otherwise hides it via hideBrandHeader.
+  const showBrandAtAll =
+    (report.printable === "marksheet" || report.printable === "notice-board" || !hideBrandHeader) &&
+    report.printable !== "id-card";
   const columnsPerPage = config.columnsPerPage ?? 1;
   const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
   // Content width of ONE column in a columnsPerPage:2 report - the page's

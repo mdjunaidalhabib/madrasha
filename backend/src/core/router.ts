@@ -10,6 +10,7 @@ import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import userRoutes from "../modules/users/user.routes";
 import settingsRoutes from "../modules/settings/settings.routes";
 import documentTemplateRoutes from "../modules/document-templates/document-templates.routes";
+import noticeRoutes from "../modules/notices/notice.routes";
 import activityRoutes from "../modules/activity/activity.routes";
 import sidebarRoutes from "../modules/sidebar/sidebar.routes";
 import eventRoutes from "../modules/events/event.routes";
@@ -161,6 +162,7 @@ router.get("/reports/export-pdf/:downloadId", downloadReportPdf);
 router.use("/users", userRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/document-templates", documentTemplateRoutes);
+router.use("/notices", noticeRoutes);
 router.use("/activity", activityRoutes);
 
 /* =========================

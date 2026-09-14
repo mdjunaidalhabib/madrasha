@@ -44,7 +44,6 @@ export type ReportMenuItem = {
     | "id-card"
     | "admit-card"
     | "admit-card-with-rules"
-    | "custom-notice"
     | "certificate"
     | "testimonial"
     | "transfer-letter"
@@ -61,7 +60,8 @@ export type ReportMenuItem = {
     | "exam-number-sheet"
     | "exam-signature-number-sheet"
     | "exam-signature-number-sheet-2col"
-    | "book-label";
+    | "book-label"
+    | "notice-board";
 };
 
 export type Division = {

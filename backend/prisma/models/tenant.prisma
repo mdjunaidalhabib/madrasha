@@ -167,6 +167,7 @@ model Madrasa {
   guardians                    Guardian[]
   documentTemplates            DocumentTemplate[]
   tenantDocumentDefaults       TenantDocumentDefault[]
+  printableNotices             PrintableNotice[]
   kioskDevices                 KioskDevice[]
   libraryBookCategories        LibraryBookCategory[]
   libraryBooks                 LibraryBook[]
@@ -457,6 +458,28 @@ model WebsiteNotice {
 
   @@index([madrasaId, isPublished, publishedAt], map: "idx_website_notices_madrasa")
   @@map("website_notices")
+}
+
+// Ad-hoc printable notices ("দেয়ালে টানানোর নোটিশ") staff write from
+// Talimat > সেটিং > নোটিশ বোর্ড, then print on the madrasa's letterhead to
+// post physically on the notice board. Unlike WebsiteNotice (published to
+// the public website), these are never shown on the website - purely an
+// internal, printable document list, so a madrasa can keep any number of
+// them around (exam notice, holiday notice, admission notice, ...) and
+// reprint any one of them later instead of overwriting a single template.
+model PrintableNotice {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  title     String   @db.VarChar(190)
+  body      String   @db.Text
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, updatedAt], map: "idx_printable_notices_madrasa")
+  @@map("printable_notices")
 }
 
 model WebsiteGallery {

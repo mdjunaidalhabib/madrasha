@@ -104,17 +104,26 @@ const reports: ReportMenuItem[] = [
       { header: "সেশন", key: "academic_year" },
     ],
   },
+  // Custom wall-notices moved to their own "নোটিশ বোর্ড" management page
+  // (talimat/settings/notices) - multiple notices can now be saved and
+  // reprinted from there instead of this report list only ever holding the
+  // one static custom_notice_template.
+  // Custom wall-notices ("নোটিশ বোর্ড") - unlike every other card here,
+  // this isn't one student's document; it's a picker over however many
+  // notices have been saved (see backend/src/modules/notices). Renders
+  // inline through the normal ReportContent/PaginatedReportPreview
+  // pipeline just like Sanad/Testimonial, so the page's usual "প্রিন্ট"
+  // button in the toolbar (DataExportPrintActions) works on it directly -
+  // see NoticeBoardReportView and printableConfig's "single" kind for it.
   {
-    key: "custom-notice",
-    title: "নোটিশ",
-    subtitle: "লেখা কাস্টম নোটিশ প্রিন্ট করুন — মাদ্রাসায় টানিয়ে দেওয়ার জন্য",
-    // Reuses the admit-cards endpoint purely to get one row back so the
-    // "single" printable kind has something to render against - the
-    // fetched data itself is unused (custom_notice_template has no data
-    // tokens). Same trick admit-card-with-rules already relies on.
+    key: "notice-board",
+    title: "নোটিশ বোর্ড",
+    subtitle: "দেয়ালে টানানোর নোটিশ লিখুন, সেভ রাখুন ও যেকোনোটি প্রিন্ট করুন",
+    // rows are unused (see NoticeBoardReportView) - this endpoint is only
+    // reused so the "single" pagination kind has something to resolve
+    // against, same trick admit-card-with-rules relies on.
     endpoint: "/reports/student/admit-cards",
-    printable: "custom-notice",
-    documentType: "ADMIT_CARD",
+    printable: "notice-board",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "শিক্ষার্থীর নাম", key: "student_name" },
@@ -200,7 +209,9 @@ const reports: ReportMenuItem[] = [
 const DocumentsReportPage = ({ printMode }: { printMode?: boolean }) => (
   <ReportShell
     pageTitle="ডকুমেন্ট সমূহ"
-    pageSubtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র, মার্কশিট ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন।"
+    pageSubtitle={
+      'আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র, মার্কশিট ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন। (কাস্টম নোটিশের জন্য Talimat সেটিংয়ের "নোটিশ বোর্ড" দেখুন।)'
+    }
     accentTitle="Documents"
     reports={reports}
     reportsPageKey="documents"

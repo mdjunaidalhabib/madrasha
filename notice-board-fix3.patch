@@ -1,0 +1,250 @@
+diff -ruN -x node_modules -x dist -x .git a/admin/src/components/Report/PaginatedReportPreview.tsx b/admin/src/components/Report/PaginatedReportPreview.tsx
+--- a/admin/src/components/Report/PaginatedReportPreview.tsx	2026-09-14 08:43:26.910334291 +0000
++++ b/admin/src/components/Report/PaginatedReportPreview.tsx	2026-09-14 08:43:33.114792490 +0000
+@@ -602,7 +602,12 @@
+   // of the logo/name/address or a custom image), so the space is still
+   // correctly reserved via the exact same measured-DOM-height mechanism as
+   // every other header variant.
+-  const showBrandAtAll = (report.printable === "marksheet" || !hideBrandHeader) && report.printable !== "id-card";
++  // notice-board joins marksheet here for the same reason a wall notice
++  // needs the letterhead (madrasa name/address/logo) to always show, even
++  // though this whole report page otherwise hides it via hideBrandHeader.
++  const showBrandAtAll =
++    (report.printable === "marksheet" || report.printable === "notice-board" || !hideBrandHeader) &&
++    report.printable !== "id-card";
+   const columnsPerPage = config.columnsPerPage ?? 1;
+   const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
+   // Content width of ONE column in a columnsPerPage:2 report - the page's
+diff -ruN -x node_modules -x dist -x .git a/admin/src/components/Report/ReportContent.tsx b/admin/src/components/Report/ReportContent.tsx
+--- a/admin/src/components/Report/ReportContent.tsx	2026-09-14 08:43:26.910833728 +0000
++++ b/admin/src/components/Report/ReportContent.tsx	2026-09-14 08:43:33.115087481 +0000
+@@ -9,6 +9,7 @@
+ import ResultNoticeList from "./academic/ResultNoticeList";
+ import AdmitCardGrid from "./documents/AdmitCardGrid";
+ import AdmitCardRulesPage from "./documents/AdmitCardRulesPage";
++import NoticeBoardReportView from "./documents/NoticeBoardReportView";
+ import BookLabelGrid from "./documents/BookLabelGrid";
+ import IdCardGrid from "./documents/IdCardGrid";
+ import SanadList from "./documents/SanadList";
+@@ -106,6 +107,7 @@
+   if (report.printable === "id-card") return <IdCardGrid rows={rows} templateId={templateId} />;
+   if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} templateId={templateId} />;
+   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
++  if (report.printable === "notice-board") return <NoticeBoardReportView rows={rows} />;
+   if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
+   if (report.printable === "certificate") {
+     return (
+diff -ruN -x node_modules -x dist -x .git a/admin/src/components/Report/ReportSidebar.tsx b/admin/src/components/Report/ReportSidebar.tsx
+--- a/admin/src/components/Report/ReportSidebar.tsx	2026-09-14 08:43:26.911071547 +0000
++++ b/admin/src/components/Report/ReportSidebar.tsx	2026-09-14 08:43:33.115203204 +0000
+@@ -1,4 +1,3 @@
+-import { useNavigate } from "react-router-dom";
+ import { ReportMenuItem } from "../../../src/features/reports/types";
+ 
+ type ReportSidebarProps = {
+@@ -13,7 +12,6 @@
+ };
+ 
+ const ReportSidebar = ({ reports, activeKey, onChange }: ReportSidebarProps) => {
+-  const navigate = useNavigate();
+   const sections = reports.reduce<ReportSection[]>((acc, item) => {
+     const title = item.groupTitle;
+     const current = acc.find((section) => section.title === title);
+@@ -45,7 +43,7 @@
+                   <button
+                     key={item.key}
+                     type="button"
+-                    onClick={() => (item.externalTo ? navigate(item.externalTo) : onChange(item.key))}
++                    onClick={() => onChange(item.key)}
+                     className={`flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-left text-base transition ${
+                       section.title ? "pl-4" : ""
+                     } ${
+diff -ruN -x node_modules -x dist -x .git a/admin/src/components/Report/documents/NoticeBoardReportView.tsx b/admin/src/components/Report/documents/NoticeBoardReportView.tsx
+--- a/admin/src/components/Report/documents/NoticeBoardReportView.tsx	1970-01-01 00:00:00.000000000 +0000
++++ b/admin/src/components/Report/documents/NoticeBoardReportView.tsx	2026-09-14 08:43:33.115709904 +0000
+@@ -0,0 +1,107 @@
++import { useEffect, useState } from "react";
++import { Link } from "react-router-dom";
++import { Settings2 } from "lucide-react";
++import LetterDocument from "./engine/LetterDocument";
++import { useLetterDesign } from "./engine/useLetterDesign";
++import { noticeApi, type NoticeDto } from "../../../services/noticeApi";
++
++type NoticeBoardReportViewProps = {
++  rows: Record<string, any>[];
++};
++
++/**
++ * Renders inline in the "ডকুমেন্ট সমূহ" report module, same as
++ * Sanad/Testimonial/AdmitCardRulesPage - the `rows` prop is ignored (see
++ * printableConfig's "notice-board" -> "single" kind); this component fetches
++ * its own list of saved notices (backend/src/modules/notices) and lets the
++ * user pick which one is on display. The page's usual print button
++ * (DataExportPrintActions in the toolbar) then prints whichever one is
++ * selected, exactly like it prints any other document type here.
++ */
++const NoticeBoardReportView = ({ rows: _rows }: NoticeBoardReportViewProps) => {
++  const { design, backgroundImage } = useLetterDesign();
++  const [notices, setNotices] = useState<NoticeDto[] | null>(null);
++  const [selectedId, setSelectedId] = useState<number | null>(null);
++
++  useEffect(() => {
++    let cancelled = false;
++    noticeApi
++      .list()
++      .then((res) => {
++        if (cancelled) return;
++        const list = res.data?.data || [];
++        setNotices(list);
++        setSelectedId(list[0]?.id ?? null);
++      })
++      .catch(() => {
++        if (!cancelled) setNotices([]);
++      });
++    return () => {
++      cancelled = true;
++    };
++  }, []);
++
++  const selected = notices?.find((n) => n.id === selectedId) || null;
++
++  if (notices === null) {
++    return <p className="py-10 text-center text-sm text-slate-400">লোড হচ্ছে...</p>;
++  }
++
++  if (notices.length === 0) {
++    return (
++      <div className="no-print py-10 text-center text-sm text-slate-500">
++        এখনো কোনো নোটিশ তৈরি করা হয়নি।{" "}
++        <Link to="/talimat/settings/notices" className="font-semibold text-blue-700 underline">
++          এখান থেকে প্রথম নোটিশটি লিখুন
++        </Link>
++        ।
++      </div>
++    );
++  }
++
++  return (
++    <div>
++      <div className="no-print mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
++        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">নোটিশ বাছাই করুন:</label>
++        <select
++          value={selectedId ?? ""}
++          onChange={(e) => setSelectedId(Number(e.target.value))}
++          className="rounded-md border px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
++        >
++          {notices.map((n) => (
++            <option key={n.id} value={n.id}>
++              {n.title}
++            </option>
++          ))}
++        </select>
++        <Link
++          to="/talimat/settings/notices"
++          className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
++        >
++          <Settings2 size={14} /> নতুন/এডিট/ডিলিট করুন
++        </Link>
++      </div>
++
++      {selected && (
++        <LetterDocument
++          row={{}}
++          showBismillah
++          heading={selected.title}
++          headingClassName="mb-8 text-center text-2xl font-bold"
++          bodyClassName="whitespace-pre-line text-lg leading-9 text-slate-800"
++          template={selected.body}
++          design={design}
++          backgroundImage={backgroundImage}
++          footer={
++            <div className="mt-16 flex justify-between text-sm font-semibold">
++              <span>তারিখ: ........................</span>
++              <span>প্রধান শিক্ষকের স্বাক্ষর ও সীল</span>
++            </div>
++          }
++        />
++      )}
++    </div>
++  );
++};
++
++export default NoticeBoardReportView;
+diff -ruN -x node_modules -x dist -x .git a/admin/src/components/Report/pagination/printableConfig.ts b/admin/src/components/Report/pagination/printableConfig.ts
+--- a/admin/src/components/Report/pagination/printableConfig.ts	2026-09-14 08:43:26.913158096 +0000
++++ b/admin/src/components/Report/pagination/printableConfig.ts	2026-09-14 08:43:33.121974006 +0000
+@@ -99,6 +99,13 @@
+     return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
+   }
+ 
++  if (printable === "notice-board") {
++    // Same idea as admit-card-with-rules: exactly one page, ignoring
++    // whatever rows the endpoint happened to return - NoticeBoardReportView
++    // manages its own list of saved notices and which one is on display.
++    return { kind: "single", hasHeading: false, hasFooter: false, getGroupKey: noGrouping };
++  }
++
+   if (
+     printable === "marksheet" ||
+     printable === "certificate" ||
+diff -ruN -x node_modules -x dist -x .git a/admin/src/features/reports/DocumentsReportPage.tsx b/admin/src/features/reports/DocumentsReportPage.tsx
+--- a/admin/src/features/reports/DocumentsReportPage.tsx	2026-09-14 08:43:26.925970220 +0000
++++ b/admin/src/features/reports/DocumentsReportPage.tsx	2026-09-14 08:43:33.151014862 +0000
+@@ -108,21 +108,22 @@
+   // (talimat/settings/notices) - multiple notices can now be saved and
+   // reprinted from there instead of this report list only ever holding the
+   // one static custom_notice_template.
+-  // Custom wall-notices live in their own multi-notice manager now
+-  // (talimat/settings/notices - "নোটিশ বোর্ড") since a single template slot
+-  // couldn't hold more than one notice. This card just links there so
+-  // notices stay discoverable from this same report menu instead of
+-  // disappearing from it entirely. endpoint/columns/printable below are
+-  // never actually used (ReportSidebar intercepts the click via
+-  // externalTo before any fetch happens) - they're only safe fallbacks in
+-  // case this entry is ever reached by a direct ?type=notice-board link.
++  // Custom wall-notices ("নোটিশ বোর্ড") - unlike every other card here,
++  // this isn't one student's document; it's a picker over however many
++  // notices have been saved (see backend/src/modules/notices). Renders
++  // inline through the normal ReportContent/PaginatedReportPreview
++  // pipeline just like Sanad/Testimonial, so the page's usual "প্রিন্ট"
++  // button in the toolbar (DataExportPrintActions) works on it directly -
++  // see NoticeBoardReportView and printableConfig's "single" kind for it.
+   {
+     key: "notice-board",
+     title: "নোটিশ বোর্ড",
+     subtitle: "দেয়ালে টানানোর নোটিশ লিখুন, সেভ রাখুন ও যেকোনোটি প্রিন্ট করুন",
+-    externalTo: "/talimat/settings/notices",
++    // rows are unused (see NoticeBoardReportView) - this endpoint is only
++    // reused so the "single" pagination kind has something to resolve
++    // against, same trick admit-card-with-rules relies on.
+     endpoint: "/reports/student/admit-cards",
+-    printable: "table",
++    printable: "notice-board",
+     columns: [
+       { header: "রোল নম্বর", key: "roll" },
+       { header: "শিক্ষার্থীর নাম", key: "student_name" },
+diff -ruN -x node_modules -x dist -x .git a/admin/src/features/reports/types.ts b/admin/src/features/reports/types.ts
+--- a/admin/src/features/reports/types.ts	2026-09-14 08:43:26.925658918 +0000
++++ b/admin/src/features/reports/types.ts	2026-09-14 08:43:33.151321517 +0000
+@@ -37,11 +37,6 @@
+   // ReportFilterBar offers a "বিষয়" dropdown that narrows every row down to
+   // one subject - see ReportShell's subjectOptions/displayRows.
+   hasSubjectFilter?: boolean;
+-  // For entries that aren't a row/print report at all (e.g. "নোটিশ বোর্ড"),
+-  // but should still show up as a card in this same report menu for
+-  // discoverability. Clicking navigates to this route instead of running
+-  // the usual fetch-rows-then-print flow - see ReportSidebar's onClick.
+-  externalTo?: string;
+   printable?:
+     | "table"
+     | "marksheet"
+@@ -65,7 +60,8 @@
+     | "exam-number-sheet"
+     | "exam-signature-number-sheet"
+     | "exam-signature-number-sheet-2col"
+-    | "book-label";
++    | "book-label"
++    | "notice-board";
+ };
+ 
+ export type Division = {

@@ -58,8 +58,6 @@ export const DEFAULT_TRANSFER_LETTER_TEMPLATE =
 export const DEFAULT_ADMIT_CARD_RULES =
   "১. পরীক্ষার হলে অবশ্যই প্রবেশপত্র সাথে আনতে হবে।\n২. নির্ধারিত সময়ের ১৫ মিনিট পূর্বে কেন্দ্রে উপস্থিত হতে হবে।\n৩. পরীক্ষার হলে মোবাইল ফোন বা কোনো ইলেকট্রনিক ডিভাইস আনা সম্পূর্ণ নিষিদ্ধ।\n৪. নকল বা অসদুপায় অবলম্বন করলে পরীক্ষা বাতিল বলে গণ্য হবে।";
 
-export const DEFAULT_CUSTOM_NOTICE = "";
-
 const TOKEN_REGEX = /\{\{\s*([a-zA-Z_]+)\s*\}\}/g;
 
 /**

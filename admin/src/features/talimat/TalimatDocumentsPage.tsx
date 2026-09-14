@@ -31,7 +31,6 @@ import type { BackendDocumentType } from "@madrasha/shared-ui/src/components/Doc
 import {
   ADMIT_CARD_RULE_TOKENS,
   DEFAULT_ADMIT_CARD_RULES,
-  DEFAULT_CUSTOM_NOTICE,
   DEFAULT_SANAD_TEMPLATE,
   DEFAULT_TESTIMONIAL_TEMPLATE,
   DEFAULT_TRANSFER_LETTER_TEMPLATE,
@@ -45,8 +44,7 @@ type TemplateKey =
   | "sanad_template"
   | "testimonial_template"
   | "transfer_letter_template"
-  | "admit_card_rules"
-  | "custom_notice_template";
+  | "admit_card_rules";
 
 type DocType = {
   key: string;
@@ -67,15 +65,6 @@ const docTypes: DocType[] = [
     title: "আইডি কার্ড",
     subtitle: "শিক্ষার্থীর পরিচয়পত্র",
     dataFields: ["ছবি", "নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "পিতা", "মোবাইল"],
-  },
-  {
-    key: "custom-notice",
-    title: "নোটিশ (দেয়ালে টানানোর জন্য)",
-    subtitle: "যেকোনো কাস্টম নোটিশ লিখে প্রিন্ট করুন",
-    dataFields: [],
-    templateKey: "custom_notice_template",
-    tokens: [],
-    fallback: DEFAULT_CUSTOM_NOTICE,
   },
   {
     key: "admit-card",
@@ -742,6 +731,12 @@ export default function TalimatDocumentsPage() {
         শিক্ষার্থীর প্রকৃত তথ্য থেকে স্বয়ংক্রিয়ভাবে বসবে, এখানে হাতে লিখে পরিবর্তন করা যাবে না।
         নিচে শুধু চারপাশের লেখা (বাক্য/নিয়ম-কানুন) এডিট করা যাবে, আর সেভ করলে সেটি প্রকৃত প্রিন্টেও
         দেখাবে।
+      </div>
+
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+        দেয়ালে টানানোর কাস্টম নোটিশ এখন এখানে নয় — পাশের{" "}
+        <span className="font-semibold">"নোটিশ বোর্ড"</span> ট্যাব থেকে লিখুন। সেখানে একাধিক নোটিশ
+        আলাদাভাবে সেভ করে রাখা যায় এবং প্রয়োজনমতো যেকোনোটি বেছে প্রিন্ট করা যায়।
       </div>
 
       {designMessage && (

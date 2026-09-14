@@ -89,6 +89,7 @@ const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAss
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
 const TalimatDocumentsPage = lazy(() => import("../features/talimat/TalimatDocumentsPage"));
+const NoticeBoardPage = lazy(() => import("../features/talimat/NoticeBoardPage"));
 const TenantDocumentDesignerPage = lazy(() => import("../features/talimat/TenantDocumentDesignerPage"));
 const TalimatSettingsLayout = lazy(() => import("../features/talimat/settings/TalimatSettingsLayout"));
 const ClassBookSettingsPage = lazy(
@@ -280,6 +281,14 @@ const madrasaAdminChildren = [
         element: (
           <PermissionGuard permission="document_templates.read">
             {withSuspense(<TalimatDocumentsPage />)}
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "notices",
+        element: (
+          <PermissionGuard permission="document_templates.read">
+            {withSuspense(<NoticeBoardPage />)}
           </PermissionGuard>
         ),
       },
