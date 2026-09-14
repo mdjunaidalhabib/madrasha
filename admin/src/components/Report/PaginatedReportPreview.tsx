@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
 import {
-  FOOTER_BAND_MM,
+  getFooterBandReserveMm,
   ReportBackground,
   ReportBrandFooter,
   ReportBrandHeader,
@@ -715,13 +715,11 @@ const PaginatedReportPreview = ({
       // of the firstRowOffsetPx/firstCardOffsetPx/footerReservePx DOM
       // measurements below. Reserve it here instead, the one place that
       // feeds every page kind's height budget, whenever it will actually
-      // render something (an uploaded image, or letterhead's blank spacer -
-      // see ReportBrandFooter) - never for the "enabled but nothing set yet"
-      // case, which correctly stays a real zero-height blank.
-      const footerBandReservedPx =
-        branding?.report_header_footer_enabled && (isLetterhead || !!branding?.report_footer_image)
-          ? FOOTER_BAND_MM * MM_TO_CSS_PX
-          : 0;
+      // render something - an uploaded footer image, letterhead's blank
+      // spacer, or the default text footer (see ReportBrandFooter /
+      // getFooterBandReserveMm) - never for the "enabled but nothing set
+      // yet" case, which correctly stays a real zero-height blank.
+      const footerBandReservedPx = getFooterBandReserveMm(branding) * MM_TO_CSS_PX;
       const availableHeightPx =
         getPaperHeightPx(paperSize, orientation) - verticalPaddingPx - footerBandReservedPx;
 

@@ -77,6 +77,16 @@ model Madrasa {
   reportFooterImage         String? @map("report_footer_image")
   reportPrintMode           String? @default("normal") @map("report_print_mode") @db.VarChar(20)
 
+  // Fine-grained layout control for the DEFAULT logo+name+address header and
+  // the (new) default text footer - font sizes, colors, logo size/position,
+  // and how much page space the header/footer band reserves. Only applies
+  // when reportHeaderFooterEnabled is off (the custom header/footer IMAGE
+  // path above is unaffected and keeps its own fixed HEADER_BAND_MM/
+  // FOOTER_BAND_MM bands). A single JSON blob (see BrandLayoutData in
+  // settings.types.ts for the shape/defaults) instead of one column per
+  // knob, since this list only grows and every field is optional/sparse.
+  reportBrandLayout Json? @map("report_brand_layout")
+
   // Per-section enabled/disabled state for the admin settings pages
   // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
   // JSON map { sectionKey: boolean } instead of one column per section, since

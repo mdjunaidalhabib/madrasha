@@ -1,0 +1,976 @@
+diff --git a/admin/src/components/Report/PaginatedReportPreview.tsx b/admin/src/components/Report/PaginatedReportPreview.tsx
+index 5bea0b5..c9860f5 100644
+--- a/admin/src/components/Report/PaginatedReportPreview.tsx
++++ b/admin/src/components/Report/PaginatedReportPreview.tsx
+@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "
+ import { ReportMenuItem } from "../../features/reports/types";
+ import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
+ import {
+-  FOOTER_BAND_MM,
++  getFooterBandReserveMm,
+   ReportBackground,
+   ReportBrandFooter,
+   ReportBrandHeader,
+@@ -715,13 +715,11 @@ const PaginatedReportPreview = ({
+       // of the firstRowOffsetPx/firstCardOffsetPx/footerReservePx DOM
+       // measurements below. Reserve it here instead, the one place that
+       // feeds every page kind's height budget, whenever it will actually
+-      // render something (an uploaded image, or letterhead's blank spacer -
+-      // see ReportBrandFooter) - never for the "enabled but nothing set yet"
+-      // case, which correctly stays a real zero-height blank.
+-      const footerBandReservedPx =
+-        branding?.report_header_footer_enabled && (isLetterhead || !!branding?.report_footer_image)
+-          ? FOOTER_BAND_MM * MM_TO_CSS_PX
+-          : 0;
++      // render something - an uploaded footer image, letterhead's blank
++      // spacer, or the default text footer (see ReportBrandFooter /
++      // getFooterBandReserveMm) - never for the "enabled but nothing set
++      // yet" case, which correctly stays a real zero-height blank.
++      const footerBandReservedPx = getFooterBandReserveMm(branding) * MM_TO_CSS_PX;
+       const availableHeightPx =
+         getPaperHeightPx(paperSize, orientation) - verticalPaddingPx - footerBandReservedPx;
+ 
+diff --git a/admin/src/components/Report/ReportBranding.tsx b/admin/src/components/Report/ReportBranding.tsx
+index 10d0ea0..cbd3842 100644
+--- a/admin/src/components/Report/ReportBranding.tsx
++++ b/admin/src/components/Report/ReportBranding.tsx
+@@ -1,6 +1,7 @@
+-import { useEffect, useLayoutEffect, useRef, useState } from "react";
++import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+ import { useBrandingStore } from "../../store/brandingStore";
+ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
++import { BRAND_LAYOUT_DEFAULTS, type BrandingPayload, type BrandLayout } from "../../services/brandingApi";
+ 
+ // Single source of truth for the custom header/footer image bands - reused
+ // by PaginatedReportPreview.tsx to reserve the matching amount of page
+@@ -9,6 +10,27 @@ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+ export const HEADER_BAND_MM = 40;
+ export const FOOTER_BAND_MM = 20;
+ 
++function resolveBrandLayout(branding: BrandingPayload | null | undefined): BrandLayout {
++  return { ...BRAND_LAYOUT_DEFAULTS, ...(branding?.report_brand_layout ?? {}) };
++}
++
++// How much bottom page-space the footer band (custom image OR default text)
++// needs reserved, in mm - used by PaginatedReportPreview.tsx's pagination
++// math the same way FOOTER_BAND_MM used to be used directly, since both the
++// image and the text footer are absolutely-positioned overlays whose height
++// is never picked up by normal DOM flow measurement. Returns 0 whenever
++// nothing will actually render (matches ReportBrandFooter's own render
++// conditions below).
++export function getFooterBandReserveMm(branding: BrandingPayload | null | undefined): number {
++  const enabled = !!branding?.report_header_footer_enabled;
++  if (enabled) {
++    const isLetterhead = branding?.report_print_mode === "letterhead";
++    return isLetterhead || !!branding?.report_footer_image ? FOOTER_BAND_MM : 0;
++  }
++  const layout = resolveBrandLayout(branding);
++  return layout.footer_text ? layout.footer_height : 0;
++}
++
+ /**
+  * Renders the madrasa's uploaded background image behind the report content.
+  * Place once, inside `.print-area`, before `ReportWatermark`. Purely visual —
+@@ -169,15 +191,54 @@ export function ReportBrandHeader({
+   if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
+ 
+   const showLogo = !!branding.report_logo && !hideLogo;
++  const layout = resolveBrandLayout(branding);
++
++  // Only emit an inline override when the value actually differs from the
++  // shipped default - otherwise every report keeps using the existing
++  // paper-size/orientation-responsive CSS rules (index.css's a4/a5/
++  // landscape variants) untouched, so a madrasa that never opened the new
++  // "ডিফল্ট হেডার-ফুটার ডিজাইন" section renders pixel-identical to before.
++  // Once a knob IS customized it applies at that fixed value across every
++  // paper size (it intentionally stops auto-adapting - the admin picked it).
++  const nameStyle: CSSProperties = {};
++  if (layout.name_font_size !== BRAND_LAYOUT_DEFAULTS.name_font_size) nameStyle.fontSize = layout.name_font_size;
++  if (layout.name_color !== BRAND_LAYOUT_DEFAULTS.name_color) nameStyle.color = layout.name_color;
++
++  const addressStyle: CSSProperties = {};
++  if (layout.address_font_size !== BRAND_LAYOUT_DEFAULTS.address_font_size)
++    addressStyle.fontSize = layout.address_font_size;
++  if (layout.address_color !== BRAND_LAYOUT_DEFAULTS.address_color) addressStyle.color = layout.address_color;
++
++  const logoStyle: CSSProperties = {};
++  if (layout.logo_size !== BRAND_LAYOUT_DEFAULTS.logo_size) {
++    logoStyle.width = layout.logo_size;
++    logoStyle.height = layout.logo_size;
++  }
++  if (layout.logo_position === "center") {
++    logoStyle.left = "50%";
++    logoStyle.transform = "translate(-50%, -50%)";
++  } else if (layout.logo_position === "right") {
++    logoStyle.left = "auto";
++    logoStyle.right = 28;
++  }
++
++  const headerStyle: CSSProperties = {};
++  if (layout.header_height !== null) headerStyle.minHeight = `${layout.header_height}mm`;
+ 
+   return (
+     <div
+       className={`report-brand-header relative flex flex-col items-center text-center ${
+         showLogo ? "report-brand-header--with-logo" : ""
+       }`}
++      style={headerStyle}
+     >
+       {showLogo && branding.report_logo && (
+-        <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
++        <img
++          src={branding.report_logo}
++          alt="Logo"
++          className="report-brand-logo object-contain"
++          style={logoStyle}
++        />
+       )}
+       {branding.name && (
+         <div
+@@ -185,30 +246,40 @@ export function ReportBrandHeader({
+           className="report-brand-name text-black"
+           style={
+             compactMaxWidthPx
+-              ? { whiteSpace: "nowrap", fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX }
+-              : undefined
++              ? {
++                  whiteSpace: "nowrap",
++                  fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX,
++                  // Compact (2-col letterhead) mode always uses its own
++                  // canvas-measured font size to guarantee a single line at
++                  // that narrow width - a customized name_font_size would
++                  // break that guarantee, so only the color override
++                  // applies here, never the size.
++                  ...(nameStyle.color ? { color: nameStyle.color } : {}),
++                }
++              : nameStyle
+           }
+         >
+           {nameText}
+         </div>
+       )}
+       {branding.address && (
+-        <div className="report-brand-address text-black">{toBanglaDigits(branding.address)}</div>
++        <div className="report-brand-address text-black" style={addressStyle}>
++          {toBanglaDigits(branding.address)}
++        </div>
+       )}
+     </div>
+   );
+ }
+ 
+ /**
+- * Renders the madrasa's custom report footer IMAGE at the bottom of every
+- * printed page, alongside the page-number footer - only when the "কাস্টম
+- * হেডার-ফুটার" section is enabled AND a footer image is actually uploaded.
+- * Renders nothing otherwise (no footer by default, matching pre-existing
+- * behaviour - and no fallback to any default footer once enabled). In
+- * letterhead mode this always renders a blank FOOTER_BAND_MM-tall spacer
+- * instead (same reasoning as ReportBrandHeader's isLetterheadMode branch) -
++ * Renders the madrasa's custom report footer IMAGE (when "কাস্টম হেডার-ফুটার"
++ * is enabled and a footer image is uploaded), OR the default plain-text
++ * footer (when that toggle is off and footer text is set in "ডিফল্ট
++ * হেডার-ফুটার ডিজাইন"). Renders nothing when neither applies. In letterhead
++ * mode this always renders a blank FOOTER_BAND_MM-tall spacer instead (same
++ * reasoning as ReportBrandHeader's isLetterheadMode branch) -
+  * PaginatedReportPreview.tsx reserves the matching page-bottom space for
+- * both cases (see its FOOTER_BAND_MM usage).
++ * every case via getFooterBandReserveMm() above.
+  */
+ export function ReportBrandFooter() {
+   const branding = useBrandingStore((s) => s.branding);
+@@ -218,11 +289,28 @@ export function ReportBrandFooter() {
+     return <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }} aria-hidden="true" />;
+   }
+ 
+-  if (!enabled || !branding?.report_footer_image) return null;
++  if (enabled) {
++    if (!branding?.report_footer_image) return null;
++    return (
++      <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }}>
++        <img src={branding.report_footer_image} alt="" className="h-full w-full object-contain" />
++      </div>
++    );
++  }
++
++  const layout = resolveBrandLayout(branding);
++  if (!layout.footer_text) return null;
+ 
+   return (
+-    <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }}>
+-      <img src={branding.report_footer_image} alt="" className="h-full w-full object-contain" />
++    <div
++      className="report-brand-footer"
++      style={{
++        height: `${layout.footer_height}mm`,
++        fontSize: layout.footer_font_size,
++        color: layout.footer_color,
++      }}
++    >
++      {toBanglaDigits(layout.footer_text)}
+     </div>
+   );
+ }
+diff --git a/admin/src/features/admin/settings/BrandingSettingsPage.tsx b/admin/src/features/admin/settings/BrandingSettingsPage.tsx
+index ed9ec10..0835217 100644
+--- a/admin/src/features/admin/settings/BrandingSettingsPage.tsx
++++ b/admin/src/features/admin/settings/BrandingSettingsPage.tsx
+@@ -1,5 +1,5 @@
+-import { useEffect, useState } from "react";
+-import { Droplets, FileText } from "lucide-react";
++import { useEffect, useState, type ReactNode } from "react";
++import { Droplets, FileText, LayoutTemplate } from "lucide-react";
+ import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
+ import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+ import SectionCard from "../../../components/settings/SectionCard";
+@@ -10,12 +10,94 @@ import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
+ import {
+   deleteBrandingImage,
+   saveBranding,
++  BRAND_LAYOUT_DEFAULTS,
+   type BrandingPayload,
++  type BrandLayout,
++  type BrandLayoutPatch,
++  type BrandLogoPosition,
+   type ReportPrintMode,
+ } from "../../../services/brandingApi";
+ import { useBrandingStore } from "../../../store/brandingStore";
+ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+ 
++// Small shared row: label + live value chip + range slider. Used for every
++// font-size/logo-size/height knob below - only fires onCommit (a save) on
++// release, but calls onDraft on every tick so the number chip stays live.
++function LayoutSliderRow({
++  icon,
++  label,
++  value,
++  unit,
++  min,
++  max,
++  step = 1,
++  onDraft,
++  onCommit,
++}: {
++  icon?: ReactNode;
++  label: string;
++  value: number;
++  unit: string;
++  min: number;
++  max: number;
++  step?: number;
++  onDraft: (v: number) => void;
++  onCommit: (v: number) => void;
++}) {
++  return (
++    <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
++      <div className="flex items-center justify-between">
++        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
++          {icon}
++          {label}
++        </label>
++        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
++          {value}
++          {unit}
++        </span>
++      </div>
++      <input
++        type="range"
++        min={min}
++        max={max}
++        step={step}
++        value={value}
++        onChange={(e) => onDraft(Number(e.target.value))}
++        onMouseUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
++        onTouchEnd={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
++        className="mt-2 w-full accent-blue-600"
++      />
++    </div>
++  );
++}
++
++// Small shared row: label + native color swatch input, saved immediately on
++// change (color pickers don't have the "drag spam" problem sliders do).
++function ColorPickerRow({
++  label,
++  value,
++  onChange,
++}: {
++  label: string;
++  value: string;
++  onChange: (v: string) => void;
++}) {
++  return (
++    <div className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
++      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">{label}</span>
++      <div className="flex items-center gap-2">
++        <span className="text-xs text-gray-500 dark:text-slate-400">{value}</span>
++        <input
++          type="color"
++          value={value}
++          onChange={(e) => onChange(e.target.value)}
++          className="h-8 w-10 cursor-pointer rounded border border-gray-200 dark:border-slate-700"
++        />
++      </div>
++    </div>
++  );
++}
++
+ export default function BrandingSettingsPage() {
+   const branding = useBrandingStore((s) => s.branding);
+   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+@@ -33,6 +115,7 @@ export default function BrandingSettingsPage() {
+   const [headerImage, setHeaderImage] = useState<string | null>(null);
+   const [footerImage, setFooterImage] = useState<string | null>(null);
+   const [printMode, setPrintMode] = useState<ReportPrintMode>("normal");
++  const [brandLayout, setBrandLayout] = useState<BrandLayout>(BRAND_LAYOUT_DEFAULTS);
+ 
+   const [loading, setLoading] = useState(true);
+ 
+@@ -63,6 +146,7 @@ export default function BrandingSettingsPage() {
+     setHeaderImage(branding.report_header_image ?? null);
+     setFooterImage(branding.report_footer_image ?? null);
+     setPrintMode(branding.report_print_mode ?? "normal");
++    setBrandLayout({ ...BRAND_LAYOUT_DEFAULTS, ...(branding.report_brand_layout ?? {}) });
+   }, [branding]);
+ 
+   // The backend only touches fields actually present in the PUT body (real
+@@ -83,6 +167,11 @@ export default function BrandingSettingsPage() {
+       if (patch.report_header_image !== undefined) setHeaderImage(patch.report_header_image);
+       if (patch.report_footer_image !== undefined) setFooterImage(patch.report_footer_image);
+       if (patch.report_print_mode !== undefined) setPrintMode(patch.report_print_mode);
++      let nextBrandLayout = brandLayout;
++      if (patch.report_brand_layout !== undefined) {
++        nextBrandLayout = { ...brandLayout, ...patch.report_brand_layout };
++        setBrandLayout(nextBrandLayout);
++      }
+       setBranding({
+         name,
+         address,
+@@ -97,6 +186,7 @@ export default function BrandingSettingsPage() {
+         report_footer_image: footerImage,
+         report_print_mode: printMode,
+         ...patch,
++        report_brand_layout: nextBrandLayout,
+       });
+       useToastStore.getState().show("সংরক্ষণ হয়েছে।", "success");
+     } catch {
+@@ -135,6 +225,22 @@ export default function BrandingSettingsPage() {
+     patchBranding({ report_print_mode: mode }).catch(() => {});
+   };
+ 
++  // Every default-header/footer control below saves through this one
++  // helper — each slider/color-picker/button sends just the single key it
++  // owns as a BrandLayoutPatch, same partial-update pattern as the rest of
++  // the page (patchBranding merges it onto the existing layout server-side).
++  const patchBrandLayout = (patch: BrandLayoutPatch) => {
++    patchBranding({ report_brand_layout: patch }).catch(() => {});
++  };
++
++  // Local-only draft values for the range sliders: update the number shown
++  // next to the slider on every drag tick, but only PUT to the server on
++  // release (onMouseUp/onTouchEnd), matching the watermark opacity slider's
++  // existing pattern - avoids one network request per pixel of drag.
++  const setLayoutDraft = <K extends keyof BrandLayout>(key: K, value: BrandLayout[K]) => {
++    setBrandLayout((prev) => ({ ...prev, [key]: value }));
++  };
++
+   if (loading) {
+     return (
+       <div className="mx-auto max-w-6xl space-y-6">
+@@ -207,6 +313,175 @@ export default function BrandingSettingsPage() {
+         </div>
+       </SectionCard>
+ 
++      <SectionCard
++        title="ডিফল্ট হেডার-ফুটার ডিজাইন"
++        hint="উপরের 'কাস্টম হেডার-ফুটার' বন্ধ থাকলে এই সেটিং অনুযায়ী লোগো-নাম-ঠিকানা হেডার এবং (ঐচ্ছিক) ফুটার দেখাবে — চালু থাকলে এই সেটিং প্রযোজ্য হবে না"
++      >
++        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
++          <LayoutSliderRow
++            label="মাদ্রাসার নামের সাইজ"
++            value={brandLayout.name_font_size}
++            unit="px"
++            min={12}
++            max={48}
++            onDraft={(v) => setLayoutDraft("name_font_size", v)}
++            onCommit={(v) => patchBrandLayout({ name_font_size: v })}
++          />
++          <LayoutSliderRow
++            label="ঠিকানার সাইজ"
++            value={brandLayout.address_font_size}
++            unit="px"
++            min={10}
++            max={28}
++            onDraft={(v) => setLayoutDraft("address_font_size", v)}
++            onCommit={(v) => patchBrandLayout({ address_font_size: v })}
++          />
++          <ColorPickerRow
++            label="নামের রঙ"
++            value={brandLayout.name_color}
++            onChange={(v) => {
++              setLayoutDraft("name_color", v);
++              patchBrandLayout({ name_color: v });
++            }}
++          />
++          <ColorPickerRow
++            label="ঠিকানার রঙ"
++            value={brandLayout.address_color}
++            onChange={(v) => {
++              setLayoutDraft("address_color", v);
++              patchBrandLayout({ address_color: v });
++            }}
++          />
++          <LayoutSliderRow
++            label="লোগোর সাইজ"
++            value={brandLayout.logo_size}
++            unit="px"
++            min={40}
++            max={160}
++            onDraft={(v) => setLayoutDraft("logo_size", v)}
++            onCommit={(v) => patchBrandLayout({ logo_size: v })}
++          />
++          <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
++            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">লোগোর পজিশন</p>
++            <div className="flex flex-wrap gap-2">
++              {(
++                [
++                  { key: "left", label: "বামে" },
++                  { key: "center", label: "মাঝে" },
++                  { key: "right", label: "ডানে" },
++                ] as { key: BrandLogoPosition; label: string }[]
++              ).map((opt) => (
++                <button
++                  key={opt.key}
++                  type="button"
++                  onClick={() => {
++                    setLayoutDraft("logo_position", opt.key);
++                    patchBrandLayout({ logo_position: opt.key });
++                  }}
++                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
++                    brandLayout.logo_position === opt.key
++                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
++                      : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
++                  }`}
++                >
++                  {opt.label}
++                </button>
++              ))}
++            </div>
++          </div>
++        </div>
++
++        <div className="mb-3 rounded-xl border border-gray-100 p-4 dark:border-slate-800">
++          <div className="flex items-center justify-between">
++            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
++              <LayoutTemplate size={14} className="text-gray-400 dark:text-slate-500" />
++              হেডারের মোট জায়গা
++            </label>
++            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
++              {brandLayout.header_height === null ? "স্বয়ংক্রিয়" : `${brandLayout.header_height}mm`}
++            </span>
++          </div>
++          <div className="mt-2 flex items-center gap-2">
++            <button
++              type="button"
++              onClick={() =>
++                brandLayout.header_height === null
++                  ? patchBrandLayout({ header_height: 40 })
++                  : patchBrandLayout({ header_height: null })
++              }
++              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
++                brandLayout.header_height === null
++                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400"
++                  : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
++              }`}
++            >
++              {brandLayout.header_height === null ? "স্বয়ংক্রিয় (কনটেন্ট অনুযায়ী)" : "স্বয়ংক্রিয়তে ফিরুন"}
++            </button>
++            {brandLayout.header_height !== null && (
++              <input
++                type="range"
++                min={20}
++                max={80}
++                step={1}
++                value={brandLayout.header_height}
++                onChange={(e) => setLayoutDraft("header_height", Number(e.target.value))}
++                onMouseUp={(e) => patchBrandLayout({ header_height: Number((e.target as HTMLInputElement).value) })}
++                onTouchEnd={(e) => patchBrandLayout({ header_height: Number((e.target as HTMLInputElement).value) })}
++                className="w-full accent-blue-600"
++              />
++            )}
++          </div>
++          <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
++            স্বয়ংক্রিয় থাকলে হেডার যতটুকু লাগে ততটুকু জায়গা নেবে। নির্দিষ্ট মান দিলে হেডার কমপক্ষে ওই জায়গা নেবে (নিচের
++            কনটেন্ট প্রয়োজনে নিচে নেমে যাবে)।
++          </p>
++        </div>
++
++        <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
++          <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">ডিফল্ট ফুটার (ঐচ্ছিক)</p>
++          <textarea
++            rows={2}
++            value={brandLayout.footer_text ?? ""}
++            placeholder="যেমন: মাদ্রাসার নাম, ঠিকানা, ফোন — প্রতিটি পেজের নিচে ছোট করে দেখাবে"
++            onChange={(e) => setLayoutDraft("footer_text", e.target.value)}
++            onBlur={(e) => patchBrandLayout({ footer_text: e.target.value || null })}
++            className="w-full rounded-lg border border-gray-200 p-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
++          />
++          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
++            ফাঁকা রাখলে ফুটারে কিছু দেখাবে না (শুধু পৃষ্ঠা নম্বর থাকবে)।
++          </p>
++
++          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
++            <LayoutSliderRow
++              label="ফুটার টেক্সটের সাইজ"
++              value={brandLayout.footer_font_size}
++              unit="px"
++              min={8}
++              max={20}
++              onDraft={(v) => setLayoutDraft("footer_font_size", v)}
++              onCommit={(v) => patchBrandLayout({ footer_font_size: v })}
++            />
++            <LayoutSliderRow
++              label="ফুটারের জায়গা"
++              value={brandLayout.footer_height}
++              unit="mm"
++              min={8}
++              max={40}
++              onDraft={(v) => setLayoutDraft("footer_height", v)}
++              onCommit={(v) => patchBrandLayout({ footer_height: v })}
++            />
++            <ColorPickerRow
++              label="ফুটার টেক্সটের রঙ"
++              value={brandLayout.footer_color}
++              onChange={(v) => {
++                setLayoutDraft("footer_color", v);
++                patchBrandLayout({ footer_color: v });
++              }}
++            />
++          </div>
++        </div>
++      </SectionCard>
++
+       <SectionCard title="ওয়াটারমার্ক" hint="রিপোর্টের পেছনে হালকাভাবে ছাপা হয়">
+         <InlineImageField
+           label="ওয়াটারমার্ক ছবি"
+diff --git a/admin/src/services/brandingApi.ts b/admin/src/services/brandingApi.ts
+index f4f728d..76a834f 100644
+--- a/admin/src/services/brandingApi.ts
++++ b/admin/src/services/brandingApi.ts
+@@ -2,6 +2,44 @@ import api, { cachedGet } from "./api";
+ 
+ export type ReportPrintMode = "normal" | "letterhead";
+ 
++export type BrandLogoPosition = "left" | "center" | "right";
++
++// Layout knobs for the DEFAULT logo+name+address header and default text
++// footer - only applied while report_header_footer_enabled is off. Mirrors
++// backend/src/modules/settings/settings.types.ts's BrandLayoutData.
++export type BrandLayout = {
++  name_font_size: number;
++  name_color: string;
++  address_font_size: number;
++  address_color: string;
++  logo_size: number;
++  logo_position: BrandLogoPosition;
++  header_height: number | null;
++  footer_text: string | null;
++  footer_font_size: number;
++  footer_color: string;
++  footer_height: number;
++};
++
++// Same shape as BrandLayout but every key optional, for partial saves (one
++// slider/color-picker change at a time - matches the rest of this page's
++// inline-edit pattern).
++export type BrandLayoutPatch = Partial<BrandLayout>;
++
++export const BRAND_LAYOUT_DEFAULTS: BrandLayout = {
++  name_font_size: 27,
++  name_color: "#000000",
++  address_font_size: 16,
++  address_color: "#000000",
++  logo_size: 95,
++  logo_position: "left",
++  header_height: null,
++  footer_text: null,
++  footer_font_size: 10,
++  footer_color: "#334155",
++  footer_height: 12,
++};
++
+ export type BrandingPayload = {
+   name?: string | null;
+   address?: string | null;
+@@ -15,6 +53,7 @@ export type BrandingPayload = {
+   report_header_image?: string | null;
+   report_footer_image?: string | null;
+   report_print_mode?: ReportPrintMode;
++  report_brand_layout?: BrandLayoutPatch | BrandLayout;
+ };
+ 
+ export async function getBranding(): Promise<BrandingPayload> {
+diff --git a/madrasha-main-new/backend/prisma/migrations/20260914000000_report_brand_layout/migration.sql b/backend/prisma/migrations/20260914000000_report_brand_layout/migration.sql
+new file mode 100644
+index 0000000..f756cb9
+--- /dev/null
++++ b/backend/prisma/migrations/20260914000000_report_brand_layout/migration.sql
+@@ -0,0 +1,2 @@
++-- AlterTable
++ALTER TABLE "madrasas" ADD COLUMN     "report_brand_layout" JSONB;
+diff --git a/backend/prisma/models/tenant.prisma b/backend/prisma/models/tenant.prisma
+index 237b778..3c95411 100644
+--- a/backend/prisma/models/tenant.prisma
++++ b/backend/prisma/models/tenant.prisma
+@@ -77,6 +77,16 @@ model Madrasa {
+   reportFooterImage         String? @map("report_footer_image")
+   reportPrintMode           String? @default("normal") @map("report_print_mode") @db.VarChar(20)
+ 
++  // Fine-grained layout control for the DEFAULT logo+name+address header and
++  // the (new) default text footer - font sizes, colors, logo size/position,
++  // and how much page space the header/footer band reserves. Only applies
++  // when reportHeaderFooterEnabled is off (the custom header/footer IMAGE
++  // path above is unaffected and keeps its own fixed HEADER_BAND_MM/
++  // FOOTER_BAND_MM bands). A single JSON blob (see BrandLayoutData in
++  // settings.types.ts for the shape/defaults) instead of one column per
++  // knob, since this list only grows and every field is optional/sparse.
++  reportBrandLayout Json? @map("report_brand_layout")
++
+   // Per-section enabled/disabled state for the admin settings pages
+   // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
+   // JSON map { sectionKey: boolean } instead of one column per section, since
+diff --git a/backend/src/modules/settings/settings.constants.ts b/backend/src/modules/settings/settings.constants.ts
+index 632f4a2..b64e181 100644
+--- a/backend/src/modules/settings/settings.constants.ts
++++ b/backend/src/modules/settings/settings.constants.ts
+@@ -55,6 +55,36 @@ export const DEFAULT_DOCUMENT_DESIGN = "classic";
+ export const REPORT_PRINT_MODES = ["normal", "letterhead"] as const;
+ export const DEFAULT_REPORT_PRINT_MODE = "normal";
+ 
++// Default logo+name+address header / default text footer layout knobs (see
++// BrandLayoutData) - these are the exact values the old hardcoded CSS used,
++// so an untouched madrasa's reports render pixel-identical to before this
++// feature existed.
++export const BRAND_LAYOUT_DEFAULTS = {
++  name_font_size: 27,
++  name_color: "#000000",
++  address_font_size: 16,
++  address_color: "#000000",
++  logo_size: 95,
++  logo_position: "left" as const,
++  header_height: null as number | null,
++  footer_text: null as string | null,
++  footer_font_size: 10,
++  footer_color: "#334155",
++  footer_height: 12,
++};
++
++export const BRAND_LOGO_POSITIONS = ["left", "center", "right"] as const;
++
++export const MAX_BRAND_FOOTER_TEXT_LENGTH = 300;
++export const BRAND_LAYOUT_LIMITS = {
++  name_font_size: { min: 12, max: 48 },
++  address_font_size: { min: 10, max: 28 },
++  logo_size: { min: 40, max: 160 },
++  header_height: { min: 20, max: 80 }, // mm
++  footer_font_size: { min: 8, max: 20 },
++  footer_height: { min: 8, max: 40 }, // mm
++};
++
+ // Allow-list of SectionCard keys that can be toggled enabled/disabled from
+ // AdminWebsiteSettingsPage (website builder settings) - prevents an
+ // arbitrary string being stored in settingsSectionToggles.
+diff --git a/backend/src/modules/settings/settings.dto.ts b/backend/src/modules/settings/settings.dto.ts
+index fc90d0c..e0e5af9 100644
+--- a/backend/src/modules/settings/settings.dto.ts
++++ b/backend/src/modules/settings/settings.dto.ts
+@@ -1,3 +1,20 @@
++// Partial patch of BrandLayoutData - every key optional so the client can
++// save a single changed knob (e.g. just name_font_size) without resending
++// the rest, same "real partial update" pattern as UpdateBrandingRequestDto.
++export interface UpdateBrandLayoutRequestDto {
++  name_font_size?: number | string;
++  name_color?: string | null;
++  address_font_size?: number | string;
++  address_color?: string | null;
++  logo_size?: number | string;
++  logo_position?: string;
++  header_height?: number | string | null;
++  footer_text?: string | null;
++  footer_font_size?: number | string;
++  footer_color?: string | null;
++  footer_height?: number | string;
++}
++
+ export interface UpdateBrandingRequestDto {
+   name?: string;
+   address?: string;
+@@ -11,6 +28,7 @@ export interface UpdateBrandingRequestDto {
+   report_header_image?: string | null;
+   report_footer_image?: string | null;
+   report_print_mode?: string;
++  report_brand_layout?: UpdateBrandLayoutRequestDto;
+ }
+ 
+ export interface UpdateSectionToggleRequestDto {
+diff --git a/backend/src/modules/settings/settings.repository.ts b/backend/src/modules/settings/settings.repository.ts
+index a5c8fbc..133383b 100644
+--- a/backend/src/modules/settings/settings.repository.ts
++++ b/backend/src/modules/settings/settings.repository.ts
+@@ -34,6 +34,7 @@ export class SettingsRepository {
+         reportHeaderImage: true,
+         reportFooterImage: true,
+         reportPrintMode: true,
++        reportBrandLayout: true,
+       },
+     });
+   }
+diff --git a/backend/src/modules/settings/settings.service.ts b/backend/src/modules/settings/settings.service.ts
+index 51371b0..af0c100 100644
+--- a/backend/src/modules/settings/settings.service.ts
++++ b/backend/src/modules/settings/settings.service.ts
+@@ -1,8 +1,10 @@
++import { Prisma } from "@prisma/client";
+ import { BadRequestError, NotFoundError } from "../../shared/errors";
+ import { storageProvider } from "../../shared/storage";
+ import { settingsRepository, SettingsRepository } from "./settings.repository";
+ import {
+   BrandingData,
++  BrandLayoutData,
+   DocumentTemplatesData,
+   IdCardDesignData,
+   AdmitCardDesignData,
+@@ -13,6 +15,7 @@ import {
+ } from "./settings.types";
+ import {
+   UpdateBrandingRequestDto,
++  UpdateBrandLayoutRequestDto,
+   UpdateDocumentTemplatesRequestDto,
+   UpdateIdCardDesignRequestDto,
+   UpdateAdmitCardDesignRequestDto,
+@@ -34,8 +37,130 @@ import {
+   REPORT_PRINT_MODES,
+   DEFAULT_REPORT_PRINT_MODE,
+   SETTINGS_SECTION_KEYS,
++  BRAND_LAYOUT_DEFAULTS,
++  BRAND_LOGO_POSITIONS,
++  BRAND_LAYOUT_LIMITS,
++  MAX_BRAND_FOOTER_TEXT_LENGTH,
+ } from "./settings.constants";
+ 
++const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
++
++function isValidHexColor(value: unknown): value is string {
++  return typeof value === "string" && HEX_COLOR_RE.test(value);
++}
++
++/** Clamped number-or-undefined: returns undefined (leave untouched) when the
++ * input itself is undefined, throws on anything that isn't a finite number
++ * in range, otherwise the parsed number. */
++function parseBoundedNumber(
++  value: number | string | undefined,
++  limits: { min: number; max: number },
++  label: string,
++): number | undefined {
++  if (value === undefined) return undefined;
++  const n = Number(value);
++  if (!Number.isFinite(n) || n < limits.min || n > limits.max) {
++    throw new BadRequestError(`Invalid ${label} (expected ${limits.min}-${limits.max})`);
++  }
++  return n;
++}
++
++/** Merges a partial UpdateBrandLayoutRequestDto onto the madrasa's existing
++ * (already-defaults-filled) brand layout, validating each provided field.
++ * Returns undefined when the caller sent no report_brand_layout at all, so
++ * the surrounding updateBranding() call can skip touching the column. */
++function mergeBrandLayoutPatch(
++  existing: BrandLayoutData,
++  patch: UpdateBrandLayoutRequestDto | undefined,
++): BrandLayoutData | undefined {
++  if (!patch) return undefined;
++
++  const next: BrandLayoutData = { ...existing };
++
++  const nameFontSize = parseBoundedNumber(
++    patch.name_font_size,
++    BRAND_LAYOUT_LIMITS.name_font_size,
++    "name_font_size",
++  );
++  if (nameFontSize !== undefined) next.name_font_size = nameFontSize;
++
++  if (patch.name_color !== undefined) {
++    if (patch.name_color !== null && !isValidHexColor(patch.name_color)) {
++      throw new BadRequestError("Invalid name_color");
++    }
++    next.name_color = patch.name_color || BRAND_LAYOUT_DEFAULTS.name_color;
++  }
++
++  const addressFontSize = parseBoundedNumber(
++    patch.address_font_size,
++    BRAND_LAYOUT_LIMITS.address_font_size,
++    "address_font_size",
++  );
++  if (addressFontSize !== undefined) next.address_font_size = addressFontSize;
++
++  if (patch.address_color !== undefined) {
++    if (patch.address_color !== null && !isValidHexColor(patch.address_color)) {
++      throw new BadRequestError("Invalid address_color");
++    }
++    next.address_color = patch.address_color || BRAND_LAYOUT_DEFAULTS.address_color;
++  }
++
++  const logoSize = parseBoundedNumber(patch.logo_size, BRAND_LAYOUT_LIMITS.logo_size, "logo_size");
++  if (logoSize !== undefined) next.logo_size = logoSize;
++
++  if (patch.logo_position !== undefined) {
++    if (!(BRAND_LOGO_POSITIONS as readonly string[]).includes(patch.logo_position)) {
++      throw new BadRequestError("Invalid logo_position");
++    }
++    next.logo_position = patch.logo_position as BrandLayoutData["logo_position"];
++  }
++
++  if (patch.header_height !== undefined) {
++    if (patch.header_height === null || patch.header_height === "") {
++      next.header_height = null; // back to auto
++    } else {
++      next.header_height = parseBoundedNumber(
++        patch.header_height,
++        BRAND_LAYOUT_LIMITS.header_height,
++        "header_height",
++      )!;
++    }
++  }
++
++  if (patch.footer_text !== undefined) {
++    if (patch.footer_text !== null && typeof patch.footer_text !== "string") {
++      throw new BadRequestError("Invalid footer_text");
++    }
++    if (typeof patch.footer_text === "string" && patch.footer_text.length > MAX_BRAND_FOOTER_TEXT_LENGTH) {
++      throw new BadRequestError("footer_text is too long");
++    }
++    next.footer_text = patch.footer_text?.trim() || null;
++  }
++
++  const footerFontSize = parseBoundedNumber(
++    patch.footer_font_size,
++    BRAND_LAYOUT_LIMITS.footer_font_size,
++    "footer_font_size",
++  );
++  if (footerFontSize !== undefined) next.footer_font_size = footerFontSize;
++
++  if (patch.footer_color !== undefined) {
++    if (patch.footer_color !== null && !isValidHexColor(patch.footer_color)) {
++      throw new BadRequestError("Invalid footer_color");
++    }
++    next.footer_color = patch.footer_color || BRAND_LAYOUT_DEFAULTS.footer_color;
++  }
++
++  const footerHeight = parseBoundedNumber(
++    patch.footer_height,
++    BRAND_LAYOUT_LIMITS.footer_height,
++    "footer_height",
++  );
++  if (footerHeight !== undefined) next.footer_height = footerHeight;
++
++  return next;
++}
++
+ function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
+   return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
+ }
+@@ -101,6 +226,10 @@ export class SettingsService {
+       report_header_image: madrasa.reportHeaderImage,
+       report_footer_image: madrasa.reportFooterImage,
+       report_print_mode: madrasa.reportPrintMode || DEFAULT_REPORT_PRINT_MODE,
++      report_brand_layout: {
++        ...BRAND_LAYOUT_DEFAULTS,
++        ...((madrasa.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
++      },
+     };
+   }
+ 
+@@ -118,6 +247,7 @@ export class SettingsService {
+       report_header_image,
+       report_footer_image,
+       report_print_mode,
++      report_brand_layout,
+     } = body;
+ 
+     for (const [key, value] of Object.entries({
+@@ -171,6 +301,16 @@ export class SettingsService {
+       throw new BadRequestError("Invalid report print mode");
+     }
+ 
++    let mergedBrandLayout: BrandLayoutData | undefined;
++    if (report_brand_layout !== undefined) {
++      const current = await this.repository.findBranding(madrasaId);
++      const existing: BrandLayoutData = {
++        ...BRAND_LAYOUT_DEFAULTS,
++        ...((current?.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
++      };
++      mergedBrandLayout = mergeBrandLayoutPatch(existing, report_brand_layout);
++    }
++
+     await this.repository.updateBranding(madrasaId, {
+       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
+       ...(name !== undefined && String(name).trim() !== "" ? { name } : {}),
+@@ -200,6 +340,9 @@ export class SettingsService {
+         ? { reportHeaderFooterEnabled: toBoolInt(report_header_footer_enabled) }
+         : {}),
+       ...(report_print_mode !== undefined ? { reportPrintMode: report_print_mode } : {}),
++      ...(mergedBrandLayout !== undefined
++        ? { reportBrandLayout: mergedBrandLayout as unknown as Prisma.InputJsonValue }
++        : {}),
+     });
+   }
+ 
+diff --git a/backend/src/modules/settings/settings.types.ts b/backend/src/modules/settings/settings.types.ts
+index 3081eff..842d4c9 100644
+--- a/backend/src/modules/settings/settings.types.ts
++++ b/backend/src/modules/settings/settings.types.ts
+@@ -1,3 +1,23 @@
++// Layout knobs for the DEFAULT logo+name+address header and the default
++// text footer (only used while report_header_footer_enabled is off - the
++// custom header/footer IMAGE path has its own fixed band size). Every field
++// optional so a partial save only touches the knobs the user actually
++// changed; getBranding always fills in BRAND_LAYOUT_DEFAULTS for anything
++// missing before returning to the client.
++export interface BrandLayoutData {
++  name_font_size: number; // px
++  name_color: string; // hex
++  address_font_size: number; // px
++  address_color: string; // hex
++  logo_size: number; // px (square)
++  logo_position: "left" | "center" | "right";
++  header_height: number | null; // mm, null = auto (content-driven, old behaviour)
++  footer_text: string | null; // default text footer, null/empty = off
++  footer_font_size: number; // px
++  footer_color: string; // hex
++  footer_height: number; // mm
++}
++
+ export interface BrandingData {
+   name: string | null;
+   address: string | null;
+@@ -11,6 +31,7 @@ export interface BrandingData {
+   report_header_image: string | null;
+   report_footer_image: string | null;
+   report_print_mode: string;
++  report_brand_layout: BrandLayoutData;
+ }
+ 
+ export type SectionTogglesData = Record<string, boolean>;
+diff --git a/packages/shared-ui/src/index.css b/packages/shared-ui/src/index.css
+index c18394c..3164186 100644
+--- a/packages/shared-ui/src/index.css
++++ b/packages/shared-ui/src/index.css
+@@ -322,6 +322,8 @@ input[type="number"]::-webkit-inner-spin-button {
+   font-weight: 600;
+   line-height: 1.4;
+   color: #334155;
++  overflow: hidden;
++  white-space: pre-wrap;
+ }
+ 
+ .report-background {

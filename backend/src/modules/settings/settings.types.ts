@@ -1,3 +1,23 @@
+// Layout knobs for the DEFAULT logo+name+address header and the default
+// text footer (only used while report_header_footer_enabled is off - the
+// custom header/footer IMAGE path has its own fixed band size). Every field
+// optional so a partial save only touches the knobs the user actually
+// changed; getBranding always fills in BRAND_LAYOUT_DEFAULTS for anything
+// missing before returning to the client.
+export interface BrandLayoutData {
+  name_font_size: number; // px
+  name_color: string; // hex
+  address_font_size: number; // px
+  address_color: string; // hex
+  logo_size: number; // px (square)
+  logo_position: "left" | "center" | "right";
+  header_height: number | null; // mm, null = auto (content-driven, old behaviour)
+  footer_text: string | null; // default text footer, null/empty = off
+  footer_font_size: number; // px
+  footer_color: string; // hex
+  footer_height: number; // mm
+}
+
 export interface BrandingData {
   name: string | null;
   address: string | null;
@@ -11,6 +31,7 @@ export interface BrandingData {
   report_header_image: string | null;
   report_footer_image: string | null;
   report_print_mode: string;
+  report_brand_layout: BrandLayoutData;
 }
 
 export type SectionTogglesData = Record<string, boolean>;

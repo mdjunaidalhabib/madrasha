@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useBrandingStore } from "../../store/brandingStore";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { BRAND_LAYOUT_DEFAULTS, type BrandingPayload, type BrandLayout } from "../../services/brandingApi";
 
 // Single source of truth for the custom header/footer image bands - reused
 // by PaginatedReportPreview.tsx to reserve the matching amount of page
@@ -8,6 +9,27 @@ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 // why the header band needs no such separate reservation).
 export const HEADER_BAND_MM = 40;
 export const FOOTER_BAND_MM = 20;
+
+function resolveBrandLayout(branding: BrandingPayload | null | undefined): BrandLayout {
+  return { ...BRAND_LAYOUT_DEFAULTS, ...(branding?.report_brand_layout ?? {}) };
+}
+
+// How much bottom page-space the footer band (custom image OR default text)
+// needs reserved, in mm - used by PaginatedReportPreview.tsx's pagination
+// math the same way FOOTER_BAND_MM used to be used directly, since both the
+// image and the text footer are absolutely-positioned overlays whose height
+// is never picked up by normal DOM flow measurement. Returns 0 whenever
+// nothing will actually render (matches ReportBrandFooter's own render
+// conditions below).
+export function getFooterBandReserveMm(branding: BrandingPayload | null | undefined): number {
+  const enabled = !!branding?.report_header_footer_enabled;
+  if (enabled) {
+    const isLetterhead = branding?.report_print_mode === "letterhead";
+    return isLetterhead || !!branding?.report_footer_image ? FOOTER_BAND_MM : 0;
+  }
+  const layout = resolveBrandLayout(branding);
+  return layout.footer_text ? layout.footer_height : 0;
+}
 
 /**
  * Renders the madrasa's uploaded background image behind the report content.
@@ -169,15 +191,54 @@ export function ReportBrandHeader({
   if (!branding?.report_logo && !branding?.name && !branding?.address) return null;
 
   const showLogo = !!branding.report_logo && !hideLogo;
+  const layout = resolveBrandLayout(branding);
+
+  // Only emit an inline override when the value actually differs from the
+  // shipped default - otherwise every report keeps using the existing
+  // paper-size/orientation-responsive CSS rules (index.css's a4/a5/
+  // landscape variants) untouched, so a madrasa that never opened the new
+  // "ডিফল্ট হেডার-ফুটার ডিজাইন" section renders pixel-identical to before.
+  // Once a knob IS customized it applies at that fixed value across every
+  // paper size (it intentionally stops auto-adapting - the admin picked it).
+  const nameStyle: CSSProperties = {};
+  if (layout.name_font_size !== BRAND_LAYOUT_DEFAULTS.name_font_size) nameStyle.fontSize = layout.name_font_size;
+  if (layout.name_color !== BRAND_LAYOUT_DEFAULTS.name_color) nameStyle.color = layout.name_color;
+
+  const addressStyle: CSSProperties = {};
+  if (layout.address_font_size !== BRAND_LAYOUT_DEFAULTS.address_font_size)
+    addressStyle.fontSize = layout.address_font_size;
+  if (layout.address_color !== BRAND_LAYOUT_DEFAULTS.address_color) addressStyle.color = layout.address_color;
+
+  const logoStyle: CSSProperties = {};
+  if (layout.logo_size !== BRAND_LAYOUT_DEFAULTS.logo_size) {
+    logoStyle.width = layout.logo_size;
+    logoStyle.height = layout.logo_size;
+  }
+  if (layout.logo_position === "center") {
+    logoStyle.left = "50%";
+    logoStyle.transform = "translate(-50%, -50%)";
+  } else if (layout.logo_position === "right") {
+    logoStyle.left = "auto";
+    logoStyle.right = 28;
+  }
+
+  const headerStyle: CSSProperties = {};
+  if (layout.header_height !== null) headerStyle.minHeight = `${layout.header_height}mm`;
 
   return (
     <div
       className={`report-brand-header relative flex flex-col items-center text-center ${
         showLogo ? "report-brand-header--with-logo" : ""
       }`}
+      style={headerStyle}
     >
       {showLogo && branding.report_logo && (
-        <img src={branding.report_logo} alt="Logo" className="report-brand-logo object-contain" />
+        <img
+          src={branding.report_logo}
+          alt="Logo"
+          className="report-brand-logo object-contain"
+          style={logoStyle}
+        />
       )}
       {branding.name && (
         <div
@@ -185,30 +246,40 @@ export function ReportBrandHeader({
           className="report-brand-name text-black"
           style={
             compactMaxWidthPx
-              ? { whiteSpace: "nowrap", fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX }
-              : undefined
+              ? {
+                  whiteSpace: "nowrap",
+                  fontSize: compactNameFontPx ?? COMPACT_NAME_START_PX,
+                  // Compact (2-col letterhead) mode always uses its own
+                  // canvas-measured font size to guarantee a single line at
+                  // that narrow width - a customized name_font_size would
+                  // break that guarantee, so only the color override
+                  // applies here, never the size.
+                  ...(nameStyle.color ? { color: nameStyle.color } : {}),
+                }
+              : nameStyle
           }
         >
           {nameText}
         </div>
       )}
       {branding.address && (
-        <div className="report-brand-address text-black">{toBanglaDigits(branding.address)}</div>
+        <div className="report-brand-address text-black" style={addressStyle}>
+          {toBanglaDigits(branding.address)}
+        </div>
       )}
     </div>
   );
 }
 
 /**
- * Renders the madrasa's custom report footer IMAGE at the bottom of every
- * printed page, alongside the page-number footer - only when the "কাস্টম
- * হেডার-ফুটার" section is enabled AND a footer image is actually uploaded.
- * Renders nothing otherwise (no footer by default, matching pre-existing
- * behaviour - and no fallback to any default footer once enabled). In
- * letterhead mode this always renders a blank FOOTER_BAND_MM-tall spacer
- * instead (same reasoning as ReportBrandHeader's isLetterheadMode branch) -
+ * Renders the madrasa's custom report footer IMAGE (when "কাস্টম হেডার-ফুটার"
+ * is enabled and a footer image is uploaded), OR the default plain-text
+ * footer (when that toggle is off and footer text is set in "ডিফল্ট
+ * হেডার-ফুটার ডিজাইন"). Renders nothing when neither applies. In letterhead
+ * mode this always renders a blank FOOTER_BAND_MM-tall spacer instead (same
+ * reasoning as ReportBrandHeader's isLetterheadMode branch) -
  * PaginatedReportPreview.tsx reserves the matching page-bottom space for
- * both cases (see its FOOTER_BAND_MM usage).
+ * every case via getFooterBandReserveMm() above.
  */
 export function ReportBrandFooter() {
   const branding = useBrandingStore((s) => s.branding);
@@ -218,11 +289,28 @@ export function ReportBrandFooter() {
     return <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }} aria-hidden="true" />;
   }
 
-  if (!enabled || !branding?.report_footer_image) return null;
+  if (enabled) {
+    if (!branding?.report_footer_image) return null;
+    return (
+      <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }}>
+        <img src={branding.report_footer_image} alt="" className="h-full w-full object-contain" />
+      </div>
+    );
+  }
+
+  const layout = resolveBrandLayout(branding);
+  if (!layout.footer_text) return null;
 
   return (
-    <div className="report-brand-footer" style={{ height: `${FOOTER_BAND_MM}mm` }}>
-      <img src={branding.report_footer_image} alt="" className="h-full w-full object-contain" />
+    <div
+      className="report-brand-footer"
+      style={{
+        height: `${layout.footer_height}mm`,
+        fontSize: layout.footer_font_size,
+        color: layout.footer_color,
+      }}
+    >
+      {toBanglaDigits(layout.footer_text)}
     </div>
   );
 }

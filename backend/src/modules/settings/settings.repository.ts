@@ -34,6 +34,7 @@ export class SettingsRepository {
         reportHeaderImage: true,
         reportFooterImage: true,
         reportPrintMode: true,
+        reportBrandLayout: true,
       },
     });
   }

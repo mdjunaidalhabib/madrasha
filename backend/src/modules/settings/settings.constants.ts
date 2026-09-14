@@ -55,6 +55,36 @@ export const DEFAULT_DOCUMENT_DESIGN = "classic";
 export const REPORT_PRINT_MODES = ["normal", "letterhead"] as const;
 export const DEFAULT_REPORT_PRINT_MODE = "normal";
 
+// Default logo+name+address header / default text footer layout knobs (see
+// BrandLayoutData) - these are the exact values the old hardcoded CSS used,
+// so an untouched madrasa's reports render pixel-identical to before this
+// feature existed.
+export const BRAND_LAYOUT_DEFAULTS = {
+  name_font_size: 27,
+  name_color: "#000000",
+  address_font_size: 16,
+  address_color: "#000000",
+  logo_size: 95,
+  logo_position: "left" as const,
+  header_height: null as number | null,
+  footer_text: null as string | null,
+  footer_font_size: 10,
+  footer_color: "#334155",
+  footer_height: 12,
+};
+
+export const BRAND_LOGO_POSITIONS = ["left", "center", "right"] as const;
+
+export const MAX_BRAND_FOOTER_TEXT_LENGTH = 300;
+export const BRAND_LAYOUT_LIMITS = {
+  name_font_size: { min: 12, max: 48 },
+  address_font_size: { min: 10, max: 28 },
+  logo_size: { min: 40, max: 160 },
+  header_height: { min: 20, max: 80 }, // mm
+  footer_font_size: { min: 8, max: 20 },
+  footer_height: { min: 8, max: 40 }, // mm
+};
+
 // Allow-list of SectionCard keys that can be toggled enabled/disabled from
 // AdminWebsiteSettingsPage (website builder settings) - prevents an
 // arbitrary string being stored in settingsSectionToggles.

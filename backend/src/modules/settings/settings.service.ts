@@ -1,8 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { storageProvider } from "../../shared/storage";
 import { settingsRepository, SettingsRepository } from "./settings.repository";
 import {
   BrandingData,
+  BrandLayoutData,
   DocumentTemplatesData,
   IdCardDesignData,
   AdmitCardDesignData,
@@ -13,6 +15,7 @@ import {
 } from "./settings.types";
 import {
   UpdateBrandingRequestDto,
+  UpdateBrandLayoutRequestDto,
   UpdateDocumentTemplatesRequestDto,
   UpdateIdCardDesignRequestDto,
   UpdateAdmitCardDesignRequestDto,
@@ -34,7 +37,129 @@ import {
   REPORT_PRINT_MODES,
   DEFAULT_REPORT_PRINT_MODE,
   SETTINGS_SECTION_KEYS,
+  BRAND_LAYOUT_DEFAULTS,
+  BRAND_LOGO_POSITIONS,
+  BRAND_LAYOUT_LIMITS,
+  MAX_BRAND_FOOTER_TEXT_LENGTH,
 } from "./settings.constants";
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function isValidHexColor(value: unknown): value is string {
+  return typeof value === "string" && HEX_COLOR_RE.test(value);
+}
+
+/** Clamped number-or-undefined: returns undefined (leave untouched) when the
+ * input itself is undefined, throws on anything that isn't a finite number
+ * in range, otherwise the parsed number. */
+function parseBoundedNumber(
+  value: number | string | undefined,
+  limits: { min: number; max: number },
+  label: string,
+): number | undefined {
+  if (value === undefined) return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < limits.min || n > limits.max) {
+    throw new BadRequestError(`Invalid ${label} (expected ${limits.min}-${limits.max})`);
+  }
+  return n;
+}
+
+/** Merges a partial UpdateBrandLayoutRequestDto onto the madrasa's existing
+ * (already-defaults-filled) brand layout, validating each provided field.
+ * Returns undefined when the caller sent no report_brand_layout at all, so
+ * the surrounding updateBranding() call can skip touching the column. */
+function mergeBrandLayoutPatch(
+  existing: BrandLayoutData,
+  patch: UpdateBrandLayoutRequestDto | undefined,
+): BrandLayoutData | undefined {
+  if (!patch) return undefined;
+
+  const next: BrandLayoutData = { ...existing };
+
+  const nameFontSize = parseBoundedNumber(
+    patch.name_font_size,
+    BRAND_LAYOUT_LIMITS.name_font_size,
+    "name_font_size",
+  );
+  if (nameFontSize !== undefined) next.name_font_size = nameFontSize;
+
+  if (patch.name_color !== undefined) {
+    if (patch.name_color !== null && !isValidHexColor(patch.name_color)) {
+      throw new BadRequestError("Invalid name_color");
+    }
+    next.name_color = patch.name_color || BRAND_LAYOUT_DEFAULTS.name_color;
+  }
+
+  const addressFontSize = parseBoundedNumber(
+    patch.address_font_size,
+    BRAND_LAYOUT_LIMITS.address_font_size,
+    "address_font_size",
+  );
+  if (addressFontSize !== undefined) next.address_font_size = addressFontSize;
+
+  if (patch.address_color !== undefined) {
+    if (patch.address_color !== null && !isValidHexColor(patch.address_color)) {
+      throw new BadRequestError("Invalid address_color");
+    }
+    next.address_color = patch.address_color || BRAND_LAYOUT_DEFAULTS.address_color;
+  }
+
+  const logoSize = parseBoundedNumber(patch.logo_size, BRAND_LAYOUT_LIMITS.logo_size, "logo_size");
+  if (logoSize !== undefined) next.logo_size = logoSize;
+
+  if (patch.logo_position !== undefined) {
+    if (!(BRAND_LOGO_POSITIONS as readonly string[]).includes(patch.logo_position)) {
+      throw new BadRequestError("Invalid logo_position");
+    }
+    next.logo_position = patch.logo_position as BrandLayoutData["logo_position"];
+  }
+
+  if (patch.header_height !== undefined) {
+    if (patch.header_height === null || patch.header_height === "") {
+      next.header_height = null; // back to auto
+    } else {
+      next.header_height = parseBoundedNumber(
+        patch.header_height,
+        BRAND_LAYOUT_LIMITS.header_height,
+        "header_height",
+      )!;
+    }
+  }
+
+  if (patch.footer_text !== undefined) {
+    if (patch.footer_text !== null && typeof patch.footer_text !== "string") {
+      throw new BadRequestError("Invalid footer_text");
+    }
+    if (typeof patch.footer_text === "string" && patch.footer_text.length > MAX_BRAND_FOOTER_TEXT_LENGTH) {
+      throw new BadRequestError("footer_text is too long");
+    }
+    next.footer_text = patch.footer_text?.trim() || null;
+  }
+
+  const footerFontSize = parseBoundedNumber(
+    patch.footer_font_size,
+    BRAND_LAYOUT_LIMITS.footer_font_size,
+    "footer_font_size",
+  );
+  if (footerFontSize !== undefined) next.footer_font_size = footerFontSize;
+
+  if (patch.footer_color !== undefined) {
+    if (patch.footer_color !== null && !isValidHexColor(patch.footer_color)) {
+      throw new BadRequestError("Invalid footer_color");
+    }
+    next.footer_color = patch.footer_color || BRAND_LAYOUT_DEFAULTS.footer_color;
+  }
+
+  const footerHeight = parseBoundedNumber(
+    patch.footer_height,
+    BRAND_LAYOUT_LIMITS.footer_height,
+    "footer_height",
+  );
+  if (footerHeight !== undefined) next.footer_height = footerHeight;
+
+  return next;
+}
 
 function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
   return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
@@ -101,6 +226,10 @@ export class SettingsService {
       report_header_image: madrasa.reportHeaderImage,
       report_footer_image: madrasa.reportFooterImage,
       report_print_mode: madrasa.reportPrintMode || DEFAULT_REPORT_PRINT_MODE,
+      report_brand_layout: {
+        ...BRAND_LAYOUT_DEFAULTS,
+        ...((madrasa.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
+      },
     };
   }
 
@@ -118,6 +247,7 @@ export class SettingsService {
       report_header_image,
       report_footer_image,
       report_print_mode,
+      report_brand_layout,
     } = body;
 
     for (const [key, value] of Object.entries({
@@ -171,6 +301,16 @@ export class SettingsService {
       throw new BadRequestError("Invalid report print mode");
     }
 
+    let mergedBrandLayout: BrandLayoutData | undefined;
+    if (report_brand_layout !== undefined) {
+      const current = await this.repository.findBranding(madrasaId);
+      const existing: BrandLayoutData = {
+        ...BRAND_LAYOUT_DEFAULTS,
+        ...((current?.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
+      };
+      mergedBrandLayout = mergeBrandLayoutPatch(existing, report_brand_layout);
+    }
+
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
       ...(name !== undefined && String(name).trim() !== "" ? { name } : {}),
@@ -200,6 +340,9 @@ export class SettingsService {
         ? { reportHeaderFooterEnabled: toBoolInt(report_header_footer_enabled) }
         : {}),
       ...(report_print_mode !== undefined ? { reportPrintMode: report_print_mode } : {}),
+      ...(mergedBrandLayout !== undefined
+        ? { reportBrandLayout: mergedBrandLayout as unknown as Prisma.InputJsonValue }
+        : {}),
     });
   }
 
