@@ -75,6 +75,15 @@ export default function ResultEntryPage() {
   const canVerifySubject =
     hasPermission(user, permissions, RESULT_PERMISSIONS.marksVerify) ||
     hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  // A single office/admin user who holds BOTH submit and verify rights (the
+  // common case for a small madrasa with no separate verifier) shouldn't
+  // have to click "জমা দিন" then "যাচাই" per subject before "সংরক্ষণ ও
+  // প্রসেস করুন" even works — saveMarks() below chains submit+verify+process
+  // into that one button for them instead. Anyone missing either right
+  // keeps the manual per-subject workflow (see MarksTable's canSubmit/
+  // canVerify props further down), preserving the maker/checker separation
+  // for madrasas that actually staff it.
+  const isSingleActorWorkflow = canSubmitSubject && canVerifySubject;
 
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -367,7 +376,7 @@ export default function ResultEntryPage() {
     if (!examId || !classId) {
       return push("error", "পরীক্ষা ও শ্রেণি নির্বাচন করুন");
     }
-    if (payload.length === 0) {
+    if (payload.length === 0 && !resultMasterId) {
       return push("error", "কোনো নম্বর দেওয়া হয়নি!");
     }
 
@@ -383,7 +392,19 @@ export default function ResultEntryPage() {
 
       setResultMasterId(masterId);
 
-      await api.post("/results/marks", { result_master_id: masterId, data: payload });
+      if (payload.length > 0) {
+        await api.post("/results/marks", { result_master_id: masterId, data: payload });
+      }
+
+      if (isSingleActorWorkflow) {
+        for (const book of books) {
+          const status = submissions[book.book_id]?.status;
+          if (status === "SUBMITTED" || status === "VERIFIED") continue;
+          await api.post(`/results/${masterId}/books/${book.book_id}/submit`, {});
+          await api.post(`/results/${masterId}/books/${book.book_id}/verify`, {});
+        }
+      }
+
       await api.post("/results/process", {
         exam_id: +examId,
         class_id: +classId,
@@ -524,11 +545,18 @@ export default function ResultEntryPage() {
             submissions={submissions}
             onSubmitBook={handleSubmitBook}
             submittingBookId={submittingBookId}
-            canSubmit={canSubmitSubject}
-            canVerify={canVerifySubject}
+            canSubmit={canSubmitSubject && !isSingleActorWorkflow}
+            canVerify={canVerifySubject && !isSingleActorWorkflow}
             onVerifyBook={handleVerifyBook}
             onRequestRejectBook={setRejectBookId}
           />
+
+          {isSingleActorWorkflow && (
+            <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
+              ℹ️ আপনার এন্ট্রি ও যাচাই উভয় অনুমতি থাকায় "সংরক্ষণ ও প্রসেস করুন" চাপলেই সব বিষয়ের জমা,
+              যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই।
+            </p>
+          )}
 
           <ResultActions onSave={saveMarks} onReset={handleReset} disabled={loading} />
         </>

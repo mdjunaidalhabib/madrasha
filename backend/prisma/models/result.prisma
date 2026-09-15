@@ -243,6 +243,14 @@ model ResultMaster {
   /// ResultCorrection cover that), just the current note.
   remarks String? @db.Text
 
+  /// One-level undo for "apply roll by rank" (applyRollByRank in
+  /// result-panel.service.ts): the class roster's {studentId, roll} pairs
+  /// captured right before the last reassignment, so a mistaken merit-order
+  /// apply can be reverted back to the manually-set rolls it overwrote.
+  /// Cleared once undone or once a fresh apply overwrites it with a newer
+  /// snapshot - this is a single undo slot, not a history stack.
+  previousRollSnapshot Json? @map("previous_roll_snapshot")
+
   deletedAt DateTime? @map("deleted_at")
 
   createdAt DateTime @default(now()) @map("created_at")

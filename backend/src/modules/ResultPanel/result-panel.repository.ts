@@ -50,35 +50,103 @@ export class ResultPanelRepository {
   }
 
   /** Upserts a batch of Mark rows, and — when a row carries a `components`
-   * breakdown — replaces that mark's MarkComponentValue rows in the same
-   * step. Runs as one interactive transaction (rather than the old
-   * array-of-promises transaction) because each component upsert needs the
-   * markId produced by its own Mark upsert first. */
-  upsertMarksWithComponentsInTransaction(
+   * breakdown — replaces that mark's MarkComponentValue rows too. Does the
+   * Mark side as ONE bulk `INSERT ... ON CONFLICT` round trip (raw SQL,
+   * since Prisma has no native bulk-upsert) instead of N sequential
+   * `tx.mark.upsert()` calls inside an interactive transaction — against a
+   * remote DB (measured ~110ms/round-trip on this project's connection), a
+   * full class's worth of rows (many students x many subjects) pushed that
+   * old N-round-trip loop past Prisma's interactive-transaction timeout and
+   * failed with "Transaction not found ... obtained before disconnecting".
+   * Component values are similarly batched: one bulk delete + one bulk
+   * insert, keyed off the ids the upsert's RETURNING clause hands back. */
+  async upsertMarksWithComponentsInTransaction(
     rows: {
       upsertArgs: Prisma.MarkUpsertArgs;
       components?: { component: MarkComponentType; value: number }[] | null;
     }[],
   ) {
+    if (!rows.length) return [];
+
+    const fieldsOf = (r: (typeof rows)[number]) => {
+      const create = r.upsertArgs.create as Prisma.MarkUncheckedCreateInput;
+      return {
+        resultMasterId: create.resultMasterId,
+        studentId: create.studentId,
+        examId: create.examId,
+        classId: create.classId,
+        bookId: create.bookId,
+        mark: create.mark as number,
+        isAbsent: Boolean(create.isAbsent),
+        isExempted: Boolean(create.isExempted),
+        isWithheld: Boolean(create.isWithheld),
+        note: (create.note as string | null | undefined) ?? null,
+        madrasaId: create.madrasaId,
+      };
+    };
+
+    const valueRows = rows.map((r) => {
+      const f = fieldsOf(r);
+      return Prisma.sql`(${f.resultMasterId}, ${f.studentId}, ${f.examId}, ${f.classId}, ${f.bookId}, ${f.mark}, ${f.isAbsent}, ${f.isExempted}, ${f.isWithheld}, ${f.note}, ${f.madrasaId}, now(), now())`;
+    });
+
     return prisma.$transaction(async (tx) => {
-      const results = [];
-      for (const row of rows) {
-        const mark = await tx.mark.upsert(row.upsertArgs);
-        if (row.components) {
-          await tx.markComponentValue.deleteMany({ where: { markId: mark.id } });
-          if (row.components.length) {
-            await tx.markComponentValue.createMany({
-              data: row.components.map((c) => ({
-                markId: mark.id,
-                component: c.component,
-                value: c.value,
-              })),
-            });
+      const inserted = await tx.$queryRaw<{ id: number; student_id: number; book_id: number }[]>`
+        INSERT INTO marks (
+          result_master_id, student_id, exam_id, class_id, book_id,
+          mark, is_absent, is_exempted, is_withheld, note, madrasa_id,
+          created_at, updated_at
+        )
+        VALUES ${Prisma.join(valueRows)}
+        ON CONFLICT (result_master_id, student_id, class_id, book_id)
+        DO UPDATE SET
+          mark = EXCLUDED.mark,
+          exam_id = EXCLUDED.exam_id,
+          is_absent = EXCLUDED.is_absent,
+          is_exempted = EXCLUDED.is_exempted,
+          is_withheld = EXCLUDED.is_withheld,
+          note = EXCLUDED.note,
+          updated_at = now()
+        RETURNING id, student_id, book_id
+      `;
+
+      const markIdByKey = new Map<string, number>();
+      for (const row of inserted) {
+        markIdByKey.set(`${row.student_id}-${row.book_id}`, row.id);
+      }
+
+      const rowsWithComponents = rows.filter((r) => r.components);
+      if (rowsWithComponents.length) {
+        const markIds = rowsWithComponents
+          .map((r) => {
+            const f = fieldsOf(r);
+            return markIdByKey.get(`${f.studentId}-${f.bookId}`);
+          })
+          .filter((id): id is number => id != null);
+
+        if (markIds.length) {
+          await tx.$executeRaw`DELETE FROM mark_component_values WHERE mark_id = ANY(${markIds})`;
+        }
+
+        const componentValueRows: Prisma.Sql[] = [];
+        for (const r of rowsWithComponents) {
+          const f = fieldsOf(r);
+          const markId = markIdByKey.get(`${f.studentId}-${f.bookId}`);
+          if (!markId || !r.components?.length) continue;
+          for (const c of r.components) {
+            componentValueRows.push(Prisma.sql`(${markId}, ${c.component}::"MarkComponentType", ${c.value})`);
           }
         }
-        results.push(mark);
+
+        if (componentValueRows.length) {
+          await tx.$executeRaw`
+            INSERT INTO mark_component_values (mark_id, component, value)
+            VALUES ${Prisma.join(componentValueRows)}
+          `;
+        }
       }
-      return results;
+
+      return inserted;
     });
   }
 
@@ -372,9 +440,17 @@ export class ResultPanelRepository {
    * covers students without a result entry too (placed after ranked
    * students, in their existing roll order) instead of leaving gaps or
    * collisions. */
+  /** "Real, enrolled" students of this class - matches student.service.ts's
+   * listStudents (the entry-grid roster teachers actually see and enter
+   * marks against): admissionStatus must be APPROVED too, not just
+   * isActive. Without this, a PENDING/REJECTED-but-still-isActive row (e.g.
+   * a rejected admission never flipped inactive) is invisible in the marks
+   * grid yet still counted as "required" by findRequiredStudentsInClass /
+   * applyRollByRank below, wrongly blocking submit or getting a roll
+   * number for a student nobody can enter marks for. */
   findActiveStudentsInClass(madrasaId: number, classId: number) {
     return prisma.student.findMany({
-      where: { madrasaId, classId, deletedAt: null, isActive: 1 },
+      where: { madrasaId, classId, deletedAt: null, isActive: 1, admissionStatus: "APPROVED" },
       select: { id: true, roll: true, academicYear: true, nameBn: true },
       orderBy: [{ roll: "asc" }, { id: "asc" }],
     });
@@ -443,6 +519,32 @@ export class ResultPanelRepository {
     ]);
   }
 
+  /** The single undo-slot snapshot for applyRollByRank - see
+   * ResultPanelService.applyRollByRank/undoRollByRank. `null` clears it
+   * (after a successful undo, or if a future caller wants to invalidate it
+   * without performing one). */
+  saveRollSnapshot(
+    resultMasterId: number,
+    madrasaId: number,
+    snapshot: { studentId: number; roll: number | null }[] | null,
+  ) {
+    return prisma.resultMaster.updateMany({
+      where: { id: resultMasterId, madrasaId },
+      data: { previousRollSnapshot: snapshot === null ? Prisma.DbNull : snapshot },
+    });
+  }
+
+  async findRollSnapshot(
+    resultMasterId: number,
+    madrasaId: number,
+  ): Promise<{ studentId: number; roll: number | null }[] | null> {
+    const row = await prisma.resultMaster.findFirst({
+      where: { id: resultMasterId, madrasaId },
+      select: { previousRollSnapshot: true },
+    });
+    return (row?.previousRollSnapshot as { studentId: number; roll: number | null }[] | null) ?? null;
+  }
+
   /** Rebuilds ResultSummary and, in the same transaction, writes
    * `status` onto ResultMaster - defaulting to "DRAFT" (the original
    * behavior every existing caller still relies on: a fresh/re-run process
@@ -479,10 +581,10 @@ export class ResultPanelRepository {
         rm.status AS publish_status,
         (SELECT COUNT(*) FROM students st
            WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.division_id = ${divisionId}
-             AND st.deleted_at IS NULL
+             AND st.deleted_at IS NULL AND st.is_active = 1 AND st.admission_status = 'APPROVED'
         ) AS total_students,
-        (SELECT COUNT(DISTINCT rs.student_id) FROM results_summary rs
-           WHERE rs.result_master_id = rm.id
+        (SELECT COUNT(DISTINCT m.student_id) FROM marks m
+           WHERE m.result_master_id = rm.id
         ) AS entered_students
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
@@ -518,6 +620,12 @@ export class ResultPanelRepository {
     });
   }
 
+  // NOTE: entered_students counts distinct Mark rows, not ResultSummary -
+  // ResultSummary only gets rows once a session is actually PROCESSED, so
+  // sourcing this progress indicator from it made every class show "এন্ট্রি
+  // হয়নি" (not entered) throughout the entire marks-entry phase, even with
+  // marks freshly saved - process is a separate, later step (see
+  // processResult), not a precondition for "has this student been entered".
   findOverviewStatuses(madrasaId: number) {
     return prisma.$queryRaw<OverviewStatusRow[]>`
       SELECT
@@ -528,9 +636,10 @@ export class ResultPanelRepository {
         rm.status AS publish_status,
         (SELECT COUNT(*) FROM students st
            WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.deleted_at IS NULL
+             AND st.is_active = 1 AND st.admission_status = 'APPROVED'
         ) AS total_students,
-        (SELECT COUNT(DISTINCT rs.student_id) FROM results_summary rs
-           WHERE rs.result_master_id = rm.id
+        (SELECT COUNT(DISTINCT m.student_id) FROM marks m
+           WHERE m.result_master_id = rm.id
         ) AS entered_students
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
@@ -557,7 +666,7 @@ export class ResultPanelRepository {
         madrasaGrade: true,
         status: true,
         rankNo: true,
-        resultMaster: { select: { status: true } },
+        resultMaster: { select: { status: true, previousRollSnapshot: true } },
         student: { select: { nameBn: true } },
       },
       orderBy: [{ rankNo: "asc" }, { studentId: "asc" }],

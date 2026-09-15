@@ -71,7 +71,13 @@ export default function DashboardLayout() {
       try {
         const profile = await getMyProfile();
         setAccess(profile.permissions, profile.modules);
-        updateUser({ role_key: profile.role_key, role_label: profile.role_label });
+        updateUser({
+          name: profile.name,
+          mobile: profile.mobile,
+          photo_url: profile.photo_url,
+          role_key: profile.role_key,
+          role_label: profile.role_label,
+        });
       } catch (err) {
         logger.error("Access refresh failed:", err);
       }

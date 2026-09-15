@@ -251,7 +251,9 @@ const madrasaAdminChildren = [
     path: "talimat/results",
     element: (
       <ModuleGuard module="talimat">
-        <PermissionGuard permission="result.read">{withSuspense(<ResultPreviewPage />)}</PermissionGuard>
+        <PermissionGuard permission={["result.read", "result.manage", "marks.submit", "marks.verify"]}>
+          {withSuspense(<ResultPreviewPage />)}
+        </PermissionGuard>
       </ModuleGuard>
     ),
   },

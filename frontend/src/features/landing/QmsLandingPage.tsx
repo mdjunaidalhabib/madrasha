@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import ContactFab from "./ContactFab";
+import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
 // the floating contact button and the Contact section below. Kept in one
@@ -118,6 +119,7 @@ function StepItem({
 }
 
 export default function QmsLandingPage() {
+  const adminAppLoginUrl = getAdminAppLoginUrl();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   // Tracks which section is currently in view so the matching nav link can
   // be highlighted (scrollspy). Defaults to the first nav link's section.
@@ -193,10 +195,10 @@ export default function QmsLandingPage() {
 
           <div className="flex items-center gap-2">
             <a
-              href="#contact"
+              href={adminAppLoginUrl}
               className="hidden items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 sm:inline-flex"
             >
-              ডেমো নিন
+              অ্যাডমিন প্যানেলে যান
               <ArrowRight size={15} />
             </a>
 
@@ -234,11 +236,11 @@ export default function QmsLandingPage() {
                 );
               })}
               <a
-                href="#contact"
+                href={adminAppLoginUrl}
                 onClick={() => setMobileNavOpen(false)}
                 className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
               >
-                ডেমো নিন
+                অ্যাডমিন প্যানেলে যান
                 <ArrowRight size={15} />
               </a>
             </nav>

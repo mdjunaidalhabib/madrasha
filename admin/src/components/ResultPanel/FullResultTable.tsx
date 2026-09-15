@@ -42,12 +42,14 @@ interface Props {
   loading?: boolean;
   publishing?: boolean;
   applyingRoll?: boolean;
+  canUndoRoll?: boolean;
   onView?: (student_id: number) => void;
   onEdit?: () => void;
   onEditStudent?: (student_id: number) => void;
   onDelete?: (result_master_id: number) => void;
   onPublish?: () => void;
   onApplyRollByRank?: () => void;
+  onUndoRollByRank?: () => void;
 }
 
 export default function FullResultTable({
@@ -56,12 +58,14 @@ export default function FullResultTable({
   loading = false,
   publishing = false,
   applyingRoll = false,
+  canUndoRoll = false,
   onView,
   onEdit,
   onEditStudent,
   onDelete,
   onPublish,
   onApplyRollByRank,
+  onUndoRollByRank,
 }: Props) {
   const dataList = Array.isArray(summary) ? summary : [];
   const subjectList = Array.isArray(books) ? books : [];
@@ -142,6 +146,17 @@ export default function FullResultTable({
               className="flex-1 sm:flex-none bg-purple-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
               {applyingRoll ? "রোল আপডেট হচ্ছে..." : "🏆 মেধাক্রম অনুযায়ী রোল"}
+            </button>
+          )}
+
+          {onUndoRollByRank && canUndoRoll && dataList.length > 0 && (
+            <button
+              onClick={onUndoRollByRank}
+              disabled={applyingRoll}
+              title="মেধাক্রম অনুযায়ী বসানো রোলের ঠিক আগের রোল নম্বরগুলো ফিরিয়ে আনবে"
+              className="flex-1 sm:flex-none bg-amber-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+            >
+              ↩️ আগের রোলে ফিরে যান
             </button>
           )}
 

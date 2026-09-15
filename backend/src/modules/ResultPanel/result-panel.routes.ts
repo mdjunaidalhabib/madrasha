@@ -19,6 +19,7 @@ import {
   getSummary,
   publishResult,
   applyRollByRank,
+  undoRollByRank,
   deleteResult,
   getFullResultView,
   getClassStatus,
@@ -34,11 +35,28 @@ router.use(tenantMiddleware, authMiddleware);
 // has a fallback covering result.* (see rbac-policy.ts).
 
 /* ================= SESSION ================= */
-router.post("/session", rbacMiddleware("result.manage"), validate(createSessionSchema), createSession);
+// A role scoped down to just marks entry (marks.manage) or entry+submit
+// (marks.submit) - the intended "ordinary teacher" grant, see
+// RESULT_PERMISSIONS in ResultEntryPage.tsx - must be able to open/create a
+// session and save marks without also holding the much broader
+// result.manage (which additionally allows deleting results, roll-by-rank,
+// etc). Mirrors the same OR pattern already used for mark-component config
+// in mark-component.routes.ts.
+router.post(
+  "/session",
+  requireAnyPermission("result.manage", "marks.manage", "marks.submit"),
+  validate(createSessionSchema),
+  createSession,
+);
 
 /* ================= MARKS ================= */
-router.post("/marks", rbacMiddleware("result.manage"), validate(saveMarksSchema), saveMarks);
-router.get("/marks", rbacMiddleware("result.read"), getMarks);
+router.post(
+  "/marks",
+  requireAnyPermission("result.manage", "marks.manage", "marks.submit"),
+  validate(saveMarksSchema),
+  saveMarks,
+);
+router.get("/marks", requireAnyPermission("result.read", "marks.read", "marks.manage", "marks.submit", "marks.verify"), getMarks);
 
 /* ================= RESULT PROCESS ================= */
 router.post(
@@ -93,6 +111,12 @@ router.post(
   rbacMiddleware("result.manage"),
   validate(applyRollByRankSchema),
   applyRollByRank,
+);
+router.post(
+  "/undo-roll-by-rank",
+  rbacMiddleware("result.manage"),
+  validate(applyRollByRankSchema),
+  undoRollByRank,
 );
 
 /* ================= DELETE ================= */

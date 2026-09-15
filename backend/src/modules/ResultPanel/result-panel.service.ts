@@ -981,6 +981,9 @@ export class ResultPanelService {
       status: r.status,
       rank_no: r.rankNo,
       publish_status: r.resultMaster.status,
+      has_roll_snapshot: Boolean(
+        Array.isArray(r.resultMaster.previousRollSnapshot) && r.resultMaster.previousRollSnapshot.length,
+      ),
     }));
   }
 
@@ -1089,6 +1092,21 @@ export class ResultPanelService {
 
     const roster = await this.repository.findActiveStudentsInClass(madrasaId, master.classId);
 
+    // Snapshot the roll every one of these students holds RIGHT NOW, but
+    // only if there's no snapshot already sitting there - re-applying merit
+    // order a second/third time (e.g. after correcting a mark and
+    // reprocessing) must NOT overwrite it with what is by then already a
+    // merit-order roll, or undo would only ever bounce between two
+    // merit-order states and the original manually-set rolls would become
+    // unrecoverable. The slot only clears via an explicit undo, so it keeps
+    // pointing at the true "before any of this" state across repeated
+    // applies until the user actually reverts.
+    const existingSnapshot = await this.repository.findRollSnapshot(resultMasterId, madrasaId);
+    if (!existingSnapshot || !existingSnapshot.length) {
+      const snapshot = roster.map((s) => ({ studentId: s.id, roll: s.roll }));
+      await this.repository.saveRollSnapshot(resultMasterId, madrasaId, snapshot);
+    }
+
     const rankedIds = new Set(ranked.map((r) => r.studentId));
     const unranked = roster.filter((s) => !rankedIds.has(s.id));
 
@@ -1101,7 +1119,35 @@ export class ResultPanelService {
 
     await this.repository.reassignRollsInTransaction(assignments);
 
-    return { message: "Roll reassigned by result rank", updated: assignments.length };
+    return { message: "Roll reassigned by result rank", updated: assignments.length, can_undo: true };
+  }
+
+  /** Restores the roll numbers captured before the FIRST applyRollByRank
+   * call since the last undo (not "the last apply" - see the snapshot
+   * guard there), then clears the snapshot so the next apply starts a new
+   * one. A second undo attempt with nothing left to revert correctly
+   * reports that instead of silently no-op'ing. */
+  async undoRollByRank(madrasaId: number, resultMasterId: number) {
+    if (!resultMasterId) {
+      throw new BadRequestError("result_master_id is required");
+    }
+
+    const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
+    if (!master) throw new NotFoundError("Result session not found");
+
+    const snapshot = await this.repository.findRollSnapshot(resultMasterId, madrasaId);
+    if (!snapshot || !snapshot.length) {
+      throw new BadRequestError("ফিরিয়ে নেওয়ার মতো কোনো পূর্ববর্তী রোল সংরক্ষিত নেই।");
+    }
+
+    const assignments = snapshot
+      .filter((row: any) => row && row.studentId && row.roll != null)
+      .map((row: any) => ({ studentId: Number(row.studentId), roll: Number(row.roll) }));
+
+    await this.repository.reassignRollsInTransaction(assignments);
+    await this.repository.saveRollSnapshot(resultMasterId, madrasaId, null);
+
+    return { message: "পূর্ববর্তী রোল নম্বর ফিরিয়ে আনা হয়েছে", updated: assignments.length };
   }
 
   async deleteResult(madrasaId: number, id: number) {

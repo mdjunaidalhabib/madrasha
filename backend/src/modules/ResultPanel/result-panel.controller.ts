@@ -161,6 +161,19 @@ export const applyRollByRank = async (req: Request, res: Response) => {
   }
 };
 
+export const undoRollByRank = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const result = await resultPanelService.undoRollByRank(
+      madrasa_id,
+      toNumber(req.body?.result_master_id),
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    respondError(res, error, "undoRollByRank error:", "Failed to undo roll reassignment");
+  }
+};
+
 /* ================= DELETE RESULT ================= */
 export const deleteResult = async (req: Request, res: Response) => {
   try {

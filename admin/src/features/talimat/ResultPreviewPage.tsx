@@ -99,6 +99,7 @@ export default function ResultPreviewPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [applyingRoll, setApplyingRoll] = useState(false);
+  const [canUndoRoll, setCanUndoRoll] = useState(false);
 
   const [failMark, setFailMark] = useState(33);
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
@@ -168,10 +169,12 @@ export default function ResultPreviewPage() {
           fullStudents.map((student: any) => ({ ...student, publish_status: publishStatus })),
         );
         setSummaryBooks(fullBooks);
+        setCanUndoRoll(Boolean(summaryData[0]?.has_roll_snapshot));
       } else {
         setSummary([]);
         setSummaryBooks([]);
         setResultMasterId(null);
+        setCanUndoRoll(false);
       }
     } catch (err) {
       logger.error("Load summary error:", err);
@@ -293,25 +296,70 @@ export default function ResultPreviewPage() {
     }
   };
 
+  // Reassigns every roll in the class at once and can't be targeted back to
+  // just one student, so this asks twice before running - the second,
+  // sterner prompt is the actual point of no casual return; the first just
+  // explains what's about to happen. A one-level undo (see
+  // handleUndoRollByRank) still backs this up either way.
   const handleApplyRollByRank = () => {
     if (!resultMasterId) return push("error", "No processed result found");
 
     useConfirmStore.getState().show({
-      title: "রোল আপডেট নিশ্চিত করুন",
+      title: "রোল আপডেট নিশ্চিত করুন (১/২)",
       message:
         "এই ফলাফলের মেধাক্রম অনুযায়ী পুরো ক্লাসের রোল নম্বর নতুন করে বসানো হবে (রোল ১ = সর্বোচ্চ নম্বরপ্রাপ্ত)। " +
         "পুরনো পরীক্ষার মার্কশিটে কোনো প্রভাব পড়বে না। এগিয়ে যেতে চান?",
       confirmText: "এগিয়ে যান",
+      onConfirm: () => {
+        useConfirmStore.getState().show({
+          title: "শেষবারের মতো নিশ্চিত করুন (২/২)",
+          message:
+            "আপনি কি সত্যিই নিশ্চিত? এখনই পুরো ক্লাসের প্রত্যেক শিক্ষার্থীর রোল নম্বর বদলে যাবে। " +
+            "যতবারই এটি প্রয়োগ করুন না কেন, \"আগের রোলে ফিরে যান\" বাটন সবসময় একদম প্রথম (মূল) রোল নম্বরে ফিরিয়ে নেবে — " +
+            "যতক্ষণ না একবার সেটি চেপে ফিরিয়ে নিচ্ছেন।",
+          confirmText: "হ্যাঁ, নিশ্চিত — এখনই করুন",
+          danger: true,
+          onConfirm: async () => {
+            try {
+              setApplyingRoll(true);
+              await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
+              await loadSummary();
+              await loadOverview();
+              push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
+            } catch (err: any) {
+              logger.error("Apply roll by rank error:", err);
+              push("error", err?.response?.data?.message || "রোল আপডেট করা যায়নি");
+            } finally {
+              setApplyingRoll(false);
+            }
+          },
+        });
+      },
+    });
+  };
+
+  // One-level undo back to the roll numbers captured right before the last
+  // applyRollByRank call (see previousRollSnapshot on ResultMaster) - not a
+  // full history stack, just a way back from a merit-order apply nobody
+  // meant to keep.
+  const handleUndoRollByRank = () => {
+    if (!resultMasterId) return;
+
+    useConfirmStore.getState().show({
+      title: "আগের রোলে ফিরে যান",
+      message:
+        "মেধাক্রম অনুযায়ী বসানো রোল বাতিল করে, তার ঠিক আগে যে রোল নম্বরগুলো ছিল তা ফিরিয়ে আনা হবে। এগিয়ে যেতে চান?",
+      confirmText: "ফিরিয়ে আনুন",
       onConfirm: async () => {
         try {
           setApplyingRoll(true);
-          await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
+          await api.post("/results/undo-roll-by-rank", { result_master_id: resultMasterId });
           await loadSummary();
           await loadOverview();
-          push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
-        } catch (err) {
-          logger.error("Apply roll by rank error:", err);
-          push("error", "রোল আপডেট করা যায়নি");
+          push("success", "আগের রোল নম্বর ফিরিয়ে আনা হয়েছে");
+        } catch (err: any) {
+          logger.error("Undo roll by rank error:", err);
+          push("error", err?.response?.data?.message || "ফিরিয়ে আনা যায়নি");
         } finally {
           setApplyingRoll(false);
         }
@@ -369,6 +417,8 @@ export default function ResultPreviewPage() {
             publishing={publishing}
             onApplyRollByRank={handleApplyRollByRank}
             applyingRoll={applyingRoll}
+            canUndoRoll={canUndoRoll}
+            onUndoRollByRank={handleUndoRollByRank}
           />
         </>
       ) : (
