@@ -50,6 +50,27 @@ const numberValue = (value: unknown): number | null => {
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 };
 
+const activeLabel = (isActive: unknown) => (isActive ? "সক্রিয়" : "নিষ্ক্রিয়");
+
+/** Diffs only the fields actually present in `data` against their prior
+ * value on `existing`, so a settings-update activity log line shows exactly
+ * what an admin changed (old → new) instead of a shapeless dump of the
+ * whole row. */
+const describeChanges = (
+  existing: Record<string, unknown>,
+  data: Record<string, unknown>,
+  fields: Array<{ key: string; label: string; format?: (v: unknown) => unknown }>,
+): string => {
+  const parts: string[] = [];
+  for (const { key, label, format } of fields) {
+    if (data[key] === undefined) continue;
+    const before = format ? format(existing[key]) : existing[key];
+    const after = format ? format(data[key]) : data[key];
+    if (String(before) !== String(after)) parts.push(`${label}: ${before ?? "—"} → ${after}`);
+  }
+  return parts.length ? parts.join(", ") : "কোনো পরিবর্তন নেই";
+};
+
 export class AccountService {
   constructor(private readonly repository: AccountRepository = accountRepository) {}
 
@@ -76,16 +97,26 @@ export class AccountService {
     return this.repository.findFunds(madrasaId, type);
   }
 
-  async createFund(madrasaId: number, body: CreateFundRequestDto) {
+  async createFund(madrasaId: number, userId: number, body: CreateFundRequestDto) {
     const name = clean(body.name);
     if (!name || (body.type !== "income" && body.type !== "expense")) throw new FundValidationError();
 
     const fundCount = await this.repository.countFunds(madrasaId);
     const created = await this.repository.createFund({ madrasaId, type: body.type, name, sortOrder: fundCount });
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "CREATE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.FUND,
+      entity_id: created.id,
+      details: `নতুন ফান্ড/বিভাগ যোগ করা হয়েছে — নাম: ${name}, ধরন: ${body.type === "income" ? "আয়" : "ব্যয়"}`,
+    });
+
     return { message: FUND_CREATE_SUCCESS_MESSAGE, id: created.id };
   }
 
-  async updateFund(madrasaId: number, id: number, body: UpdateFundRequestDto) {
+  async updateFund(madrasaId: number, userId: number, id: number, body: UpdateFundRequestDto) {
     const existing = await this.repository.findFundForTenant(id, madrasaId);
     if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
 
@@ -99,18 +130,43 @@ export class AccountService {
     if (body.is_active !== undefined) data.isActive = Boolean(body.is_active);
 
     const updated = await this.repository.updateFund(id, data);
+
+    const changeSummary = describeChanges(existing, data as Record<string, unknown>, [
+      { key: "name", label: "নাম" },
+      { key: "sortOrder", label: "ক্রম" },
+      { key: "isActive", label: "অবস্থা", format: activeLabel },
+    ]);
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UPDATE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.FUND,
+      entity_id: updated.id,
+      details: `ফান্ড/বিভাগ আপডেট করা হয়েছে (${existing.name}) — ${changeSummary}`,
+    });
+
     return { message: FUND_UPDATE_SUCCESS_MESSAGE, id: updated.id };
   }
 
-  async deleteFund(madrasaId: number, id: number) {
+  async deleteFund(madrasaId: number, userId: number, id: number) {
     const existing = await this.repository.findFundForTenant(id, madrasaId);
     if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
 
     await this.repository.deleteFund(id);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "DELETE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.FUND,
+      entity_id: id,
+      details: `ফান্ড/বিভাগ মুছে ফেলা হয়েছে — নাম: ${existing.name}, ধরন: ${existing.type === "income" ? "আয়" : "ব্যয়"}`,
+    });
+
     return { message: FUND_DELETE_SUCCESS_MESSAGE };
   }
 
-  async createCategory(madrasaId: number, fundId: number, body: CreateCategoryRequestDto) {
+  async createCategory(madrasaId: number, userId: number, fundId: number, body: CreateCategoryRequestDto) {
     const fund = await this.repository.findFundForTenant(fundId, madrasaId);
     if (!fund) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
 
@@ -123,10 +179,20 @@ export class AccountService {
       name,
       sortOrder: categoryCount,
     });
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "CREATE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.CATEGORY,
+      entity_id: created.id,
+      details: `নতুন খাত যোগ করা হয়েছে — নাম: ${name}, ফান্ড: ${fund.name}`,
+    });
+
     return { message: CATEGORY_CREATE_SUCCESS_MESSAGE, id: created.id };
   }
 
-  async updateCategory(madrasaId: number, id: number, body: UpdateCategoryRequestDto) {
+  async updateCategory(madrasaId: number, userId: number, id: number, body: UpdateCategoryRequestDto) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
     if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
 
@@ -140,14 +206,39 @@ export class AccountService {
     if (body.is_active !== undefined) data.isActive = Boolean(body.is_active);
 
     const updated = await this.repository.updateCategory(id, data);
+
+    const changeSummary = describeChanges(existing, data as Record<string, unknown>, [
+      { key: "name", label: "নাম" },
+      { key: "sortOrder", label: "ক্রম" },
+      { key: "isActive", label: "অবস্থা", format: activeLabel },
+    ]);
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UPDATE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.CATEGORY,
+      entity_id: updated.id,
+      details: `খাত আপডেট করা হয়েছে (${existing.name}, ফান্ড: ${existing.fund.name}) — ${changeSummary}`,
+    });
+
     return { message: CATEGORY_UPDATE_SUCCESS_MESSAGE, id: updated.id };
   }
 
-  async deleteCategory(madrasaId: number, id: number) {
+  async deleteCategory(madrasaId: number, userId: number, id: number) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
     if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
 
     await this.repository.deleteCategory(id);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "DELETE",
+      entity: ACCOUNT_ACTIVITY_ENTITY.CATEGORY,
+      entity_id: id,
+      details: `খাত মুছে ফেলা হয়েছে — নাম: ${existing.name}, ফান্ড: ${existing.fund.name}`,
+    });
+
     return { message: CATEGORY_DELETE_SUCCESS_MESSAGE };
   }
 
@@ -194,7 +285,7 @@ export class AccountService {
       action: "CREATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.INCOME,
       entity_id: created.id,
-      details: `আয় যোগ করা হয়েছে: ${amount} টাকা`,
+      details: `আয় যোগ করা হয়েছে — দাতা: ${donor_name}, পরিমাণ: ${amount} টাকা, ফান্ড: ${fund}, খাত: ${category}, পদ্ধতি: ${payment_method}`,
     });
 
     return { message: INCOME_SUCCESS_MESSAGE, id: created.id };
@@ -241,7 +332,7 @@ export class AccountService {
       action: "CREATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: created.id,
-      details: `ব্যয় যোগ করা হয়েছে: ${amount} টাকা`,
+      details: `ব্যয় যোগ করা হয়েছে — গ্রহীতা: ${receiver_name}, পরিমাণ: ${amount} টাকা, ফান্ড: ${fund}, খাত: ${category}, পদ্ধতি: ${payment_method}`,
     });
 
     return { message: EXPENSE_SUCCESS_MESSAGE, id: created.id };
@@ -334,6 +425,7 @@ export class AccountService {
 
     const updated = await this.repository.update(id, data);
 
+    const updatedName = existing.type === "income" ? updated.donorName : updated.receiverName;
     await logActivity({
       madrasa_id: madrasaId,
       user_id: userId,
@@ -341,7 +433,7 @@ export class AccountService {
       entity:
         existing.type === "income" ? ACCOUNT_ACTIVITY_ENTITY.INCOME : ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: updated.id,
-      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} হালনাগাদ করা হয়েছে: ${updated.amount} টাকা`,
+      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} হালনাগাদ করা হয়েছে — ${existing.type === "income" ? "দাতা" : "গ্রহীতা"}: ${updatedName || "অজানা"}, পরিমাণ: ${updated.amount} টাকা, ফান্ড: ${updated.fund || "অজানা"}, খাত: ${updated.category || "অজানা"}, পদ্ধতি: ${updated.paymentMethod || "অজানা"}`,
     });
 
     return { message: ACCOUNT_UPDATE_SUCCESS_MESSAGE, id: updated.id };
@@ -353,6 +445,7 @@ export class AccountService {
 
     await this.repository.softDelete(id);
 
+    const existingName = existing.type === "income" ? existing.donorName : existing.receiverName;
     await logActivity({
       madrasa_id: madrasaId,
       user_id: userId,
@@ -360,7 +453,7 @@ export class AccountService {
       entity:
         existing.type === "income" ? ACCOUNT_ACTIVITY_ENTITY.INCOME : ACCOUNT_ACTIVITY_ENTITY.EXPENSE,
       entity_id: id,
-      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} মুছে ফেলা হয়েছে: ${existing.amount} টাকা`,
+      details: `${existing.type === "income" ? "আয়" : "ব্যয়"} মুছে ফেলা হয়েছে — ${existing.type === "income" ? "দাতা" : "গ্রহীতা"}: ${existingName || "অজানা"}, পরিমাণ: ${existing.amount} টাকা, ফান্ড: ${existing.fund || "অজানা"}, খাত: ${existing.category || "অজানা"}`,
     });
 
     return { message: ACCOUNT_DELETE_SUCCESS_MESSAGE };

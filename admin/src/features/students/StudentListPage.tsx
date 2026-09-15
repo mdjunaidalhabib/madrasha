@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import FilterSelect from "../../components/common/FilterSelect";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
@@ -539,8 +540,8 @@ const StudentListPage = () => {
   }, [filteredStudents, getDivisionName, getClassName]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
-      <div className="mx-auto max-w-7xl">
+    <div className="flex min-h-full flex-col bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -566,14 +567,14 @@ const StudentListPage = () => {
                 placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[240px]"
+                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[190px]"
               />
 
               {/* সেশন ফিল্টার — ডিফল্টে চলমান সেশন নির্বাচিত থাকে */}
-              <select
+              <FilterSelect
                 value={selectedSessionId ?? ""}
-                onChange={(event) => setSelectedSessionId(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
+                onChange={setSelectedSessionId}
+                wrapperClassName="w-full sm:w-[125px]"
               >
                 <option value="">সব সেশন</option>
                 {sessions.map((s) => (
@@ -581,16 +582,15 @@ const StudentListPage = () => {
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
 
-              <select
+              <FilterSelect
                 value={selectedDivision}
-                onChange={(event) => {
-                  const value = event.target.value;
+                onChange={(value) => {
                   setSelectedDivision(value);
                   loadClassesByDivision(value);
                 }}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
+                wrapperClassName="w-full sm:w-[125px]"
               >
                 <option value="">সব বিভাগ</option>
 
@@ -599,13 +599,13 @@ const StudentListPage = () => {
                     {division.division_name_bn}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
 
-              <select
+              <FilterSelect
                 value={selectedClass}
-                onChange={(event) => setSelectedClass(event.target.value)}
+                onChange={setSelectedClass}
                 disabled={!selectedDivision || classLoading}
-                className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:col-auto sm:w-[180px]"
+                wrapperClassName="col-span-full w-full sm:col-auto sm:w-[150px]"
               >
                 <option value="">
                   {classLoading
@@ -620,17 +620,13 @@ const StudentListPage = () => {
                     {classItem.class_name_bn}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
 
-              <select
-                value={selectedGender}
-                onChange={(event) => setSelectedGender(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[140px]"
-              >
+              <FilterSelect value={selectedGender} onChange={setSelectedGender} wrapperClassName="w-full sm:w-auto">
                 <option value="">সব লিঙ্গ</option>
                 <option value={1}>ছেলে</option>
                 <option value={2}>মেয়ে</option>
-              </select>
+              </FilterSelect>
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
@@ -826,9 +822,13 @@ const StudentListPage = () => {
               </div>
             </div>
 
+            {/* বাকি জায়গাটুকু খালি স্পেসার — তালিকা ছোট হলেও পেজিনেশন বার সবসময়
+                স্ক্রিনের একদম নিচেই বসবে, মাঝে ফাঁকা জায়গা থাকবে */}
+            <div className="flex-1" />
+
             {/* Pagination — ২০/৫০/১০০ জন করে পাতায় দেখায়, বাকিরা Prev/Next দিয়ে */}
-            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:flex-row">
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 sm:text-sm">
+            <div className="mt-3 flex flex-col items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 shadow-sm dark:bg-slate-900 sm:flex-row">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                 <span>
                   দেখাচ্ছে {toBanglaDigits(rangeStart)}–{toBanglaDigits(rangeEnd)}, মোট{" "}
                   {toBanglaDigits(filteredStudents.length)} জন
@@ -836,7 +836,7 @@ const StudentListPage = () => {
                 <select
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:text-sm"
+                  className="h-6 rounded-md border border-gray-300 px-1.5 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
                   {[20, 50, 100].map((size) => (
                     <option key={size} value={size}>
@@ -846,23 +846,23 @@ const StudentListPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
+                  className="h-6 rounded-md border border-gray-300 px-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   আগের
                 </button>
-                <span className="text-xs text-gray-600 dark:text-slate-400 sm:text-sm">
+                <span className="text-xs text-gray-600 dark:text-slate-400">
                   পাতা {toBanglaDigits(currentPage)} / {toBanglaDigits(totalPages)}
                 </span>
                 <button
                   type="button"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
+                  className="h-6 rounded-md border border-gray-300 px-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   পরের
                 </button>

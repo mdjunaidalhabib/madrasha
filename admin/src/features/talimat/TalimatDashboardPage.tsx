@@ -213,7 +213,7 @@ export default function TalimatDashboardPage() {
             ফলাফল প্রিভিউ
           </Link>
           <Link
-            className="flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+            className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/talimat/settings"
           >
             <BookOpen size={16} /> সেটিং

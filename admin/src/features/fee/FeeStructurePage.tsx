@@ -16,6 +16,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { Skeleton, SkeletonText } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -52,7 +54,6 @@ const normalizeArray = (payload: any) => {
 };
 
 const emptyStructureForm = {
-  name: "",
   amount: "",
   frequency: "MONTHLY" as FeeFrequency,
   fee_type: "" as FeeType,
@@ -184,8 +185,8 @@ const FeeStructurePage = () => {
   }, [loadStructures]);
 
   const handleCreateStructure = async () => {
-    if (!structureForm.name.trim() || !structureForm.amount || !structureForm.session_id) {
-      useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
+    if (!structureForm.fee_type || !structureForm.amount || !structureForm.session_id) {
+      useToastStore.getState().show("ফি ধরণ, পরিমাণ ও সেশন দিন", "error");
       return;
     }
     if (structureForm.fee_type === EXAM_FEE_TYPE_NAME && !structureForm.exam_id) {
@@ -199,7 +200,7 @@ const FeeStructurePage = () => {
       const examId = structureForm.exam_id ? Number(structureForm.exam_id) : undefined;
       await feeStructureApi.create({
         class_id: structureClassId,
-        name: structureForm.name.trim(),
+        name: structureForm.fee_type,
         amount: Number(structureForm.amount),
         frequency: structureForm.frequency,
         fee_type: structureForm.fee_type,
@@ -249,7 +250,6 @@ const FeeStructurePage = () => {
   const openEditModal = (structure: FeeStructureRow) => {
     setEditTarget(structure);
     setEditForm({
-      name: structure.name,
       amount: String(structure.amount),
       frequency: structure.frequency,
       fee_type: structure.feeType || "",
@@ -260,8 +260,8 @@ const FeeStructurePage = () => {
 
   const handleUpdateStructure = async () => {
     if (!editTarget) return;
-    if (!editForm.name.trim() || !editForm.amount || !editForm.session_id) {
-      useToastStore.getState().show("নাম, পরিমাণ ও সেশন দিন", "error");
+    if (!editForm.fee_type || !editForm.amount || !editForm.session_id) {
+      useToastStore.getState().show("ফি ধরণ, পরিমাণ ও সেশন দিন", "error");
       return;
     }
     if (editForm.fee_type === EXAM_FEE_TYPE_NAME && !editForm.exam_id) {
@@ -273,7 +273,7 @@ const FeeStructurePage = () => {
     try {
       setEditSaving(true);
       await feeStructureApi.update(editTarget.id, {
-        name: editForm.name.trim(),
+        name: editForm.fee_type,
         amount: Number(editForm.amount),
         frequency: editForm.frequency,
         fee_type: editForm.fee_type,
@@ -405,13 +405,13 @@ const FeeStructurePage = () => {
   }, [structures]);
 
   const isCreateFormValid =
-    structureForm.name.trim() !== "" &&
+    structureForm.fee_type !== "" &&
     structureForm.amount !== "" &&
     structureForm.session_id !== "" &&
     (structureForm.fee_type !== EXAM_FEE_TYPE_NAME || structureForm.exam_id !== "");
 
   const isEditFormValid =
-    editForm.name.trim() !== "" &&
+    editForm.fee_type !== "" &&
     editForm.amount !== "" &&
     editForm.session_id !== "" &&
     (editForm.fee_type !== EXAM_FEE_TYPE_NAME || editForm.exam_id !== "");
@@ -427,41 +427,6 @@ const FeeStructurePage = () => {
           </p>
         </div>
 
-        {/* Division/Class picker */}
-        <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            <select
-              value={division}
-              onChange={(event) => {
-                const value = event.target.value;
-                setDivision(value);
-                loadClasses(value);
-              }}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
-            >
-              <option value="">বিভাগ (ফিল্টার)</option>
-              {divisions.map((d) => (
-                <option key={d.division_id} value={d.division_id}>
-                  {d.division_name_bn}
-                </option>
-              ))}
-            </select>
-            <select
-              value={classId}
-              onChange={(event) => setClassId(event.target.value)}
-              disabled={!division || classLoading}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
-            >
-              <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি (ফিল্টার)"}</option>
-              {classes.map((c) => (
-                <option key={c.class_id} value={c.class_id}>
-                  {c.class_name_bn}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
             নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
@@ -473,31 +438,36 @@ const FeeStructurePage = () => {
             না, বরং শুধু তখনই বিল হবে যখন আপনি এটা তৈরি বা এডিট করবেন — অর্থাৎ যখন পরীক্ষাটা সত্যিই আসন্ন।
           </p>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
-            <div className="w-full sm:w-[200px]">
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                নাম <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="যেমন: মাসিক বেতন"
-                value={structureForm.name}
-                onChange={(e) => setStructureForm((p) => ({ ...p, name: e.target.value }))}
+            <div className="w-full sm:w-auto">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-xs font-medium text-gray-600 dark:text-slate-400">
+                  ফি ধরণ <span className="text-rose-500">*</span>
+                </label>
+                <Link
+                  to="/ihtemam/fee-categories"
+                  className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  ফি ধরণ ম্যানেজ করুন
+                </Link>
+              </div>
+              <select
+                value={structureForm.fee_type}
+                onChange={(e) =>
+                  setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType, exam_id: "" }))
+                }
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
+              >
+                <option value="">নির্বাচন করুন</option>
+                {categories
+                  .filter((c) => c.isActive)
+                  .map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
             </div>
-            <div className="w-full sm:w-[130px]">
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                পরিমাণ (৳) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                placeholder="পরিমাণ"
-                value={structureForm.amount}
-                onChange={(e) => setStructureForm((p) => ({ ...p, amount: e.target.value }))}
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div className="w-full sm:w-[130px]">
+            <div className="w-full sm:w-auto">
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 ফ্রিকোয়েন্সি
               </label>
@@ -515,61 +485,83 @@ const FeeStructurePage = () => {
                 ))}
               </select>
             </div>
-            <div className="w-full sm:w-[140px]">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="block text-xs font-medium text-gray-600 dark:text-slate-400">
-                  ফি ধরণ
-                </label>
-                <Link
-                  to="/ihtemam/fee-categories"
-                  className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  ফি ধরণ ম্যানেজ করুন
-                </Link>
-              </div>
+            <div className="w-full sm:w-auto">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                পরিমাণ (৳) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="পরিমাণ"
+                value={structureForm.amount}
+                onChange={(e) =>
+                  setStructureForm((p) => ({ ...p, amount: normalizeBanglaDigits(e.target.value) }))
+                }
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-32"
+              />
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">বিভাগ</label>
               <select
-                value={structureForm.fee_type}
-                onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
+                value={division}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDivision(value);
+                  loadClasses(value);
+                }}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="">নির্বাচন করুন</option>
-                {categories
-                  .filter((c) => c.isActive)
-                  .map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="w-full sm:w-[180px]">
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                যুক্ত পরীক্ষা
-                {structureForm.fee_type === EXAM_FEE_TYPE_NAME && (
-                  <span className="text-rose-500"> *</span>
-                )}
-              </label>
-              <select
-                value={structureForm.exam_id}
-                onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
-                disabled={exams.length === 0}
-                title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি/এডিট করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে"
-                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
-              >
-                <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
-                {exams.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.year})
+                <option value="">সাধারণ (সব বিভাগ)</option>
+                {divisions.map((d) => (
+                  <option key={d.division_id} value={d.division_id}>
+                    {d.division_name_bn}
                   </option>
                 ))}
               </select>
-              {exams.length === 0 && (
-                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-                  এখনো কোনো পরীক্ষা তৈরি করা নেই - এই ফি এখন ভর্তির সাথে সাথেই বিল হবে। পরীক্ষার ফি হলে, পরে পরীক্ষা তৈরি করে এখানে এসে এটি এডিট করে যুক্ত করে দিন।
-                </p>
-              )}
             </div>
-            <div className="w-full sm:w-[140px]">
+            <div className="w-full sm:w-auto">
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শ্রেণি</label>
+              <select
+                value={classId}
+                onChange={(event) => setClassId(event.target.value)}
+                disabled={!division || classLoading}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
+              >
+                <option value="">{classLoading ? "লোড হচ্ছে..." : "সাধারণ (সব শ্রেণি)"}</option>
+                {classes.map((c) => (
+                  <option key={c.class_id} value={c.class_id}>
+                    {c.class_name_bn}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {structureForm.fee_type === EXAM_FEE_TYPE_NAME && (
+              <div className="w-full sm:w-auto sm:max-w-[220px]">
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                  যুক্ত পরীক্ষা <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={structureForm.exam_id}
+                  onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
+                  disabled={exams.length === 0}
+                  title="পরীক্ষার ফি ভর্তির সাথে সাথে বিল হয় না - বরং তৈরি/এডিট করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হয়"
+                  className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+                >
+                  <option value="">নির্বাচন করুন</option>
+                  {exams.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} ({ex.year})
+                    </option>
+                  ))}
+                </select>
+                {exams.length === 0 && (
+                  <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    এখনো কোনো পরীক্ষা তৈরি করা নেই - আগে একটি পরীক্ষা তৈরি করুন, তারপর এখানে যুক্ত করুন।
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="w-full sm:w-auto">
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                 সেশন <span className="text-rose-500">*</span>
               </label>
@@ -600,7 +592,33 @@ const FeeStructurePage = () => {
 
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {structuresLoading ? (
-            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, groupIdx) => (
+                <div key={groupIdx} className="rounded-xl border border-gray-200 p-3 dark:border-slate-700">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <SkeletonText width="w-24" />
+                    <Skeleton className="h-4 w-8 rounded-full" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {Array.from({ length: 3 }).map((_, itemIdx) => (
+                      <div
+                        key={itemIdx}
+                        className="flex items-center gap-2 rounded-lg border border-gray-100 px-2.5 py-2 dark:border-slate-800"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <SkeletonText width="w-2/3" />
+                          <div className="flex gap-1">
+                            <Skeleton className="h-3.5 w-14 rounded" />
+                            <Skeleton className="h-3.5 w-10 rounded" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-5 w-8 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : structures.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো ফি কাঠামো নেই</div>
           ) : (
@@ -705,22 +723,25 @@ const FeeStructurePage = () => {
       >
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নাম</label>
-            <input
-              type="text"
-              value={editForm.name}
-              onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              ফি ধরণ <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={editForm.fee_type}
+              onChange={(e) =>
+                setEditForm((p) => ({ ...p, fee_type: e.target.value as FeeType, exam_id: "" }))
+              }
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
-            <input
-              type="number"
-              value={editForm.amount}
-              onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
+            >
+              <option value="">নির্বাচন করুন</option>
+              {categories
+                .filter((c) => c.isActive || c.name === editForm.fee_type)
+                .map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফ্রিকোয়েন্সি</label>
@@ -737,46 +758,42 @@ const FeeStructurePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফি ধরণ</label>
-            <select
-              value={editForm.fee_type}
-              onChange={(e) => setEditForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={editForm.amount}
+              onChange={(e) =>
+                setEditForm((p) => ({ ...p, amount: normalizeBanglaDigits(e.target.value) }))
+              }
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value="">নির্বাচন করুন</option>
-              {categories
-                .filter((c) => c.isActive || c.name === editForm.fee_type)
-                .map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
+            />
+          </div>
+          {editForm.fee_type === EXAM_FEE_TYPE_NAME && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                যুক্ত পরীক্ষা <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={editForm.exam_id}
+                onChange={(e) => setEditForm((p) => ({ ...p, exam_id: e.target.value }))}
+                disabled={exams.length === 0}
+                className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+              >
+                <option value="">নির্বাচন করুন</option>
+                {exams.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name} ({ex.year})
                   </option>
                 ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              যুক্ত পরীক্ষা
-              {editForm.fee_type === EXAM_FEE_TYPE_NAME && <span className="text-rose-500"> *</span>}
-            </label>
-            <select
-              value={editForm.exam_id}
-              onChange={(e) => setEditForm((p) => ({ ...p, exam_id: e.target.value }))}
-              disabled={exams.length === 0}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
-            >
-              <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
-              {exams.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name} ({ex.year})
-                </option>
-              ))}
-            </select>
-            {exams.length === 0 && (
-              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-                এখনো কোনো পরীক্ষা তৈরি করা নেই - এই ফি এখন ভর্তির সাথে সাথেই বিল হবে। পরীক্ষার ফি হলে, পরে পরীক্ষা তৈরি করে এখানে এসে এটি যুক্ত করে দিন।
-              </p>
-            )}
-          </div>
+              </select>
+              {exams.length === 0 && (
+                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  এখনো কোনো পরীক্ষা তৈরি করা নেই - আগে একটি পরীক্ষা তৈরি করুন, তারপর এখানে যুক্ত করুন।
+                </p>
+              )}
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সেশন</label>
             <select

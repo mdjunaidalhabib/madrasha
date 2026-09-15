@@ -6,6 +6,7 @@ import DataExportPrintActions, {
   PageMargins,
   ServerPdfExportConfig,
 } from "../common/DataExportPrintActions";
+import FilterSelect from "../common/FilterSelect";
 import {
   ClassItem,
   Division,
@@ -17,6 +18,11 @@ import type { TemplateListItemDto } from "../../services/documentTemplateLibrary
 
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
+// Selects use FilterSelect (custom animated chevron) instead of the native
+// arrow - appearance-none hides that, pr-5 keeps text clear of the icon.
+const selectFieldClass = `${fieldClass} appearance-none pr-5`;
+const selectIconClass =
+  "pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500";
 
 type ReportFilterBarProps = {
   showSearch?: boolean;
@@ -100,10 +106,12 @@ const ReportFilterBar = ({
         )}
 
         {activeReport.requiresExam && (
-          <select
+          <FilterSelect
             value={selectedExam}
-            onChange={(e) => onExamChange(e.target.value)}
-            className={`${fieldClass} min-w-[130px] flex-1 sm:w-auto sm:flex-none`}
+            onChange={onExamChange}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
           >
             <option value="">পরীক্ষা নির্বাচন করুন</option>
             {exams.map((exam) => (
@@ -112,13 +120,15 @@ const ReportFilterBar = ({
                 {exam.year ? ` (${exam.year})` : ""}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
 
-        <select
+        <FilterSelect
           value={selectedDivision}
-          onChange={(e) => onDivisionChange(e.target.value)}
-          className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
+          onChange={onDivisionChange}
+          wrapperClassName="min-w-[100px] flex-1 sm:w-auto sm:flex-none"
+          selectClassName={selectFieldClass}
+          iconClassName={selectIconClass}
         >
           <option value="">{divisionRequired ? "বিভাগ নির্বাচন করুন" : "সকল বিভাগ"}</option>
           {divisionRequired && <option value="all">সকল বিভাগ</option>}
@@ -127,18 +137,20 @@ const ReportFilterBar = ({
               {division.division_name_bn}
             </option>
           ))}
-        </select>
+        </FilterSelect>
 
         {/* Teacher rows carry no class_id (teachers belong to a division, not
             a single class) - selecting a class would silently filter every
             row out, so this control just never shows for those two report
             types. */}
         {activeReport.printable !== "teacher-list" && activeReport.printable !== "teacher-phone-list" && (
-          <select
+          <FilterSelect
             value={selectedClass}
-            onChange={(e) => onClassChange(e.target.value)}
+            onChange={onClassChange}
             disabled={!selectedDivision || selectedDivision === "all"}
-            className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
+            wrapperClassName="min-w-[100px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
           >
             <option value="">
               {selectedDivision && selectedDivision !== "all" ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}
@@ -148,15 +160,17 @@ const ReportFilterBar = ({
                 {cls.class_name_bn}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
 
         {activeReport.hasSubjectFilter && (
-          <select
+          <FilterSelect
             value={selectedSubject}
-            onChange={(e) => onSubjectChange(e.target.value)}
+            onChange={onSubjectChange}
             disabled={!selectedClass}
-            className={`${fieldClass} min-w-[100px] flex-1 sm:w-auto sm:flex-none`}
+            wrapperClassName="min-w-[100px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
           >
             <option value="">{selectedClass ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
             {subjectOptions.map((subject) => (
@@ -164,14 +178,16 @@ const ReportFilterBar = ({
                 {subject.name}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
 
         {activeReport.documentType && (
-          <select
+          <FilterSelect
             value={selectedTemplateId ?? ""}
-            onChange={(e) => onTemplateChange(e.target.value ? Number(e.target.value) : null)}
-            className={`${fieldClass} min-w-[130px] flex-1 sm:w-auto sm:flex-none`}
+            onChange={(value) => onTemplateChange(value ? Number(value) : null)}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
           >
             <option value="">ডিফল্ট (স্বয়ংক্রিয়)</option>
             {templates.map((tpl) => (
@@ -179,7 +195,7 @@ const ReportFilterBar = ({
                 {tpl.name}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
 
         {activeReport.documentType && (

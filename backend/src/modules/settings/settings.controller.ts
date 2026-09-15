@@ -37,7 +37,7 @@ export const getBranding = async (req: Request, res: Response) => {
 export const updateBranding = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    await settingsService.updateBranding(madrasa_id, req.body);
+    await settingsService.updateBranding(madrasa_id, req.user!.id, req.body);
     res.json({ message: "Branding saved successfully" });
   } catch (error) {
     respondError(res, error);
@@ -48,7 +48,7 @@ export const deleteBrandingImage = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     const field = String(req.params.field || "");
-    await settingsService.deleteBrandingImage(madrasa_id, field);
+    await settingsService.deleteBrandingImage(madrasa_id, req.user!.id, field);
     res.json({ message: "Removed successfully" });
   } catch (error) {
     respondError(res, error);

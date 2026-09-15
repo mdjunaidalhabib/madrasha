@@ -191,7 +191,7 @@ export default function TeacherStaffDashboardPage() {
             <UserPlus size={16} /> নতুন শিক্ষক
           </Link>
           <Link
-            className="rounded-xl bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+            className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/teacher_staff/all_teacher"
           >
             শিক্ষকসমূহ

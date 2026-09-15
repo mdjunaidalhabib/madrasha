@@ -47,6 +47,17 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "results/corrections",
   "results/corrections/decide",
   "results/mark-components",
+  // Branding settings (see SettingsService.updateBranding/deleteBrandingImage)
+  // self-log a field-by-field before→after diff - letting the generic
+  // fallback log a second shallow row (or none at all, since PUT /branding
+  // has no numeric id and its body rarely matches DETAIL_FIELD_CANDIDATES)
+  // would just create a duplicate/less useful entry.
+  "settings/branding",
+  "settings/branding/report_logo",
+  "settings/branding/report_banner",
+  "settings/branding/report_watermark",
+  "settings/branding/report_header_image",
+  "settings/branding/report_footer_image",
 ]);
 
 function deriveEntity(originalUrl: string): { entity: string; entityId: number | null } {

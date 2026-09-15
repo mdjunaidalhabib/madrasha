@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { storageProvider } from "../../shared/storage";
+import { logActivity } from "../../shared/utils/activity.util";
 import { settingsRepository, SettingsRepository } from "./settings.repository";
 import {
   BrandingData,
@@ -247,7 +248,7 @@ export class SettingsService {
     };
   }
 
-  async updateBranding(madrasaId: number, body: UpdateBrandingRequestDto) {
+  async updateBranding(madrasaId: number, userId: number, body: UpdateBrandingRequestDto) {
     const {
       name,
       address,
@@ -315,15 +316,64 @@ export class SettingsService {
       throw new BadRequestError("Invalid report print mode");
     }
 
+    // Fetched unconditionally (not just for report_brand_layout, as before)
+    // so the activity-log diff below always has a "before" snapshot to
+    // compare each provided field against.
+    const current = await this.repository.findBranding(madrasaId);
+
     let mergedBrandLayout: BrandLayoutData | undefined;
     if (report_brand_layout !== undefined) {
-      const current = await this.repository.findBranding(madrasaId);
-      const existing: BrandLayoutData = {
+      const existingLayout: BrandLayoutData = {
         ...BRAND_LAYOUT_DEFAULTS,
         ...((current?.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
       };
-      mergedBrandLayout = mergeBrandLayoutPatch(existing, report_brand_layout);
+      mergedBrandLayout = mergeBrandLayoutPatch(existingLayout, report_brand_layout);
     }
+
+    const changes: string[] = [];
+    if (name !== undefined && String(name).trim() !== "" && current && name !== current.name) {
+      changes.push(`নাম: ${current.name ?? "—"} → ${name}`);
+    }
+    if (address !== undefined && current && address !== current.address) {
+      changes.push(`ঠিকানা: ${current.address ?? "—"} → ${address ?? "—"}`);
+    }
+    if (cleanedPhones !== undefined && current) {
+      const before = (current.brandingPhones || []).join(", ") || "—";
+      const after = cleanedPhones.join(", ") || "—";
+      if (before !== after) changes.push(`ফোন নম্বর: ${before} → ${after}`);
+    }
+    if (cleanedEmails !== undefined && current) {
+      const before = (current.brandingEmails || []).join(", ") || "—";
+      const after = cleanedEmails.join(", ") || "—";
+      if (before !== after) changes.push(`ইমেইল: ${before} → ${after}`);
+    }
+    const imageLabels: Record<string, string> = {
+      report_logo: "লোগো",
+      report_banner: "ব্যানার",
+      report_watermark: "ওয়াটারমার্ক",
+      report_header_image: "কাস্টম হেডার ছবি",
+      report_footer_image: "কাস্টম ফুটার ছবি",
+    };
+    for (const [key, label] of Object.entries(imageLabels)) {
+      const value = (body as Record<string, unknown>)[key];
+      if (value !== undefined && value !== null) changes.push(`${label} পরিবর্তন করা হয়েছে`);
+    }
+    if (opacity !== undefined && current && opacity !== Number(current.reportWatermarkOpacity)) {
+      changes.push(`ওয়াটারমার্কের স্বচ্ছতা: ${current.reportWatermarkOpacity} → ${opacity}`);
+    }
+    if (
+      report_header_footer_enabled !== undefined &&
+      current &&
+      toBoolInt(report_header_footer_enabled) !== toBoolInt(current.reportHeaderFooterEnabled)
+    ) {
+      changes.push(
+        `কাস্টম হেডার/ফুটার: ${current.reportHeaderFooterEnabled ? "চালু" : "বন্ধ"} → ${report_header_footer_enabled ? "চালু" : "বন্ধ"}`,
+      );
+    }
+    if (report_print_mode !== undefined && current && report_print_mode !== current.reportPrintMode) {
+      changes.push(`প্রিন্ট মোড: ${current.reportPrintMode || DEFAULT_REPORT_PRINT_MODE} → ${report_print_mode}`);
+    }
+    if (mergedBrandLayout !== undefined) changes.push("রিপোর্ট লেআউট (ফন্ট/রঙ/অবস্থান) আপডেট করা হয়েছে");
 
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
@@ -358,13 +408,29 @@ export class SettingsService {
         ? { reportBrandLayout: mergedBrandLayout as unknown as Prisma.InputJsonValue }
         : {}),
     });
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UPDATE",
+      entity: "settings/branding",
+      details: `ব্র্যান্ডিং সেটিংস আপডেট করা হয়েছে — ${changes.length ? changes.join(", ") : "কোনো পরিবর্তন নেই"}`,
+    });
   }
 
-  async deleteBrandingImage(madrasaId: number, field: string) {
+  async deleteBrandingImage(madrasaId: number, userId: number, field: string) {
     const mapped = BRANDING_IMAGE_FIELDS[field];
     if (!mapped) throw new BadRequestError("Invalid field");
 
     await this.repository.updateField(madrasaId, mapped, null);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "DELETE",
+      entity: "settings/branding",
+      details: `ব্র্যান্ডিং সেটিংসের ছবি মুছে ফেলা হয়েছে — ফিল্ড: ${field}`,
+    });
   }
 
   async getDocumentTemplates(madrasaId: number): Promise<DocumentTemplatesData> {

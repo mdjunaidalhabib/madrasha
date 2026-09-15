@@ -19,7 +19,7 @@ export const listFunds = asyncHandler(async (req: Request, res: Response) => {
 export const createFund = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.createFund(madrasa_id, req.body);
+    const result = await accountService.createFund(madrasa_id, req.user!.id, req.body);
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -32,7 +32,7 @@ export const createFund = asyncHandler(async (req: Request, res: Response) => {
 export const updateFund = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.updateFund(madrasa_id, Number(req.params.id), req.body);
+    const result = await accountService.updateFund(madrasa_id, req.user!.id, Number(req.params.id), req.body);
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -45,7 +45,7 @@ export const updateFund = asyncHandler(async (req: Request, res: Response) => {
 export const deleteFund = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.deleteFund(madrasa_id, Number(req.params.id));
+    const result = await accountService.deleteFund(madrasa_id, req.user!.id, Number(req.params.id));
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -58,7 +58,12 @@ export const deleteFund = asyncHandler(async (req: Request, res: Response) => {
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.createCategory(madrasa_id, Number(req.params.fundId), req.body);
+    const result = await accountService.createCategory(
+      madrasa_id,
+      req.user!.id,
+      Number(req.params.fundId),
+      req.body,
+    );
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -71,7 +76,7 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
 export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.updateCategory(madrasa_id, Number(req.params.id), req.body);
+    const result = await accountService.updateCategory(madrasa_id, req.user!.id, Number(req.params.id), req.body);
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -84,7 +89,7 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
 export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
-    const result = await accountService.deleteCategory(madrasa_id, Number(req.params.id));
+    const result = await accountService.deleteCategory(madrasa_id, req.user!.id, Number(req.params.id));
     res.json(result);
   } catch (error) {
     if (error instanceof ApiError) {

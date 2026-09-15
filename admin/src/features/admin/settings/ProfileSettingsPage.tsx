@@ -21,8 +21,6 @@ import {
   type MyProfile,
   type ActiveSession,
 } from "../../../services/profileApi";
-import { getSavedAccounts, type SavedAccount } from "../../../services/savedAccounts";
-import SavedAccountsList from "../../auth/SavedAccountsList";
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
@@ -71,7 +69,6 @@ export default function ProfileSettingsPage() {
 
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const [revokingSessionId, setRevokingSessionId] = useState<number | null>(null);
   // Confirm modal for the two "logout everywhere" variants - null = closed,
   // "all" = including this device, "others" = every device except this one.
@@ -111,7 +108,6 @@ export default function ProfileSettingsPage() {
       }
     })();
     loadSessions();
-    setSavedAccounts(getSavedAccounts());
   }, []);
 
   const patchProfile = async (patch: { name?: string; mobile?: string; photo_url?: string }) => {
@@ -421,17 +417,12 @@ export default function ProfileSettingsPage() {
               এই ডিভাইসসহ সব ডিভাইস থেকে লগআউট করুন
             </Button>
           </div>
+
+          <p className="text-xs text-gray-400 dark:text-slate-500">
+            অন্য ডিভাইসে কার্যকর হতে সর্বোচ্চ ১৫ মিনিট সময় লাগতে পারে।
+          </p>
         </div>
       </SectionCard>
-
-      {savedAccounts.length > 0 && (
-        <SectionCard
-          title="সংরক্ষিত লগইন (এই ডিভাইসে)"
-          hint="এই ব্রাউজারে কোন কোন মাদরাসা/ইমেইল দিয়ে লগইন সংরক্ষিত আছে, পরের বার শুধু পাসওয়ার্ড দিয়েই ঢোকা যায়"
-        >
-          <SavedAccountsList accounts={savedAccounts} onAccountsChange={setSavedAccounts} />
-        </SectionCard>
-      )}
 
       <Modal
         open={logoutAllMode !== null}

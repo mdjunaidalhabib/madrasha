@@ -107,7 +107,7 @@ export default function DashboardLayout() {
       <div className="flex flex-col flex-1 min-w-0">
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
-        <main className="flex-1 overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
+        <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
           <div className="flex items-center justify-between gap-2">
             <Breadcrumbs items={breadcrumbs} />
             <div className="mb-4 mr-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:mr-4 md:flex">
@@ -118,9 +118,14 @@ export default function DashboardLayout() {
               <span className="tabular-nums">{nowTime}</span>
             </div>
           </div>
-          <RouteErrorBoundary key={location.pathname}>
-            <Outlet />
-          </RouteErrorBoundary>
+          {/* min-h-0 এখানে জরুরি — নাহলে flex আইটেম হিসেবে এই div ডিফল্টে
+              নিজের কন্টেন্টের সমান height claim করবে, ফলে ভেতরের পেজ (যেমন
+              ছাত্র তালিকা) main-এর প্রকৃত খালি জায়গা জানতে পারবে না। */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <RouteErrorBoundary key={location.pathname}>
+              <Outlet />
+            </RouteErrorBoundary>
+          </div>
         </main>
       </div>
 

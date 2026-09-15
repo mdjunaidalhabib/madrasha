@@ -62,7 +62,12 @@ export const CATEGORY_CREATE_SUCCESS_MESSAGE = "খাত যোগ করা �
 export const CATEGORY_UPDATE_SUCCESS_MESSAGE = "খাত আপডেট হয়েছে";
 export const CATEGORY_DELETE_SUCCESS_MESSAGE = "খাত মুছে ফেলা হয়েছে";
 
-export const ACCOUNT_ACTIVITY_ENTITY = { INCOME: "INCOME", EXPENSE: "EXPENSE" } as const;
+export const ACCOUNT_ACTIVITY_ENTITY = {
+  INCOME: "INCOME",
+  EXPENSE: "EXPENSE",
+  FUND: "FUND_SETTINGS",
+  CATEGORY: "CATEGORY_SETTINGS",
+} as const;
 export const REPORT_ROW_LIMIT = 365;
 export const ACCOUNT_LIST_ROW_LIMIT = 500;
 export const RECEIPT_NO_PREFIX = "RC";

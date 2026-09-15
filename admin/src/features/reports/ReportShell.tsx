@@ -6,6 +6,7 @@ import { Orientation, PaperSize, PageMargins } from "../../components/common/Dat
 import { getDefaultPageMargins } from "../../components/Report/pagination/pageGeometry";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
+import FilterSelect from "../../components/common/FilterSelect";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { filterPeopleBySearch } from "../../utils/personSearch";
@@ -568,20 +569,21 @@ const ReportShell = ({
 
                 {isPaginatedAcademicResult && totalCount > 0 && (
                   <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                    <select
+                    <FilterSelect
                       value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
+                      onChange={(value) => {
+                        setPageSize(Number(value));
                         setPage(1);
                       }}
-                      className="h-7 rounded border border-slate-200 bg-white px-1.5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      selectClassName="h-7 appearance-none rounded border border-slate-200 bg-white px-1.5 pr-5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      iconClassName="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500"
                     >
                       {[50, 100, 200, 500].map((size) => (
                         <option key={size} value={size}>
                           {size} জন/পেজ
                         </option>
                       ))}
-                    </select>
+                    </FilterSelect>
 
                     <span className="whitespace-nowrap text-xs">
                       {pageStart}–{pageEnd}
