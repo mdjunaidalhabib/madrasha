@@ -1,5 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useBrandingStore } from "./brandingStore";
+import { useBookLabelDesignStore } from "./bookLabelDesignStore";
+import { useIdCardDesignStore } from "./idCardDesignStore";
+import { useLetterDesignStore } from "./letterDesignStore";
+import { useAdmitCardDesignStore } from "./admitCardDesignStore";
+import { useDocumentTemplateStore } from "./documentTemplateStore";
+import { useDocumentTemplateDefaultStore } from "./documentTemplateDefaultStore";
+import { useSectionTogglesStore } from "./sectionTogglesStore";
 
 export type AuthUser = {
   id: number;
@@ -80,6 +88,18 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         set({ token: null, user: null, permissions: [], modules: [], madrasaSlug: null });
+        // এই "fetch-once" স্টোরগুলোর `loaded` flag রিসেট না করলে SPA
+        // নেভিগেশনে (ফুল রিফ্রেশ ছাড়া) পরের মাদরাসায় লগইন করলেও এরা আগের
+        // ট্যানেন্টের ডেটা (নাম/ঠিকানা, আইডি কার্ড/সার্টিফিকেট ডিজাইন
+        // ইত্যাদি) সার্ভ করতেই থাকে।
+        useBrandingStore.getState().reset();
+        useBookLabelDesignStore.getState().reset();
+        useIdCardDesignStore.getState().reset();
+        useLetterDesignStore.getState().reset();
+        useAdmitCardDesignStore.getState().reset();
+        useDocumentTemplateStore.getState().reset();
+        useDocumentTemplateDefaultStore.getState().reset();
+        useSectionTogglesStore.getState().reset();
       },
     }),
     {

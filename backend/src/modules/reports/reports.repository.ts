@@ -83,14 +83,6 @@ export interface ExamSummaryFilters {
   divisionId?: number;
 }
 
-/** Narrowing filters for the result-publication-status report
- * (results_master rows, DRAFT vs PUBLISHED). No exam filter - the whole
- * point of this report is to see every exam+class's publish state at once. */
-export interface ResultPublicationFilters {
-  classId?: number;
-  divisionId?: number;
-}
-
 /** Narrowing filters for the seat-plan report (exam_seat_allocations). */
 export interface SeatPlanFilters {
   roomId?: number;
@@ -1469,53 +1461,6 @@ export class ReportsRepository {
         rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
         d.name_bn, d.name, e.name, e.year, topper.student_name, topper.total
       ORDER BY c.id ASC
-      `,
-      params,
-    );
-  }
-
-  /** Which exam+class ResultMaster rows are DRAFT vs PUBLISHED, with how
-   * many students each has a summary row for - "ফলাফল প্রকাশনা প্রতিবেদন".
-   * No exam filter (see ResultPublicationFilters) since the point is
-   * seeing every exam+class's publish state at a glance. */
-  findResultPublicationStatus(madrasaId: number, filters: ResultPublicationFilters = {}) {
-    const params: any[] = [madrasaId];
-    const conditions: string[] = [];
-    if (filters.classId !== undefined) {
-      params.push(filters.classId);
-      conditions.push(`AND rm.class_id = $${params.length}`);
-    }
-    if (filters.divisionId !== undefined) {
-      params.push(filters.divisionId);
-      conditions.push(`AND c.division_id = $${params.length}`);
-    }
-
-    return this.runQuery(
-      `
-      SELECT
-        rm.id,
-        rm.exam_id,
-        rm.class_id,
-        c.division_id,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
-        e.name AS exam_name,
-        e.year AS exam_year,
-        rm.status AS publish_status,
-        COUNT(rs.id)::int AS candidate_count,
-        rm.updated_at
-      FROM results_master rm
-      INNER JOIN classes c ON c.id = rm.class_id
-      LEFT JOIN divisions d ON d.id = c.division_id
-      LEFT JOIN exams e ON e.id = rm.exam_id
-      LEFT JOIN results_summary rs ON rs.result_master_id = rm.id
-      WHERE rm.madrasa_id = $1
-        AND rm.deleted_at IS NULL
-        ${conditions.join("\n        ")}
-      GROUP BY
-        rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
-        d.name_bn, d.name, e.name, e.year, rm.status, rm.updated_at
-      ORDER BY e.id DESC, c.id ASC
       `,
       params,
     );

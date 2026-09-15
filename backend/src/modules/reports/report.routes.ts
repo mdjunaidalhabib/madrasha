@@ -24,7 +24,6 @@ import {
   getInvigilatorListReport,
   getPrizeBookLabelsReport,
   getResidentialAttendanceReport,
-  getResultPublicationReport,
   getResultsByStatusReport,
   getSeatPlanReport,
   getSubjectPerformanceReport,
@@ -81,7 +80,6 @@ router.get("/academic/exam-absentees", examAccess, getAbsentCandidatesReport);
 router.get("/academic/results-by-status", academicAccess, getResultsByStatusReport);
 router.get("/academic/subject-performance", academicAccess, getSubjectPerformanceReport);
 router.get("/academic/exam-summary", academicAccess, getExamSummaryReport);
-router.get("/academic/result-publication", academicAccess, getResultPublicationReport);
 router.get("/academic/residential-attendance", attendanceAccess, getResidentialAttendanceReport);
 router.get("/academic/daily-attendance", attendanceAccess, getDailyAttendanceReport);
 router.get("/academic/digital-attendance", attendanceAccess, getDigitalAttendanceReport);

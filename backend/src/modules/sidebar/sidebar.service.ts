@@ -309,8 +309,11 @@ export class SidebarService {
         // already-seeded DB rows here so existing installations stop showing
         // them as separate entries immediately, even before the seed is run
         // again (same reasoning as the moved-key filters under "students"
-        // below).
-        for (const movedKey of ["class_panel", "exam_panel", "documents", "sessions"]) {
+        // below). "events" (ইভেন্ট / কার্যক্রম) is removed entirely - same
+        // reasoning, existing installations already have this ModuleFeature
+        // row seeded in the DB, so it must be filtered here too, not just
+        // dropped from seed.ts (which only affects future seed runs).
+        for (const movedKey of ["class_panel", "exam_panel", "documents", "sessions", "events"]) {
           const idx = children.findIndex((child) => child.key === movedKey);
           if (idx !== -1) children.splice(idx, 1);
         }
@@ -327,10 +330,6 @@ export class SidebarService {
           { key: "exam_seat_plan", label: "সিট প্ল্যান", sortOrder: 8 },
           { key: "exam_attendance", label: "পরীক্ষার হাজিরা", sortOrder: 9 },
           { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 10 },
-          // Route lives under students/exam-registration (see
-          // ABSOLUTE_CHILD_PATHS in admin/src/components/sidebar/sidebarPaths.ts),
-          // same "তালিমাত menu, students/ route" split as promotion above.
-          { key: "exam_registration", label: "পরীক্ষার্থী নিবন্ধন", sortOrder: 11 },
           { key: "settings", label: "সেটিং", sortOrder: 12 },
         ];
         for (const fallback of fallbackTalimatChildren) {

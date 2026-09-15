@@ -78,6 +78,27 @@ export const BRAND_LAYOUT_DEFAULTS = {
 
 export const BRAND_LOGO_POSITIONS = ["left", "center", "right"] as const;
 
+// Marksheet info-field grid (see MarksheetList.tsx's INFO_FIELDS on the
+// frontend, which this key list mirrors exactly) - MARKSHEET_FIELD_KEYS is
+// the allow-list a saved marksheet_fields patch is validated against, and
+// DEFAULT_MARKSHEET_FIELDS is the original hardcoded order/visibility (every
+// field visible) an untouched madrasa's marksheet already prints.
+export const MARKSHEET_FIELD_KEYS = [
+  "roll",
+  "registration_no",
+  "date_of_birth",
+  "student_name",
+  "father_name",
+  "madrasa_grade",
+  "general_grade",
+  "status",
+  "rank_no",
+] as const;
+
+export const DEFAULT_MARKSHEET_FIELDS: { key: string; visible: boolean }[] = MARKSHEET_FIELD_KEYS.map(
+  (key) => ({ key, visible: true }),
+);
+
 export const MAX_BRAND_FOOTER_TEXT_LENGTH = 300;
 export const BRAND_LAYOUT_LIMITS = {
   name_font_size: { min: 12, max: 48 },

@@ -105,20 +105,6 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
-    key: "academic-result-publication",
-    title: "ফলাফল প্রকাশনা প্রতিবেদন",
-    subtitle: "কোন পরীক্ষা ও শ্রেণির ফলাফল খসড়া (Draft) না প্রকাশিত (Published)",
-    endpoint: "/reports/academic/result-publication",
-    columns: [
-      { header: "পরীক্ষা", key: "exam_name", className: midCol },
-      { header: "শিক্ষাবর্ষ", key: "exam_year", className: smallCol },
-      { header: "শ্রেণি", key: "class_name", className: smallCol },
-      { header: "বিভাগ", key: "division_name", className: midCol },
-      { header: "অবস্থা", key: "publish_status", className: smallCol },
-      { header: "শিক্ষার্থী সংখ্যা", key: "candidate_count", className: smallCol },
-    ],
-  },
-  {
     key: "academic-result-notice",
     title: "ফলাফল সারসংক্ষেপ",
     subtitle: "প্রকাশিত ফলাফলের প্রিন্টযোগ্য নোটিশ",

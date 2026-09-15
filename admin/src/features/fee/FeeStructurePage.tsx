@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   feeStructureApi,
@@ -419,12 +419,21 @@ const FeeStructurePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            ফি কাঠামো তৈরি করুন — নতুন ভর্তি হওয়া ছাত্রদের পাশাপাশি বিদ্যমান সব যোগ্য ছাত্রের জন্যও
-            ইনভয়েস অটোমেটিক তৈরি হয়ে যায়
-          </p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              ফি কাঠামো তৈরি করুন — নতুন ভর্তি হওয়া ছাত্রদের পাশাপাশি বিদ্যমান সব যোগ্য ছাত্রের জন্যও
+              ইনভয়েস অটোমেটিক তৈরি হয়ে যায়
+            </p>
+          </div>
+          <Link
+            to="/ihtemam/fee-categories"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            ফি ধরণ সেটিংস
+            <ArrowRight size={15} />
+          </Link>
         </div>
 
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
@@ -439,17 +448,9 @@ const FeeStructurePage = () => {
           </p>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
             <div className="w-full sm:w-auto">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="block text-xs font-medium text-gray-600 dark:text-slate-400">
-                  ফি ধরণ <span className="text-rose-500">*</span>
-                </label>
-                <Link
-                  to="/ihtemam/fee-categories"
-                  className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  ফি ধরণ ম্যানেজ করুন
-                </Link>
-              </div>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                ফি ধরণ <span className="text-rose-500">*</span>
+              </label>
               <select
                 value={structureForm.fee_type}
                 onChange={(e) =>

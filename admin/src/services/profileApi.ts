@@ -41,6 +41,15 @@ export async function changeMyPassword(current_password: string, new_password: s
   return res.data;
 }
 
+/** Re-verifies the current user's password without changing anything -
+ * reuses the screen-unlock endpoint as a plain "confirm it's really you"
+ * check before a sensitive action (e.g. logging out a session). Throws
+ * if the password is wrong. */
+export async function verifyMyPassword(password: string) {
+  const res = await api.post("/auth/unlock", { password });
+  return res.data;
+}
+
 /** Revokes just this browser's refresh-token session server-side, best
  * effort - the caller still clears local auth state regardless. */
 export async function logoutSession() {

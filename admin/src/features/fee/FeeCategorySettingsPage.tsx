@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { feeCategoryApi, type FeeCategoryItem } from "../../services/phase2Api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -220,6 +221,16 @@ const FeeCategorySettingsPage = () => {
 
   const sortedCategories = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
+  const backLink = (
+    <Link
+      to="/fee-management"
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+    >
+      <ArrowLeft size={15} />
+      ফি সেটাপে ফিরুন
+    </Link>
+  );
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
@@ -227,6 +238,7 @@ const FeeCategorySettingsPage = () => {
         subtitle={
           'ফি কাঠামো তৈরি করার সময় যেসব ধরণ (যেমন: ভর্তি ফি, মাসিক বেতন, পরীক্ষার ফি) ব্যবহার করা যায় সেগুলো এখান থেকে যোগ/এডিট/ডিলিট করুন। সব ধরণের ফি মুহতামিম ভর্তি অনুমোদন করার পরই বিল হয় (আবেদন জমা দেওয়ার সময় কোনো বিল হয় না)। মাসিক বেতন-খাবার খরচের মতো মাসিক ফি-তে অনুমোদনের সাথে সাথে শুধু চলতি মাসেরটা বিল হয়, পরের মাসগুলো নিজে থেকেই প্রতি মাসের শুরুতে তৈরি হয়।'
         }
+        actions={backLink}
       />
 
       <SectionCard title="ফি ধরণসমূহ" hint="নতুন একটি ফি ধরণ যোগ করুন">

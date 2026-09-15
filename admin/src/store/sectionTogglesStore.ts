@@ -9,6 +9,7 @@ type State = {
   fetchToggles: (force?: boolean) => Promise<void>;
   isEnabled: (key: string) => boolean;
   setToggle: (key: string, enabled: boolean) => Promise<void>;
+  reset: () => void;
 };
 
 export const useSectionTogglesStore = create<State>((set, get) => ({
@@ -48,4 +49,6 @@ export const useSectionTogglesStore = create<State>((set, get) => ({
       useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
     }
   },
+
+  reset: () => set({ toggles: {}, loading: false, loaded: false }),
 }));

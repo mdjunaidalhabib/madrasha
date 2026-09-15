@@ -7,6 +7,7 @@ type State = {
   loaded: boolean;
   fetchDesign: (force?: boolean) => Promise<void>;
   setDesign: (design: AdmitCardDesignResponse) => void;
+  reset: () => void;
 };
 
 export const useAdmitCardDesignStore = create<State>((set, get) => ({
@@ -31,4 +32,6 @@ export const useAdmitCardDesignStore = create<State>((set, get) => ({
   },
 
   setDesign: (design) => set({ design }),
+
+  reset: () => set({ design: null, loading: false, loaded: false }),
 }));

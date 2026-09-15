@@ -35,6 +35,7 @@ export class SettingsRepository {
         reportFooterImage: true,
         reportPrintMode: true,
         reportBrandLayout: true,
+        marksheetFieldLayout: true,
       },
     });
   }

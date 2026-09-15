@@ -11,6 +11,7 @@ import {
   getAudienceResults,
   getNotificationSettings,
   updateNotificationSetting,
+  updateNotificationMasterSetting,
 } from "./notification.controller";
 
 const router = Router();
@@ -28,6 +29,10 @@ router.get("/audience/teachers", rbacMiddleware("notifications.send"), getAudien
 router.get("/audience/results", rbacMiddleware("notifications.send"), getAudienceResults);
 
 router.get("/settings", rbacMiddleware("notifications.settings"), getNotificationSettings);
+// Registered before "/settings/:eventKey" - Express matches route patterns in
+// registration order, so this literal path must come first or the param
+// route below would swallow "/settings/master" as eventKey="master".
+router.put("/settings/master", rbacMiddleware("notifications.settings"), updateNotificationMasterSetting);
 router.put("/settings/:eventKey", rbacMiddleware("notifications.settings"), updateNotificationSetting);
 
 export default router;

@@ -31,6 +31,10 @@ export interface UpdateBrandingRequestDto {
   report_footer_image?: string | null;
   report_print_mode?: string;
   report_brand_layout?: UpdateBrandLayoutRequestDto;
+  // Full replacement list (not a partial patch) - the client always sends
+  // every field it knows about, in the order it wants them displayed, same
+  // "resend the whole thing" pattern the designer's layer arrays use.
+  marksheet_fields?: { key?: unknown; visible?: unknown }[];
 }
 
 export interface UpdateSectionToggleRequestDto {

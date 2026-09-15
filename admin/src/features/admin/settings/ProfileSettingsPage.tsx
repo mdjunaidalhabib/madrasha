@@ -15,6 +15,7 @@ import {
   getMyProfile,
   updateMyProfile,
   changeMyPassword,
+  verifyMyPassword,
   logoutAllDevices,
   revokeSession,
   getActiveSessions,
@@ -69,11 +70,27 @@ export default function ProfileSettingsPage() {
 
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [revokingSessionId, setRevokingSessionId] = useState<number | null>(null);
-  // Confirm modal for the two "logout everywhere" variants - null = closed,
-  // "all" = including this device, "others" = every device except this one.
-  const [logoutAllMode, setLogoutAllMode] = useState<"all" | "others" | null>(null);
-  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  // Every "logout a session" action (one device, other devices, or all
+  // devices) goes through the same two-step modal: step 1 re-verifies the
+  // user's password, step 2 is a plain "are you sure?" before it actually
+  // happens - two separate confirmations since this can sign the user out
+  // of devices they're not looking at right now.
+  type LogoutTarget = { kind: "session"; session: ActiveSession } | { kind: "others" } | { kind: "all" };
+  const [logoutTarget, setLogoutTarget] = useState<LogoutTarget | null>(null);
+  const [logoutStep, setLogoutStep] = useState<1 | 2>(1);
+  const [logoutPassword, setLogoutPassword] = useState("");
+  const [showLogoutPassword, setShowLogoutPassword] = useState(false);
+  const [verifyingLogoutPassword, setVerifyingLogoutPassword] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const closeLogoutModal = () => {
+    if (verifyingLogoutPassword || loggingOut) return;
+    setLogoutTarget(null);
+    setLogoutStep(1);
+    setLogoutPassword("");
+    setShowLogoutPassword(false);
+  };
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -165,34 +182,48 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const handleRevokeSession = async (session: ActiveSession) => {
-    setRevokingSessionId(session.id);
+  const confirmLogout = async () => {
+    if (!logoutTarget) return;
+    if (!logoutPassword) {
+      useToastStore.getState().show("পাসওয়ার্ড দিন।", "error");
+      return;
+    }
+    setVerifyingLogoutPassword(true);
     try {
-      await revokeSession(session.id);
-      if (session.is_current) {
-        // Ended our own session - the access token still works for a few
-        // minutes, but there's no refresh token left to renew it with, so
-        // just sign out locally right away instead of waiting for a 401.
-        useToastStore.getState().show("লগআউট করা হয়েছে।", "success");
-        authLogout();
-        nav(`/login`);
+      await verifyMyPassword(logoutPassword);
+    } catch (err: any) {
+      useToastStore
+        .getState()
+        .show(err?.response?.data?.message || "পাসওয়ার্ড সঠিক নয়।", "error");
+      setVerifyingLogoutPassword(false);
+      return;
+    }
+    setVerifyingLogoutPassword(false);
+
+    setLoggingOut(true);
+    try {
+      if (logoutTarget.kind === "session") {
+        const session = logoutTarget.session;
+        await revokeSession(session.id);
+        if (session.is_current) {
+          // Ended our own session - the access token still works for a few
+          // minutes, but there's no refresh token left to renew it with, so
+          // just sign out locally right away instead of waiting for a 401.
+          useToastStore.getState().show("লগআউট করা হয়েছে।", "success");
+          closeLogoutModal();
+          authLogout();
+          nav(`/login`);
+          return;
+        }
+        useToastStore.getState().show("সেশনটি লগআউট করা হয়েছে।", "success");
+        setSessions((prev) => prev.filter((s) => s.id !== session.id));
+        closeLogoutModal();
         return;
       }
-      useToastStore.getState().show("সেশনটি লগআউট করা হয়েছে।", "success");
-      setSessions((prev) => prev.filter((s) => s.id !== session.id));
-    } catch {
-      useToastStore.getState().show("লগআউট করা যায়নি। আবার চেষ্টা করুন।", "error");
-    } finally {
-      setRevokingSessionId(null);
-    }
-  };
 
-  const confirmLogoutAllDevices = async () => {
-    const keepCurrent = logoutAllMode === "others";
-    setLoggingOutAll(true);
-    try {
+      const keepCurrent = logoutTarget.kind === "others";
       await logoutAllDevices(keepCurrent);
-      setLogoutAllMode(null);
+      closeLogoutModal();
       if (keepCurrent) {
         useToastStore.getState().show("অন্য সব ডিভাইস থেকে লগআউট করা হয়েছে।", "success");
         loadSessions();
@@ -204,7 +235,7 @@ export default function ProfileSettingsPage() {
     } catch {
       useToastStore.getState().show("লগআউট করা যায়নি। আবার চেষ্টা করুন।", "error");
     } finally {
-      setLoggingOutAll(false);
+      setLoggingOut(false);
     }
   };
 
@@ -384,12 +415,11 @@ export default function ProfileSettingsPage() {
                   </div>
                   <button
                     type="button"
-                    disabled={revokingSessionId === session.id}
-                    onClick={() => handleRevokeSession(session)}
+                    onClick={() => setLogoutTarget({ kind: "session", session })}
                     className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/40"
                   >
                     <LogOut size={13} />
-                    {revokingSessionId === session.id ? "..." : "লগআউট"}
+                    লগআউট
                   </button>
                 </li>
               ))}
@@ -402,7 +432,7 @@ export default function ProfileSettingsPage() {
               variant="secondary"
               className="flex items-center gap-1.5"
               disabled={sessions.length < 2}
-              onClick={() => setLogoutAllMode("others")}
+              onClick={() => setLogoutTarget({ kind: "others" })}
             >
               <ShieldOff size={14} />
               অন্য সব ডিভাইস থেকে লগআউট করুন
@@ -411,7 +441,7 @@ export default function ProfileSettingsPage() {
               type="button"
               variant="danger"
               className="flex items-center gap-1.5"
-              onClick={() => setLogoutAllMode("all")}
+              onClick={() => setLogoutTarget({ kind: "all" })}
             >
               <ShieldOff size={14} />
               এই ডিভাইসসহ সব ডিভাইস থেকে লগআউট করুন
@@ -425,39 +455,91 @@ export default function ProfileSettingsPage() {
       </SectionCard>
 
       <Modal
-        open={logoutAllMode !== null}
-        title={logoutAllMode === "others" ? "অন্য সব ডিভাইস থেকে লগআউট" : "সব ডিভাইস থেকে লগআউট"}
-        onClose={() => !loggingOutAll && setLogoutAllMode(null)}
+        open={logoutTarget !== null}
+        title={
+          logoutTarget?.kind === "session"
+            ? "সেশন লগআউট"
+            : logoutTarget?.kind === "others"
+              ? "অন্য সব ডিভাইস থেকে লগআউট"
+              : "সব ডিভাইস থেকে লগআউট"
+        }
+        onClose={closeLogoutModal}
         maxWidthClassName="max-w-sm"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-slate-400">
-            {logoutAllMode === "others"
-              ? "এই ডিভাইস ছাড়া বাকি সব ডিভাইস/ব্রাউজার থেকে লগআউট হয়ে যাবে। আপনি এখানে লগইন করা থাকবেন। এগিয়ে যাবেন?"
-              : "আপনি লগইন করা আছেন এমন সব ডিভাইস থেকে (এই ডিভাইসসহ) লগআউট হয়ে যাবেন। এগিয়ে যাবেন?"}
-          </p>
+        {logoutStep === 1 ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              {logoutTarget?.kind === "session"
+                ? logoutTarget.session.is_current
+                  ? "আপনি নিজের এই ডিভাইস থেকে লগআউট হয়ে যাবেন। নিশ্চিত করছেন?"
+                  : "এই ডিভাইসটি থেকে লগআউট হয়ে যাবে। নিশ্চিত করছেন?"
+                : logoutTarget?.kind === "others"
+                  ? "এই ডিভাইস ছাড়া বাকি সব ডিভাইস/ব্রাউজার থেকে লগআউট হয়ে যাবে। আপনি এখানে লগইন করা থাকবেন। নিশ্চিত করছেন?"
+                  : "আপনি লগইন করা আছেন এমন সব ডিভাইস থেকে (এই ডিভাইসসহ) লগআউট হয়ে যাবেন। নিশ্চিত করছেন?"}
+            </p>
 
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={loggingOutAll}
-              onClick={() => setLogoutAllMode(null)}
-            >
-              বাতিল
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              className="flex items-center gap-1.5"
-              disabled={loggingOutAll}
-              onClick={confirmLogoutAllDevices}
-            >
-              <ShieldOff size={14} />
-              {loggingOutAll ? "লগআউট হচ্ছে..." : "নিশ্চিত করুন"}
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={closeLogoutModal}>
+                বাতিল
+              </Button>
+              <Button type="button" variant="danger" onClick={() => setLogoutStep(2)}>
+                পরবর্তী
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              নিরাপত্তার জন্য নিশ্চিত করতে আপনার পাসওয়ার্ড দিন।
+            </p>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
+                পাসওয়ার্ড
+              </label>
+              <div className="relative">
+                <Input
+                  type={showLogoutPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={logoutPassword}
+                  onChange={(e) => setLogoutPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmLogout()}
+                  className="pr-10"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  aria-label={showLogoutPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                  tabIndex={-1}
+                >
+                  {showLogoutPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={verifyingLogoutPassword || loggingOut}
+                onClick={() => setLogoutStep(1)}
+              >
+                পেছনে
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                className="flex items-center gap-1.5"
+                disabled={verifyingLogoutPassword || loggingOut}
+                onClick={confirmLogout}
+              >
+                <ShieldOff size={14} />
+                {verifyingLogoutPassword ? "যাচাই হচ্ছে..." : loggingOut ? "লগআউট হচ্ছে..." : "নিশ্চিত করুন"}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

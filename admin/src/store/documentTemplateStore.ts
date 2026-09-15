@@ -10,6 +10,7 @@ type State = {
   loaded: boolean;
   fetchTemplates: (force?: boolean) => Promise<void>;
   setTemplates: (templates: DocumentTemplateResponse) => void;
+  reset: () => void;
 };
 
 export const useDocumentTemplateStore = create<State>((set, get) => ({
@@ -34,4 +35,6 @@ export const useDocumentTemplateStore = create<State>((set, get) => ({
   },
 
   setTemplates: (templates) => set({ templates }),
+
+  reset: () => set({ templates: null, loading: false, loaded: false }),
 }));

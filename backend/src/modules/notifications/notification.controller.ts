@@ -55,3 +55,8 @@ export const updateNotificationSetting = asyncHandler(async (req: Request, res: 
   );
   return ApiResponse.success(res, { message: "Setting saved", data });
 });
+
+export const updateNotificationMasterSetting = asyncHandler(async (req: Request, res: Response) => {
+  const data = await notificationService.setMasterEnabled(getMadrasaId(req), !!req.body.enabled);
+  return ApiResponse.success(res, { message: "Setting saved", data });
+});

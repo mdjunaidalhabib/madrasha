@@ -8,7 +8,6 @@ import {
   reportsRepository,
   ReportsRepository,
   ResultNoticeFilters,
-  ResultPublicationFilters,
   ResultStatusFilters,
   RosterFilters,
   RoutineFilters,
@@ -107,9 +106,6 @@ export class AcademicReportService {
     return this.repository.findExamSummary(madrasaId, filters);
   }
 
-  getResultPublicationStatus(madrasaId: number, filters: ResultPublicationFilters = {}) {
-    return this.repository.findResultPublicationStatus(madrasaId, filters);
-  }
 }
 
 export const academicReportService = new AcademicReportService();

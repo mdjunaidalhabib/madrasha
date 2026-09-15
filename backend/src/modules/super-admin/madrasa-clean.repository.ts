@@ -61,7 +61,6 @@ export class MadrasaCleanRepository {
       await tx.examRoom.deleteMany({ where: { madrasaId: id } });
       await tx.exam.deleteMany({ where: { madrasaId: id } });
       await tx.classRoutine.deleteMany({ where: { madrasaId: id } });
-      await tx.event.deleteMany({ where: { madrasaId: id } });
 
       // Library issues (the book/category catalog itself is left as-is)
       await tx.libraryBorrowRecord.deleteMany({ where: { madrasaId: id } });

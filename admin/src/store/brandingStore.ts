@@ -7,6 +7,7 @@ type State = {
   loaded: boolean;
   fetchBranding: (force?: boolean) => Promise<void>;
   setBranding: (branding: BrandingPayload) => void;
+  reset: () => void;
 };
 
 export const useBrandingStore = create<State>((set, get) => ({
@@ -31,4 +32,9 @@ export const useBrandingStore = create<State>((set, get) => ({
   },
 
   setBranding: (branding) => set({ branding }),
+
+  // লগআউটে কল হয় - না হলে `loaded` true-ই থেকে যায় এবং নতুন মাদরাসায়
+  // লগইন করলেও fetchBranding() পুরনো ট্যানেন্টের branding সার্ভ করতে থাকে
+  // (রিফ্রেশ না করা পর্যন্ত), কারণ SPA নেভিগেশনে মডিউল স্টেট রিসেট হয় না।
+  reset: () => set({ branding: null, loading: false, loaded: false }),
 }));

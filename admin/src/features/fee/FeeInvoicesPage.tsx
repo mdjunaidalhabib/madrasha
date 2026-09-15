@@ -15,7 +15,13 @@ import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import InvoicePrintModal from "./InvoicePrintModal";
 
-type StudentOption = { id: number; name_bn?: string; roll?: number; registration_no?: number | string | null };
+type StudentOption = {
+  id: number;
+  name_bn?: string;
+  roll?: number;
+  registration_no?: number | string | null;
+  current_class?: string | null;
+};
 
 type InvoiceRow = {
   id: number;
@@ -238,16 +244,6 @@ const FeeInvoicesPage = () => {
     if (match) selectStudent(match);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectStudentId, allStudents, selectedStudent]);
-
-  // Registration number is the student's permanent, unique identifier, so a
-  // full exact match on it is unambiguous — select it immediately instead of
-  // waiting for the office to click the suggestion.
-  useEffect(() => {
-    const q = studentQuery.trim();
-    if (!q || selectedStudent) return;
-    const exactMatch = allStudents.find((s) => s.registration_no != null && String(s.registration_no) === q);
-    if (exactMatch) selectStudent(exactMatch);
-  }, [studentQuery, allStudents, selectedStudent]);
 
   const clearStudent = () => {
     setSelectedStudent(null);
@@ -526,7 +522,7 @@ const FeeInvoicesPage = () => {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="ছাত্রের নাম, রোল, রেজি নং বা আইডি দিয়ে খুঁজুন"
+              placeholder="ছাত্রের নাম, রোল বা রেজি নং দিয়ে খুঁজুন"
               className="h-11 w-full rounded-md border border-gray-300 pl-8 pr-3 text-base outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
             {showSuggestions && studentQuery.trim() && (
@@ -541,7 +537,10 @@ const FeeInvoicesPage = () => {
                       onClick={() => selectStudent(s)}
                       className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
-                      <span className="text-gray-800 dark:text-slate-200">{s.name_bn || `ছাত্র #${s.id}`}</span>
+                      <span className="text-gray-800 dark:text-slate-200">
+                        {s.name_bn || `ছাত্র #${s.id}`}
+                        {s.current_class ? ` · শ্রেণি: ${s.current_class}` : ""}
+                      </span>
                       <span className="text-xs text-gray-400 dark:text-slate-500">
                         রোল {s.roll ?? "-"}
                         {s.registration_no ? ` · রেজি ${s.registration_no}` : ""}

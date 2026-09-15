@@ -20,6 +20,15 @@ export interface BrandLayoutData {
   footer_height: number; // mm
 }
 
+// One row of the marksheet's info-field grid (রোল নম্বর/রেজিস্ট্রেশন নম্বর/
+// শিক্ষার্থীর নাম/etc, see MARKSHEET_FIELD_KEYS in settings.constants.ts) -
+// `visible` toggles it off the print, and the array's own order IS the
+// display order (no separate position number needed).
+export interface MarksheetFieldItem {
+  key: string;
+  visible: boolean;
+}
+
 export interface BrandingData {
   name: string | null;
   address: string | null;
@@ -34,6 +43,7 @@ export interface BrandingData {
   report_footer_image: string | null;
   report_print_mode: string;
   report_brand_layout: BrandLayoutData;
+  marksheet_fields: MarksheetFieldItem[];
 }
 
 export type SectionTogglesData = Record<string, boolean>;

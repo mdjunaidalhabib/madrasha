@@ -11,6 +11,7 @@ import {
   AdmitCardDesignData,
   LetterDesignData,
   BookLabelDesignData,
+  MarksheetFieldItem,
   MyPlanData,
   SectionTogglesData,
 } from "./settings.types";
@@ -42,6 +43,7 @@ import {
   BRAND_LOGO_POSITIONS,
   BRAND_LAYOUT_LIMITS,
   MAX_BRAND_FOOTER_TEXT_LENGTH,
+  MARKSHEET_FIELD_KEYS,
 } from "./settings.constants";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -176,6 +178,61 @@ function mergeBrandLayoutPatch(
   return next;
 }
 
+/** Validates + normalizes a full marksheet_fields replacement (not a partial
+ * patch - the client always resends the whole ordered list, same as the
+ * document designer's layer arrays). Drops nothing silently on a malformed
+ * shape (throws instead, same strictness as sanitizeContactList below) but
+ * DOES silently append any known field key the caller's list left out, at
+ * the end, visible by default - so a field added to MARKSHEET_FIELD_KEYS
+ * after a tenant already customized their order never just disappears from
+ * the print. Returns undefined when the caller sent nothing at all. */
+function sanitizeMarksheetFields(
+  value: UpdateBrandingRequestDto["marksheet_fields"],
+): MarksheetFieldItem[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new BadRequestError("Invalid marksheet_fields");
+
+  const seen = new Set<string>();
+  const cleaned: MarksheetFieldItem[] = [];
+  for (const item of value) {
+    const key = item && typeof item === "object" ? (item as { key?: unknown }).key : undefined;
+    if (typeof key !== "string" || !(MARKSHEET_FIELD_KEYS as readonly string[]).includes(key)) {
+      throw new BadRequestError("Invalid marksheet field key");
+    }
+    if (seen.has(key)) throw new BadRequestError("Duplicate marksheet field key");
+    seen.add(key);
+    cleaned.push({ key, visible: !!(item as { visible?: unknown }).visible });
+  }
+
+  for (const key of MARKSHEET_FIELD_KEYS) {
+    if (!seen.has(key)) cleaned.push({ key, visible: true });
+  }
+
+  return cleaned;
+}
+
+/** Read-side counterpart: fills in any known field missing from what's
+ * stored (same reasoning as sanitizeMarksheetFields' own fill-in) without
+ * throwing, since this runs against our own DB data on every getBranding()
+ * call rather than fresh user input. */
+function fillMarksheetFields(stored: unknown): MarksheetFieldItem[] {
+  const list = Array.isArray(stored) ? (stored as Partial<MarksheetFieldItem>[]) : [];
+  const seen = new Set<string>();
+  const cleaned: MarksheetFieldItem[] = [];
+  for (const item of list) {
+    const key = item?.key;
+    if (typeof key !== "string" || seen.has(key) || !(MARKSHEET_FIELD_KEYS as readonly string[]).includes(key)) {
+      continue;
+    }
+    seen.add(key);
+    cleaned.push({ key, visible: !!item?.visible });
+  }
+  for (const key of MARKSHEET_FIELD_KEYS) {
+    if (!seen.has(key)) cleaned.push({ key, visible: true });
+  }
+  return cleaned;
+}
+
 function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
   return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
 }
@@ -245,6 +302,7 @@ export class SettingsService {
         ...BRAND_LAYOUT_DEFAULTS,
         ...((madrasa.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
       },
+      marksheet_fields: fillMarksheetFields(madrasa.marksheetFieldLayout),
     };
   }
 
@@ -263,6 +321,7 @@ export class SettingsService {
       report_footer_image,
       report_print_mode,
       report_brand_layout,
+      marksheet_fields,
     } = body;
 
     for (const [key, value] of Object.entries({
@@ -330,6 +389,8 @@ export class SettingsService {
       mergedBrandLayout = mergeBrandLayoutPatch(existingLayout, report_brand_layout);
     }
 
+    const sanitizedMarksheetFields = sanitizeMarksheetFields(marksheet_fields);
+
     const changes: string[] = [];
     if (name !== undefined && String(name).trim() !== "" && current && name !== current.name) {
       changes.push(`নাম: ${current.name ?? "—"} → ${name}`);
@@ -374,6 +435,7 @@ export class SettingsService {
       changes.push(`প্রিন্ট মোড: ${current.reportPrintMode || DEFAULT_REPORT_PRINT_MODE} → ${report_print_mode}`);
     }
     if (mergedBrandLayout !== undefined) changes.push("রিপোর্ট লেআউট (ফন্ট/রঙ/অবস্থান) আপডেট করা হয়েছে");
+    if (sanitizedMarksheetFields !== undefined) changes.push("মার্কশিট তথ্য ফিল্ড আপডেট করা হয়েছে");
 
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
@@ -406,6 +468,9 @@ export class SettingsService {
       ...(report_print_mode !== undefined ? { reportPrintMode: report_print_mode } : {}),
       ...(mergedBrandLayout !== undefined
         ? { reportBrandLayout: mergedBrandLayout as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(sanitizedMarksheetFields !== undefined
+        ? { marksheetFieldLayout: sanitizedMarksheetFields as unknown as Prisma.InputJsonValue }
         : {}),
     });
 

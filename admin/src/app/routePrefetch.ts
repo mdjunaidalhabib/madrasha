@@ -52,6 +52,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "settings/users": () => import("../features/users/UsersPage"),
   "settings/trash": () => import("../features/admin/TrashPage"),
   "ihtemam/activity": () => import("../features/activity/ActivityPage"),
+  "hikmah-it": () => import("../features/vendor/HikmahItPage"),
 };
 
 const prefetchedRoutes = new Set<string>();

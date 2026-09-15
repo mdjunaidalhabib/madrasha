@@ -370,17 +370,3 @@ export const getExamSummaryReport = async (req: Request, res: Response) => {
   }
 };
 
-export const getResultPublicationReport = async (req: Request, res: Response) => {
-  const madrasaId = requireTenant(req, res);
-  if (!madrasaId) return;
-
-  try {
-    const rows = await academicReportService.getResultPublicationStatus(
-      madrasaId,
-      getDivisionClassFilters(req),
-    );
-    return ok(res, Array.isArray(rows) ? rows : []);
-  } catch (error) {
-    return fail(res, error);
-  }
-};

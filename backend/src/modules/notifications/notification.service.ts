@@ -215,10 +215,13 @@ export class NotificationService {
   /* ================= AUTO NOTIFICATION SETTINGS ================= */
 
   async getSettings(madrasaId: number) {
-    const rows = await this.repository.findAllSettings(madrasaId);
+    const [rows, masterEnabled] = await Promise.all([
+      this.repository.findAllSettings(madrasaId),
+      this.repository.findMasterEnabled(madrasaId),
+    ]);
     const byKey = new Map(rows.map((r) => [r.eventKey, r]));
 
-    return NOTIFICATION_EVENTS.map((eventKey) => {
+    const items = NOTIFICATION_EVENTS.map((eventKey) => {
       const row = byKey.get(eventKey);
       return {
         eventKey,
@@ -226,6 +229,16 @@ export class NotificationService {
         template: row?.template || DEFAULT_NOTIFICATION_TEMPLATES[eventKey],
       };
     });
+
+    return { masterEnabled, items };
+  }
+
+  /** Master kill-switch for the whole অটো নোটিফিকেশন page - pausing it never
+   * touches any individual event's isEnabled row (see triggerEvent below),
+   * so turning it back on resumes exactly the per-event state it had before. */
+  async setMasterEnabled(madrasaId: number, enabled: boolean) {
+    await this.repository.setMasterEnabled(madrasaId, enabled);
+    return { masterEnabled: enabled };
   }
 
   async updateSetting(madrasaId: number, eventKey: string, dto: NotificationSettingUpdateDto) {
@@ -303,6 +316,9 @@ export class NotificationService {
   ) {
     try {
       if (!phone) return;
+
+      const masterEnabled = await this.repository.findMasterEnabled(madrasaId);
+      if (!masterEnabled) return;
 
       const setting = await this.repository.findSetting(madrasaId, eventKey);
       const enabled = setting ? !!setting.isEnabled : true;

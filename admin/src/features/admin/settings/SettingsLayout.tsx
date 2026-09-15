@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Package,
   Trash2,
+  Code2,
 } from "lucide-react";
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
 import { useAuthStore } from "../../../store/authStore";
@@ -23,6 +24,10 @@ const SETTINGS_NAV_ITEMS: {
   icon: typeof Settings2;
   module?: string;
   permission?: string;
+  // Absolute override for entries that don't live under /settings/* (e.g. the
+  // developer-info page, which is a shared top-level route reused elsewhere —
+  // see HikmahItPage.tsx / VendorPromoCard.tsx).
+  path?: string;
 }[] = [
   { key: "profile", label: "প্রোফাইল সেটিংস", icon: UserCog },
   { key: "branding", label: "প্রতিষ্ঠান ব্র্যান্ডিং", icon: Paintbrush, module: "settings", permission: "settings.manage" },
@@ -31,6 +36,7 @@ const SETTINGS_NAV_ITEMS: {
   { key: "roles", label: "রোল ও পারমিশন", icon: ShieldCheck, module: "settings", permission: "roles.manage" },
   { key: "plan", label: "প্ল্যান", icon: Package },
   { key: "trash", label: "ট্র্যাশ", icon: Trash2, module: "settings" },
+  { key: "hikmah-it", label: "ডেভেলপার তথ্য", icon: Code2, path: "/hikmah-it" },
 ];
 
 export default function SettingsLayout() {
@@ -55,12 +61,13 @@ export default function SettingsLayout() {
         <div className="space-y-1">
           {visibleItems.map((item) => {
             const Icon = item.icon;
+            const to = item.path ?? `/settings/${item.key}`;
             return (
               <NavLink
                 key={item.key}
-                to={`/settings/${item.key}`}
-                onMouseEnter={() => prefetchAdminRoute(`settings/${item.key}`)}
-                onFocus={() => prefetchAdminRoute(`settings/${item.key}`)}
+                to={to}
+                onMouseEnter={() => prefetchAdminRoute(item.path ? item.key : `settings/${item.key}`)}
+                onFocus={() => prefetchAdminRoute(item.path ? item.key : `settings/${item.key}`)}
                 className={({ isActive }) =>
                   `flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
                     isActive

@@ -7,6 +7,7 @@ type State = {
   loading: Partial<Record<BackendDocumentType, boolean>>;
   loaded: Partial<Record<BackendDocumentType, boolean>>;
   fetchDefault: (type: BackendDocumentType, force?: boolean) => Promise<void>;
+  reset: () => void;
 };
 
 /**
@@ -43,4 +44,6 @@ export const useDocumentTemplateDefaultStore = create<State>((set, get) => ({
       set((s) => ({ loading: { ...s.loading, [type]: false } }));
     }
   },
+
+  reset: () => set({ defaults: {}, loading: {}, loaded: {} }),
 }));

@@ -389,14 +389,17 @@ input[type="number"]::-webkit-inner-spin-button {
    the moment the logo size/position is customized (see its marginBottom
    comment), so this default only matters for an untouched madrasa. */
 .report-brand-header--with-logo {
-  margin-bottom: 50px;
+  margin-bottom: 21px;
 }
 
 .report-brand-logo {
   position: absolute;
   left: 28px;
   top: 105%;
-  transform: translateY(-50%);
+  /* -85% (not -50%) pulls the logo up so almost all of it sits beside the
+     name/address text instead of hanging below the header - matches
+     ReportBrandHeader.tsx's overhangPx (logo_size * 0.15) margin calc. */
+  transform: translateY(-85%);
   z-index: 2;
   width: 95px;
   height: 95px;
@@ -802,7 +805,7 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-header--with-logo {
-  margin-bottom: 45px;
+  margin-bottom: 19px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-logo {
@@ -826,7 +829,7 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-header--with-logo {
-  margin-bottom: 37px;
+  margin-bottom: 17px;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-logo {

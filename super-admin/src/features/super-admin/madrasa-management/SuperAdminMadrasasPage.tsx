@@ -626,6 +626,14 @@ function EditMadrasaModal({
             />
           </div>
           <div>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Address</label>
+            <input
+              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.address || ""}
+              onChange={(e) => update("address", e.target.value)}
+            />
+          </div>
+          <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Phone</label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -633,23 +641,42 @@ function EditMadrasaModal({
               onChange={(e) => update("phone", e.target.value)}
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Plan</label>
-            <select
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={form.plan_id}
-              onChange={(e) => handlePlanChange(e.target.value)}
-            >
-              <option value="">No change</option>
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              প্ল্যান বাছলে Student/User Limit অটো-আপডেট হবে; কাস্টম লিমিট দিতে চাইলে "No change" রাখুন।
-            </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:col-span-2">
+            <div>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Plan</label>
+              <select
+                className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={form.plan_id}
+                onChange={(e) => handlePlanChange(e.target.value)}
+              >
+                <option value="">No change</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
+              <input
+                type="number"
+                disabled={!!form.plan_id}
+                className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
+                value={form.student_limit}
+                onChange={(e) => update("student_limit", Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">User Limit</label>
+              <input
+                type="number"
+                disabled={!!form.plan_id}
+                className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
+                value={form.user_limit}
+                onChange={(e) => update("user_limit", Number(e.target.value))}
+              />
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
@@ -665,26 +692,6 @@ function EditMadrasaModal({
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               অনেক মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করছে — প্রকৃত শুরুর তারিখ বসিয়ে দিন, নাহলে আজকের তারিখ ধরা হবে।
             </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
-            <input
-              type="number"
-              disabled={!!form.plan_id}
-              className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
-              value={form.student_limit}
-              onChange={(e) => update("student_limit", Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">User Limit</label>
-            <input
-              type="number"
-              disabled={!!form.plan_id}
-              className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
-              value={form.user_limit}
-              onChange={(e) => update("user_limit", Number(e.target.value))}
-            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Madrasa Status</label>
@@ -708,14 +715,6 @@ function EditMadrasaModal({
               <option value="limited">Limited</option>
               <option value="disabled">Disabled</option>
             </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Address</label>
-            <input
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={form.address || ""}
-              onChange={(e) => update("address", e.target.value)}
-            />
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">

@@ -44,6 +44,43 @@ export const BRAND_LAYOUT_DEFAULTS: BrandLayout = {
   footer_height: 12,
 };
 
+// One row of the marksheet's info-field grid (রোল নম্বর/রেজিস্ট্রেশন নম্বর/
+// শিক্ষার্থীর নাম/etc - see MARKSHEET_FIELD_LABELS_BN below). `visible`
+// toggles it off the print; the array's own order IS the display order.
+export type MarksheetFieldItem = {
+  key: string;
+  visible: boolean;
+};
+
+// Mirrors backend/src/modules/settings/settings.constants.ts's
+// MARKSHEET_FIELD_KEYS/DEFAULT_MARKSHEET_FIELDS exactly - same original
+// hardcoded order MarksheetList.tsx's INFO_FIELDS already renders in, so an
+// untouched madrasa's marksheet prints pixel-identical to before this
+// feature existed.
+export const DEFAULT_MARKSHEET_FIELDS: MarksheetFieldItem[] = [
+  "roll",
+  "registration_no",
+  "date_of_birth",
+  "student_name",
+  "father_name",
+  "madrasa_grade",
+  "general_grade",
+  "status",
+  "rank_no",
+].map((key) => ({ key, visible: true }));
+
+export const MARKSHEET_FIELD_LABELS_BN: Record<string, string> = {
+  roll: "রোল নম্বর",
+  registration_no: "রেজিস্ট্রেশন নম্বর",
+  date_of_birth: "জন্ম তারিখ",
+  student_name: "শিক্ষার্থীর নাম",
+  father_name: "পিতার নাম",
+  madrasa_grade: "ফলাফল বিভাগ",
+  general_grade: "গ্রেড",
+  status: "ফলাফল",
+  rank_no: "মেধাস্থান",
+};
+
 export type BrandingPayload = {
   name?: string | null;
   address?: string | null;
@@ -58,6 +95,7 @@ export type BrandingPayload = {
   report_footer_image?: string | null;
   report_print_mode?: ReportPrintMode;
   report_brand_layout?: BrandLayoutPatch | BrandLayout;
+  marksheet_fields?: MarksheetFieldItem[];
 };
 
 export async function getBranding(): Promise<BrandingPayload> {

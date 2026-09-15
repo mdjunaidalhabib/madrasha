@@ -37,14 +37,10 @@ import {
   Wifi,
 } from "lucide-react";
 import { cachedGet } from "../../services/api";
-import { eventApi, EventDto, EVENT_TYPE_LABELS } from "../../services/eventApi";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
-import EventCalendar, { CalendarItem } from "../../components/dashboard/EventCalendar";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
-import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
 import { getPublicSiteUrl } from "../../utils/publicSiteUrl";
 import VendorPromoCard from "../vendor/VendorPromoCard";
@@ -72,22 +68,11 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(true);
-  const [events, setEvents] = useState<EventDto[]>([]);
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
   const publicUrl = getPublicSiteUrl(madrasaSlug);
   const isDark = useThemeStore((s) => s.theme) === "dark";
   const gridColor = isDark ? "#334155" : "#e2e8f0";
   const axisColor = isDark ? "#64748b" : "#94a3b8";
-  const toast = useToastStore();
-
-  const loadEvents = useCallback(async () => {
-    try {
-      const res = await eventApi.list();
-      setEvents(res.data?.data || []);
-    } catch {
-      // Dashboard tolerates a missing events list - the exam feed alone still renders.
-    }
-  }, []);
 
   // ttlMs: 0 bypasses the shared GET cache entirely for this call. বকেয়া ফি
   // (overdueFees) and every other summary number here come from this one
@@ -111,7 +96,6 @@ export default function DashboardPage() {
         setTrendsLoading(false);
       }
     })();
-    loadEvents();
 
     // Also refresh when the user comes back to this tab - covers the case
     // where the dashboard was left open in the background while a payment
@@ -119,81 +103,17 @@ export default function DashboardPage() {
     const onFocus = () => loadDashboard();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [loadEvents, loadDashboard]);
+  }, [loadDashboard]);
 
   const loading = !data;
 
-  // "আসন্ন কার্যক্রম" merges two sources into one feed: exams (read-only here,
-  // managed from রুটিন) and manually-added events (মিটিং/নোটিশ/ছুটি/অন্যান্য,
-  // added right from the calendar widget below).
-  const calendarItems: CalendarItem[] = useMemo(() => {
-    const examItems: CalendarItem[] = (data?.upcomingExams || []).map((exam: any) => ({
-      id: exam.id,
-      kind: "exam" as const,
-      date: exam.examDate,
-      title: exam.examName,
-      subtitle: exam.className,
-      startTime: exam.startTime,
-      endTime: exam.endTime,
-    }));
-    const eventItems: CalendarItem[] = events.map((e) => ({
-      id: e.id,
-      kind: "event" as const,
-      date: e.eventDate,
-      title: e.title,
-      type: e.type,
-      startTime: e.startTime,
-      endTime: e.endTime,
-    }));
-    return [...examItems, ...eventItems];
-  }, [data?.upcomingExams, events]);
-
-  const upcomingActivities = useMemo(() => {
+  const upcomingExams = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return calendarItems
-      .filter((item) => new Date(item.date) >= today)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [calendarItems]);
-
-  const handleAddEvent = async (input: {
-    title: string;
-    type: EventDto["type"];
-    event_date: string;
-    start_time?: string;
-    end_time?: string;
-  }) => {
-    try {
-      await eventApi.create(input);
-      toast.push("success", "ইভেন্ট যোগ করা হয়েছে");
-      await loadEvents();
-    } catch (err: any) {
-      toast.push("error", err?.response?.data?.message || "ইভেন্ট যোগ করা যায়নি");
-    }
-  };
-
-  const handleDeleteEvent = (id: number) => {
-    const target = events.find((e) => e.id === id);
-    return new Promise<void>((resolve) => {
-      useConfirmStore.getState().show({
-        title: "ইভেন্ট মুছুন",
-        message: `"${target?.title || ""}" মুছে ফেলতে চান?`,
-        confirmText: "মুছে ফেলুন",
-        danger: true,
-        onConfirm: async () => {
-          try {
-            await eventApi.remove(id);
-            toast.push("success", "ইভেন্ট মুছে ফেলা হয়েছে");
-            await loadEvents();
-          } catch (err: any) {
-            toast.push("error", err?.response?.data?.message || "মুছে ফেলা যায়নি");
-          } finally {
-            resolve();
-          }
-        },
-      });
-    });
-  };
+    return (data?.upcomingExams || [])
+      .filter((exam: any) => new Date(exam.examDate) >= today)
+      .sort((a: any, b: any) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+  }, [data?.upcomingExams]);
 
   const getChannelTotal = (method: "online" | "offline") => {
     const row = (data?.paymentMethodTotals || []).find((r: any) => r.payment_method === method);
@@ -366,34 +286,28 @@ export default function DashboardPage() {
           </div>
 
           <Card>
-            <CardHeader title="আসন্ন কার্যক্রম" subtitle="পরীক্ষা, মিটিং, নোটিশ ও অন্যান্য" />
-            {!loading && upcomingActivities.length === 0 && (
+            <CardHeader title="আসন্ন পরীক্ষা" subtitle="রুটিন অনুযায়ী আসন্ন পরীক্ষাসমূহ" />
+            {!loading && upcomingExams.length === 0 && (
               <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                আসন্ন কোনো কার্যক্রম নেই
+                আসন্ন কোনো পরীক্ষা নেই
               </p>
             )}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {upcomingActivities.map((item) => (
+              {upcomingExams.map((exam: any) => (
                 <div
-                  key={`${item.kind}-${item.id}`}
+                  key={exam.id}
                   className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
                 >
-                  <span
-                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                      item.kind === "exam"
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                        : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
-                    }`}
-                  >
-                    {item.kind === "exam" ? "পরীক্ষা" : EVENT_TYPE_LABELS[item.type || "OTHER"]}
+                  <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                    পরীক্ষা
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium text-slate-700 dark:text-slate-300">
-                    {item.title}
-                    {item.subtitle ? ` · ${item.subtitle}` : ""}
+                    {exam.examName}
+                    {exam.className ? ` · ${exam.className}` : ""}
                   </span>
                   <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-                    {new Date(item.date).toLocaleDateString("bn-BD")}
-                    {item.startTime && item.endTime ? ` · ${item.startTime}-${item.endTime}` : ""}
+                    {new Date(exam.examDate).toLocaleDateString("bn-BD")}
+                    {exam.startTime && exam.endTime ? ` · ${exam.startTime}-${exam.endTime}` : ""}
                   </span>
                 </div>
               ))}
@@ -745,14 +659,6 @@ export default function DashboardPage() {
                 </a>
               ))}
             </div>
-          </Card>
-
-          <Card>
-            <EventCalendar
-              items={calendarItems}
-              onAdd={handleAddEvent}
-              onDelete={handleDeleteEvent}
-            />
           </Card>
 
           <Card>

@@ -28,9 +28,6 @@ const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceM
 const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
-const ExamCandidateRegistrationPage = lazy(
-  () => import("../features/exam-registration/ExamCandidateRegistrationPage"),
-);
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const ExamRoomsPage = lazy(() => import("../features/exam-operations/ExamRoomsPage"));
@@ -358,16 +355,6 @@ const madrasaAdminChildren = [
   {
     path: "students/promotion",
     element: <ModuleGuard module="students">{withSuspense(<StudentPromotionPage />)}</ModuleGuard>,
-  },
-  {
-    path: "students/exam-registration",
-    element: (
-      <ModuleGuard module="students">
-        <PermissionGuard permission={["exam_candidate.read", "exam_candidate.manage"]}>
-          {withSuspense(<ExamCandidateRegistrationPage />)}
-        </PermissionGuard>
-      </ModuleGuard>
-    ),
   },
   // "সেশন সেটাপ" moved under তালিমাত > সেটিং - old link redirects there.
   { path: "students/sessions", element: <Navigate to="../talimat/settings/sessions" replace /> },

@@ -27,39 +27,45 @@ export default function PlanSection({
     <div className="space-y-4">
       <h4 className="font-semibold text-gray-700 dark:text-slate-200">Plan & Limits</h4>
 
-      <div>
-        <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">Plan</label>
-        <select
-          className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          value={plan_id}
-          onChange={(e) => onPlanChange(e.target.value)}
-        >
-          {plans.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">Plan</label>
+          <select
+            className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            value={plan_id}
+            onChange={(e) => onPlanChange(e.target.value)}
+          >
+            {plans.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <LimitField label="Student Limit" value={student_limit} disabled={locked} />
+        <LimitField label="User Limit" value={user_limit} disabled={locked} />
       </div>
 
-      <div>
-        <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">
-          Plan Start Date
-        </label>
-        <input
-          type="date"
-          className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          value={start_date}
-          onChange={(e) => onStartDateChange(e.target.value)}
-        />
-        <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
-          এই মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করে থাকলে প্রকৃত শুরুর তারিখ দিন, নাহলে আজকের তারিখ থাকবে।
-        </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">
+            Plan Start Date
+          </label>
+          <input
+            type="date"
+            className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            value={start_date}
+            onChange={(e) => onStartDateChange(e.target.value)}
+          />
+        </div>
+
+        <LimitField label="Duration (Days)" value={duration_days} disabled={locked} />
       </div>
 
-      <LimitField label="Student Limit" value={student_limit} disabled={locked} />
-      <LimitField label="User Limit" value={user_limit} disabled={locked} />
-      <LimitField label="Duration (Days)" value={duration_days} disabled={locked} />
+      <p className="-mt-2 text-xs text-gray-400 dark:text-slate-500">
+        এই মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করে থাকলে প্রকৃত শুরুর তারিখ দিন, নাহলে আজকের তারিখ থাকবে।
+      </p>
     </div>
   );
 }

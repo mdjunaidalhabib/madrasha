@@ -29,6 +29,7 @@ type Group = {
 type DefaultUser = {
   role: "muhtamim" | "talimat" | "accountant";
   enabled: boolean;
+  name: string;
   email: string;
   password: string;
 };
@@ -67,7 +68,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   // নিজেই dynamic Users/Roles সেটিংস থেকে যেকোনো রোলের স্টাফ তৈরি করতে পারেন।
   // মুহতামিমের অ্যাকাউন্টটাই একমাত্র bootstrap করা জরুরি।
   const [defaultUsers, setDefaultUsers] = useState<DefaultUser[]>([
-    { role: "muhtamim", enabled: true, email: "", password: "" },
+    { role: "muhtamim", enabled: true, name: "", email: "", password: "" },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -228,6 +229,10 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
     defaultUsers.forEach((u) => {
       if (!u.enabled) return;
 
+      if (!u.name.trim()) {
+        newErrors[u.role + "_name"] = "Name required";
+      }
+
       if (!u.email.trim()) {
         newErrors[u.role + "_email"] = "Email required";
       }
@@ -271,6 +276,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           .filter((u) => u.enabled)
           .map((u) => ({
             role: u.role,
+            name: u.name,
             email: u.email,
             password: u.password,
           })),

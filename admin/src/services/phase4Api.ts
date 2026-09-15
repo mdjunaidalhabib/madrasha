@@ -51,7 +51,8 @@ export type NotificationEventKey =
   | "INFO_UPDATE"
   | "FEE_PAYMENT"
   | "SALARY_PAYMENT"
-  | "RESULT_PUBLISHED";
+  | "RESULT_PUBLISHED"
+  | "EXAM_FEE_ACTIVATED";
 
 export interface NotificationSettingItem {
   eventKey: NotificationEventKey;
@@ -78,10 +79,16 @@ export const notificationApi = {
   audienceResults: (params: { examId: number; classId: number }) =>
     api.get<{ data: AudienceResult[] }>("/notifications/audience/results", { params }),
 
-  getSettings: () => api.get<{ data: NotificationSettingItem[] }>("/notifications/settings"),
+  getSettings: () =>
+    api.get<{ data: { masterEnabled: boolean; items: NotificationSettingItem[] } }>(
+      "/notifications/settings",
+    ),
 
   updateSetting: (eventKey: NotificationEventKey, payload: { isEnabled?: boolean; template?: string }) =>
     api.put(`/notifications/settings/${eventKey}`, payload),
+
+  updateMasterSetting: (enabled: boolean) =>
+    api.put<{ data: { masterEnabled: boolean } }>("/notifications/settings/master", { enabled }),
 
 };
 

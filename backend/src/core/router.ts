@@ -13,7 +13,6 @@ import documentTemplateRoutes from "../modules/document-templates/document-templ
 import noticeRoutes from "../modules/notices/notice.routes";
 import activityRoutes from "../modules/activity/activity.routes";
 import sidebarRoutes from "../modules/sidebar/sidebar.routes";
-import eventRoutes from "../modules/events/event.routes";
 
 // 👨‍🎓 Student & Admission
 import studentRoutes from "../modules/students/student.routes";
@@ -49,7 +48,6 @@ import attendanceRoutes from "../modules/attendance/attendance.routes";
 import routineRoutes from "../modules/routine/routine.routes";
 import promotionRoutes from "../modules/promotion/promotion.routes";
 import sessionRoutes from "../modules/session/session.routes";
-import examCandidateRoutes from "../modules/exam-candidate/exam-candidate.routes";
 
 // 🗓️ Exam Operations: Room, Invigilator, Seat, Exam Attendance
 import examRoomRoutes from "../modules/exam-room/exam-room.routes";
@@ -109,9 +107,6 @@ router.use("/dashboard", dashboardRoutes);
 
 // Sidebar (UI config)
 router.use("/sidebar", sidebarRoutes);
-
-// Events (calendar meetings/notices/holidays etc., merged with exams on the Dashboard)
-router.use("/events", eventRoutes);
 
 /* =========================================================
    👨‍👩‍👧 GUARDIAN PORTAL
@@ -183,7 +178,6 @@ router.use("/staff", staffRoutes);
 router.use("/accounts", accountRoutes);
 router.use("/talimat", talimatRoutes);
 router.use("/", examRoutes);
-router.use("/exam-candidates", examCandidateRoutes);
 router.use("/results", resultsRoutes);
 // Additive workflow/component/correction routers, mounted at the same
 // "/results" prefix as result-panel.routes above (see each router's own

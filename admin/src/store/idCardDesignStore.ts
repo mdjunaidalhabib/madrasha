@@ -7,6 +7,7 @@ type State = {
   loaded: boolean;
   fetchDesign: (force?: boolean) => Promise<void>;
   setDesign: (design: IdCardDesignResponse) => void;
+  reset: () => void;
 };
 
 export const useIdCardDesignStore = create<State>((set, get) => ({
@@ -31,4 +32,6 @@ export const useIdCardDesignStore = create<State>((set, get) => ({
   },
 
   setDesign: (design) => set({ design }),
+
+  reset: () => set({ design: null, loading: false, loaded: false }),
 }));

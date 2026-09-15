@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import DocumentPreview from "@madrasha/shared-ui/src/components/DocumentDesigner/DocumentPreview";
 import { useDocumentTemplateDefaultStore } from "../../../store/documentTemplateDefaultStore";
+import { useBrandingStore } from "../../../store/brandingStore";
+import { DEFAULT_MARKSHEET_FIELDS } from "../../../services/brandingApi";
 import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 type SubjectMark = {
@@ -45,20 +47,31 @@ const formatDob = (value: unknown) => {
   return toBanglaDigits(`${day}/${month}/${year}`);
 };
 
-// Order matters: roll, registration number, then DOB lead the grid; merit
-// rank sits last. Total/average stay in the subject table's own trailing
-// rows since (unlike rank) they read naturally right under the marks.
-const INFO_FIELDS = (row: Record<string, any>) => [
-  { label: "রোল নম্বর", value: cellValue(row, "roll") },
-  { label: "রেজিস্ট্রেশন নম্বর", value: cellValue(row, "registration_no") },
-  { label: "জন্ম তারিখ", value: formatDob(row?.date_of_birth) },
-  { label: "শিক্ষার্থীর নাম", value: cellValue(row, "student_name") },
-  { label: "পিতার নাম", value: cellValue(row, "father_name") },
-  { label: "ফলাফল বিভাগ", value: cellValue(row, "madrasa_grade") },
-  { label: "গ্রেড", value: cellValue(row, "general_grade") },
-  { label: "ফলাফল", value: cellValue(row, "status") },
-  { label: "মেধাস্থান", value: formatMeritRank(row?.rank_no) },
-];
+// Every field the marksheet's info grid can show, keyed the same way as
+// backend/src/modules/settings/settings.constants.ts's MARKSHEET_FIELD_KEYS
+// (BrandingSettingsPage's "মার্কশিট তথ্য ফিল্ড" section lets a madrasa toggle/
+// reorder these). Original hardcoded order (roll, registration number, DOB,
+// name, father, grade, general grade, status, then merit rank last) is
+// DEFAULT_MARKSHEET_FIELDS's order - an untouched madrasa renders
+// pixel-identical to before.
+const INFO_FIELD_DEFS: Record<string, { label: string; value: (row: Record<string, any>) => string }> = {
+  roll: { label: "রোল নম্বর", value: (row) => cellValue(row, "roll") },
+  registration_no: { label: "রেজিস্ট্রেশন নম্বর", value: (row) => cellValue(row, "registration_no") },
+  date_of_birth: { label: "জন্ম তারিখ", value: (row) => formatDob(row?.date_of_birth) },
+  student_name: { label: "শিক্ষার্থীর নাম", value: (row) => cellValue(row, "student_name") },
+  father_name: { label: "পিতার নাম", value: (row) => cellValue(row, "father_name") },
+  madrasa_grade: { label: "ফলাফল বিভাগ", value: (row) => cellValue(row, "madrasa_grade") },
+  general_grade: { label: "গ্রেড", value: (row) => cellValue(row, "general_grade") },
+  status: { label: "ফলাফল", value: (row) => cellValue(row, "status") },
+  rank_no: { label: "মেধাস্থান", value: (row) => formatMeritRank(row?.rank_no) },
+};
+
+// Applies the tenant's saved visibility + order on top of INFO_FIELD_DEFS -
+// hidden fields are dropped, everything else renders in the saved order.
+const getInfoFields = (row: Record<string, any>, fieldSettings: { key: string; visible: boolean }[]) =>
+  fieldSettings
+    .filter((field) => field.visible && INFO_FIELD_DEFS[field.key])
+    .map((field) => ({ label: INFO_FIELD_DEFS[field.key].label, value: INFO_FIELD_DEFS[field.key].value(row) }));
 
 const formatMark = (subject: SubjectMark) => {
   if (subject.is_absent) return "অনু";
@@ -76,10 +89,13 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: Markshee
   const template = useDocumentTemplateDefaultStore((s) => s.defaults.MARKSHEET);
   const templateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.MARKSHEET);
   const fetchDefault = useDocumentTemplateDefaultStore((s) => s.fetchDefault);
+  const marksheetFields = useBrandingStore((s) => s.branding?.marksheet_fields) || DEFAULT_MARKSHEET_FIELDS;
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
 
   useEffect(() => {
     fetchDefault("MARKSHEET");
-  }, [fetchDefault]);
+    fetchBranding();
+  }, [fetchDefault, fetchBranding]);
 
   const version = template?.published || template?.draft;
 
@@ -136,7 +152,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: Markshee
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-x-6 gap-y-2 py-3 text-sm text-black">
-            {INFO_FIELDS(row).map((field) => (
+            {getInfoFields(row, marksheetFields).map((field) => (
               <p key={field.label}>
                 <b>{field.label}:</b> {field.value}
               </p>

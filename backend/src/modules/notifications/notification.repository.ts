@@ -50,6 +50,22 @@ export class NotificationRepository {
     });
   }
 
+  async findMasterEnabled(madrasaId: number) {
+    const madrasa = await prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { autoNotificationsEnabled: true },
+    });
+    return madrasa ? !!madrasa.autoNotificationsEnabled : true;
+  }
+
+  setMasterEnabled(madrasaId: number, enabled: boolean) {
+    return prisma.madrasa.update({
+      where: { id: madrasaId },
+      data: { autoNotificationsEnabled: enabled ? 1 : 0 },
+      select: { autoNotificationsEnabled: true },
+    });
+  }
+
   /* ================= DASHBOARD SUMMARY ================= */
 
   groupByChannelAndStatus(madrasaId: number) {

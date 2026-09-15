@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 type DefaultUser = {
   role: "muhtamim" | "talimat" | "accountant";
   enabled: boolean;
+  name: string;
   email: string;
   password: string;
 };
@@ -40,7 +41,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold dark:text-slate-100">Default Users</h3>
+      <h3 className="text-lg font-semibold dark:text-slate-100">ডিফল্ট ইউজার (মুহতামিম)</h3>
 
       {defaultUsers.map((user, index) => (
         <div key={user.role} className="border rounded-lg p-4 space-y-3 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
@@ -55,6 +56,22 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
                 checked={user.enabled}
                 onChange={() => updateUser(index, "enabled", !user.enabled)}
               />
+            )}
+          </div>
+
+          <div>
+            <input
+              type="text"
+              placeholder="নাম"
+              autoComplete="off"
+              value={user.name}
+              disabled={!user.enabled}
+              onChange={(e) => updateUser(index, "name", e.target.value)}
+              className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+
+            {errors[user.role + "_name"] && (
+              <p className="text-red-500 text-sm dark:text-red-400">{errors[user.role + "_name"]}</p>
             )}
           </div>
 

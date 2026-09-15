@@ -87,11 +87,29 @@ model Madrasa {
   // knob, since this list only grows and every field is optional/sparse.
   reportBrandLayout Json? @map("report_brand_layout")
 
+  // Marksheet info-field visibility + display order (roll/registration_no/
+  // date_of_birth/student_name/father_name/madrasa_grade/general_grade/
+  // status/rank_no) - a JSON array of { key, visible } in display order (see
+  // MarksheetFieldItem in settings.types.ts). Array order IS the render
+  // order, so reordering is just moving an entry, not a separate position
+  // field. Null/missing = every known field visible in MarksheetList.tsx's
+  // original hardcoded order.
+  marksheetFieldLayout Json? @map("marksheet_field_layout")
+
   // Per-section enabled/disabled state for the admin settings pages
   // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
   // JSON map { sectionKey: boolean } instead of one column per section, since
   // this list only grows. A missing key defaults to enabled (true).
   settingsSectionToggles Json? @map("settings_section_toggles")
+
+  // Master kill-switch for the SMS/ইমেইল module's অটো নোটিফিকেশন page (see
+  // AutoNotificationSettingsPage.tsx). Turning this off pauses every
+  // per-event NotificationSetting.isEnabled row WITHOUT changing any of
+  // them - notification.service.ts#triggerEvent checks this first and
+  // short-circuits, so flipping it back on resumes sending exactly per each
+  // event's own already-configured state instead of forcing everything back
+  // on.
+  autoNotificationsEnabled Int @default(1) @map("auto_notifications_enabled")
 
   sanadTemplate          String? @map("sanad_template") @db.Text
   testimonialTemplate    String? @map("testimonial_template") @db.Text
@@ -140,7 +158,6 @@ model Madrasa {
   attendances                  Attendance[]
   classRoutines                ClassRoutine[]
   examRoutines                 ExamRoutine[]
-  events                       Event[]
   promotionBatches             PromotionBatch[]
   sessions                     Session[]
   studentSessionHistories      StudentSessionHistory[]

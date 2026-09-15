@@ -2,6 +2,7 @@ export type UserRole = "muhtamim" | "talimat" | "accountant";
 
 export type DefaultUserType = {
   role: UserRole;
+  name: string;
   email: string;
   password: string;
 };

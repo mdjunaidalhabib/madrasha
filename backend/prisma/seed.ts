@@ -717,7 +717,6 @@ async function main() {
       { keyName: "exam_attendance", name: "Exam Attendance", nameBn: "পরীক্ষার হাজিরা", sortOrder: 8 },
       { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 9 },
       { keyName: "settings", name: "Settings", nameBn: "সেটিং", sortOrder: 10 },
-      { keyName: "events", name: "Events", nameBn: "ইভেন্ট / কার্যক্রম", sortOrder: 11 },
     ],
     accounts: [
       { keyName: "dashboard", name: "Dashboard", nameBn: "হিসাব ড্যাশবোর্ড", sortOrder: 0 },
@@ -850,9 +849,6 @@ async function main() {
     { keyName: "routine.read", name: "রুটিন দেখুন" },
     { keyName: "routine.manage", name: "রুটিন ব্যবস্থাপনা" },
 
-    { keyName: "events.read", name: "ইভেন্ট দেখুন" },
-    { keyName: "events.manage", name: "ইভেন্ট ব্যবস্থাপনা" },
-
     { keyName: "exam.read", name: "পরীক্ষা দেখুন" },
     { keyName: "exam.manage", name: "পরীক্ষা ব্যবস্থাপনা" },
 
@@ -870,10 +866,6 @@ async function main() {
     { keyName: "exam.attendance.read", name: "পরীক্ষার হাজিরা দেখুন" },
     { keyName: "exam.attendance.manage", name: "পরীক্ষার হাজিরা ব্যবস্থাপনা" },
 
-    { keyName: "exam_candidate.read", name: "পরীক্ষার্থী নিবন্ধন দেখুন" },
-    { keyName: "exam_candidate.manage", name: "পরীক্ষার্থী নিবন্ধন ব্যবস্থাপনা" },
-    { keyName: "exam_eligibility.read", name: "পরীক্ষার যোগ্যতা দেখুন" },
-    { keyName: "exam_eligibility.manage", name: "পরীক্ষার যোগ্যতা ব্যবস্থাপনা" },
     { keyName: "result.read", name: "ফলাফল দেখুন" },
     { keyName: "result.manage", name: "ফলাফল ব্যবস্থাপনা" },
 
