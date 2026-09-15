@@ -42,7 +42,6 @@ import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import EventCalendar, { CalendarItem } from "../../components/dashboard/EventCalendar";
-import SetupChecklist from "../../components/dashboard/SetupChecklist";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -309,8 +308,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <SetupChecklist />
-
       <div className="grid items-start gap-6 xl:grid-cols-4">
         <div className="min-w-0 space-y-6 xl:col-span-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -680,7 +677,7 @@ export default function DashboardPage() {
                   href={publicUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-600/30"
+                  className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-sky-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-600/30"
                 >
                   <ExternalLink size={13} />
                   ওয়েবসাইট দেখুন
@@ -703,7 +700,7 @@ export default function DashboardPage() {
                 ব্যয় এন্ট্রি
               </Link>
               <Link
-                className="flex items-center gap-3 rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md dark:bg-slate-700 dark:hover:bg-slate-600"
+                className="flex items-center gap-3 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-md"
                 to={`/students/new_admission`}
               >
                 <UserPlus className="h-5 w-5 shrink-0" strokeWidth={1.75} />

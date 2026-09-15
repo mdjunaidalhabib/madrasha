@@ -35,12 +35,6 @@ export interface OverdueFeesQueryDto {
   class_id?: number | string;
 }
 
-export interface DeleteAllInvoicesRequestDto {
-  /** Must be exactly "DELETE" - a typed confirmation gate for this
-   * irreversible, tenant-wide action (see fee.service.ts deleteAllInvoices). */
-  confirm: string;
-}
-
 export interface WaiveInvoiceRequestDto {
   amount: number | string;
   reason: string;

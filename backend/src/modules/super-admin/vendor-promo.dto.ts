@@ -3,7 +3,6 @@ export interface SaveVendorPromoConfigRequestDto {
   company_name?: string;
   tagline?: string;
   teaser_text?: string;
-  detail_link_text?: string;
   hero_title?: string;
   hero_text?: string;
   founder_name?: string;
@@ -18,6 +17,7 @@ export interface SaveVendorPromoConfigRequestDto {
   phone_intl?: string;
   email?: string;
   website?: string;
+  portfolio_url?: string;
   address?: string;
 }
 

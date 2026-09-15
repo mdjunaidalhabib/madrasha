@@ -417,14 +417,6 @@ export class FeeRepository {
     });
   }
 
-  /** Hard-deletes every invoice for this tenant (e.g. wiping test/demo
-   * invoices before real use) - Payment rows cascade-delete automatically
-   * (Payment.invoice has onDelete: Cascade). Irreversible; the service
-   * layer gates this behind an explicit typed confirmation. */
-  deleteAllInvoices(madrasaId: number) {
-    return prisma.invoice.deleteMany({ where: { madrasaId } });
-  }
-
   findInvoiceForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {
     return tx.invoice.findFirst({ where: { id, madrasaId } });
   }

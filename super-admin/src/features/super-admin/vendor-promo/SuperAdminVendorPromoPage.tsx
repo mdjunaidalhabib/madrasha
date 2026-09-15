@@ -20,7 +20,6 @@ const emptyConfig: VendorPromoConfig = {
   company_name: "",
   tagline: "",
   teaser_text: "",
-  detail_link_text: "",
   hero_title: "",
   hero_text: "",
   founder_name: "",
@@ -34,6 +33,7 @@ const emptyConfig: VendorPromoConfig = {
   phone_intl: "",
   email: "",
   website: "",
+  portfolio_url: "",
   address: "",
 };
 
@@ -159,11 +159,6 @@ function ConfigForm() {
             onChange={(v) => set("teaser_text", v)}
             colSpan
           />
-          <Field
-            label="“বিস্তারিত” লিংক টেক্সট"
-            value={form.detail_link_text}
-            onChange={(v) => set("detail_link_text", v)}
-          />
           <Field label="হিরো শিরোনাম (বিস্তারিত পেজে)" value={form.hero_title} onChange={(v) => set("hero_title", v)} />
           <Field
             label="হিরো লেখা"
@@ -221,6 +216,12 @@ function ConfigForm() {
           />
           <Field label="ইমেইল" value={form.email} onChange={(v) => set("email", v)} />
           <Field label="ওয়েবসাইট" value={form.website} onChange={(v) => set("website", v)} placeholder="https://..." />
+          <Field
+            label="পোর্টফোলিও লিংক (ঐচ্ছিক — খালি রাখলে কার্ডে দেখাবে না)"
+            value={form.portfolio_url}
+            onChange={(v) => set("portfolio_url", v)}
+            placeholder="https://..."
+          />
           <Field label="ঠিকানা" value={form.address} onChange={(v) => set("address", v)} colSpan />
         </div>
       </div>

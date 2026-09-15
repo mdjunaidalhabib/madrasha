@@ -11,7 +11,6 @@ import {
   CreateFeeCategoryRequestDto,
   CreateFeeStructureRequestDto,
   CreatePaymentMethodSettingRequestDto,
-  DeleteAllInvoicesRequestDto,
   InvoiceQueryDto,
   OverdueFeesQueryDto,
   PendingInvoicesQueryDto,
@@ -929,22 +928,6 @@ export class FeeService {
         err,
         "Failed to clear the pending list",
       );
-    }
-  }
-
-  /** Wipes every invoice (and, via cascade, every payment) for this tenant
-   * - meant for clearing out test/demo data before real use, never for
-   * routine cleanup. Gated on a typed "DELETE" confirmation independent of
-   * whatever the frontend already asked, since this is irreversible. */
-  async deleteAllInvoices(madrasaId: number, dto: DeleteAllInvoicesRequestDto) {
-    if (dto.confirm !== "DELETE") {
-      throw new BadRequestError('Type "DELETE" to confirm this irreversible action');
-    }
-    try {
-      const result = await this.repository.deleteAllInvoices(madrasaId);
-      return { deleted: result.count };
-    } catch (err) {
-      return friendlyFailure("deleteAllInvoices error:", err, "Failed to delete invoices");
     }
   }
 

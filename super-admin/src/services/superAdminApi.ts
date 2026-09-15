@@ -277,7 +277,6 @@ export type VendorPromoConfig = {
   company_name: string;
   tagline: string;
   teaser_text: string;
-  detail_link_text: string;
   hero_title: string;
   hero_text: string;
   founder_name: string;
@@ -291,6 +290,7 @@ export type VendorPromoConfig = {
   phone_intl: string;
   email: string;
   website: string;
+  portfolio_url: string;
   address: string;
 };
 
@@ -325,6 +325,33 @@ export async function restoreMadrasa(id: number) {
 
 export async function permanentDeleteMadrasa(id: number) {
   const res = await api.delete(`/super/madrasas/${id}/permanent`);
+  return res.data;
+}
+
+/* =========================
+   MADRASA DATA CLEAN (password-verified, double-confirmed wipe)
+========================= */
+
+export type MadrasaCleanStats = {
+  students: number;
+  invoices: number;
+  exams: number;
+  attendanceRecords: number;
+  users: number;
+  staff: number;
+  teachers: number;
+};
+
+export async function getMadrasaCleanStats(id: number) {
+  const res = await api.get(`/super/madrasas/${id}/clean-stats`);
+  return res.data.data as MadrasaCleanStats;
+}
+
+export async function cleanMadrasaData(
+  id: number,
+  payload: { mode: "operational" | "full"; confirm_name: string; password: string },
+) {
+  const res = await api.post(`/super/madrasas/${id}/clean`, payload);
   return res.data;
 }
 

@@ -408,6 +408,7 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   // Super-admin actions visible in a tenant's own log
   { key: "madrasa|MADRASA_CREATED", bn: "মাদ্রাসা তৈরি করা হয়েছে", en: "Madrasa created", ar: "تم إنشاء المدرسة" },
   { key: "madrasa|SUPER_ADMIN_MADRASA_UPDATED", bn: "মাদ্রাসার তথ্য হালনাগাদ করা হয়েছে (সুপার এডমিন)", en: "Madrasa updated (super admin)", ar: "تم تحديث بيانات المدرسة (المشرف العام)" },
+  { key: "madrasa|SUPER_ADMIN_MADRASA_DATA_CLEANED", bn: "মাদ্রাসার ডেটা ক্লিন করা হয়েছে (সুপার এডমিন)", en: "Madrasa data cleaned (super admin)", ar: "تم مسح بيانات المدرسة (المشرف العام)" },
   { key: "user|SUPER_ADMIN_USER_CREATED", bn: "নতুন ইউজার তৈরি করা হয়েছে (সুপার এডমিন)", en: "User created (super admin)", ar: "تم إنشاء مستخدم (المشرف العام)" },
   { key: "user|SUPER_ADMIN_USER_DELETED", bn: "ইউজার মুছে ফেলা হয়েছে (সুপার এডমিন)", en: "User deleted (super admin)", ar: "تم حذف المستخدم (المشرف العام)" },
 

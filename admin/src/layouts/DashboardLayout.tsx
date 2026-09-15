@@ -6,6 +6,7 @@ import Topbar from "../components/topbar/Topbar";
 import LockScreen from "../components/lock/LockScreen";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
 import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
+import { Calendar, Clock } from "lucide-react";
 
 import { loadSidebar } from "../services/sidebarApi";
 import { getMyPlan } from "../services/planApi";
@@ -14,6 +15,7 @@ import { useSidebarStore } from "../store/sidebarStore";
 import { usePlanStore } from "../store/planStore";
 import { useAuthStore } from "../store/authStore";
 import { useAdminBreadcrumbs } from "../components/sidebar/useAdminBreadcrumbs";
+import { useNowLabels } from "../hooks/useNowLabels";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 export default function DashboardLayout() {
@@ -24,6 +26,7 @@ export default function DashboardLayout() {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
   const breadcrumbs = useAdminBreadcrumbs();
+  const { date: today, time: nowTime } = useNowLabels();
 
   useEffect(() => {
     document.body.style.overflow = mobileSidebar ? "hidden" : "";
@@ -104,8 +107,17 @@ export default function DashboardLayout() {
       <div className="flex flex-col flex-1 min-w-0">
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
-        <main className="flex-1 overflow-y-auto p-4 text-slate-900 dark:text-slate-100">
-          <Breadcrumbs items={breadcrumbs} />
+        <main className="flex-1 overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <Breadcrumbs items={breadcrumbs} />
+            <div className="mb-4 mr-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:mr-4 md:flex">
+              <Calendar size={14} className="shrink-0" />
+              <span className="truncate">{today}</span>
+              <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />
+              <Clock size={14} className="shrink-0" />
+              <span className="tabular-nums">{nowTime}</span>
+            </div>
+          </div>
           <RouteErrorBoundary key={location.pathname}>
             <Outlet />
           </RouteErrorBoundary>

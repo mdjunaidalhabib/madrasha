@@ -15,6 +15,7 @@ export default function MadrasasTable({
   onToggleActive,
   onDelete,
   onEdit,
+  onClean,
   selectedIds,
   onToggleOne,
   onToggleAll,
@@ -27,6 +28,7 @@ export default function MadrasasTable({
   onToggleActive: (m: Madrasa) => Promise<void>;
   onDelete: (m: Madrasa) => void;
   onEdit: (m: Madrasa) => void;
+  onClean: (m: Madrasa) => void;
   selectedIds: Set<number>;
   onToggleOne: (id: number) => void;
   onToggleAll: () => void;
@@ -85,6 +87,15 @@ export default function MadrasasTable({
           className="flex-1 sm:flex-none"
         >
           Trash
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() => onClean(m)}
+          disabled={locked}
+          title="এই মাদ্রাসার ডেটা মুছে ফেলুন (পাসওয়ার্ড ভেরিফাই সহ)"
+          className="flex-1 sm:flex-none"
+        >
+          ডেটা ক্লিন
         </Button>
         <Button
           variant="secondary"

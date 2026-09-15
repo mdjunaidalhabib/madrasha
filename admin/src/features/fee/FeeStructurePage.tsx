@@ -13,7 +13,6 @@ import {
 } from "../../services/phase2Api";
 import { type Session } from "../../services/sessionApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
@@ -80,43 +79,6 @@ const FeeStructurePage = () => {
   const [editTarget, setEditTarget] = useState<FeeStructureRow | null>(null);
   const [editForm, setEditForm] = useState(emptyStructureForm);
   const [editSaving, setEditSaving] = useState(false);
-
-  // "সব ইনভয়েস মুছুন" - অপরিবর্তনীয় বলে সাধারণ কনফার্ম ডায়ালগের বদলে টাইপ-করে-
-  // নিশ্চিত-করুন মোডাল, যেন ভুলবশত ক্লিক করলেও কিছু মোছা না যায়।
-  const [dangerModalOpen, setDangerModalOpen] = useState(false);
-  const [dangerConfirmText, setDangerConfirmText] = useState("");
-  const [deletingAllInvoices, setDeletingAllInvoices] = useState(false);
-
-  // "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন" - backfillInvoicesForAllStudents
-  // idempotent (ইতিমধ্যে বিল হওয়া কিছু আবার তৈরি করে না, unique constraint
-  // নিরবে স্কিপ করে দেয়) - তাই ডেঞ্জার জোনের বাইরে সাধারণ অ্যাকশন হিসেবে রাখা।
-  const [backfillingAll, setBackfillingAll] = useState(false);
-  const handleBackfillAll = () => {
-    useConfirmStore.getState().show({
-      title: "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন",
-      message:
-        "প্রতিটি সক্রিয় ছাত্রের জন্য, তার ক্লাস/সেশনের বর্তমান ফি স্ট্রাকচার অনুযায়ী যেসব ইনভয়েস এখনো তৈরি হয়নি সেগুলো তৈরি হবে। আগে থেকে তৈরি থাকা ইনভয়েস আবার ডুপ্লিকেট হবে না। চালাতে চান?",
-      confirmText: "চালান",
-      onConfirm: async () => {
-        try {
-          setBackfillingAll(true);
-          const res = await invoiceApi.backfill();
-          const data = (res.data as any)?.data;
-          useToastStore
-            .getState()
-            .show(
-              `${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
-              "success",
-            );
-        } catch (err: any) {
-          const msg = err?.response?.data?.message || "ফি সেট করতে সমস্যা হয়েছে";
-          useToastStore.getState().show(msg, "error");
-        } finally {
-          setBackfillingAll(false);
-        }
-      },
-    });
-  };
 
   const loadDivisions = useCallback(async () => {
     try {
@@ -256,7 +218,8 @@ const FeeStructurePage = () => {
       // all - future admission approvals skip it on purpose (see backend
       // FeeService.autoGenerateInvoicesForStudent) so a newly-admitted
       // student is never billed up front for an exam that hasn't happened
-      // yet; re-run "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন" later to catch them up.
+      // yet; editing this structure later (or toggling it back on) will
+      // catch them up, since both re-run the same backfill below.
       try {
         const res = await invoiceApi.backfill({
           class_id: structureClassId,
@@ -305,6 +268,8 @@ const FeeStructurePage = () => {
       useToastStore.getState().show("পরীক্ষার ফি এর জন্য যুক্ত পরীক্ষা নির্বাচন করুন", "error");
       return;
     }
+    const targetClassId = editTarget.classId ?? undefined;
+    const targetSessionId = Number(editForm.session_id);
     try {
       setEditSaving(true);
       await feeStructureApi.update(editTarget.id, {
@@ -312,14 +277,32 @@ const FeeStructurePage = () => {
         amount: Number(editForm.amount),
         frequency: editForm.frequency,
         fee_type: editForm.fee_type,
-        session_id: Number(editForm.session_id),
+        session_id: targetSessionId,
         // সবসময় পাঠানো হয় (undefined না) যাতে "সাধারণ" নির্বাচন করে আগের যুক্ত
         // পরীক্ষা সরিয়ে ফেলা যায় - দেখুন backend resolveExamId, "" মানে null।
         exam_id: editForm.exam_id ? Number(editForm.exam_id) : "",
       });
-      useToastStore.getState().show("ফি কাঠামো আপডেট হয়েছে", "success");
       setEditTarget(null);
       loadStructures();
+
+      // এডিট করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের বাকি থাকা ইনভয়েস তৈরি
+      // হয়ে যায় - তৈরির সময়ের মতোই, যাতে কোনো ম্যানুয়াল "আবার সেট করুন" ধাপ
+      // ছাড়াই পরিবর্তনটা সবার জন্য প্রযোজ্য হয়।
+      try {
+        const res = await invoiceApi.backfill({ class_id: targetClassId, session_id: targetSessionId });
+        const data = (res.data as any)?.data;
+        useToastStore
+          .getState()
+          .show(
+            `ফি কাঠামো আপডেট হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+            "success",
+          );
+      } catch (err) {
+        logger.error("AUTO BACKFILL ON UPDATE ERROR:", err);
+        useToastStore
+          .getState()
+          .show("ফি কাঠামো আপডেট হয়েছে, তবে বিদ্যমান ছাত্রদের ইনভয়েস তৈরিতে সমস্যা হয়েছে", "error");
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || "ফি কাঠামো আপডেট করতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
@@ -349,30 +332,30 @@ const FeeStructurePage = () => {
       setStructures((prev) =>
         prev.map((s) => (s.id === row.id ? { ...s, isActive: nextActive } : s)),
       );
+
+      // আবার চালু করলে এই ফি কাঠামো যে সময় বন্ধ ছিল তখনকার যোগ্য ছাত্ররাও বাকি
+      // থাকা ইনভয়েস পেয়ে যায় - বন্ধ করার সময় কিছু মোছা হয় না, তাই এখানে শুধু
+      // create/edit-এর মতোই backfill চালালেই যথেষ্ট।
+      if (nextActive) {
+        try {
+          const res = await invoiceApi.backfill({
+            class_id: row.classId ?? undefined,
+            session_id: row.sessionId ?? undefined,
+          });
+          const data = (res.data as any)?.data;
+          useToastStore
+            .getState()
+            .show(
+              `ফি কাঠামো চালু হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+              "success",
+            );
+        } catch (err) {
+          logger.error("AUTO BACKFILL ON REACTIVATE ERROR:", err);
+        }
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
       useToastStore.getState().show(msg, "error");
-    }
-  };
-
-  const closeDangerModal = () => {
-    setDangerModalOpen(false);
-    setDangerConfirmText("");
-  };
-
-  const handleDeleteAllInvoices = async () => {
-    if (dangerConfirmText !== "DELETE") return;
-    try {
-      setDeletingAllInvoices(true);
-      const res = await invoiceApi.deleteAll(dangerConfirmText);
-      const data = (res.data as any)?.data;
-      useToastStore.getState().show(`${data?.deleted ?? 0} টি ইনভয়েস মুছে ফেলা হয়েছে`, "success");
-      closeDangerModal();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
-      useToastStore.getState().show(msg, "error");
-    } finally {
-      setDeletingAllInvoices(false);
     }
   };
 
@@ -436,22 +419,12 @@ const FeeStructurePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              ফি কাঠামো তৈরি করুন — নতুন ভর্তি হওয়া ছাত্রদের ইনভয়েস অটোমেটিক তৈরি হয়ে যায়
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={backfillingAll}
-            onClick={handleBackfillAll}
-            title="প্রতিটি সক্রিয় ছাত্রের জন্য বর্তমান ফি স্ট্রাকচার অনুযায়ী বাকি থাকা ইনভয়েস তৈরি করুন"
-            className="h-9 shrink-0 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            {backfillingAll ? "চলছে..." : "বিদ্যমান সব ছাত্রের ফি আবার সেট করুন"}
-          </button>
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+            ফি কাঠামো তৈরি করুন — নতুন ভর্তি হওয়া ছাত্রদের পাশাপাশি বিদ্যমান সব যোগ্য ছাত্রের জন্যও
+            ইনভয়েস অটোমেটিক তৈরি হয়ে যায়
+          </p>
         </div>
 
         {/* Division/Class picker */}
@@ -494,10 +467,10 @@ const FeeStructurePage = () => {
             নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
           </h2>
           <p className="mb-3 -mt-1 text-xs text-gray-500 dark:text-slate-400">
-            তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে। পরীক্ষার ফি
-            হলে চাইলে নির্দিষ্ট একটি পরীক্ষার সাথে যুক্ত করে দিন — তাহলে সেই ফি নতুন ভর্তির সাথে সাথেই বিল
-            হবে না, বরং শুধু তখনই বিল হবে যখন আপনি এটা তৈরি করবেন বা পরে "বিদ্যমান সব ছাত্রের ফি আবার সেট
-            করুন" চালাবেন — অর্থাৎ যখন পরীক্ষাটা সত্যিই আসন্ন।
+            তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে — এডিট করলে বা
+            নিষ্ক্রিয় থেকে আবার সক্রিয় করলেও একইভাবে হয়ে যায়, আলাদা কিছু চালাতে হয় না। পরীক্ষার ফি হলে
+            চাইলে নির্দিষ্ট একটি পরীক্ষার সাথে যুক্ত করে দিন — তাহলে সেই ফি নতুন ভর্তির সাথে সাথেই বিল হবে
+            না, বরং শুধু তখনই বিল হবে যখন আপনি এটা তৈরি বা এডিট করবেন — অর্থাৎ যখন পরীক্ষাটা সত্যিই আসন্ন।
           </p>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
             <div className="w-full sm:w-[200px]">
@@ -580,7 +553,7 @@ const FeeStructurePage = () => {
                 value={structureForm.exam_id}
                 onChange={(e) => setStructureForm((p) => ({ ...p, exam_id: e.target.value }))}
                 disabled={exams.length === 0}
-                title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে, নতুন ভর্তির জন্য পরে 'বিদ্যমান সব ছাত্রের ফি আবার সেট করুন' চালাতে হবে"
+                title="নির্দিষ্ট কোনো পরীক্ষার সাথে যুক্ত করলে ভর্তির সাথে সাথেই বিল হবে না - বরং তৈরি/এডিট করার সাথে সাথেই বিদ্যমান ছাত্রদের বিল হবে"
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
               >
                 <option value="">সাধারণ (ভর্তির সাথে সাথেই বিল হবে)</option>
@@ -722,58 +695,7 @@ const FeeStructurePage = () => {
             </div>
           )}
         </div>
-
-        {/* বিপজ্জনক অ্যাকশন - শুধু টেস্ট/ডেমো ডেটা পরিষ্কার করার জন্য */}
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
-          <h2 className="text-sm font-bold text-rose-700 dark:text-rose-400">বিপজ্জনক এলাকা</h2>
-          <p className="mt-1 text-sm text-rose-600 dark:text-rose-400">
-            এই ট্যানেন্টের সব ইনভয়েস (ও তার সব পেমেন্ট) স্থায়ীভাবে মুছে ফেলুন। শুধু টেস্ট/ডেমো ডেটা
-            পরিষ্কার করার জন্য ব্যবহার করুন — এই কাজ আর ফিরিয়ে নেওয়া যাবে না।
-          </p>
-          <button
-            type="button"
-            onClick={() => setDangerModalOpen(true)}
-            className="mt-3 h-9 rounded-md border border-rose-300 bg-white px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-400 dark:hover:bg-rose-950/40"
-          >
-            সব ইনভয়েস মুছুন
-          </button>
-        </div>
       </div>
-
-      {/* সব ইনভয়েস মুছে ফেলার নিশ্চিতকরণ - সাধারণ কনফার্ম ডায়ালগ নয়, কারণ এটা
-          অপরিবর্তনীয় ও পুরো ট্যানেন্টের সব ইনভয়েস প্রভাবিত করে। */}
-      <Modal open={dangerModalOpen} title="সব ইনভয়েস মুছে ফেলুন" onClose={closeDangerModal}>
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-700 dark:text-slate-300">
-            এই ট্যানেন্টের <strong>সব ইনভয়েস ও পেমেন্ট স্থায়ীভাবে মুছে যাবে</strong> — এই কাজ আর ফিরিয়ে
-            নেওয়া যাবে না। নিশ্চিত হলে নিচের বক্সে <strong>DELETE</strong> লিখুন।
-          </p>
-          <input
-            type="text"
-            value={dangerConfirmText}
-            onChange={(e) => setDangerConfirmText(e.target.value)}
-            placeholder="DELETE লিখুন"
-            className="h-10 w-full rounded-md border border-gray-300 px-3 text-base outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          />
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={closeDangerModal}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            বাতিল
-          </button>
-          <button
-            type="button"
-            disabled={dangerConfirmText !== "DELETE" || deletingAllInvoices}
-            onClick={handleDeleteAllInvoices}
-            className="h-9 rounded-md bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
-          >
-            {deletingAllInvoices ? "মুছে ফেলা হচ্ছে..." : "স্থায়ীভাবে মুছুন"}
-          </button>
-        </div>
-      </Modal>
 
       {/* Edit fee structure modal */}
       <Modal

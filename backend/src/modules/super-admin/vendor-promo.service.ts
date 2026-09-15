@@ -12,9 +12,8 @@ import {
 // stored in the DB is nullable, and a null/empty value falls back to these.
 const DEFAULTS = {
   companyName: "Hikmah IT",
-  tagline: "QMS ছাড়াও আমরা যা করে দিতে পারি",
+  tagline: "আপনার QMS-এর নির্মাতা প্রতিষ্ঠান",
   teaserText: "ওয়েবসাইট, ই-কমার্স প্ল্যাটফর্ম, হোস্টিং সহ আরও সেবা দিই আমরা।",
-  detailLinkText: "বিস্তারিত দেখুন",
   heroTitle: "ই-কমার্স ও মাদরাসা ম্যানেজমেন্ট সফটওয়্যার",
   heroText:
     "আপনি এখন যে QMS ব্যবহার করছেন সেটি আমাদের তৈরি। এছাড়াও ব্যবসা ও শিক্ষা প্রতিষ্ঠানের জন্য ওয়েবসাইট, ই-কমার্স প্ল্যাটফর্ম ও আরও ডিজিটাল সমাধান দিয়ে থাকি — প্রয়োজন হলে নিচের তথ্য থেকে যোগাযোগ করুন।",
@@ -41,7 +40,6 @@ export class VendorPromoService {
       company_name: row?.companyName || DEFAULTS.companyName,
       tagline: row?.tagline || DEFAULTS.tagline,
       teaser_text: row?.teaserText || DEFAULTS.teaserText,
-      detail_link_text: row?.detailLinkText || DEFAULTS.detailLinkText,
       hero_title: row?.heroTitle || DEFAULTS.heroTitle,
       hero_text: row?.heroText || DEFAULTS.heroText,
       founder_name: row?.founderName || DEFAULTS.founderName,
@@ -55,6 +53,7 @@ export class VendorPromoService {
       phone_intl: row?.phoneIntl || DEFAULTS.phoneIntl,
       email: row?.email || DEFAULTS.email,
       website: row?.website || DEFAULTS.website,
+      portfolio_url: row?.portfolioUrl || "",
       address: row?.address || DEFAULTS.address,
     };
   }
@@ -65,7 +64,6 @@ export class VendorPromoService {
     if (dto.company_name !== undefined) data.companyName = dto.company_name.trim() || null;
     if (dto.tagline !== undefined) data.tagline = dto.tagline.trim() || null;
     if (dto.teaser_text !== undefined) data.teaserText = dto.teaser_text.trim() || null;
-    if (dto.detail_link_text !== undefined) data.detailLinkText = dto.detail_link_text.trim() || null;
     if (dto.hero_title !== undefined) data.heroTitle = dto.hero_title.trim() || null;
     if (dto.hero_text !== undefined) data.heroText = dto.hero_text.trim() || null;
     if (dto.founder_name !== undefined) data.founderName = dto.founder_name.trim() || null;
@@ -80,6 +78,7 @@ export class VendorPromoService {
     if (dto.phone_intl !== undefined) data.phoneIntl = dto.phone_intl.trim() || null;
     if (dto.email !== undefined) data.email = dto.email.trim() || null;
     if (dto.website !== undefined) data.website = dto.website.trim() || null;
+    if (dto.portfolio_url !== undefined) data.portfolioUrl = dto.portfolio_url.trim() || null;
     if (dto.address !== undefined) data.address = dto.address.trim() || null;
 
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
@@ -99,7 +98,6 @@ export class VendorPromoService {
       company_name: config.company_name,
       tagline: config.tagline,
       teaser_text: config.teaser_text,
-      detail_link_text: config.detail_link_text,
       hero_title: config.hero_title,
       hero_text: config.hero_text,
       founder: {
@@ -121,6 +119,7 @@ export class VendorPromoService {
         phone_intl: config.phone_intl,
         email: config.email,
         website: config.website,
+        portfolio_url: config.portfolio_url || null,
         address: config.address,
       },
       services: services.map((s) => ({

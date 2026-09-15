@@ -17,7 +17,6 @@ import {
   getPendingInvoices,
   getInvoiceSummary,
   clearPendingInvoices,
-  deleteAllInvoices,
   backfillInvoices,
   payInvoice,
   waiveInvoice,
@@ -67,12 +66,6 @@ router.get("/invoices/summary", rbacMiddleware("fee.read"), getInvoiceSummary);
 // "সব ক্লিয়ার করুন" on that page - fee.manage (not fee.read) since it mutates
 // every currently-pending row, even though it's non-destructive.
 router.post("/invoices/pending/clear", rbacMiddleware("fee.manage"), clearPendingInvoices);
-// Irreversible tenant-wide wipe (e.g. clearing test/demo invoices before
-// real use) - deliberately NOT under the "fee.*" prefix (see the same
-// reasoning on invoice.waive below) so ACCOUNTANT's default "fee.*" grant
-// doesn't cover it; only MUHTAMIM/SUPER_ADMIN (who bypass rbacMiddleware)
-// can call this.
-router.post("/invoices/delete-all", rbacMiddleware("invoice.delete_all"), deleteAllInvoices);
 router.post("/invoices/:id/pay", rbacMiddleware("fee.collect_payment"), payInvoice);
 // Deliberately named "invoice.waive", NOT "fee.waive" - ACCOUNTANT's default
 // grant (see ACCOUNTANT_DEFAULT_PERMISSION_KEYS in

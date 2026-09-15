@@ -94,10 +94,6 @@ export const invoiceApi = {
 
   waive: (invoiceId: number, payload: { amount: number; reason: string; mode?: "add" | "set" }) =>
     api.post(`/invoices/${invoiceId}/waive`, payload),
-
-  // অপরিবর্তনীয় - এই ট্যানেন্টের সব ইনভয়েস (ও ক্যাসকেডে সব পেমেন্ট) স্থায়ীভাবে
-  // মুছে দেয়। শুধু টেস্ট/ডেমো ডেটা পরিষ্কার করার জন্য, নিয়মিত ব্যবহারের জন্য নয়।
-  deleteAll: (confirm: string) => api.post("/invoices/delete-all", { confirm }),
 };
 
 /* ================= PRE-APPROVAL FEE PREVIEW & DISCOUNTS ================= */

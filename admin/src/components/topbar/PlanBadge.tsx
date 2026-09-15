@@ -10,7 +10,9 @@ const TONE_CLASSES: Record<"green" | "yellow" | "red", string> = {
   red: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900",
 };
 
-export default function PlanBadge({ expanded = false }: { expanded?: boolean }) {
+// শুধু আইকন - প্ল্যানের বিস্তারিত (নাম, মেয়াদ) hover টাইটেলে; নেভবারে টেক্সট
+// দেখানো হয় না, ক্লিক করলে প্ল্যান পেজে যায়।
+export default function PlanBadge() {
   const plan = usePlanStore((s) => s.plan);
   if (!plan) return null;
 
@@ -33,15 +35,10 @@ export default function PlanBadge({ expanded = false }: { expanded?: boolean }) 
     <Link
       to={`/settings/plan`}
       title={`প্ল্যান: ${plan.plan_name || ""} ${statusLabel || daysLabel}`.trim()}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-1.5 py-1 text-xs font-semibold transition hover:opacity-80 sm:px-2 ${TONE_CLASSES[tone]}`}
+      aria-label="প্ল্যান স্ট্যাটাস"
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition hover:opacity-80 ${TONE_CLASSES[tone]}`}
     >
-      <Crown size={13} className="shrink-0" />
-      <span className={`max-w-[110px] truncate ${expanded ? "inline" : "hidden sm:inline"}`}>
-        {plan.plan_name || "প্ল্যান"}
-      </span>
-      <span className={`shrink-0 whitespace-nowrap ${expanded ? "inline" : "hidden sm:inline"}`}>
-        {statusLabel || daysLabel}
-      </span>
+      <Crown size={15} className="shrink-0" />
     </Link>
   );
 }

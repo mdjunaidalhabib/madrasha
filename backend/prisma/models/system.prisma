@@ -97,7 +97,6 @@ model PlatformVendorPromo {
   companyName        String?  @map("company_name") @db.VarChar(150)
   tagline            String?  @db.VarChar(200)
   teaserText         String?  @map("teaser_text") @db.VarChar(300)
-  detailLinkText     String?  @map("detail_link_text") @db.VarChar(60)
   heroTitle          String?  @map("hero_title") @db.VarChar(200)
   heroText           String?  @map("hero_text") @db.Text
   founderName        String?  @map("founder_name") @db.VarChar(150)
@@ -112,6 +111,7 @@ model PlatformVendorPromo {
   phoneIntl          String?  @map("phone_intl") @db.VarChar(30)
   email              String?  @db.VarChar(200)
   website            String?  @db.VarChar(200)
+  portfolioUrl       String?  @map("portfolio_url") @db.VarChar(300)
   address            String?  @db.VarChar(250)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 

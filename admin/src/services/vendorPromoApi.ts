@@ -15,7 +15,6 @@ export type VendorPromoPayload =
       company_name: string;
       tagline: string;
       teaser_text: string;
-      detail_link_text: string;
       hero_title: string;
       hero_text: string;
       founder: {
@@ -32,6 +31,7 @@ export type VendorPromoPayload =
         phone_intl: string;
         email: string;
         website: string;
+        portfolio_url: string | null;
         address: string;
       };
       services: VendorPromoService[];

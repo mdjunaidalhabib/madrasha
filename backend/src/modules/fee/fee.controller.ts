@@ -92,11 +92,6 @@ export const clearPendingInvoices = asyncHandler(async (req: Request, res: Respo
   return ApiResponse.success(res, { message: "তালিকা ক্লিয়ার করা হয়েছে", data });
 });
 
-export const deleteAllInvoices = asyncHandler(async (req: Request, res: Response) => {
-  const data = await feeService.deleteAllInvoices(getMadrasaId(req), req.body);
-  return ApiResponse.success(res, { message: `${data.deleted} টি ইনভয়েস মুছে ফেলা হয়েছে`, data });
-});
-
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
   const sessionId = req.body.session_id ? Number(req.body.session_id) : undefined;

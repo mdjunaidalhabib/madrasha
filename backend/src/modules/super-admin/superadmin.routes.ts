@@ -41,6 +41,11 @@ import {
 } from "./superadmin-role.controller";
 
 /* =========================
+   Madrasa data clean (full/operational wipe with password re-verify)
+========================= */
+import { getMadrasaCleanStats, cleanMadrasaData } from "./madrasa-clean.controller";
+
+/* =========================
    Super admin account handlers (manage other super-admin logins)
 ========================= */
 import {
@@ -178,6 +183,13 @@ router.delete("/madrasas/:id/permanent", superAdminMiddleware, permanentDeleteMa
 ===================================================== */
 
 router.get("/madrasas/:id/delete-stats", superAdminMiddleware, getMadrasaDeleteStats);
+
+/* =====================================================
+   MADRASA DATA CLEAN (super-admin-only, password-verified wipe)
+===================================================== */
+
+router.get("/madrasas/:id/clean-stats", superAdminMiddleware, getMadrasaCleanStats);
+router.post("/madrasas/:id/clean", superAdminMiddleware, cleanMadrasaData);
 
 /* =====================================================
    ASSIGN PLAN TO MADRASA

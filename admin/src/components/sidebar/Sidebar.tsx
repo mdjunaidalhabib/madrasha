@@ -7,7 +7,10 @@ import { logoutSession } from "../../services/profileApi";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
 import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
+import PlanBadge from "../topbar/PlanBadge";
+import LockButton from "../lock/LockButton";
 
 import {
   LayoutDashboard,
@@ -123,8 +126,16 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    // সার্ভার-সাইড রিভোক শেষ না হতেই রিডাইরেক্ট হলে রিকোয়েস্টটা রেসে হারিয়ে
+    // যায় - প্রোফাইলের সেশন লিস্টে পুরনো "active" ডিভাইস রয়ে যায়।
+    await logoutSession();
+    logout();
+  };
+
   const header = (
-    <div className={`flex items-center gap-1 border-b border-slate-100 p-2 dark:border-slate-800 ${collapsed ? "justify-center" : ""}`}>
+    <div className="border-b border-slate-100 dark:border-slate-800">
+      <div className={`flex items-center gap-1 p-2 ${collapsed ? "justify-center" : ""}`}>
         {!collapsed && (
           <div ref={accountMenuRef} className="relative min-w-0 flex-1">
             <button
@@ -171,10 +182,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   type="button"
                   onClick={async () => {
                     setAccountMenuOpen(false);
-                    // Await the server-side revoke before clearing local
-                    // state - see Topbar.tsx's handleLogout for why.
-                    await logoutSession();
-                    logout();
+                    await handleLogout();
                   }}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 >
@@ -205,11 +213,31 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           </button>
         </div>
       </div>
+    </div>
+  );
+
+  // মোবাইল ড্রয়ারের একদম নিচে - প্ল্যান/থিম/লক + সরাসরি লগআউট (প্রোফাইল কার্ড
+  // ছাড়াই, ক্লিক করলেই সরাসরি লগআউট হয়ে যায়)
+  const footer = closeSidebar && (
+    <div className="flex items-center justify-center gap-2 border-t border-slate-100 px-2 py-2.5 dark:border-slate-800 md:hidden">
+      <PlanBadge />
+      <ThemeToggle />
+      <LockButton />
+      <button
+        type="button"
+        onClick={handleLogout}
+        aria-label="লগআউট"
+        title="লগআউট"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+      >
+        <LogOut size={16} />
+      </button>
+    </div>
   );
 
   if (!sidebarLoaded) {
     return (
-      <AdminSidebarShell collapsed={collapsed} header={header}>
+      <AdminSidebarShell collapsed={collapsed} header={header} footer={footer}>
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2 px-3 py-2">
@@ -223,7 +251,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   }
 
   return (
-    <AdminSidebarShell collapsed={collapsed} header={header}>
+    <AdminSidebarShell collapsed={collapsed} header={header} footer={footer}>
       {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
           const visibleChildren = module.children?.filter((c) => !c.disabled) || [];

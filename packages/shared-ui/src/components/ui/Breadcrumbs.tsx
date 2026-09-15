@@ -18,13 +18,13 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
   if (!items.length) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-sm">
+    <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1.5 text-xs md:mb-4 md:text-sm">
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         return (
           <Fragment key={`${item.label}-${index}`}>
             {index > 0 && (
-              <ChevronRight size={14} className="shrink-0 text-slate-300 dark:text-slate-600" />
+              <ChevronRight size={13} className="shrink-0 text-slate-300 dark:text-slate-600" />
             )}
             {isLast || !item.to ? (
               <span

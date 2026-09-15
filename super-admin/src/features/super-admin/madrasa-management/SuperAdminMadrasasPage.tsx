@@ -3,6 +3,7 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import {
   activateMadrasa,
   assignPlan,
+  cleanMadrasaData,
   createMadrasa,
   getMadrasa,
   listMadrasas,
@@ -14,6 +15,7 @@ import {
 import SearchPaginationBar from "../../../components/super-admin/SearchPaginationBar";
 import MadrasasTable from "../../../components/super-admin/MadrasasTable";
 import CreateMadrasaModal from "../../../components/super-admin/create-madrasa/CreateMadrasaModal";
+import CleanMadrasaModal from "../../../components/super-admin/CleanMadrasaModal";
 import DivisionsSection from "../../../components/super-admin/create-madrasa/DivisionsSection";
 import ToggleSection from "../../../components/super-admin/create-madrasa/ToggleSection";
 import MadrasaUsersSection from "../../../components/super-admin/create-madrasa/MadrasaUsersSection";
@@ -22,6 +24,7 @@ import { CreateMadrasaPayload } from "../../../components/super-admin/create-mad
 import api, { cachedGet } from "../../../services/adminApi";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 export type Madrasa = {
   id: number;
@@ -85,6 +88,9 @@ export default function SuperAdminMadrasasPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  const [cleaningTarget, setCleaningTarget] = useState<Madrasa | null>(null);
+  const [cleanBusy, setCleanBusy] = useState(false);
 
   /* ==============================
      Pagination
@@ -245,6 +251,31 @@ export default function SuperAdminMadrasasPage() {
   };
 
   /* ==============================
+     CLEAN MADRASA DATA (super-admin-only, password-verified wipe)
+  ============================== */
+
+  const onCleanConfirm = async (payload: {
+    mode: "operational" | "full";
+    confirm_name: string;
+    password: string;
+  }) => {
+    if (!cleaningTarget) return;
+    setCleanBusy(true);
+    try {
+      await cleanMadrasaData(cleaningTarget.id, payload);
+      useToastStore.getState().show("মাদ্রাসার ডেটা ক্লিন করা হয়েছে", "success");
+      setCleaningTarget(null);
+      await fetchAll();
+    } catch (err: any) {
+      logger.error("Clean madrasa data failed:", err);
+      const msg = err?.response?.data?.message || "ডেটা ক্লিন করতে সমস্যা হয়েছে";
+      useToastStore.getState().show(msg, "error");
+    } finally {
+      setCleanBusy(false);
+    }
+  };
+
+  /* ==============================
      SELECTION + BULK TRASH
   ============================== */
 
@@ -380,6 +411,7 @@ export default function SuperAdminMadrasasPage() {
         onToggleActive={onToggleActive}
         onDelete={onDelete}
         onEdit={setEditing}
+        onClean={setCleaningTarget}
         selectedIds={selectedIds}
         onToggleOne={toggleOne}
         onToggleAll={toggleAll}
@@ -401,6 +433,19 @@ export default function SuperAdminMadrasasPage() {
           plans={plans}
           onClose={() => setOpenCreate(false)}
           onSubmit={onCreate}
+        />
+      )}
+
+      {cleaningTarget && (
+        <CleanMadrasaModal
+          madrasaId={cleaningTarget.id}
+          madrasaName={cleaningTarget.name}
+          busy={cleanBusy}
+          onClose={() => {
+            if (cleanBusy) return;
+            setCleaningTarget(null);
+          }}
+          onConfirm={onCleanConfirm}
         />
       )}
 
