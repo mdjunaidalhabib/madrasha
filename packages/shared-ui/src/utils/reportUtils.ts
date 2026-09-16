@@ -9,17 +9,6 @@ const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
 export const ABSENT_MARK = -1;
 export const ABSENT_MARK_LABEL = "অনু";
 
-// Same sentinel trick as ABSENT_MARK - "exempted" (মুক্ত, e.g. a student
-// formally excused from this subject) and "withheld" (স্থগিত, e.g. a result
-// held back pending an unrelated decision) each get their own out-of-range
-// negative number so they flow through the exact same
-// Record<studentId, Record<bookId, number | null>> state/payload shapes
-// that ABSENT_MARK already uses, with no new state shape needed.
-export const EXEMPTED_MARK = -2;
-export const EXEMPTED_MARK_LABEL = "মুক্ত";
-export const WITHHELD_MARK = -3;
-export const WITHHELD_MARK_LABEL = "স্থগিত";
-
 const REPORT_TEXT_MAP: Record<string, string> = {
   PASS: "পাশ",
   FAIL: "ফেল",

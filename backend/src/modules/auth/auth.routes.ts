@@ -7,6 +7,7 @@ import {
   resetPassword,
   getMe,
   updateMe,
+  verifyMyPassword,
   changeMyPassword,
   refreshAccessToken,
   logout,
@@ -24,6 +25,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   updateMeSchema,
+  verifyMyPasswordSchema,
   changeMyPasswordSchema,
   refreshTokenSchema,
   logoutSchema,
@@ -124,6 +126,18 @@ router.post(
   authMiddleware,
   validate(changeMyPasswordSchema),
   changeMyPassword,
+);
+
+/* VERIFY PASSWORD - step-up re-confirmation before a destructive in-app
+   action (e.g. resetting a whole class's entered marks), not a password
+   change. Same auth/tenant guards as the rest of "my account", no
+   separate rate limiter (mirrors /unlock above). */
+router.post(
+  "/verify-password",
+  tenantMiddleware,
+  authMiddleware,
+  validate(verifyMyPasswordSchema),
+  verifyMyPassword,
 );
 
 export default router;

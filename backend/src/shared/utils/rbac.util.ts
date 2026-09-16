@@ -1,5 +1,6 @@
 import { prisma } from "../database/prisma";
 import { isMuhtamimRole, isSuperAdminRole, normalizeAppRole } from "../permissions";
+import { getRolePermissions } from "../middleware/rbac.middleware";
 
 /**
  * Muhtamim/Super Admin already bypass every granular RBAC permission check
@@ -16,4 +17,30 @@ export async function isPrivilegedActor(userId: number): Promise<boolean> {
   });
   const role = normalizeAppRole(user?.role?.keyName || user?.role?.nameBn || "");
   return isSuperAdminRole(role) || isMuhtamimRole(role);
+}
+
+/**
+ * True for an actor who holds full authority over marks entry AND
+ * verification (both marks.submit and marks.verify, or the legacy
+ * result.manage catch-all) - the common single-office-staff madrasa where
+ * one TALIMAT account does the whole marks-entry lifecycle. For that actor,
+ * the per-subject SUBMITTED/VERIFIED lock in ResultPanelService.saveMarks
+ * exists only to satisfy processResult's "everything submitted+verified"
+ * precondition, not as a real separation-of-duties gate (there is no
+ * second person here to gate against) - so their own edits to an
+ * already-submitted/verified subject are let through instead of rejected,
+ * with that subject's MarkSubmission status quietly reverted to DRAFT
+ * (see saveMarks) so the badge stays honest and the next submit+verify
+ * pass re-covers it. A role limited to just ONE of these two permissions
+ * (a genuine separate teacher/verifier) still hits the real lock.
+ */
+export async function hasFullMarksAuthority(userId: number): Promise<boolean> {
+  if (await isPrivilegedActor(userId)) return true;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } });
+  if (!user?.roleId) return false;
+
+  const perms = await getRolePermissions(user.roleId);
+  if (perms.includes("result.manage")) return true;
+  return perms.includes("marks.submit") && perms.includes("marks.verify");
 }

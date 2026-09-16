@@ -4,6 +4,7 @@ import { logger } from "../../shared/logger/logger";
 import { notificationService } from "../notifications/notification.service";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
 import { logActivity } from "../../shared/utils/activity.util";
+import { hasFullMarksAuthority } from "../../shared/utils/rbac.util";
 import {
   DEFAULT_FAIL_MARK,
   DEFAULT_GENERAL_GRADE_FALLBACK,
@@ -388,7 +389,7 @@ export class ResultPanelService {
     return { message: "Session created successfully", result_master_id: created.id };
   }
 
-  async saveMarks(madrasaId: number, body: SaveMarksRequestDto) {
+  async saveMarks(madrasaId: number, userId: number, body: SaveMarksRequestDto) {
     const { data } = body;
     const result_master_id = body.result_master_id;
 
@@ -469,23 +470,37 @@ export class ResultPanelService {
 
     // Once a subject's marks are SUBMITTED/VERIFIED, ordinary marks.manage
     // edits are locked out — a verifier must reject-and-resubmit, or (once
-    // published/locked) the correction workflow takes over.
+    // published/locked) the correction workflow takes over. An actor with
+    // FULL authority over both submit and verify (see hasFullMarksAuthority
+    // - typically the single office/TALIMAT account at a small madrasa with
+    // nobody else to hand a maker/checker step to) is let through instead:
+    // there's no second person here for the lock to actually be protecting
+    // against, so blocking their own edits just forces a pointless
+    // reject-then-resubmit round trip on themselves. `lockedBookIds` is
+    // still recorded either way so it can be reverted to DRAFT below once
+    // the bypass path writes over it.
+    let lockedBookIds: number[] = [];
+    let bypassedLock = false;
     if (involvedBookIds.length) {
       const submissions = await this.repository.findMarkSubmissionsForBooks(
         resultMasterId,
         involvedBookIds,
       );
-      const lockedBookIds = submissions
+      lockedBookIds = submissions
         .filter((s) => s.status === "SUBMITTED" || s.status === "VERIFIED")
         .map((s) => s.bookId);
 
       if (lockedBookIds.length) {
-        const names = lockedBookIds
-          .map((id) => nameByBookId.get(id) || `বিষয় ${id}`)
-          .join(", ");
-        throw new ConflictError(
-          `${names} বিষয়ের নম্বর ইতিমধ্যে জমা/যাচাই হয়ে গেছে — সরাসরি সম্পাদনা করা যাবে না। প্রয়োজনে যাচাইকারীর মাধ্যমে প্রত্যাখ্যান করিয়ে পুনরায় জমা দিন, অথবা প্রকাশের পর সংশোধন (correction) প্রক্রিয়া ব্যবহার করুন।`,
-        );
+        const canBypass = await hasFullMarksAuthority(userId);
+        if (!canBypass) {
+          const names = lockedBookIds
+            .map((id) => nameByBookId.get(id) || `বিষয় ${id}`)
+            .join(", ");
+          throw new ConflictError(
+            `${names} বিষয়ের নম্বর ইতিমধ্যে জমা/যাচাই হয়ে গেছে — সরাসরি সম্পাদনা করা যাবে না। প্রয়োজনে যাচাইকারীর মাধ্যমে প্রত্যাখ্যান করিয়ে পুনরায় জমা দিন, অথবা প্রকাশের পর সংশোধন (correction) প্রক্রিয়া ব্যবহার করুন।`,
+          );
+        }
+        bypassedLock = true;
       }
     }
 
@@ -653,6 +668,11 @@ export class ResultPanelService {
           bookId: toNumber(m.book_id) ?? 0,
         })),
       );
+    }
+
+    if (bypassedLock) {
+      await this.repository.revertMarkSubmissionsToDraft(resultMasterId, lockedBookIds);
+      await this.repository.revertMasterStatusIfAdvanced(resultMasterId, madrasaId);
     }
 
     return { message: "Marks saved successfully", result_master_id: resultMasterId };

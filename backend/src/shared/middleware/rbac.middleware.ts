@@ -17,7 +17,7 @@ async function getUserRole(req: Request) {
   return normalizeAppRole(role?.keyName || role?.nameBn || "");
 }
 
-async function getRolePermissions(roleId: number) {
+export async function getRolePermissions(roleId: number) {
   const rows = await prisma.rolePermission.findMany({
     where: { roleId },
     select: { permission: { select: { keyName: true } } },

@@ -42,7 +42,7 @@ export const createSession = async (req: Request, res: Response) => {
 export const saveMarks = async (req: Request, res: Response) => {
   try {
     const madrasa_id = getMadrasaId(req);
-    const result = await resultPanelService.saveMarks(madrasa_id, req.body);
+    const result = await resultPanelService.saveMarks(madrasa_id, req.user!.id, req.body);
     res.json({ success: true, ...result });
   } catch (error) {
     respondError(res, error, "saveMarks error:", "Failed to save marks");

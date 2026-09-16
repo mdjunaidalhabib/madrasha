@@ -5,16 +5,13 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
-import {
-  ABSENT_MARK,
-  EXEMPTED_MARK,
-  WITHHELD_MARK,
-} from "@madrasha/shared-ui/src/utils/reportUtils";
+import { ABSENT_MARK } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 import ResultFilter from "../../components/ResultPanel/ResultFilter";
 import MarksTable, { type SubmissionInfo } from "../../components/ResultPanel/MarksTable";
 import ResultActions from "../../components/ResultPanel/ResultActions";
 import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
+import PasswordPromptModal from "../../components/ResultPanel/PasswordPromptModal";
 import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
@@ -106,6 +103,9 @@ export default function ResultEntryPage() {
   const [submittingBookId, setSubmittingBookId] = useState<number | null>(null);
   const [rejectBookId, setRejectBookId] = useState<number | null>(null);
   const [rejectingBook, setRejectingBook] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetVerifying, setResetVerifying] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
 
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
@@ -113,6 +113,32 @@ export default function ResultEntryPage() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutosavedRef = useRef<string>("");
   const autosaveInFlightRef = useRef(false);
+  // Fingerprint of {marks, notes} as of the last successful "সংরক্ষণ ও
+  // প্রসেস করুন" — while the current state matches it, that button has
+  // nothing new to do, so it stays disabled instead of inviting a
+  // redundant re-submit/re-verify/re-process click. Starts empty (never
+  // processed this session), which never matches a real snapshot, so a
+  // fresh page always starts with the button enabled.
+  const lastProcessedSnapshotRef = useRef<string>("");
+  const marksSnapshot = JSON.stringify({ marks, notes });
+  const hasUnprocessedChanges = marksSnapshot !== lastProcessedSnapshotRef.current;
+
+  // Mirrors MarksTable's own filled/total progress check - a null cell is
+  // "not yet entered" (absent/exempted/withheld are non-null sentinel
+  // values, so they count as entered). Gates the Save & Process button
+  // client-side with the same completeness rule the backend enforces
+  // server-side (findStudentsMissingMarkForBook), so the button itself
+  // signals "not ready" instead of letting the click through to a 409.
+  const allMarksEntered =
+    students.length > 0 &&
+    books.length > 0 &&
+    students.every((s) => books.every((b) => marks?.[s.id]?.[b.book_id] != null));
+
+  const saveDisabledReason = !allMarksEntered
+    ? "সব শিক্ষার্থীর সব বিষয়ের নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) এখনও দেওয়া হয়নি"
+    : !hasUnprocessedChanges
+      ? "কোনো নতুন পরিবর্তন নেই — আগের এন্ট্রি ইতিমধ্যে সংরক্ষণ ও প্রসেস করা হয়েছে"
+      : undefined;
 
   useEffect(() => {
     const init = async () => {
@@ -202,15 +228,7 @@ export default function ResultEntryPage() {
         const studentId = Number(r.student_id ?? r.studentId);
         const bookId = Number(r.book_id ?? r.bookId);
         const isAbsent = Boolean(r.is_absent ?? r.isAbsent);
-        const isExempted = Boolean(r.is_exempted ?? r.isExempted);
-        const isWithheld = Boolean(r.is_withheld ?? r.isWithheld);
-        const mark = isAbsent
-          ? ABSENT_MARK
-          : isExempted
-            ? EXEMPTED_MARK
-            : isWithheld
-              ? WITHHELD_MARK
-              : Number(r.mark);
+        const mark = isAbsent ? ABSENT_MARK : Number(r.mark);
 
         if (!Number.isFinite(studentId) || !Number.isFinite(bookId) || !Number.isFinite(mark)) {
           return;
@@ -270,14 +288,38 @@ export default function ResultEntryPage() {
     loadExistingMarks();
     setAutosaveStatus("idle");
     lastAutosavedRef.current = "";
+    lastProcessedSnapshotRef.current = "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId, classId]);
+
+  // Re-opening an entry that's already fully submitted+verified (e.g. via
+  // "✏️ Edit Marks" from the Preview page) should start with "সংরক্ষণ ও
+  // প্রসেস করুন" disabled — every book already reaching VERIFIED is this
+  // codebase's only path to that state (the single-actor chain in
+  // saveMarks always runs submit+verify+process together), so it's a
+  // reliable proxy for "already processed, nothing pending". Freezes the
+  // CURRENT marks/notes as the clean baseline the moment that's detected;
+  // any edit afterward naturally drifts away from it again.
+  useEffect(() => {
+    if (!books.length) return;
+    const allVerified = books.every((b) => submissions[b.book_id]?.status === "VERIFIED");
+    if (allVerified) {
+      lastProcessedSnapshotRef.current = JSON.stringify({ marks, notes });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissions, books]);
 
   // A subject already SUBMITTED/VERIFIED is locked in MarksTable, but any
   // marks entered before that submission are still sitting in local state —
   // leaving them in the autosave payload would just draw the backend's 409
   // rejection on every autosave tick, so they're filtered out here instead.
+  // A single-actor user (see isSingleActorWorkflow above) is the one
+  // exception: the backend's saveMarks now lets THEIR edits through
+  // regardless of lock status (hasFullMarksAuthority bypass) and quietly
+  // re-drafts that subject's submission, so keeping the client-side filter
+  // for them would just silently drop edits the server was ready to accept.
   const isBookLocked = (bookId: number) => {
+    if (isSingleActorWorkflow) return false;
     const status = submissions[bookId]?.status;
     return status === "SUBMITTED" || status === "VERIFIED";
   };
@@ -290,16 +332,12 @@ export default function ResultEntryPage() {
         const value = marks[+sid]?.[+bid];
         if (value === undefined) return;
         const isAbsent = value === ABSENT_MARK;
-        const isExempted = value === EXEMPTED_MARK;
-        const isWithheld = value === WITHHELD_MARK;
         const note = notes[+sid]?.[+bid];
         payload.push({
           student_id: +sid,
           book_id: +bid,
-          mark: value === null ? null : isAbsent || isExempted || isWithheld ? 0 : Number(value),
+          mark: value === null ? null : isAbsent ? 0 : Number(value),
           is_absent: isAbsent,
-          is_exempted: isExempted,
-          is_withheld: isWithheld,
           ...(note ? { note } : {}),
           exam_id: +examId,
           class_id: +classId,
@@ -411,6 +449,7 @@ export default function ResultEntryPage() {
         result_master_id: masterId,
       });
 
+      lastProcessedSnapshotRef.current = marksSnapshot;
       push("success", "সংরক্ষণ ও প্রসেস সফল হয়েছে");
       goToPreview();
     } catch (err: any) {
@@ -470,30 +509,65 @@ export default function ResultEntryPage() {
     }
   };
 
+  // Wipes every mark for the WHOLE class at once and can't be undone once
+  // autosave syncs the clears server-side, so this is the most destructive
+  // single click on this page - double-confirms like handleApplyRollByRank,
+  // then requires the acting user to re-type their own password (verified
+  // server-side, see handleConfirmResetPassword) before anything actually
+  // clears.
   const handleReset = () => {
     useConfirmStore.getState().show({
-      title: "নম্বর রিসেট",
-      message: "সব দেওয়া নম্বর রিসেট করতে চান?",
-      confirmText: "রিসেট",
-      danger: true,
+      title: "নম্বর রিসেট (১/২)",
+      message: "এই ক্লাসের সব শিক্ষার্থীর সব বিষয়ের দেওয়া নম্বর মুছে যাবে। এগিয়ে যেতে চান?",
+      confirmText: "এগিয়ে যান",
       onConfirm: () => {
-        // Null out every existing entry (rather than wiping to `{}`) so the
-        // usual [marks] autosave effect picks these up as delete rows and
-        // actually clears them server-side too — an empty `{}` has no rows
-        // left to build a payload from, so the old marks would just reload
-        // on the next fetch.
-        setMarks((prev) => {
-          const cleared: MarksState = {};
-          Object.keys(prev).forEach((sid) => {
-            cleared[+sid] = {};
-            Object.keys(prev[+sid] || {}).forEach((bid) => {
-              cleared[+sid][+bid] = null;
-            });
-          });
-          return cleared;
+        useConfirmStore.getState().show({
+          title: "শেষবারের মতো নিশ্চিত করুন (২/২)",
+          message:
+            "আপনি কি সত্যিই নিশ্চিত? এই মুহূর্তে দেওয়া সব নম্বর স্থায়ীভাবে মুছে যাবে — ফিরিয়ে আনার কোনো উপায় নেই। " +
+            "নিশ্চিত করতে পরের ধাপে আপনার পাসওয়ার্ড দিতে হবে।",
+          confirmText: "হ্যাঁ, এগিয়ে যান",
+          danger: true,
+          onConfirm: () => {
+            setResetPasswordError(null);
+            setResetPasswordOpen(true);
+          },
         });
       },
     });
+  };
+
+  const performReset = () => {
+    // Null out every existing entry (rather than wiping to `{}`) so the
+    // usual [marks] autosave effect picks these up as delete rows and
+    // actually clears them server-side too — an empty `{}` has no rows
+    // left to build a payload from, so the old marks would just reload
+    // on the next fetch.
+    setMarks((prev) => {
+      const cleared: MarksState = {};
+      Object.keys(prev).forEach((sid) => {
+        cleared[+sid] = {};
+        Object.keys(prev[+sid] || {}).forEach((bid) => {
+          cleared[+sid][+bid] = null;
+        });
+      });
+      return cleared;
+    });
+  };
+
+  const handleConfirmResetPassword = async (password: string) => {
+    setResetVerifying(true);
+    setResetPasswordError(null);
+    try {
+      await api.post("/auth/verify-password", { password });
+      setResetPasswordOpen(false);
+      performReset();
+      push("success", "সব নম্বর রিসেট করা হয়েছে");
+    } catch (err: any) {
+      setResetPasswordError(err?.response?.data?.message || "পাসওয়ার্ড সঠিক নয়।");
+    } finally {
+      setResetVerifying(false);
+    }
   };
 
   return (
@@ -549,16 +623,34 @@ export default function ResultEntryPage() {
             canVerify={canVerifySubject && !isSingleActorWorkflow}
             onVerifyBook={handleVerifyBook}
             onRequestRejectBook={setRejectBookId}
+            lockOverride={isSingleActorWorkflow}
           />
 
           {isSingleActorWorkflow && (
             <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
               ℹ️ আপনার এন্ট্রি ও যাচাই উভয় অনুমতি থাকায় "সংরক্ষণ ও প্রসেস করুন" চাপলেই সব বিষয়ের জমা,
-              যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই।
+              যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই। জমা/যাচাই হয়ে যাওয়া
+              কোনো বিষয়েও ইচ্ছেমতো নম্বর সম্পাদনা করতে পারবেন — সংশোধনের পর সেই বিষয় স্বয়ংক্রিয়ভাবে আবার
+              "খসড়া" হয়ে যাবে, পরের বার "সংরক্ষণ ও প্রসেস করুন" চাপলে ফের জমা/যাচাই হয়ে যাবে।
             </p>
           )}
 
-          <ResultActions onSave={saveMarks} onReset={handleReset} disabled={loading} />
+          {/* Sticky so "সংরক্ষণ ও প্রসেস করুন"/"রিসেট" stay reachable without
+              scrolling past a long class roster — sticks to the bottom of
+              the page's own scroll container (the app shell's <main>).
+              Styled as the same floating card as every other section on
+              this page, just pinned in place, rather than a full-width
+              divider bar. */}
+          <div className="sticky bottom-3 z-20">
+            <div className="bg-white dark:bg-slate-900 shadow-lg rounded-xl p-3 sm:p-4 border border-gray-100 dark:border-slate-800">
+              <ResultActions
+                onSave={saveMarks}
+                onReset={handleReset}
+                disabled={loading}
+                saveDisabledReason={saveDisabledReason}
+              />
+            </div>
+          </div>
         </>
       ) : (
         <div className="bg-white dark:bg-slate-900 shadow-md rounded-xl p-6 text-center text-gray-500 dark:text-slate-400">
@@ -575,6 +667,19 @@ export default function ResultEntryPage() {
         loading={rejectingBook}
         onCancel={() => setRejectBookId(null)}
         onConfirm={handleConfirmRejectBook}
+      />
+
+      <PasswordPromptModal
+        open={resetPasswordOpen}
+        title="পাসওয়ার্ড দিয়ে নিশ্চিত করুন"
+        message="নম্বর রিসেট চূড়ান্ত করতে আপনার নিজের পাসওয়ার্ড দিন।"
+        loading={resetVerifying}
+        error={resetPasswordError}
+        onCancel={() => {
+          setResetPasswordOpen(false);
+          setResetPasswordError(null);
+        }}
+        onConfirm={handleConfirmResetPassword}
       />
     </div>
   );

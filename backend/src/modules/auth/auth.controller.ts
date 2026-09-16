@@ -256,6 +256,20 @@ export const updateMe = async (req: Request, res: Response) => {
   }
 };
 
+export const verifyMyPassword = async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    await authService.verifyMyPassword(req.user!.id, req.tenant!.madrasa_id, password);
+    res.json({ valid: true });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      res.status(err.statusCode).json({ valid: false, message: err.message });
+      return;
+    }
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ valid: false, message: (err as Error)?.message });
+  }
+};
+
 export const changeMyPassword = async (req: Request, res: Response) => {
   try {
     const { current_password, new_password } = req.body;

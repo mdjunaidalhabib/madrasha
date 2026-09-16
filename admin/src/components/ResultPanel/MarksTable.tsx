@@ -4,10 +4,6 @@ import {
   normalizeBanglaDigits,
   ABSENT_MARK,
   ABSENT_MARK_LABEL,
-  EXEMPTED_MARK,
-  EXEMPTED_MARK_LABEL,
-  WITHHELD_MARK,
-  WITHHELD_MARK_LABEL,
 } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { submissionStatusBadge, type SubmissionStatus } from "./resultStatus";
 
@@ -77,6 +73,12 @@ interface Props {
   /** Asks the parent to open its reject-reason prompt for this book — the
    * actual reject call (which needs a required reason) happens there. */
   onRequestRejectBook?: (bookId: number) => void;
+  /** When true, columns never lock for editing regardless of submission
+   * status — the status badge still renders normally. Set by the parent
+   * for a full-marks-authority actor (see rbac.util.ts's
+   * hasFullMarksAuthority) whose edits the backend now accepts even for an
+   * already-submitted/verified subject instead of rejecting them. */
+  lockOverride?: boolean;
 }
 
 export default function MarksTable({
@@ -97,6 +99,7 @@ export default function MarksTable({
   canVerify = false,
   onVerifyBook,
   onRequestRejectBook,
+  lockOverride = false,
 }: Props) {
   // 2D grid of input refs so Enter / Arrow keys can jump straight to the
   // next cell without the user reaching for the mouse.
@@ -112,6 +115,7 @@ export default function MarksTable({
   const noteKey = (sid: number, bid: number) => `${sid}-${bid}`;
 
   const isColLocked = (book: Book) => {
+    if (lockOverride) return false;
     const status = submissions[book.book_id]?.status;
     return status === "SUBMITTED" || status === "VERIFIED";
   };
@@ -180,18 +184,6 @@ export default function MarksTable({
           [bid]: ABSENT_MARK,
         },
       }));
-      return;
-    }
-
-    // "e" / "w" are the same one-keystroke shortcut for exempted / withheld
-    // — see the legend under the table.
-    const lower = rawVal.toLowerCase();
-    if (lower === "e") {
-      setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [bid]: EXEMPTED_MARK } }));
-      return;
-    }
-    if (lower === "w") {
-      setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [bid]: WITHHELD_MARK } }));
       return;
     }
 
@@ -265,14 +257,6 @@ export default function MarksTable({
       return "border-amber-400 bg-amber-50 text-amber-700 focus:ring-amber-400 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
     }
 
-    if (value === EXEMPTED_MARK) {
-      return "border-purple-400 bg-purple-50 text-purple-700 focus:ring-purple-400 dark:border-purple-700 dark:bg-purple-950/40 dark:text-purple-400";
-    }
-
-    if (value === WITHHELD_MARK) {
-      return "border-slate-400 bg-slate-100 text-slate-700 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300";
-    }
-
     // A subject's own pass mark (set per-subject, e.g. 20 on a 50-mark
     // হেফজ subject) takes priority over the madrasa's global fail mark —
     // otherwise every subject would be checked against a threshold tuned
@@ -290,8 +274,6 @@ export default function MarksTable({
 
   const cellDisplayValue = (value: number | null | undefined) => {
     if (value === ABSENT_MARK) return ABSENT_MARK_LABEL;
-    if (value === EXEMPTED_MARK) return EXEMPTED_MARK_LABEL;
-    if (value === WITHHELD_MARK) return WITHHELD_MARK_LABEL;
     return value != null ? toBanglaDigits(value) : "";
   };
 
@@ -337,9 +319,7 @@ export default function MarksTable({
         <p className="hidden sm:block text-xs text-gray-400 mb-2 dark:text-slate-500">
           ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">⏎</kbd> চাপুন
           একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে।
-          কেউ পরীক্ষা না দিলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd>,
-          মুক্ত হলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">e</kbd>,
-          স্থগিত হলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">w</kbd> চাপুন।
+          কেউ পরীক্ষা না দিলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd> চাপুন।
         </p>
       )}
 
@@ -411,28 +391,34 @@ export default function MarksTable({
                           </button>
                         )}
 
-                        {canVerify && submission?.status === "SUBMITTED" && (
-                          <div className="mt-0.5 flex gap-1">
-                            {onVerifyBook && (
-                              <button
-                                type="button"
-                                onClick={() => onVerifyBook(b.book_id)}
-                                className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-700"
-                              >
-                                যাচাই
-                              </button>
-                            )}
-                            {onRequestRejectBook && (
-                              <button
-                                type="button"
-                                onClick={() => onRequestRejectBook(b.book_id)}
-                                className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700"
-                              >
-                                বাতিল
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        {canVerify &&
+                          (submission?.status === "SUBMITTED" || submission?.status === "VERIFIED") && (
+                            <div className="mt-0.5 flex gap-1">
+                              {onVerifyBook && submission?.status === "SUBMITTED" && (
+                                <button
+                                  type="button"
+                                  onClick={() => onVerifyBook(b.book_id)}
+                                  className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-700"
+                                >
+                                  যাচাই
+                                </button>
+                              )}
+                              {/* Backend allows reject from SUBMITTED or VERIFIED alike (see
+                                  result-workflow.service.ts's rejectBook) - without this,
+                                  a VERIFIED subject has no unlock path here at all, forcing
+                                  the much heavier publish+correction flow for even a
+                                  one-cell fix. */}
+                              {onRequestRejectBook && (
+                                <button
+                                  type="button"
+                                  onClick={() => onRequestRejectBook(b.book_id)}
+                                  className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700"
+                                >
+                                  {submission?.status === "VERIFIED" ? "সম্পাদনার জন্য খুলুন" : "বাতিল"}
+                                </button>
+                              )}
+                            </div>
+                          )}
                       </div>
                     </th>
                   );
@@ -498,6 +484,22 @@ export default function MarksTable({
                           }}
                           type="text"
                           inputMode="numeric"
+                          // Mobile keyboards' own "next"/">" key (the iOS
+                          // accessory toolbar's Next button, Gboard's arrow
+                          // chevron, etc.) moves focus by native tab order —
+                          // it never reaches our onKeyDown handler at all.
+                          // Without an explicit tabIndex, that native order
+                          // follows DOM order, which is row-major (all of a
+                          // student's subjects before the next student), so
+                          // "next" jumped sideways to the next subject
+                          // instead of down to the next student. This
+                          // tabIndex makes the column-major order (down
+                          // through one subject, then across) the actual tab
+                          // order too, matching handleKeyDown's Enter logic.
+                          tabIndex={colIndex * rowCount + rowIndex + 1}
+                          enterKeyHint={
+                            rowIndex + 1 < rowCount || colIndex + 1 < colCount ? "next" : "done"
+                          }
                           placeholder="০"
                           disabled={cellIsDisabled}
                           title={locked ? "এই বিষয়টি জমা দেয়া হয়েছে — সম্পাদনা বন্ধ" : undefined}
@@ -579,14 +581,6 @@ export default function MarksTable({
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
             অনুপস্থিত (-)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-purple-50 border border-purple-400 inline-block dark:bg-purple-950/40 dark:border-purple-700" />{" "}
-            মুক্ত (e)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-slate-100 border border-slate-400 inline-block dark:bg-slate-800 dark:border-slate-600" />{" "}
-            স্থগিত (w)
           </span>
         </div>
       )}

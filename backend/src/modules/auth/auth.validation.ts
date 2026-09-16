@@ -41,6 +41,12 @@ export const changeMyPasswordSchema = z.object({
   }),
 });
 
+export const verifyMyPasswordSchema = z.object({
+  body: z.object({
+    password: z.string().min(1, "Password is required"),
+  }),
+});
+
 // refreshToken is optional in the body since the browser client sends it as
 // an httpOnly cookie instead - the controller falls back to the cookie when
 // the body omits it. Kept in the schema for non-browser clients.

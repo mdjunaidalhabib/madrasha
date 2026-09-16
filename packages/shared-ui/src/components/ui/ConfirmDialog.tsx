@@ -3,7 +3,7 @@ import Button from "./Button";
 import { useConfirmStore } from "../../store/confirmStore";
 
 export default function ConfirmDialog() {
-  const { open, title, message, confirmText, danger, onConfirm, onCancel, hide } =
+  const { open, title, message, confirmText, danger, onConfirm, onCancel, hide, generation } =
     useConfirmStore();
   const [loading, setLoading] = useState(false);
 
@@ -17,12 +17,20 @@ export default function ConfirmDialog() {
 
   const handleConfirm = async () => {
     if (loading) return;
+    // Chaining a second confirmation from inside onConfirm (e.g. a
+    // sterner "are you REALLY sure?" step) calls show() again, which bumps
+    // this generation counter - only hide the dialog afterward if nothing
+    // re-opened it in the meantime, so that chained step isn't
+    // immediately clobbered by this same handler's own cleanup.
+    const startedGeneration = generation;
     setLoading(true);
     try {
       await onConfirm?.();
     } finally {
       setLoading(false);
-      hide();
+      if (useConfirmStore.getState().generation === startedGeneration) {
+        hide();
+      }
     }
   };
 

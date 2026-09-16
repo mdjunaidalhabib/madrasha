@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
@@ -11,6 +12,7 @@ export default function LockScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   if (!isLocked) return null;
@@ -54,14 +56,26 @@ export default function LockScreen() {
           </p>
         </div>
 
-        <Input
-          type="password"
-          autoFocus
-          placeholder="পাসওয়ার্ড দিন"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-        />
+        <div className="relative">
+          <Input
+            type={showPassword ? "text" : "password"}
+            autoFocus
+            placeholder="পাসওয়ার্ড দিন"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         <div className="mt-4">
           <Button className="w-full" onClick={handleUnlock}>

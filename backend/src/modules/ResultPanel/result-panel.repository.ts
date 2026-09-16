@@ -212,6 +212,33 @@ export class ResultPanelRepository {
     });
   }
 
+  /** Reverts a set of subjects' MarkSubmission back to DRAFT - used when a
+   * full-marks-authority actor (see rbac.util.ts's hasFullMarksAuthority)
+   * directly edits a subject that was already SUBMITTED/VERIFIED, instead
+   * of being blocked by the lock. Keeps the status badge honest (no longer
+   * claims "verified" for content that's since changed) without requiring
+   * the heavier explicit reject-with-reason flow that a genuine second
+   * reviewer would go through. */
+  revertMarkSubmissionsToDraft(resultMasterId: number, bookIds: number[]) {
+    if (!bookIds.length) return Promise.resolve({ count: 0 });
+    return prisma.markSubmission.updateMany({
+      where: { resultMasterId, bookId: { in: bookIds }, status: { in: ["SUBMITTED", "VERIFIED"] } },
+      data: { status: "DRAFT" },
+    });
+  }
+
+  /** Companion to revertMarkSubmissionsToDraft: once any subject's lock is
+   * overridden, the ResultMaster's own aggregate status ("every subject
+   * submitted/verified") is no longer accurate either, so pull it back to
+   * DRAFT the same way rejectBook does for a normal reject. No-op if the
+   * session hadn't advanced that far yet. */
+  revertMasterStatusIfAdvanced(resultMasterId: number, madrasaId: number) {
+    return prisma.resultMaster.updateMany({
+      where: { id: resultMasterId, madrasaId, status: { in: ["MARKS_SUBMITTED", "MARKS_VERIFIED"] } },
+      data: { status: "DRAFT" },
+    });
+  }
+
   /** MarkComponentConfig rows for a set of books, covering both
    * exam-specific (examId = the given exam) and book-wide (examId = null)
    * rows in one query - callers pick whichever set applies per book (prefer

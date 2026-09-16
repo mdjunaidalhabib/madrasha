@@ -380,6 +380,19 @@ export class AuthService {
     if (!result.count) throw new NotFoundError("User not found");
   }
 
+  /** Re-confirms the CURRENT user's own password without changing anything
+   * - a lightweight step-up check for a sensitive in-app action (e.g. "রিসেট"
+   * wiping a whole class's marks) that doesn't warrant a full re-login, but
+   * still shouldn't go through on a click alone. Throws the same generic
+   * message on a wrong password as on "user not found", so this can't be
+   * used to probe whether an id exists. */
+  async verifyMyPassword(userId: number, madrasaId: number, password: string): Promise<void> {
+    const user = await this.repository.findPasswordHashById(userId, madrasaId);
+    if (!user || !(await comparePassword(password, user.passwordHash))) {
+      throw new BadRequestError("পাসওয়ার্ড সঠিক নয়।");
+    }
+  }
+
   async changeMyPassword(
     userId: number,
     madrasaId: number,
