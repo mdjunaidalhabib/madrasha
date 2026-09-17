@@ -40,7 +40,7 @@ export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
-  { header: "ফলাফল", key: "status", className: "min-w-24 text-center" },
+  { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
   // Zero-width space between মেধা and ক্রম gives the browser a clean wrap
   // point (matching রোল/নম্বর's natural space-driven wrap) instead of
   // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
@@ -276,6 +276,17 @@ const AcademicResultPrint = ({
       return cellValue(row, "class_name") || cellValue(row, "class_name_bn");
     }
     if (column.key === "rank_no") return formatMeritRank(row?.rank_no);
+    // The স্ট্যাটাস column is narrow (matches মোট/গড়/গ্রেড's width), and
+    // "অনুপস্থিত" alone doesn't fit on one line there, wrapping to a
+    // second line and breaking the row height/alignment. Every other
+    // subject cell in this same sheet already shortens absence to "অনু"
+    // (see getMark above) - status just needed the same treatment, kept
+    // local to this column instead of the shared REPORT_TEXT_MAP so
+    // wider reports (attendance sheets, etc.) that use the same "ABSENT"
+    // status still print the full word where they have room for it.
+    if (column.key === "status" && String(row?.status || "").toUpperCase() === "ABSENT") {
+      return "অনু";
+    }
     return cellValue(row, column.key);
   };
 
@@ -488,7 +499,7 @@ const AcademicResultPrint = ({
                           <span className="academic-result-number-value text-base font-semibold text-black">
                             {getValue(row, column)}
                           </span>
-                        ) : column.key === "madrasa_grade" ? (
+                        ) : column.key === "madrasa_grade" || column.key === "status" ? (
                           <span className="academic-result-grade-value whitespace-nowrap text-base font-semibold text-black">
                             {getValue(row, column)}
                           </span>

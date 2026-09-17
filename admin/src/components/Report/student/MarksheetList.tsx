@@ -62,7 +62,7 @@ const INFO_FIELD_DEFS: Record<string, { label: string; value: (row: Record<strin
   father_name: { label: "পিতার নাম", value: (row) => cellValue(row, "father_name") },
   madrasa_grade: { label: "ফলাফল বিভাগ", value: (row) => cellValue(row, "madrasa_grade") },
   general_grade: { label: "গ্রেড", value: (row) => cellValue(row, "general_grade") },
-  status: { label: "ফলাফল", value: (row) => cellValue(row, "status") },
+  status: { label: "স্ট্যাটাস", value: (row) => cellValue(row, "status") },
   rank_no: { label: "মেধাস্থান", value: (row) => formatMeritRank(row?.rank_no) },
 };
 
@@ -126,13 +126,13 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: Markshee
   // পূর্ণমান) column pairs into two wide cells instead of leaving two of the
   // four columns empty.
   // `average` is already stored as a percentage (total earned / total full
-  // marks * 100, see result-panel.service.ts) - shown here with a literal
-  // "%" suffix instead of a second "গড় নম্বর" row so the marksheet's
-  // percentage figure isn't left implicit.
+  // marks * 100, see result-panel.service.ts) - this row is labelled and
+  // shown as গড় নম্বর (plain average) rather than a "শতকরা (%)" figure,
+  // per this madrasa's preference, so no "%" suffix here.
   const percentageValue = cellValue(row, "average");
   const summaryRows = [
     { label: "মোট নম্বর", value: cellValue(row, "total") },
-    { label: "শতকরা নম্বর (%)", value: percentageValue === "—" ? percentageValue : `${percentageValue}%` },
+    { label: "গড় নম্বর", value: percentageValue },
   ];
 
   return (
@@ -203,7 +203,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: Markshee
       )}
 
       {isLastPage && (
-        <div className="report-block-signature mt-6 flex justify-between px-2 text-black">
+        <div className="report-block-signature mt-16 flex justify-between px-2 text-black">
           <div className="w-40 border-t border-black pt-0.5 text-center text-sm font-medium">
             শ্রেণি শিক্ষকের স্বাক্ষর
           </div>
