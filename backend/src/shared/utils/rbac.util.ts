@@ -44,3 +44,29 @@ export async function hasFullMarksAuthority(userId: number): Promise<boolean> {
   if (perms.includes("result.manage")) return true;
   return perms.includes("marks.submit") && perms.includes("marks.verify");
 }
+
+/**
+ * True for an actor who holds full authority over the result-level
+ * verify/approve stage (both result.verify and result.approve, or the
+ * legacy result.manage catch-all) - the তালিমাত office in the common case
+ * where one account owns the whole verify-result -> approve -> publish
+ * tail of the workflow. Mirrors hasFullMarksAuthority's reasoning one
+ * level up the pipeline: there is no second person to hand a maker/checker
+ * step to, so this is the escape hatch resultPanelService.publishResult
+ * uses to silently walk PROCESSING/RESULT_VERIFIED through to APPROVED in
+ * the same click as Publish, and the one decideApproval's
+ * "can't approve your own verified result" guard defers to instead of the
+ * narrower isPrivilegedActor check. A madrasa that later splits verifier
+ * and approver into separate people/roles (only one of the two
+ * permissions each) still hits the real gate, exactly as intended.
+ */
+export async function hasFullResultAuthority(userId: number): Promise<boolean> {
+  if (await isPrivilegedActor(userId)) return true;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } });
+  if (!user?.roleId) return false;
+
+  const perms = await getRolePermissions(user.roleId);
+  if (perms.includes("result.manage")) return true;
+  return perms.includes("result.verify") && perms.includes("result.approve");
+}

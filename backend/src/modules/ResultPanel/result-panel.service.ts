@@ -4,7 +4,8 @@ import { logger } from "../../shared/logger/logger";
 import { notificationService } from "../notifications/notification.service";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
 import { logActivity } from "../../shared/utils/activity.util";
-import { hasFullMarksAuthority } from "../../shared/utils/rbac.util";
+import { hasFullMarksAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
+import { resultWorkflowService } from "./result-workflow.service";
 import {
   DEFAULT_FAIL_MARK,
   DEFAULT_GENERAL_GRADE_FALLBACK,
@@ -1015,9 +1016,42 @@ export class ResultPanelService {
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
 
-    if (master.status !== RESULT_STATUS.APPROVED) {
+    let status: ResultPublishStatus = master.status;
+
+    // The verify-result -> approve stages exist as their own gated
+    // actions for madrasas that split "checker" from "approver" into
+    // different people. Most তালিমাত offices don't have a second person
+    // for that hand-off, so an actor holding full result authority
+    // (result.verify + result.approve, or Muhtamim/Super Admin) walks
+    // straight through both stages in this same click instead of being
+    // sent to hunt for two more buttons first - every validation those
+    // stages normally run (missing/invalid marks, ExamCandidate holds,
+    // etc. in verifyResult) still executes exactly as before, just
+    // inline. An actor who lacks that full authority still stops here
+    // and needs a separate approver to move the status forward.
+    if (
+      (status === RESULT_STATUS.PROCESSING || status === RESULT_STATUS.RESULT_VERIFIED) &&
+      (await hasFullResultAuthority(userId))
+    ) {
+      if (status === RESULT_STATUS.PROCESSING) {
+        const verifyOutcome = await resultWorkflowService.verifyResult(madrasaId, userId, resultMasterId);
+        if (!verifyOutcome.valid) {
+          throw new ConflictError(
+            `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${verifyOutcome.issues[0]}`,
+          );
+        }
+        status = RESULT_STATUS.RESULT_VERIFIED;
+      }
+
+      if (status === RESULT_STATUS.RESULT_VERIFIED) {
+        await resultWorkflowService.decideApproval(madrasaId, userId, resultMasterId, true);
+        status = RESULT_STATUS.APPROVED;
+      }
+    }
+
+    if (status !== RESULT_STATUS.APPROVED) {
       throw new ConflictError(
-        "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না।",
+        "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না। এই ফলাফল যাচাই/অনুমোদনের জন্য পৃথক অনুমোদনকারীর কাছে পাঠাতে হবে।",
       );
     }
 

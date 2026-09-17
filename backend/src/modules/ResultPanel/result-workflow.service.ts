@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
-import { isPrivilegedActor } from "../../shared/utils/rbac.util";
+import { hasFullResultAuthority, isPrivilegedActor } from "../../shared/utils/rbac.util";
 import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
 import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
 import { resultPanelRepository } from "./result-panel.repository";
@@ -433,10 +433,17 @@ export class ResultWorkflowService {
       );
     }
 
+    // Same-person verify+approve is only blocked for a genuine
+    // separate-checker setup. An actor holding both result.verify and
+    // result.approve (the single তালিমাত-office case, or Muhtamim/Super
+    // Admin) has no second person to hand this off to, so they're let
+    // through - exactly like hasFullMarksAuthority does one level down at
+    // the subject submit/verify stage. A role limited to only
+    // result.verify (a genuine separate checker) still hits this gate.
     if (
       master.resultVerifiedBy != null &&
       master.resultVerifiedBy === userId &&
-      !(await isPrivilegedActor(userId))
+      !(await hasFullResultAuthority(userId))
     ) {
       throw new ConflictError(
         "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।",
