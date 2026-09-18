@@ -1,0 +1,52 @@
+name: Backfill Default Role Permissions
+
+# Manual-only (never runs on push) - one-off DB fix for madrasas that were
+# provisioned before result.verify/result.approve/marks.* etc. existed as
+# real RolePermission rows. Safe to run repeatedly (script is idempotent,
+# uses skipDuplicates). Uses the DATABASE_URL repo secret so the connection
+# string never appears in chat, logs, or a workflow file.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually write the missing grants? Leave false first to preview, then re-run with true.'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run backfill (dry run)
+        if: ${{ inputs.apply == false }}
+        run: npx ts-node prisma/backfill-default-role-permissions.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run backfill (APPLY)
+        if: ${{ inputs.apply == true }}
+        run: npx ts-node prisma/backfill-default-role-permissions.ts --apply
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
