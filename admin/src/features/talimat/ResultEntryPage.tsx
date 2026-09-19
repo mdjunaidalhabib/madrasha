@@ -13,6 +13,7 @@ import ResultActions from "../../components/ResultPanel/ResultActions";
 import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
 import PasswordPromptModal from "../../components/ResultPanel/PasswordPromptModal";
 import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
+import { useClassFailMark } from "../../components/ResultPanel/useClassGrading";
 import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
@@ -109,7 +110,9 @@ export default function ResultEntryPage() {
 
   const [marks, setMarks] = useState<MarksState>({});
   const [notes, setNotes] = useState<Record<number, Record<number, string>>>({});
-  const [failMark, setFailMark] = useState(33);
+  // Division-scoped: re-fetched whenever the selected class changes; null
+  // while loading so cells don't flash a wrong pass/fail colour.
+  const failMark = useClassFailMark(classId);
   const [loading, setLoading] = useState(false);
   const [resultMasterId, setResultMasterId] = useState<number | null>(requestedResultMasterId);
   const [editMode, setEditMode] = useState(false);
@@ -181,14 +184,6 @@ export default function ResultEntryPage() {
       }
     };
     init();
-
-    api
-      .get("/fail-mark")
-      .then((res) => {
-        const value = Number(res.data);
-        if (!Number.isNaN(value)) setFailMark(value);
-      })
-      .catch((err) => logger.error("Fail mark load error:", err));
   }, [push]);
 
   useEffect(() => {

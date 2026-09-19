@@ -51,7 +51,7 @@ export const activateExamFee = asyncHandler(async (req: Request, res: Response) 
 /* ================= GENERAL GRADES ================= */
 
 export const getGeneralGrades = asyncHandler(async (req: Request, res: Response) => {
-  const data = await examService.listGeneralGrades(getMadrasaId(req));
+  const data = await examService.listGeneralGrades(getMadrasaId(req), req.query.division_id);
   res.json(data);
 });
 
@@ -73,7 +73,7 @@ export const deleteGeneralGrade = asyncHandler(async (req: Request, res: Respons
 /* ================= MADRASA GRADES ================= */
 
 export const getMadrasaGrades = asyncHandler(async (req: Request, res: Response) => {
-  const data = await examService.listMadrasaGrades(getMadrasaId(req));
+  const data = await examService.listMadrasaGrades(getMadrasaId(req), req.query.division_id);
   res.json(data);
 });
 
@@ -95,12 +95,34 @@ export const deleteMadrasaGrade = asyncHandler(async (req: Request, res: Respons
 /* ================= SETTINGS ================= */
 
 export const getFailMark = asyncHandler(async (req: Request, res: Response) => {
-  const value = await examService.getFailMark(getMadrasaId(req));
+  const { division_id, class_id } = req.query;
+  // With a division/class scope: the EFFECTIVE fail mark (override ?? global).
+  const scoped = division_id !== undefined || class_id !== undefined;
+  const value = scoped
+    ? await examService.getEffectiveFailMark(getMadrasaId(req), division_id, class_id)
+    : await examService.getFailMark(getMadrasaId(req));
   res.json(value);
 });
 
+export const getDivisionFailMarks = asyncHandler(async (req: Request, res: Response) => {
+  const data = await examService.listDivisionFailMarks(getMadrasaId(req));
+  res.json(data);
+});
+
+export const updateDivisionFailMark = asyncHandler(async (req: Request, res: Response) => {
+  const result = await examService.updateDivisionFailMark(
+    getMadrasaId(req),
+    Number(req.params.divisionId),
+    req.body,
+  );
+  return ApiResponse.success(res, {
+    message: "Division fail mark updated successfully",
+    extra: result,
+  });
+});
+
 export const updateFailMark = asyncHandler(async (req: Request, res: Response) => {
-  const result = await examService.updateFailMark(getMadrasaId(req), req.body, req.user?.id ?? null);
+  const result = await examService.updateFailMark(getMadrasaId(req), req.body);
   return ApiResponse.success(res, {
     message: "Fail mark updated successfully",
     extra: result,

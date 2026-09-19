@@ -19,6 +19,8 @@ const defaultExams = [
   { keyName: "annual", name: "বার্ষিক পরীক্ষা", sortOrder: 4 },
 ];
 
+// Passing bands only. A fail grade (F / রাসিব) is NOT a band: failed students
+// automatically get DEFAULT_*_GRADE_FALLBACK (result-panel.constants.ts).
 const defaultGeneralGrades = [
   { keyName: "a_plus", name: "A+", minMark: 80, maxMark: 100, sortOrder: 1 },
   { keyName: "a", name: "A", minMark: 70, maxMark: 79, sortOrder: 2 },
@@ -26,7 +28,6 @@ const defaultGeneralGrades = [
   { keyName: "b", name: "B", minMark: 50, maxMark: 59, sortOrder: 4 },
   { keyName: "c", name: "C", minMark: 40, maxMark: 49, sortOrder: 5 },
   { keyName: "d", name: "D", minMark: 35, maxMark: 39, sortOrder: 6 },
-  { keyName: "f", name: "F", minMark: 0, maxMark: 34, sortOrder: 7 },
 ];
 
 const defaultMadrasaGrades = [
@@ -40,7 +41,6 @@ const defaultMadrasaGrades = [
   },
   { keyName: "jayyid", name: "জায়্যিদ", minMark: 50, maxMark: 64, sortOrder: 3 },
   { keyName: "maqbul", name: "মাকবুল", minMark: 35, maxMark: 49, sortOrder: 4 },
-  { keyName: "rasib", name: "রাসিব", minMark: 0, maxMark: 34, sortOrder: 5 },
 ];
 
 const defaultSettings = [{ name: "fail_mark", value: "35" }];

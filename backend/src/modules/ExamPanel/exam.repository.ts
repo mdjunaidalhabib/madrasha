@@ -66,9 +66,12 @@ export class ExamRepository {
     if (updates.length) await prisma.$transaction(updates);
   }
 
-  findGeneralGrades(madrasaId: number) {
+  /** `divisionId` null = the madrasa-wide default scale; a number = that
+   * division's own scale. Defaults to the default scale so callers that
+   * predate per-division grading are unaffected. */
+  findGeneralGrades(madrasaId: number, divisionId: number | null = null) {
     return prisma.generalGrade.findMany({
-      where: { madrasaId },
+      where: { madrasaId, divisionId },
       orderBy: [{ maxMark: "desc" }, { id: "desc" }],
     });
   }
@@ -79,8 +82,27 @@ export class ExamRepository {
     minMark: number,
     maxMark: number,
     point: number | null,
+    divisionId: number | null = null,
   ) {
-    return prisma.generalGrade.create({ data: { name, minMark, maxMark, point, madrasaId } });
+    return prisma.generalGrade.create({ data: { name, minMark, maxMark, point, madrasaId, divisionId } });
+  }
+
+  createManyGeneralGrades(
+    madrasaId: number,
+    divisionId: number,
+    grades: { name: string; minMark: number; maxMark: number; point: number | null }[],
+  ) {
+    return prisma.generalGrade.createMany({
+      data: grades.map((g) => ({
+        madrasaId,
+        divisionId,
+        name: g.name,
+        minMark: g.minMark,
+        maxMark: g.maxMark,
+        point: g.point,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   updateGeneralGrade(
@@ -101,9 +123,12 @@ export class ExamRepository {
     return prisma.generalGrade.deleteMany({ where: { id, madrasaId } });
   }
 
-  findMadrasaGrades(madrasaId: number) {
+  /** `divisionId` null = the madrasa-wide default scale; a number = that
+   * division's own scale. Defaults to the default scale so callers that
+   * predate per-division grading are unaffected. */
+  findMadrasaGrades(madrasaId: number, divisionId: number | null = null) {
     return prisma.madrasaGrade.findMany({
-      where: { madrasaId },
+      where: { madrasaId, divisionId },
       orderBy: [{ maxMark: "desc" }, { id: "desc" }],
     });
   }
@@ -114,8 +139,27 @@ export class ExamRepository {
     minMark: number,
     maxMark: number,
     point: number | null,
+    divisionId: number | null = null,
   ) {
-    return prisma.madrasaGrade.create({ data: { name, minMark, maxMark, point, madrasaId } });
+    return prisma.madrasaGrade.create({ data: { name, minMark, maxMark, point, madrasaId, divisionId } });
+  }
+
+  createManyMadrasaGrades(
+    madrasaId: number,
+    divisionId: number,
+    grades: { name: string; minMark: number; maxMark: number; point: number | null }[],
+  ) {
+    return prisma.madrasaGrade.createMany({
+      data: grades.map((g) => ({
+        madrasaId,
+        divisionId,
+        name: g.name,
+        minMark: g.minMark,
+        maxMark: g.maxMark,
+        point: g.point,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   updateMadrasaGrade(
@@ -134,6 +178,70 @@ export class ExamRepository {
 
   deleteMadrasaGrade(id: number, madrasaId: number) {
     return prisma.madrasaGrade.deleteMany({ where: { id, madrasaId } });
+  }
+
+  /* ================= DIVISION FAIL MARK ================= */
+
+  /** This madrasa's active (activated, not deleted) divisions, in its own order. */
+  findActiveDivisions(madrasaId: number) {
+    return prisma.madrasaDivision.findMany({
+      where: { madrasaId, isActive: 1, deletedAt: null },
+      select: {
+        divisionId: true,
+        failMark: true,
+        division: { select: { name: true, nameBn: true } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findActiveDivision(madrasaId: number, divisionId: number) {
+    return prisma.madrasaDivision.findFirst({
+      where: { madrasaId, divisionId, isActive: 1, deletedAt: null },
+      select: { divisionId: true, failMark: true },
+    });
+  }
+
+  /** Divisions that own at least one grade row of either kind. */
+  async findDivisionIdsWithOwnGrades(madrasaId: number): Promise<Set<number>> {
+    const [general, madrasa] = await Promise.all([
+      prisma.generalGrade.findMany({
+        where: { madrasaId, divisionId: { not: null } },
+        select: { divisionId: true },
+        distinct: ["divisionId"],
+      }),
+      prisma.madrasaGrade.findMany({
+        where: { madrasaId, divisionId: { not: null } },
+        select: { divisionId: true },
+        distinct: ["divisionId"],
+      }),
+    ]);
+    const ids = new Set<number>();
+    for (const row of [...general, ...madrasa]) if (row.divisionId !== null) ids.add(row.divisionId);
+    return ids;
+  }
+
+  /** Class.divisionId (Class is the global catalog row, not MadrasaClass). */
+  async findClassDivisionId(classId: number): Promise<number | null> {
+    const row = await prisma.class.findUnique({ where: { id: classId }, select: { divisionId: true } });
+    return row?.divisionId ?? null;
+  }
+
+  setDivisionFailMark(madrasaId: number, divisionId: number, failMark: number | null) {
+    return prisma.madrasaDivision.updateMany({
+      where: { madrasaId, divisionId, isActive: 1, deletedAt: null },
+      data: { failMark },
+    });
+  }
+
+  /** Clears the override and drops the division's own grade rows in one
+   * transaction, so the division falls back to the madrasa-wide defaults. */
+  async clearDivisionOverride(madrasaId: number, divisionId: number) {
+    await prisma.$transaction([
+      prisma.madrasaDivision.updateMany({ where: { madrasaId, divisionId }, data: { failMark: null } }),
+      prisma.generalGrade.deleteMany({ where: { madrasaId, divisionId } }),
+      prisma.madrasaGrade.deleteMany({ where: { madrasaId, divisionId } }),
+    ]);
   }
 
   findFailMarkSetting(madrasaId: number) {

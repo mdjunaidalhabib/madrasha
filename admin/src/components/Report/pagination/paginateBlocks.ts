@@ -12,6 +12,13 @@ export type PaginateBlocksOptions = {
   // Height (px) of a footer/signature block that must always render right
   // after the LAST block on the LAST page.
   footerReservePx?: number;
+  // Widow/orphan control: the last page never carries fewer than this many
+  // blocks (unless the whole list is shorter). When it would, blocks are
+  // pulled forward off the end of the previous page so a lone row or two
+  // (and the signature) never sit by themselves on an otherwise empty page.
+  // The same rule keeps a footer that overflowed onto its own page from
+  // standing alone - it takes the last few rows with it. 0 = off.
+  minLastPageBlocks?: number;
 };
 
 /**
@@ -37,7 +44,12 @@ export const paginateBlocks = (
   blocks: MeasuredBlock[],
   options: PaginateBlocksOptions,
 ): string[][] => {
-  const { firstPageBudgetPx, continuationPageBudgetPx, footerReservePx = 0 } = options;
+  const {
+    firstPageBudgetPx,
+    continuationPageBudgetPx,
+    footerReservePx = 0,
+    minLastPageBlocks = 0,
+  } = options;
 
   if (!blocks.length) return [[]];
 
@@ -63,21 +75,54 @@ export const paginateBlocks = (
 
   if (currentPage.length) pages.push(currentPage);
 
+  const heightById = new Map(blocks.map((b) => [b.id, b.heightPx]));
+  const sumHeights = (ids: string[]) => ids.reduce((sum, id) => sum + (heightById.get(id) ?? 0), 0);
+
+  // Too few blocks stranded on the last page: pull some forward from the
+  // previous one. Only done when the result still fits the page together
+  // with the footer, and the previous page keeps at least one block.
+  if (minLastPageBlocks > 0 && pages.length > 1) {
+    const last = pages[pages.length - 1];
+    const previous = pages[pages.length - 2];
+    const missing = minLastPageBlocks - last.length;
+
+    if (missing > 0 && previous.length - missing >= 1) {
+      const pulled = previous.slice(previous.length - missing);
+      const combinedPx = sumHeights(pulled) + sumHeights(last) + footerReservePx;
+
+      if (combinedPx <= continuationPageBudgetPx) {
+        pages[pages.length - 2] = previous.slice(0, previous.length - missing);
+        pages[pages.length - 1] = [...pulled, ...last];
+      }
+    }
+  }
+
   if (!footerReservePx) return pages;
 
-  const heightById = new Map(blocks.map((b) => [b.id, b.heightPx]));
   const lastPageBudget = pages.length > 1 ? continuationPageBudgetPx : firstPageBudgetPx;
   const lastPage = pages[pages.length - 1];
-  const lastPageHeightPx = lastPage.reduce((sum, id) => sum + (heightById.get(id) ?? 0), 0);
+  const lastPageHeightPx = sumHeights(lastPage);
 
   if (lastPageHeightPx + footerReservePx <= lastPageBudget) {
     return pages;
   }
 
-  // No room left on the last content page - give the footer its own page
-  // rather than pulling rows back off an already-full page (which would
-  // just leave that page with a gap and push the same rows one page later
-  // anyway, for no net gain).
+  // No room left on the last content page. With widow control on, hand the
+  // footer the last few rows to travel with, so the signature isn't alone on
+  // a blank page.
+  if (minLastPageBlocks > 0 && lastPage.length - minLastPageBlocks >= 1) {
+    const pulled = lastPage.slice(lastPage.length - minLastPageBlocks);
+
+    if (sumHeights(pulled) + footerReservePx <= continuationPageBudgetPx) {
+      pages[pages.length - 1] = lastPage.slice(0, lastPage.length - minLastPageBlocks);
+      pages.push(pulled);
+      return pages;
+    }
+  }
+
+  // Otherwise give the footer its own page rather than pulling rows back off
+  // an already-full page (which would just leave that page with a gap and
+  // push the same rows one page later anyway, for no net gain).
   pages.push([]);
 
   return pages;

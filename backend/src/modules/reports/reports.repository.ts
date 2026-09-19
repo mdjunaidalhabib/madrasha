@@ -636,9 +636,6 @@ export class ReportsRepository {
           AND ($2::int IS NULL OR e.id = $2::int)
         ORDER BY CASE WHEN e.id = $2::int THEN 0 ELSE 1 END, e.id DESC
         LIMIT 1
-      ),
-      top_grade AS (
-        SELECT name FROM madrasa_grades WHERE madrasa_id = $1 ORDER BY min_mark DESC LIMIT 1
       )
       SELECT
         s.id,
@@ -671,7 +668,26 @@ export class ReportsRepository {
         AND rm.status = 'PUBLISHED'
         AND rm.exam_id = e.id
         AND rs.rank_no IN (1, 2, 3)
-        AND ($3::boolean IS NOT TRUE OR rs.madrasa_grade = (SELECT name FROM top_grade))
+        AND ($3::boolean IS NOT TRUE OR rs.madrasa_grade = (
+          -- Top band of the scale that applies to this result's class: the
+          -- division's own madrasa_grades rows when it has any, otherwise the
+          -- madrasa-wide default (division_id NULL) scale.
+          SELECT mg.name
+          FROM madrasa_grades mg
+          WHERE mg.madrasa_id = $1
+            AND mg.division_id IS NOT DISTINCT FROM (
+              SELECT CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM madrasa_grades own
+                  WHERE own.madrasa_id = $1 AND own.division_id = rmc.division_id
+                ) THEN rmc.division_id
+              END
+              FROM classes rmc
+              WHERE rmc.id = rm.class_id
+            )
+          ORDER BY mg.min_mark DESC
+          LIMIT 1
+        ))
         ${conditions.join("\n        ")}
       ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC
       `,

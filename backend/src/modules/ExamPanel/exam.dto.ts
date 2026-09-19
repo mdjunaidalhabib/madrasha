@@ -24,8 +24,15 @@ export interface SaveGradeRequestDto {
   min_mark: number | string;
   max_mark: number | string;
   point?: number | string;
+  /** Grade scope on create: null/omitted = madrasa-wide default scale. */
+  division_id?: number | string | null;
 }
 
 export interface UpdateFailMarkRequestDto {
   value: number | string;
+}
+
+export interface UpdateDivisionFailMarkRequestDto {
+  /** null clears the division's override. */
+  value: number | string | null;
 }

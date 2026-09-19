@@ -7,14 +7,13 @@ import { logActivity } from "../../shared/utils/activity.util";
 import { hasFullMarksAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
 import { resultWorkflowService } from "./result-workflow.service";
 import {
-  DEFAULT_FAIL_MARK,
   DEFAULT_GENERAL_GRADE_FALLBACK,
   DEFAULT_MADRASA_GRADE_FALLBACK,
-  FAIL_MARK_SETTING_NAME,
   RESULT_STATUS,
   MARK_STATUS,
 } from "./result-panel.constants";
 import { GradeRow } from "./result-panel.types";
+import { ClassGradingConfig, MadrasaGradingConfig } from "./result-grading-config";
 import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
 
 const toNumber = (value: any, fallback = 0) => {
@@ -25,24 +24,34 @@ const toNumber = (value: any, fallback = 0) => {
 const toBanglaDigits = (value: string | number) =>
   String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
 
+/**
+ * Grade band for a PASSED student. `gradeList` holds passing bands only (fail
+ * grades are not bands). A passed average that no band covers - a scale-only
+ * override or stale data can leave a gap below the lowest band - gets the
+ * nearest band beneath it, or the lowest band when it is under all of them.
+ * `fallback` (the automatic fail label) is used only when there are no bands
+ * at all; failed students are labelled with it by the caller.
+ */
 const getGradeFast = (avg: number, gradeList: GradeRow[], fallback: string) => {
   // maxMark is stored as a whole number boundary (e.g. 79), but avg can be a
   // decimal (e.g. 79.50) from averaging subject marks. Comparing with a
   // strict `<= maxMark` leaves decimals between two integer bands (79 and 80)
   // matching nothing, so treat the upper bound as exclusive at maxMark + 1.
+  let lowest: GradeRow | null = null;
+  let nearestBelow: GradeRow | null = null;
   for (const g of gradeList) {
-    if (avg >= Number(g.minMark) && avg < Number(g.maxMark) + 1) {
+    const min = Number(g.minMark);
+    if (avg >= min && avg < Number(g.maxMark) + 1) {
       return g.name;
     }
+    if (!lowest || min < Number(lowest.minMark)) lowest = g;
+    if (min <= avg && (!nearestBelow || min > Number(nearestBelow.minMark))) nearestBelow = g;
   }
-  return fallback;
+  return (nearestBelow ?? lowest)?.name ?? fallback;
 };
 
-interface ResultCalculationConfig {
-  generalGrades: GradeRow[];
-  madrasaGrades: GradeRow[];
-  failMark: number;
-}
+/** Rules for ONE class: its division-resolved fail mark + grade scales. */
+type ResultCalculationConfig = ClassGradingConfig;
 
 // Sessions whose ResultSummary has been produced by a process run (so config
 // changes can leave it stale), and the subset guardians can already see.
@@ -79,20 +88,12 @@ export interface RecalcOutcome extends RecalcCoreOutcome {
 export class ResultPanelService {
   constructor(private readonly repository: ResultPanelRepository = resultPanelRepository) {}
 
-  private async loadCalculationConfig(madrasaId: number): Promise<ResultCalculationConfig> {
-    const [settings, generalGrades, madrasaGrades] = await Promise.all([
-      this.repository.findSettings(madrasaId),
-      this.repository.findGeneralGrades(madrasaId),
-      this.repository.findMadrasaGrades(madrasaId),
-    ]);
-
-    const fail = settings.find((row) => row.name === FAIL_MARK_SETTING_NAME);
-
-    return {
-      generalGrades,
-      madrasaGrades,
-      failMark: fail ? Number(fail.value) : DEFAULT_FAIL_MARK,
-    };
+  /** Per-madrasa resolver; call `.forClass(classId)` for the fail mark and
+   * grade scales that apply to that class (its division override, else the
+   * madrasa-wide defaults). Shared lists are fetched once per resolver, so
+   * a whole-madrasa recalculation stays a single query per list. */
+  private loadCalculationConfig(madrasaId: number): MadrasaGradingConfig {
+    return new MadrasaGradingConfig(this.repository, madrasaId);
   }
 
   private async getMarkCompleteness(
@@ -375,7 +376,7 @@ export class ResultPanelService {
     const masters = await this.repository.findResultMastersByClass(madrasaId, classId);
     if (!masters.length) return { updated: 0, skipped: 0, pending_published: 0 };
 
-    const config = await this.loadCalculationConfig(madrasaId);
+    const config = this.loadCalculationConfig(madrasaId);
 
     let updated = 0;
     let skipped = 0;
@@ -425,7 +426,7 @@ export class ResultPanelService {
   private async recalculateMaster(
     madrasaId: number,
     master: { id: number; examId: number; classId: number; status: ResultPublishStatus },
-    config: ResultCalculationConfig,
+    grading: MadrasaGradingConfig,
     opts: { apply: boolean; actorId: number | null; reason: string },
   ): Promise<RecalcCoreOutcome> {
     const isFinal = FINAL_RESULT_STATUSES.has(master.status);
@@ -456,6 +457,7 @@ export class ResultPanelService {
     }
     if (incomplete) return { ...base, outcome: "SKIPPED", skip_reason: "INCOMPLETE_MARKS" };
 
+    const config = await grading.forClass(master.classId);
     const existing = await this.repository.findResultSummaryForDiff(master.id);
     const rollOverrides = new Map(existing.map((row) => [row.studentId, row.roll]));
     const rows = await this.computeSummaryRows(
@@ -571,7 +573,7 @@ export class ResultPanelService {
       if (!exists) throw new NotFoundError("Result session not found");
     }
 
-    const config = await this.loadCalculationConfig(madrasaId);
+    const config = this.loadCalculationConfig(madrasaId);
     const masters = await this.repository.findProcessedMasters(madrasaId, single || undefined);
 
     const results: RecalcOutcome[] = [];
@@ -634,7 +636,7 @@ export class ResultPanelService {
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
 
-    const config = await this.loadCalculationConfig(madrasaId);
+    const config = await this.loadCalculationConfig(madrasaId).forClass(master.classId);
     // Keep each student's original roll snapshot (promotions overwrite
     // students.roll every year - a re-grade must not rewrite history), and
     // pass the session's CURRENT status back in as the override: a
@@ -1080,7 +1082,7 @@ export class ResultPanelService {
       result_master_id,
     );
 
-    const config = await this.loadCalculationConfig(madrasaId);
+    const config = await this.loadCalculationConfig(madrasaId).forClass(class_id);
     const processed = await this.rebuildResultSummary(
       madrasaId,
       exam_id,

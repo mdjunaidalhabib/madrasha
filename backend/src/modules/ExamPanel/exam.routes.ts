@@ -17,6 +17,7 @@ import {
   updateMadrasaGradeSchema,
   deleteMadrasaGradeSchema,
   updateFailMarkSchema,
+  updateDivisionFailMarkSchema,
 } from "./exam.validation";
 import {
   getExams,
@@ -36,6 +37,8 @@ import {
   deleteMadrasaGrade,
   getFailMark,
   updateFailMark,
+  getDivisionFailMarks,
+  updateDivisionFailMark,
 } from "./exam.controller";
 
 const router = Router();
@@ -94,5 +97,12 @@ router.delete(
 /* ================= SETTINGS ================= */
 router.get("/fail-mark", rbacMiddleware("exam.read"), getFailMark);
 router.post("/fail-mark", rbacMiddleware("exam.manage"), validate(updateFailMarkSchema), updateFailMark);
+router.get("/fail-mark/divisions", rbacMiddleware("exam.read"), getDivisionFailMarks);
+router.post(
+  "/fail-mark/divisions/:divisionId",
+  rbacMiddleware("exam.manage"),
+  validate(updateDivisionFailMarkSchema),
+  updateDivisionFailMark,
+);
 
 export default router;

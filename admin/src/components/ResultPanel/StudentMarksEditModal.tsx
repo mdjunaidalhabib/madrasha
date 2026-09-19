@@ -31,7 +31,8 @@ interface Student {
 interface Props {
   student: Student;
   books: Book[];
-  failMark?: number;
+  /** Fail mark of the class's division; null = still loading (no colouring). */
+  failMark?: number | null;
   saving?: boolean;
   /** The result is already PUBLISHED/LOCKED: marks can't be overwritten
    * directly (backend saveMarks rejects it), so this becomes a correction
@@ -118,6 +119,11 @@ export default function StudentMarksEditModal({
     }
 
     const threshold = book.pass_mark ?? failMark;
+
+    // Class fail mark still loading (null) — stay neutral.
+    if (threshold == null) {
+      return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+    }
 
     if (value < threshold) {
       return "border-red-400 bg-red-50 text-red-700 focus:ring-red-400 dark:border-red-700 dark:bg-red-950/40 dark:text-red-400";

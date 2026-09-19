@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReportColumn } from "../../../features/reports/types";
 import { cachedGet } from "../../../services/api";
+import { pickGradeScale, type ScaleGrade } from "../../ResultPanel/useClassGrading";
+import { withoutFailGrades } from "../../ExamPanel/failGrade";
 import {
   cellValue,
   formatMeritRank,
@@ -24,6 +26,9 @@ const getGradeRange = (grade: GradeItem) => ({
 
 const sortByMinDesc = (grades: GradeItem[]) =>
   [...grades].sort((a, b) => Number(getGradeRange(b).min ?? 0) - Number(getGradeRange(a).min ?? 0));
+
+const pickScale = (rows: any[], divisionId: number | null) =>
+  pickGradeScale(rows as ScaleGrade[], divisionId) as GradeItem[];
 
 const extractGradeArray = (res: any) => {
   if (Array.isArray(res)) return res;
@@ -75,11 +80,26 @@ type ResultStats = { total: number; pass: number; fail: number; absent: number }
 type AcademicResultPrintProps = {
   rows: Record<string, any>[];
   selectedDivisionName?: string;
+  /** Single selected division (null = all divisions) - picks that division's grade scale for the legend. */
+  selectedDivisionId?: number | null;
   selectedClassName?: string;
   startIndex?: number;
   columns?: ReportColumn[];
   isFirstPage?: boolean;
   isLastPage?: boolean;
+  /**
+   * When true, the column heading rows (serial numbers + subject names) are
+   * repeated at the top of every continuation page instead of appearing only
+   * on the first one. Off by default so existing printouts are unchanged.
+   */
+  repeatHeader?: boolean;
+  /**
+   * Every row of the class this page belongs to. The subject columns are built
+   * from these (not just this page's slice) so each page of a class shows the
+   * same subjects in the same order, even when a page carries only a few
+   * students. Falls back to `rows` when omitted.
+   */
+  subjectSourceRows?: Record<string, any>[];
   resultStats?: ResultStats;
 };
 
@@ -186,22 +206,16 @@ const formatPercent = (count: number, total: number) =>
 const AcademicResultPrint = ({
   rows,
   selectedDivisionName = "",
+  selectedDivisionId = null,
   selectedClassName = "",
   columns = ACADEMIC_RESULT_COLUMNS,
   isFirstPage = true,
   isLastPage = true,
+  repeatHeader = false,
+  subjectSourceRows,
   resultStats,
 }: AcademicResultPrintProps) => {
   const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
-
-  useEffect(() => {
-    cachedGet("/madrasa-grades")
-      .then((res) => setMadrasaGrades(extractGradeArray(res.data)))
-      .catch(() => {
-        // Non-critical: the report still prints fine without the grade-scale
-        // reference box if this lookup fails.
-      });
-  }, []);
 
   const configuredColumns = columns.length ? columns : ACADEMIC_RESULT_COLUMNS;
   const firstRow = rows[0] || {};
@@ -209,6 +223,41 @@ const AcademicResultPrint = ({
     selectedDivisionName ||
     rawValue(firstRow, ["division_name", "division_name_bn"]) ||
     "সকল বিভাগ";
+
+  // Grade scales are per-division (a division without its own scale uses the
+  // madrasa-wide default). `GET /madrasa-grades` returns only the default
+  // scale and `?division_id=N` only that division's own rows (empty when it
+  // follows the default), so fetch both and let pickScale choose - the legend
+  // therefore never ends up empty. A report spanning several divisions (no
+  // divisionId) shows the default scale.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      cachedGet("/madrasa-grades"),
+      selectedDivisionId !== null
+        ? cachedGet("/madrasa-grades", { params: { division_id: selectedDivisionId } })
+        : null,
+    ])
+      .then(([defaultRes, ownRes]) => {
+        if (cancelled) return;
+        setMadrasaGrades(
+          pickScale(
+            [
+              ...extractGradeArray(defaultRes.data),
+              ...(ownRes ? extractGradeArray(ownRes.data) : []),
+            ],
+            selectedDivisionId,
+          ),
+        );
+      })
+      .catch(() => {
+        // Non-critical: the report still prints fine without the grade-scale
+        // reference box if this lookup fails.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDivisionId]);
   const className =
     selectedClassName || rawValue(firstRow, ["class_name", "class_name_bn"]) || "সকল শ্রেণি";
   const examName = rawValue(firstRow, ["exam_name"]) || "সকল পরীক্ষা";
@@ -233,7 +282,7 @@ const AcademicResultPrint = ({
     string,
     { key: string; name: string; isMiyari: boolean; fullMark: number }
   >();
-  rows.forEach((row) => {
+  (subjectSourceRows ?? rows).forEach((row) => {
     getSubjects(row).forEach((subject, index) => {
       const key = getSubjectKey(subject, index);
       if (!subjectMap.has(key)) {
@@ -300,7 +349,7 @@ const AcademicResultPrint = ({
   // "রাসিব" is this madrasa's fail-grade name (min_mark 0) - a grade *scale*
   // reference is only useful for the passing grades a student can earn, so
   // it's dropped from the legend rather than listed alongside them.
-  const visibleMadrasaGrades = madrasaGrades.filter((g) => g.name !== "রাসিব");
+  const visibleMadrasaGrades = withoutFailGrades("madrasa", madrasaGrades);
   const hasStats = Boolean(resultStats && resultStats.total > 0);
   const hasGrades = visibleMadrasaGrades.length > 0;
 
@@ -410,7 +459,7 @@ const AcademicResultPrint = ({
               />
             ))}
           </colgroup>
-          {isFirstPage && (
+          {(isFirstPage || repeatHeader) && (
             <thead>
               <tr className="academic-result-header-main-row">
                 {printableColumns.map((column) =>

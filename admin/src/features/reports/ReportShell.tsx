@@ -42,6 +42,20 @@ const getReportSubjects = (row: Record<string, any>): ReportSubject[] => {
   return [];
 };
 
+// Result sheets (academic-result) print the subject-name heading only on the
+// first page by default; this per-user switch repeats it on every page. Kept in
+// localStorage per madrasa so the choice sticks, and forwarded to the server
+// PDF export (?repeat_header=1) since that headless browser has no storage.
+const repeatHeaderStorageKey = (madrasaSlug: string) => `report-repeat-header:${madrasaSlug}`;
+
+const readRepeatHeaderPref = (madrasaSlug: string) => {
+  try {
+    return localStorage.getItem(repeatHeaderStorageKey(madrasaSlug)) === "1";
+  } catch {
+    return false;
+  }
+};
+
 const ReportShell = ({
   pageTitle,
   pageSubtitle,
@@ -110,6 +124,20 @@ const ReportShell = ({
   // reads the pick from the ?columns= param the export builds instead (see
   // serverPdfExport below) and never touches storage.
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
+  const supportsRepeatHeader = activeReport.printable === "academic-result";
+  const [repeatHeaderPref, setRepeatHeaderPref] = useState<boolean>(() =>
+    printMode ? searchParams.get("repeat_header") === "1" : readRepeatHeaderPref(madrasaSlug),
+  );
+  const repeatTableHeader = supportsRepeatHeader && repeatHeaderPref;
+  const toggleRepeatHeader = () => {
+    const next = !repeatHeaderPref;
+    setRepeatHeaderPref(next);
+    try {
+      localStorage.setItem(repeatHeaderStorageKey(madrasaSlug), next ? "1" : "0");
+    } catch {
+      // storage unavailable - the choice just lasts for this session
+    }
+  };
   const columnOptions = activeReport.columnOptions;
   const columnOptionKeys = useMemo(() => columnOptions?.map((c) => c.key) ?? [], [columnOptions]);
   const defaultColumnKeys = useMemo(
@@ -455,6 +483,13 @@ const ReportShell = ({
     divisions.find((division) => String(division.division_id) === String(selectedDivision))
       ?.division_name_bn || "";
 
+  // Real id of the single division being reported (null for "all"/none) so the
+  // result report can look up that division's own grade scale.
+  const selectedDivisionId =
+    selectedDivision && selectedDivision !== "all" && Number.isFinite(Number(selectedDivision))
+      ? Number(selectedDivision)
+      : null;
+
   const selectedClassName =
     classes.find((cls) => String(cls.class_id) === String(selectedClass))?.class_name_bn || "";
 
@@ -548,6 +583,7 @@ const ReportShell = ({
       subject: selectedSubject || undefined,
       template_id: selectedTemplateId ? String(selectedTemplateId) : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
+      repeat_header: repeatTableHeader ? "1" : undefined,
     },
   };
 
@@ -563,7 +599,9 @@ const ReportShell = ({
         report={effectiveReport}
         rows={displayRows}
         selectedDivisionName={selectedDivisionName}
+        selectedDivisionId={selectedDivisionId}
         selectedClassName={selectedClassName}
+        repeatTableHeader={repeatTableHeader}
         hideBrandHeader={hideBrandHeader}
         paperSize={paperSize}
         orientation={orientation}
@@ -649,6 +687,31 @@ const ReportShell = ({
                   </div>
                 )}
 
+                {supportsRepeatHeader && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={repeatHeaderPref}
+                    onClick={toggleRepeatHeader}
+                    title="চালু থাকলে বিষয়ের নামসহ হেডার প্রতিটি পেজের উপরে ছাপা হবে"
+                    className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`relative inline-block h-4 w-7 rounded-full transition-colors ${
+                        repeatHeaderPref ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                          repeatHeaderPref ? "left-3.5" : "left-0.5"
+                        }`}
+                      />
+                    </span>
+                    প্রতি পেজে বিষয়ের নাম
+                  </button>
+                )}
+
                 {columnOptions && (
                   <ColumnVisibilityMenu
                     columns={columnMenuOptions}
@@ -723,7 +786,9 @@ const ReportShell = ({
               report={effectiveReport}
               rows={displayRows}
               selectedDivisionName={selectedDivisionName}
+              selectedDivisionId={selectedDivisionId}
               selectedClassName={selectedClassName}
+              repeatTableHeader={repeatTableHeader}
               hideBrandHeader={hideBrandHeader}
               paperSize={paperSize}
               orientation={orientation}

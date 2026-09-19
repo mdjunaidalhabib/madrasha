@@ -5,7 +5,7 @@ import { hasExamDepartmentAuthority, hasFullResultAuthority } from "../../shared
 import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
 import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
 import { resultPanelRepository } from "./result-panel.repository";
-import { DEFAULT_FAIL_MARK, FAIL_MARK_SETTING_NAME } from "./result-panel.constants";
+import { MadrasaGradingConfig } from "./result-grading-config";
 
 const toBanglaDigits = (value: string | number) =>
   String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
@@ -267,7 +267,7 @@ export class ResultWorkflowService {
       );
     }
 
-    const [activeStudents, summaries, withheldRows, settings, candidateRows, candidateRoster] =
+    const [activeStudents, summaries, withheldRows, failMark, candidateRows, candidateRoster] =
       await Promise.all([
         resultPanelRepository.findActiveStudentsInClass(madrasaId, master.classId),
         this.repository.findResultSummaryRows(resultMasterId),
@@ -277,7 +277,9 @@ export class ResultWorkflowService {
           master.classId,
           resultMasterId,
         ),
-        resultPanelRepository.findSettings(madrasaId),
+        // The class's division-resolved fail mark (division override, else
+        // the madrasa-wide setting) - the same value the grading engine used.
+        new MadrasaGradingConfig(resultPanelRepository, madrasaId).failMarkForClass(master.classId),
         this.repository.findExamCandidatesReadOnly(madrasaId, master.examId),
         resultPanelRepository.findParticipatingCandidatesInClass(
           madrasaId,
@@ -288,8 +290,6 @@ export class ResultWorkflowService {
 
     const withheldSet = new Set(withheldRows.map((r) => Number(r.studentId)));
     const summaryByStudent = new Map(summaries.map((s) => [Number(s.studentId), s]));
-    const failSetting = settings.find((s) => s.name === FAIL_MARK_SETTING_NAME);
-    const failMark = failSetting ? Number(failSetting.value) : DEFAULT_FAIL_MARK;
 
     // Missing-marks scoping: when this exam+class has a non-empty
     // ExamCandidate roster, only students who are BOTH active AND actually

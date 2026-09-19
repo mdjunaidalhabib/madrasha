@@ -23,6 +23,8 @@ model Division {
   sessions         Session[]
   examCandidates   ExamCandidate[]
   examRoutines     ExamRoutine[]
+  generalGrades    GeneralGrade[]
+  madrasaGrades    MadrasaGrade[]
 
   @@map("divisions")
 }
@@ -32,6 +34,11 @@ model MadrasaDivision {
   madrasaId  Int       @map("madrasa_id")
   divisionId Int       @map("division_id")
   isActive   Int?      @default(1) @map("is_active")
+  /// Per-division fail mark override. NULL = follow the madrasa-wide
+  /// Setting["fail_mark"]. When set, the division also owns its own
+  /// GeneralGrade/MadrasaGrade rows (divisionId = this division) whose lowest
+  /// band is auto-pinned to failMark (pass starts AT the fail mark).
+  failMark   Int?      @map("fail_mark")
   sortOrder  Int       @default(0) @map("sort_order")
   deletedAt  DateTime? @map("deleted_at")
   createdAt  DateTime  @default(now()) @map("created_at")
@@ -148,13 +155,20 @@ model GeneralGrade {
   maxMark   Int      @map("max_mark")
   point     Float?   @map("point")
   madrasaId Int      @default(1) @map("madrasa_id")
+  /// NULL = madrasa-wide default scale. Set = this division's own scale (used
+  /// instead of the default one whenever the division has any rows).
+  divisionId Int?    @map("division_id")
   createdBy Int?     @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  division Division? @relation(fields: [divisionId], references: [id], onDelete: Cascade)
 
-  @@unique([madrasaId, name], map: "uniq_general_grade_madrasa")
+  /// NULL divisionId rows are kept unique by a partial unique index created in
+  /// the migration (Postgres treats NULLs as distinct in a plain unique index).
+  @@unique([madrasaId, divisionId, name], map: "uniq_general_grade_madrasa")
+  @@index([madrasaId, divisionId], map: "idx_general_grades_division")
   @@map("general_grades")
 }
 
@@ -165,12 +179,19 @@ model MadrasaGrade {
   maxMark   Int      @map("max_mark")
   point     Float?   @map("point")
   madrasaId Int      @default(1) @map("madrasa_id")
+  /// NULL = madrasa-wide default scale. Set = this division's own scale (used
+  /// instead of the default one whenever the division has any rows).
+  divisionId Int?    @map("division_id")
   createdBy Int?     @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  madrasa  Madrasa   @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  division Division? @relation(fields: [divisionId], references: [id], onDelete: Cascade)
 
-  @@unique([madrasaId, name], map: "uniq_madrasa_grade_madrasa")
+  /// NULL divisionId rows are kept unique by a partial unique index created in
+  /// the migration (Postgres treats NULLs as distinct in a plain unique index).
+  @@unique([madrasaId, divisionId, name], map: "uniq_madrasa_grade_madrasa")
+  @@index([madrasaId, divisionId], map: "idx_madrasa_grades_division")
   @@map("madrasa_grades")
 }

@@ -268,12 +268,44 @@ export class ResultPanelRepository {
     });
   }
 
+  /** ALL of the madrasa's general grade rows - the default scale
+   * (divisionId NULL) AND every division's own scale. Rows carry divisionId;
+   * callers pick the scale for a class with pickGradeScale() (see
+   * result-grading-config.ts) so one query serves every division. */
   findGeneralGrades(madrasaId: number) {
     return prisma.generalGrade.findMany({ where: { madrasaId }, orderBy: { minMark: "desc" } });
   }
 
+  /** Same as findGeneralGrades, for the madrasa (Arabic-style) grade scale. */
   findMadrasaGrades(madrasaId: number) {
     return prisma.madrasaGrade.findMany({ where: { madrasaId }, orderBy: { minMark: "desc" } });
+  }
+
+  /** A class's division and that division's fail-mark override in this
+   * madrasa (single query; null failMark = follow the global setting). */
+  async findClassGradingScope(
+    madrasaId: number,
+    classId: number,
+  ): Promise<{ divisionId: number | null; divisionFailMark: number | null }> {
+    const cls = await prisma.class.findUnique({
+      where: { id: classId },
+      select: {
+        divisionId: true,
+        division: {
+          select: {
+            madrasaDivisions: {
+              where: { madrasaId, deletedAt: null },
+              select: { failMark: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    return {
+      divisionId: cls?.divisionId ?? null,
+      divisionFailMark: cls?.division?.madrasaDivisions[0]?.failMark ?? null,
+    };
   }
 
   groupMarksByStudent(madrasaId: number, examId: number, classId: number, resultMasterId: number) {

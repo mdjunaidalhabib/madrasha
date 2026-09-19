@@ -22,7 +22,11 @@ type PaginatedReportPreviewProps = {
   report: ReportMenuItem;
   rows: Record<string, any>[];
   selectedDivisionName?: string;
+  /** Id of the single selected division (null/omitted = all divisions); lets the result legend pick that division's own grade scale. */
+  selectedDivisionId?: number | null;
   selectedClassName?: string;
+  /** academic-result only: repeat the column heading (subject names) on every page, not just the first. */
+  repeatTableHeader?: boolean;
   hideBrandHeader?: boolean;
   paperSize: PaperSize;
   orientation: Orientation;
@@ -55,6 +59,10 @@ type ResolvedPage = {
   // academic-result only: pass/fail/absent counts for the WHOLE group (this
   // class's this exam), not just this physical page's row slice.
   resultStats?: ResultStats;
+  // Every row of the group this page belongs to (table kind) - lets a print
+  // component derive group-wide things (e.g. the result sheet's subject
+  // columns) instead of only what this page's slice happens to contain.
+  groupRows?: Record<string, any>[];
   // columnsPerPage:2 only: true when this chunk starts a fresh column
   // rather than continuing to pack below the previous chunk in the same
   // column - see packColumnsAcrossGroups.
@@ -69,6 +77,9 @@ const SAFETY_MARGIN_RATIO = 0.01;
 // margin every print component adds in its place (Tailwind `mt-6` = 24px),
 // applied uniformly whenever `isFirstPage` is false.
 const CONTINUATION_TOP_OFFSET_PX = 24;
+// Widow/orphan control for the result sheet: the last page of a class always
+// carries at least this many students (see paginateBlocks.minLastPageBlocks).
+const MIN_LAST_PAGE_RESULT_ROWS = 3;
 // Horizontal space reserved between the two columns of a columnsPerPage:2
 // report (exam-signature-number-sheet-2col) - a thin divider line renders
 // centered in this gap so cutting straight down the middle leaves an equal
@@ -264,6 +275,7 @@ const paginateTableGroup = (
   groupRowsData: Record<string, any>[],
   availableHeightPx: number,
   continuationOffsetPx: number,
+  minLastPageRows = 0,
 ): Record<string, any>[][] => {
   const safetyPx = availableHeightPx * SAFETY_MARGIN_RATIO;
   const firstPageBudgetPx = availableHeightPx - measurement.firstRowOffsetPx - safetyPx;
@@ -278,6 +290,7 @@ const paginateTableGroup = (
     firstPageBudgetPx,
     continuationPageBudgetPx,
     footerReservePx: measurement.footerReservePx,
+    minLastPageBlocks: minLastPageRows,
   });
 
   return pageIdGroups.map((ids) => ids.map((id) => groupRowsData[Number(id)]));
@@ -566,7 +579,9 @@ const PaginatedReportPreview = ({
   report,
   rows: rawRows,
   selectedDivisionName = "",
+  selectedDivisionId = null,
   selectedClassName = "",
+  repeatTableHeader = false,
   hideBrandHeader = false,
   paperSize,
   orientation,
@@ -693,6 +708,7 @@ const PaginatedReportPreview = ({
     isFirstPage?: boolean;
     isLastPage?: boolean;
     resultStats?: ResultStats;
+    subjectSourceRows?: Record<string, any>[];
   };
 
   const CONTINUATION_PROBE_KEY = "table-continuation-probe";
@@ -712,6 +728,7 @@ const PaginatedReportPreview = ({
         density: getDensity(report, groupRowsData, paperSize, orientation),
         resultStats:
           report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined,
+        subjectSourceRows: groupRowsData,
       }));
 
       // One extra off-screen probe (not tied to any real group) rendered
@@ -719,6 +736,26 @@ const PaginatedReportPreview = ({
       // top overhead a continuation page has - reading it from the DOM
       // instead of assuming every table-kind component uses the same
       // hardcoded margin utility.
+      //
+      // When the column heading repeats on every page, a continuation page's
+      // top overhead depends on that class's own subject names (their
+      // vertical text sets the header height), so each class gets its own
+      // probe. Otherwise one shared probe is enough.
+      if (repeatTableHeader && report.printable === "academic-result") {
+        return [
+          ...tableTargets,
+          ...groups.map((groupRowsData, i) => ({
+            key: `${CONTINUATION_PROBE_KEY}-${i}`,
+            rows: [groupRowsData[0]],
+            showBrand: false,
+            density: getDensity(report, groupRowsData, paperSize, orientation),
+            isFirstPage: false,
+            isLastPage: false,
+            subjectSourceRows: groupRowsData,
+          })),
+        ];
+      }
+
       return [
         ...tableTargets,
         {
@@ -784,10 +821,15 @@ const PaginatedReportPreview = ({
       let isVeryFirstPage = true;
 
       if (config.kind === "table") {
-        const probeContainer = measureRefs.current.get(CONTINUATION_PROBE_KEY);
-        const continuationOffsetPx = probeContainer
-          ? measureTableGroupContainer(probeContainer, paddingTopPx).firstRowOffsetPx
-          : CONTINUATION_TOP_OFFSET_PX;
+        const getContinuationOffsetPx = (groupIndex: number) => {
+          const probeContainer =
+            measureRefs.current.get(`${CONTINUATION_PROBE_KEY}-${groupIndex}`) ??
+            measureRefs.current.get(CONTINUATION_PROBE_KEY);
+          return probeContainer
+            ? measureTableGroupContainer(probeContainer, paddingTopPx).firstRowOffsetPx
+            : CONTINUATION_TOP_OFFSET_PX;
+        };
+        const continuationOffsetPx = getContinuationOffsetPx(0);
 
         if (columnsPerPage === 2) {
           const measurements = groups.map((_, groupIndex) => {
@@ -812,6 +854,7 @@ const PaginatedReportPreview = ({
                 isLastPage: chunk.isLastChunkOfGroup,
                 density: getDensity(report, groupRowsData, paperSize, orientation),
                 resultStats,
+                groupRows: groupRowsData,
                 startsNewColumn: chunk.startsNewColumn,
               });
               globalStartIndex += chunk.rows.length;
@@ -823,7 +866,13 @@ const PaginatedReportPreview = ({
             if (!container) return;
 
             const measurement = measureTableGroupContainer(container, paddingTopPx);
-            const producedPages = paginateTableGroup(measurement, groupRowsData, availableHeightPx, continuationOffsetPx);
+            const producedPages = paginateTableGroup(
+              measurement,
+              groupRowsData,
+              availableHeightPx,
+              getContinuationOffsetPx(groupIndex),
+              report.printable === "academic-result" ? MIN_LAST_PAGE_RESULT_ROWS : 0,
+            );
             const resultStats =
               report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined;
 
@@ -837,6 +886,7 @@ const PaginatedReportPreview = ({
                 isLastPage: pageIndexInGroup === producedPages.length - 1,
                 density: getDensity(report, groupRowsData, paperSize, orientation),
                 resultStats,
+                groupRows: groupRowsData,
               });
               globalStartIndex += pageRows.length;
             });
@@ -961,6 +1011,7 @@ const PaginatedReportPreview = ({
     measureTargets,
     idCardTemplateLoaded,
     branding,
+    repeatTableHeader,
   ]);
 
   useLayoutEffect(() => {
@@ -1026,6 +1077,7 @@ const PaginatedReportPreview = ({
           isLastPage: true,
           density: getDensity(report, rows, paperSize, orientation),
           resultStats: report.printable === "academic-result" ? getResultStats(rows) : undefined,
+          groupRows: rows,
         },
       ]
     : [statusPage];
@@ -1091,11 +1143,14 @@ const PaginatedReportPreview = ({
                   report={report}
                   rows={target.rows}
                   selectedDivisionName={selectedDivisionName}
+                  selectedDivisionId={selectedDivisionId}
+                  repeatTableHeader={repeatTableHeader}
                   selectedClassName={selectedClassName}
                   startIndex={0}
                   isFirstPage={target.isFirstPage ?? true}
                   isLastPage={target.isLastPage ?? true}
                   resultStats={target.resultStats}
+                  subjectSourceRows={target.subjectSourceRows}
                 />
               </div>
             </div>
@@ -1163,12 +1218,15 @@ const PaginatedReportPreview = ({
                               report={report}
                               rows={chunk.rows}
                               selectedDivisionName={selectedDivisionName}
+                              selectedDivisionId={selectedDivisionId}
+                              repeatTableHeader={repeatTableHeader}
                               selectedClassName={selectedClassName}
                               startIndex={chunk.startIndex}
                               isFirstPage={chunk.isFirstPage}
                               isLastPage={chunk.isLastPage}
                               bodyTextOverride={chunk.bodyTextOverride}
                               resultStats={chunk.resultStats}
+                              subjectSourceRows={chunk.groupRows}
                               emptyMessage={emptyMessage}
                             />
                           </div>
@@ -1199,12 +1257,15 @@ const PaginatedReportPreview = ({
                               report={report}
                               rows={chunk.rows}
                               selectedDivisionName={selectedDivisionName}
+                              selectedDivisionId={selectedDivisionId}
+                              repeatTableHeader={repeatTableHeader}
                               selectedClassName={selectedClassName}
                               startIndex={chunk.startIndex}
                               isFirstPage={chunk.isFirstPage}
                               isLastPage={chunk.isLastPage}
                               bodyTextOverride={chunk.bodyTextOverride}
                               resultStats={chunk.resultStats}
+                              subjectSourceRows={chunk.groupRows}
                               emptyMessage={emptyMessage}
                             />
                           </div>
@@ -1247,12 +1308,15 @@ const PaginatedReportPreview = ({
                         report={report}
                         rows={page.rows}
                         selectedDivisionName={selectedDivisionName}
+                        selectedDivisionId={selectedDivisionId}
+                        repeatTableHeader={repeatTableHeader}
                         selectedClassName={selectedClassName}
                         startIndex={page.startIndex}
                         isFirstPage={page.isFirstPage}
                         isLastPage={page.isLastPage}
                         bodyTextOverride={page.bodyTextOverride}
                         resultStats={page.resultStats}
+                        subjectSourceRows={page.groupRows}
                         emptyMessage={emptyMessage}
                       />
                     </div>

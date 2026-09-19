@@ -412,6 +412,11 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   { key: "user|SUPER_ADMIN_USER_CREATED", bn: "নতুন ইউজার তৈরি করা হয়েছে (সুপার এডমিন)", en: "User created (super admin)", ar: "تم إنشاء مستخدم (المشرف العام)" },
   { key: "user|SUPER_ADMIN_USER_DELETED", bn: "ইউজার মুছে ফেলা হয়েছে (সুপার এডমিন)", en: "User deleted (super admin)", ar: "تم حذف المستخدم (المشرف العام)" },
 
+  // Per-division fail mark (POST /fail-mark/divisions/:divisionId - the numeric
+  // id is stripped by the backend, so the entity is "fail-mark/divisions"; the
+  // same call both sets and clears a division's override)
+  { key: "fail-mark/divisions|CREATE", bn: "বিভাগভিত্তিক ফেল মার্ক হালনাগাদ করা হয়েছে", en: "Division fail mark updated", ar: "تم تحديث علامة الرسوب الخاصة بالقسم" },
+
   // Talimat
   { key: "talimat/create|CREATE", bn: "তালিমাত যোগ করা হয়েছে", en: "Talimat added", ar: "تمت إضافة التعليمات" },
 ];

@@ -45,8 +45,10 @@ interface Props {
   /** Fallback pass-mark threshold for subjects without their own override
    * (Book.pass_mark). Compared directly against the raw mark — not scaled
    * by full_marks — matching the backend's fail-mark semantics. Defaults to
-   * 33 (a common global fail mark). */
-  failMark?: number;
+   * 33 (a common global fail mark). This is the fail mark of the selected
+   * class's division; pass null while it is still loading to suppress the
+   * pass/fail colouring. */
+  failMark?: number | null;
   /** Called when the user commits a cell (Enter / moves to next field) so the
    * parent can trigger an autosave. */
   onCommit?: () => void;
@@ -262,6 +264,12 @@ export default function MarksTable({
     // otherwise every subject would be checked against a threshold tuned
     // for 100-mark subjects, regardless of what it's actually out of.
     const threshold = book.pass_mark ?? failMark;
+
+    // Class fail mark still loading (null) — stay neutral instead of
+    // flashing a wrong pass/fail colour.
+    if (threshold == null) {
+      return "border-gray-300 bg-white text-gray-700 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+    }
 
     if (value < threshold) {
       // Failing mark — red

@@ -4,14 +4,20 @@ import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
 import { feeService } from "../fee/fee.service";
-import { resultPanelService } from "../ResultPanel/result-panel.service";
 import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
   UpdateExamRequestDto,
   UpdateExamStatusRequestDto,
   UpdateFailMarkRequestDto,
+  UpdateDivisionFailMarkRequestDto,
 } from "./exam.dto";
+import {
+  isGeneralFailGradeName,
+  isMadrasaFailGradeName,
+  resolveFailMark,
+  withoutFailGradeRows,
+} from "../ResultPanel/division-grading";
 import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK, EXAM_STATUSES } from "./exam.constants";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
@@ -50,6 +56,38 @@ const parsePoint = (point: unknown): number | null => {
     throw new BadRequestError("Point must be a non-negative number");
   }
   return value;
+};
+
+/** Optional positive-integer id (query/body). Empty = no scope; anything else invalid is a 400. */
+const parseOptionalId = (value: unknown, label: string): number | null => {
+  if (isEmpty(value)) return null;
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(`${label} must be a positive integer`);
+  return id;
+};
+
+const withDivisionId = <T extends { divisionId: number | null }>(row: T) => ({
+  ...row,
+  division_id: row.divisionId,
+});
+
+/** A fail grade is automatic (failed students get it as a fallback label), never a band. */
+const assertNotFailGrade = (name: unknown, kind: "general" | "madrasa") => {
+  if (kind === "general" && isGeneralFailGradeName(name)) {
+    throw new BadRequestError("F স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না");
+  }
+  if (kind === "madrasa" && isMadrasaFailGradeName(name)) {
+    throw new BadRequestError("রাসিব স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না");
+  }
+};
+
+const parseFailMarkValue = (value: unknown): number => {
+  if (value === undefined || value === null || value === "") throw new BadRequestError("Value is required");
+  const failValue = Number(value);
+  if (Number.isNaN(failValue) || failValue < MIN_MARK || failValue > MAX_MARK) {
+    throw new BadRequestError("Fail mark must be a number between 0 and 100");
+  }
+  return failValue;
 };
 
 export class ExamService {
@@ -226,9 +264,11 @@ export class ExamService {
 
   /* ================= GENERAL GRADES ================= */
 
-  async listGeneralGrades(madrasaId: number) {
+  /** `divisionId` omitted = the default scale; given = only that division's own rows. */
+  async listGeneralGrades(madrasaId: number, divisionId?: unknown) {
+    const scope = parseOptionalId(divisionId, "division_id");
     try {
-      return await this.repository.findGeneralGrades(madrasaId);
+      return (await this.repository.findGeneralGrades(madrasaId, scope)).map(withDivisionId);
     } catch (err) {
       return friendlyFailure("getGeneralGrades error:", err, "Failed to load general grades");
     }
@@ -236,11 +276,13 @@ export class ExamService {
 
   async saveGeneralGrade(madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    assertNotFailGrade(dto.name, "general");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
+    const scope = await this.resolveGradeScope(madrasaId, dto.division_id);
 
     try {
-      await this.repository.createGeneralGrade(madrasaId, String(dto.name).trim(), min, max, point);
+      await this.repository.createGeneralGrade(madrasaId, String(dto.name).trim(), min, max, point, scope);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This general grade already exists");
       return friendlyFailure("saveGeneralGrade error:", err, "Failed to save general grade");
@@ -249,6 +291,7 @@ export class ExamService {
 
   async updateGeneralGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    assertNotFailGrade(dto.name, "general");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
 
@@ -281,9 +324,11 @@ export class ExamService {
 
   /* ================= MADRASA GRADES ================= */
 
-  async listMadrasaGrades(madrasaId: number) {
+  /** `divisionId` omitted = the default scale; given = only that division's own rows. */
+  async listMadrasaGrades(madrasaId: number, divisionId?: unknown) {
+    const scope = parseOptionalId(divisionId, "division_id");
     try {
-      return await this.repository.findMadrasaGrades(madrasaId);
+      return (await this.repository.findMadrasaGrades(madrasaId, scope)).map(withDivisionId);
     } catch (err) {
       return friendlyFailure("getMadrasaGrades error:", err, "Failed to load madrasa grades");
     }
@@ -291,11 +336,13 @@ export class ExamService {
 
   async saveMadrasaGrade(madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    assertNotFailGrade(dto.name, "madrasa");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
+    const scope = await this.resolveGradeScope(madrasaId, dto.division_id);
 
     try {
-      await this.repository.createMadrasaGrade(madrasaId, String(dto.name).trim(), min, max, point);
+      await this.repository.createMadrasaGrade(madrasaId, String(dto.name).trim(), min, max, point, scope);
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
       return friendlyFailure("saveMadrasaGrade error:", err, "Failed to save madrasa grade");
@@ -304,6 +351,7 @@ export class ExamService {
 
   async updateMadrasaGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
     if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    assertNotFailGrade(dto.name, "madrasa");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
 
@@ -334,6 +382,23 @@ export class ExamService {
     }
   }
 
+  /** Scope for a new grade row: null = default scale. A division scope is only
+   * allowed once that division has its own fail-mark override (that override
+   * is what makes it own a scale in the first place). */
+  private async resolveGradeScope(madrasaId: number, rawDivisionId: unknown): Promise<number | null> {
+    const divisionId = parseOptionalId(rawDivisionId, "division_id");
+    if (divisionId === null) return null;
+
+    const division = await this.repository.findActiveDivision(madrasaId, divisionId);
+    if (!division) throw new BadRequestError("বিভাগটি পাওয়া যায়নি");
+    if (division.failMark === null || division.failMark === undefined) {
+      throw new BadRequestError(
+        "এই বিভাগের নিজস্ব ফেইল মার্ক সেট করা নেই, তাই আলাদা গ্রেড যোগ করা যাবে না। আগে বিভাগের ফেইল মার্ক নির্ধারণ করুন",
+      );
+    }
+    return divisionId;
+  }
+
   /* ================= SETTINGS ================= */
 
   async getFailMark(madrasaId: number) {
@@ -345,68 +410,152 @@ export class ExamService {
     }
   }
 
-  /** Saves the fail mark, then brings already-processed results back in line
-   * with it. Unpublished sessions are re-graded on the spot; PUBLISHED/LOCKED
-   * ones are only counted (`pending_published`) - fail mark is one global
-   * setting, so applying it to results guardians already saw is a deliberate
-   * তালিমাত decision, made from the UI via POST /results/recalculate. */
-  async updateFailMark(madrasaId: number, dto: UpdateFailMarkRequestDto, actorId: number | null = null) {
-    if (dto.value === undefined || dto.value === null || dto.value === ("" as unknown)) {
-      throw new BadRequestError("Value is required");
+  private async getGlobalFailMarkNumber(madrasaId: number): Promise<number> {
+    const value = Number(await this.getFailMark(madrasaId));
+    return Number.isFinite(value) ? value : Number(DEFAULT_FAIL_MARK);
+  }
+
+  /** The fail mark that actually applies to a division (or to a class's
+   * division): its own override, else the madrasa-wide one. An unknown or
+   * inactive division, or a class without a division, gets the global value. */
+  async getEffectiveFailMark(madrasaId: number, divisionIdRaw?: unknown, classIdRaw?: unknown): Promise<number> {
+    let divisionId = parseOptionalId(divisionIdRaw, "division_id");
+    const classId = parseOptionalId(classIdRaw, "class_id");
+
+    try {
+      if (divisionId === null && classId !== null) {
+        divisionId = await this.repository.findClassDivisionId(classId);
+      }
+      const global = await this.getGlobalFailMarkNumber(madrasaId);
+      if (divisionId === null) return global;
+
+      const division = await this.repository.findActiveDivision(madrasaId, divisionId);
+      return resolveFailMark(division?.failMark, global);
+    } catch (err) {
+      return friendlyFailure("getEffectiveFailMark error:", err, "Failed to load fail mark");
+    }
+  }
+
+  /** Global fail mark plus each active division's override (null = follows global). */
+  async listDivisionFailMarks(madrasaId: number) {
+    try {
+      const [global, divisions, withGrades] = await Promise.all([
+        this.getGlobalFailMarkNumber(madrasaId),
+        this.repository.findActiveDivisions(madrasaId),
+        this.repository.findDivisionIdsWithOwnGrades(madrasaId),
+      ]);
+      return {
+        global,
+        divisions: divisions.map((row) => ({
+          division_id: row.divisionId,
+          name: row.division.nameBn ?? row.division.name ?? "",
+          fail_mark: row.failMark ?? null,
+          has_custom_grades: withGrades.has(row.divisionId),
+        })),
+      };
+    } catch (err) {
+      return friendlyFailure("listDivisionFailMarks error:", err, "Failed to load division fail marks");
+    }
+  }
+
+  /** Sets (number) or clears (null) a division's fail-mark override.
+   * The first override clones the default grade scales into the division so
+   * it owns editable copies; every set then repins that scale's lowest bands
+   * to the fail mark. Clearing also drops the division's own grade rows so it
+   * falls back to the defaults. Like updateFailMark this only saves the
+   * setting - already-processed results are NOT touched; applying the change
+   * is an explicit পুনঃগণনা (POST /results/recalculate) the admin confirms. */
+  async updateDivisionFailMark(
+    madrasaId: number,
+    divisionId: number,
+    dto: UpdateDivisionFailMarkRequestDto,
+  ) {
+    if (dto.value === undefined) throw new BadRequestError("Value is required");
+    const failValue = dto.value === null ? null : parseFailMarkValue(dto.value);
+    if (failValue !== null && !Number.isInteger(failValue)) {
+      throw new BadRequestError("Fail mark must be a whole number between 0 and 100");
     }
 
-    const failValue = Number(dto.value);
-    if (Number.isNaN(failValue) || failValue < MIN_MARK || failValue > MAX_MARK) {
-      throw new BadRequestError("Fail mark must be a number between 0 and 100");
+    const division = await this.repository.findActiveDivision(madrasaId, divisionId);
+    if (!division) throw new NotFoundError("Division not found");
+
+    try {
+      if (failValue === null) {
+        await this.repository.clearDivisionOverride(madrasaId, divisionId);
+      } else {
+        await this.repository.setDivisionFailMark(madrasaId, divisionId, failValue);
+        await this.ensureDivisionGradeScales(madrasaId, divisionId);
+        await this.repinLowestGradeBands(madrasaId, failValue, divisionId);
+      }
+    } catch (err) {
+      return friendlyFailure("updateDivisionFailMark error:", err, "Failed to update division fail mark");
     }
+
+    return {};
+  }
+
+  /** Clones the default general + madrasa grade rows into the division, per
+   * kind, only when the division has none of its own yet (an existing scale,
+   * possibly hand-edited, is never overwritten). */
+  private async ensureDivisionGradeScales(madrasaId: number, divisionId: number) {
+    // Legacy fail-named rows (F / রাসিব) are not bands: they neither count as
+    // an existing own scale nor get cloned.
+    const [ownGeneral, ownMadrasa] = await Promise.all([
+      this.repository.findGeneralGrades(madrasaId, divisionId).then((rows) => withoutFailGradeRows(rows, "general")),
+      this.repository.findMadrasaGrades(madrasaId, divisionId).then((rows) => withoutFailGradeRows(rows, "madrasa")),
+    ]);
+
+    if (!ownGeneral.length) {
+      const defaults = withoutFailGradeRows(await this.repository.findGeneralGrades(madrasaId, null), "general");
+      if (defaults.length) await this.repository.createManyGeneralGrades(madrasaId, divisionId, defaults);
+    }
+    if (!ownMadrasa.length) {
+      const defaults = withoutFailGradeRows(await this.repository.findMadrasaGrades(madrasaId, null), "madrasa");
+      if (defaults.length) await this.repository.createManyMadrasaGrades(madrasaId, divisionId, defaults);
+    }
+  }
+
+  /** Saves the fail mark (and re-pins the default scale's lowest bands). It
+   * deliberately does NOT recalculate: already-processed results only change
+   * when an admin reviews and confirms a পুনঃগণনা (POST /results/recalculate),
+   * so a settings tweak never silently rewrites results. */
+  async updateFailMark(madrasaId: number, dto: UpdateFailMarkRequestDto) {
+    const failValue = parseFailMarkValue(dto.value);
 
     try {
       await this.repository.upsertFailMarkSetting(madrasaId, String(failValue));
-      await this.repinLowestGradeBands(madrasaId, failValue);
+      // Default (divisionId NULL) scale only: division-owned scales are pinned
+      // to their own override and must not move with the global value.
+      await this.repinLowestGradeBands(madrasaId, failValue, null);
     } catch (err) {
       return friendlyFailure("updateFailMark error:", err, "Failed to update fail mark");
     }
 
-    // Outside the try/catch above on purpose: the setting is already saved,
-    // so a recalculation problem must not turn into a "failed to update"
-    // response. The UI is told (recalculation.ok = false) and can offer the
-    // manual পুনঃগণনা instead.
-    try {
-      const { totals } = await resultPanelService.recalculateResults(madrasaId, actorId, {
-        includePublished: false,
-        reason: "FAIL_MARK_CHANGE",
-      });
-      return {
-        recalculation: {
-          ok: true,
-          updated: totals.updated,
-          changed_students: totals.changed_students,
-          pending_published: totals.pending_published,
-          failed: totals.failed,
-        },
-      };
-    } catch (err) {
-      logger.error("updateFailMark: result recalculation failed:", err);
-      return { recalculation: { ok: false, updated: 0, changed_students: 0, pending_published: 0, failed: 0 } };
-    }
+    return {};
   }
 
   // Grade bands are auto-chained (see GeneralGradeList/MadrasaGradeList on the
-  // frontend): the lowest grade's minMark is always failMark + 1, clamped to
+  // frontend): the lowest grade's minMark is always failMark (a mark equal to the fail
+  // mark passes - fail is strictly below it), clamped to
   // that grade's own maxMark so a stale lowest band (predating a later
   // fail-mark increase) never ends up with min > max - the update below
   // would otherwise be rejected. Changing the fail mark can leave that
   // pinned floor stale until this re-pins it, even if the admin never
   // revisits the গ্রেড page after changing it on পরীক্ষা.
-  private async repinLowestGradeBands(madrasaId: number, failValue: number) {
+  //
+  // Works per scope: divisionId null pins the default scale (global fail
+  // mark), a number pins that division's own scale (its override).
+  private async repinLowestGradeBands(madrasaId: number, failValue: number, divisionId: number | null) {
+    // Passing bands only: a fail grade (F / রাসিব) is not a band, so a legacy
+    // row with that name is never "the lowest band" and is left untouched.
     const [generalGrades, madrasaGrades] = await Promise.all([
-      this.repository.findGeneralGrades(madrasaId),
-      this.repository.findMadrasaGrades(madrasaId),
+      this.repository.findGeneralGrades(madrasaId, divisionId).then((rows) => withoutFailGradeRows(rows, "general")),
+      this.repository.findMadrasaGrades(madrasaId, divisionId).then((rows) => withoutFailGradeRows(rows, "madrasa")),
     ]);
 
     const lowestGeneral = generalGrades.at(-1);
     if (lowestGeneral) {
-      const newMin = Math.min(failValue + 1, lowestGeneral.maxMark);
+      const newMin = Math.min(failValue, lowestGeneral.maxMark);
       if (lowestGeneral.minMark !== newMin) {
         await this.repository.updateGeneralGrade(
           lowestGeneral.id,
@@ -421,7 +570,7 @@ export class ExamService {
 
     const lowestMadrasa = madrasaGrades.at(-1);
     if (lowestMadrasa) {
-      const newMinMadrasa = Math.min(failValue + 1, lowestMadrasa.maxMark);
+      const newMinMadrasa = Math.min(failValue, lowestMadrasa.maxMark);
       if (lowestMadrasa.minMark !== newMinMadrasa) {
         await this.repository.updateMadrasaGrade(
           lowestMadrasa.id,

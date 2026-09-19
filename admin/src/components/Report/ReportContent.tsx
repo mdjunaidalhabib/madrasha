@@ -31,11 +31,17 @@ type ReportContentProps = {
   report: ReportMenuItem;
   rows: Record<string, any>[];
   selectedDivisionName?: string;
+  /** Id of the single selected division (null/omitted = all divisions); lets the result legend pick that division's own grade scale. */
+  selectedDivisionId?: number | null;
   selectedClassName?: string;
   startIndex?: number;
   isLastPage?: boolean;
   isFirstPage?: boolean;
   bodyTextOverride?: string;
+  // academic-result only: repeat the column heading on every page (see AcademicResultPrint.repeatHeader).
+  repeatTableHeader?: boolean;
+  // academic-result only: the whole class's rows, so every page shares one subject-column set.
+  subjectSourceRows?: Record<string, any>[];
   // academic-result only: pass/fail/absent counts for the whole class/exam
   // group this page belongs to (see PaginatedReportPreview.getResultStats).
   resultStats?: { total: number; pass: number; fail: number; absent: number };
@@ -58,7 +64,10 @@ const ReportContent = ({
   report,
   rows,
   selectedDivisionName = "",
+  selectedDivisionId = null,
   selectedClassName = "",
+  repeatTableHeader = false,
+  subjectSourceRows,
   startIndex = 0,
   isLastPage = true,
   isFirstPage = true,
@@ -184,11 +193,14 @@ const ReportContent = ({
       <AcademicResultPrint
         rows={rows}
         selectedDivisionName={selectedDivisionName}
+        selectedDivisionId={selectedDivisionId}
         selectedClassName={selectedClassName}
         startIndex={startIndex}
         columns={report.columns}
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
+        repeatHeader={repeatTableHeader}
+        subjectSourceRows={subjectSourceRows}
         resultStats={resultStats}
       />
     );

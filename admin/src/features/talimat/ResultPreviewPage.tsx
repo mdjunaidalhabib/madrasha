@@ -16,6 +16,10 @@ import ResultCorrectionsPanel from "../../components/ResultPanel/ResultCorrectio
 import RecalculateResultsModal from "../../components/ResultPanel/RecalculateResultsModal";
 import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
 import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
+import {
+  useClassFailMark,
+  useDivisionGradeScales,
+} from "../../components/ResultPanel/useClassGrading";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 interface Division {
@@ -132,11 +136,17 @@ export default function ResultPreviewPage() {
   // null = closed; { masterId: null } = review every session; { masterId: n } = just that one.
   const [recalcTarget, setRecalcTarget] = useState<{ masterId: number | null } | null>(null);
 
-  const [failMark, setFailMark] = useState(33);
+  // Fail mark and grade scales are division-scoped: re-fetched whenever the
+  // selected class changes (fail mark is null while loading).
+  const failMark = useClassFailMark(classId);
+  const selectedDivisionId =
+    classes.find((c) => String(c.class_id) === classId)?.division_id ?? null;
+  const { generalGrades, madrasaGrades } = useDivisionGradeScales<GradeItem>(
+    classId,
+    selectedDivisionId,
+  );
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
   const [studentSaving, setStudentSaving] = useState(false);
-  const [generalGrades, setGeneralGrades] = useState<GradeItem[]>([]);
-  const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -156,21 +166,6 @@ export default function ResultPreviewPage() {
 
   useEffect(() => {
     loadOverview();
-
-    api
-      .get("/fail-mark")
-      .then((res) => {
-        const value = Number(res.data);
-        if (!Number.isNaN(value)) setFailMark(value);
-      })
-      .catch((err) => logger.error("Fail mark load error:", err));
-
-    Promise.all([cachedGet("/general-grades"), cachedGet("/madrasa-grades")])
-      .then(([g, m]) => {
-        setGeneralGrades(extractArray(g.data));
-        setMadrasaGrades(extractArray(m.data));
-      })
-      .catch((err) => logger.error("Grades load error:", err));
   }, [loadOverview]);
 
   const loadSummary = async () => {
