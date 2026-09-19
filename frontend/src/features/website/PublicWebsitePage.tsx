@@ -1,29 +1,29 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  ArrowRight,
   Bell,
   ChevronUp,
   Facebook,
   GraduationCap,
-  Image as ImageIcon,
   Info,
   Instagram,
   Loader2,
+  LogIn,
   Mail,
   MapPin,
   Menu,
   Phone,
   Quote,
-  Users,
-  UsersRound,
   X,
   Youtube,
+  ZoomIn,
 } from "lucide-react";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { getPublicWebsite } from "../../services/publicWebsiteApi";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
-import { accentStrong, accentText, initials, pickTextOn, withAlpha } from "./colorUtils";
+import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
 import NoticeMarquee from "./NoticeMarquee";
 
@@ -49,6 +49,17 @@ function formatDate(value?: string | null) {
   } catch {
     return "";
   }
+}
+
+function dateParts(value?: string | null) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    day: d.toLocaleDateString("bn-BD", { day: "numeric" }),
+    month: d.toLocaleDateString("bn-BD", { month: "short" }),
+    year: d.toLocaleDateString("bn-BD", { year: "numeric" }),
+  };
 }
 
 function isRecent(value?: string | null) {
@@ -78,38 +89,145 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
 }
 
 function SectionHeader({
-  index,
-  icon,
   eyebrow,
   title,
   accentSolid,
   accentLabel,
-  onAccent,
+  light = false,
 }: {
-  index: number;
-  icon: ReactNode;
   eyebrow: string;
   title: string;
   accentSolid: string;
   accentLabel: string;
+  light?: boolean;
+}) {
+  const line = light ? "rgba(255,255,255,0.5)" : withAlpha(accentSolid, 0.45);
+  return (
+    <div className="reveal flex flex-col items-center text-center">
+      <div className="flex items-center gap-3">
+        <span className="h-px w-8 md:w-12" style={{ backgroundColor: line }} />
+        <p
+          className="text-xs font-bold uppercase tracking-[0.22em]"
+          style={{ color: light ? "rgba(255,255,255,0.85)" : accentLabel }}
+        >
+          {eyebrow}
+        </p>
+        <span className="h-px w-8 md:w-12" style={{ backgroundColor: line }} />
+      </div>
+      <h2
+        className={`mt-3 text-2xl font-extrabold tracking-tight md:text-4xl ${light ? "text-white" : "text-slate-900"}`}
+      >
+        {title}
+      </h2>
+      <div className="mt-4 flex items-center gap-1.5" aria-hidden="true">
+        <span className="h-1 w-10 rounded-full" style={{ backgroundColor: light ? "#ffffff" : accentSolid }} />
+        <span className="h-1 w-2 rounded-full" style={{ backgroundColor: light ? "rgba(255,255,255,0.5)" : withAlpha(accentSolid, 0.4) }} />
+        <span className="h-1 w-1 rounded-full" style={{ backgroundColor: light ? "rgba(255,255,255,0.35)" : withAlpha(accentSolid, 0.25) }} />
+      </div>
+    </div>
+  );
+}
+
+type QuickLinkItem = {
+  key: string;
+  icon: ReactNode;
+  title: string;
+  sub: string;
+  to?: string;
+  href?: string;
+};
+
+function QuickLink({
+  item,
+  accentSolid,
+  onAccent,
+}: {
+  item: QuickLinkItem;
+  accentSolid: string;
   onAccent: string;
 }) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <span className="text-[11px] font-bold tracking-[0.35em] text-slate-300">
-        {String(index).padStart(2, "0")}
-      </span>
-      <div
-        className="mt-3 flex h-12 w-12 items-center justify-center rounded-2xl shadow-md ring-4 ring-black/5"
+  const className =
+    "group flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-xl lg:flex-1";
+  const inner = (
+    <>
+      <span
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
         style={{ backgroundColor: accentSolid, color: onAccent }}
       >
-        {icon}
+        {item.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-extrabold text-slate-900">{item.title}</span>
+        <span className="block truncate text-xs font-medium text-slate-500">{item.sub}</span>
+      </span>
+      <ArrowRight
+        size={16}
+        className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-500"
+      />
+    </>
+  );
+  return item.to ? (
+    <Link to={item.to} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <a href={item.href} className={className}>
+      {inner}
+    </a>
+  );
+}
+
+function PersonCard({
+  name,
+  role,
+  photo,
+  accentSolid,
+  accentLabel,
+  onAccent,
+  delay = 0,
+}: {
+  name: string;
+  role: string;
+  photo?: string | null;
+  accentSolid: string;
+  accentLabel: string;
+  onAccent: string;
+  delay?: number;
+}) {
+  return (
+    <div
+      className="reveal group overflow-hidden rounded-2xl border border-slate-100 bg-white text-center shadow-sm transition-shadow hover:shadow-lg"
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div
+        className="h-16"
+        style={{ background: `linear-gradient(135deg, ${withAlpha(accentSolid, 0.18)}, ${withAlpha(accentSolid, 0.05)})` }}
+      />
+      <div className="-mt-10 px-5 pb-6">
+        {photo ? (
+          <img
+            src={photo}
+            alt={name}
+            loading="lazy"
+            decoding="async"
+            className="mx-auto h-20 w-20 rounded-full object-cover shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-xl font-bold shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105"
+            style={{ backgroundColor: accentSolid, color: onAccent }}
+          >
+            {initials(name)}
+          </div>
+        )}
+        <div className="mt-4 font-bold leading-snug text-slate-900">{name}</div>
+        <div
+          className="mx-auto mt-2 inline-block max-w-full rounded-full px-3 py-1 text-xs font-semibold"
+          style={{ backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel }}
+        >
+          {role}
+        </div>
       </div>
-      <p className="mt-3 text-xs font-bold uppercase tracking-[0.2em]" style={{ color: accentLabel }}>
-        {eyebrow}
-      </p>
-      <h2 className="mt-1 text-2xl font-extrabold text-slate-900 md:text-3xl">{title}</h2>
-      <div className="mt-3 h-1 w-14 rounded-full" style={{ backgroundColor: accentSolid }} />
     </div>
   );
 }
@@ -160,6 +278,13 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
   const onAccent = useMemo(() => pickTextOn(accentSolid), [accentSolid]);
+  // Dark gradient stops for the brand-colored panels (about card, admission
+  // band). Darkened enough that white text stays readable whatever theme
+  // color an admin picks; the pure theme color still shows through the glow.
+  const accentBand = useMemo(() => mixHex(accentSolid, "#000000", 0.4), [accentSolid]);
+  const accentDeep = useMemo(() => mixHex(accentSolid, "#0b1220", 0.72), [accentSolid]);
+  // Theme color lifted for use as an icon tint on the near-black top bar/footer.
+  const accentLabelOnDark = useMemo(() => mixHex(accentSolid, "#ffffff", 0.4), [accentSolid]);
   const guardianLoginUrl = `${getTenantGuardianBase(slug)}/login`;
   const admissionUrl = "admission";
 
@@ -225,6 +350,40 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     return () => observer.disconnect();
   }, [gallery.length, galleryInView]);
 
+  // Scroll-reveal: fade/slide sections in as they enter the viewport.
+  useEffect(() => {
+    if (!data) return;
+    const els = Array.from(document.querySelectorAll<HTMLElement>(".reveal:not(.is-visible)"));
+    if (!els.length) return;
+    if (typeof IntersectionObserver === "undefined") {
+      els.forEach((el) => el.classList.add("is-visible"));
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [data, visibleSections]);
+
+  // Smooth in-page anchor scrolling, scoped to this page only.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "smooth";
+    return () => {
+      root.style.scrollBehavior = prev;
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900">
@@ -278,54 +437,143 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const mapsUrl = madrasa?.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
     : "";
+  const mapEmbedUrl = madrasa?.address
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(madrasa.address)}&output=embed`
+    : "";
 
-  const sectionBase = "py-16 md:py-20 scroll-mt-24";
+  const socials = [
+    settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={15} /> },
+    settings.youtube_url && { href: settings.youtube_url, label: "YouTube", icon: <Youtube size={15} /> },
+    settings.instagram_url && { href: settings.instagram_url, label: "Instagram", icon: <Instagram size={15} /> },
+    settings.whatsapp_channel_url && {
+      href: settings.whatsapp_channel_url,
+      label: "WhatsApp",
+      icon: <WhatsAppIcon size={15} />,
+    },
+  ].filter(Boolean) as { href: string; label: string; icon: ReactNode }[];
+
+  const hasTopBar = Boolean(madrasa?.phone || madrasa?.email || socials.length);
+
+  const quickLinks: QuickLinkItem[] = [
+    {
+      key: "admission",
+      icon: <GraduationCap size={20} />,
+      title: "অনলাইনে ভর্তি",
+      sub: "ভর্তি ফরম পূরণ করুন",
+      to: admissionUrl,
+    },
+    visibleSections.includes("notices") && {
+      key: "notices",
+      icon: <Bell size={20} />,
+      title: "নোটিশ বোর্ড",
+      sub: "সর্বশেষ বিজ্ঞপ্তি দেখুন",
+      href: "#notices",
+    },
+    {
+      key: "guardian",
+      icon: <LogIn size={20} />,
+      title: "অভিভাবক লগইন",
+      sub: "অভিভাবক পোর্টালে প্রবেশ",
+      to: guardianLoginUrl,
+    },
+    (madrasa?.phone || visibleSections.includes("contact")) && {
+      key: "contact",
+      icon: <Phone size={20} />,
+      title: "যোগাযোগ",
+      sub: madrasa?.phone || "আমাদের সাথে যোগাযোগ করুন",
+      href: madrasa?.phone ? `tel:${madrasa.phone}` : "#contact",
+    },
+  ].filter(Boolean) as QuickLinkItem[];
+
+  const sectionBase = "py-16 md:py-24 scroll-mt-28";
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      {/* Header */}
-      <header
-        className={`fixed inset-x-0 top-0 z-50 bg-white transition-shadow ${scrolled ? "shadow-sm" : ""}`}
-      >
+    <div id="page-top" className="min-h-screen bg-white text-slate-900">
+      {/* Top info bar (desktop) */}
+      {hasTopBar && (
+        <div className="hidden bg-slate-950 text-slate-300 lg:block">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-2 text-xs">
+            <div className="flex items-center gap-6">
+              {madrasa?.phone && (
+                <a href={`tel:${madrasa.phone}`} className="flex items-center gap-1.5 transition hover:text-white">
+                  <Phone size={13} style={{ color: accentLabelOnDark }} />
+                  {madrasa.phone}
+                </a>
+              )}
+              {madrasa?.email && (
+                <a href={`mailto:${madrasa.email}`} className="flex items-center gap-1.5 transition hover:text-white">
+                  <Mail size={13} style={{ color: accentLabelOnDark }} />
+                  {madrasa.email}
+                </a>
+              )}
+            </div>
+            {socials.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {socials.map((social) => (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={social.label}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Header — sticky in normal flow (never overlaps the hero) */}
+      <header className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-md" : ""}`}>
         {/* Row 1: brand (full name, never truncated) + actions */}
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <a href="#top" className="flex min-w-0 items-center gap-3">
+        <div
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 transition-all duration-300 ${
+            scrolled ? "py-2" : "py-3"
+          }`}
+        >
+          <a href="#page-top" className="flex min-w-0 items-center gap-3">
             {madrasa?.logo_url ? (
               <img
                 src={madrasa?.logo_url}
                 alt="Logo"
-                className="h-10 w-10 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
+                className="h-11 w-11 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
             ) : (
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow"
                 style={{ backgroundColor: accentSolid, color: onAccent }}
               >
                 {initials(madrasa?.name)}
               </div>
             )}
             <div className="min-w-0">
-              <div className="break-words text-base font-extrabold leading-tight text-slate-900">
+              <div className="break-words text-base font-extrabold leading-tight text-slate-900 md:text-lg">
                 {madrasa?.name}
               </div>
-              <div className="text-[11px] font-medium text-slate-400">Official Website</div>
+              <div className="text-[11px] font-semibold tracking-wide text-slate-400">Official Website</div>
             </div>
           </a>
 
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <Link
               to={guardianLoginUrl}
-              className="whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50"
               style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
             >
+              <LogIn size={15} />
               অভিভাবক লগইন
             </Link>
             <Link
               to={admissionUrl}
-              className="whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-bold shadow-sm transition hover:opacity-90"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90"
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
               অনলাইনে ভর্তি
+              <ArrowRight size={15} />
             </Link>
           </div>
 
@@ -340,16 +588,13 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         </div>
 
         {/* Row 2: menu bar — distinct band, desktop only (mobile uses the drawer) */}
-        <nav
-          className="no-scrollbar hidden overflow-x-auto lg:block"
-          style={{ backgroundColor: accentSolid }}
-        >
+        <nav className="no-scrollbar hidden overflow-x-auto lg:block" style={{ backgroundColor: accentSolid }}>
           <div className="mx-auto flex max-w-6xl items-center justify-center gap-1 px-4">
             {visibleSections.map((key) => (
               <a
                 key={key}
                 href={`#${key}`}
-                className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition"
+                className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
                 style={{ color: onAccent, opacity: activeId === key ? 1 : 0.78 }}
               >
                 {NAV_LABELS[key]}
@@ -361,11 +606,11 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             ))}
           </div>
         </nav>
-
-        {settings.show_notice_bar !== 0 && (
-          <NoticeMarquee text={settings.notice_bar_text} speed={settings.notice_bar_speed} />
-        )}
       </header>
+
+      {settings.show_notice_bar !== 0 && (
+        <NoticeMarquee text={settings.notice_bar_text} speed={settings.notice_bar_speed} />
+      )}
 
       {/* Mobile menu: left-side sliding drawer */}
       <div
@@ -459,87 +704,114 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         fallbackSubtitle={settings.hero_subtitle || madrasa?.address || "Welcome to our madrasa website."}
         accentSolid={accentSolid}
         websiteStatus={madrasa?.website_status}
+        actions={
+          <>
+            <Link
+              to={admissionUrl}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:bg-slate-100"
+            >
+              অনলাইনে ভর্তি
+              <ArrowRight size={16} />
+            </Link>
+            {visibleSections.includes("about") && (
+              <a
+                href="#about"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
+              >
+                আমাদের সম্পর্কে জানুন
+              </a>
+            )}
+          </>
+        }
       />
 
-      {/* Quick info strip */}
-      <div className="relative z-10 mx-auto mt-6 max-w-5xl px-4">
-        <div className="grid gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-xl sm:grid-cols-3">
-          <a
-            href={madrasa?.phone ? `tel:${madrasa.phone}` : undefined}
-            className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-slate-50"
-          >
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: accentSolid, color: onAccent }}
-            >
-              <Phone size={18} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[11px] font-semibold uppercase text-slate-400">Phone</span>
-              <span className="block truncate text-sm font-bold text-slate-800">
-                {madrasa?.phone || "N/A"}
-              </span>
-            </span>
-          </a>
-          <a
-            href={madrasa?.email ? `mailto:${madrasa.email}` : undefined}
-            className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-slate-50"
-          >
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: accentSolid, color: onAccent }}
-            >
-              <Mail size={18} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[11px] font-semibold uppercase text-slate-400">Email</span>
-              <span className="block truncate text-sm font-bold text-slate-800">
-                {madrasa?.email || "N/A"}
-              </span>
-            </span>
-          </a>
-          <a
-            href={mapsUrl || undefined}
-            target={mapsUrl ? "_blank" : undefined}
-            rel="noreferrer"
-            className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-slate-50"
-          >
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: accentSolid, color: onAccent }}
-            >
-              <MapPin size={18} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[11px] font-semibold uppercase text-slate-400">Address</span>
-              <span className="block truncate text-sm font-bold text-slate-800">
-                {madrasa?.address || "N/A"}
-              </span>
-            </span>
-          </a>
+      {/* Quick links — overlaps the hero's bottom edge */}
+      <div className="relative z-10 mx-auto -mt-8 max-w-6xl px-4 md:-mt-10">
+        <div className="grid gap-3 sm:grid-cols-2 lg:flex">
+          {quickLinks.map((item) => (
+            <QuickLink key={item.key} item={item} accentSolid={accentSolid} onAccent={onAccent} />
+          ))}
         </div>
       </div>
 
       {visibleSections.map((key, index) => {
         const bandClass = `${index % 2 === 1 ? "bg-slate-50" : "bg-white"} ${sectionBase}`;
-        const num = index + 1;
 
         if (key === "about") {
           return (
             <section key="about" id="about" className={bandClass}>
-              <div className="mx-auto max-w-3xl px-4">
+              <div className="mx-auto max-w-6xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<Info size={22} />}
                   eyebrow="পরিচিতি"
                   title={pageMap.about.title}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
-                <p className="mt-8 whitespace-pre-line text-center text-sm leading-8 text-slate-600 md:text-base">
-                  {pageMap.about.content}
-                </p>
+                <div className="mt-12 grid items-start gap-8 lg:grid-cols-5 lg:gap-12">
+                  <div
+                    className="reveal border-l-4 pl-5 lg:col-span-3 md:pl-6"
+                    style={{ borderColor: accentSolid }}
+                  >
+                    <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
+                      {pageMap.about.content}
+                    </p>
+                  </div>
+
+                  <aside
+                    className="reveal relative overflow-hidden rounded-3xl p-6 text-white shadow-xl md:p-8 lg:col-span-2"
+                    style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
+                  >
+                    <div
+                      className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl"
+                      style={{ backgroundColor: withAlpha(accentSolid, 0.55) }}
+                    />
+                    <div className="relative">
+                      <div className="flex items-center gap-3">
+                        {madrasa?.logo_url ? (
+                          <img
+                            src={madrasa.logo_url}
+                            alt="Logo"
+                            className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/30"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-bold ring-2 ring-white/30">
+                            {initials(madrasa?.name)}
+                          </div>
+                        )}
+                        <div className="min-w-0 break-words text-base font-extrabold leading-tight">
+                          {madrasa?.name}
+                        </div>
+                      </div>
+                      <div className="mt-6 space-y-4 text-sm text-white/90">
+                        {madrasa?.address && (
+                          <div className="flex items-start gap-3">
+                            <MapPin size={16} className="mt-0.5 shrink-0 text-white/70" />
+                            <span>{madrasa.address}</span>
+                          </div>
+                        )}
+                        {madrasa?.phone && (
+                          <div className="flex items-start gap-3">
+                            <Phone size={16} className="mt-0.5 shrink-0 text-white/70" />
+                            <span>{madrasa.phone}</span>
+                          </div>
+                        )}
+                        {madrasa?.email && (
+                          <div className="flex items-start gap-3 break-all">
+                            <Mail size={16} className="mt-0.5 shrink-0 text-white/70" />
+                            <span>{madrasa.email}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Link
+                        to={admissionUrl}
+                        className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
+                      >
+                        ভর্তির তথ্য ও আবেদন
+                        <ArrowRight size={16} />
+                      </Link>
+                    </div>
+                  </aside>
+                </div>
               </div>
             </section>
           );
@@ -548,47 +820,72 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         if (key === "muhtamim") {
           return (
             <section key="muhtamim" id="muhtamim" className={bandClass}>
-              <div className="mx-auto max-w-4xl px-4">
+              <div className="mx-auto max-w-5xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<Quote size={22} />}
                   eyebrow="মুহতামিমের বাণী"
                   title={settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
                 <div
-                  className="mt-10 flex flex-col items-center gap-6 rounded-3xl border p-6 text-center md:flex-row md:items-start md:text-left md:p-8"
-                  style={{ borderColor: withAlpha(accentSolid, 0.2), backgroundColor: withAlpha(accentSolid, 0.05) }}
+                  className="reveal relative mt-12 overflow-hidden rounded-3xl border bg-white p-6 shadow-sm md:p-10"
+                  style={{ borderColor: withAlpha(accentSolid, 0.18) }}
                 >
-                  {settings.muhtamim_photo ? (
-                    <img
-                      src={settings.muhtamim_photo}
-                      alt={settings.muhtamim_name || "Muhtamim"}
-                      className="h-28 w-28 shrink-0 rounded-2xl object-cover shadow-md"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold shadow-md"
-                      style={{ backgroundColor: accentSolid, color: onAccent }}
-                    >
-                      {initials(settings.muhtamim_name)}
+                  <Quote
+                    size={140}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-4 -top-4 rotate-12"
+                    style={{ color: withAlpha(accentSolid, 0.07) }}
+                  />
+                  <div className="relative flex flex-col items-center gap-8 text-center md:flex-row md:items-start md:text-left">
+                    <div className="flex shrink-0 flex-col items-center">
+                      {settings.muhtamim_photo ? (
+                        <img
+                          src={settings.muhtamim_photo}
+                          alt={settings.muhtamim_name || "Muhtamim"}
+                          className="h-36 w-36 rounded-2xl object-cover shadow-lg ring-4 md:h-44 md:w-44"
+                          style={{ ["--tw-ring-color" as any]: withAlpha(accentSolid, 0.25) }}
+                        />
+                      ) : (
+                        <div
+                          className="flex h-36 w-36 items-center justify-center rounded-2xl text-3xl font-bold shadow-lg md:h-44 md:w-44"
+                          style={{ backgroundColor: accentSolid, color: onAccent }}
+                        >
+                          {initials(settings.muhtamim_name)}
+                        </div>
+                      )}
+                      {(settings.muhtamim_name || settings.muhtamim_designation) && (
+                        <div className="mt-4 hidden max-w-[11rem] text-center md:block">
+                          {settings.muhtamim_name && (
+                            <p className="text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
+                          )}
+                          {settings.muhtamim_designation && (
+                            <p className="mt-0.5 text-xs font-semibold" style={{ color: accentLabel }}>
+                              {settings.muhtamim_designation}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <Quote size={26} style={{ color: accentSolid }} className="mx-auto md:mx-0" />
-                    <p className="mt-3 whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base">
-                      {settings.muhtamim_message}
-                    </p>
-                    {settings.muhtamim_name && (
-                      <p className="mt-4 text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
-                    )}
-                    {settings.muhtamim_designation && (
-                      <p className="text-xs font-semibold" style={{ color: accentLabel }}>
-                        {settings.muhtamim_designation}
+                    <div className="min-w-0 flex-1">
+                      <Quote size={30} style={{ color: accentSolid }} className="mx-auto md:mx-0" />
+                      <p className="mt-4 whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base md:leading-9">
+                        {settings.muhtamim_message}
                       </p>
-                    )}
+                      {(settings.muhtamim_name || settings.muhtamim_designation) && (
+                        <div className="mt-6 border-t border-slate-100 pt-4 md:hidden">
+                          {settings.muhtamim_name && (
+                            <p className="text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
+                          )}
+                          {settings.muhtamim_designation && (
+                            <p className="text-xs font-semibold" style={{ color: accentLabel }}>
+                              {settings.muhtamim_designation}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -598,40 +895,47 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "admission") {
           return (
-            <section key="admission" id="admission" className={bandClass}>
-              <div className="mx-auto max-w-3xl px-4">
+            <section
+              key="admission"
+              id="admission"
+              className={`${sectionBase} relative overflow-hidden text-white`}
+              style={{ background: `linear-gradient(135deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }}
+              />
+              <div
+                className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full blur-3xl"
+                style={{ backgroundColor: withAlpha(accentSolid, 0.5) }}
+              />
+              <div className="relative mx-auto max-w-3xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<GraduationCap size={22} />}
+                  light
                   eyebrow="ভর্তি"
                   title={pageMap.admission.title}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
-                <div
-                  className="mt-8 rounded-3xl border p-6 md:p-8"
-                  style={{
-                    borderColor: withAlpha(accentSolid, 0.25),
-                    backgroundColor: withAlpha(accentSolid, 0.06),
-                  }}
-                >
-                  <p className="whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base">
+                <div className="reveal mt-10 rounded-3xl bg-white/10 p-6 ring-1 ring-white/20 backdrop-blur md:p-10">
+                  <p className="whitespace-pre-line text-sm leading-8 text-white/90 md:text-base md:leading-9">
                     {pageMap.admission.content}
                   </p>
-                  <div className="mt-6 flex flex-wrap gap-3">
+                  <div className="mt-8 flex flex-wrap gap-3">
                     <Link
                       to={admissionUrl}
-                      className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
-                      style={{ backgroundColor: accentSolid, color: onAccent }}
+                      className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:bg-slate-100"
                     >
                       অনলাইনে ভর্তি ফরম পূরণ করুন
+                      <ArrowRight size={16} />
                     </Link>
                     {settings.show_contact !== 0 && (
                       <a
                         href="#contact"
-                        className="inline-flex items-center gap-1.5 rounded-xl border px-5 py-2.5 text-sm font-bold transition hover:bg-white"
-                        style={{ borderColor: withAlpha(accentSolid, 0.3), color: accentLabel }}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
                       >
                         যোগাযোগ করুন
                       </a>
@@ -648,37 +952,23 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             <section key="teachers" id="teachers" className={bandClass}>
               <div className="mx-auto max-w-6xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<Users size={22} />}
                   eyebrow="আমাদের শিক্ষকবৃন্দ"
                   title="শিক্ষকবৃন্দ"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
                 {teachers.length ? (
-                  <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    {teachers.map((teacher: any) => (
-                      <div
+                  <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    {teachers.map((teacher: any, idx: number) => (
+                      <PersonCard
                         key={teacher.id}
-                        className="overflow-hidden rounded-2xl border border-slate-100 bg-white text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                      >
-                        <div className="h-1.5" style={{ backgroundColor: accentSolid }} />
-                        <div className="p-5">
-                          <div
-                            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold"
-                            style={{ backgroundColor: accentSolid, color: onAccent }}
-                          >
-                            {initials(teacher.name || teacher.teacher_name)}
-                          </div>
-                          <div className="mt-3 font-bold text-slate-900">
-                            {teacher.name || teacher.teacher_name}
-                          </div>
-                          <div className="mt-1 text-xs font-medium text-slate-500">
-                            {teacher.designation || teacher.subject || "Teacher"}
-                          </div>
-                        </div>
-                      </div>
+                        name={teacher.name || teacher.teacher_name}
+                        role={teacher.designation || teacher.subject || "Teacher"}
+                        accentSolid={accentSolid}
+                        accentLabel={accentLabel}
+                        onAccent={onAccent}
+                        delay={(idx % 4) * 80}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -696,44 +986,23 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             <section key="committee" id="committee" className={bandClass}>
               <div className="mx-auto max-w-6xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<UsersRound size={22} />}
                   eyebrow="পরিচালনা পর্ষদ"
                   title="মাদ্রাসা কমিটি"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
-                <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {committee.map((member: any) => (
-                    <div
+                <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {committee.map((member: any, idx: number) => (
+                    <PersonCard
                       key={member.id}
-                      className="overflow-hidden rounded-2xl border border-slate-100 bg-white text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                    >
-                      <div className="h-1.5" style={{ backgroundColor: accentSolid }} />
-                      <div className="p-5">
-                        {member.photo_url ? (
-                          <img
-                            src={member.photo_url}
-                            alt={member.name}
-                            loading="lazy"
-                            decoding="async"
-                            className="mx-auto h-16 w-16 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold"
-                            style={{ backgroundColor: accentSolid, color: onAccent }}
-                          >
-                            {initials(member.name)}
-                          </div>
-                        )}
-                        <div className="mt-3 font-bold text-slate-900">{member.name}</div>
-                        <div className="mt-1 text-xs font-medium text-slate-500">
-                          {member.designation || "Committee Member"}
-                        </div>
-                      </div>
-                    </div>
+                      name={member.name}
+                      role={member.designation || "Committee Member"}
+                      photo={member.photo_url}
+                      accentSolid={accentSolid}
+                      accentLabel={accentLabel}
+                      onAccent={onAccent}
+                      delay={(idx % 4) * 80}
+                    />
                   ))}
                 </div>
               </div>
@@ -746,18 +1015,15 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             <section key="gallery" id="gallery" className={bandClass}>
               <div className="mx-auto max-w-6xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<ImageIcon size={22} />}
                   eyebrow="আমাদের মুহূর্তগুলো"
                   title="গ্যালারি"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
                 {gallery.length ? (
                   <div
                     ref={galleryGridRef}
-                    className={`gallery-grid mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 ${
+                    className={`gallery-grid mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 ${
                       galleryInView ? "in-view" : ""
                     }`}
                   >
@@ -768,20 +1034,20 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                         onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
                         className="gallery-item group relative aspect-square overflow-hidden rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-xl"
                         style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
+                        aria-label={item.title || "Gallery"}
                       >
-                        <div
-                          className="gallery-img-wrap h-full w-full"
-                          style={{ animationDelay: `${(idx % 4) * 0.6}s` }}
-                        >
-                          <img
-                            src={item.image_url}
-                            alt={item.title || "Gallery"}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
-                          />
+                        <img
+                          src={item.image_url}
+                          alt={item.title || "Gallery"}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-black/0 opacity-0 transition duration-300 group-hover:opacity-100">
+                          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
+                            <ZoomIn size={20} />
+                          </span>
                         </div>
-                        <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/30" />
                       </button>
                     ))}
                   </div>
@@ -800,47 +1066,59 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             <section key="notices" id="notices" className={bandClass}>
               <div className="mx-auto max-w-3xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<Bell size={22} />}
                   eyebrow="সর্বশেষ"
                   title="নোটিশ বোর্ড"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
                 {notices.length ? (
-                  <div className="mt-10 space-y-4">
-                    {notices.map((notice: any) => (
-                      <div
-                        key={notice.id}
-                        className="rounded-2xl border border-slate-100 bg-white p-5 pl-6 shadow-sm"
-                        style={{ borderLeft: `4px solid ${accentSolid}` }}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="font-bold text-slate-900">{notice.title}</h3>
-                          <div className="flex items-center gap-2">
-                            {isRecent(notice.published_at) && (
-                              <span
-                                className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                                style={{ backgroundColor: accentSolid, color: onAccent }}
-                              >
-                                নতুন
-                              </span>
-                            )}
-                            {notice.published_at && (
-                              <span className="text-xs font-medium text-slate-400">
-                                {formatDate(notice.published_at)}
-                              </span>
+                  <div className="mt-12 space-y-4">
+                    {notices.map((notice: any) => {
+                      const parts = dateParts(notice.published_at);
+                      return (
+                        <article
+                          key={notice.id}
+                          className="reveal flex gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md md:p-5"
+                        >
+                          <div
+                            className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl text-center"
+                            style={{ backgroundColor: accentSolid, color: onAccent }}
+                          >
+                            {parts ? (
+                              <>
+                                <span className="text-xl font-extrabold leading-none">{parts.day}</span>
+                                <span className="mt-1 text-[11px] font-semibold opacity-90">{parts.month}</span>
+                              </>
+                            ) : (
+                              <Bell size={22} />
                             )}
                           </div>
-                        </div>
-                        {notice.content && (
-                          <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">
-                            {notice.content}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                              <h3 className="font-bold leading-snug text-slate-900">{notice.title}</h3>
+                              {isRecent(notice.published_at) && (
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                                  style={{ backgroundColor: withAlpha(accentSolid, 0.12), color: accentLabel }}
+                                >
+                                  নতুন
+                                </span>
+                              )}
+                            </div>
+                            {notice.content && (
+                              <p className="mt-1.5 whitespace-pre-line text-sm leading-7 text-slate-600">
+                                {notice.content}
+                              </p>
+                            )}
+                            {parts && (
+                              <p className="mt-2 text-xs font-medium text-slate-400">
+                                {formatDate(notice.published_at)}
+                              </p>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="mt-8 text-center text-sm text-slate-500">No notices published.</p>
@@ -851,66 +1129,85 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         }
 
         if (key === "contact") {
+          const rows = [
+            {
+              icon: <Phone size={18} />,
+              label: "Phone",
+              value: madrasa?.phone,
+              href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined,
+              external: false,
+            },
+            {
+              icon: <Mail size={18} />,
+              label: "Email",
+              value: madrasa?.email,
+              href: madrasa?.email ? `mailto:${madrasa.email}` : undefined,
+              external: false,
+            },
+            {
+              icon: <MapPin size={18} />,
+              label: "Address",
+              value: madrasa?.address,
+              href: mapsUrl || undefined,
+              external: true,
+            },
+          ].filter((row) => row.value);
+
           return (
             <section key="contact" id="contact" className={bandClass}>
-              <div className="mx-auto max-w-4xl px-4">
+              <div className="mx-auto max-w-6xl px-4">
                 <SectionHeader
-                  index={num}
-                  icon={<Mail size={22} />}
                   eyebrow="যোগাযোগ"
                   title={pageMap.contact?.title || "যোগাযোগ"}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                  onAccent={onAccent}
                 />
                 {pageMap.contact?.content && (
-                  <p className="mx-auto mt-6 max-w-2xl whitespace-pre-line text-center text-sm leading-7 text-slate-600">
+                  <p className="reveal mx-auto mt-6 max-w-2xl whitespace-pre-line text-center text-sm leading-7 text-slate-600">
                     {pageMap.contact.content}
                   </p>
                 )}
-                <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                  {[
-                    {
-                      icon: <Phone size={18} />,
-                      label: "Phone",
-                      value: madrasa?.phone,
-                      href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined,
-                      external: false,
-                    },
-                    {
-                      icon: <Mail size={18} />,
-                      label: "Email",
-                      value: madrasa?.email,
-                      href: madrasa?.email ? `mailto:${madrasa.email}` : undefined,
-                      external: false,
-                    },
-                    {
-                      icon: <MapPin size={18} />,
-                      label: "Address",
-                      value: madrasa?.address,
-                      href: mapsUrl || undefined,
-                      external: true,
-                    },
-                  ]
-                    .filter((row) => row.value)
-                    .map((row) => (
+                <div
+                  className={`mt-12 grid gap-6 ${mapEmbedUrl ? "lg:grid-cols-5" : "mx-auto max-w-xl"}`}
+                >
+                  <div className={`flex flex-col gap-4 ${mapEmbedUrl ? "lg:col-span-2" : ""}`}>
+                    {rows.map((row) => (
                       <a
                         key={row.label}
                         href={row.href}
                         target={row.external ? "_blank" : undefined}
                         rel={row.external ? "noreferrer" : undefined}
-                        className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                        className="reveal flex items-start gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                       >
                         <span
-                          className="flex h-11 w-11 items-center justify-center rounded-xl"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                           style={{ backgroundColor: accentSolid, color: onAccent }}
                         >
                           {row.icon}
                         </span>
-                        <span className="text-xs font-semibold uppercase text-slate-400">{row.label}</span>
-                        <span className="text-sm font-bold text-slate-800">{row.value}</span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            {row.label}
+                          </span>
+                          <span className="mt-0.5 block break-words text-sm font-bold text-slate-800">
+                            {row.value}
+                          </span>
+                        </span>
                       </a>
                     ))}
+                  </div>
+
+                  {mapEmbedUrl && (
+                    <div className="reveal overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:col-span-3">
+                      <iframe
+                        title="Location map"
+                        src={mapEmbedUrl}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        className="block h-72 w-full border-0 lg:h-full lg:min-h-[320px]"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -951,35 +1248,21 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                 {settings.hero_subtitle || madrasa?.address || "একটি ইসলামিক শিক্ষা প্রতিষ্ঠান।"}
               </p>
 
-              {(settings.facebook_url ||
-                settings.youtube_url ||
-                settings.instagram_url ||
-                settings.whatsapp_channel_url) && (
+              {socials.length > 0 && (
                 <div className="mt-5 flex items-center gap-2.5">
-                  {[
-                    settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={16} /> },
-                    settings.youtube_url && { href: settings.youtube_url, label: "YouTube", icon: <Youtube size={16} /> },
-                    settings.instagram_url && { href: settings.instagram_url, label: "Instagram", icon: <Instagram size={16} /> },
-                    settings.whatsapp_channel_url && {
-                      href: settings.whatsapp_channel_url,
-                      label: "WhatsApp",
-                      icon: <WhatsAppIcon size={16} />,
-                    },
-                  ]
-                    .filter(Boolean)
-                    .map((social: any) => (
-                      <a
-                        key={social.label}
-                        href={social.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={social.label}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white"
-                        style={{ ["--accent" as any]: accentSolid }}
-                      >
-                        {social.icon}
-                      </a>
-                    ))}
+                  {socials.map((social) => (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={social.label}
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white"
+                      style={{ ["--accent" as any]: accentSolid }}
+                    >
+                      {social.icon}
+                    </a>
+                  ))}
                 </div>
               )}
             </div>
@@ -1006,7 +1289,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
                 {madrasa?.phone && (
                   <a href={`tel:${madrasa.phone}`} className="flex items-start gap-2.5 transition hover:text-white">
-                    <Phone size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <Phone size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
                     <span>{madrasa.phone}</span>
                   </a>
                 )}
@@ -1015,7 +1298,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                     href={`mailto:${madrasa.email}`}
                     className="flex items-start gap-2.5 break-all transition hover:text-white"
                   >
-                    <Mail size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <Mail size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
                     <span>{madrasa.email}</span>
                   </a>
                 )}
@@ -1026,7 +1309,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                     rel="noreferrer"
                     className="flex items-start gap-2.5 transition hover:text-white"
                   >
-                    <MapPin size={16} className="mt-0.5 shrink-0" style={{ color: accentLabel }} />
+                    <MapPin size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
                     <span>{madrasa.address}</span>
                   </a>
                 )}
@@ -1069,7 +1352,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
       {/* Back to top */}
       {showTop && (
         <a
-          href="#top"
+          href="#page-top"
           className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition hover:opacity-90"
           style={{ backgroundColor: accentSolid, color: onAccent }}
           aria-label="Back to top"

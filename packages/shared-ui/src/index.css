@@ -128,14 +128,19 @@ input[type="number"]::-webkit-inner-spin-button {
    Public website: gallery reveal + float + lightbox
 ========================= */
 
-@keyframes galleryFloat {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
+/* Scroll-reveal for public-site sections (toggled by an IntersectionObserver
+   in PublicWebsitePage). */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
 @keyframes lightboxBackdropIn {
@@ -169,10 +174,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .gallery-grid.in-view .gallery-item {
   opacity: 1;
   transform: translateY(0) scale(1);
-}
-
-.gallery-grid.in-view .gallery-item .gallery-img-wrap {
-  animation: galleryFloat 4.5s ease-in-out infinite;
 }
 
 .animate-lightboxBackdrop {
@@ -217,8 +218,10 @@ input[type="number"]::-webkit-inner-spin-button {
     transform: none;
     transition: none;
   }
-  .gallery-grid.in-view .gallery-item .gallery-img-wrap {
-    animation: none;
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
   .animate-lightboxBackdrop,
   .animate-lightboxImage,

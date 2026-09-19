@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { withAlpha } from "./colorUtils";
 
@@ -32,12 +32,14 @@ export default function HeroSlider({
   fallbackSubtitle,
   accentSolid,
   websiteStatus,
+  actions,
 }: {
   slides: PublicSlide[];
   fallbackTitle: string;
   fallbackSubtitle: string;
   accentSolid: string;
   websiteStatus?: string;
+  actions?: ReactNode;
 }) {
   const [state, setState] = useState<SliderState>({
     active: 0,
@@ -174,8 +176,10 @@ export default function HeroSlider({
               </div>
             );
           })}
-          {/* Light tint only — just enough for the title/subtitle to stay readable, image stays clear */}
-          <div className="absolute inset-0 bg-black/20" />
+          {/* Vertical scrim — darkest where the headline sits (bottom) and
+              faintly at the top, so text stays readable on any photo while
+              the middle of the image stays clear. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
         </div>
       )}
 
@@ -200,21 +204,28 @@ export default function HeroSlider({
         </>
       )}
 
-      <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
+      <div className="relative flex h-full flex-col items-center justify-center px-4 pb-10 text-center md:pb-14">
         <h1
           key={`title-${state.active}`}
-          className="line-clamp-2 max-w-3xl animate-heroFadeUp text-3xl font-extrabold leading-tight md:text-5xl"
-          style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
+          className="line-clamp-2 max-w-4xl animate-heroFadeUp text-3xl font-extrabold leading-tight tracking-tight md:text-5xl lg:text-6xl"
+          style={{ textShadow: "0 2px 18px rgba(0,0,0,0.55)" }}
         >
           {title}
         </h1>
+        <span
+          aria-hidden="true"
+          className="mt-4 hidden h-1 w-16 rounded-full md:block"
+          style={{ backgroundColor: withAlpha("#ffffff", 0.85) }}
+        />
         <p
           key={`subtitle-${state.active}`}
-          className="mx-auto mt-4 line-clamp-2 max-w-2xl animate-heroFadeUp text-sm text-white/90 md:text-base"
-          style={{ textShadow: "0 1px 10px rgba(0,0,0,0.5)" }}
+          className="mx-auto mt-4 line-clamp-2 max-w-2xl animate-heroFadeUp text-sm leading-relaxed text-white/90 md:text-lg"
+          style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
         >
           {subtitle}
         </p>
+
+        {actions && <div className="mt-8 hidden flex-wrap items-center justify-center gap-3 md:flex">{actions}</div>}
 
         {websiteStatus === "limited" && (
           <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
@@ -223,7 +234,7 @@ export default function HeroSlider({
         )}
 
         {hasSlides && slides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2">
+          <div className="absolute inset-x-0 bottom-14 flex items-center justify-center gap-2 md:bottom-16">
             {slides.map((slide, index) => (
               <button
                 key={slide.id ?? slide.image_url}
