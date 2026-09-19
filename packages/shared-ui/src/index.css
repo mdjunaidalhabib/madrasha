@@ -426,20 +426,43 @@ input[type="number"]::-webkit-inner-spin-button {
    the moment the logo size/position is customized (see its marginBottom
    comment), so this default only matters for an untouched madrasa. */
 .report-brand-header--with-logo {
-  margin-bottom: 21px;
+  margin-bottom: var(--report-brand-gap);
+}
+
+/* Logo size and the gap under a logo header live in variables so the logo can
+   size itself against the real gap (see .report-brand-logo). Paper-size/
+   orientation variants below only change these; ReportBrandHeader overrides
+   them inline when the admin customizes the logo size/position. */
+.report-brand-header {
+  --report-logo-size: 95px;
+  --report-brand-gap: 21px;
 }
 
 .report-brand-logo {
   position: absolute;
   left: 28px;
-  top: 105%;
-  /* -85% (not -50%) pulls the logo up so almost all of it sits beside the
-     name/address text instead of hanging below the header - matches
-     ReportBrandHeader.tsx's overhangPx (logo_size * 0.15) margin calc. */
-  transform: translateY(-85%);
+  /* Same anchoring as always (header's bottom edge + 5%, pulled up by 85% of
+     the logo's own height so it sits beside the name/address text) - but
+     clamped at 0 so a short header or a negative logo_offset_y can never
+     lift the logo above the header's top edge into the page margin. */
+  --report-logo-top: max(
+    0px,
+    calc(105% - var(--report-logo-size) * 0.85 + var(--report-logo-offset-y, 0px))
+  );
+  top: var(--report-logo-top);
+  /* The header's own height and the gap below it are what push the report
+     text down, so the logo must never add to them (that moved every report's
+     text down). Instead the logo shrinks - still square, never stretched - to
+     whatever room is left between its top and where the content starts
+     (header height + gap), minus a small buffer so it never touches the
+     first line below. Headers tall enough for the full size are untouched. */
+  height: min(
+    var(--report-logo-size),
+    calc(100% + var(--report-brand-gap) - 3px - var(--report-logo-top))
+  );
+  width: auto;
+  aspect-ratio: 1 / 1;
   z-index: 2;
-  width: 95px;
-  height: 95px;
 }
 
 .report-brand-name {
@@ -765,22 +788,30 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   vertical-align: middle;
 }
 
-/* --subject-name-max-width is set inline per-table (AcademicResultPrint.tsx)
-   from the actual longest subject name in THAT report (canvas-measured,
-   clamped 60-200px) - the row/box grow together to fit it instead of a
-   fixed guess that clips unusually long kitab names. Reports where every
-   name is short stay just as compact as before. */
-.academic-result-subject-name-row {
-  height: calc(var(--subject-name-max-width, 130px) + 4px);
-}
-
+/* The subject-name header row is sized by the names themselves, never by a
+   guessed number. Each cell holds an invisible "sizer" twin of the label:
+   writing-mode: vertical-rl turns the text's LENGTH into the sizer's
+   HEIGHT, so the shared <tr> grows to fit the longest name in that report
+   (short-name reports stay compact) and follows the real font/size/paper
+   automatically - including when the report font finishes loading. The
+   visible label below is absolutely positioned + rotated on top of it. Both
+   carry Tailwind's text-base, so they resolve to the identical font-size in
+   every paper-size/orientation combo (16px, 12px on A5). */
 .academic-result-subject-name-cell {
   position: relative;
-  height: calc(var(--subject-name-max-width, 130px) + 4px);
-  overflow: hidden;
   padding: 0 !important;
   background: #f1f5f9;
   vertical-align: middle;
+}
+
+.academic-result-subject-name-sizer {
+  display: block;
+  padding: 6px 0;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  visibility: hidden;
+  font-weight: 800;
+  line-height: 1.05;
 }
 
 .academic-result-subject-name {
@@ -792,11 +823,10 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
      text-base class (see JSX), the same class the standard headers and
      student-name cell use, so this always renders at the exact same size
      as the rest of the header row in every paper-size/orientation combo. */
-  width: var(--subject-name-max-width, 130px);
+  width: max-content;
   height: 24px;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   /* translate3d (not translate) forces this rotated label onto its own
      GPU-composited layer. Without it, Chromium/print-preview zoom rasterizes
      rotate(-90deg) text on sub-pixel boundaries and it renders visibly
@@ -806,10 +836,6 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   backface-visibility: hidden;
   white-space: nowrap;
   text-align: center;
-  /* Safety net only: the box is sized to fit every real name up to the
-     200px clamp, so this only ever engages for a pathological outlier
-     past that clamp - ellipsis degrades gracefully instead of a raw cut. */
-  text-overflow: ellipsis;
   font-weight: 800;
   line-height: 1.05;
   /* rotate(-90deg) text anti-aliases lighter than upright text at the same
@@ -842,12 +868,12 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-header--with-logo {
-  margin-bottom: 19px;
+  --report-brand-gap: 19px;
+  margin-bottom: var(--report-brand-gap);
 }
 
-.print-page-preview[data-orientation="landscape"] .report-brand-logo {
-  width: 84px;
-  height: 84px;
+.print-page-preview[data-orientation="landscape"] .report-brand-header {
+  --report-logo-size: 84px;
 }
 
 .print-page-preview[data-orientation="landscape"] .report-brand-name {
@@ -866,12 +892,12 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-header--with-logo {
-  margin-bottom: 17px;
+  --report-brand-gap: 17px;
+  margin-bottom: var(--report-brand-gap);
 }
 
-.print-page-preview[data-paper-size="a5"] .report-brand-logo {
-  width: 70px;
-  height: 70px;
+.print-page-preview[data-paper-size="a5"] .report-brand-header {
+  --report-logo-size: 70px;
 }
 
 .print-page-preview[data-paper-size="a5"] .report-brand-name {
@@ -886,9 +912,8 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   line-height: 1.18;
 }
 
-.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-logo {
-  width: 58px;
-  height: 58px;
+.print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-header {
+  --report-logo-size: 58px;
 }
 
 .print-page-preview[data-paper-size="a5"][data-orientation="landscape"] .report-brand-name {
@@ -1061,15 +1086,8 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
 }
 
 .print-page-preview[data-report="academic-result"][data-orientation="landscape"]
-  .academic-result-subject-name-row,
-.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
-  .academic-result-subject-name-cell {
-  height: calc(var(--subject-name-max-width, 130px) + 2px);
-}
-
-.print-page-preview[data-report="academic-result"][data-orientation="landscape"]
-  .academic-result-subject-name {
-  width: calc(var(--subject-name-max-width, 130px) - 2px);
+  .academic-result-subject-name-sizer {
+  padding: 4px 0;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"] .academic-result-heading {
@@ -1143,19 +1161,16 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   font-size: 7px;
 }
 
+/* Label/sizer font is a5's 12px text-base (not the table's 7.5px), so their
+   size follows automatically - only the line box and slack are tightened. */
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
-  .academic-result-subject-name-row,
-.print-page-preview[data-report="academic-result"][data-paper-size="a5"]
-  .academic-result-subject-name-cell {
-  /* a5's table font-size is forced to ~7.5px (~0.58x the 16px this was
-     measured at), so the measured box scales down with it. */
-  height: calc((var(--subject-name-max-width, 130px) + 4px) * 0.58);
+  .academic-result-subject-name {
+  height: 14px;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]
-  .academic-result-subject-name {
-  width: calc(var(--subject-name-max-width, 130px) * 0.58);
-  height: 14px;
+  .academic-result-subject-name-sizer {
+  padding: 4px 0;
 }
 
 .print-page-preview[data-report="academic-result"][data-paper-size="a5"]

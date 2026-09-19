@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import type { ReportColumn } from "../../../features/reports/types";
 import { cachedGet } from "../../../services/api";
 import {
@@ -180,35 +180,6 @@ const getColumnWeight = (column: PrintableColumn) =>
 const isNumericColumn = (column: PrintableColumn) =>
   Boolean(column.subjectKey) || NUMERIC_COLUMN_KEYS.has(column.key);
 
-// Matches the font/weight/size the rotated subject-name span renders with
-// (see .academic-result-subject-name in index.css) so the measured width
-// reflects what actually gets painted, not a generic system font guess.
-const SUBJECT_NAME_FONT = '800 16px Kalpurush, "Hind Siliguri", "Noto Sans Bengali", sans-serif';
-const SUBJECT_NAME_MIN_WIDTH = 60;
-const SUBJECT_NAME_MAX_WIDTH = 200;
-
-let measureContext: CanvasRenderingContext2D | null | undefined;
-const getMeasureContext = () => {
-  if (measureContext === undefined) {
-    measureContext =
-      typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
-  }
-  return measureContext;
-};
-
-// The subject-name header box is sized to the longest subject name actually
-// present in THIS report (clamped), not a fixed guess - so a report with only
-// short names stays compact and one with a long kitab name grows to fit it
-// instead of clipping.
-const getSubjectNameBoxWidth = (headers: string[]) => {
-  const ctx = getMeasureContext();
-  if (!ctx) return SUBJECT_NAME_MIN_WIDTH;
-  ctx.font = SUBJECT_NAME_FONT;
-  const longest = headers.reduce((max, header) => Math.max(max, ctx.measureText(header).width), 0);
-  const withPadding = Math.ceil(longest) + 6;
-  return Math.min(SUBJECT_NAME_MAX_WIDTH, Math.max(SUBJECT_NAME_MIN_WIDTH, withPadding));
-};
-
 const formatPercent = (count: number, total: number) =>
   total > 0 ? toBanglaDigits(((count / total) * 100).toFixed(1)) : toBanglaDigits("0");
 
@@ -293,13 +264,6 @@ const AcademicResultPrint = ({
   const totalWeight = printableColumns.reduce((sum, column) => sum + getColumnWeight(column), 0);
   const subjectSerialMap = new Map(
     subjectColumns.map((column, index) => [column.key, toBanglaDigits(index + 1)]),
-  );
-
-  const subjectHeaderKey = subjectColumns.map((column) => column.header).join("|");
-  const subjectNameBoxWidth = useMemo(
-    () => getSubjectNameBoxWidth(subjectColumns.map((column) => column.header)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [subjectHeaderKey],
   );
 
   const getMark = (row: Record<string, any>, subjectKey: string) => {
@@ -437,7 +401,6 @@ const AcademicResultPrint = ({
           className={`academic-result-table report-responsive-table w-full table-fixed border-collapse border border-black text-center text-black ${
             isFirstPage ? "" : "mt-6"
           }`}
-          style={{ "--subject-name-max-width": `${subjectNameBoxWidth}px` } as CSSProperties}
         >
           <colgroup>
             {printableColumns.map((column) => (
@@ -480,11 +443,15 @@ const AcademicResultPrint = ({
                       className="academic-result-subject-name-cell border border-black p-0 align-middle text-black"
                       title={column.header}
                     >
-                      <div className="flex h-full items-center justify-center overflow-hidden">
-                        <span className="academic-result-subject-name inline-block origin-center -rotate-90 whitespace-nowrap text-base leading-none text-black">
-                          {column.header}
-                        </span>
-                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="academic-result-subject-name-sizer text-base"
+                      >
+                        {column.header}
+                      </span>
+                      <span className="academic-result-subject-name text-base text-black">
+                        {column.header}
+                      </span>
                     </th>
                   ))}
                 </tr>
