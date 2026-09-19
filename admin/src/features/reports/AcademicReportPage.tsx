@@ -1,4 +1,7 @@
-import { ACADEMIC_RESULT_COLUMNS } from "../../components/Report/academic/AcademicResultPrint";
+import {
+  ACADEMIC_RESULT_COLUMN_OPTIONS,
+  ACADEMIC_RESULT_COLUMNS,
+} from "../../components/Report/academic/AcademicResultPrint";
 import { RESULT_NOTICE_COLUMNS } from "../../components/Report/academic/ResultNoticeList";
 import ReportShell, { ReportMenuItem } from "./ReportShell";
 
@@ -18,6 +21,7 @@ const reports: ReportMenuItem[] = [
     requiresExam: true,
     requiresDivision: true,
     columns: ACADEMIC_RESULT_COLUMNS,
+    columnOptions: ACADEMIC_RESULT_COLUMN_OPTIONS,
   },
   {
     key: "academic-results-by-rank",
@@ -29,6 +33,7 @@ const reports: ReportMenuItem[] = [
     requiresExam: true,
     requiresDivision: true,
     columns: ACADEMIC_RESULT_COLUMNS,
+    columnOptions: ACADEMIC_RESULT_COLUMN_OPTIONS,
   },
 
   {

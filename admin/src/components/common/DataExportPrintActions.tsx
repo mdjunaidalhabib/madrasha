@@ -333,6 +333,11 @@ const DataExportPrintActions = <T extends Record<string, any>>({
             font-style: normal;
             font-display: block;
           }
+          /* PaginatedReportPreview hides the pages on screen until the font
+             is ready (data-fonts-ready) - never capture that hidden state. */
+          .print-pages {
+            visibility: visible !important;
+          }
           .print-page-preview, .print-page-preview * {
             font-family: "KalpurushCapture", "Hind Siliguri", "Noto Sans Bengali", sans-serif !important;
             /* Kalpurush.ttf is one static file covering the whole 400-700

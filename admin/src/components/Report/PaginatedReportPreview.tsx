@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ReportMenuItem } from "../../features/reports/types";
 import { PaperSize, Orientation, PageMargins } from "../common/DataExportPrintActions";
 import {
@@ -79,6 +79,38 @@ const TWO_COLUMN_GAP_PX = 48;
 // gap too, matching TWO_COLUMN_GAP_PX's vertical-cut divider, so there's
 // blank paper to cut through between classes as well as between columns.
 const COLUMN_CLASS_GAP_PX = 40;
+
+// The report face (index.css @font-face) is a single static Regular file, so
+// any font-weight in the report renders at the same thin stroke - but the
+// fallback Bangla fonts painted while it downloads have real Bold faces and
+// look far heavier. Pages stay hidden until it's loaded (see fontReady) so
+// that heavier fallback text is never shown. Weight 500 = the page's base
+// weight; the face is declared 400-700, so this single probe covers them all.
+const REPORT_FONT_FAMILY = "Kalpurush";
+const REPORT_FONT_PROBE = `500 16px "${REPORT_FONT_FAMILY}"`;
+const REPORT_FONT_SAMPLE = "অআকখ";
+// Upper bound on the wait when the font request hangs (a failed/blocked
+// request rejects on its own, well before this) - after this the report shows
+// in the fallback font rather than staying blank.
+const REPORT_FONT_MAX_WAIT_MS = 4000;
+
+// Reads the FontFace's own status instead of document.fonts.check(): Chromium's
+// check() answers true even while the face is still "unloaded"/"loading",
+// which left the gate open for exactly the window it exists to cover.
+const isReportFontLoaded = () => {
+  if (typeof document === "undefined" || !("fonts" in document)) return true;
+
+  let declared = false;
+  let loaded = false;
+  document.fonts.forEach((face) => {
+    if (face.family.replace(/["']/g, "") !== REPORT_FONT_FAMILY) return;
+    declared = true;
+    if (face.status === "loaded") loaded = true;
+  });
+
+  // Not declared at all (stylesheet missing) means there's nothing to wait for.
+  return !declared || loaded;
+};
 
 const getPaperWidthPx = (paperSize: PaperSize, orientation: Orientation) =>
   getPaperWidthMm(paperSize, orientation) * MM_TO_CSS_PX;
@@ -559,6 +591,25 @@ const PaginatedReportPreview = ({
   // ("পৃষ্ঠা: X/Y") would end up positioned right under a shorter/taller
   // block of content than the page was actually paginated for.
   const [pagesSettled, setPagesSettled] = useState(false);
+  // Sync initial value (not always-false) so a font that's already loaded -
+  // every mount after the first - never hides the pages for even one frame.
+  const [fontReady, setFontReady] = useState(isReportFontLoaded);
+
+  useEffect(() => {
+    if (fontReady) return;
+
+    let cancelled = false;
+    const markReady = () => {
+      if (!cancelled) setFontReady(true);
+    };
+    const timer = window.setTimeout(markReady, REPORT_FONT_MAX_WAIT_MS);
+    document.fonts.load(REPORT_FONT_PROBE, REPORT_FONT_SAMPLE).then(markReady, markReady);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [fontReady]);
 
   // exam-signature-number-sheet prints one table PER SUBJECT (signature +
   // hand-written mark column for that subject alone), not one wide table
@@ -989,7 +1040,8 @@ const PaginatedReportPreview = ({
   // has actually produced resolvedPages - not just "loading is false", since
   // resolvedPages starts null and is filled in asynchronously after
   // `document.fonts.ready` (see the useLayoutEffect above).
-  const isReportReady = !loading && (rows.length === 0 || (resolvedPages !== null && pagesSettled));
+  const isReportReady =
+    !loading && fontReady && (rows.length === 0 || (resolvedPages !== null && pagesSettled));
 
   // columnsPerPage:2 only: fold the flat chunk sequence back into columns
   // (a column can hold several stacked chunks when classes packed together -
@@ -1056,7 +1108,12 @@ const PaginatedReportPreview = ({
         className="print-preview-viewport"
         data-report-ready={isReportReady ? "true" : "false"}
       >
-        <div className="print-area print-pages" style={scaleStyle}>
+        {!fontReady && <div className="print-fonts-loading">রিপোর্ট প্রস্তুত হচ্ছে...</div>}
+        <div
+          className="print-area print-pages"
+          style={scaleStyle}
+          data-fonts-ready={fontReady ? "true" : "false"}
+        >
           {columnsPerPage === 2 && twoColColumns
             ? Array.from({ length: Math.ceil(twoColColumns.length / 2) }, (_, physicalIndex) => {
                 const left = twoColColumns[physicalIndex * 2];

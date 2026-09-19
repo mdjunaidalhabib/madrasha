@@ -7,13 +7,18 @@
   src: url("/fonts/Kalpurush.ttf") format("truetype");
   font-weight: 400 700;
   font-style: normal;
-  /* "swap" প্রথমে fallback ফন্টে (সাধারণত সিস্টেমের ডিফল্ট বাংলা ফন্ট, যা
-     Kalpurush-এর চেয়ে চোখে মোটা লাগে) এঁকে পরে Kalpurush লোড হলে হঠাৎ পাল্টে
-     ফেলত - রিপোর্ট প্রিভিউতে এটাই "লোডিং এ বোল্ড, পরে ঠিক" flash-এর কারণ।
-     "optional" + index.html-এর preload একসাথে থাকায় ফন্ট সময়মতো রেডি থাকলে
-     সরাসরি সেটাতেই আঁকে, নাহলে ওই পেজ-লোডে fallback-এই থেকে যায় - কোনো
-     দৃশ্যমান swap হয় না। */
-  font-display: optional;
+  /* Kalpurush একটাই static (Regular) ফাইল - এতে font-weight 500/700/800
+     দিলেও অক্ষর একই পাতলা থাকে। কিন্তু fallback বাংলা ফন্টগুলোর (Windows-এ
+     Nirmala UI, বা Hind Siliguri/Noto Sans Bengali) আসল Medium/Bold face আছে,
+     তাই ফাইলটা নামার আগে রিপোর্টের text ওই ফন্টে অনেক মোটা দেখায় আর ফাইল
+     আসামাত্র হঠাৎ পাতলা হয়ে যায় - এটাই "আগে বোল্ড, পরে ঠিক" flash।
+     "optional"/"swap" দুটোতেই fallback-এ আঁকা হয় (ধীর নেটওয়ার্কে মেপে দেখা
+     গেছে ~৩.৫ সেকেন্ড পর্যন্ত), তাই "block" - ফন্ট না আসা পর্যন্ত fallback
+     দেখানোর বদলে লেখা লুকিয়ে রাখে। PaginatedReportPreview আরও এক ধাপ এগিয়ে
+     ফন্ট রেডি না হওয়া পর্যন্ত পুরো পেজই লুকিয়ে রাখে (নিচের
+     data-fonts-ready নিয়ম), যাতে লুকানো লেখার fallback-metrics-এ row-height
+     লাফ না দেয়। */
+  font-display: block;
 }
 
 :root {
@@ -242,6 +247,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .print-preview-viewport {
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -256,6 +262,32 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   gap: 20px;
   zoom: var(--report-preview-scale, 1);
+}
+
+/* Kalpurush ফন্ট নামা পর্যন্ত (PaginatedReportPreview-এর fontReady) পেজগুলো
+   লুকানো থাকে - নাহলে fallback ফন্টে মোটা লেখা দেখিয়ে পরে পাল্টে যায়। শুধু
+   screen-এ: print/PDF সবসময় পুরো পেজ দেখায়। visibility (display নয়) কারণ
+   off-screen পেজের মাপ/pagination measurement layout-এর ওপর নির্ভর করে। */
+@media screen {
+  .print-pages[data-fonts-ready="false"] {
+    visibility: hidden;
+  }
+}
+
+.print-fonts-loading {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+}
+
+@media print {
+  .print-fonts-loading {
+    display: none;
+  }
 }
 
 .print-page-preview {

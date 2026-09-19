@@ -7,6 +7,10 @@ import { getDefaultPageMargins } from "../../components/Report/pagination/pageGe
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import FilterSelect from "../../components/common/FilterSelect";
+import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
+import { withSubjectColumns } from "../../components/Report/academic/AcademicResultPrint";
+import { useColumnVisibility } from "../../hooks/useColumnVisibility";
+import { useAuthStore } from "../../store/authStore";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
 import { getRowClassId, getRowDivisionId } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { filterPeopleBySearch } from "../../utils/personSearch";
@@ -98,6 +102,51 @@ const ReportShell = ({
     () => reports.find((item) => item.key === activeKey) || reports[0],
     [activeKey, reports],
   );
+
+  // Reports that offer a "কলাম" menu (ReportMenuItem.columnOptions) get the
+  // user's own show/hide/order pick swapped in for `columns` below, so the
+  // preview, print, Excel/CSV and server PDF all read one column list. Print
+  // mode runs in a fresh headless browser with no saved preference, so it
+  // reads the pick from the ?columns= param the export builds instead (see
+  // serverPdfExport below) and never touches storage.
+  const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
+  const columnOptions = activeReport.columnOptions;
+  const columnOptionKeys = useMemo(() => columnOptions?.map((c) => c.key) ?? [], [columnOptions]);
+  const defaultColumnKeys = useMemo(
+    () => activeReport.columns.map((c) => c.key),
+    [activeReport.columns],
+  );
+  const columnPrefs = useColumnVisibility<string>(
+    columnOptions && !printMode ? `report-columns:${madrasaSlug}:${activeReport.key}` : null,
+    columnOptionKeys,
+    defaultColumnKeys,
+  );
+  const [printColumnKeys] = useState<string[] | null>(() => {
+    const raw = printMode ? searchParams.get("columns") : null;
+    return raw ? raw.split(",").filter(Boolean) : null;
+  });
+
+  const columnMenuOptions = useMemo(
+    () => columnOptions?.map((c) => ({ key: c.key, label: c.header })) ?? [],
+    [columnOptions],
+  );
+
+  // A report always keeps at least one column - unchecking the last visible
+  // one would leave an empty table.
+  const toggleReportColumn = (key: string) => {
+    if (columnPrefs.visible.size === 1 && columnPrefs.visible.has(key)) return;
+    columnPrefs.toggle(key);
+  };
+
+  const effectiveReport = useMemo(() => {
+    if (!columnOptions) return activeReport;
+
+    const byKey = new Map(columnOptions.map((c) => [c.key, c]));
+    const keys = printColumnKeys ?? columnPrefs.order.filter((key) => columnPrefs.visible.has(key));
+    const picked = keys.map((key) => byKey.get(key)).filter((c): c is ReportColumn => !!c);
+
+    return picked.length ? { ...activeReport, columns: picked } : activeReport;
+  }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys]);
 
   // The "ফলাফল" / "ফলাফল (মেধাক্রম অনুযায়ী)" reports are the only ones whose
   // endpoint understands page/page_size - every other report keeps loading
@@ -425,7 +474,7 @@ const ReportShell = ({
       : filteredRows;
 
   let exportRows = displayRows;
-  let exportColumns: ReportColumn[] = activeReport.columns;
+  let exportColumns: ReportColumn[] = effectiveReport.columns;
 
   if (activeReport.printable === "academic-result") {
     const subjectMap = new Map<string, { key: string; name: string }>();
@@ -447,16 +496,7 @@ const ReportShell = ({
       header: subject.name,
       key: subject.key,
     }));
-    const totalColumnIndex = activeReport.columns.findIndex((column) => column.key === "total");
-
-    exportColumns =
-      totalColumnIndex >= 0
-        ? [
-            ...activeReport.columns.slice(0, totalColumnIndex),
-            ...subjectColumns,
-            ...activeReport.columns.slice(totalColumnIndex),
-          ]
-        : [...activeReport.columns, ...subjectColumns];
+    exportColumns = withSubjectColumns(effectiveReport.columns, subjectColumns);
 
     exportRows = displayRows.map((row) => {
       const flattenedRow = { ...row };
@@ -507,6 +547,7 @@ const ReportShell = ({
       class_id: selectedClass || undefined,
       subject: selectedSubject || undefined,
       template_id: selectedTemplateId ? String(selectedTemplateId) : undefined,
+      columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
     },
   };
 
@@ -519,7 +560,7 @@ const ReportShell = ({
     return (
       <PaginatedReportPreview
         loading={loading}
-        report={activeReport}
+        report={effectiveReport}
         rows={displayRows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -607,6 +648,19 @@ const ReportShell = ({
                     </button>
                   </div>
                 )}
+
+                {columnOptions && (
+                  <ColumnVisibilityMenu
+                    columns={columnMenuOptions}
+                    visible={columnPrefs.visible}
+                    onToggle={toggleReportColumn}
+                    onReset={columnPrefs.reset}
+                    order={columnPrefs.order}
+                    onMove={columnPrefs.move}
+                    resetLabel="ডিফল্ট কলাম ফিরিয়ে আনুন"
+                    buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  />
+                )}
               </div>
             </div>
 
@@ -666,7 +720,7 @@ const ReportShell = ({
           <div className="print-preview-wrap">
             <PaginatedReportPreview
               loading={loading}
-              report={activeReport}
+              report={effectiveReport}
               rows={displayRows}
               selectedDivisionName={selectedDivisionName}
               selectedClassName={selectedClassName}

@@ -21,14 +21,16 @@ const isStoredState = <T extends string>(value: unknown): value is StoredState<T
 // defaultVisibleKeys না দিলে allKeys-ই ডিফল্ট (সব কলাম দৃশ্যমান) হিসেবে কাজ করে —
 // যেসব পেজে কলাম সংখ্যা বেশি সেখানে অল্প কিছু কলাম ডিফল্টে দেখিয়ে বাকিগুলো
 // ব্যবহারকারীর ইচ্ছামতো চালু করার সুযোগ দেওয়া যায়।
+// storageKey বদলালে (যেমন একই পেজে ভিন্ন রিপোর্ট বেছে নিলে) সেই key-র সংরক্ষিত
+// অবস্থা নতুন করে পড়া হয়; null দিলে কিছুই পড়া/লেখা হয় না (শুধু মেমোরিতে থাকে)।
 export const useColumnVisibility = <T extends string>(
-  storageKey: string,
+  storageKey: string | null,
   allKeys: readonly T[],
   defaultVisibleKeys: readonly T[] = allKeys,
 ) => {
   const readInitial = (): StoredState<T> => {
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = storageKey ? localStorage.getItem(storageKey) : null;
       if (raw) {
         const parsed = JSON.parse(raw);
 
@@ -61,8 +63,14 @@ export const useColumnVisibility = <T extends string>(
 
   const [state, setState] = useState<StoredState<T>>(readInitial);
 
+  const [loadedKey, setLoadedKey] = useState(storageKey);
+  if (loadedKey !== storageKey) {
+    setLoadedKey(storageKey);
+    setState(readInitial());
+  }
+
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(state));
+    if (storageKey) localStorage.setItem(storageKey, JSON.stringify(state));
   }, [storageKey, state]);
 
   const visible = useMemo(() => new Set(state.visible), [state.visible]);

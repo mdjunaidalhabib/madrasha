@@ -12,6 +12,12 @@ export type ReportMenuItem = {
   subtitle: string;
   endpoint: string;
   columns: ReportColumn[];
+  // Set on report types whose columns the user can tune from a "কলাম" menu
+  // (show/hide/reorder, like the student list) - the full ordered pool to
+  // pick from, a superset of `columns`. `columns` itself then acts as the
+  // default-visible set; ReportShell swaps in the user's own pick before
+  // handing the report to the preview/export.
+  columnOptions?: ReportColumn[];
   groupTitle?: string;
   requiresExam?: boolean;
   // Set on report types whose backend query can get heavy without a

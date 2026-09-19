@@ -32,11 +32,17 @@ const extractGradeArray = (res: any) => {
   return [];
 };
 
+// Every column a user can pick from the "কলাম" menu, in the order they start
+// out in - the default-visible subset is ACADEMIC_RESULT_COLUMNS below.
 // eslint-disable-next-line react-refresh/only-export-components
-export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
+export const ACADEMIC_RESULT_COLUMN_OPTIONS: ReportColumn[] = [
   { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
   { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
   { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-48" },
+  { header: "বাবার নাম", key: "father_name", className: "min-w-40" },
+  { header: "শ্রেণি", key: "class_name", className: "min-w-24 text-center" },
+  { header: "বিভাগ", key: "division_name", className: "min-w-24 text-center" },
+  { header: "শিক্ষাবর্ষ", key: "academic_year", className: "min-w-24 text-center" },
   { header: "মোট", key: "total", className: "min-w-20 text-center" },
   { header: "গড়", key: "average", className: "min-w-20 text-center" },
   { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
@@ -47,6 +53,22 @@ export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = [
   // when the column is too narrow for one line.
   { header: "মেধা​ক্রম", key: "rank_no", className: "min-w-24 text-center" },
 ];
+
+const DEFAULT_RESULT_COLUMN_KEYS = new Set([
+  "roll",
+  "registration_no",
+  "student_name",
+  "total",
+  "average",
+  "madrasa_grade",
+  "rank_no",
+]);
+
+// What the report shows until the user changes it from the "কলাম" menu.
+// eslint-disable-next-line react-refresh/only-export-components
+export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = ACADEMIC_RESULT_COLUMN_OPTIONS.filter(
+  (column) => DEFAULT_RESULT_COLUMN_KEYS.has(column.key),
+);
 
 type ResultStats = { total: number; pass: number; fail: number; absent: number };
 
@@ -109,11 +131,40 @@ const getSubjects = (row: Record<string, any>): SubjectMark[] => {
 const getSubjectKey = (subject: SubjectMark, index: number) =>
   String(subject.book_id ?? subject.subject_name ?? index);
 
+// Per-subject mark columns are slotted in right before মোট; if the user has
+// hidden that, before the next result column (গড়/গ্রেড/স্ট্যাটাস/মেধাক্রম),
+// and after everything else if none of those are shown either. Shared with
+// ReportShell's Excel/CSV export so both place them identically.
+const RESULT_SUMMARY_COLUMN_KEYS = new Set([
+  "total",
+  "average",
+  "general_grade",
+  "madrasa_grade",
+  "status",
+  "rank_no",
+]);
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const withSubjectColumns = <T extends ReportColumn>(columns: T[], subjectColumns: T[]): T[] => {
+  const totalIndex = columns.findIndex((column) => column.key === "total");
+  const anchorIndex =
+    totalIndex >= 0
+      ? totalIndex
+      : columns.findIndex((column) => RESULT_SUMMARY_COLUMN_KEYS.has(column.key));
+
+  return anchorIndex >= 0
+    ? [...columns.slice(0, anchorIndex), ...subjectColumns, ...columns.slice(anchorIndex)]
+    : [...columns, ...subjectColumns];
+};
+
 const COLUMN_WEIGHTS: Record<string, number> = {
   roll: 0.9,
   registration_no: 1.35,
   student_name: 2.1,
+  father_name: 1.9,
   class_name: 1.05,
+  division_name: 1.2,
+  academic_year: 1.2,
   total: 1.05,
   average: 1.12,
   madrasa_grade: 1.55,
@@ -237,15 +288,7 @@ const AcademicResultPrint = ({
     subjectKey: subject.key,
   }));
 
-  const totalIndex = configuredColumns.findIndex((column) => column.key === "total");
-  const printableColumns: PrintableColumn[] =
-    totalIndex >= 0
-      ? [
-          ...configuredColumns.slice(0, totalIndex),
-          ...subjectColumns,
-          ...configuredColumns.slice(totalIndex),
-        ]
-      : [...configuredColumns, ...subjectColumns];
+  const printableColumns = withSubjectColumns<PrintableColumn>(configuredColumns, subjectColumns);
 
   const totalWeight = printableColumns.reduce((sum, column) => sum + getColumnWeight(column), 0);
   const subjectSerialMap = new Map(
@@ -470,7 +513,7 @@ const AcademicResultPrint = ({
                   {printableColumns.map((column) => {
                     const numericColumn = isNumericColumn(column);
                     const columnClass = [
-                      column.key === "student_name"
+                      column.key === "student_name" || column.key === "father_name"
                         ? "academic-result-student-name text-left font-semibold"
                         : "",
                       column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",

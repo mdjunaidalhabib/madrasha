@@ -10,7 +10,14 @@ type Props<T extends string> = {
   order?: T[];
   /** একটা কলামকে ক্রমের মধ্যে আগে/পরে সরাতে — `order` দিলে অবশ্যই এটাও দিতে হবে। */
   onMove?: (key: T, direction: -1 | 1) => void;
+  /** "কলাম" বোতামের স্টাইল — না দিলে ডিফল্ট (ছাত্র তালিকার মতো h-9) ব্যবহৃত হয়। */
+  buttonClassName?: string;
+  /** রিসেট বোতামের লেখা — যেখানে "ডিফল্ট" মানে সব কলাম নয় সেখানে বদলানোর জন্য। */
+  resetLabel?: string;
 };
+
+const DEFAULT_BUTTON_CLASS =
+  "flex h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800";
 
 const ColumnVisibilityMenu = <T extends string>({
   columns,
@@ -19,6 +26,8 @@ const ColumnVisibilityMenu = <T extends string>({
   onReset,
   order,
   onMove,
+  buttonClassName = DEFAULT_BUTTON_CLASS,
+  resetLabel = "সব দেখান (ডিফল্ট)",
 }: Props<T>) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +53,7 @@ const ColumnVisibilityMenu = <T extends string>({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        className={buttonClassName}
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15M4.5 9h15M4.5 15h15" />
@@ -112,7 +121,7 @@ const ColumnVisibilityMenu = <T extends string>({
             onClick={onReset}
             className="mt-1 w-full rounded-md border-t border-gray-100 px-2 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-50 dark:border-slate-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
           >
-            সব দেখান (ডিফল্ট)
+            {resetLabel}
           </button>
         </div>
       )}
