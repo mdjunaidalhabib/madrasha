@@ -6,8 +6,10 @@ import Toaster from "@madrasha/shared-ui/src/components/ui/Toaster";
 import ConfirmDialog from "@madrasha/shared-ui/src/components/ui/ConfirmDialog";
 import ErrorBoundary from "@madrasha/shared-ui/src/components/ui/ErrorBoundary";
 import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/chunkReload";
+import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
 
 setupChunkReloadOnPreloadError();
+installReportFontFace();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

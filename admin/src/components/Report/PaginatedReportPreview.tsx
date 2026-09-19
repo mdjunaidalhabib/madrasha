@@ -80,7 +80,7 @@ const TWO_COLUMN_GAP_PX = 48;
 // blank paper to cut through between classes as well as between columns.
 const COLUMN_CLASS_GAP_PX = 40;
 
-// The report face (index.css @font-face) is a single static Regular file, so
+// The report face (shared-ui utils/reportFontFace.ts @font-face) is a single static Regular file, so
 // any font-weight in the report renders at the same thin stroke - but the
 // fallback Bangla fonts painted while it downloads have real Bold faces and
 // look far heavier. Pages stay hidden until it's loaded (see fontReady) so

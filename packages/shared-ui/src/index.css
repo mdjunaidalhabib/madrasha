@@ -2,24 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: "Kalpurush";
-  src: url("/fonts/Kalpurush.ttf") format("truetype");
-  font-weight: 400 700;
-  font-style: normal;
-  /* Kalpurush একটাই static (Regular) ফাইল - এতে font-weight 500/700/800
-     দিলেও অক্ষর একই পাতলা থাকে। কিন্তু fallback বাংলা ফন্টগুলোর (Windows-এ
-     Nirmala UI, বা Hind Siliguri/Noto Sans Bengali) আসল Medium/Bold face আছে,
-     তাই ফাইলটা নামার আগে রিপোর্টের text ওই ফন্টে অনেক মোটা দেখায় আর ফাইল
-     আসামাত্র হঠাৎ পাতলা হয়ে যায় - এটাই "আগে বোল্ড, পরে ঠিক" flash।
-     "optional"/"swap" দুটোতেই fallback-এ আঁকা হয় (ধীর নেটওয়ার্কে মেপে দেখা
-     গেছে ~৩.৫ সেকেন্ড পর্যন্ত), তাই "block" - ফন্ট না আসা পর্যন্ত fallback
-     দেখানোর বদলে লেখা লুকিয়ে রাখে। PaginatedReportPreview আরও এক ধাপ এগিয়ে
-     ফন্ট রেডি না হওয়া পর্যন্ত পুরো পেজই লুকিয়ে রাখে (নিচের
-     data-fonts-ready নিয়ম), যাতে লুকানো লেখার fallback-metrics-এ row-height
-     লাফ না দেয়। */
-  font-display: block;
-}
+/* "Kalpurush" @font-face এখানে নেই - ইচ্ছা করেই। ওটা utils/reportFontFace.ts
+   থেকে আলাদা <style>-এ বসে; এই বিশাল @media-ওয়ালা শিটে রাখলে Chrome print
+   মোডে ঢুকে ফন্ট নতুন করে "unloaded" বানায়, ফলে প্রথম Print-এ লেখা অদৃশ্য
+   (বা ভুল ফন্টে) ছাপা হয়। কারণ ও মাপজোখ ওই ফাইলের কমেন্টে।
+
+   Kalpurush একটাই static (Regular) ফাইল - এতে font-weight 500/700/800
+   দিলেও অক্ষর একই পাতলা থাকে। কিন্তু fallback বাংলা ফন্টগুলোর (Windows-এ
+   Nirmala UI, বা Hind Siliguri/Noto Sans Bengali) আসল Medium/Bold face আছে,
+   তাই ফাইলটা নামার আগে রিপোর্টের text ওই ফন্টে অনেক মোটা দেখায় আর ফাইল
+   আসামাত্র হঠাৎ পাতলা হয়ে যায় - এটাই "আগে বোল্ড, পরে ঠিক" flash।
+   PaginatedReportPreview ফন্ট রেডি না হওয়া পর্যন্ত পুরো পেজ লুকিয়ে রাখে
+   (নিচের data-fonts-ready নিয়ম), যাতে fallback-metrics-এ row-height লাফ না
+   দেয়। */
 
 :root {
   --font-ui-bn: "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
@@ -247,11 +242,21 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .print-preview-viewport {
-  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
   justify-content: center;
+}
+
+/* শুধু screen-এ relative - .print-fonts-loading লেবেল এই box-এর ভেতরে বসানোর
+   জন্য। print-এ কখনোই নয়: @media print-এ .print-area হলো position:absolute,
+   আর viewport positioned হলে ওটার containing block হয়ে যায় viewport, ফলে
+   DashboardLayout/ReportShell-এর overflow:hidden|auto ancestor-রা পুরো রিপোর্ট
+   clip করে ফেলে - Print দিলে সাদা পেজ আসে। */
+@media screen {
+  .print-preview-viewport {
+    position: relative;
+  }
 }
 
 .print-pages {
