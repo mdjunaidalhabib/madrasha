@@ -437,7 +437,7 @@ export class ResultPanelRepository {
   findResultMastersByClass(madrasaId: number, classId: number) {
     return prisma.resultMaster.findMany({
       where: { madrasaId, classId, deletedAt: null },
-      select: { id: true, examId: true, classId: true },
+      select: { id: true, examId: true, classId: true, status: true },
       orderBy: { id: "asc" },
     });
   }
@@ -590,6 +590,75 @@ export class ResultPanelRepository {
       prisma.resultSummary.createMany({ data: summaryData }),
       prisma.resultMaster.update({ where: { id: resultMasterId }, data: { status } }),
     ]);
+  }
+
+  /** Current summary rows, used by the recalculation engine to diff old vs
+   * new output (and to carry each student's roll snapshot across). */
+  findResultSummaryForDiff(resultMasterId: number) {
+    return prisma.resultSummary.findMany({
+      where: { resultMasterId },
+      select: {
+        studentId: true,
+        total: true,
+        average: true,
+        generalGrade: true,
+        madrasaGrade: true,
+        status: true,
+        rankNo: true,
+        roll: true,
+      },
+    });
+  }
+
+  /** Every non-deleted session that has already been through processing
+   * (PROCESSING and later) - the only ones with a summary that config
+   * changes can make stale - with exam/class labels for the recalculation
+   * review screen. */
+  findProcessedMasters(madrasaId: number, resultMasterId?: number) {
+    return prisma.resultMaster.findMany({
+      where: {
+        madrasaId,
+        deletedAt: null,
+        ...(resultMasterId ? { id: resultMasterId } : {}),
+        status: { in: ["PROCESSING", "RESULT_VERIFIED", "APPROVED", "PUBLISHED", "LOCKED"] },
+      },
+      select: {
+        id: true,
+        examId: true,
+        classId: true,
+        status: true,
+        exam: { select: { name: true } },
+        class: { select: { nameBn: true, name: true } },
+      },
+      orderBy: { id: "asc" },
+    });
+  }
+
+  /** Atomically swaps in a recalculated summary and applies `masterData`
+   * (status/stamps) in the same transaction, so a reader never sees the new
+   * rows next to the old status or vice versa. */
+  replaceResultSummaryInTransaction(
+    resultMasterId: number,
+    summaryData: Prisma.ResultSummaryCreateManyInput[],
+    masterData: Prisma.ResultMasterUncheckedUpdateInput,
+  ) {
+    return prisma.$transaction([
+      prisma.resultSummary.deleteMany({ where: { resultMasterId } }),
+      prisma.resultSummary.createMany({ data: summaryData }),
+      prisma.resultMaster.update({ where: { id: resultMasterId }, data: masterData }),
+    ]);
+  }
+
+  createResultSnapshot(
+    madrasaId: number,
+    resultMasterId: number,
+    snapshotJson: string,
+    reason: string,
+    createdBy: number | null,
+  ) {
+    return prisma.resultSnapshot.create({
+      data: { madrasaId, resultMasterId, snapshotJson, reason, createdBy },
+    });
   }
 
   clearResultSummaryAndMarkDraft(resultMasterId: number) {

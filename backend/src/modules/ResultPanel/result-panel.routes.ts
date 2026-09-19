@@ -7,6 +7,7 @@ import {
   createSessionSchema,
   saveMarksSchema,
   processResultSchema,
+  recalculateResultsSchema,
   publishResultSchema,
   applyRollByRankSchema,
   deleteResultSchema,
@@ -16,6 +17,7 @@ import {
   saveMarks,
   getMarks,
   processResult,
+  recalculateResults,
   getSummary,
   publishResult,
   applyRollByRank,
@@ -32,7 +34,8 @@ const router = express.Router();
 router.use(tenantMiddleware, authMiddleware);
 
 // NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware, and TALIMAT
-// has a fallback covering result.* (see rbac-policy.ts).
+// bypasses every exam-department key (exam./marks./result./routine.) - see
+// roleImpliesPermission in rbac-policy.ts.
 
 /* ================= SESSION ================= */
 // A role scoped down to just marks entry (marks.manage) or entry+submit
@@ -64,6 +67,18 @@ router.post(
   requireAnyPermission("result.process", "result.manage"),
   validate(processResultSchema),
   processResult,
+);
+
+/* ================= RECALCULATE (any stage, incl. PUBLISHED/LOCKED) ================= */
+// Re-grades processed sessions against the CURRENT fail mark / grade bands /
+// subject setup - see ResultPanelService.recalculateResults for the
+// published-result rules. Needs no reprocess-from-scratch, so it works after
+// APPROVED/PUBLISHED where /process refuses.
+router.post(
+  "/recalculate",
+  requireAnyPermission("result.process", "result.manage"),
+  validate(recalculateResultsSchema),
+  recalculateResults,
 );
 
 /* ================= SUMMARY ================= */

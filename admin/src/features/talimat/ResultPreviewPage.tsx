@@ -12,6 +12,9 @@ import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
 import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
 import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
+import ResultCorrectionsPanel from "../../components/ResultPanel/ResultCorrectionsPanel";
+import RecalculateResultsModal from "../../components/ResultPanel/RecalculateResultsModal";
+import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
 import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
@@ -95,6 +98,16 @@ export default function ResultPreviewPage() {
   const canApprove =
     hasPermission(user, permissions, RESULT_PERMISSIONS.resultApprove) ||
     hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  const canRequestCorrection =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultCorrect) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  const canRecalculate =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultProcess) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  // Same test the backend's hasFullResultAuthority applies (verify+approve,
+  // or the exam-department head): such an actor may apply a correction on
+  // the spot instead of waiting for a second approver.
+  const canApplyCorrectionDirectly = canVerifyResult && canApprove;
 
   const examId = searchParams.get("examId") || "";
   const classId = searchParams.get("classId") || "";
@@ -115,6 +128,9 @@ export default function ResultPreviewPage() {
   const [verifyingResult, setVerifyingResult] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejectResultOpen, setRejectResultOpen] = useState(false);
+  const [correctionReloadKey, setCorrectionReloadKey] = useState(0);
+  // null = closed; { masterId: null } = review every session; { masterId: n } = just that one.
+  const [recalcTarget, setRecalcTarget] = useState<{ masterId: number | null } | null>(null);
 
   const [failMark, setFailMark] = useState(33);
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
@@ -294,6 +310,64 @@ export default function ResultPreviewPage() {
     }
   };
 
+  // After PUBLISHED/LOCKED the backend rejects direct mark writes
+  // (saveMarks / processResult) - the only way to change a mark is a
+  // correction request, which is applied only once someone approves it in
+  // ResultCorrectionsPanel. One request per changed field: an absent<->number
+  // flip therefore becomes two requests (is_absent + mark), each decided on
+  // its own, matching the backend's one-field-per-correction model.
+  const handleSubmitCorrections = async (values: Record<number, number>, reason?: string) => {
+    if (!editingStudent || !resultMasterId) return;
+    if (!reason) return push("error", "সংশোধনের কারণ লিখুন");
+
+    const requests: CorrectionItem[] = [];
+
+    for (const book of summaryBooks) {
+      const original = editingStudent.marks?.find((m) => m.book_id === book.book_id);
+      if (!original) continue; // no Mark row exists to correct for this subject
+
+      const next = values[book.book_id];
+      if (next === undefined) {
+        return push("error", "কোনো বিষয়ের নম্বর ফাঁকা রাখা যাবে না — নম্বর অথবা \"-\" (অনুপস্থিত) দিন");
+      }
+
+      requests.push(...correctionItemsForCell(editingStudent.student_id, book.book_id, original, next));
+    }
+
+    if (requests.length === 0) {
+      return push("error", "কোনো নম্বর বদলানো হয়নি");
+    }
+
+    setStudentSaving(true);
+
+    try {
+      // One all-or-nothing request for the whole report card. With
+      // apply_now the server applies it immediately - but only if it
+      // independently confirms full result authority; otherwise it is left
+      // PENDING for a separate approver and `applied` comes back false.
+      const res = await api.post(`/results/${resultMasterId}/corrections/batch`, {
+        items: requests,
+        reason,
+        apply_now: canApplyCorrectionDirectly,
+      });
+
+      setEditingStudent(null);
+      if (res.data?.applied) {
+        push("success", "সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে");
+        await loadSummary();
+        await loadOverview();
+      } else {
+        push("success", "সংশোধনের অনুরোধ জমা হয়েছে — অনুমোদনের অপেক্ষায়");
+      }
+    } catch (err: any) {
+      logger.error("Submit correction error:", err);
+      push("error", err?.response?.data?.message || "সংশোধন জমা দেওয়া যায়নি");
+    } finally {
+      setStudentSaving(false);
+      setCorrectionReloadKey((k) => k + 1);
+    }
+  };
+
   // Result-level checker steps between "প্রসেস" and "Publish" — a result
   // must be verified, then approved (by someone other than whoever verified
   // it, unless they're MUHTAMIM/SUPER_ADMIN — enforced server-side), before
@@ -443,6 +517,9 @@ export default function ResultPreviewPage() {
     });
   };
 
+  const currentPublishStatus = summary[0]?.publish_status;
+  const isPublished = currentPublishStatus === "PUBLISHED" || currentPublishStatus === "LOCKED";
+
   const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
 
@@ -452,6 +529,15 @@ export default function ResultPreviewPage() {
         <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-slate-100">🎓 Result Preview</h1>
 
         <div className="flex w-full sm:w-auto flex-wrap gap-2">
+          {canRecalculate && (
+            <button
+              onClick={() => setRecalcTarget({ masterId: null })}
+              title="ফেল মার্ক/গ্রেড বদলের পর সব ফলাফল নতুন সেটিং অনুযায়ী হালনাগাদ করুন"
+              className="flex-1 sm:flex-none bg-teal-600 text-white px-5 py-2 rounded hover:bg-teal-700"
+            >
+              🔄 সব ফলাফল পুনঃগণনা
+            </button>
+          )}
           <button
             onClick={goToEntry}
             className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2 rounded"
@@ -488,7 +574,7 @@ export default function ResultPreviewPage() {
             books={summaryBooks}
             loading={detailLoading}
             onEdit={goToEntry}
-            onEditStudent={handleEditStudent}
+            onEditStudent={isPublished && !canRequestCorrection ? undefined : handleEditStudent}
             onPublish={handlePublish}
             publishing={publishing}
             onApplyRollByRank={handleApplyRollByRank}
@@ -502,7 +588,22 @@ export default function ResultPreviewPage() {
             onApprove={handleApprove}
             approving={approving}
             onRequestRejectResult={() => setRejectResultOpen(true)}
+            onRecalculate={canRecalculate && resultMasterId ? () => setRecalcTarget({ masterId: resultMasterId }) : undefined}
           />
+
+          {isPublished && resultMasterId && (
+            <ResultCorrectionsPanel
+              resultMasterId={resultMasterId}
+              students={summary}
+              books={summaryBooks}
+              canDecide={canApprove}
+              reloadKey={correctionReloadKey}
+              onApplied={async () => {
+                await loadSummary();
+                await loadOverview();
+              }}
+            />
+          )}
         </>
       ) : (
         <OverviewGrid
@@ -521,10 +622,22 @@ export default function ResultPreviewPage() {
           books={summaryBooks}
           failMark={failMark}
           saving={studentSaving}
+          correctionMode={isPublished}
+          directApply={isPublished && canApplyCorrectionDirectly}
           onClose={() => setEditingStudent(null)}
-          onSave={handleSaveStudentMarks}
+          onSave={isPublished ? handleSubmitCorrections : handleSaveStudentMarks}
         />
       )}
+
+      <RecalculateResultsModal
+        open={recalcTarget !== null}
+        resultMasterId={recalcTarget?.masterId ?? null}
+        onClose={() => setRecalcTarget(null)}
+        onApplied={async () => {
+          await loadSummary();
+          await loadOverview();
+        }}
+      />
 
       <ReasonPromptModal
         open={rejectResultOpen}

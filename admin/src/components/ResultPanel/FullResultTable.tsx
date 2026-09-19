@@ -58,6 +58,10 @@ interface Props {
   onApprove?: () => void;
   approving?: boolean;
   onRequestRejectResult?: () => void;
+  /** Re-grade this session against the current fail mark / grade bands.
+   * Only offered once a result has been processed (PROCESSING and later,
+   * including PUBLISHED/LOCKED, where /process itself is refused). */
+  onRecalculate?: () => void;
 }
 
 export default function FullResultTable({
@@ -81,6 +85,7 @@ export default function FullResultTable({
   onApprove,
   approving = false,
   onRequestRejectResult,
+  onRecalculate,
 }: Props) {
   const dataList = Array.isArray(summary) ? summary : [];
   const subjectList = Array.isArray(books) ? books : [];
@@ -140,13 +145,21 @@ export default function FullResultTable({
             🖨 Print
           </button>
 
+          {/* Opens the whole-class entry grid. Once published the backend
+              refuses direct writes, so that page switches into সংশোধন mode:
+              the same grid, but only the changed cells are submitted as a
+              (reasoned, audited) correction. */}
           {onEdit && (
             <button
               onClick={onEdit}
-              title="পুরো ক্লাসের নাম্বার একসাথে এডিট করুন"
+              title={
+                alreadyPublished
+                  ? "প্রকাশিত ফলাফল — পুরো ক্লাসের নাম্বার একসাথে সংশোধন করুন"
+                  : "পুরো ক্লাসের নাম্বার একসাথে এডিট করুন"
+              }
               className="flex-1 sm:flex-none bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
-              ✏️ Edit Marks
+              {alreadyPublished ? "✏️ সব নম্বর সংশোধন" : "✏️ Edit Marks"}
             </button>
           )}
 
@@ -156,6 +169,16 @@ export default function FullResultTable({
               className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
               Delete
+            </button>
+          )}
+
+          {onRecalculate && (isProcessing || isResultVerified || isApproved || alreadyPublished) && (
+            <button
+              onClick={onRecalculate}
+              title="বর্তমান ফেল মার্ক ও গ্রেড সীমা অনুযায়ী এই ফলাফল নতুন করে হিসাব করুন"
+              className="flex-1 sm:flex-none bg-teal-600 text-white px-3 sm:px-4 py-2 rounded text-sm hover:bg-teal-700"
+            >
+              🔄 পুনঃগণনা
             </button>
           )}
 
@@ -334,10 +357,14 @@ export default function FullResultTable({
                     {onEditStudent && (
                       <button
                         onClick={() => onEditStudent(s.student_id)}
-                        title="শুধুমাত্র এর নাম্বার এডিট করুন"
+                        title={
+                          alreadyPublished
+                            ? "প্রকাশিত ফলাফল — সংশোধনের অনুরোধ পাঠান"
+                            : "শুধুমাত্র এর নাম্বার এডিট করুন"
+                        }
                         className="text-indigo-600"
                       >
-                        ✏️ Edit
+                        {alreadyPublished ? "✏️ সংশোধন" : "✏️ Edit"}
                       </button>
                     )}
                   </div>

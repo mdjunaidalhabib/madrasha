@@ -5,7 +5,7 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
-import { ABSENT_MARK } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { ABSENT_MARK, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 import ResultFilter from "../../components/ResultPanel/ResultFilter";
 import MarksTable, { type SubmissionInfo } from "../../components/ResultPanel/MarksTable";
@@ -13,6 +13,7 @@ import ResultActions from "../../components/ResultPanel/ResultActions";
 import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
 import PasswordPromptModal from "../../components/ResultPanel/PasswordPromptModal";
 import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
+import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 // A student/book entry maps to `null` once cleared — kept (not deleted from
@@ -82,6 +83,19 @@ export default function ResultEntryPage() {
   // for madrasas that actually staff it.
   const isSingleActorWorkflow = canSubmitSubject && canVerifySubject;
 
+  // Once a result is PUBLISHED/LOCKED the backend refuses direct mark writes,
+  // so this page switches to "সংশোধন" mode: the same whole-class grid, but
+  // saving sends only the changed cells as a correction (see
+  // handleSubmitCorrection). Whoever holds full result authority - তালিমাত /
+  // মুহতামিম, or verify+approve - has it applied on the spot; anyone else
+  // files a request for a separate approver.
+  const canCorrect =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultCorrect) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  const canApplyCorrectionDirectly =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultVerify) &&
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultApprove);
+
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -106,6 +120,18 @@ export default function ResultEntryPage() {
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [resetVerifying, setResetVerifying] = useState(false);
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+
+  const [sessionStatus, setSessionStatus] = useState<string | null>(null);
+  const [correctionReasonOpen, setCorrectionReasonOpen] = useState(false);
+  const [correctionSaving, setCorrectionSaving] = useState(false);
+  // The marks exactly as stored when the page loaded - what a correction is
+  // diffed against, so only genuinely changed cells are sent.
+  const baselineRef = useRef<
+    Record<number, Record<number, { mark: number; is_absent: boolean; note: string }>>
+  >({});
+  const isPublished = sessionStatus === "PUBLISHED" || sessionStatus === "LOCKED";
+  const isPublishedRef = useRef(false);
+  isPublishedRef.current = isPublished;
 
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
@@ -223,6 +249,7 @@ export default function ResultEntryPage() {
 
       const formatted: MarksState = {};
       const formattedNotes: Record<number, Record<number, string>> = {};
+      const baseline: typeof baselineRef.current = {};
       data.forEach((r: any) => {
         // Accept both formats so frontend/backend can be deployed separately.
         const studentId = Number(r.student_id ?? r.studentId);
@@ -237,12 +264,21 @@ export default function ResultEntryPage() {
         if (!formatted[studentId]) formatted[studentId] = {};
         formatted[studentId][bookId] = mark;
 
+        if (!baseline[studentId]) baseline[studentId] = {};
+        baseline[studentId][bookId] = {
+          mark: Number(r.mark),
+          is_absent: isAbsent,
+          note: r.note ? String(r.note) : "",
+        };
+
         if (r.note) {
           if (!formattedNotes[studentId]) formattedNotes[studentId] = {};
           formattedNotes[studentId][bookId] = String(r.note);
         }
       });
 
+      baselineRef.current = baseline;
+      setSessionStatus(typeof res.data?.status === "string" ? res.data.status : null);
       setResultMasterId(masterId);
       setMarks(formatted);
       setNotes(formattedNotes);
@@ -251,6 +287,8 @@ export default function ResultEntryPage() {
       else setSubmissions({});
     } catch (err) {
       logger.error("Load marks error:", err);
+      baselineRef.current = {};
+      setSessionStatus(null);
       setResultMasterId(null);
       setMarks({});
       setNotes({});
@@ -349,6 +387,9 @@ export default function ResultEntryPage() {
 
   const performAutosave = async () => {
     if (!examId || !classId) return;
+    // A published result rejects direct writes - edits stay local until the
+    // user submits them as a correction.
+    if (isPublishedRef.current) return;
 
     const payload = buildMarksPayload();
     if (payload.length === 0) return;
@@ -400,6 +441,85 @@ export default function ResultEntryPage() {
   }, [marks]);
 
   const handleCellCommit = () => scheduleAutosave(150);
+
+  // ---- সংশোধন mode (PUBLISHED/LOCKED) -------------------------------------
+  // What the user has changed relative to the stored marks, as correction
+  // requests. A cleared cell can't be corrected (a mark can be changed, not
+  // deleted from a published result), and a cell that had no stored mark has
+  // no row to correct - both block submission with a clear message.
+  const computeCorrection = () => {
+    const items: CorrectionItem[] = [];
+    let clearedCells = 0;
+    let newCells = 0;
+
+    Object.keys(baselineRef.current).forEach((sid) => {
+      Object.keys(baselineRef.current[+sid] || {}).forEach((bid) => {
+        const next = marks[+sid]?.[+bid];
+        if (next === null) {
+          clearedCells += 1;
+          return;
+        }
+        if (next === undefined) return;
+        items.push(
+          ...correctionItemsForCell(+sid, +bid, baselineRef.current[+sid][+bid], next, notes[+sid]?.[+bid] ?? ""),
+        );
+      });
+    });
+
+    Object.keys(marks).forEach((sid) => {
+      Object.keys(marks[+sid] || {}).forEach((bid) => {
+        if (marks[+sid][+bid] != null && !baselineRef.current[+sid]?.[+bid]) newCells += 1;
+      });
+    });
+
+    const changedCells = new Set(items.map((i) => `${i.student_id}:${i.book_id}`)).size;
+    return { items, changedCells, clearedCells, newCells };
+  };
+  const correction = isPublished ? computeCorrection() : null;
+
+  const handleSubmitCorrection = async (reason: string) => {
+    if (!resultMasterId || !correction) return;
+
+    if (correction.clearedCells > 0) {
+      setCorrectionReasonOpen(false);
+      return push("error", "প্রকাশিত ফলাফলে কোনো নম্বর মুছে ফাঁকা রাখা যায় না — নম্বর অথবা \"-\" (অনুপস্থিত) দিন");
+    }
+    if (correction.newCells > 0) {
+      setCorrectionReasonOpen(false);
+      return push("error", "যে ঘরে আগে কোনো নম্বর ছিল না, প্রকাশিত ফলাফলে সেখানে নতুন নম্বর যোগ করা যায় না");
+    }
+    if (correction.items.length === 0) {
+      setCorrectionReasonOpen(false);
+      return push("error", "কোনো নম্বর বদলানো হয়নি");
+    }
+
+    setCorrectionSaving(true);
+    try {
+      // All changed cells of the class in one all-or-nothing request. With
+      // apply_now the server applies it immediately, but only after
+      // independently confirming full result authority - otherwise it stays
+      // PENDING for a separate approver and `applied` is false.
+      const res = await api.post(`/results/${resultMasterId}/corrections/batch`, {
+        items: correction.items,
+        reason,
+        apply_now: canApplyCorrectionDirectly,
+      });
+
+      setCorrectionReasonOpen(false);
+      push(
+        "success",
+        res.data?.applied
+          ? `${correction.changedCells}টি ঘরের সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে`
+          : "সংশোধনের অনুরোধ জমা হয়েছে — অনুমোদনের অপেক্ষায়",
+      );
+      goToPreview();
+    } catch (err: any) {
+      logger.error("Submit correction error:", err);
+      push("error", err?.response?.data?.message || "সংশোধন জমা দেওয়া যায়নি");
+    } finally {
+      setCorrectionSaving(false);
+    }
+  };
 
   const goToPreview = () => {
     const params = new URLSearchParams();
@@ -597,10 +717,20 @@ export default function ResultEntryPage() {
         setClassId={setClassId}
       />
 
-      {editMode && (
-        <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded dark:text-yellow-400 dark:bg-yellow-950/30 dark:border-yellow-900/50">
-          ✏️ পূর্বের রেজাল্ট পাওয়া গেছে — আপনি নম্বর আপডেট করতে পারবেন
+      {isPublished ? (
+        <div className="text-amber-800 text-sm font-medium bg-amber-50 border border-amber-200 px-3 py-2 rounded dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/50">
+          {canCorrect
+            ? canApplyCorrectionDirectly
+              ? "📝 এই ফলাফল প্রকাশিত — পুরো ক্লাসের নম্বর একসাথে সংশোধন করতে পারবেন। নিচে \"সংশোধন প্রয়োগ করুন\" চাপলে কারণসহ শুধু বদলানো ঘরগুলো এখনই প্রয়োগ হবে এবং মোট, গ্রেড ও মেধাক্রম নতুন করে হিসাব হবে (সব অডিট লগে থাকবে)।"
+              : "📝 এই ফলাফল প্রকাশিত — পুরো ক্লাসের নম্বর একসাথে বদলাতে পারবেন। নিচে \"অনুরোধ পাঠান\" চাপলে বদলানো ঘরগুলো সংশোধনের অনুরোধ হিসেবে জমা হবে; অনুমোদনের পর ফলাফলে প্রয়োগ হবে।"
+            : "🔒 এই ফলাফল প্রকাশিত — নম্বর সংশোধনের অনুমতি আপনার নেই, তাই শুধু দেখতে পারবেন।"}
         </div>
+      ) : (
+        editMode && (
+          <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded dark:text-yellow-400 dark:bg-yellow-950/30 dark:border-yellow-900/50">
+            ✏️ পূর্বের রেজাল্ট পাওয়া গেছে — আপনি নম্বর আপডেট করতে পারবেন
+          </div>
+        )
       )}
 
       {examId && classId ? (
@@ -613,20 +743,22 @@ export default function ResultEntryPage() {
             disabled={loading}
             failMark={failMark}
             onCommit={handleCellCommit}
-            autosaveStatus={autosaveStatus}
+            autosaveStatus={isPublished ? "idle" : autosaveStatus}
             notes={notes}
             setNotes={setNotes}
             submissions={submissions}
             onSubmitBook={handleSubmitBook}
             submittingBookId={submittingBookId}
-            canSubmit={canSubmitSubject && !isSingleActorWorkflow}
-            canVerify={canVerifySubject && !isSingleActorWorkflow}
+            canSubmit={canSubmitSubject && !isSingleActorWorkflow && !isPublished}
+            canVerify={canVerifySubject && !isSingleActorWorkflow && !isPublished}
             onVerifyBook={handleVerifyBook}
             onRequestRejectBook={setRejectBookId}
-            lockOverride={isSingleActorWorkflow}
+            // Published: every subject is VERIFIED, which would lock all
+            // columns - correction mode unlocks them for whoever may correct.
+            lockOverride={isPublished ? canCorrect : isSingleActorWorkflow}
           />
 
-          {isSingleActorWorkflow && (
+          {isSingleActorWorkflow && !isPublished && (
             <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
               ℹ️ আপনার এন্ট্রি ও যাচাই উভয় অনুমতি থাকায় "সংরক্ষণ ও প্রসেস করুন" চাপলেই সব বিষয়ের জমা,
               যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই। জমা/যাচাই হয়ে যাওয়া
@@ -643,12 +775,46 @@ export default function ResultEntryPage() {
               divider bar. */}
           <div className="sticky bottom-3 z-20">
             <div className="bg-white dark:bg-slate-900 shadow-lg rounded-xl p-3 sm:p-4 border border-gray-100 dark:border-slate-800">
-              <ResultActions
-                onSave={saveMarks}
-                onReset={handleReset}
-                disabled={loading}
-                saveDisabledReason={saveDisabledReason}
-              />
+              {isPublished ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setCorrectionReasonOpen(true)}
+                    disabled={loading || !canCorrect || !correction || correction.items.length === 0}
+                    title={
+                      !canCorrect
+                        ? "সংশোধনের অনুমতি নেই"
+                        : correction && correction.items.length === 0
+                          ? "কোনো নম্বর বদলানো হয়নি"
+                          : undefined
+                    }
+                    className="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
+                  >
+                    {canApplyCorrectionDirectly ? "📝 সংশোধন প্রয়োগ করুন" : "📝 সংশোধনের অনুরোধ পাঠান"}
+                  </button>
+                  <button
+                    onClick={() => loadExistingMarks()}
+                    disabled={loading || !correction || correction.changedCells === 0}
+                    className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    ↩ বদল বাতিল
+                  </button>
+                  <span className="text-sm text-gray-600 dark:text-slate-400">
+                    {correction && correction.changedCells > 0
+                      ? `${toBanglaDigits(correction.changedCells)}টি ঘরের নম্বর বদলানো হয়েছে`
+                      : "এখনো কোনো নম্বর বদলানো হয়নি"}
+                    {correction && correction.clearedCells > 0
+                      ? ` · ⚠ ${toBanglaDigits(correction.clearedCells)}টি ঘর ফাঁকা (ফাঁকা রাখা যাবে না)`
+                      : ""}
+                  </span>
+                </div>
+              ) : (
+                <ResultActions
+                  onSave={saveMarks}
+                  onReset={handleReset}
+                  disabled={loading}
+                  saveDisabledReason={saveDisabledReason}
+                />
+              )}
             </div>
           </div>
         </>
@@ -667,6 +833,22 @@ export default function ResultEntryPage() {
         loading={rejectingBook}
         onCancel={() => setRejectBookId(null)}
         onConfirm={handleConfirmRejectBook}
+      />
+
+      <ReasonPromptModal
+        open={correctionReasonOpen}
+        title="সংশোধনের কারণ"
+        message={
+          canApplyCorrectionDirectly
+            ? `${correction ? toBanglaDigits(correction.changedCells) : ""}টি ঘরের সংশোধন এখনই প্রয়োগ হবে। কারণ অডিট লগে সংরক্ষিত থাকবে।`
+            : "সংশোধনের অনুরোধ অনুমোদনকারীর কাছে যাবে; কারণসহ সবকিছু সংরক্ষিত থাকবে।"
+        }
+        label="সংশোধনের কারণ (আবশ্যক)"
+        confirmText={canApplyCorrectionDirectly ? "সংশোধন প্রয়োগ করুন" : "অনুরোধ পাঠান"}
+        confirmVariant="primary"
+        loading={correctionSaving}
+        onCancel={() => setCorrectionReasonOpen(false)}
+        onConfirm={handleSubmitCorrection}
       />
 
       <PasswordPromptModal

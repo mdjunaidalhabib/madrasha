@@ -4,6 +4,7 @@ import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
 import { feeService } from "../fee/fee.service";
+import { resultPanelService } from "../ResultPanel/result-panel.service";
 import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
@@ -344,7 +345,12 @@ export class ExamService {
     }
   }
 
-  async updateFailMark(madrasaId: number, dto: UpdateFailMarkRequestDto) {
+  /** Saves the fail mark, then brings already-processed results back in line
+   * with it. Unpublished sessions are re-graded on the spot; PUBLISHED/LOCKED
+   * ones are only counted (`pending_published`) - fail mark is one global
+   * setting, so applying it to results guardians already saw is a deliberate
+   * তালিমাত decision, made from the UI via POST /results/recalculate. */
+  async updateFailMark(madrasaId: number, dto: UpdateFailMarkRequestDto, actorId: number | null = null) {
     if (dto.value === undefined || dto.value === null || dto.value === ("" as unknown)) {
       throw new BadRequestError("Value is required");
     }
@@ -359,6 +365,29 @@ export class ExamService {
       await this.repinLowestGradeBands(madrasaId, failValue);
     } catch (err) {
       return friendlyFailure("updateFailMark error:", err, "Failed to update fail mark");
+    }
+
+    // Outside the try/catch above on purpose: the setting is already saved,
+    // so a recalculation problem must not turn into a "failed to update"
+    // response. The UI is told (recalculation.ok = false) and can offer the
+    // manual পুনঃগণনা instead.
+    try {
+      const { totals } = await resultPanelService.recalculateResults(madrasaId, actorId, {
+        includePublished: false,
+        reason: "FAIL_MARK_CHANGE",
+      });
+      return {
+        recalculation: {
+          ok: true,
+          updated: totals.updated,
+          changed_students: totals.changed_students,
+          pending_published: totals.pending_published,
+          failed: totals.failed,
+        },
+      };
+    } catch (err) {
+      logger.error("updateFailMark: result recalculation failed:", err);
+      return { recalculation: { ok: false, updated: 0, changed_students: 0, pending_published: 0, failed: 0 } };
     }
   }
 

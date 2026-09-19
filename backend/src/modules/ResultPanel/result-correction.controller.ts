@@ -39,6 +39,22 @@ export const requestCorrection = async (req: Request, res: Response) => {
   }
 };
 
+/* ================= REQUEST CORRECTION (BATCH, optional apply-now) ================= */
+export const requestCorrectionBatch = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const result = await resultCorrectionService.requestCorrectionBatch(
+      madrasa_id,
+      req.user!.id,
+      toNumber(req.params.resultMasterId),
+      req.body,
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    respondError(res, error, "requestCorrectionBatch error:", "Failed to request corrections");
+  }
+};
+
 /* ================= LIST CORRECTIONS ================= */
 export const listCorrections = async (req: Request, res: Response) => {
   try {

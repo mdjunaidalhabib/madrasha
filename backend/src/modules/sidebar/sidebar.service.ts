@@ -1,4 +1,4 @@
-import { normalizeAppRole } from "../../shared/permissions";
+import { implicitPermissionKeysForRole, normalizeAppRole } from "../../shared/permissions";
 import { feeService } from "../fee/fee.service";
 import { sidebarRepository, SidebarRepository } from "./sidebar.repository";
 import { SidebarChildItem, SidebarModuleItem } from "./sidebar.types";
@@ -39,12 +39,17 @@ export class SidebarService {
     // madrasaModules, then admissionFeeTypes one after another) - each extra
     // round trip to the DB directly added to how long the sidebar took to
     // appear after login.
-    const [roleKey, permissionKeys, madrasaModules, admissionFeeTypes] = await Promise.all([
+    const [roleKey, grantedPermissionKeys, madrasaModules, admissionFeeTypes] = await Promise.all([
       this.resolveRoleKey(roleId),
       this.resolvePermissionKeys(roleId),
       this.repository.findActiveMadrasaModules(madrasaId),
       feeService.getAdmissionCategoryNames(madrasaId),
     ]);
+
+    // তালিমাত implicitly holds every exam-department permission (see
+    // roleImpliesPermission), so its modules must show even when no
+    // RolePermission row backs them.
+    const permissionKeys = [...grantedPermissionKeys, ...implicitPermissionKeysForRole(roleKey)];
 
     // The old standalone `admission` module duplicated the "নতুন ভর্তি"
     // child inside ছাত্র বিভাগ and pointed to a non-existent top-level route.

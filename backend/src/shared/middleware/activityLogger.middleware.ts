@@ -45,7 +45,9 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "results/approve",
   "results/lock",
   "results/corrections",
+  "results/corrections/batch",
   "results/corrections/decide",
+  "results/recalculate",
   "results/mark-components",
   // Branding settings (see SettingsService.updateBranding/deleteBrandingImage)
   // self-log a field-by-field before→after diff - letting the generic

@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
-import { hasFullResultAuthority, isPrivilegedActor } from "../../shared/utils/rbac.util";
+import { hasExamDepartmentAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
 import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
 import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
 import { resultPanelRepository } from "./result-panel.repository";
@@ -80,6 +80,14 @@ export class ResultWorkflowService {
         submittedBy: actorId,
       });
     }
+  }
+
+  /** Public entry to the same status re-derivation submit/verify run, for
+   * callers (ResultPanelService.processResult) that find a session whose
+   * status lags behind its subjects' actual submission states. */
+  async syncStatusFromSubmissions(madrasaId: number, resultMasterId: number, actorId: number) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, actorId);
   }
 
   async getSubmissions(madrasaId: number, resultMasterId: number) {
@@ -172,7 +180,7 @@ export class ResultWorkflowService {
       throw new ConflictError("এই বিষয়ের নম্বর এখনও জমা দেওয়া হয়নি — যাচাই করার আগে জমা দিতে হবে।");
     }
 
-    if (submission.submittedBy === userId && !(await isPrivilegedActor(userId))) {
+    if (submission.submittedBy === userId && !(await hasExamDepartmentAuthority(userId))) {
       throw new ConflictError(
         "নিজের জমা করা নম্বর নিজে যাচাই করা যাবে না — ভিন্ন ব্যবহারকারীর মাধ্যমে যাচাই করাতে হবে।",
       );

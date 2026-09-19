@@ -1,5 +1,5 @@
 import { prisma } from "../database/prisma";
-import { isMuhtamimRole, isSuperAdminRole, normalizeAppRole } from "../permissions";
+import { isMuhtamimRole, isSuperAdminRole, isTalimatRole, normalizeAppRole } from "../permissions";
 import { getRolePermissions } from "../middleware/rbac.middleware";
 
 /**
@@ -20,6 +20,23 @@ export async function isPrivilegedActor(userId: number): Promise<boolean> {
 }
 
 /**
+ * Privileged actor OR তালিমাত - the head of the exam department (see
+ * roleImpliesPermission in rbac-policy.ts). Every separation-of-duties gate
+ * inside the marks/result workflow defers to this, since the exam department
+ * is exactly where তালিমাত acts as the super admin: it has no second person
+ * to hand a maker/checker step to, and forcing one made routine post-publish
+ * updates impossible for a one-office madrasa.
+ */
+export async function hasExamDepartmentAuthority(userId: number): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: { select: { keyName: true, nameBn: true } } },
+  });
+  const role = normalizeAppRole(user?.role?.keyName || user?.role?.nameBn || "");
+  return isSuperAdminRole(role) || isMuhtamimRole(role) || isTalimatRole(role);
+}
+
+/**
  * True for an actor who holds full authority over marks entry AND
  * verification (both marks.submit and marks.verify, or the legacy
  * result.manage catch-all) - the common single-office-staff madrasa where
@@ -35,7 +52,7 @@ export async function isPrivilegedActor(userId: number): Promise<boolean> {
  * (a genuine separate teacher/verifier) still hits the real lock.
  */
 export async function hasFullMarksAuthority(userId: number): Promise<boolean> {
-  if (await isPrivilegedActor(userId)) return true;
+  if (await hasExamDepartmentAuthority(userId)) return true;
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } });
   if (!user?.roleId) return false;
@@ -61,7 +78,7 @@ export async function hasFullMarksAuthority(userId: number): Promise<boolean> {
  * permissions each) still hits the real gate, exactly as intended.
  */
 export async function hasFullResultAuthority(userId: number): Promise<boolean> {
-  if (await isPrivilegedActor(userId)) return true;
+  if (await hasExamDepartmentAuthority(userId)) return true;
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } });
   if (!user?.roleId) return false;

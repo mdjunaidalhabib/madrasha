@@ -2,6 +2,11 @@ import { Check, Pencil, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useAuthStore } from "../../store/authStore";
+import { hasPermission } from "../../utils/permissions";
+import RecalculateResultsModal from "../ResultPanel/RecalculateResultsModal";
+import { RESULT_PERMISSIONS } from "../ResultPanel/resultStatus";
 
 export default function FailMarkSetting({
   value,
@@ -10,9 +15,16 @@ export default function FailMarkSetting({
   value: number;
   reload: () => void;
 }) {
+  const user = useAuthStore((s) => s.user);
+  const permissions = useAuthStore((s) => s.permissions);
   const [draft, setDraft] = useState(String(value));
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [reviewPublishedOpen, setReviewPublishedOpen] = useState(false);
+
+  const canRecalculate =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultProcess) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
 
   useEffect(() => {
     if (!isEditing) setDraft(String(value));
@@ -31,8 +43,38 @@ export default function FailMarkSetting({
 
     try {
       setIsSaving(true);
-      await api.post("/fail-mark", { value: failMark });
-      useToastStore.getState().show("আপডেট হয়েছে!", "success");
+      const res = await api.post("/fail-mark", { value: failMark });
+      const toast = useToastStore.getState().show;
+      // The server re-grades every unpublished result right after saving,
+      // and only COUNTS published/locked ones (fail mark is one global
+      // setting - applying it to results guardians already saw is a
+      // deliberate choice, offered below).
+      const recalc = res.data?.recalculation as
+        | { ok: boolean; updated: number; pending_published: number; failed: number }
+        | undefined;
+
+      if (recalc && !recalc.ok) {
+        toast(
+          "ফেল মার্ক সংরক্ষিত হয়েছে, কিন্তু ফলাফল হালনাগাদ করা যায়নি — রেজাল্ট পেজ বা গ্রেড পেজ থেকে 'পুনঃগণনা' চাপুন",
+          "error",
+        );
+      } else if (recalc && recalc.updated > 0) {
+        toast(`আপডেট হয়েছে — ${toBanglaDigits(recalc.updated)}টি অপ্রকাশিত ফলাফল নতুন ফেল মার্কে হালনাগাদ হয়েছে`, "success");
+      } else {
+        toast("আপডেট হয়েছে!", "success");
+      }
+
+      if (recalc?.ok && recalc.pending_published > 0) {
+        if (canRecalculate) {
+          setReviewPublishedOpen(true);
+        } else {
+          toast(
+            `${toBanglaDigits(recalc.pending_published)}টি প্রকাশিত ফলাফল এখনো পুরনো ফেল মার্কে আছে — তালিমাত পুনঃগণনা করলে হালনাগাদ হবে`,
+            "info",
+          );
+        }
+      }
+
       setIsEditing(false);
       reload();
     } catch {
@@ -99,6 +141,16 @@ export default function FailMarkSetting({
           <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">নম্বর</span>
         </div>
       )}
+
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        ফেল মার্ক বদলালে অপ্রকাশিত ফলাফল নিজে থেকে হালনাগাদ হয়। প্রকাশিত ফলাফলে প্রয়োগ করবেন কি না, সংরক্ষণের পর আপনাকে
+        জিজ্ঞেস করা হবে।
+      </p>
+
+      <RecalculateResultsModal
+        open={reviewPublishedOpen}
+        onClose={() => setReviewPublishedOpen(false)}
+      />
     </div>
   );
 }

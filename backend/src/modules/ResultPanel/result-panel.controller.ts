@@ -76,6 +76,21 @@ export const processResult = async (req: Request, res: Response) => {
   }
 };
 
+/* ================= RECALCULATE ================= */
+export const recalculateResults = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const result = await resultPanelService.recalculateResults(madrasa_id, req.user!.id, {
+      resultMasterId: toNumber(req.body?.result_master_id) || undefined,
+      includePublished: Boolean(req.body?.include_published),
+      dryRun: Boolean(req.body?.dry_run),
+    });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    respondError(res, error, "recalculateResults error:", "Failed to recalculate results");
+  }
+};
+
 /* ================= CLASS ENTRY STATUS ================= */
 export const getClassStatus = async (req: Request, res: Response) => {
   try {

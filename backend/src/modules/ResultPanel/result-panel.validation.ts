@@ -61,6 +61,17 @@ export const processResultSchema = z.object({
   }),
 });
 
+export const recalculateResultsSchema = z.object({
+  body: z.object({
+    // Omit to recalculate every processed session in the madrasa.
+    result_master_id: idSchema.optional(),
+    // PUBLISHED/LOCKED sessions are only rewritten when this is true.
+    include_published: z.boolean().optional(),
+    // Report what would change without writing anything.
+    dry_run: z.boolean().optional(),
+  }),
+});
+
 export const publishResultSchema = z.object({
   body: z.object({
     result_master_id: idSchema,

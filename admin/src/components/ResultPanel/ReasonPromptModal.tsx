@@ -8,6 +8,9 @@ interface Props {
   message?: string;
   label?: string;
   confirmText?: string;
+  /** Rejections stay red (the default); a constructive confirm - e.g.
+   * submitting a correction - can opt into the primary style. */
+  confirmVariant?: "danger" | "primary";
   loading?: boolean;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
@@ -23,6 +26,7 @@ export default function ReasonPromptModal({
   message,
   label = "কারণ লিখুন",
   confirmText = "নিশ্চিত করুন",
+  confirmVariant = "danger",
   loading = false,
   onCancel,
   onConfirm,
@@ -77,7 +81,7 @@ export default function ReasonPromptModal({
           <Button variant="secondary" onClick={handleCancel} disabled={loading}>
             বাতিল
           </Button>
-          <Button variant="danger" onClick={handleConfirm} disabled={loading}>
+          <Button variant={confirmVariant} onClick={handleConfirm} disabled={loading}>
             {loading ? "..." : confirmText}
           </Button>
         </div>

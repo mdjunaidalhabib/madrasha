@@ -100,6 +100,9 @@ export const getFailMark = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const updateFailMark = asyncHandler(async (req: Request, res: Response) => {
-  await examService.updateFailMark(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Fail mark updated successfully");
+  const result = await examService.updateFailMark(getMadrasaId(req), req.body, req.user?.id ?? null);
+  return ApiResponse.success(res, {
+    message: "Fail mark updated successfully",
+    extra: result,
+  });
 });

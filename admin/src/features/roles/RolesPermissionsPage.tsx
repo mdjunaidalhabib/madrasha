@@ -222,6 +222,7 @@ const RolesPermissionsPage = () => {
           <div className="space-y-3">
             {roles.map((role) => {
               const isMuhtamim = (role.key_name || "").toUpperCase() === "MUHTAMIM";
+              const isTalimat = (role.key_name || "").toUpperCase() === "TALIMAT";
               return (
               <div
                 key={role.id}
@@ -242,6 +243,12 @@ const RolesPermissionsPage = () => {
                       : `${role.permission_keys.length} টি পারমিশন`}{" "}
                     · {role.user_count} জন ইউজার
                   </p>
+                  {isTalimat && (
+                    <p className="mt-0.5 text-xs text-teal-700 dark:text-teal-400">
+                      পরীক্ষা বিভাগের (পরীক্ষা, নম্বর, ফলাফল, রুটিন) সব পারমিশন এই রোল স্বয়ংক্রিয়ভাবে পায় — আলাদা করে দিতে হয় না।
+                      নিচের তালিকা শুধু অন্য বিভাগের অ্যাক্সেসের জন্য।
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">

@@ -12,12 +12,28 @@ import type { AuthUser } from "../store/authStore";
  */
 const BYPASS_ROLES = new Set(["MUHTAMIM", "SUPER_ADMIN"]);
 
+/**
+ * তালিমাত is the head of the exam department and acts as its super admin:
+ * every exam/marks/result/routine permission (plus exam/academic reports) is
+ * implied by the role. Mirrors roleImpliesPermission in the backend's
+ * rbac-policy.ts - keep the two lists identical. Everything outside the exam
+ * department (accounts, fee, users, ...) still needs an explicit grant.
+ */
+const EXAM_DEPARTMENT_PERMISSION_PREFIXES = ["exam.", "marks.", "result.", "routine."];
+const EXAM_DEPARTMENT_REPORT_PERMISSIONS = new Set(["reports.exam", "reports.academic"]);
+
+const isExamDepartmentPermission = (permission: string) =>
+  EXAM_DEPARTMENT_PERMISSION_PREFIXES.some((prefix) => permission.startsWith(prefix)) ||
+  EXAM_DEPARTMENT_REPORT_PERMISSIONS.has(permission);
+
 export const hasPermission = (
   user: AuthUser | null | undefined,
   permissions: string[],
   permission: string,
 ) => {
-  const role = (user?.role || user?.role_key || "").trim().toUpperCase();
+  const rawRole = (user?.role || user?.role_key || "").trim();
+  const role = rawRole.toUpperCase();
   if (BYPASS_ROLES.has(role)) return true;
+  if ((role === "TALIMAT" || rawRole === "তালিমাত") && isExamDepartmentPermission(permission)) return true;
   return permissions.includes(permission);
 };

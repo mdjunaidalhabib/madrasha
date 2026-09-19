@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../database/prisma";
-import { isSuperAdminRole, normalizeAppRole, isMuhtamimRole } from "../permissions";
+import { normalizeAppRole, roleImpliesPermission } from "../permissions";
 
 async function getUserRole(req: Request) {
   const directRole = (req.user as any)?.role || (req.user as any)?.role_name;
@@ -39,7 +39,9 @@ export const requirePermission = (permission: string) => {
 
       const role = await getUserRole(req);
 
-      if (isSuperAdminRole(role) || isMuhtamimRole(role)) {
+      // Super Admin / Muhtamim bypass everything; Talimat bypasses the
+      // exam-department keys (see roleImpliesPermission).
+      if (roleImpliesPermission(role, permission)) {
         return next();
       }
 
@@ -67,7 +69,12 @@ export const requireAnyPermission = (...permissions: string[]) => {
 
       const role = await getUserRole(req);
 
-      if (isSuperAdminRole(role) || isMuhtamimRole(role)) {
+      // The trailing "" probe keeps Super Admin/Muhtamim passing even if a
+      // route is ever declared with an empty permission list.
+      if (
+        permissions.some((permission) => roleImpliesPermission(role, permission)) ||
+        roleImpliesPermission(role, "")
+      ) {
         return next();
       }
 

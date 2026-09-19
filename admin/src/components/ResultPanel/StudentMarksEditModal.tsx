@@ -33,8 +33,16 @@ interface Props {
   books: Book[];
   failMark?: number;
   saving?: boolean;
+  /** The result is already PUBLISHED/LOCKED: marks can't be overwritten
+   * directly (backend saveMarks rejects it), so this becomes a correction
+   * request that needs a reason and only takes effect once approved. */
+  correctionMode?: boolean;
+  /** The actor may apply a correction on the spot (full result authority -
+   * তালিমাত/মুহতামিম): it is still recorded with its reason and audited, but
+   * needs no separate approver. */
+  directApply?: boolean;
   onClose: () => void;
-  onSave: (values: Record<number, number>) => void;
+  onSave: (values: Record<number, number>, reason?: string) => void;
 }
 
 export default function StudentMarksEditModal({
@@ -42,6 +50,8 @@ export default function StudentMarksEditModal({
   books,
   failMark = 33,
   saving = false,
+  correctionMode = false,
+  directApply = false,
   onClose,
   onSave,
 }: Props) {
@@ -52,6 +62,20 @@ export default function StudentMarksEditModal({
   });
 
   const [values, setValues] = useState<Record<number, number>>(initial);
+  const [reason, setReason] = useState("");
+  const [reasonTouched, setReasonTouched] = useState(false);
+
+  const trimmedReason = reason.trim();
+  const reasonInvalid = correctionMode && reasonTouched && trimmedReason === "";
+
+  const handleSubmit = () => {
+    if (!correctionMode) return onSave(values);
+    if (trimmedReason === "") {
+      setReasonTouched(true);
+      return;
+    }
+    onSave(values, trimmedReason);
+  };
 
   const handleChange = (bookId: number, rawVal: string, max: number) => {
     // A lone "-" marks the student absent for this subject — same shortcut
@@ -108,7 +132,11 @@ export default function StudentMarksEditModal({
         <div className="flex justify-between items-start mb-3 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-100">
-              ✏️ শুধুমাত্র এর নাম্বার এডিট
+              {correctionMode
+                ? directApply
+                  ? "📝 ফলাফল সংশোধন"
+                  : "📝 ফলাফল সংশোধনের অনুরোধ"
+                : "✏️ শুধুমাত্র এর নাম্বার এডিট"}
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400">{student.name_bn}</p>
           </div>
@@ -120,6 +148,14 @@ export default function StudentMarksEditModal({
             ×
           </button>
         </div>
+
+        {correctionMode && (
+          <p className="mb-3 shrink-0 rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
+            {directApply
+              ? "এই ফলাফল প্রকাশিত। আপনার অধিকারে সংশোধন এখনই ফলাফলে প্রয়োগ হবে এবং মোট, গড়, গ্রেড ও মেধাক্রম নতুন করে হিসাব হবে। কারণসহ সবকিছু অডিট লগে সংরক্ষিত থাকবে।"
+              : "এই ফলাফল প্রকাশিত হয়ে গেছে। এখানে বদলানো নম্বর সরাসরি সেভ হবে না — সংশোধনের অনুরোধ হিসেবে জমা হবে এবং অনুমোদনের পর ফলাফলে প্রয়োগ হবে।"}
+          </p>
+        )}
 
         <div className="overflow-y-auto">
         <table className="w-full border text-sm dark:border-slate-700">
@@ -194,6 +230,27 @@ export default function StudentMarksEditModal({
           </span>
         </div>
 
+        {correctionMode && (
+          <div className="mt-3 shrink-0">
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+              সংশোধনের কারণ (আবশ্যক)
+            </label>
+            <textarea
+              rows={2}
+              value={reason}
+              disabled={saving}
+              onChange={(e) => setReason(e.target.value)}
+              className={`w-full rounded-lg border p-2 text-sm outline-none focus:ring-2 dark:bg-slate-800 dark:text-slate-100 ${
+                reasonInvalid
+                  ? "border-red-400 focus:ring-red-400 dark:border-red-700"
+                  : "border-gray-300 focus:ring-blue-400 dark:border-slate-600"
+              }`}
+              placeholder="যেমন: নম্বর তোলার সময় ভুল হয়েছিল..."
+            />
+            {reasonInvalid && <p className="mt-1 text-xs text-red-600 dark:text-red-400">কারণ লেখা আবশ্যক</p>}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 mt-5 shrink-0">
           <button
             onClick={onClose}
@@ -203,11 +260,21 @@ export default function StudentMarksEditModal({
             বাতিল
           </button>
           <button
-            onClick={() => onSave(values)}
+            onClick={handleSubmit}
             disabled={saving}
             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-slate-600"
           >
-            {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+            {saving
+              ? correctionMode
+                ? directApply
+                  ? "প্রয়োগ হচ্ছে..."
+                  : "জমা হচ্ছে..."
+                : "সেভ হচ্ছে..."
+              : correctionMode
+                ? directApply
+                  ? "সংশোধন প্রয়োগ করুন"
+                  : "অনুরোধ পাঠান"
+                : "সেভ করুন"}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { ResultPublishStatus } from "@prisma/client";
+import { Prisma, ResultPublishStatus } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { notificationService } from "../notifications/notification.service";
@@ -42,6 +42,38 @@ interface ResultCalculationConfig {
   generalGrades: GradeRow[];
   madrasaGrades: GradeRow[];
   failMark: number;
+}
+
+// Sessions whose ResultSummary has been produced by a process run (so config
+// changes can leave it stale), and the subset guardians can already see.
+const PROCESSED_RESULT_STATUSES = new Set<ResultPublishStatus>([
+  RESULT_STATUS.PROCESSING,
+  RESULT_STATUS.RESULT_VERIFIED,
+  RESULT_STATUS.APPROVED,
+  RESULT_STATUS.PUBLISHED,
+  RESULT_STATUS.LOCKED,
+]);
+const FINAL_RESULT_STATUSES = new Set<ResultPublishStatus>([
+  RESULT_STATUS.PUBLISHED,
+  RESULT_STATUS.LOCKED,
+]);
+
+export type RecalcOutcomeKind = "UPDATED" | "WOULD_UPDATE" | "UNCHANGED" | "SKIPPED" | "FAILED";
+
+interface RecalcCoreOutcome {
+  result_master_id: number;
+  /** Status BEFORE the recalculation ran. */
+  status: string;
+  is_published: boolean;
+  outcome: RecalcOutcomeKind;
+  skip_reason?: "NOT_PROCESSED" | "INCOMPLETE_MARKS";
+  changed_students: number;
+  total_students: number;
+}
+
+export interface RecalcOutcome extends RecalcCoreOutcome {
+  exam_name: string;
+  class_name: string;
 }
 
 export class ResultPanelService {
@@ -161,6 +193,31 @@ export class ResultPanelService {
     config: ResultCalculationConfig,
     statusOverride?: ResultPublishStatus,
   ) {
+    const summaryData = await this.computeSummaryRows(madrasaId, examId, classId, resultMasterId, config);
+    if (!summaryData) {
+      await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
+      return false;
+    }
+
+    await this.repository.saveResultSummaryInTransaction(resultMasterId, summaryData, statusOverride);
+    return true;
+  }
+
+  /** The grading engine itself: marks + config in, ranked/graded summary
+   * rows out, nothing written. Returns null when the session has no marks
+   * at all. Shared by the write path above and the recalculation engine's
+   * dry-run/diff below - there must be exactly one grading implementation.
+   * `rollOverrides` lets a re-grade of an already-processed result keep each
+   * student's original roll snapshot instead of picking up today's roll
+   * (promotions overwrite students.roll every year). */
+  private async computeSummaryRows(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId: number,
+    config: ResultCalculationConfig,
+    rollOverrides?: Map<number, number | null>,
+  ): Promise<Prisma.ResultSummaryCreateManyInput[] | null> {
     const [marks, activeSubjects, absentCounts, exemptedMarks, withheldStudentRows] = await Promise.all([
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findActiveSubjectsForClass(madrasaId, classId),
@@ -169,10 +226,7 @@ export class ResultPanelService {
       this.repository.findWithheldStudentIds(madrasaId, examId, classId, resultMasterId),
     ]);
 
-    if (!marks.length) {
-      await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
-      return false;
-    }
+    if (!marks.length) return null;
 
     const absentCountByStudent = new Map(
       absentCounts.map((row) => [Number(row.studentId), Number(row._count._all || 0)]),
@@ -297,24 +351,35 @@ export class ResultPanelService {
             : DEFAULT_MADRASA_GRADE_FALLBACK,
         status: fullyAbsent ? MARK_STATUS.ABSENT : passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
         rankNo: fullyAbsent ? null : ++rankCounter,
-        roll: rollByStudentId.get(studentId) ?? null,
+        roll: rollOverrides?.has(studentId)
+          ? (rollOverrides.get(studentId) ?? null)
+          : (rollByStudentId.get(studentId) ?? null),
       };
     });
 
-    await this.repository.saveResultSummaryInTransaction(resultMasterId, summaryData, statusOverride);
-    return true;
+    return summaryData;
   }
 
+  /** Called when a class's subject setup changes (full marks, pass mark,
+   * miyari, subject added/removed). Incomplete sessions are cleared exactly
+   * as before (a new subject with no marks yet must not keep an old partial
+   * total). Complete ones are re-graded through the recalculation engine:
+   * unpublished results are refreshed in place, while PUBLISHED/LOCKED ones
+   * are left untouched and only counted in `pending_published` - changing a
+   * subject's setup must never silently rewrite (or, as this used to do,
+   * un-publish) a result guardians can already see. তালিমাত applies it to
+   * those explicitly via recalculateResults(). */
   async reprocessClassResults(madrasaId: number, classId: number) {
-    if (!classId) return { updated: 0 };
+    if (!classId) return { updated: 0, skipped: 0, pending_published: 0 };
 
     const masters = await this.repository.findResultMastersByClass(madrasaId, classId);
-    if (!masters.length) return { updated: 0 };
+    if (!masters.length) return { updated: 0, skipped: 0, pending_published: 0 };
 
     const config = await this.loadCalculationConfig(madrasaId);
 
     let updated = 0;
     let skipped = 0;
+    let pendingPublished = 0;
 
     for (const master of masters) {
       const completeness = await this.getMarkCompleteness(
@@ -330,11 +395,231 @@ export class ResultPanelService {
         continue;
       }
 
-      await this.rebuildResultSummary(madrasaId, master.examId, master.classId, master.id, config);
-      updated += 1;
+      const isFinal = FINAL_RESULT_STATUSES.has(master.status);
+      const outcome = await this.recalculateMaster(madrasaId, master, config, {
+        apply: !isFinal,
+        actorId: null,
+        reason: "SUBJECT_CONFIG_CHANGE",
+      });
+
+      if (outcome.outcome === "UPDATED") updated += 1;
+      else if (outcome.outcome === "WOULD_UPDATE" && isFinal) pendingPublished += 1;
     }
 
-    return { updated, skipped };
+    return { updated, skipped, pending_published: pendingPublished };
+  }
+
+  /** Grades one session again with the CURRENT config and, if anything
+   * differs from what is stored, swaps the new summary in.
+   *
+   * - Not processed yet (DRAFT / marks stages): nothing to be stale - skipped.
+   * - Marks no longer complete: skipped, never cleared (a config change must
+   *   not gut a result; the entry screens already flag missing marks).
+   * - PROCESSING: refreshed in place.
+   * - RESULT_VERIFIED / APPROVED: refreshed and stepped back to PROCESSING,
+   *   because the sign-off no longer describes the numbers (a full-authority
+   *   actor - তালিমাত - re-clears it in the same click as Publish).
+   * - PUBLISHED / LOCKED: refreshed with the status kept, and a RECALCULATE
+   *   ResultSnapshot + activity log written so the change is auditable.
+   * `apply: false` is a dry run (same diff, no writes). */
+  private async recalculateMaster(
+    madrasaId: number,
+    master: { id: number; examId: number; classId: number; status: ResultPublishStatus },
+    config: ResultCalculationConfig,
+    opts: { apply: boolean; actorId: number | null; reason: string },
+  ): Promise<RecalcCoreOutcome> {
+    const isFinal = FINAL_RESULT_STATUSES.has(master.status);
+    const base = {
+      result_master_id: master.id,
+      status: master.status as string,
+      is_published: isFinal,
+      changed_students: 0,
+      total_students: 0,
+    };
+
+    if (!PROCESSED_RESULT_STATUSES.has(master.status)) {
+      return { ...base, outcome: "SKIPPED", skip_reason: "NOT_PROCESSED" };
+    }
+
+    let incomplete = false;
+    try {
+      const completeness = await this.getMarkCompleteness(
+        madrasaId,
+        master.examId,
+        master.classId,
+        master.id,
+      );
+      incomplete = completeness.incompleteStudents.length > 0;
+    } catch (err) {
+      if (!(err instanceof BadRequestError)) throw err;
+      incomplete = true; // no active subjects
+    }
+    if (incomplete) return { ...base, outcome: "SKIPPED", skip_reason: "INCOMPLETE_MARKS" };
+
+    const existing = await this.repository.findResultSummaryForDiff(master.id);
+    const rollOverrides = new Map(existing.map((row) => [row.studentId, row.roll]));
+    const rows = await this.computeSummaryRows(
+      madrasaId,
+      master.examId,
+      master.classId,
+      master.id,
+      config,
+      rollOverrides,
+    );
+    if (!rows) return { ...base, outcome: "SKIPPED", skip_reason: "INCOMPLETE_MARKS" };
+
+    const oldByStudent = new Map(existing.map((row) => [row.studentId, row]));
+    const EPSILON = 1e-6;
+    let changed = 0;
+    for (const row of rows) {
+      const old = oldByStudent.get(Number(row.studentId));
+      if (
+        !old ||
+        String(old.status ?? "") !== String(row.status ?? "") ||
+        (old.generalGrade ?? null) !== (row.generalGrade ?? null) ||
+        (old.madrasaGrade ?? null) !== (row.madrasaGrade ?? null) ||
+        (old.rankNo ?? null) !== (row.rankNo ?? null) ||
+        Math.abs(Number(old.total) - Number(row.total)) > EPSILON ||
+        Math.abs(Number(old.average) - Number(row.average)) > EPSILON
+      ) {
+        changed += 1;
+      }
+    }
+    const newStudentIds = new Set(rows.map((row) => Number(row.studentId)));
+    changed += existing.filter((row) => !newStudentIds.has(row.studentId)).length;
+
+    const sized = { ...base, total_students: rows.length, changed_students: changed };
+    if (changed === 0) return { ...sized, outcome: "UNCHANGED" };
+    if (!opts.apply) return { ...sized, outcome: "WOULD_UPDATE" };
+
+    let masterData: Prisma.ResultMasterUncheckedUpdateInput;
+    if (isFinal) {
+      masterData = { status: master.status };
+    } else if (master.status === RESULT_STATUS.PROCESSING) {
+      masterData = { processedAt: new Date(), processedBy: opts.actorId };
+    } else {
+      masterData = {
+        status: RESULT_STATUS.PROCESSING,
+        processedAt: new Date(),
+        processedBy: opts.actorId,
+        resultVerifiedAt: null,
+        resultVerifiedBy: null,
+        approvedAt: null,
+        approvedBy: null,
+      };
+    }
+    await this.repository.replaceResultSummaryInTransaction(master.id, rows, masterData);
+
+    if (isFinal) {
+      const view = await this.getFullResultView(madrasaId, master.examId, master.classId, master.id);
+      await this.repository.createResultSnapshot(
+        madrasaId,
+        master.id,
+        JSON.stringify(view),
+        "RECALCULATE",
+        opts.actorId,
+      );
+    }
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: opts.actorId,
+      action: "RECALCULATE",
+      entity: "results/recalculate",
+      entity_id: master.id,
+      details: JSON.stringify({
+        reason: opts.reason,
+        previous_status: master.status,
+        changed_students: changed,
+        total_students: rows.length,
+      }),
+    });
+
+    return { ...sized, outcome: "UPDATED" };
+  }
+
+  /** Entry point behind POST /results/recalculate (and the fail-mark hook).
+   * Re-grades every processed session - or just `resultMasterId` - against the
+   * current fail mark / grade bands / subject setup and reports, per
+   * session, what changed.
+   *
+   * Unpublished sessions are always applied (nobody outside the office has
+   * seen them). PUBLISHED/LOCKED ones are applied only when
+   * `includePublished` is set: fail mark is one global setting, so a new
+   * value meant for the next exam must not retroactively flip an old exam
+   * that guardians already saw. When it isn't set they are still diffed and
+   * reported as WOULD_UPDATE, so the caller can offer the choice.
+   * A single-session call is an explicit act on that session, so it always
+   * counts as `includePublished`. `dryRun` writes nothing at all. */
+  async recalculateResults(
+    madrasaId: number,
+    actorId: number | null,
+    opts: {
+      resultMasterId?: number;
+      includePublished?: boolean;
+      dryRun?: boolean;
+      reason?: string;
+    } = {},
+  ) {
+    const single = opts.resultMasterId ? Number(opts.resultMasterId) : 0;
+    const includePublished = Boolean(opts.includePublished) || single > 0;
+    const dryRun = Boolean(opts.dryRun);
+    const reason = opts.reason || (single ? "MANUAL_RECALCULATE" : "BULK_RECALCULATE");
+
+    if (single) {
+      const exists = await this.repository.findResultMasterById(single, madrasaId);
+      if (!exists) throw new NotFoundError("Result session not found");
+    }
+
+    const config = await this.loadCalculationConfig(madrasaId);
+    const masters = await this.repository.findProcessedMasters(madrasaId, single || undefined);
+
+    const results: RecalcOutcome[] = [];
+    for (const master of masters) {
+      const isFinal = FINAL_RESULT_STATUSES.has(master.status);
+      const labels = {
+        exam_name: master.exam?.name || `পরীক্ষা ${master.examId}`,
+        class_name: master.class?.nameBn || master.class?.name || `শ্রেণি ${master.classId}`,
+      };
+
+      try {
+        const core = await this.recalculateMaster(madrasaId, master, config, {
+          apply: !dryRun && (!isFinal || includePublished),
+          actorId,
+          reason,
+        });
+        results.push({ ...core, ...labels });
+      } catch (err) {
+        logger.error(`recalculateResults failed for result master ${master.id}:`, err);
+        results.push({
+          result_master_id: master.id,
+          status: master.status,
+          is_published: isFinal,
+          changed_students: 0,
+          total_students: 0,
+          outcome: "FAILED",
+          ...labels,
+        });
+      }
+    }
+
+    const count = (predicate: (r: RecalcOutcome) => boolean) => results.filter(predicate).length;
+    const totals = {
+      sessions: results.length,
+      updated: count((r) => r.outcome === "UPDATED"),
+      unchanged: count((r) => r.outcome === "UNCHANGED"),
+      skipped: count((r) => r.outcome === "SKIPPED"),
+      failed: count((r) => r.outcome === "FAILED"),
+      // Would change but was not applied (dry run, or a published session
+      // while includePublished is off) - split so the UI can say which.
+      pending_unpublished: count((r) => r.outcome === "WOULD_UPDATE" && !r.is_published),
+      pending_published: count((r) => r.outcome === "WOULD_UPDATE" && r.is_published),
+      changed_students: results
+        .filter((r) => r.outcome === "UPDATED" || r.outcome === "WOULD_UPDATE")
+        .reduce((sum, r) => sum + r.changed_students, 0),
+    };
+
+    return { dry_run: dryRun, include_published: includePublished, totals, results };
   }
 
   /** Public wrapper around the private grading engine, so
@@ -350,18 +635,27 @@ export class ResultPanelService {
     if (!master) throw new NotFoundError("Result session not found");
 
     const config = await this.loadCalculationConfig(madrasaId);
-    // Pass the session's CURRENT status back in as the override - a
+    // Keep each student's original roll snapshot (promotions overwrite
+    // students.roll every year - a re-grade must not rewrite history), and
+    // pass the session's CURRENT status back in as the override: a
     // correction re-grades content (total/average/grade/rank) but must not
     // silently rewind an already PUBLISHED/LOCKED result to DRAFT the way a
     // fresh process run normally would.
-    await this.rebuildResultSummary(
+    const existing = await this.repository.findResultSummaryForDiff(resultMasterId);
+    const rollOverrides = new Map(existing.map((row) => [row.studentId, row.roll]));
+    const rows = await this.computeSummaryRows(
       madrasaId,
       master.examId,
       master.classId,
       resultMasterId,
       config,
-      master.status,
+      rollOverrides,
     );
+    if (!rows) {
+      await this.repository.clearResultSummaryAndMarkDraft(resultMasterId);
+      return;
+    }
+    await this.repository.saveResultSummaryInTransaction(resultMasterId, rows, master.status);
   }
 
   private async getOrCreateSessionId(madrasaId: number, examId: number, classId: number) {
@@ -689,12 +983,17 @@ export class ResultPanelService {
     if (!result_master_id) {
       const master = await this.repository.findLatestResultMasterId(madrasaId, examId, classId);
       if (!master) {
-        return { result_master_id: null, data: [] };
+        return { result_master_id: null, status: null, data: [] };
       }
       result_master_id = master.id;
     }
 
-    const rows = await this.repository.findMarks(madrasaId, examId, classId, result_master_id);
+    // The entry screen switches into "সংশোধন" mode for PUBLISHED/LOCKED
+    // sessions (direct writes are refused there), so it needs the status.
+    const [rows, sessionRow] = await Promise.all([
+      this.repository.findMarks(madrasaId, examId, classId, result_master_id),
+      this.repository.findResultMasterById(result_master_id, madrasaId),
+    ]);
 
     // Prisma returns model fields in camelCase, while the ResultPanel API and
     // marks-entry UI use snake_case. Returning raw rows made edit mode look
@@ -718,7 +1017,7 @@ export class ResultPanelService {
         : {}),
     }));
 
-    return { result_master_id, data };
+    return { result_master_id, status: sessionRow?.status ?? null, data };
   }
 
   async processResult(madrasaId: number, userId: number, body: ProcessResultRequestDto) {
@@ -736,8 +1035,18 @@ export class ResultPanelService {
       result_master_id = master.id;
     }
 
-    const master = await this.repository.findResultMasterById(result_master_id, madrasaId);
+    let master = await this.repository.findResultMasterById(result_master_id, madrasaId);
     if (!master) throw new NotFoundError("Result session not found");
+
+    // The master's status is only advanced by submit/verify events, so a
+    // session can be left at DRAFT/MARKS_SUBMITTED even though every
+    // subject's MarkSubmission is already VERIFIED (e.g. it was reset by an
+    // older subject-config recompute). Re-derive it from the submissions -
+    // the source of truth - before judging whether processing may run.
+    if (master.status === RESULT_STATUS.DRAFT || master.status === RESULT_STATUS.MARKS_SUBMITTED) {
+      await resultWorkflowService.syncStatusFromSubmissions(madrasaId, result_master_id, userId);
+      master = (await this.repository.findResultMasterById(result_master_id, madrasaId)) ?? master;
+    }
 
     // Reprocessing is fine any time between "marks fully verified" and
     // "result verified" (inclusive) - but once a result has moved on to
@@ -756,7 +1065,7 @@ export class ResultPanelService {
         master.status === RESULT_STATUS.LOCKED
       ) {
         throw new ConflictError(
-          "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — এখন পরিবর্তনের জন্য 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।",
+          "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।",
         );
       }
       throw new ConflictError(
