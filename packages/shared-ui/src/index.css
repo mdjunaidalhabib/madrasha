@@ -804,12 +804,21 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   vertical-align: middle;
 }
 
-.academic-result-subject-name-sizer {
+/* The @media print block below isolates the report with
+   `.print-area * { visibility: visible !important }`, which would un-hide
+   this sizer and print every name twice (a garbled overprint). The extra
+   .academic-result-table in the selector out-specifies that rule, and
+   color: transparent means that even if some export path forces visibility
+   on, the copy still paints nothing. */
+.academic-result-table .academic-result-subject-name-sizer {
   display: block;
   padding: 6px 0;
   writing-mode: vertical-rl;
   white-space: nowrap;
-  visibility: hidden;
+  visibility: hidden !important;
+  color: transparent !important;
+  pointer-events: none;
+  user-select: none;
   font-weight: 800;
   line-height: 1.05;
 }
