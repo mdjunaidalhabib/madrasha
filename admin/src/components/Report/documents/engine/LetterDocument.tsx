@@ -1,11 +1,12 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useBrandingStore } from "../../../../store/brandingStore";
 // Routed through the shared Document Designer engine (see
 // components/DocumentDesigner) so Talimat's admin-editable templates and
 // every printed report/document go through one token-rendering entry point.
 // Behaviour is unchanged: this re-exports the exact same implementation.
 import { renderTemplateText } from "@madrasha/shared-ui/src/components/DocumentDesigner/engine";
 
-export type LetterDesignKey = "classic" | "minimal" | "arch" | "custom";
+export type LetterDesignKey = "plain" | "classic" | "minimal" | "arch" | "custom";
 
 export type LetterDocumentProps = {
   row: Record<string, any>;
@@ -16,7 +17,7 @@ export type LetterDocumentProps = {
   bodyClassName?: string;
   template: string;
   footer: ReactNode;
-  /** Visual shell/frame style. Defaults to "classic" (the original look). */
+  /** Visual shell/frame style. Defaults to "plain" - the ordinary report-style page (letterhead + heading + body), no frame. */
   design?: LetterDesignKey;
   /** Only used when design === "custom": a full-page background image. */
   backgroundImage?: string | null;
@@ -31,6 +32,30 @@ export type LetterDocumentProps = {
    * physical page - overriding the full `template` render.
    */
   bodyTextOverride?: string;
+};
+
+/** মাদরাসার লোগো/নাম/ঠিকানা - সাধারণ (plain) ডিজাইনে প্রতিটি ডকুমেন্টের মাথায়, অন্যান্য রিপোর্টের হেডারের মতো। */
+const Letterhead = () => {
+  const branding = useBrandingStore((s) => s.branding);
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+
+  useEffect(() => {
+    fetchBranding();
+  }, [fetchBranding]);
+
+  if (!branding?.name && !branding?.report_logo) return null;
+
+  return (
+    <div className="mb-6 flex items-center justify-center gap-4 border-b-2 border-black pb-3 text-center">
+      {branding.report_logo && (
+        <img src={branding.report_logo} alt="" className="h-16 w-16 shrink-0 object-contain" />
+      )}
+      <div>
+        {branding.name && <p className="text-2xl font-bold text-black">{branding.name}</p>}
+        {branding.address && <p className="mt-0.5 text-sm text-slate-600">{branding.address}</p>}
+      </div>
+    </div>
+  );
 };
 
 const ArchCorners = () => (
@@ -66,7 +91,7 @@ const LetterDocument = ({
   bodyClassName = "mt-8 whitespace-pre-line text-lg leading-9 text-slate-800",
   template,
   footer,
-  design = "classic",
+  design = "plain",
   backgroundImage,
   isFirstPage = true,
   isLastPage = true,
@@ -91,6 +116,15 @@ const LetterDocument = ({
       {isLastPage && <div className="report-block-signature">{footer}</div>}
     </>
   );
+
+  if (design === "plain") {
+    return (
+      <div className="print-page-break bg-white p-2">
+        {isFirstPage && <Letterhead />}
+        {content}
+      </div>
+    );
+  }
 
   if (design === "minimal") {
     return (

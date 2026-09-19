@@ -57,6 +57,11 @@ type ReportContentProps = {
   // selectedTemplateOverrideStore below instead - so this prop is here for
   // direct callers/explicitness and defaults to that store's value.
   selectedTemplateId?: number | null;
+  // id-card / admit-card only: cards per page in "sheet" mode (1 = one
+  // centered card per page, 2 = two per page); null/omitted = the ordinary
+  // flow grid. Decided once for the whole report by PaginatedReportPreview
+  // (see resolveCardsPerSheet) so every page renders consistently.
+  cardsPerSheet?: number | null;
 };
 
 const ReportContent = ({
@@ -74,6 +79,7 @@ const ReportContent = ({
   bodyTextOverride,
   resultStats,
   selectedTemplateId,
+  cardsPerSheet,
   emptyMessage,
 }: ReportContentProps) => {
   const overrideTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
@@ -100,7 +106,9 @@ const ReportContent = ({
   }
 
   if (report.printable === "marksheet") {
-    return <MarksheetList rows={rows} isFirstPage={isFirstPage} isLastPage={isLastPage} />;
+    return (
+      <MarksheetList rows={rows} isFirstPage={isFirstPage} isLastPage={isLastPage} templateId={templateId} />
+    );
   }
   if (report.printable === "result-notice") {
     return (
@@ -113,8 +121,12 @@ const ReportContent = ({
       />
     );
   }
-  if (report.printable === "id-card") return <IdCardGrid rows={rows} templateId={templateId} />;
-  if (report.printable === "admit-card") return <AdmitCardGrid rows={rows} templateId={templateId} />;
+  if (report.printable === "id-card") {
+    return <IdCardGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} />;
+  }
+  if (report.printable === "admit-card") {
+    return <AdmitCardGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} />;
+  }
   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
   if (report.printable === "notice-board") return <NoticeBoardReportView rows={rows} />;
   if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;

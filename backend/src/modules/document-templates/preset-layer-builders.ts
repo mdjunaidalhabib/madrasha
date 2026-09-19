@@ -105,15 +105,16 @@ export function buildIdCardBackground(preset: PresetKey, backgroundImage?: strin
 
 export function buildAdmitCardLayers(preset: PresetKey): DocumentLayerJson[] {
   const colors = PRESET_COLORS[preset];
-  const { width } = DEFAULT_CANVAS_SIZE_PX.ADMIT_CARD;
+  // Landscape 190x132mm canvas (718x499px) - see DEFAULT_CANVAS_SIZE_PX.
+  const { width, height } = DEFAULT_CANVAS_SIZE_PX.ADMIT_CARD;
 
   const photo: DocumentLayerJson = {
     id: "photo",
     type: "photo",
-    x: 40,
-    y: 140,
-    width: 110,
-    height: 130,
+    x: width - 176,
+    y: 120,
+    width: 136,
+    height: 164,
     rotation: 0,
     visible: true,
     locked: false,
@@ -121,50 +122,44 @@ export function buildAdmitCardLayers(preset: PresetKey): DocumentLayerJson[] {
     style: { border: `2px solid ${colors.accent}`, background: "#fff" },
   };
 
+  const row = (id: string, template: string, y: number, bold = false) =>
+    textLayer(id, template, 40, y, width - 240, 26, {
+      textAlign: "left",
+      fontSize: bold ? 17 : 15,
+      fontWeight: bold ? 700 : 400,
+      color: colors.text,
+    });
+
   return [
-    textLayer("heading", "প্রবেশপত্র", 0, 36, width, 36, {
-      fontSize: 22,
+    textLayer("heading", "প্রবেশপত্র", 0, 24, width, 40, {
+      fontSize: 26,
       fontWeight: 700,
       color: colors.heading,
     }),
-    textLayer("exam", "{{exam_name}} - {{exam_year}}", 0, 84, width, 22, {
-      fontSize: 13,
+    textLayer("exam", "{{exam_name}} - {{exam_year}}", 0, 70, width, 26, {
+      fontSize: 15,
       color: colors.text,
     }),
     photo,
-    textLayer("student_name", "নাম: {{student_name}}", 170, 150, width - 190, 20, {
-      textAlign: "left",
-      fontSize: 13,
-      fontWeight: 700,
-      color: colors.text,
-    }),
-    textLayer("father_name", "পিতার নাম: {{father_name}}", 170, 180, width - 190, 18, {
-      textAlign: "left",
-      color: colors.text,
-    }),
-    textLayer("class_name", "শ্রেণি: {{class_name}}", 170, 208, width - 190, 18, {
-      textAlign: "left",
-      color: colors.text,
-    }),
-    textLayer("roll", "রোল: {{roll}}", 170, 236, width - 190, 18, { textAlign: "left", color: colors.text }),
-    textLayer("registration_no", "রেজিস্ট্রেশন: {{registration_no}}", 170, 264, width - 190, 18, {
-      textAlign: "left",
-      color: colors.text,
-    }),
+    row("student_name", "নাম: {{student_name}}", 122, true),
+    row("father_name", "পিতার নাম: {{father_name}}", 158),
+    row("class_name", "শ্রেণি: {{class_name}}", 194),
+    row("roll", "রোল: {{roll}}", 230),
+    row("registration_no", "রেজিস্ট্রেশন: {{registration_no}}", 266),
     {
       id: "qrcode",
       type: "qrcode",
-      x: width - 120,
-      y: 150,
-      width: 90,
-      height: 90,
+      x: width - 156,
+      y: 296,
+      width: 96,
+      height: 96,
       rotation: 0,
       visible: true,
       locked: false,
       content: { field: "registration_no" },
     },
-    textLayer("signature", "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর", width - 220, 700, 180, 30, {
-      fontSize: 10,
+    textLayer("signature", "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর", width - 260, height - 52, 220, 28, {
+      fontSize: 13,
       color: colors.text,
     }),
   ];

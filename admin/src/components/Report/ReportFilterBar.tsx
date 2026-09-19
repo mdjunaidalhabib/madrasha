@@ -15,6 +15,8 @@ import {
   ReportMenuItem,
 } from "../../../src/features/reports/types";
 import type { TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
+import { listBuiltinDesigns } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
+import type { CardsPerPage } from "../../store/selectedTemplateOverrideStore";
 
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
@@ -55,6 +57,22 @@ type ReportFilterBarProps = {
   templates: TemplateListItemDto[];
   selectedTemplateId: number | null;
   onTemplateChange: (value: number | null) => void;
+  cardsPerPage: CardsPerPage;
+  onCardsPerPageChange: (value: CardsPerPage) => void;
+};
+
+// আইডি কার্ড / প্রবেশপত্রের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
+const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: string }[]> = {
+  "id-card": [
+    { value: "auto", label: "বিন্যাস: স্বয়ংক্রিয়" },
+    { value: "grid", label: "একসাথে অনেকগুলো" },
+    { value: "1", label: "প্রতি পাতায় ১টি (মাঝে)" },
+  ],
+  "admit-card": [
+    { value: "auto", label: "বিন্যাস: স্বয়ংক্রিয়" },
+    { value: "1", label: "প্রতি পাতায় ১টি" },
+    { value: "2", label: "প্রতি পাতায় ২টি" },
+  ],
 };
 
 const ReportFilterBar = ({
@@ -88,7 +106,12 @@ const ReportFilterBar = ({
   templates,
   selectedTemplateId,
   onTemplateChange,
+  cardsPerPage,
+  onCardsPerPageChange,
 }: ReportFilterBarProps) => {
+  const builtinDesigns = activeReport.documentType ? listBuiltinDesigns(activeReport.documentType) : [];
+  const cardLayoutOptions = activeReport.printable ? CARD_LAYOUT_OPTIONS[activeReport.printable] : undefined;
+
   return (
     <div className="no-print flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -189,10 +212,39 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="">ডিফল্ট (স্বয়ংক্রিয়)</option>
-            {templates.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>
-                {tpl.name}
+            <option value="">ডিফল্ট (সাধারণ ডিজাইন)</option>
+            {builtinDesigns.length > 0 && (
+              <optgroup label="রেডিমেড ডিজাইন">
+                {builtinDesigns.map((design) => (
+                  <option key={design.id} value={design.id}>
+                    {design.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {templates.length > 0 && (
+              <optgroup label="আমার / সিস্টেম টেমপ্লেট">
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </FilterSelect>
+        )}
+
+        {cardLayoutOptions && (
+          <FilterSelect
+            value={cardsPerPage}
+            onChange={(value) => onCardsPerPageChange(value as CardsPerPage)}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
+          >
+            {cardLayoutOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </FilterSelect>

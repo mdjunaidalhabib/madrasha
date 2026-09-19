@@ -63,6 +63,9 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     documentType: "ADMIT_CARD",
+    // প্রবেশপত্র ১৯০ × ১৩২ মিমি (A4-এর অর্ধেক) - A5 ল্যান্ডস্কেপে ঠিক মাপে বসে, তাই সেটাই ডিফল্ট।
+    defaultPaperSize: "a5",
+    defaultOrientation: "landscape",
     // Admit cards are scoped to ONE exam's registered candidates (see
     // reports.repository.ts's findStudentAdmitCards) - without
     // requiresExam, the page never sent exam_id at all and the backend

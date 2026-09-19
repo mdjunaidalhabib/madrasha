@@ -1,6 +1,5 @@
-import { useEffect } from "react";
-import DocumentPreview from "@madrasha/shared-ui/src/components/DocumentDesigner/DocumentPreview";
-import { useDocumentTemplateDefaultStore } from "../../../store/documentTemplateDefaultStore";
+import { FittedCanvas } from "../documents/engine/CardSheet";
+import { useBrandedRows, useDocumentLayout } from "../documents/engine/useDocumentLayout";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { DEFAULT_MARKSHEET_FIELDS } from "../../../services/brandingApi";
 import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
@@ -17,6 +16,8 @@ type MarksheetListProps = {
   rows: Record<string, any>[];
   isFirstPage?: boolean;
   isLastPage?: boolean;
+  // Explicit design chosen from ReportFilterBar (DB template id). Null/undefined = the plain default marksheet below.
+  templateId?: number | null;
 };
 
 const getSubjects = (row: Record<string, any>): SubjectMark[] => {
@@ -79,47 +80,24 @@ const formatMark = (subject: SubjectMark) => {
   return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
 };
 
-const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true }: MarksheetListProps) => {
+const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId }: MarksheetListProps) => {
   const row = rows[0] || {};
   const rowStatus = String(row?.status || "").toUpperCase();
   const failed = rowStatus === "FAIL";
   const isAbsent = rowStatus === "ABSENT";
   const subjects = getSubjects(row);
 
-  const template = useDocumentTemplateDefaultStore((s) => s.defaults.MARKSHEET);
-  const templateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.MARKSHEET);
-  const fetchDefault = useDocumentTemplateDefaultStore((s) => s.fetchDefault);
+  // ডিফল্ট = নিচের সাধারণ মার্কশিট; ব্যবহারকারী ডিজাইন বেছে নিলে তবেই টেমপ্লেট।
+  const { layout, loaded: layoutLoaded } = useDocumentLayout("MARKSHEET", templateId);
+  const [brandedRow] = useBrandedRows([row]);
   const marksheetFields = useBrandingStore((s) => s.branding?.marksheet_fields) || DEFAULT_MARKSHEET_FIELDS;
-  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
 
-  useEffect(() => {
-    fetchDefault("MARKSHEET");
-    fetchBranding();
-  }, [fetchDefault, fetchBranding]);
+  if (layout) return <FittedCanvas layout={layout} row={brandedRow} />;
 
-  const version = template?.published || template?.draft;
-
-  if (version) {
-    return (
-      <DocumentPreview
-        className="print-page-break"
-        layout={{
-          id: String(template!.id),
-          kind: "marksheet",
-          width: version.width,
-          height: version.height,
-          background: version.background || undefined,
-          layers: version.layers,
-        }}
-        row={row}
-      />
-    );
-  }
-
-  // Not yet resolved (still loading) - render nothing this pass rather than
+  // Selected DB template still loading - render nothing this pass rather than
   // flashing the fallback layout, PaginatedReportPreview re-measures once
-  // `loaded` flips.
-  if (!templateLoaded) return null;
+  // it arrives.
+  if (!layoutLoaded) return null;
 
   // Total/average have no per-subject serial or full-marks concept of their
   // own, so their row merges the (ক্রম + বিষয়ের নাম) and (প্রাপ্ত নম্বর +

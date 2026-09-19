@@ -27,6 +27,9 @@ export type ReportMenuItem = {
   // "সকল বিভাগ" (still offered as an explicit choice in the dropdown).
   requiresDivision?: boolean;
   defaultOrientation?: "portrait" | "landscape";
+  // Paper size this report starts on (default "a4") - e.g. the admit card
+  // starts on A5 landscape, the size its 190x132mm design fits exactly.
+  defaultPaperSize?: "a4" | "a5";
   // Set on the 5 document-template-driven report types (id-card, admit-card
   // /admit-card-with-rules, certificate, testimonial, transfer-letter) so
   // ReportFilterBar/ReportShell know to offer a "pick a non-default

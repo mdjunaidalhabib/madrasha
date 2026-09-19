@@ -24,7 +24,7 @@ const ImageElement = ({ layer, row, className }: DocumentElementProps<ImageLayer
         className={className}
         style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}
       >
-        <span style={{ fontSize: 10, color: "#94a3b8" }}>{content?.alt || "image"}</span>
+        <span style={{ fontSize: 10, color: "#94a3b8" }}>{content?.alt ?? "image"}</span>
       </div>
     );
   }

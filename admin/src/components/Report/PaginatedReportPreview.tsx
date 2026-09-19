@@ -14,7 +14,10 @@ import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins 
 import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks";
 import { splitTextToFit } from "./pagination/splitTextToFit";
 import { getPrintableConfig } from "./pagination/printableConfig";
-import { useDocumentTemplateDefaultStore } from "../../store/documentTemplateDefaultStore";
+import { useDocumentTemplateDetailStore } from "../../store/documentTemplateDetailStore";
+import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
+import { PageGeometryContext } from "./pagination/PageGeometryContext";
+import { resolveCardsPerSheet } from "./documents/engine/cardSheetLayout";
 import { useBrandingStore } from "../../store/brandingStore";
 
 type PaginatedReportPreviewProps = {
@@ -648,7 +651,8 @@ const PaginatedReportPreview = ({
   // template finishes loading - same pattern as the document.fonts.ready
   // re-measurement a few lines down. AdmitCardGrid is a plain fixed layout
   // (no async template), so it needs no such subscription.
-  const idCardTemplateLoaded = useDocumentTemplateDefaultStore((s) => s.loaded.ID_CARD);
+  const templateLoadVersion = useDocumentTemplateDetailStore((s) => s.version);
+  const cardsPerPageOption = useSelectedTemplateOverrideStore((s) => s.cardsPerPage);
 
   const branding = useBrandingStore((s) => s.branding);
   // "লেটারহেড" print mode: the physical paper is already pre-printed at a
@@ -658,6 +662,14 @@ const PaginatedReportPreview = ({
     !!branding?.report_header_footer_enabled && branding?.report_print_mode === "letterhead";
 
   const config = getPrintableConfig(report);
+  // id-card (one student / "প্রতি পাতায় ১টি") and admit-card render as "sheets":
+  // each page is split into equal cells and every card is scaled to sit
+  // centered in its own cell. Sheet pages are pure arithmetic (rows / perSheet)
+  // so they need no off-screen measurement. null = the ordinary flow grid.
+  const cardsPerSheet =
+    config.kind === "grid"
+      ? resolveCardsPerSheet(report.printable, cardsPerPageOption, rows.length, paperSize, orientation)
+      : null;
   // Marksheet always carries the madrasa logo/name header even on the
   // "ডকুমেন্ট সমূহ" page (hideBrandHeader=true there) - unlike id-card/
   // admit-card/certificate etc. which already brand themselves via their
@@ -770,6 +782,7 @@ const PaginatedReportPreview = ({
     }
 
     if (config.kind === "grid") {
+      if (cardsPerSheet) return [];
       return [{ key: "grid", rows, showBrand: showBrandAtAll, density: "comfortable" }];
     }
 
@@ -785,7 +798,7 @@ const PaginatedReportPreview = ({
       density: "comfortable",
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll]);
+  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll, cardsPerSheet]);
 
   useLayoutEffect(() => {
     if (loading || !rows.length) {
@@ -890,6 +903,18 @@ const PaginatedReportPreview = ({
               });
               globalStartIndex += pageRows.length;
             });
+          });
+        }
+      } else if (config.kind === "grid" && cardsPerSheet) {
+        for (let start = 0, pageIndex = 0; start < rows.length; start += cardsPerSheet, pageIndex += 1) {
+          nextPages.push({
+            key: `${report.key}-sheet-${pageIndex}`,
+            rows: rows.slice(start, start + cardsPerSheet),
+            startIndex: start,
+            isFirstPageOfGroup: pageIndex === 0,
+            isFirstPage: true,
+            isLastPage: true,
+            density: "comfortable",
           });
         }
       } else if (config.kind === "grid") {
@@ -1009,7 +1034,8 @@ const PaginatedReportPreview = ({
     config.kind,
     showBrandAtAll,
     measureTargets,
-    idCardTemplateLoaded,
+    templateLoadVersion,
+    cardsPerSheet,
     branding,
     repeatTableHeader,
   ]);
@@ -1055,6 +1081,7 @@ const PaginatedReportPreview = ({
   }, [paperSize, orientation]);
 
   const scaleStyle = { "--report-preview-scale": previewScale } as CSSProperties;
+  const pageGeometry = useMemo(() => ({ paperSize, orientation, margins }), [paperSize, orientation, margins]);
 
   const statusPage: ResolvedPage = {
     key: `${report.key}-status`,
@@ -1109,7 +1136,7 @@ const PaginatedReportPreview = ({
       : null;
 
   return (
-    <>
+    <PageGeometryContext.Provider value={pageGeometry}>
       {measureTargets.length > 0 && (
         <div aria-hidden="true" style={{ position: "fixed", top: 0, left: "-99999px", visibility: "hidden" }}>
           {measureTargets.map((target) => (
@@ -1148,6 +1175,7 @@ const PaginatedReportPreview = ({
                   selectedClassName={selectedClassName}
                   startIndex={0}
                   isFirstPage={target.isFirstPage ?? true}
+                  cardsPerSheet={cardsPerSheet}
                   isLastPage={target.isLastPage ?? true}
                   resultStats={target.resultStats}
                   subjectSourceRows={target.subjectSourceRows}
@@ -1314,6 +1342,7 @@ const PaginatedReportPreview = ({
                         startIndex={page.startIndex}
                         isFirstPage={page.isFirstPage}
                         isLastPage={page.isLastPage}
+                        cardsPerSheet={cardsPerSheet}
                         bodyTextOverride={page.bodyTextOverride}
                         resultStats={page.resultStats}
                         subjectSourceRows={page.groupRows}
@@ -1325,7 +1354,7 @@ const PaginatedReportPreview = ({
               })}
         </div>
       </div>
-    </>
+    </PageGeometryContext.Provider>
   );
 };
 

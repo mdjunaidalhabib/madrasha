@@ -16,7 +16,8 @@ import { getRowClassId, getRowDivisionId } from "@madrasha/shared-ui/src/utils/r
 import { filterPeopleBySearch } from "../../utils/personSearch";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { listTemplates, type TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
-import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
+import { useSelectedTemplateOverrideStore, type CardsPerPage } from "../../store/selectedTemplateOverrideStore";
+import { getBuiltinDesign } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
@@ -111,6 +112,8 @@ const ReportShell = ({
   const [templates, setTemplates] = useState<TemplateListItemDto[]>([]);
   const selectedTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
   const setSelectedTemplateId = useSelectedTemplateOverrideStore((s) => s.setTemplateId);
+  const cardsPerPage = useSelectedTemplateOverrideStore((s) => s.cardsPerPage);
+  const setCardsPerPage = useSelectedTemplateOverrideStore((s) => s.setCardsPerPage);
 
   const activeReport = useMemo(
     () => reports.find((item) => item.key === activeKey) || reports[0],
@@ -320,9 +323,21 @@ const ReportShell = ({
     setSelectedSubject("");
     setPage(1);
     setOrientation(activeReport.defaultOrientation || "portrait");
+    setPaperSize(activeReport.defaultPaperSize || "a4");
     setSelectedTemplateId(null);
+    setCardsPerPage("auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey, activeReport.defaultOrientation]);
+  }, [activeKey, activeReport.defaultOrientation, activeReport.defaultPaperSize]);
+
+  // ডিজাইন বদলালে কাগজের দিকও সেটার সাথে মিলিয়ে নেয় (ল্যান্ডস্কেপ সনদ → ল্যান্ডস্কেপ পাতা),
+  // যাতে ডিজাইন ছোট হয়ে আঁটার বদলে পুরো পাতা জুড়ে বসে। DB টেমপ্লেটের মাপ তালিকায় নেই,
+  // তাই শুধু বিল্ট-ইন ডিজাইনে প্রযোজ্য।
+  const handleTemplateChange = (id: number | null) => {
+    setSelectedTemplateId(id);
+    const design = getBuiltinDesign(id);
+    if (design) setOrientation(design.width > design.height ? "landscape" : "portrait");
+    else if (id === null) setOrientation(activeReport.defaultOrientation || "portrait");
+  };
 
   useEffect(() => {
     setMargins(getDefaultPageMargins(paperSize));
@@ -346,6 +361,16 @@ const ReportShell = ({
 
     const templateId = searchParams.get("template_id");
     if (templateId) setSelectedTemplateId(Number(templateId));
+
+    const cardsPerPageParam = searchParams.get("cards_per_page");
+    if (
+      cardsPerPageParam === "auto" ||
+      cardsPerPageParam === "grid" ||
+      cardsPerPageParam === "1" ||
+      cardsPerPageParam === "2"
+    ) {
+      setCardsPerPage(cardsPerPageParam as CardsPerPage);
+    }
 
     const paperSizeParam = searchParams.get("paper_size");
     if (paperSizeParam === "a4" || paperSizeParam === "a5") setPaperSize(paperSizeParam);
@@ -582,6 +607,7 @@ const ReportShell = ({
       class_id: selectedClass || undefined,
       subject: selectedSubject || undefined,
       template_id: selectedTemplateId ? String(selectedTemplateId) : undefined,
+      cards_per_page: cardsPerPage !== "auto" ? cardsPerPage : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
     },
@@ -770,7 +796,9 @@ const ReportShell = ({
               onMarginsChange={setMargins}
               templates={templates}
               selectedTemplateId={selectedTemplateId}
-              onTemplateChange={setSelectedTemplateId}
+              onTemplateChange={handleTemplateChange}
+              cardsPerPage={cardsPerPage}
+              onCardsPerPageChange={setCardsPerPage}
             />
 
             {warning && (

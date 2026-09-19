@@ -7,14 +7,14 @@ const MM_TO_PX = 96 / 25.4;
 const mmToPx = (mm: number) => Math.round(mm * MM_TO_PX);
 
 /** Default canvas size (mm) per document type. ID_CARD (54x85.6mm, CR80)
- * and ADMIT_CARD (A5, 148x210mm) match the physical dimensions already
+ * and ADMIT_CARD (landscape 190x132mm - exactly two per A4 portrait, one per A5 landscape, both at the default page margins) match the physical dimensions already
  * used by the existing print CSS (frontend/src/index.css). The remaining
  * types default to A4/A5 as a reasonable generic starting point - they
  * have no seeded system templates in this pass, so these values only
  * matter the first time someone creates a template of that type. */
 const DOCUMENT_CANVAS_SIZE_MM: Record<DocumentType, { width: number; height: number }> = {
   ID_CARD: { width: 54, height: 85.6 },
-  ADMIT_CARD: { width: 148, height: 210 },
+  ADMIT_CARD: { width: 190, height: 132 },
   CERTIFICATE: { width: 210, height: 297 },
   CLEARANCE_CERTIFICATE: { width: 210, height: 297 },
   TESTIMONIAL: { width: 210, height: 297 },
