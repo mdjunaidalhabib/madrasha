@@ -91,6 +91,12 @@ export default function FullResultTable({
   const isResultVerified = rawStatus === "RESULT_VERIFIED";
   const isApproved = rawStatus === "APPROVED";
   const statusBadge = resultStatusBadge(rawStatus);
+  // Backend publishResult auto-chains verify-result -> approve for an actor
+  // holding both result.verify and result.approve (hasFullResultAuthority),
+  // so those users can Publish straight from PROCESSING/RESULT_VERIFIED.
+  // Anyone else must wait for APPROVED.
+  const canPublishNow =
+    isApproved || ((isProcessing || isResultVerified) && canVerifyResult && canApprove);
 
   const handleDelete = () => {
     const resultMasterId = dataList[0]?.result_master_id;
@@ -208,7 +214,7 @@ export default function FullResultTable({
             </button>
           )}
 
-          {onPublish && isApproved && !alreadyPublished && (
+          {onPublish && canPublishNow && !alreadyPublished && (
             <button
               onClick={onPublish}
               disabled={publishing}
