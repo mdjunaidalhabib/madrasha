@@ -4,11 +4,15 @@ import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { ABSENT_MARK } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useAuthStore } from "../../store/authStore";
+import { hasPermission } from "../../utils/permissions";
 
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
 import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
+import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
+import { RESULT_PERMISSIONS } from "../../components/ResultPanel/resultStatus";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 interface Division {
@@ -83,6 +87,14 @@ export default function ResultPreviewPage() {
   const push = useToastStore((state) => state.push);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const user = useAuthStore((s) => s.user);
+  const permissions = useAuthStore((s) => s.permissions);
+  const canVerifyResult =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultVerify) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
+  const canApprove =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultApprove) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
 
   const examId = searchParams.get("examId") || "";
   const classId = searchParams.get("classId") || "";
@@ -100,6 +112,9 @@ export default function ResultPreviewPage() {
   const [publishing, setPublishing] = useState(false);
   const [applyingRoll, setApplyingRoll] = useState(false);
   const [canUndoRoll, setCanUndoRoll] = useState(false);
+  const [verifyingResult, setVerifyingResult] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejectResultOpen, setRejectResultOpen] = useState(false);
 
   const [failMark, setFailMark] = useState(33);
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
@@ -279,6 +294,67 @@ export default function ResultPreviewPage() {
     }
   };
 
+  // Result-level checker steps between "প্রসেস" and "Publish" — a result
+  // must be verified, then approved (by someone other than whoever verified
+  // it, unless they're MUHTAMIM/SUPER_ADMIN — enforced server-side), before
+  // /results/publish will accept it. Both actions already existed as
+  // backend endpoints; this just wires the missing UI for them.
+  const handleVerifyResult = async () => {
+    if (!resultMasterId) return push("error", "No processed result found");
+
+    try {
+      setVerifyingResult(true);
+      const res = await api.post(`/results/${resultMasterId}/verify-result`, {});
+      if (res.data?.valid === false) {
+        push("error", (res.data?.issues || []).join(" | ") || "ফলাফলে সমস্যা পাওয়া গেছে");
+      } else {
+        push("success", "ফলাফল যাচাই করা হয়েছে");
+      }
+      await loadSummary();
+      await loadOverview();
+    } catch (err: any) {
+      logger.error("Verify result error:", err);
+      push("error", err?.response?.data?.message || "যাচাই করা যায়নি");
+    } finally {
+      setVerifyingResult(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!resultMasterId) return push("error", "No processed result found");
+
+    try {
+      setApproving(true);
+      await api.post(`/results/${resultMasterId}/approve`, { approve: true });
+      await loadSummary();
+      await loadOverview();
+      push("success", "ফলাফল অনুমোদিত হয়েছে");
+    } catch (err: any) {
+      logger.error("Approve result error:", err);
+      push("error", err?.response?.data?.message || "অনুমোদন করা যায়নি");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleConfirmRejectResult = async (reason: string) => {
+    if (!resultMasterId) return;
+
+    try {
+      setApproving(true);
+      await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
+      await loadSummary();
+      await loadOverview();
+      setRejectResultOpen(false);
+      push("success", "ফলাফল প্রত্যাখ্যান করা হয়েছে");
+    } catch (err: any) {
+      logger.error("Reject result error:", err);
+      push("error", err?.response?.data?.message || "প্রত্যাখ্যান করা যায়নি");
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const handlePublish = async () => {
     if (!resultMasterId) return push("error", "No processed result found");
 
@@ -419,6 +495,13 @@ export default function ResultPreviewPage() {
             applyingRoll={applyingRoll}
             canUndoRoll={canUndoRoll}
             onUndoRollByRank={handleUndoRollByRank}
+            canVerifyResult={canVerifyResult}
+            onVerifyResult={handleVerifyResult}
+            verifyingResult={verifyingResult}
+            canApprove={canApprove}
+            onApprove={handleApprove}
+            approving={approving}
+            onRequestRejectResult={() => setRejectResultOpen(true)}
           />
         </>
       ) : (
@@ -442,6 +525,17 @@ export default function ResultPreviewPage() {
           onSave={handleSaveStudentMarks}
         />
       )}
+
+      <ReasonPromptModal
+        open={rejectResultOpen}
+        title="ফলাফল প্রত্যাখ্যান করুন"
+        message="এই ফলাফল প্রত্যাখ্যান করা হলে এটি আবার 'প্রসেসিং' অবস্থায় ফিরে যাবে এবং পুনরায় যাচাই প্রয়োজন হবে।"
+        label="প্রত্যাখ্যানের কারণ"
+        confirmText="প্রত্যাখ্যান করুন"
+        loading={approving}
+        onCancel={() => setRejectResultOpen(false)}
+        onConfirm={handleConfirmRejectResult}
+      />
     </div>
   );
 }

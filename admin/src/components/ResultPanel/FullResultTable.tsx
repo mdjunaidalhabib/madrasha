@@ -3,6 +3,7 @@
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { toBanglaDigits, formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { resultStatusBadge } from "./resultStatus";
 
 interface SummaryMark {
   book_id: number;
@@ -50,6 +51,13 @@ interface Props {
   onPublish?: () => void;
   onApplyRollByRank?: () => void;
   onUndoRollByRank?: () => void;
+  canVerifyResult?: boolean;
+  onVerifyResult?: () => void;
+  verifyingResult?: boolean;
+  canApprove?: boolean;
+  onApprove?: () => void;
+  approving?: boolean;
+  onRequestRejectResult?: () => void;
 }
 
 export default function FullResultTable({
@@ -66,12 +74,23 @@ export default function FullResultTable({
   onPublish,
   onApplyRollByRank,
   onUndoRollByRank,
+  canVerifyResult = false,
+  onVerifyResult,
+  verifyingResult = false,
+  canApprove = false,
+  onApprove,
+  approving = false,
+  onRequestRejectResult,
 }: Props) {
   const dataList = Array.isArray(summary) ? summary : [];
   const subjectList = Array.isArray(books) ? books : [];
 
-  const alreadyPublished =
-    dataList.length > 0 && dataList[0]?.publish_status === "PUBLISHED";
+  const rawStatus = dataList[0]?.publish_status;
+  const alreadyPublished = rawStatus === "PUBLISHED" || rawStatus === "LOCKED";
+  const isProcessing = rawStatus === "PROCESSING";
+  const isResultVerified = rawStatus === "RESULT_VERIFIED";
+  const isApproved = rawStatus === "APPROVED";
+  const statusBadge = resultStatusBadge(rawStatus);
 
   const handleDelete = () => {
     const resultMasterId = dataList[0]?.result_master_id;
@@ -98,14 +117,10 @@ export default function FullResultTable({
         <div>
           <h2 className="text-base sm:text-lg font-semibold">📊 Full Result Table</h2>
           {dataList.length > 0 && (
-            <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">
+            <p className="text-sm text-gray-500 mt-1 dark:text-slate-400 flex items-center gap-2">
               Status:{" "}
-              <span
-                className={`font-semibold ${
-                  alreadyPublished ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"
-                }`}
-              >
-                {alreadyPublished ? "PUBLISHED" : "DRAFT"}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge.className}`}>
+                {statusBadge.label}
               </span>
             </p>
           )}
@@ -160,7 +175,40 @@ export default function FullResultTable({
             </button>
           )}
 
-          {onPublish && !alreadyPublished && (
+          {isProcessing && canVerifyResult && onVerifyResult && (
+            <button
+              onClick={onVerifyResult}
+              disabled={verifyingResult}
+              title="নম্বর প্রসেস সম্পন্ন — এখন ফলাফল যাচাই করুন"
+              className="flex-1 sm:flex-none bg-sky-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+            >
+              {verifyingResult ? "যাচাই হচ্ছে..." : "✅ ফলাফল যাচাই করুন"}
+            </button>
+          )}
+
+          {isResultVerified && canApprove && onApprove && (
+            <button
+              onClick={onApprove}
+              disabled={approving}
+              title="যাচাইকৃত ফলাফল অনুমোদন করুন"
+              className="flex-1 sm:flex-none bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+            >
+              {approving ? "অনুমোদন হচ্ছে..." : "👍 অনুমোদন করুন"}
+            </button>
+          )}
+
+          {isResultVerified && canApprove && onRequestRejectResult && (
+            <button
+              onClick={onRequestRejectResult}
+              disabled={approving}
+              title="ফলাফল প্রত্যাখ্যান করে আবার প্রসেসিং-এ ফেরত পাঠান"
+              className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+            >
+              প্রত্যাখ্যান
+            </button>
+          )}
+
+          {onPublish && isApproved && !alreadyPublished && (
             <button
               onClick={onPublish}
               disabled={publishing}
