@@ -149,11 +149,11 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
           {subjects.length > 0 && (
             <table className="marksheet-table mt-4 w-full border-collapse text-black">
               <thead>
-                <tr className="bg-emerald-800 text-white">
-                  <th className="w-12 border border-emerald-900 px-2 py-2 text-center font-bold">ক্রম</th>
-                  <th className="border border-emerald-900 px-3 py-2 text-left font-bold">বিষয়ের নাম</th>
-                  <th className="w-24 border border-emerald-900 px-3 py-2 text-center font-bold">প্রাপ্ত নম্বর</th>
-                  <th className="w-24 border border-emerald-900 px-3 py-2 text-center font-bold">পূর্ণমান</th>
+                <tr className="bg-emerald-100 text-emerald-950">
+                  <th className="w-12 border border-emerald-400 px-2 py-2 text-center font-bold">ক্রম</th>
+                  <th className="border border-emerald-400 px-3 py-2 text-left font-bold">বিষয়ের নাম</th>
+                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">প্রাপ্ত নম্বর</th>
+                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">পূর্ণমান</th>
                 </tr>
               </thead>
               <tbody>
