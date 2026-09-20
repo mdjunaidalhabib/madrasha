@@ -14,8 +14,10 @@ import {
   NotificationSettingUpdateDto,
   SendNotificationRequestDto,
 } from "./notification.dto";
+import { renderTemplate, resolveEventConfig } from "./notification.utils";
 import {
   DEFAULT_NOTIFICATION_TEMPLATES,
+  isEventEnabledByDefault,
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENTS,
   NotificationEventKey,
@@ -26,11 +28,6 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
   throw new ApiError(friendlyMessage, 500);
 };
 
-/** Replaces `{key}` tokens in a template with values from `vars`; a token
- * with no matching var is left untouched rather than silently blanked out,
- * so a typo in a template is obvious instead of producing a broken message. */
-const renderTemplate = (template: string, vars: Record<string, string | number>) =>
-  template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
 
 export class NotificationService {
   constructor(private readonly repository: NotificationRepository = notificationRepository) {}
@@ -225,7 +222,7 @@ export class NotificationService {
       const row = byKey.get(eventKey);
       return {
         eventKey,
-        isEnabled: row ? !!row.isEnabled : true,
+        isEnabled: row ? !!row.isEnabled : isEventEnabledByDefault(eventKey),
         template: row?.template || DEFAULT_NOTIFICATION_TEMPLATES[eventKey],
       };
     });
@@ -249,7 +246,15 @@ export class NotificationService {
 
     return this.repository.upsertSetting(madrasaId, eventKey, {
       isEnabled:
-        dto.isEnabled === undefined ? (existing ? existing.isEnabled : 1) : dto.isEnabled ? 1 : 0,
+        dto.isEnabled === undefined
+          ? existing
+            ? existing.isEnabled
+            : isEventEnabledByDefault(eventKey as NotificationEventKey)
+              ? 1
+              : 0
+          : dto.isEnabled
+            ? 1
+            : 0,
       template:
         dto.template?.trim() ||
         existing?.template ||
@@ -305,6 +310,13 @@ export class NotificationService {
 
   /* ================= AUTO-TRIGGER (called from other modules) ================= */
 
+  /** Whether an auto-notification event should fire for a madrasa, and with
+   * which template: master switch on AND the event's own setting enabled
+   * (no row = the event's default, see DEFAULT_DISABLED_EVENTS). */
+  async resolveEventConfig(madrasaId: number, eventKey: NotificationEventKey) {
+    return resolveEventConfig(this.repository, madrasaId, eventKey);
+  }
+
   /** Fire-and-forget SMS for a business event (admission approved, student
    * info updated, fee payment recorded). Never throws - a notification
    * failure must never affect the underlying admission/update/payment. */
@@ -317,15 +329,10 @@ export class NotificationService {
     try {
       if (!phone) return;
 
-      const masterEnabled = await this.repository.findMasterEnabled(madrasaId);
-      if (!masterEnabled) return;
+      const config = await this.resolveEventConfig(madrasaId, eventKey);
+      if (!config.enabled) return;
 
-      const setting = await this.repository.findSetting(madrasaId, eventKey);
-      const enabled = setting ? !!setting.isEnabled : true;
-      if (!enabled) return;
-
-      const template = setting?.template || DEFAULT_NOTIFICATION_TEMPLATES[eventKey];
-      const message = renderTemplate(template, vars);
+      const message = renderTemplate(config.template, vars);
 
       await this.send(madrasaId, undefined, { channel: "SMS", recipients: [phone], message });
     } catch (err) {

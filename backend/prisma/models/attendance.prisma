@@ -36,6 +36,10 @@ model Attendance {
   markedById Int?   @map("marked_by")
   source     String @default("manual") @map("source") @db.VarChar(20)
 
+  /// First device check-in time (biometric devices, source "k40"). Null for
+  /// manual/kiosk rows and for rows written before this column existed.
+  checkInAt DateTime? @map("check_in_at") @db.Timestamptz(3)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

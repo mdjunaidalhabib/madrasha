@@ -178,6 +178,15 @@ function mergeBrandLayoutPatch(
   return next;
 }
 
+const SIGNATURE_POSITIONS = ["left", "center", "right"] as const;
+
+/** Keeps a valid `position` on the sig_* keys only (info fields ignore it). */
+function withSignaturePosition(item: MarksheetFieldItem, position: unknown): MarksheetFieldItem {
+  if (!item.key.startsWith("sig_")) return item;
+  if (!(SIGNATURE_POSITIONS as readonly unknown[]).includes(position)) return item;
+  return { ...item, position: position as MarksheetFieldItem["position"] };
+}
+
 /** Validates + normalizes a full marksheet_fields replacement (not a partial
  * patch - the client always resends the whole ordered list, same as the
  * document designer's layer arrays). Drops nothing silently on a malformed
@@ -201,7 +210,12 @@ function sanitizeMarksheetFields(
     }
     if (seen.has(key)) throw new BadRequestError("Duplicate marksheet field key");
     seen.add(key);
-    cleaned.push({ key, visible: !!(item as { visible?: unknown }).visible });
+    cleaned.push(
+      withSignaturePosition(
+        { key, visible: !!(item as { visible?: unknown }).visible },
+        (item as { position?: unknown }).position,
+      ),
+    );
   }
 
   for (const key of MARKSHEET_FIELD_KEYS) {
@@ -225,7 +239,7 @@ function fillMarksheetFields(stored: unknown): MarksheetFieldItem[] {
       continue;
     }
     seen.add(key);
-    cleaned.push({ key, visible: !!item?.visible });
+    cleaned.push(withSignaturePosition({ key, visible: !!item?.visible }, item?.position));
   }
   for (const key of MARKSHEET_FIELD_KEYS) {
     if (!seen.has(key)) cleaned.push({ key, visible: true });

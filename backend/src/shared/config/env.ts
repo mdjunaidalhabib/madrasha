@@ -125,4 +125,22 @@ export const env = {
   // just Cloudinary API secrets) before they're stored in the database.
   // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   secretsEncryptionKey: process.env.SECRETS_ENCRYPTION_KEY || "",
+
+  /* ================= ATTENDANCE DEVICES (ZKTeco K40 connector) ================= */
+  // 32-byte (64 hex char) key used to AES-256-GCM encrypt the K40 comm
+  // password stored on AttendanceDevice. Separate from SECRETS_ENCRYPTION_KEY
+  // so the two can be rotated independently.
+  deviceSecretEncKey: process.env.DEVICE_SECRET_ENC_KEY || "",
+  // IANA timezone used to decide which calendar day a punch belongs to.
+  attendanceTimezone: process.env.ATTENDANCE_TIMEZONE || "Asia/Dhaka",
+  // In-process worker that sends queued attendance SMS (sms_queue table).
+  smsWorkerEnabled: (process.env.SMS_WORKER_ENABLED || "true") !== "false",
+  smsWorkerIntervalMs: Number(process.env.SMS_WORKER_INTERVAL_MS || 15_000),
+  smsWorkerBatchSize: Number(process.env.SMS_WORKER_BATCH_SIZE || 20),
+  smsMaxAttempts: Number(process.env.SMS_MAX_ATTEMPTS || 5),
+  smsBackoffBaseSeconds: Number(process.env.SMS_BACKOFF_BASE_SECONDS || 60),
+  smsBackoffMaxSeconds: Number(process.env.SMS_BACKOFF_MAX_SECONDS || 3600),
+  smsStaleProcessingSeconds: Number(process.env.SMS_STALE_PROCESSING_SECONDS || 300),
+  // A queued attendance SMS older than this is failed as "expired" instead of sent.
+  smsMaxAgeHours: Number(process.env.SMS_MAX_AGE_HOURS || 12),
 };

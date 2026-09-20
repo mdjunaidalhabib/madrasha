@@ -2,6 +2,7 @@ import { FittedCanvas } from "../documents/engine/CardSheet";
 import { useBrandedRows, useDocumentLayout } from "../documents/engine/useDocumentLayout";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { DEFAULT_MARKSHEET_FIELDS } from "../../../services/brandingApi";
+import { SIGNATURE_LABELS, getSignatureSettings } from "./marksheetSignatures";
 import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 type SubjectMark = {
@@ -74,6 +75,12 @@ const getInfoFields = (row: Record<string, any>, fieldSettings: { key: string; v
     .filter((field) => field.visible && INFO_FIELD_DEFS[field.key])
     .map((field) => ({ label: INFO_FIELD_DEFS[field.key].label, value: INFO_FIELD_DEFS[field.key].value(row) }));
 
+const SIGNATURE_CELL_CLASS = {
+  left: "col-start-1 row-start-1 justify-self-start",
+  center: "col-start-2 row-start-1 justify-self-center",
+  right: "col-start-3 row-start-1 justify-self-end",
+} as const;
+
 const formatMark = (subject: SubjectMark) => {
   if (subject.is_absent) return "অনু";
   const mark = subject.mark;
@@ -91,6 +98,8 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
   const { layout, loaded: layoutLoaded } = useDocumentLayout("MARKSHEET", templateId);
   const [brandedRow] = useBrandedRows([row]);
   const marksheetFields = useBrandingStore((s) => s.branding?.marksheet_fields) || DEFAULT_MARKSHEET_FIELDS;
+  // Signature toggles + sides share the marksheet_fields list; missing = shown at the default side.
+  const visibleSignatures = getSignatureSettings(marksheetFields).filter((signature) => signature.visible);
 
   if (layout) return <FittedCanvas layout={layout} row={brandedRow} />;
 
@@ -122,14 +131,14 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
       {isFirstPage && (
         <div className="report-block-heading">
           <div className="border-b-2 border-black pb-3 text-center text-black">
-            <h2 className="text-2xl font-bold text-black">মার্কশিট</h2>
-            <p className="mt-1 text-sm font-semibold text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
-            <p className="mt-1 text-sm font-semibold text-black">
+            <h2 className="marksheet-title font-bold text-black">মার্কশিট</h2>
+            <p className="mt-1 text-lg font-semibold text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
+            <p className="mt-1 text-lg font-semibold text-black">
               {cellValue(row, "exam_name")} - {cellValue(row, "exam_year")} ইং
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-x-6 gap-y-2 py-3 text-sm text-black">
+          <div className="marksheet-info mt-4 grid grid-cols-3 gap-x-6 gap-y-2 px-6 py-3 text-left text-lg text-black">
             {getInfoFields(row, marksheetFields).map((field) => (
               <p key={field.label}>
                 <b>{field.label}:</b> {field.value}
@@ -138,38 +147,38 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
           </div>
 
           {subjects.length > 0 && (
-            <table className="mt-4 w-full border-collapse text-sm text-black">
+            <table className="marksheet-table mt-4 w-full border-collapse text-black">
               <thead>
-                <tr className="bg-slate-100">
-                  <th className="w-12 border border-black px-2 py-2 text-center">ক্রম</th>
-                  <th className="border border-black px-3 py-2 text-left">বিষয়ের নাম</th>
-                  <th className="w-24 border border-black px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
-                  <th className="w-24 border border-black px-3 py-2 text-center">পূর্ণমান</th>
+                <tr className="bg-emerald-800 text-white">
+                  <th className="w-12 border border-emerald-900 px-2 py-2 text-center font-bold">ক্রম</th>
+                  <th className="border border-emerald-900 px-3 py-2 text-left font-bold">বিষয়ের নাম</th>
+                  <th className="w-24 border border-emerald-900 px-3 py-2 text-center font-bold">প্রাপ্ত নম্বর</th>
+                  <th className="w-24 border border-emerald-900 px-3 py-2 text-center font-bold">পূর্ণমান</th>
                 </tr>
               </thead>
               <tbody>
                 {subjects.map((subject, index) => (
-                  <tr key={subject.book_id ?? index}>
-                    <td className="border border-black px-2 py-1.5 text-center">
+                  <tr key={subject.book_id ?? index} className={index % 2 === 0 ? "bg-white" : "bg-emerald-50"}>
+                    <td className="border border-emerald-700 px-2 py-2 text-center font-semibold text-emerald-900">
                       {toBanglaDigits(index + 1)}
                     </td>
-                    <td className="border border-black px-3 py-1.5">{subject.subject_name || "—"}</td>
-                    <td className="border border-black px-3 py-1.5 text-center font-semibold">
+                    <td className="border border-emerald-700 px-3 py-2 font-medium">{subject.subject_name || "—"}</td>
+                    <td className="border border-emerald-700 px-3 py-2 text-center font-bold text-emerald-900">
                       {formatMark(subject)}
                     </td>
-                    <td className="border border-black px-3 py-1.5 text-center">
+                    <td className="border border-emerald-700 px-3 py-2 text-center">
                       {subject.full_marks === undefined || subject.full_marks === null
                         ? "—"
                         : formatReportValue(subject.full_marks)}
                     </td>
                   </tr>
                 ))}
-                {summaryRows.map((summary) => (
-                  <tr key={summary.label} className="bg-slate-50">
-                    <td colSpan={2} className="border border-black px-3 py-1.5 font-semibold">
+                {summaryRows.map((summary, index) => (
+                  <tr key={summary.label} className={index === 0 ? "bg-amber-100" : "bg-amber-50"}>
+                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-base font-bold text-emerald-900">
                       {summary.label}
                     </td>
-                    <td colSpan={2} className="border border-black px-3 py-1.5 text-center font-bold">
+                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-center text-base font-bold">
                       {summary.value}
                     </td>
                   </tr>
@@ -180,14 +189,18 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
         </div>
       )}
 
-      {isLastPage && (
-        <div className="report-block-signature mt-16 flex justify-between px-2 text-black">
-          <div className="w-40 border-t border-black pt-0.5 text-center text-sm font-medium">
-            শ্রেণি শিক্ষকের স্বাক্ষর
-          </div>
-          <div className="w-40 border-t border-black pt-0.5 text-center text-sm font-medium">
-            মুহতামিমের স্বাক্ষর
-          </div>
+      {isLastPage && visibleSignatures.length > 0 && (
+        <div className="report-block-signature mt-20 marksheet-signatures grid grid-cols-3 gap-x-4 px-12 text-black">
+          {/* Each signature sits in the column of its chosen side (বাম/মাঝ/ডান); the side
+              padding keeps it off the page edge. The line above each label is exactly as
+              wide as the text. */}
+          {visibleSignatures.map((signature) => (
+            <div key={signature.key} className={SIGNATURE_CELL_CLASS[signature.position]}>
+              <div className="whitespace-nowrap border-t border-black px-1 pt-0.5 text-center text-base font-semibold">
+                {SIGNATURE_LABELS[signature.key]}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </section>

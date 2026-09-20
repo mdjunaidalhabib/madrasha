@@ -775,6 +775,24 @@ async function main() {
         nameBn: "কিওস্ক ডিভাইস",
         sortOrder: 3,
       },
+      {
+        keyName: "attendance_devices",
+        name: "Attendance Devices",
+        nameBn: "উপস্থিতি ডিভাইস",
+        sortOrder: 4,
+      },
+      {
+        keyName: "attendance_device_mapping",
+        name: "K40 User Mapping",
+        nameBn: "K40 ইউজার ম্যাপিং",
+        sortOrder: 5,
+      },
+      {
+        keyName: "attendance_device_today",
+        name: "Today's Device Attendance",
+        nameBn: "আজকের উপস্থিতি (ডিভাইস)",
+        sortOrder: 6,
+      },
     ],
     communication: [
       { keyName: "single_send", name: "Single Send", nameBn: "একক পাঠান", sortOrder: 1 },
@@ -845,6 +863,8 @@ async function main() {
     { keyName: "attendance.read", name: "উপস্থিতি দেখুন" },
     { keyName: "attendance.mark", name: "উপস্থিতি নিন" },
     { keyName: "kiosk.manage", name: "কিওস্ক ডিভাইস ব্যবস্থাপনা" },
+    { keyName: "attendance_device.manage", name: "বায়োমেট্রিক ডিভাইস ব্যবস্থাপনা" },
+    { keyName: "attendance_device.view", name: "বায়োমেট্রিক ডিভাইস ও উপস্থিতি দেখুন" },
 
     { keyName: "routine.read", name: "রুটিন দেখুন" },
     { keyName: "routine.manage", name: "রুটিন ব্যবস্থাপনা" },

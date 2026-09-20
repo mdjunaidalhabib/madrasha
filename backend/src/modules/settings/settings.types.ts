@@ -24,9 +24,14 @@ export interface BrandLayoutData {
 // শিক্ষার্থীর নাম/etc, see MARKSHEET_FIELD_KEYS in settings.constants.ts) -
 // `visible` toggles it off the print, and the array's own order IS the
 // display order (no separate position number needed).
+export type MarksheetSignaturePosition = "left" | "center" | "right";
+
 export interface MarksheetFieldItem {
   key: string;
   visible: boolean;
+  // Only meaningful for the sig_* keys: which side of the marksheet the
+  // signature line sits on (defaults: teacher left, principal right).
+  position?: MarksheetSignaturePosition;
 }
 
 export interface BrandingData {

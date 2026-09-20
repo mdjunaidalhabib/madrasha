@@ -44,12 +44,16 @@ export const BRAND_LAYOUT_DEFAULTS: BrandLayout = {
   footer_height: 12,
 };
 
+export type MarksheetSignaturePosition = "left" | "center" | "right";
+
 // One row of the marksheet's info-field grid (রোল নম্বর/রেজিস্ট্রেশন নম্বর/
 // শিক্ষার্থীর নাম/etc - see MARKSHEET_FIELD_LABELS_BN below). `visible`
 // toggles it off the print; the array's own order IS the display order.
 export type MarksheetFieldItem = {
   key: string;
   visible: boolean;
+  // Only for the sig_* keys: which side of the marksheet the signature sits on.
+  position?: MarksheetSignaturePosition;
 };
 
 // Mirrors backend/src/modules/settings/settings.constants.ts's
@@ -58,15 +62,17 @@ export type MarksheetFieldItem = {
 // untouched madrasa's marksheet prints pixel-identical to before this
 // feature existed.
 export const DEFAULT_MARKSHEET_FIELDS: MarksheetFieldItem[] = [
+  "student_name",
+  "father_name",
   "roll",
   "registration_no",
   "date_of_birth",
-  "student_name",
-  "father_name",
   "madrasa_grade",
   "general_grade",
   "status",
   "rank_no",
+  "sig_teacher",
+  "sig_principal",
 ].map((key) => ({ key, visible: true }));
 
 export const MARKSHEET_FIELD_LABELS_BN: Record<string, string> = {
@@ -79,6 +85,8 @@ export const MARKSHEET_FIELD_LABELS_BN: Record<string, string> = {
   general_grade: "গ্রেড",
   status: "ফলাফল",
   rank_no: "মেধাস্থান",
+  sig_teacher: "শ্রেণি শিক্ষকের স্বাক্ষর",
+  sig_principal: "মুহতামিমের স্বাক্ষর",
 };
 
 export type BrandingPayload = {

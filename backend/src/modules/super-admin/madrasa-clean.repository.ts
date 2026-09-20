@@ -109,6 +109,11 @@ export class MadrasaCleanRepository {
       await tx.teacher.deleteMany({ where: { madrasaId: id } });
       await tx.staff.deleteMany({ where: { madrasaId: id } });
       await tx.kioskDevice.deleteMany({ where: { madrasaId: id } });
+      // Biometric (K40) devices + their punch logs, user maps, SMS queue.
+      await tx.attendanceDeviceLog.deleteMany({ where: { madrasaId: id } });
+      await tx.attendanceDeviceUserMap.deleteMany({ where: { madrasaId: id } });
+      await tx.attendanceDevice.deleteMany({ where: { madrasaId: id } });
+      await tx.smsQueue.deleteMany({ where: { madrasaId: id } });
 
       // Academic structure & sessions (safe now - nothing with a Restrict FK
       // to Session/MadrasaDivision/MadrasaClass/MadrasaBook remains)

@@ -47,7 +47,7 @@ const MODULE_GROUPS: { key: string; label: string; prefixes: string[] }[] = [
   { key: "accounts", label: "হিসাব বিভাগ", prefixes: ["accounts.", "payroll."] },
   { key: "students", label: "শিক্ষার্থী", prefixes: ["students."] },
   { key: "fee", label: "ফি ব্যবস্থাপনা", prefixes: ["fee."] },
-  { key: "attendance", label: "উপস্থিতি", prefixes: ["attendance.", "kiosk."] },
+  { key: "attendance", label: "উপস্থিতি", prefixes: ["attendance.", "attendance_device.", "kiosk."] },
   { key: "communication", label: "SMS/ইমেইল", prefixes: ["notifications."] },
   { key: "library", label: "লাইব্রেরি", prefixes: ["library."] },
   { key: "settings", label: "সেটিং", prefixes: ["settings.", "roles.manage", "users.", "website.manage"] },

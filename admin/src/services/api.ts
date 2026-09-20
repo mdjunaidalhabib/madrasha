@@ -4,6 +4,14 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 
+declare module "axios" {
+  interface AxiosRequestConfig {
+    /** Opt out of the generic error toast below - for background polling and
+     * calls whose caller renders the error inline itself. */
+    silent?: boolean;
+  }
+}
+
 const baseURL = API_BASE_URL;
 
 // withCredentials so the httpOnly refresh-token cookie (set by
@@ -269,7 +277,7 @@ api.interceptors.response.use(
     // logoutSession in profileApi.ts, which swallows its own errors) - local
     // logout proceeds regardless, so a failure here shouldn't surface an
     // error toast to the user.
-    if (!requestUrl.includes("/auth/logout")) {
+    if (!requestUrl.includes("/auth/logout") && !originalRequest?.silent) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong";
       useToastStore.getState().push("error", msg);
     }

@@ -7,6 +7,7 @@ import { ACTIVITY_LOG_RETENTION_DAYS } from "../modules/activity/activity.consta
 import { billingService } from "../modules/billing/billing.service";
 import { authRepository } from "../modules/auth/auth.repository";
 import { feeService } from "../modules/fee/fee.service";
+import { smsQueueService } from "../modules/attendance-device/sms-queue.service";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -152,12 +153,22 @@ export const startCurrentMonthInvoiceScheduler = (): void => {
 };
 
 /**
+ * Starts the in-process worker that sends queued attendance SMS (sms_queue).
+ * Guarded by SMS_WORKER_ENABLED, single-flight per process, and safe with
+ * several backend instances (rows are claimed with FOR UPDATE SKIP LOCKED).
+ */
+export const startSmsQueueWorker = (): void => {
+  smsQueueService.start();
+};
+
+/**
  * Wires SIGTERM/SIGINT to close the HTTP server and the Prisma
  * connection pool cleanly instead of the process being killed mid-request.
  */
 export const registerGracefulShutdown = (server: Server): void => {
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully`);
+    smsQueueService.stop();
     server.close(async () => {
       await prisma.$disconnect();
       logger.info("Shutdown complete");

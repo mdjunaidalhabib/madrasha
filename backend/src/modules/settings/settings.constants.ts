@@ -84,15 +84,20 @@ export const BRAND_LOGO_POSITIONS = ["left", "center", "right"] as const;
 // DEFAULT_MARKSHEET_FIELDS is the original hardcoded order/visibility (every
 // field visible) an untouched madrasa's marksheet already prints.
 export const MARKSHEET_FIELD_KEYS = [
+  "student_name",
+  "father_name",
   "roll",
   "registration_no",
   "date_of_birth",
-  "student_name",
-  "father_name",
   "madrasa_grade",
   "general_grade",
   "status",
   "rank_no",
+  // Signature-line toggles (visibility only, never part of the info grid) -
+  // stored in the same list so no extra DB column is needed. Filled in at the
+  // end, visible by default, for tenants that saved their list before these existed.
+  "sig_teacher",
+  "sig_principal",
 ] as const;
 
 export const DEFAULT_MARKSHEET_FIELDS: { key: string; visible: boolean }[] = MARKSHEET_FIELD_KEYS.map(

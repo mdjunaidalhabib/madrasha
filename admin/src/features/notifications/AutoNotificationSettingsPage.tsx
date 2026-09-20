@@ -37,6 +37,11 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
     hint: "কোনো পরীক্ষার ফি চালু (activate) করলে সংশ্লিষ্ট শিক্ষার্থীর অভিভাবককে স্বয়ংক্রিয়ভাবে SMS যাবে",
     placeholders: "{name} {amount} {exam}",
   },
+  ATTENDANCE_PRESENT: {
+    title: "ডিভাইসে উপস্থিতির পর",
+    hint: "K40 ডিভাইসে শিক্ষার্থীর আঙুলের ছাপ নেওয়ার পর উপস্থিতি সার্ভারে সেভ হলে অভিভাবককে দিনে একবার SMS যাবে (ডিফল্টভাবে বন্ধ)",
+    placeholders: "{name} {class} {roll} {time} {date}",
+  },
 };
 
 const AutoNotificationSettingsPage = () => {

@@ -17,6 +17,7 @@ import {
 import type { TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
 import { listBuiltinDesigns } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 import type { CardsPerPage } from "../../store/selectedTemplateOverrideStore";
+import { MarksheetSettingsToggleButton } from "./student/MarksheetSignatureControls";
 
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
@@ -59,6 +60,9 @@ type ReportFilterBarProps = {
   onTemplateChange: (value: number | null) => void;
   cardsPerPage: CardsPerPage;
   onCardsPerPageChange: (value: CardsPerPage) => void;
+  /** Marksheet report only: whether the docked settings panel is open, and how to toggle it. */
+  marksheetPanelOpen?: boolean;
+  onMarksheetPanelToggle?: () => void;
 };
 
 // আইডি কার্ড / প্রবেশপত্রের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
@@ -108,6 +112,8 @@ const ReportFilterBar = ({
   onTemplateChange,
   cardsPerPage,
   onCardsPerPageChange,
+  marksheetPanelOpen = false,
+  onMarksheetPanelToggle,
 }: ReportFilterBarProps) => {
   const builtinDesigns = activeReport.documentType ? listBuiltinDesigns(activeReport.documentType) : [];
   const cardLayoutOptions = activeReport.printable ? CARD_LAYOUT_OPTIONS[activeReport.printable] : undefined;
@@ -248,6 +254,10 @@ const ReportFilterBar = ({
               </option>
             ))}
           </FilterSelect>
+        )}
+
+        {activeReport.printable === "marksheet" && onMarksheetPanelToggle && (
+          <MarksheetSettingsToggleButton open={marksheetPanelOpen} onToggle={onMarksheetPanelToggle} />
         )}
 
         {activeReport.documentType && (

@@ -1,0 +1,24 @@
+{
+  "apiBaseUrl": "https://api.your-madrasa-domain.com",
+  "madrasaSlug": "your-madrasa-slug",
+  "institutionId": 1,
+  "deviceId": "K40-GATE-01",
+  "deviceKeyFile": "./secrets/device.key",
+  "localQueuePath": "./data",
+  "logDir": "./logs",
+  "logLevel": "info",
+  "logMaxSizeMB": 5,
+  "logKeep": 5,
+  "pollIntervalSec": 30,
+  "preferCloudSettings": true,
+  "batchSize": 200,
+  "retry": {
+    "baseSec": 5,
+    "maxSec": 300,
+    "jitter": 0.2
+  },
+  "deviceTimezoneOffset": "+06:00",
+  "syncedRetentionDays": 7,
+  "disableDeviceDuringRead": false,
+  "clearDeviceLogsAfterSync": false
+}

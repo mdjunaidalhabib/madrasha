@@ -415,6 +415,9 @@ export class SidebarService {
           { key: "attendance_report", label: "উপস্থিতি রিপোর্ট", sortOrder: 1 },
           { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 2 },
           { key: "kiosk_devices", label: "কিওস্ক ডিভাইস", sortOrder: 3 },
+          { key: "attendance_devices", label: "উপস্থিতি ডিভাইস", sortOrder: 4 },
+          { key: "attendance_device_mapping", label: "K40 ইউজার ম্যাপিং", sortOrder: 5 },
+          { key: "attendance_device_today", label: "আজকের উপস্থিতি (ডিভাইস)", sortOrder: 6 },
         ];
         for (const fallback of fallbackAttendanceChildren) {
           if (!children.some((child) => child.key === fallback.key)) {

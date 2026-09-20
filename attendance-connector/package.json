@@ -1,0 +1,22 @@
+{
+  "name": "attendance-connector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows attendance connector: ZKTeco K40 -> local durable queue -> HTTPS cloud API",
+  "main": "dist/cli.js",
+  "bin": { "connector": "dist/cli.js" },
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node scripts/run-tests.js",
+    "e2e": "npm run build && node tools/e2e-sim.js",
+    "fake-k40": "node tools/fake-k40.js",
+    "fake-cloud": "node tools/fake-cloud.js",
+    "start": "node dist/cli.js run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.6.0"
+  }
+}

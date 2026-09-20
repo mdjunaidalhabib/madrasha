@@ -1,0 +1,159 @@
+// ============================================================
+// ATTENDANCE DEVICES — ZKTeco K40 (and similar) biometric terminals
+// Chain: K40 -> local Connector -> HTTPS API -> DB -> Attendance -> SMS queue
+// See src/modules/attendance-device/API.md for the contract.
+// ============================================================
+
+/// Sync state of a raw punch event as seen by the cloud. The connector owns
+/// the richer local queue states (PENDING/SYNCING); the cloud only stores
+/// what it received: SYNCED = accepted, FAILED = rejected with `failReason`.
+enum DeviceLogSyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  FAILED
+}
+
+enum SmsQueueStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+/// One physical biometric terminal per row, reached by a local Connector
+/// process that authenticates with `apiKeyHash` (header `x-device-key`).
+model AttendanceDevice {
+  id         Int    @id @default(autoincrement())
+  madrasaId  Int    @map("madrasa_id")
+  /// Public device_id string the connector sends; unique per madrasa.
+  deviceCode String @map("device_code") @db.VarChar(64)
+  name       String @db.VarChar(100)
+  ipAddress  String @map("ip_address") @db.VarChar(100)
+  port       Int    @default(4370)
+
+  /// K40 communication key, AES-256-GCM encrypted ("iv:tag:cipher" base64)
+  /// with env DEVICE_SECRET_ENC_KEY. Never returned by any admin API; only
+  /// the authenticated connector `config` endpoint decrypts it.
+  commPassword String? @map("comm_password") @db.VarChar(500)
+
+  /// SHA-256 hex of the raw connector key (raw key is shown exactly once).
+  apiKeyHash String  @unique @map("api_key_hash") @db.VarChar(64)
+  isActive   Boolean @default(true) @map("is_active")
+
+  /// Last status REPORTED by the connector: online | offline | unknown.
+  /// The admin API derives the effective status from lastSeenAt at read time.
+  status String @default("unknown") @db.VarChar(16)
+
+  /// Last connector heartbeat / authenticated request.
+  lastSeenAt          DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  /// Last successful connector <-> K40 communication.
+  lastDeviceContactAt DateTime? @map("last_device_contact_at") @db.Timestamptz(3)
+  /// Last successful ingest (at least one accepted event).
+  lastSyncAt          DateTime? @map("last_sync_at") @db.Timestamptz(3)
+  /// Short, sanitized error text from the connector.
+  lastError           String?   @map("last_error") @db.VarChar(255)
+  connectorVersion    String?   @map("connector_version") @db.VarChar(32)
+
+  pollIntervalSec Int @default(30) @map("poll_interval_sec")
+
+  /// Admin asked for a connection test; cleared when the connector reports test_result.
+  testRequestedAt DateTime? @map("test_requested_at") @db.Timestamptz(3)
+  lastTestAt      DateTime? @map("last_test_at") @db.Timestamptz(3)
+  lastTestOk      Boolean?  @map("last_test_ok")
+  lastTestMessage String?   @map("last_test_message") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  logs    AttendanceDeviceLog[]
+
+  @@unique([madrasaId, deviceCode], map: "uniq_att_device_code")
+  @@index([madrasaId], map: "idx_att_devices_madrasa")
+  @@map("attendance_devices")
+}
+
+/// Maps a K40 "User ID" to a student. Fallback resolution (no row here):
+/// Student.fingerprintId == deviceUserId. Nothing else is guessed.
+model AttendanceDeviceUserMap {
+  id           Int      @id @default(autoincrement())
+  madrasaId    Int      @map("madrasa_id")
+  deviceUserId String   @map("device_user_id") @db.VarChar(64)
+  studentId    Int      @map("student_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, deviceUserId], map: "uniq_att_device_map_user")
+  @@unique([madrasaId, studentId], map: "uniq_att_device_map_student")
+  @@map("attendance_device_user_maps")
+}
+
+/// Raw punch events received from a connector (idempotent by eventId).
+model AttendanceDeviceLog {
+  id           Int                 @id @default(autoincrement())
+  madrasaId    Int                 @map("madrasa_id")
+  deviceId     Int                 @map("device_id")
+  /// Idempotency key supplied by the connector.
+  eventId      String              @map("event_id") @db.VarChar(100)
+  deviceUserId String              @map("device_user_id") @db.VarChar(64)
+  punchedAt    DateTime            @map("punched_at") @db.Timestamptz(3)
+  verifyType   String?             @map("verify_type") @db.VarChar(32)
+  inOutState   String?             @map("in_out_state") @db.VarChar(32)
+  /// Null = unmapped (or ineligible student, see failReason).
+  studentId    Int?                @map("student_id")
+  /// Attendance row this punch produced/touched (plain pointer, no FK).
+  attendanceId Int?                @map("attendance_id")
+  syncStatus   DeviceLogSyncStatus @default(SYNCED) @map("sync_status")
+  receivedAt   DateTime            @default(now()) @map("received_at") @db.Timestamptz(3)
+  /// Rejection reason (syncStatus FAILED) or note such as 'student_inactive'.
+  failReason   String?             @map("fail_reason") @db.VarChar(255)
+
+  madrasa Madrasa          @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  device  AttendanceDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  student Student?         @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@unique([madrasaId, deviceId, eventId], map: "uniq_att_log_event")
+  @@unique([madrasaId, deviceId, deviceUserId, punchedAt], map: "uniq_att_log_punch")
+  @@index([madrasaId, punchedAt], map: "idx_att_log_madrasa_punched")
+  @@index([madrasaId, studentId, punchedAt], map: "idx_att_log_student_punched")
+  @@index([madrasaId, deviceUserId, studentId], map: "idx_att_log_user_student")
+  @@map("attendance_device_logs")
+}
+
+/// Outbound SMS queue (no queue existed before; NotificationLog is only an
+/// audit trail of attempts). A worker claims PENDING rows and sends them via
+/// NotificationService (which does billing + provider + NotificationLog).
+/// Whether an attendance SMS is queued at all is decided by the existing
+/// auto-notification settings (NotificationSetting ATTENDANCE_PRESENT).
+model SmsQueue {
+  id            Int            @id @default(autoincrement())
+  madrasaId     Int            @map("madrasa_id")
+  /// e.g. attn:{madrasaId}:{studentId}:{YYYY-MM-DD}:{rule} - one SMS per rule.
+  dedupeKey     String         @unique @map("dedupe_key") @db.VarChar(191)
+  recipient     String         @db.VarChar(30)
+  message       String         @db.Text
+  status        SmsQueueStatus @default(PENDING)
+  attempts      Int            @default(0)
+  maxAttempts   Int            @default(5) @map("max_attempts")
+  nextAttemptAt DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lockedAt      DateTime?      @map("locked_at") @db.Timestamptz(3)
+  lastError     String?        @map("last_error") @db.VarChar(500)
+  sentAt        DateTime?      @map("sent_at") @db.Timestamptz(3)
+  /// What produced this SMS: 'attendance'.
+  source        String         @default("attendance") @db.VarChar(30)
+  studentId     Int?           @map("student_id")
+  attendanceId  Int?           @map("attendance_id")
+  forDate       DateTime?      @map("for_date") @db.Date
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt], map: "idx_sms_queue_status_next")
+  @@index([madrasaId, forDate], map: "idx_sms_queue_madrasa_date")
+  @@map("sms_queue")
+}

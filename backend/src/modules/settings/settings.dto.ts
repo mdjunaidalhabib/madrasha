@@ -34,7 +34,7 @@ export interface UpdateBrandingRequestDto {
   // Full replacement list (not a partial patch) - the client always sends
   // every field it knows about, in the order it wants them displayed, same
   // "resend the whole thing" pattern the designer's layer arrays use.
-  marksheet_fields?: { key?: unknown; visible?: unknown }[];
+  marksheet_fields?: { key?: unknown; visible?: unknown; position?: unknown }[];
 }
 
 export interface UpdateSectionToggleRequestDto {

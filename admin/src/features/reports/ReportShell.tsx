@@ -5,6 +5,7 @@ import PaginatedReportPreview from "../../components/Report/PaginatedReportPrevi
 import { Orientation, PaperSize, PageMargins } from "../../components/common/DataExportPrintActions";
 import { getDefaultPageMargins } from "../../components/Report/pagination/pageGeometry";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
+import { MarksheetSettingsPanel } from "../../components/Report/student/MarksheetSignatureControls";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import FilterSelect from "../../components/common/FilterSelect";
 import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
@@ -107,6 +108,8 @@ const ReportShell = ({
   const [orientation, setOrientation] = useState<Orientation>("portrait");
   const [margins, setMargins] = useState<PageMargins>(() => getDefaultPageMargins("a4"));
   const [page, setPage] = useState(1);
+  // Marksheet report only: docked settings panel next to the preview.
+  const [marksheetPanelOpen, setMarksheetPanelOpen] = useState(false);
   const [pageSize, setPageSize] = useState(100);
   const [totalCount, setTotalCount] = useState(0);
   const [templates, setTemplates] = useState<TemplateListItemDto[]>([]);
@@ -178,6 +181,8 @@ const ReportShell = ({
 
     return picked.length ? { ...activeReport, columns: picked } : activeReport;
   }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys]);
+
+  const showMarksheetPanel = effectiveReport.printable === "marksheet" && marksheetPanelOpen;
 
   // The "ফলাফল" / "ফলাফল (মেধাক্রম অনুযায়ী)" reports are the only ones whose
   // endpoint understands page/page_size - every other report keeps loading
@@ -656,7 +661,11 @@ const ReportShell = ({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5">
         <ReportSidebar reports={reports} activeKey={activeReport.key} onChange={setActiveKey} />
 
-        <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <main
+          className={`min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${
+            showMarksheetPanel ? "overflow-clip" : "overflow-hidden"
+          }`}
+        >
           <div className="no-print border-b border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
             <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0">
@@ -799,6 +808,8 @@ const ReportShell = ({
               onTemplateChange={handleTemplateChange}
               cardsPerPage={cardsPerPage}
               onCardsPerPageChange={setCardsPerPage}
+              marksheetPanelOpen={marksheetPanelOpen}
+              onMarksheetPanelToggle={() => setMarksheetPanelOpen((prev) => !prev)}
             />
 
             {warning && (
@@ -808,21 +819,28 @@ const ReportShell = ({
             )}
           </div>
 
-          <div className="print-preview-wrap">
-            <PaginatedReportPreview
-              loading={loading}
-              report={effectiveReport}
-              rows={displayRows}
-              selectedDivisionName={selectedDivisionName}
-              selectedDivisionId={selectedDivisionId}
-              selectedClassName={selectedClassName}
-              repeatTableHeader={repeatTableHeader}
-              hideBrandHeader={hideBrandHeader}
-              paperSize={paperSize}
-              orientation={orientation}
-              margins={margins}
-              emptyMessage={previewEmptyMessage}
-            />
+          {/* Wrapper only becomes a flex row while the marksheet panel is open, so the
+              preview keeps the same place in the tree (no remount) and prints exactly as before. */}
+          <div className={showMarksheetPanel ? "flex flex-col bg-[#eef2f7] lg:flex-row lg:items-start" : undefined}>
+            <div className="min-w-0 flex-1">
+              <div className="print-preview-wrap">
+                <PaginatedReportPreview
+                  loading={loading}
+                  report={effectiveReport}
+                  rows={displayRows}
+                  selectedDivisionName={selectedDivisionName}
+                  selectedDivisionId={selectedDivisionId}
+                  selectedClassName={selectedClassName}
+                  repeatTableHeader={repeatTableHeader}
+                  hideBrandHeader={hideBrandHeader}
+                  paperSize={paperSize}
+                  orientation={orientation}
+                  margins={margins}
+                  emptyMessage={previewEmptyMessage}
+                />
+              </div>
+            </div>
+            {showMarksheetPanel && <MarksheetSettingsPanel onClose={() => setMarksheetPanelOpen(false)} />}
           </div>
         </main>
       </div>

@@ -26,6 +26,9 @@ const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdm
 const RejectedAdmissionsPage = lazy(() => import("../features/students/RejectedAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
 const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
+const AttendanceDevicesPage = lazy(() => import("../features/attendance-device/AttendanceDevicesPage"));
+const DeviceMappingPage = lazy(() => import("../features/attendance-device/DeviceMappingPage"));
+const DeviceTodayPage = lazy(() => import("../features/attendance-device/DeviceTodayPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
@@ -349,6 +352,36 @@ const madrasaAdminChildren = [
   {
     path: "attendance/kiosk-devices",
     element: <ModuleGuard module="attendance">{withSuspense(<AttendanceKioskDevicesPage />)}</ModuleGuard>,
+  },
+  {
+    path: "attendance/devices",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["attendance_device.view", "attendance_device.manage"]}>
+          {withSuspense(<AttendanceDevicesPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/device-mapping",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission="attendance_device.manage">
+          {withSuspense(<DeviceMappingPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/device-today",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["attendance_device.view", "attendance_device.manage"]}>
+          {withSuspense(<DeviceTodayPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "attendance/report",

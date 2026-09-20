@@ -45,6 +45,7 @@ import websiteRoutes from "../modules/public-website/website.routes";
 
 // 🗓️ Phase 1: Attendance, Routine, Promotion
 import attendanceRoutes from "../modules/attendance/attendance.routes";
+import attendanceDeviceRoutes from "../modules/attendance-device/attendance-device.routes";
 import routineRoutes from "../modules/routine/routine.routes";
 import promotionRoutes from "../modules/promotion/promotion.routes";
 import sessionRoutes from "../modules/session/session.routes";
@@ -136,6 +137,15 @@ router.use("/guardian", guardianRoutes);
 ========================================================= */
 router.use("/billing", billingRoutes);
 router.use("/super/message-billing", billingAdminRoutes);
+
+/* =========================================================
+   🖐️ ATTENDANCE DEVICES (ZKTeco K40 via local Connector)
+   Mounted here for the same reason as /guardian and /billing above: the
+   connector authenticates with a device key (no JWT), so it must be matched
+   before the "/"-root routers below whose blanket authMiddleware would
+   reject it. The router applies its own tenantMiddleware + per-route auth.
+========================================================= */
+router.use("/attendance-devices", attendanceDeviceRoutes);
 
 /* =========================================================
    📄 REPORT PDF DOWNLOAD (public, id-guarded)

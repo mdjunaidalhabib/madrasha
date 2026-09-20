@@ -8,7 +8,6 @@ import {
   FileText,
   Image as ImageIcon,
   LayoutTemplate,
-  ListChecks,
   MapPin,
   Move,
   RotateCcw,
@@ -26,16 +25,14 @@ import {
   deleteBrandingImage,
   saveBranding,
   BRAND_LAYOUT_DEFAULTS,
-  DEFAULT_MARKSHEET_FIELDS,
-  MARKSHEET_FIELD_LABELS_BN,
   type BrandingPayload,
   type BrandLayout,
   type BrandLayoutPatch,
   type BrandLogoPosition,
-  type MarksheetFieldItem,
   type ReportPrintMode,
 } from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
+import { MarksheetControlsPanel } from "../../../components/Report/student/MarksheetSignatureControls";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 // Small shared row: label + live value chip + range slider. Used for every
@@ -141,7 +138,6 @@ export default function BrandingSettingsPage() {
   const [footerImage, setFooterImage] = useState<string | null>(null);
   const [printMode, setPrintMode] = useState<ReportPrintMode>("normal");
   const [brandLayout, setBrandLayout] = useState<BrandLayout>(BRAND_LAYOUT_DEFAULTS);
-  const [marksheetFields, setMarksheetFields] = useState<MarksheetFieldItem[]>(DEFAULT_MARKSHEET_FIELDS);
 
   const [loading, setLoading] = useState(true);
 
@@ -173,7 +169,6 @@ export default function BrandingSettingsPage() {
     setFooterImage(branding.report_footer_image ?? null);
     setPrintMode(branding.report_print_mode ?? "normal");
     setBrandLayout({ ...BRAND_LAYOUT_DEFAULTS, ...(branding.report_brand_layout ?? {}) });
-    setMarksheetFields(branding.marksheet_fields?.length ? branding.marksheet_fields : DEFAULT_MARKSHEET_FIELDS);
   }, [branding]);
 
   // The backend only touches fields actually present in the PUT body (real
@@ -199,7 +194,6 @@ export default function BrandingSettingsPage() {
         nextBrandLayout = { ...brandLayout, ...patch.report_brand_layout };
         setBrandLayout(nextBrandLayout);
       }
-      if (patch.marksheet_fields !== undefined) setMarksheetFields(patch.marksheet_fields);
       setBranding({
         name,
         address,
@@ -259,27 +253,6 @@ export default function BrandingSettingsPage() {
   // the page (patchBranding merges it onto the existing layout server-side).
   const patchBrandLayout = (patch: BrandLayoutPatch) => {
     patchBranding({ report_brand_layout: patch }).catch(() => {});
-  };
-
-  // Marksheet info-field grid: the client always resends the WHOLE ordered
-  // list (not a partial patch, unlike report_brand_layout above) - simplest
-  // way to let the backend just store "this is the order now" without a
-  // separate merge-by-key step for an array.
-  const toggleMarksheetField = (key: string) => {
-    const next = marksheetFields.map((f) => (f.key === key ? { ...f, visible: !f.visible } : f));
-    patchBranding({ marksheet_fields: next }).catch(() => {});
-  };
-
-  const moveMarksheetField = (index: number, direction: -1 | 1) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= marksheetFields.length) return;
-    const next = [...marksheetFields];
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-    patchBranding({ marksheet_fields: next }).catch(() => {});
-  };
-
-  const resetMarksheetFields = () => {
-    patchBranding({ marksheet_fields: DEFAULT_MARKSHEET_FIELDS }).catch(() => {});
   };
 
   // Local-only draft values for the range sliders: update the number shown
@@ -803,54 +776,7 @@ export default function BrandingSettingsPage() {
         title="মার্কশিট তথ্য ফিল্ড"
         hint="মার্কশিটে যেসব তথ্য (রোল, রেজিস্ট্রেশন নম্বর, নাম ইত্যাদি) দেখানো হয় — কোনটা দেখাবেন আর কোন ক্রমে দেখাবেন তা এখান থেকে ঠিক করুন"
       >
-        <div className="space-y-1.5">
-          {marksheetFields.map((field, index) => (
-            <div
-              key={field.key}
-              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition ${
-                field.visible
-                  ? "border-gray-100 dark:border-slate-800"
-                  : "border-gray-100 bg-gray-50 opacity-60 dark:border-slate-800 dark:bg-slate-800/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ListChecks size={14} className="shrink-0 text-gray-400 dark:text-slate-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  {MARKSHEET_FIELD_LABELS_BN[field.key] || field.key}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => moveMarksheetField(index, -1)}
-                  disabled={index === 0}
-                  aria-label="উপরে সরান"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:bg-transparent disabled:hover:text-gray-500 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
-                >
-                  <ArrowUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveMarksheetField(index, 1)}
-                  disabled={index === marksheetFields.length - 1}
-                  aria-label="নিচে সরান"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:bg-transparent disabled:hover:text-gray-500 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
-                >
-                  <ArrowDown size={13} />
-                </button>
-                <ToggleSwitch checked={field.visible} onChange={() => toggleMarksheetField(field.key)} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={resetMarksheetFields}
-          className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          <RotateCcw size={12} />
-          ডিফল্টে ফিরিয়ে আনুন
-        </button>
+        <MarksheetControlsPanel />
       </SectionCard>
     </div>
   );
