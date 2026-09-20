@@ -13,8 +13,21 @@ export type PersonSearchFields = {
   text?: Array<string | number | null | undefined>;
   /** The one field a bare digit query is allowed to match directly (registration_no) - NOT roll/id, which collide too easily (roll "4" exists in nearly every class). */
   registrationNo?: string | number | null;
+  /** Roll number - only matched like registrationNo (digit queries), never as free text. Pass it only where a bare digit query should find roll too (see PersonSearchOptions.numericQueryIdsOnly). */
+  roll?: string | number | null;
   /** Phone/mobile fields - matched only under the stricter PHONE_QUERY_* rule above. */
   phones?: Array<string | number | null | undefined>;
+};
+
+export type PersonSearchOptions = {
+  /**
+   * When true, a query made only of digits (Bangla or English) searches ONLY
+   * roll + registration_no - never the free-text fields, so "1" can't match a
+   * name/class/exam that merely contains that digit ("Ahmad 1", "Exam 2021").
+   * A long phone-shaped query still searches phones. Off by default so every
+   * other list keeps its existing behaviour.
+   */
+  numericQueryIdsOnly?: boolean;
 };
 
 /**
@@ -38,6 +51,7 @@ export function filterPeopleBySearch<T>(
   items: T[],
   query: string,
   extract: (item: T) => PersonSearchFields,
+  options: PersonSearchOptions = {},
 ): T[] {
   const rawKeyword = query.trim();
   if (!rawKeyword) return items;
@@ -48,23 +62,26 @@ export function filterPeopleBySearch<T>(
   // matching below stays on the raw keyword since names aren't digits.
   const keywordNumeric = normalizeBanglaDigits(rawKeyword).toLowerCase();
   const keywordDigits = keywordNumeric.replace(/\D/g, "");
+  const isNumericQuery = /^d+$/.test(keywordNumeric);
+  const skipText = !!options.numericQueryIdsOnly && isNumericQuery;
   const looksLikePhoneQuery =
     keywordDigits.length >= PHONE_QUERY_MIN_DIGITS && PHONE_QUERY_PATTERN.test(keywordDigits);
 
   const candidates = items.map((item) => {
-    const { text = [], registrationNo, phones = [] } = extract(item);
+    const { text = [], registrationNo, roll, phones = [] } = extract(item);
 
-    const regNo =
-      registrationNo !== null && registrationNo !== undefined && registrationNo !== ""
-        ? normalizeBanglaDigits(String(registrationNo)).toLowerCase()
-        : "";
-    const isExactId = !!regNo && regNo === keywordNumeric;
-
-    const matchesText = text
+    const idValues = [registrationNo, roll]
       .filter((value) => value !== null && value !== undefined && value !== "")
-      .some((value) => String(value).toLowerCase().includes(keyword));
+      .map((value) => normalizeBanglaDigits(String(value)).toLowerCase());
+    const isExactId = idValues.some((id) => id === keywordNumeric);
 
-    const matchesIdSubstring = !!regNo && regNo.includes(keywordNumeric);
+    const matchesText =
+      !skipText &&
+      text
+        .filter((value) => value !== null && value !== undefined && value !== "")
+        .some((value) => String(value).toLowerCase().includes(keyword));
+
+    const matchesIdSubstring = idValues.some((id) => id.includes(keywordNumeric));
 
     const matchesPhone =
       looksLikePhoneQuery &&

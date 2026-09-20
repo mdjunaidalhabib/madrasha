@@ -289,7 +289,11 @@ const ReportShell = ({
       const data = res.data?.data || res.data?.result || res.data || [];
       const examRows = Array.isArray(data) ? data : [];
       setExams(examRows);
-      if (!selectedExam && examRows.length) setSelectedExam(String(examRows[0].id));
+      // Functional update: this runs once from a mount-time closure where
+      // selectedExam is still "", so reading it directly always defaulted to
+      // the first exam - which in print mode overwrote the exam_id the URL had
+      // just hydrated (server PDF showing a different exam than the preview).
+      if (examRows.length) setSelectedExam((current) => current || String(examRows[0].id));
     } catch {
       setExams([]);
     } finally {
@@ -344,22 +348,50 @@ const ReportShell = ({
     else if (id === null) setOrientation(activeReport.defaultOrientation || "portrait");
   };
 
+  // Print mode: the user's custom margins arrive as margin_* URL params (see
+  // serverPdfExport below). Read once up front - the paperSize effect below
+  // fires again after hydration changes paperSize, and must not reset them.
+  const [printMargins] = useState<PageMargins | null>(() => {
+    if (!printMode) return null;
+    const read = (key: string) => {
+      const raw = searchParams.get(key);
+      const value = raw === null || raw === "" ? NaN : Number(raw);
+      return Number.isFinite(value) && value >= 0 && value <= 40 ? value : null;
+    };
+    const top = read("margin_top");
+    const right = read("margin_right");
+    const bottom = read("margin_bottom");
+    const left = read("margin_left");
+    return top === null || right === null || bottom === null || left === null
+      ? null
+      : { top, right, bottom, left };
+  });
+
   useEffect(() => {
-    setMargins(getDefaultPageMargins(paperSize));
+    setMargins(printMargins ?? getDefaultPageMargins(paperSize));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paperSize]);
 
   // Print-mode only, runs once on mount: hydrates the filter state a headless
   // browser can't set by clicking through the UI, straight from the URL
   // query string the backend export service builds (see
-  // report-export.service.ts). Deliberately skips margins - the print route
-  // just uses that paper size's defaults (getDefaultPageMargins above),
-  // matching what a fresh visit would compute anyway, so there's no need to
-  // thread margin_top/right/bottom/left through the URL too.
+  // report-export.service.ts). Everything the on-screen preview depends on
+  // must be threaded through here (filters, search, page/page size, margins),
+  // otherwise the exported PDF silently differs from what the user saw.
   useEffect(() => {
     if (!printMode) return;
 
     const examId = searchParams.get("exam_id");
     if (examId) setSelectedExam(examId);
+
+    const searchText = searchParams.get("search");
+    if (searchText) setSearch(searchText);
+
+    const pageParam = Number(searchParams.get("page"));
+    if (Number.isInteger(pageParam) && pageParam >= 1) setPage(pageParam);
+
+    const pageSizeParam = Number(searchParams.get("page_size"));
+    if (Number.isInteger(pageSizeParam) && pageSizeParam >= 1) setPageSize(pageSizeParam);
 
     const subject = searchParams.get("subject");
     if (subject) setSelectedSubject(subject);
@@ -491,8 +523,9 @@ const ReportShell = ({
       row.status,
     ],
     registrationNo: row.registration_no,
+    roll: row.roll,
     phones: [row.guardian_phone, row.mobile, row.phone],
-  }));
+  }), { numericQueryIdsOnly: true });
 
   const filteredRows = searchedRows.filter((row) => {
     const rowDivisionId = String(getRowDivisionId(row));
@@ -615,6 +648,13 @@ const ReportShell = ({
       cards_per_page: cardsPerPage !== "auto" ? cardsPerPage : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
+      search: search.trim() || undefined,
+      page: isPaginatedAcademicResult ? String(page) : undefined,
+      page_size: isPaginatedAcademicResult ? String(pageSize) : undefined,
+      margin_top: String(margins.top),
+      margin_right: String(margins.right),
+      margin_bottom: String(margins.bottom),
+      margin_left: String(margins.left),
     },
   };
 
@@ -675,90 +715,11 @@ const ReportShell = ({
                 <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">{activeReport.subtitle}</p>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex shrink-0 items-center">
                 <div className="w-fit rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:text-[13px]">
                   মোট <span className="font-bold text-slate-900 dark:text-slate-100">{totalRecords}</span> টি
                   রেকর্ড
                 </div>
-
-                {isPaginatedAcademicResult && totalCount > 0 && (
-                  <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                    <FilterSelect
-                      value={pageSize}
-                      onChange={(value) => {
-                        setPageSize(Number(value));
-                        setPage(1);
-                      }}
-                      selectClassName="h-7 appearance-none rounded border border-slate-200 bg-white px-1.5 pr-5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      iconClassName="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500"
-                    >
-                      {[50, 100, 200, 500].map((size) => (
-                        <option key={size} value={size}>
-                          {size} জন/পেজ
-                        </option>
-                      ))}
-                    </FilterSelect>
-
-                    <span className="whitespace-nowrap text-xs">
-                      {pageStart}–{pageEnd}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={!hasPrevPage}
-                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
-                    >
-                      আগের
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={!hasNextPage}
-                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
-                    >
-                      পরের
-                    </button>
-                  </div>
-                )}
-
-                {supportsRepeatHeader && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={repeatHeaderPref}
-                    onClick={toggleRepeatHeader}
-                    title="চালু থাকলে বিষয়ের নামসহ হেডার প্রতিটি পেজের উপরে ছাপা হবে"
-                    className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`relative inline-block h-4 w-7 rounded-full transition-colors ${
-                        repeatHeaderPref ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
-                          repeatHeaderPref ? "left-3.5" : "left-0.5"
-                        }`}
-                      />
-                    </span>
-                    প্রতি পেজে বিষয়ের নাম
-                  </button>
-                )}
-
-                {columnOptions && (
-                  <ColumnVisibilityMenu
-                    columns={columnMenuOptions}
-                    visible={columnPrefs.visible}
-                    onToggle={toggleReportColumn}
-                    onReset={columnPrefs.reset}
-                    order={columnPrefs.order}
-                    onMove={columnPrefs.move}
-                    resetLabel="ডিফল্ট কলাম ফিরিয়ে আনুন"
-                    buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                  />
-                )}
               </div>
             </div>
 
@@ -810,6 +771,88 @@ const ReportShell = ({
               onCardsPerPageChange={setCardsPerPage}
               marksheetPanelOpen={marksheetPanelOpen}
               onMarksheetPanelToggle={() => setMarksheetPanelOpen((prev) => !prev)}
+              setupExtras={
+                <>
+                {supportsRepeatHeader && (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={repeatHeaderPref}
+                      onClick={toggleRepeatHeader}
+                      title="চালু থাকলে বিষয়ের নামসহ হেডার প্রতিটি পেজের উপরে ছাপা হবে"
+                      className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`relative inline-block h-4 w-7 rounded-full transition-colors ${
+                          repeatHeaderPref ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                            repeatHeaderPref ? "left-3.5" : "left-0.5"
+                          }`}
+                        />
+                      </span>
+                      প্রতি পেজে বিষয়ের নাম
+                    </button>
+                  )}
+                  {columnOptions && (
+                    <ColumnVisibilityMenu
+                      columns={columnMenuOptions}
+                      visible={columnPrefs.visible}
+                      onToggle={toggleReportColumn}
+                      onReset={columnPrefs.reset}
+                      order={columnPrefs.order}
+                      onMove={columnPrefs.move}
+                      resetLabel="ডিফল্ট কলাম ফিরিয়ে আনুন"
+                      buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    />
+                  )}
+                </>
+              }
+              summary={
+                isPaginatedAcademicResult && totalCount > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                    <FilterSelect
+                      value={pageSize}
+                      onChange={(value) => {
+                        setPageSize(Number(value));
+                        setPage(1);
+                      }}
+                      selectClassName="h-7 appearance-none rounded border border-slate-200 bg-white px-1.5 pr-5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      iconClassName="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500"
+                    >
+                      {[50, 100, 200, 500].map((size) => (
+                        <option key={size} value={size}>
+                          {size} জন/পেজ
+                        </option>
+                      ))}
+                    </FilterSelect>
+
+                    <span className="whitespace-nowrap text-xs">
+                      {pageStart}–{pageEnd}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={!hasPrevPage}
+                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                    >
+                      আগের
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={!hasNextPage}
+                      className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+                    >
+                      পরের
+                    </button>
+                  </div>
+                )
+              }
             />
 
             {warning && (

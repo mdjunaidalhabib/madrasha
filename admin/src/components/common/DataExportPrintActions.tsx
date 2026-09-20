@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FileDown, FileSpreadsheet, FileText, Printer, Ruler, X } from "lucide-react";
 import api from "../../services/api";
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
@@ -74,6 +74,13 @@ type Props<T> = {
   /** A4/A5, Portrait/Landscape ও প্রিন্ট বাটন লুকিয়ে শুধু Excel/CSV এক্সপোর্ট দেখাতে চাইলে true। */
   hidePrintOptions?: boolean;
   serverPdfExport?: ServerPdfExportConfig;
+  /** "inline" (ডিফল্ট): সব কন্ট্রোল এক flex-wrap সারিতে। "split": বাম দিকে পেজ সেটআপ
+   * (+ `setupExtras`), ডান দিকে `summary` ও এক্সপোর্ট বাটন - রিপোর্ট টুলবারের ২য় লাইন। */
+  layout?: "inline" | "split";
+  /** split লেআউটে মার্জিন বাটনের পরে বাম গ্রুপে বসে (যেমন কলাম মেনু, টগল)। */
+  setupExtras?: ReactNode;
+  /** split লেআউটে এক্সপোর্ট বাটনের ঠিক আগে ডান গ্রুপে বসে (যেমন পেজিনেশন)। */
+  summary?: ReactNode;
 };
 
 const DataExportPrintActions = <T extends Record<string, any>>({
@@ -88,6 +95,9 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   onMarginsChange,
   hidePrintOptions = false,
   serverPdfExport,
+  layout = "inline",
+  setupExtras,
+  summary,
 }: Props<T>) => {
   const [internalPaperSize, setInternalPaperSize] = useState<PaperSize>("a4");
   const [internalOrientation, setInternalOrientation] = useState<Orientation>("portrait");
@@ -494,96 +504,96 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     else downloadClientPdf();
   };
 
-  return (
-    <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
-      {!hidePrintOptions && (
-        <>
-          <select
-            value={paperSize}
-            onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
-            className={`${selectFieldClass} min-w-[60px] flex-1 sm:flex-none`}
-          >
-            <option value="a4">A4</option>
-            <option value="a5">A5</option>
-          </select>
+  const printOptions = hidePrintOptions ? null : (
+    <>
+      <select
+        value={paperSize}
+        onChange={(e) => updatePaperSize(e.target.value as PaperSize)}
+        className={`${selectFieldClass} min-w-[60px] flex-1 sm:flex-none`}
+      >
+        <option value="a4">A4</option>
+        <option value="a5">A5</option>
+      </select>
 
-          <select
-            value={orientation}
-            onChange={(e) => updateOrientation(e.target.value as Orientation)}
-            className={`${selectFieldClass} min-w-[88px] flex-1 sm:flex-none`}
-          >
-            <option value="portrait">Portrait</option>
-            <option value="landscape">Landscape</option>
-          </select>
+      <select
+        value={orientation}
+        onChange={(e) => updateOrientation(e.target.value as Orientation)}
+        className={`${selectFieldClass} min-w-[88px] flex-1 sm:flex-none`}
+      >
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+      </select>
 
-          <div ref={marginPanelRef} className="relative w-auto">
-            <button
-              type="button"
-              onClick={() => setMarginPanelOpen((open) => !open)}
-              title="মার্জিন - পেজের চার পাশের ফাঁকা জায়গা আলাদাভাবে কম-বেশি করুন"
-              className="flex h-8 w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-600 outline-none transition hover:bg-slate-50 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/50 sm:w-auto"
-            >
-              <Ruler className="h-3 w-3" />
-              মার্জিন
-            </button>
+      <div ref={marginPanelRef} className="relative w-auto">
+        <button
+          type="button"
+          onClick={() => setMarginPanelOpen((open) => !open)}
+          title="মার্জিন - পেজের চার পাশের ফাঁকা জায়গা আলাদাভাবে কম-বেশি করুন"
+          className="flex h-8 w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-600 outline-none transition hover:bg-slate-50 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/50 sm:w-auto"
+        >
+          <Ruler className="h-3 w-3" />
+          মার্জিন
+        </button>
 
-            {marginPanelOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    পেজ মার্জিন (mm)
+        {marginPanelOpen && (
+          <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                পেজ মার্জিন (mm)
+              </span>
+              <button
+                type="button"
+                onClick={resetMarginsToDefault}
+                className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
+              >
+                ডিফল্ট সেট
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2.5 p-3">
+              {(["top", "right", "bottom", "left"] as MarginSide[]).map((side) => (
+                <div key={side} className="flex items-center justify-between">
+                  <span className="w-9 text-xs text-slate-500 dark:text-slate-400">
+                    {MARGIN_SIDE_LABELS[side]}
                   </span>
-                  <button
-                    type="button"
-                    onClick={resetMarginsToDefault}
-                    className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    ডিফল্ট সেট
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => updateMarginSide(side, margins[side] - 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={MIN_MARGIN_MM}
+                      max={MAX_MARGIN_MM}
+                      value={margins[side]}
+                      onChange={(e) => updateMarginSide(side, Number(e.target.value))}
+                      className="w-10 rounded-md border border-slate-200 bg-white py-1 text-center text-xs outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateMarginSide(side, margins[side] + 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      +
+                    </button>
+                    <span className="w-5 text-left text-[10px] text-slate-400 dark:text-slate-500">
+                      mm
+                    </span>
+                  </div>
                 </div>
-
-                <div className="flex flex-col gap-2.5 p-3">
-                  {(["top", "right", "bottom", "left"] as MarginSide[]).map((side) => (
-                    <div key={side} className="flex items-center justify-between">
-                      <span className="w-9 text-xs text-slate-500 dark:text-slate-400">
-                        {MARGIN_SIDE_LABELS[side]}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => updateMarginSide(side, margins[side] - 1)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min={MIN_MARGIN_MM}
-                          max={MAX_MARGIN_MM}
-                          value={margins[side]}
-                          onChange={(e) => updateMarginSide(side, Number(e.target.value))}
-                          className="w-10 rounded-md border border-slate-200 bg-white py-1 text-center text-xs outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => updateMarginSide(side, margins[side] + 1)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                        >
-                          +
-                        </button>
-                        <span className="w-5 text-left text-[10px] text-slate-400 dark:text-slate-500">
-                          mm
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
+    </>
+  );
 
+  const exportButtons = (
+    <>
       <button
         type="button"
         onClick={downloadExcel}
@@ -628,6 +638,28 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           </button>
         </>
       )}
+    </>
+  );
+
+  if (layout === "split") {
+    return (
+      <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {printOptions}
+          {setupExtras}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto lg:ml-auto">
+          {summary}
+          <div className="flex w-full items-center gap-1.5 sm:w-auto">{exportButtons}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+      {printOptions}
+      {exportButtons}
     </div>
   );
 };

@@ -135,6 +135,12 @@ export class ReportExportService {
         state: {
           token,
           user: { id: params.userId, madrasa_id: params.madrasaId, role: params.role, role_key: params.role },
+          // The admin app resolves the tenant for every API call from this
+          // persisted slug (api.ts sends it as X-Madrasa-Slug, and the
+          // backend's tenantMiddleware 400s without one). Without it every
+          // request from the headless print page is rejected, so the report
+          // never loads and the PDF comes out empty/failed.
+          madrasaSlug: params.madrasaSlug,
           permissions: [],
           modules: [],
         },

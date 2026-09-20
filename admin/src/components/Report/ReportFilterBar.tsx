@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Search, Settings2, X } from "lucide-react";
 import DataExportPrintActions, {
@@ -63,6 +64,10 @@ type ReportFilterBarProps = {
   /** Marksheet report only: whether the docked settings panel is open, and how to toggle it. */
   marksheetPanelOpen?: boolean;
   onMarksheetPanelToggle?: () => void;
+  /** টুলবারের ২য় লাইনে পেজ সেটআপের পাশে বসে (যেমন কলাম মেনু, প্রতি পেজে হেডার টগল)। */
+  setupExtras?: ReactNode;
+  /** টুলবারের ২য় লাইনে এক্সপোর্ট বাটনের আগে বসে (যেমন পেজিনেশন)। */
+  summary?: ReactNode;
 };
 
 // আইডি কার্ড / প্রবেশপত্রের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
@@ -114,12 +119,15 @@ const ReportFilterBar = ({
   onCardsPerPageChange,
   marksheetPanelOpen = false,
   onMarksheetPanelToggle,
+  setupExtras,
+  summary,
 }: ReportFilterBarProps) => {
   const builtinDesigns = activeReport.documentType ? listBuiltinDesigns(activeReport.documentType) : [];
   const cardLayoutOptions = activeReport.printable ? CARD_LAYOUT_OPTIONS[activeReport.printable] : undefined;
 
   return (
-    <div className="no-print flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+    <div className="no-print flex flex-col gap-2">
+      {/* লাইন ১: কী দেখব - ডেটা ফিল্টার ও ডিজাইন বাছাই */}
       <div className="flex flex-wrap items-center gap-1.5">
         {showSearch && (
           <div className="relative w-full min-w-[150px] flex-1 sm:w-auto sm:flex-none sm:basis-[170px]">
@@ -282,19 +290,25 @@ const ReportFilterBar = ({
         )}
       </div>
 
-      <DataExportPrintActions
-        title={activeReport.title}
-        columns={exportColumns}
-        data={exportRows}
-        fileName={activeReport.key}
-        paperSize={paperSize}
-        orientation={orientation}
-        onPaperSizeChange={onPaperSizeChange}
-        onOrientationChange={onOrientationChange}
-        margins={margins}
-        onMarginsChange={onMarginsChange}
-        serverPdfExport={serverPdfExport}
-      />
+      {/* লাইন ২: কীভাবে দেখব ও কী করব - পেজ সেটআপ, পেজিনেশন, এক্সপোর্ট/প্রিন্ট */}
+      <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+        <DataExportPrintActions
+          layout="split"
+          setupExtras={setupExtras}
+          summary={summary}
+          title={activeReport.title}
+          columns={exportColumns}
+          data={exportRows}
+          fileName={activeReport.key}
+          paperSize={paperSize}
+          orientation={orientation}
+          onPaperSizeChange={onPaperSizeChange}
+          onOrientationChange={onOrientationChange}
+          margins={margins}
+          onMarginsChange={onMarginsChange}
+          serverPdfExport={serverPdfExport}
+        />
+      </div>
     </div>
   );
 };

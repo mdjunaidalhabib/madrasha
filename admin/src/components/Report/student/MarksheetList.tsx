@@ -132,8 +132,8 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
         <div className="report-block-heading">
           <div className="border-b-2 border-black pb-3 text-center text-black">
             <h2 className="marksheet-title font-bold text-black">মার্কশিট</h2>
-            <p className="mt-1 text-lg font-semibold text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
-            <p className="mt-1 text-lg font-semibold text-black">
+            <p className="mt-0.5 text-lg font-semibold leading-snug text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
+            <p className="mt-0.5 text-lg font-semibold leading-snug text-black">
               {cellValue(row, "exam_name")} - {cellValue(row, "exam_year")} ইং
             </p>
           </div>
@@ -159,11 +159,11 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
               <tbody>
                 {subjects.map((subject, index) => (
                   <tr key={subject.book_id ?? index} className={index % 2 === 0 ? "bg-white" : "bg-emerald-50"}>
-                    <td className="border border-emerald-700 px-2 py-2 text-center font-semibold text-emerald-900">
+                    <td className="border border-emerald-700 px-2 py-2 text-center font-semibold text-black">
                       {toBanglaDigits(index + 1)}
                     </td>
                     <td className="border border-emerald-700 px-3 py-2 font-medium">{subject.subject_name || "—"}</td>
-                    <td className="border border-emerald-700 px-3 py-2 text-center font-bold text-emerald-900">
+                    <td className="border border-emerald-700 px-3 py-2 text-center font-bold text-black">
                       {formatMark(subject)}
                     </td>
                     <td className="border border-emerald-700 px-3 py-2 text-center">
@@ -175,10 +175,10 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
                 ))}
                 {summaryRows.map((summary, index) => (
                   <tr key={summary.label} className={index === 0 ? "bg-amber-100" : "bg-amber-50"}>
-                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-base font-bold text-emerald-900">
+                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-base font-bold text-black">
                       {summary.label}
                     </td>
-                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-center text-base font-bold">
+                    <td colSpan={2} className="border border-emerald-700 px-3 py-2 text-center text-base font-bold text-black">
                       {summary.value}
                     </td>
                   </tr>

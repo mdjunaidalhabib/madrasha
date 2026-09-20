@@ -211,11 +211,6 @@ const reports: ReportMenuItem[] = [
 
 const DocumentsReportPage = ({ printMode }: { printMode?: boolean }) => (
   <ReportShell
-    pageTitle="ডকুমেন্ট সমূহ"
-    pageSubtitle={
-      'আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র, মার্কশিট ও পুরস্কার বই-লেবেল — database থেকে নিয়ে professional ভাবে দেখুন ও প্রিন্ট করুন। (কাস্টম নোটিশের জন্য Talimat সেটিংয়ের "নোটিশ বোর্ড" দেখুন।)'
-    }
-    accentTitle="Documents"
     reports={reports}
     reportsPageKey="documents"
     printMode={printMode}
