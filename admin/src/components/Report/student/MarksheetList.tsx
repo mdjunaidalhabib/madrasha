@@ -9,6 +9,7 @@ type SubjectMark = {
   book_id?: number | string;
   subject_name?: string;
   full_marks?: number | string;
+  pass_mark?: number | string | null;
   mark?: number | string | null;
   is_absent?: boolean;
 };
@@ -87,11 +88,19 @@ const formatMark = (subject: SubjectMark) => {
   return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
 };
 
+// A subject row is highlighted red when the student was absent in it or scored
+// below its pass mark (the backend resolves pass_mark = subject override ->
+// division fail mark -> madrasa fail mark, same rule as the marks-entry grid).
+const isSubjectFailed = (subject: SubjectMark) => {
+  if (subject.is_absent) return true;
+  const mark = subject.mark;
+  const passMark = subject.pass_mark;
+  if (mark === null || mark === undefined || mark === "" || passMark === null || passMark === undefined) return false;
+  return Number(mark) < Number(passMark);
+};
+
 const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId }: MarksheetListProps) => {
   const row = rows[0] || {};
-  const rowStatus = String(row?.status || "").toUpperCase();
-  const failed = rowStatus === "FAIL";
-  const isAbsent = rowStatus === "ABSENT";
   const subjects = getSubjects(row);
 
   // ডিফল্ট = নিচের সাধারণ মার্কশিট; ব্যবহারকারী ডিজাইন বেছে নিলে তবেই টেমপ্লেট।
@@ -123,11 +132,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
   ];
 
   return (
-    <section
-      className={`marksheet-card p-6 sm:p-8 ${
-        failed ? "bg-red-50" : isAbsent ? "bg-amber-50" : "bg-white"
-      }`}
-    >
+    <section className="marksheet-card bg-white p-6 sm:p-8">
       {isFirstPage && (
         <div className="report-block-heading">
           <div className="border-b-2 border-black pb-3 text-center text-black">
@@ -158,7 +163,10 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
               </thead>
               <tbody>
                 {subjects.map((subject, index) => (
-                  <tr key={subject.book_id ?? index} className={index % 2 === 0 ? "bg-white" : "bg-emerald-50"}>
+                  <tr
+                    key={subject.book_id ?? index}
+                    className={isSubjectFailed(subject) ? "bg-red-200" : index % 2 === 0 ? "bg-white" : "bg-emerald-50"}
+                  >
                     <td className="border border-emerald-700 px-2 py-2 text-center font-semibold text-black">
                       {toBanglaDigits(index + 1)}
                     </td>

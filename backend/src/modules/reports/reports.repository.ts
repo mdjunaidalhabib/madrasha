@@ -1613,6 +1613,7 @@ export class ReportsRepository {
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
               'full_marks', COALESCE(mb.full_mark, 100),
+              'pass_mark', COALESCE(mb.pass_mark, md.fail_mark, NULLIF(fs.value, '')::int, 35),
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )
@@ -1626,6 +1627,13 @@ export class ReportsRepository {
       LEFT JOIN exams e ON e.id = rm.exam_id
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
+      LEFT JOIN madrasa_divisions md
+        ON md.madrasa_id = s.madrasa_id
+        AND md.division_id = s.division_id
+        AND md.deleted_at IS NULL
+      LEFT JOIN settings fs
+        ON fs.madrasa_id = s.madrasa_id
+        AND fs.name = 'fail_mark'
       LEFT JOIN madrasa_books mb
         ON mb.madrasa_id = s.madrasa_id
         AND COALESCE(mb.is_active, 1) = 1
@@ -1667,13 +1675,17 @@ export class ReportsRepository {
         rs.rank_no,
         rm.status,
         rm.id
-      ORDER BY rm.id DESC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
+      ORDER BY rm.id DESC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC
       `,
       params,
     );
 
-    if (result.rows.length) return result;
-    return this.resultRosterFallback(madrasaId, filters);
+    if (!result.rows.length) return this.resultRosterFallback(madrasaId, filters);
+    // A student absent in every subject has no result to print (status ABSENT,
+    // no grade/rank) - dropped here rather than in SQL so a class where
+    // everyone was absent doesn't fall through to the "result not published"
+    // roster fallback above.
+    return { ...result, rows: result.rows.filter((row: any) => String(row.status || "").toUpperCase() !== "ABSENT") };
   }
 
   findStudentCertificates(madrasaId: number, filters: RosterFilters = {}) {
