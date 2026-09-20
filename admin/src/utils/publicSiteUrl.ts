@@ -6,8 +6,8 @@
 // origin, not this app's own window.location.origin.
 //
 // Named VITE_PUBLIC_SITE_URL (not VITE_FRONTEND_*) on purpose - the backend
-// already has an unrelated FRONTEND_BASE_URL env var that points at THIS
-// app (admin), so reusing "frontend" here would read as the same thing.
+// has ADMIN_BASE_URL / INTERNAL_ADMIN_URL env vars that point at THIS
+// app (admin) - kept distinct from "frontend" (the public site) on purpose.
 const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) || "";
 
 // customDomain (when the madrasa has connected one) is preferred over the

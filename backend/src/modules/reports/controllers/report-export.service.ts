@@ -90,9 +90,9 @@ export class ReportExportService {
   }
 
   async generatePdf(params: ExportReportPdfParams): Promise<Buffer> {
-    if (!config.app.internalFrontendUrl) {
+    if (!config.app.internalAdminUrl) {
       throw new ApiError(
-        "PDF export is not configured (FRONTEND_BASE_URL is unset on the server)",
+        "PDF export is not configured (INTERNAL_ADMIN_URL and ADMIN_BASE_URL are both unset on the server)",
         500,
       );
     }
@@ -119,7 +119,7 @@ export class ReportExportService {
     // thrown message can say exactly which step never finished, instead of
     // a single generic "Failed to generate PDF" no matter where it broke -
     // "navigate" timing out means the headless browser couldn't reach
-    // internalFrontendUrl at all (an infra/network problem), while
+    // internalAdminUrl at all (an infra/network problem), while
     // "render-wait" timing out means the page loaded fine but the report's
     // own data never became ready (an app/API problem) - very different
     // fixes, and previously indistinguishable from the client's 500 alone.
@@ -150,7 +150,7 @@ export class ReportExportService {
       // public API domain (Vite env vars are compile-time), which would
       // otherwise make this headless page call back out to the internet and
       // through the reverse proxy to reach a server it's already running
-      // inside of - the same hairpin-NAT problem internalFrontendUrl exists
+      // inside of - the same hairpin-NAT problem internalAdminUrl exists
       // to avoid, just in the other direction. Since this Chromium instance
       // is launched by the backend process itself (see getBrowser() above),
       // its page can always reach the API via plain loopback, regardless of
@@ -189,12 +189,12 @@ export class ReportExportService {
         }
       });
 
-      // internalFrontendUrl, not frontendBaseUrl - see env.ts's doc comment
-      // on why this navigation must avoid the public domain when frontend
+      // internalAdminUrl, not adminBaseUrl - see env.ts's doc comment
+      // on why this navigation must avoid the public domain when admin
       // and backend are sibling containers on the same host.
       const url = new URL(
         `/${params.madrasaSlug}/print/reports/${params.reportsPage}`,
-        config.app.internalFrontendUrl,
+        config.app.internalAdminUrl,
       );
       url.searchParams.set("key", params.reportKey);
       Object.entries(params.filters).forEach(([key, value]) => {
@@ -209,7 +209,7 @@ export class ReportExportService {
       // the page (an analytics beacon, a background poll, even a slow/stuck
       // request unrelated to the report itself) keeps a connection open,
       // which is exactly what timed out in production even once
-      // internalFrontendUrl was reachable. "domcontentloaded" only needs the
+      // internalAdminUrl was reachable. "domcontentloaded" only needs the
       // initial HTML parsed, which is enough to move on to the explicit
       // `data-report-ready` wait below - that's what actually gates PDF
       // generation on the report's data being loaded, so networkidle was
@@ -279,14 +279,14 @@ export class ReportExportService {
         stage,
         reportsPage: params.reportsPage,
         reportKey: params.reportKey,
-        internalFrontendUrl: config.app.internalFrontendUrl,
+        internalAdminUrl: config.app.internalAdminUrl,
         pageIssues: pageIssues.length ? pageIssues : undefined,
         error,
       });
       const stageMessage: Record<typeof stage, string> = {
         launch: "PDF export failed: could not start the headless browser",
         navigate:
-          "PDF export failed: could not reach the report page (internalFrontendUrl unreachable - check its value and that the frontend container is up)",
+          "PDF export failed: could not reach the report page (internalAdminUrl unreachable - check INTERNAL_ADMIN_URL and that the admin container is up)",
         "render-wait":
           "PDF export failed: the report page loaded but never finished loading its data (check the API base the print page is calling)",
         "images-wait": "PDF export failed: could not finish loading the report's branding images",

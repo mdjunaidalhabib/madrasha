@@ -6,6 +6,6 @@ export const appConfig = {
   port: env.port,
   rootDomain: env.rootDomain,
   jsonBodyLimit: env.jsonBodyLimit,
-  frontendBaseUrl: env.frontendBaseUrl,
-  internalFrontendUrl: env.internalFrontendUrl,
+  adminBaseUrl: env.adminBaseUrl,
+  internalAdminUrl: env.internalAdminUrl,
 };

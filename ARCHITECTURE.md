@@ -62,10 +62,9 @@ public website" card, the website builder's preview link, and the kiosk
 device setup page's kiosk URL) via `admin/src/utils/publicSiteUrl.ts`, which
 reads `VITE_PUBLIC_SITE_URL` — this must be set to `frontend/`'s real origin
 in every environment (see `admin/.env`). It's deliberately not named
-`VITE_FRONTEND_*`: the backend already has an unrelated `FRONTEND_BASE_URL`
-env var that points at the `admin/` app (a historical name that predates the
-`frontend/` app existing) — reusing "frontend" in the admin-side var name
-would read as the same thing and isn't.
+`VITE_FRONTEND_*`: the backend's `ADMIN_BASE_URL` / `INTERNAL_ADMIN_URL` env vars point at the
+`admin/` app (formerly named `FRONTEND_BASE_URL`, renamed to avoid confusion
+with the `frontend/` app).
 
 ## Path-based tenant URLs
 
@@ -152,7 +151,7 @@ docker build -f super-admin/Dockerfile -t madrasha-super-admin .
 ```
 
 Point each container at its own subdomain and set the backend's
-`CORS_ORIGINS` / `FRONTEND_BASE_URL` accordingly, and set `admin`'s
+`CORS_ORIGINS` / `ADMIN_BASE_URL` (and `INTERNAL_ADMIN_URL` for PDF export) accordingly, and set `admin`'s
 `VITE_PUBLIC_SITE_URL` build-time variable to `frontend/`'s public origin.
 `frontend/` additionally needs `VITE_PLATFORM_ROOT_HOST` set to its own
 public domain (e.g. `qms.hikmahit.com`) so it can tell the platform's own
