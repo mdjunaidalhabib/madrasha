@@ -686,6 +686,9 @@ const PaginatedReportPreview = ({
   const showBrandAtAll =
     (report.printable === "marksheet" || report.printable === "notice-board" || !hideBrandHeader) &&
     report.printable !== "id-card";
+  // Each marksheet is a standalone per-student document, so every one carries
+  // the madrasa name/address header - not just the report's very first page.
+  const brandOnEveryRecord = report.printable === "marksheet";
   const columnsPerPage = config.columnsPerPage ?? 1;
   const horizontalPaddingPx = (margins.left + margins.right) * MM_TO_CSS_PX;
   // Content width of ONE column in a columnsPerPage:2 report - the page's
@@ -794,11 +797,11 @@ const PaginatedReportPreview = ({
     return rows.map((row, i) => ({
       key: `blocks-${i}`,
       rows: [row],
-      showBrand: showBrandAtAll && i === 0,
+      showBrand: showBrandAtAll && (brandOnEveryRecord || i === 0),
       density: "comfortable",
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll, cardsPerSheet]);
+  }, [loading, rows, report, paperSize, orientation, groups, config.kind, showBrandAtAll, brandOnEveryRecord, cardsPerSheet]);
 
   useLayoutEffect(() => {
     if (loading || !rows.length) {
@@ -951,7 +954,7 @@ const PaginatedReportPreview = ({
       } else {
         const continuationBudgetPx = availableHeightPx - CONTINUATION_TOP_OFFSET_PX;
         const firstContainer = measureRefs.current.get("blocks-0");
-        const firstRecordBrandHeightPx =
+        const brandHeightPx =
           showBrandAtAll && firstContainer
             ? firstContainer.querySelector(".report-brand-header")?.getBoundingClientRect().height ?? 0
             : 0;
@@ -961,7 +964,7 @@ const PaginatedReportPreview = ({
           if (!container) return;
 
           const firstPageBudgetPx =
-            rowIndex === 0 ? availableHeightPx - firstRecordBrandHeightPx : availableHeightPx;
+            rowIndex === 0 || brandOnEveryRecord ? availableHeightPx - brandHeightPx : availableHeightPx;
           const recordPages = measureAndSplitRecord(
             container,
             paddingTopPx,
@@ -1033,6 +1036,7 @@ const PaginatedReportPreview = ({
     groups,
     config.kind,
     showBrandAtAll,
+    brandOnEveryRecord,
     measureTargets,
     templateLoadVersion,
     cardsPerSheet,
@@ -1304,7 +1308,8 @@ const PaginatedReportPreview = ({
                 );
               })
             : pages.map((page, pageIndex) => {
-                const showsBrandHeader = showBrandAtAll && page.isFirstPageOfGroup;
+                const showsBrandHeader =
+                  showBrandAtAll && (page.isFirstPageOfGroup || (brandOnEveryRecord && page.isFirstPage));
 
                 return (
                   <section
