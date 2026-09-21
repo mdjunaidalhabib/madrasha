@@ -36,6 +36,10 @@ export type ReportMenuItem = {
   // published template" control for this report - see IdCardGrid and
   // siblings under components/Report/documents/.
   documentType?: BackendDocumentType;
+  // id-card only: this menu entry prints ONLY the back side of every card
+  // (the "আইডি কার্ড ব্যাক" report) - no front design, so ReportFilterBar hides
+  // the front-design select and IdCardGrid renders the chosen back as the card.
+  backOnly?: boolean;
   // Extra static query params merged into the endpoint request alongside
   // exam_id (e.g. distinguishing two menu entries that hit the same
   // endpoint with a different filter flag, like the plain-rank vs.

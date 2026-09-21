@@ -17,6 +17,15 @@ type Orientation = "portrait" | "landscape";
 // is a far better failure mode than an OOM crash.
 const MAX_CONCURRENT_EXPORTS = 3;
 
+// Beyond this many exports already waiting for a slot, new requests are
+// rejected immediately ("busy, try again") instead of queueing - an
+// unbounded queue holds every waiting request's connection open and, once
+// the network/proxy stalls, just piles up until the process runs out of
+// memory. A waiter also gives up after MAX_QUEUE_WAIT_MS rather than
+// hanging forever behind a stuck export.
+const MAX_QUEUED_EXPORTS = 10;
+const MAX_QUEUE_WAIT_MS = 90_000;
+
 class Semaphore {
   private available: number;
   private readonly waiters: Array<() => void> = [];
@@ -25,12 +34,27 @@ class Semaphore {
     this.available = limit;
   }
 
-  acquire(): Promise<void> {
+  get queued(): number {
+    return this.waiters.length;
+  }
+
+  acquire(timeoutMs: number): Promise<void> {
     if (this.available > 0) {
       this.available -= 1;
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.waiters.push(resolve));
+    return new Promise((resolve, reject) => {
+      const waiter = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        const index = this.waiters.indexOf(waiter);
+        if (index !== -1) this.waiters.splice(index, 1);
+        reject(new Error("Timed out waiting for a free PDF export slot"));
+      }, timeoutMs);
+      this.waiters.push(waiter);
+    });
   }
 
   release(): void {
@@ -81,12 +105,37 @@ export class ReportExportService {
 
   private async getBrowser(): Promise<Browser> {
     if (this.browserPromise) {
-      const existing = await this.browserPromise;
-      if (existing.isConnected()) return existing;
-      this.browserPromise = null; // crashed/closed - relaunch below
+      try {
+        const existing = await this.browserPromise;
+        if (existing.isConnected()) return existing;
+      } catch {
+        // the cached launch itself failed - fall through and retry below
+        // instead of every later export re-throwing that same old failure
+      }
+      this.browserPromise = null; // crashed/closed/failed - relaunch below
     }
-    this.browserPromise = chromium.launch({ headless: true });
-    return this.browserPromise;
+
+    const launching = chromium.launch({
+      headless: true,
+      // Docker's default /dev/shm is 64MB - Chromium crashes ("Target
+      // crashed") on any non-trivial page without this, taking the export
+      // (and, via the shared instance, every export in flight) with it.
+      args: ["--disable-dev-shm-usage", "--disable-gpu"],
+    });
+    this.browserPromise = launching;
+    try {
+      const browser = await launching;
+      // A crashed/killed Chromium (OOM, etc.) must only ever cost the next
+      // export a relaunch - forget the dead instance right away.
+      browser.on("disconnected", () => {
+        logger.warn("PDF export: headless browser disconnected, will relaunch on next export");
+        if (this.browserPromise === launching) this.browserPromise = null;
+      });
+      return browser;
+    } catch (error) {
+      if (this.browserPromise === launching) this.browserPromise = null;
+      throw error;
+    }
   }
 
   async generatePdf(params: ExportReportPdfParams): Promise<Buffer> {
@@ -112,7 +161,14 @@ export class ReportExportService {
     // DataExportPrintActions.tsx). Findable in the logs the next time a
     // report is slow enough to matter.
     const startedAt = Date.now();
-    await this.slots.acquire();
+    if (this.slots.queued >= MAX_QUEUED_EXPORTS) {
+      throw new ApiError("সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", 503);
+    }
+    try {
+      await this.slots.acquire(MAX_QUEUE_WAIT_MS);
+    } catch {
+      throw new ApiError("সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", 503);
+    }
     const acquiredAt = Date.now();
 
     // Tracked separately from the try/catch so a failure's log line and
@@ -295,8 +351,17 @@ export class ReportExportService {
       throw new ApiError(stageMessage[stage], 500);
     } finally {
       // Only the context - the browser itself is shared, see getBrowser().
-      await context?.close();
-      this.slots.release();
+      // close() throws when the browser has already crashed/disconnected -
+      // that must never skip release() below (each leaked slot permanently
+      // shrinks capacity until every export hangs) nor replace the real
+      // error/result with a cleanup error.
+      try {
+        await context?.close();
+      } catch (closeError) {
+        logger.warn("PDF export: failed to close browser context", closeError);
+      } finally {
+        this.slots.release();
+      }
     }
   }
 }

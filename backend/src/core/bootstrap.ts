@@ -162,6 +162,25 @@ export const startSmsQueueWorker = (): void => {
 };
 
 /**
+ * Last line of defence against a single stray failure taking the whole
+ * server down. Node terminates the process on any unhandled promise
+ * rejection / uncaught exception by default - so one dropped network
+ * connection (a stalled DB/SMS-gateway socket, a headless-browser
+ * disconnect, a client that vanished mid-request) that surfaces outside a
+ * try/catch would kill every user's session at once. These are logged
+ * loudly and the process keeps serving; request-level errors still go
+ * through the normal error middleware, this only catches what escaped it.
+ */
+export const registerProcessSafetyNets = (): void => {
+  process.on("unhandledRejection", (reason) => {
+    logger.error("Unhandled promise rejection (server kept running)", reason);
+  });
+  process.on("uncaughtException", (error) => {
+    logger.error("Uncaught exception (server kept running)", error);
+  });
+};
+
+/**
  * Wires SIGTERM/SIGINT to close the HTTP server and the Prisma
  * connection pool cleanly instead of the process being killed mid-request.
  */

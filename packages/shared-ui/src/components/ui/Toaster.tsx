@@ -21,7 +21,13 @@ export default function Toaster() {
           role="status"
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm leading-5">{t.message}</p>
+            {t.loading && (
+              <span
+                className="mt-0.5 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                aria-hidden="true"
+              />
+            )}
+            <p className="flex-1 text-sm leading-5">{t.message}</p>
             <button
               onClick={() => remove(t.id)}
               className="opacity-80 hover:opacity-100"

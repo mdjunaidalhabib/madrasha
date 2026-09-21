@@ -11,6 +11,8 @@ import {
   deleteBrandingImage,
   getDocumentTemplates,
   updateDocumentTemplates,
+  getIdCardBack,
+  updateIdCardBack,
   getIdCardDesign,
   updateIdCardDesign,
   getAdmitCardDesign,
@@ -52,6 +54,15 @@ router.put(
   authMiddleware,
   rbacMiddleware("settings.manage"),
   updateDocumentTemplates,
+);
+
+router.get("/id-card-back", tenantMiddleware, authMiddleware, getIdCardBack);
+router.put(
+  "/id-card-back",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  updateIdCardBack,
 );
 
 router.get("/id-card-design", tenantMiddleware, authMiddleware, getIdCardDesign);

@@ -21,6 +21,7 @@ const DOCUMENT_CANVAS_SIZE_MM: Record<DocumentType, { width: number; height: num
   MARKSHEET: { width: 210, height: 297 },
   FEE_RECEIPT: { width: 148, height: 210 },
   SALARY_SLIP: { width: 210, height: 297 },
+  BOOK_LABEL: { width: 92, height: 58 },
 };
 
 export const DEFAULT_CANVAS_SIZE_PX: Record<DocumentType, { width: number; height: number }> =

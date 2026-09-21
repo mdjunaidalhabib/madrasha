@@ -140,10 +140,14 @@ export const createKit = () => {
   const logo = (x: number, y: number, size: number, style?: CSSProperties) =>
     base("logo", x, y, size, size, { field: "madrasa_logo", fit: "contain", alt: "" }, style);
 
+  /** স্বাক্ষরের ছবি (স্বচ্ছ/সাদা জমিনে) - ছবি না থাকলে ফাঁকা থাকে, কোনো প্লেসহোল্ডার লেখা আসে না। */
+  const signature = (field: string, x: number, y: number, w: number, h: number) =>
+    base("signature", x, y, w, h, { field, fit: "contain", alt: "" });
+
   const qr = (field: string, x: number, y: number, size: number, style?: CSSProperties) =>
     base("qrcode", x, y, size, size, { field }, style);
 
-  return { text, rect, circle, line, vline, diamond, photo, logo, qr };
+  return { text, rect, circle, line, vline, diamond, photo, logo, signature, qr };
 };
 
 export type Kit = ReturnType<typeof createKit>;

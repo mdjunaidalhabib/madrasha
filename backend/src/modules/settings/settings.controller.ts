@@ -75,6 +75,26 @@ export const updateDocumentTemplates = async (req: Request, res: Response) => {
   }
 };
 
+export const getIdCardBack = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const data = await settingsService.getIdCardBack(madrasa_id);
+    res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const updateIdCardBack = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    await settingsService.updateIdCardBack(madrasa_id, req.body);
+    res.json({ message: "আইডি কার্ডের পিছনের তথ্য সেভ হয়েছে" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 export const getIdCardDesign = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;

@@ -11,6 +11,7 @@ import {
   AdmitCardDesignData,
   LetterDesignData,
   BookLabelDesignData,
+  IdCardBackData,
   MarksheetFieldItem,
   MyPlanData,
   SectionTogglesData,
@@ -23,6 +24,7 @@ import {
   UpdateAdmitCardDesignRequestDto,
   UpdateLetterDesignRequestDto,
   UpdateBookLabelDesignRequestDto,
+  UpdateIdCardBackRequestDto,
   UpdateSectionToggleRequestDto,
 } from "./settings.dto";
 import {
@@ -44,6 +46,8 @@ import {
   BRAND_LAYOUT_LIMITS,
   MAX_BRAND_FOOTER_TEXT_LENGTH,
   MARKSHEET_FIELD_KEYS,
+  MAX_ID_CARD_BACK_TITLE_LENGTH,
+  MAX_ID_CARD_BACK_LOST_TEXT_LENGTH,
 } from "./settings.constants";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -279,6 +283,20 @@ function sanitizeContactList(value: unknown, maxLength: number): string[] | null
   }
   return cleaned;
 }
+
+const ISO_DATE_RE = /^d{4}-d{2}-d{2}$/;
+
+const EMPTY_ID_CARD_BACK: IdCardBackData = {
+  issue_date: null,
+  expiry_date: null,
+  principal_title: null,
+  principal_signature: null,
+  lost_return_text: null,
+  default_design_id: null,
+};
+
+const isValidIsoDate = (value: unknown): value is string =>
+  typeof value === "string" && ISO_DATE_RE.test(value) && !Number.isNaN(Date.parse(value));
 
 const toBoolInt = (value: unknown): 0 | 1 => (Number(value) ? 1 : 0);
 
@@ -555,6 +573,65 @@ export class SettingsService {
         : {}),
       ...(admit_card_rules !== undefined ? { admitCardRules: admit_card_rules } : {}),
       ...(custom_notice_template !== undefined ? { customNoticeTemplate: custom_notice_template } : {}),
+    });
+  }
+
+  async getIdCardBack(madrasaId: number): Promise<IdCardBackData> {
+    const madrasa = await this.repository.findIdCardBack(madrasaId);
+    if (!madrasa) throw new NotFoundError("Madrasa not found");
+
+    return {
+      ...EMPTY_ID_CARD_BACK,
+      ...((madrasa.idCardBackSettings as Partial<IdCardBackData> | null) || {}),
+    };
+  }
+
+  async updateIdCardBack(madrasaId: number, body: UpdateIdCardBackRequestDto) {
+    const { issue_date, expiry_date, principal_title, principal_signature, lost_return_text, default_design_id } = body;
+
+    for (const [label, value] of [
+      ["issue_date", issue_date],
+      ["expiry_date", expiry_date],
+    ] as const) {
+      if (value !== undefined && value !== null && !isValidIsoDate(value)) {
+        throw new BadRequestError(`Invalid ${label} (expected YYYY-MM-DD)`);
+      }
+    }
+    if (principal_title !== undefined && !isValidTextValue(principal_title, MAX_ID_CARD_BACK_TITLE_LENGTH)) {
+      throw new BadRequestError("Invalid principal_title");
+    }
+    if (lost_return_text !== undefined && !isValidTextValue(lost_return_text, MAX_ID_CARD_BACK_LOST_TEXT_LENGTH)) {
+      throw new BadRequestError("Invalid lost_return_text");
+    }
+    if (principal_signature !== undefined && !storageProvider.isValidImage(principal_signature)) {
+      throw new BadRequestError("Invalid image for principal_signature");
+    }
+    if (default_design_id !== undefined && default_design_id !== null && !Number.isInteger(default_design_id)) {
+      throw new BadRequestError("Invalid default_design_id");
+    }
+
+    const current = await this.getIdCardBack(madrasaId);
+    const next: IdCardBackData = {
+      ...current,
+      ...(issue_date !== undefined ? { issue_date } : {}),
+      ...(expiry_date !== undefined ? { expiry_date } : {}),
+      ...(principal_title !== undefined ? { principal_title } : {}),
+      ...(lost_return_text !== undefined ? { lost_return_text } : {}),
+      ...(default_design_id !== undefined ? { default_design_id } : {}),
+      ...(principal_signature !== undefined
+        ? {
+            principal_signature:
+              principal_signature === null ? null : storageProvider.persistImage(principal_signature),
+          }
+        : {}),
+    };
+
+    if (next.issue_date && next.expiry_date && next.expiry_date < next.issue_date) {
+      throw new BadRequestError("expiry_date cannot be before issue_date");
+    }
+
+    await this.repository.updateIdCardBack(madrasaId, {
+      idCardBackSettings: next as unknown as Prisma.InputJsonValue,
     });
   }
 

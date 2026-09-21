@@ -1,6 +1,20 @@
 import crypto from "crypto";
 
-type StoredPdf = { buffer: Buffer; fileName: string; expiresAt: number };
+type StoredPdf = { buffer: Buffer; fileName: string; expiresAt: number; downloaded?: boolean };
+
+// Set once a real GET has finished sending the whole file (see
+// downloadReportPdf) - lets the admin page show "download complete", since a
+// plain link click gives the page no completion event of its own.
+export const markDownloaded = (id: string): void => {
+  const entry = store.get(id);
+  if (entry) entry.downloaded = true;
+};
+
+export const isDownloaded = (id: string): boolean | undefined => {
+  const entry = store.get(id);
+  if (!entry || entry.expiresAt <= Date.now()) return undefined;
+  return Boolean(entry.downloaded);
+};
 
 // A generated PDF briefly waits here between the POST that renders it and
 // the GET that downloads it (see report-export.controller.ts) - the POST
@@ -14,6 +28,7 @@ type StoredPdf = { buffer: Buffer; fileName: string; expiresAt: number };
 // process - true for this app's single-instance deployment.
 const store = new Map<string, StoredPdf>();
 const TTL_MS = 2 * 60 * 1000;
+const MAX_STORED_PDFS = 30;
 
 const evictExpired = () => {
   const now = Date.now();
@@ -24,6 +39,14 @@ const evictExpired = () => {
 
 export const storePdf = (buffer: Buffer, fileName: string): string => {
   evictExpired();
+  // Hard cap on held PDFs (a few MB each) so a burst of exports whose
+  // downloads never happen (dropped network, closed tab) can't grow memory
+  // without bound within the TTL - oldest goes first (Map keeps insertion order).
+  while (store.size >= MAX_STORED_PDFS) {
+    const oldest = store.keys().next().value;
+    if (oldest === undefined) break;
+    store.delete(oldest);
+  }
   const id = crypto.randomBytes(24).toString("hex");
   store.set(id, { buffer, fileName, expiresAt: Date.now() + TTL_MS });
   return id;

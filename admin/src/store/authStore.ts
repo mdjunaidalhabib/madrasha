@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useBrandingStore } from "./brandingStore";
-import { useBookLabelDesignStore } from "./bookLabelDesignStore";
 import { useIdCardDesignStore } from "./idCardDesignStore";
+import { useIdCardBackStore } from "./idCardBackStore";
 import { useLetterDesignStore } from "./letterDesignStore";
 import { useAdmitCardDesignStore } from "./admitCardDesignStore";
 import { useDocumentTemplateStore } from "./documentTemplateStore";
@@ -93,8 +93,8 @@ export const useAuthStore = create<AuthState>()(
         // ট্যানেন্টের ডেটা (নাম/ঠিকানা, আইডি কার্ড/সার্টিফিকেট ডিজাইন
         // ইত্যাদি) সার্ভ করতেই থাকে।
         useBrandingStore.getState().reset();
-        useBookLabelDesignStore.getState().reset();
         useIdCardDesignStore.getState().reset();
+        useIdCardBackStore.getState().reset();
         useLetterDesignStore.getState().reset();
         useAdmitCardDesignStore.getState().reset();
         useDocumentTemplateStore.getState().reset();

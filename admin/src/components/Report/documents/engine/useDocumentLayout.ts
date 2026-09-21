@@ -3,6 +3,7 @@ import type { BackendDocumentType } from "@madrasha/shared-ui/src/components/Doc
 import { DOCUMENT_TYPE_TO_KIND } from "@madrasha/shared-ui/src/components/DocumentDesigner/documentTypeMap";
 import type { DocumentLayout } from "@madrasha/shared-ui/src/components/DocumentDesigner/types";
 import {
+  DEFAULT_ID_CARD_BACK_ID,
   getBuiltinDesign,
   getDefaultBuiltinDesign,
   isBuiltinDesignId,
@@ -76,6 +77,17 @@ export const useDocumentLayout = (
       },
     };
   }, [type, templateId, isDbTemplate, detail]);
+};
+
+/**
+ * আইডি কার্ডের পিছনের পাতার লেআউট: ঋণাত্মক id = বিল্ট-ইন (ডিফল্ট/রেডিমেড), ধনাত্মক id = নিজস্ব/সিস্টেম
+ * টেমপ্লেট (ID_CARD টাইপের যেকোনো টেমপ্লেট পিছনের পাতা হিসেবে বাছা যায়)। অজানা id → ডিফল্ট পিছন।
+ * backId = null → পিছনের পাতা নেই (null)।
+ */
+export const useBackLayout = (backId: number | null): DocumentLayout | null => {
+  const known = backId !== null && (backId > 0 || getBuiltinDesign(backId)?.side === "back");
+  const { layout } = useDocumentLayout("ID_CARD", known ? backId : DEFAULT_ID_CARD_BACK_ID);
+  return backId === null ? null : layout;
 };
 
 /**

@@ -57,15 +57,33 @@ const reports: ReportMenuItem[] = [
     ],
   },
   {
+    key: "student-id-card-backs",
+    title: "আইডি কার্ড ব্যাক",
+    subtitle: "আইডি কার্ডের পিছনের পাতা (ইস্যু/মেয়াদ, অধ্যক্ষের স্বাক্ষর, ফেরতের ঠিকানা) আলাদা প্রিন্ট",
+    endpoint: "/reports/student/id-cards",
+    printable: "id-card",
+    documentType: "ID_CARD",
+    backOnly: true,
+    requiresDivision: true,
+    columns: [
+      { header: "রোল নম্বর", key: "roll" },
+      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
+      { header: "শিক্ষার্থীর নাম", key: "student_name" },
+      { header: "শ্রেণি", key: "class_name" },
+      { header: "বিভাগ", key: "division_name" },
+      { header: "মোবাইল", key: "guardian_phone" },
+    ],
+  },
+  {
     key: "student-admit-cards",
     title: "প্রবেশপত্র",
     subtitle: "শিক্ষার্থীদের পরীক্ষার প্রবেশপত্র তৈরি ও প্রিন্ট",
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     documentType: "ADMIT_CARD",
-    // প্রবেশপত্র ১৯০ × ১৩২ মিমি (A4-এর অর্ধেক) - A5 ল্যান্ডস্কেপে ঠিক মাপে বসে, তাই সেটাই ডিফল্ট।
+    // ডিফল্ট A5 পোর্ট্রেট: উপরে-নিচে ২টি প্রবেশপত্র, মাঝে কাটার ফাঁক (স্কেল করে আঁটে)।
     defaultPaperSize: "a5",
-    defaultOrientation: "landscape",
+    defaultOrientation: "portrait",
     // Admit cards are scoped to ONE exam's registered candidates (see
     // reports.repository.ts's findStudentAdmitCards) - without
     // requiresExam, the page never sent exam_id at all and the backend
@@ -97,6 +115,9 @@ const reports: ReportMenuItem[] = [
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card-with-rules",
     documentType: "ADMIT_CARD",
+    // প্রবেশপত্রের সমান মাপ ও বিন্যাস: A5 পোর্ট্রেটে উপর-নিচ ২টি (A4 ল্যান্ডস্কেপে ৪টি)।
+    defaultPaperSize: "a5",
+    defaultOrientation: "portrait",
     columns: [
       { header: "রোল নম্বর", key: "roll" },
       { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
@@ -194,6 +215,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "নির্বাচিত পরীক্ষায় ১ম, ২য়, ৩য় স্থান অধিকারীদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
     endpoint: "/reports/academic/prize-book-labels",
     printable: "book-label",
+    documentType: "BOOK_LABEL",
     requiresExam: true,
     columns: PRIZE_BOOK_LABEL_COLUMNS,
   },
@@ -203,6 +225,7 @@ const reports: ReportMenuItem[] = [
     subtitle: "নির্বাচিত পরীক্ষায় মেধাক্রম ১ম-৩য় এবং মুমতাজ গ্রেডপ্রাপ্তদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
     endpoint: "/reports/academic/prize-book-labels",
     printable: "book-label",
+    documentType: "BOOK_LABEL",
     requiresExam: true,
     extraParams: { mumtaz_only: "true" },
     columns: PRIZE_BOOK_LABEL_COLUMNS,

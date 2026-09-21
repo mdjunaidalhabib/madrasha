@@ -32,7 +32,7 @@ import talimatRoutes from "../modules/talimat/talimat.routes";
 import classPanalRoutes from "../modules/classPanal/class-panel.routes";
 
 import reportsRoutes from "../modules/reports/report.routes";
-import { downloadReportPdf } from "../modules/reports/controllers/report-export.controller";
+import { downloadReportPdf, getReportPdfDownloadStatus } from "../modules/reports/controllers/report-export.controller";
 // 👑 Super Admin
 import superadminRoutes from "../modules/super-admin/superadmin.routes";
 import superAdminAuthRoutes from "../modules/super-admin/superadmin.auth.routes";
@@ -158,6 +158,7 @@ router.use("/attendance-devices", attendanceDeviceRoutes);
    (examRoutes etc.), or one of those swallows it first and rejects it
    for having no madrasa slug.
 ========================================================= */
+router.get("/reports/export-pdf/:downloadId/status", getReportPdfDownloadStatus);
 router.get("/reports/export-pdf/:downloadId", downloadReportPdf);
 
 /* =========================

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { requireTenant } from "../reports.response";
 import { reportExportService } from "./report-export.service";
-import { storePdf, takePdf } from "./report-export.store";
+import { storePdf, takePdf, markDownloaded, isDownloaded } from "./report-export.store";
 import { BadRequestError, NotFoundError } from "../../../shared/errors";
 
 const ALLOWED_REPORTS_PAGES = ["academic", "student", "exam", "teacher", "documents"];
@@ -85,7 +85,25 @@ export const downloadReportPdf = (req: Request, res: Response) => {
     throw new NotFoundError("This download link has expired - please generate the PDF again");
   }
 
+  // Only a full GET counts - HEAD/probe requests from download managers
+  // also "finish", and a dropped connection fires "close" without "finish".
+  const downloadId = String(req.params.downloadId || "");
+  if (req.method === "GET") {
+    res.on("finish", () => markDownloaded(downloadId));
+  }
+
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${entry.fileName}.pdf"`);
   res.send(entry.buffer);
+};
+
+// Polled by the admin page after it triggers the download, so it can tell
+// the user when the file has really finished downloading. Same id-guarded
+// public mounting as downloadReportPdf (core/router.ts).
+export const getReportPdfDownloadStatus = (req: Request, res: Response) => {
+  const downloaded = isDownloaded(String(req.params.downloadId || ""));
+  if (downloaded === undefined) {
+    throw new NotFoundError("This download link has expired");
+  }
+  res.json({ downloaded });
 };

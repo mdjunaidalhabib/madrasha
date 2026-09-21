@@ -278,6 +278,8 @@ const madrasaAdminChildren = [
       { path: "class-book", element: withSuspense(<ClassBookSettingsPage />) },
       { path: "exam", element: withSuspense(<ExamSettingsPage />) },
       { path: "grade", element: withSuspense(<GradeSettingsPage />) },
+      // আইডি কার্ড ব্যাক এখন "ডকুমেন্টস টেমপ্লেট" পেজের একটি ট্যাব।
+      { path: "id-card-back", element: <Navigate to="../documents" replace /> },
       {
         path: "documents",
         element: (

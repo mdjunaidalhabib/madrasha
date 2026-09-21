@@ -1,7 +1,7 @@
 import DocumentPreview from "@madrasha/shared-ui/src/components/DocumentDesigner/DocumentPreview";
 import type { DocumentLayout } from "@madrasha/shared-ui/src/components/DocumentDesigner/types";
-import { usePageContentBoxMm } from "../../pagination/PageGeometryContext";
-import { PX_TO_MM, computeSheetCells } from "./cardSheetLayout";
+import { usePageContentBoxMm, usePageSheetMm } from "../../pagination/PageGeometryContext";
+import { PX_TO_MM, computeContentGrid, computePaperSplit, computeSingleScale } from "./cardSheetLayout";
 
 type Row = Record<string, any>;
 
@@ -48,53 +48,222 @@ type CardSheetProps = {
   /** এই পাতার কার্ডগুলো (≤ perPage)। */
   rows: Row[];
   perPage: number;
+  /** আইডি কার্ডের পিছনের পাতা - থাকলে (একক শিক্ষার্থী, "দুই পাশ") প্রথম row-র সামনে + পিছন জোড়া বেঁধে মাঝখানে বসে, পাতা ভাগ হয় না। */
+  backLayout?: DocumentLayout | null;
 };
 
-/**
- * একটি পাতা = কনটেন্ট-বক্স জুড়ে `perPage` টি সমান ঘর; প্রতিটি কার্ড নিজের ঘরে
- * আঁটে এমন স্কেলে ঠিক মাঝখানে বসে। ১টি হলে পাতার মাঝখানে একটি কার্ড; ২টি হলে
- * মাঝে ডটেড কাটার-রেখাসহ দুটি।
- */
-export const CardSheet = ({ layout, rows, perPage }: CardSheetProps) => {
-  const box = usePageContentBoxMm();
-  if (!box) return null;
+const GUIDE = "0.25mm dashed #b8b8b8";
 
+/** সামনে ও পিছনের মাঝের ফাঁক (mm) - কাছাকাছি, কিন্তু ছাঁটার মতো যথেষ্ট জায়গা রেখে। A5 পোর্ট্রেট
+ * (কাগজের প্রস্থ ≤ ১৫০ মিমি; A4 ল্যান্ডস্কেপের ২-আপ অর্ধেকও) জায়গা কম, তাই ফাঁক ছোট। */
+const PAIR_GAP_MM = 12;
+const PAIR_GAP_A5_PORTRAIT_MM = 6;
+const A5_PORTRAIT_MAX_PAPER_WIDTH_MM = 150;
+
+/**
+ * সামনে + পিছনের জোড়া ("দুই পাশ"): পাতা ভাগ হয় না, কাটার-রেখাও নেই - দুটি কার্ড পাশাপাশি/উপর-নিচে
+ * কাছাকাছি (PAIR_GAP_MM ফাঁকে) একটি জোড়া হয়ে পাতার কনটেন্ট-বক্সের মাঝখানে বসে। পোর্ট্রেটে উপরে সামনে,
+ * নিচে পিছনে; ল্যান্ডস্কেপে সামনে বাঁয়ে, পিছন ডানে (যেটায় কার্ড বড় থাকে সেটাই, সমান হলে পাতার দিক অনুযায়ী)।
+ */
+const CardPairSheet = ({
+  layout,
+  backLayout,
+  row,
+}: {
+  layout: DocumentLayout;
+  backLayout: DocumentLayout;
+  row: Row;
+}) => {
+  const box = usePageContentBoxMm();
+  const sheet = usePageSheetMm();
+  if (!box || !sheet) return null;
+
+  const gapMm = sheet.paperWidth <= A5_PORTRAIT_MAX_PAPER_WIDTH_MM ? PAIR_GAP_A5_PORTRAIT_MM : PAIR_GAP_MM;
   const cardWidthMm = layout.width * PX_TO_MM;
   const cardHeightMm = layout.height * PX_TO_MM;
-  const cells = computeSheetCells(box.width, box.height, cardWidthMm, cardHeightMm, perPage);
-  const guide = "0.25mm dashed #b8b8b8";
+  const fit = (pairWidthMm: number, pairHeightMm: number) =>
+    Math.min(box.width / pairWidthMm, box.height / pairHeightMm, 1);
+  const stackedScale = fit(cardWidthMm, cardHeightMm * 2 + gapMm);
+  const sideScale = fit(cardWidthMm * 2 + gapMm, cardHeightMm);
+  const sideBySide =
+    sideScale > stackedScale + 0.001 || (Math.abs(sideScale - stackedScale) <= 0.001 && box.width > box.height);
+  const scale = sideBySide ? sideScale : stackedScale;
 
   return (
     <div
       className="report-card-sheet"
       style={{
-        display: "grid",
+        display: "flex",
+        flexDirection: sideBySide ? "row" : "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: `${gapMm * scale}mm`,
         width: `${box.width}mm`,
         height: `${box.height}mm`,
-        gridTemplateColumns: `repeat(${cells.cols}, 1fr)`,
-        gridTemplateRows: `repeat(${cells.rows}, 1fr)`,
       }}
     >
-      {Array.from({ length: cells.cols * cells.rows }, (_, index) => {
+      {[layout, backLayout].map((cardLayout, slot) => (
+        <div key={slot} className="print-page-break">
+          <ScaledCanvas layout={cardLayout} row={row} scale={scale} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * একটি পাতা = `perPage` টি কার্ড। ১টি হলে কনটেন্ট-বক্সের মাঝখানে একটি কার্ড। ২টি হলে
+ * পুরো কাগজ (মার্জিনসহ) সমান দুই অর্ধেকে ভাগ হয়, প্রতিটি কার্ড নিজের অর্ধেকের ঠিক
+ * মাঝখানে বসে - চার পাশে অন্তত পাতার মার্জিন পরিমাণ ফাঁকা, আর মাঝ বরাবর কাগজ-জোড়া
+ * ডটেড কাটার-রেখা; ফলে কাটলে চার পাশে (প্রায়) সমান জায়গা থাকে, যেকোনো কাগজে।
+ */
+export const CardSheet = ({ layout, rows, perPage, backLayout }: CardSheetProps) => {
+  const box = usePageContentBoxMm();
+  const sheet = usePageSheetMm();
+  if (!box || !sheet) return null;
+
+  if (backLayout && rows[0]) return <CardPairSheet layout={layout} backLayout={backLayout} row={rows[0]} />;
+
+  const cardWidthMm = layout.width * PX_TO_MM;
+  const cardHeightMm = layout.height * PX_TO_MM;
+  const guide = GUIDE;
+
+  if (perPage <= 1) {
+    const scale = computeSingleScale(box.width, box.height, cardWidthMm, cardHeightMm);
+    return (
+      <div
+        className="report-card-sheet"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: `${box.width}mm`,
+          height: `${box.height}mm`,
+        }}
+      >
+        {rows[0] && (
+          <div className="print-page-break">
+            <ScaledCanvas layout={layout} row={rows[0]} scale={scale} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ২টির বেশি = আইডি কার্ডের গ্রিড: পুরো কাগজ (মার্জিনসহ) সমান ঘরে ভাগ (যত কলাম × সারি আঁটে)।
+  // কাগজের কোণ থেকে মাপা ঘর → কনটেন্ট-বক্সের কোণ থেকে মাপে রূপান্তর (offsetLeft/Top)।
+  if (perPage > 2) {
+    const grid = computeContentGrid(sheet.paperWidth, sheet.paperHeight, cardWidthMm, cardHeightMm);
+    const gridScaledWidth = cardWidthMm * grid.scale;
+    const gridScaledHeight = cardHeightMm * grid.scale;
+    return (
+      <div
+        className="report-card-sheet"
+        style={{ position: "relative", width: `${box.width}mm`, height: `${box.height}mm` }}
+      >
+        {Array.from({ length: grid.cols * grid.rows }, (_, index) => {
+          const row = rows[index];
+          if (!row) return null;
+          const left =
+            (index % grid.cols) * grid.cellWidthMm + (grid.cellWidthMm - gridScaledWidth) / 2 - sheet.offsetLeft;
+          const top =
+            Math.floor(index / grid.cols) * grid.cellHeightMm +
+            (grid.cellHeightMm - gridScaledHeight) / 2 -
+            sheet.offsetTop;
+          return (
+            <div
+              key={index}
+              className="print-page-break"
+              style={{ position: "absolute", left: `${left}mm`, top: `${top}mm` }}
+            >
+              <ScaledCanvas layout={layout} row={row} scale={grid.scale} />
+            </div>
+          );
+        })}
+        {Array.from({ length: grid.cols - 1 }, (_, i) => (
+          <div
+            key={`v${i}`}
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: `${-sheet.offsetTop}mm`,
+              height: `${sheet.paperHeight}mm`,
+              left: `${(i + 1) * grid.cellWidthMm - sheet.offsetLeft}mm`,
+              borderLeft: guide,
+            }}
+          />
+        ))}
+        {Array.from({ length: grid.rows - 1 }, (_, i) => (
+          <div
+            key={`h${i}`}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: `${-sheet.offsetLeft}mm`,
+              width: `${sheet.paperWidth}mm`,
+              top: `${(i + 1) * grid.cellHeightMm - sheet.offsetTop}mm`,
+              borderTop: guide,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const split = computePaperSplit(sheet.paperWidth, sheet.paperHeight, cardWidthMm, cardHeightMm, perPage, sheet.margin);
+  const scaledWidthMm = cardWidthMm * split.scale;
+  const scaledHeightMm = cardHeightMm * split.scale;
+
+  return (
+    <div
+      className="report-card-sheet"
+      style={{ position: "relative", width: `${box.width}mm`, height: `${box.height}mm` }}
+    >
+      {Array.from({ length: split.cols * split.rows }, (_, index) => {
         const row = rows[index];
-        const isLast = index === cells.cols * cells.rows - 1;
+        if (!row) return null;
+        const col = index % split.cols;
+        const line = Math.floor(index / split.cols);
+        // কাগজের কোণ থেকে মাপা টুকরোর কেন্দ্র → কনটেন্ট-বক্সের কোণ থেকে মাপে রূপান্তর।
+        const left = (col + 0.5) * split.pieceWidthMm - scaledWidthMm / 2 - sheet.offsetLeft;
+        const top = (line + 0.5) * split.pieceHeightMm - scaledHeightMm / 2 - sheet.offsetTop;
         return (
           <div
             key={index}
             className="print-page-break"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              overflow: "hidden",
-              ...(isLast ? {} : cells.cols > 1 ? { borderRight: guide } : { borderBottom: guide }),
-            }}
+            style={{ position: "absolute", left: `${left}mm`, top: `${top}mm` }}
           >
-            {row && <ScaledCanvas layout={layout} row={row} scale={cells.scale} />}
+            <ScaledCanvas layout={layout} row={row} scale={split.scale} />
           </div>
         );
       })}
+      {/* টুকরোর সীমানায় কাগজের এক প্রান্ত থেকে অন্য প্রান্ত পর্যন্ত কাটার-রেখা */}
+      {Array.from({ length: split.cols - 1 }, (_, i) => (
+        <div
+          key={`v${i}`}
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: `${-sheet.offsetTop}mm`,
+            height: `${sheet.paperHeight}mm`,
+            left: `${(i + 1) * split.pieceWidthMm - sheet.offsetLeft}mm`,
+            borderLeft: guide,
+          }}
+        />
+      ))}
+      {Array.from({ length: split.rows - 1 }, (_, i) => (
+        <div
+          key={`h${i}`}
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: `${-sheet.offsetLeft}mm`,
+            width: `${sheet.paperWidth}mm`,
+            top: `${(i + 1) * split.pieceHeightMm - sheet.offsetTop}mm`,
+            borderTop: guide,
+          }}
+        />
+      ))}
     </div>
   );
 };

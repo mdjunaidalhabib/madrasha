@@ -16,9 +16,15 @@ import {
   ReportMenuItem,
 } from "../../../src/features/reports/types";
 import type { TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
-import { listBuiltinDesigns } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
+import {
+  DEFAULT_ID_CARD_BACK_ID,
+  getDefaultBuiltinBackDesign,
+  listBuiltinBackDesigns,
+  listBuiltinDesigns,
+} from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 import type { CardsPerPage } from "../../store/selectedTemplateOverrideStore";
 import { MarksheetSettingsToggleButton } from "./student/MarksheetSignatureControls";
+import NoticeBoardPicker from "./documents/NoticeBoardPicker";
 
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
@@ -61,6 +67,15 @@ type ReportFilterBarProps = {
   onTemplateChange: (value: number | null) => void;
   cardsPerPage: CardsPerPage;
   onCardsPerPageChange: (value: CardsPerPage) => void;
+  /** আইডি কার্ড: পিছনের পাতার ডিজাইন (null = পিছন ছাড়া)। */
+  idCardBackId: number | null;
+  onIdCardBackChange: (id: number | null) => void;
+  /** আইডি কার্ড ("একক শিক্ষার্থী" মোড): সামনের সাথে একই পাতায় ছাপার পিছনের ডিজাইন (null = শুধু সামনে) */
+  idCardPairBackId: number | null;
+  onIdCardPairChange: (both: boolean) => void;
+  /** "আইডি কার্ড ব্যাক" রিপোর্ট ("একক শিক্ষার্থী" মোড): পিছনের সাথে সামনেও ছাপা হবে কি না। */
+  idCardBackWithFront: boolean;
+  onIdCardBackWithFrontChange: (value: boolean) => void;
   /** Marksheet report only: whether the docked settings panel is open, and how to toggle it. */
   marksheetPanelOpen?: boolean;
   onMarksheetPanelToggle?: () => void;
@@ -72,10 +87,15 @@ type ReportFilterBarProps = {
 
 // আইডি কার্ড / প্রবেশপত্রের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
 const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: string }[]> = {
+  // "1" = একক শিক্ষার্থী (প্রতি পাতায় ১টি) - ডিফল্ট; "grid" = সকল শিক্ষার্থী (কাগজ ভাগ হয়ে একপাতায় অনেকগুলো)।
   "id-card": [
-    { value: "auto", label: "বিন্যাস: স্বয়ংক্রিয়" },
-    { value: "grid", label: "একসাথে অনেকগুলো" },
-    { value: "1", label: "প্রতি পাতায় ১টি (মাঝে)" },
+    { value: "1", label: "একক শিক্ষার্থী (পাতায় ১টি)" },
+    { value: "grid", label: "সকল শিক্ষার্থী (পাতায় অনেকগুলো)" },
+  ],
+  // পুরস্কার বই-লেবেল: ডিফল্ট = পুরো কাগজে সব লেবেল, কাটার-রেখাসহ।
+  "book-label": [
+    { value: "auto", label: "সকল লেবেল (কাটার-রেখাসহ)" },
+    { value: "1", label: "প্রতি পাতায় ১টি" },
   ],
   "admit-card": [
     { value: "auto", label: "বিন্যাস: স্বয়ংক্রিয়" },
@@ -117,6 +137,12 @@ const ReportFilterBar = ({
   onTemplateChange,
   cardsPerPage,
   onCardsPerPageChange,
+  idCardBackId,
+  onIdCardBackChange,
+  idCardPairBackId,
+  onIdCardPairChange,
+  idCardBackWithFront,
+  onIdCardBackWithFrontChange,
   marksheetPanelOpen = false,
   onMarksheetPanelToggle,
   setupExtras,
@@ -140,6 +166,10 @@ const ReportFilterBar = ({
               className={`${fieldClass} pl-6`}
             />
           </div>
+        )}
+
+        {activeReport.printable === "notice-board" && (
+          <NoticeBoardPicker selectClassName={selectFieldClass} iconClassName={selectIconClass} />
         )}
 
         {activeReport.requiresExam && (
@@ -168,12 +198,12 @@ const ReportFilterBar = ({
           iconClassName={selectIconClass}
         >
           <option value="">{divisionRequired ? "বিভাগ নির্বাচন করুন" : "সকল বিভাগ"}</option>
-          {divisionRequired && <option value="all">সকল বিভাগ</option>}
           {divisions.map((division) => (
             <option key={division.division_id} value={division.division_id}>
               {division.division_name_bn}
             </option>
           ))}
+          {divisionRequired && <option value="all">সকল বিভাগ</option>}
         </FilterSelect>
 
         {/* Teacher rows carry no class_id (teachers belong to a division, not
@@ -190,13 +220,20 @@ const ReportFilterBar = ({
             iconClassName={selectIconClass}
           >
             <option value="">
-              {selectedDivision && selectedDivision !== "all" ? "সকল শ্রেণি" : "আগে বিভাগ নির্বাচন"}
+              {selectedDivision && selectedDivision !== "all"
+                ? divisionRequired
+                  ? "শ্রেণি নির্বাচন করুন"
+                  : "সকল শ্রেণি"
+                : "আগে বিভাগ নির্বাচন"}
             </option>
             {classes.map((cls) => (
               <option key={cls.class_id} value={cls.class_id}>
                 {cls.class_name_bn}
               </option>
             ))}
+            {divisionRequired && selectedDivision && selectedDivision !== "all" && (
+              <option value="all">সকল শ্রেণি</option>
+            )}
           </FilterSelect>
         )}
 
@@ -204,12 +241,12 @@ const ReportFilterBar = ({
           <FilterSelect
             value={selectedSubject}
             onChange={onSubjectChange}
-            disabled={!selectedClass}
+            disabled={!selectedClass || selectedClass === "all"}
             wrapperClassName="min-w-[100px] flex-1 sm:w-auto sm:flex-none"
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="">{selectedClass ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
+            <option value="">{selectedClass && selectedClass !== "all" ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
             {subjectOptions.map((subject) => (
               <option key={subject.key} value={subject.key}>
                 {subject.name}
@@ -218,7 +255,8 @@ const ReportFilterBar = ({
           </FilterSelect>
         )}
 
-        {activeReport.documentType && (
+        {/* সামনের ডিজাইন: আইডি কার্ড রিপোর্টে সবসময়; ব্যাক রিপোর্টে শুধু "দুই পাশ" বাছা থাকলে (একক শিক্ষার্থী মোড)। */}
+        {activeReport.documentType && (!activeReport.backOnly || (idCardBackWithFront && cardsPerPage === "1")) && (
           <FilterSelect
             value={selectedTemplateId ?? ""}
             onChange={(value) => onTemplateChange(value ? Number(value) : null)}
@@ -248,6 +286,35 @@ const ReportFilterBar = ({
           </FilterSelect>
         )}
 
+        {/* পিছনের ডিজাইন শুধু "আইডি কার্ড ব্যাক" রিপোর্টে বাছা যায় - আইডি কার্ড রিপোর্টে শুধু সামনের পাতা। */}
+        {activeReport.printable === "id-card" && activeReport.backOnly && (
+          <FilterSelect
+            value={String(idCardBackId ?? DEFAULT_ID_CARD_BACK_ID)}
+            onChange={(value) => onIdCardBackChange(Number(value))}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
+          >
+            <option value={DEFAULT_ID_CARD_BACK_ID}>{getDefaultBuiltinBackDesign().name}</option>
+            <optgroup label="রেডিমেড ডিজাইন">
+              {listBuiltinBackDesigns().map((design) => (
+                <option key={design.id} value={design.id}>
+                  {design.name}
+                </option>
+              ))}
+            </optgroup>
+            {templates.length > 0 && (
+              <optgroup label="আমার / সিস্টেম টেমপ্লেট">
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </FilterSelect>
+        )}
+
         {cardLayoutOptions && (
           <FilterSelect
             value={cardsPerPage}
@@ -261,6 +328,34 @@ const ReportFilterBar = ({
                 {option.label}
               </option>
             ))}
+          </FilterSelect>
+        )}
+
+        {/* একক শিক্ষার্থী মোডে: কোন পাশ ছাপব - ডিফল্ট দুই পাশ (উপরে সামনে, নিচে পিছনে); পিছনের ডিজাইন
+            Talimat-এ সেট করা ডিফল্ট। */}
+        {activeReport.printable === "id-card" && activeReport.backOnly && cardsPerPage === "1" && (
+          <FilterSelect
+            value={idCardBackWithFront ? "both" : "back"}
+            onChange={(value) => onIdCardBackWithFrontChange(value === "both")}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
+          >
+            <option value="both">দুই পাশ (সামনে + পিছনে)</option>
+            <option value="back">শুধু পিছনের পাশ</option>
+          </FilterSelect>
+        )}
+
+        {activeReport.printable === "id-card" && !activeReport.backOnly && cardsPerPage === "1" && (
+          <FilterSelect
+            value={idCardPairBackId === null ? "front" : "both"}
+            onChange={(value) => onIdCardPairChange(value === "both")}
+            wrapperClassName="min-w-[130px] flex-1 sm:w-auto sm:flex-none"
+            selectClassName={selectFieldClass}
+            iconClassName={selectIconClass}
+          >
+            <option value="both">দুই পাশ (সামনে + পিছনে)</option>
+            <option value="front">শুধু সামনের পাশ</option>
           </FilterSelect>
         )}
 

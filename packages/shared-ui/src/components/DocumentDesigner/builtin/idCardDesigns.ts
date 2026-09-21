@@ -1,4 +1,5 @@
-import { createKit } from "./kit";
+import { createKit, type Kit } from "./kit";
+import type { DocumentLayer } from "../types";
 import type { BuiltinDesign } from "./types";
 
 /**
@@ -201,3 +202,168 @@ const modern = (): BuiltinDesign => {
 };
 
 export const ID_CARD_DESIGNS: BuiltinDesign[] = [plain(), emerald(), royal(), maroon(), modern()];
+
+/** পিছনের পাতা কিছু না বাছলে (ডিফল্ট) এই ডিজাইনটাই ব্যবহৃত হয়। */
+export const DEFAULT_ID_CARD_BACK_ID = -111;
+
+type BackTheme = {
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  isDefault?: boolean;
+  bg: string;
+  ink: string;
+  muted: string;
+  /** বিভাজক রেখার রং। */
+  accent: string;
+  titleColor: string;
+  /** উপরের ব্যান্ডের ফিল (না থাকলে শিরোনামের নিচে শুধু রেখা)। */
+  band?: string;
+  /** ব্যান্ডের নিচের সরু রঙিন দাগ। */
+  bandBar?: string;
+  /** নিচের স্ট্রিপের ফিল (না থাকলে শুধু রেখা + লেখা)। */
+  strip?: string;
+  stripText: string;
+  /** ইস্যু/মেয়াদ চিপের পটভূমি। */
+  chip: string;
+  frames?: (k: Kit) => DocumentLayer[];
+};
+
+/**
+ * পিছনের পাতা - মাদরাসার নাম (লোগোসহ), কার্ড ইস্যুর তারিখ ও মেয়াদ, হারিয়ে গেলে কাকে
+ * ফেরত দিতে হবে, অধ্যক্ষের স্বাক্ষর ও পদবি। ইস্যু/মেয়াদ/স্বাক্ষর/ফেরতের ঠিকানা আসে
+ * Talimat → সেটিং → "আইডি কার্ড ব্যাক" পেজ থেকে (row টোকেন id_issue_date, id_expiry_date,
+ * principal_signature, principal_title, id_lost_return)। সব থিমে বিন্যাস এক, শুধু রং
+ * আলাদা - সামনের ডিজাইনগুলোর সাথে মেলে।
+ */
+const backDesign = (t: BackTheme): BuiltinDesign => {
+  const k = createKit();
+  const layers: DocumentLayer[] = [...(t.frames?.(k) ?? [])];
+
+  if (t.band) {
+    layers.push(k.rect(0, 0, W, 52, t.band));
+    if (t.bandBar) layers.push(k.rect(0, 52, W, 3, t.bandBar));
+  }
+  layers.push(
+    k.circle(10, 9, 34, "#ffffff", { stroke: t.accent, strokeWidth: 1.5 }),
+    k.logo(13, 12, 28),
+    k.text("{{madrasa_name}}", 50, 6, 146, 40, { size: 11.5, bold: true, color: t.titleColor, align: "left", wrap: true, lineHeight: 1.15 }),
+  );
+  if (!t.band) layers.push(k.line(12, 54, W - 24, t.accent, 1));
+
+  layers.push(
+    k.rect(12, 66, 88, 38, t.chip, { radius: 6 }),
+    k.text("ইস্যু তারিখ", 19, 70, 76, 11, { size: 7.5, color: t.muted, align: "left" }),
+    k.text("{{id_issue_date}}", 19, 82, 76, 18, { size: 11, bold: true, color: t.ink, align: "left" }),
+    k.rect(104, 66, 88, 38, t.chip, { radius: 6 }),
+    k.text("মেয়াদ শেষ", 111, 70, 76, 11, { size: 7.5, color: t.muted, align: "left" }),
+    k.text("{{id_expiry_date}}", 111, 82, 76, 18, { size: 11, bold: true, color: t.ink, align: "left" }),
+    k.line(12, 116, W - 24, t.accent, 1),
+    k.text("কার্ড হারিয়ে গেলে ফেরত দিন:", 14, 122, W - 28, 14, { size: 8.5, bold: true, color: t.ink, align: "left" }),
+    k.text("{{id_lost_return}}", 14, 138, W - 28, 84, { size: 9, color: t.ink, align: "left", valign: "top", wrap: true, lineHeight: 1.45 }),
+    k.text("{{student_name}}\nরেজি. নং: {{registration_no}}", 14, 244, 84, 40, { size: 8, color: t.muted, align: "left", valign: "bottom", wrap: true, lineHeight: 1.35 }),
+    k.signature("principal_signature", 108, 236, 80, 38),
+    k.line(104, 278, 88, t.muted, 1),
+    k.text("{{principal_title}}", 104, 281, 88, 14, { size: 8.5, bold: true, color: t.ink }),
+  );
+
+  if (t.strip) layers.push(k.rect(0, 310, W, 14, t.strip));
+  else layers.push(k.line(12, 311, W - 24, t.accent, 1));
+  layers.push(k.text("শিক্ষাবর্ষ {{academic_year}}", 0, 310, W, 14, { size: 8, color: t.stripText }));
+
+  return {
+    id: t.id,
+    key: t.key,
+    type: "ID_CARD",
+    name: t.name,
+    description: t.description,
+    width: W,
+    height: H,
+    isDefault: t.isDefault,
+    side: "back",
+    background: { color: t.bg },
+    layers,
+  };
+};
+
+export const ID_CARD_BACK_DESIGNS: BuiltinDesign[] = [
+  backDesign({
+    id: DEFAULT_ID_CARD_BACK_ID,
+    key: "id-back-plain",
+    chip: "#f3f4f6",
+    name: "সাধারণ পিছন (ডিফল্ট)",
+    description: "সাদামাটা কালো-সাদা পিছনের পাতা",
+    isDefault: true,
+    bg: "#ffffff",
+    ink: "#1f2937",
+    muted: "#4b5563",
+    accent: "#9ca3af",
+    titleColor: "#1f2937",
+    stripText: "#374151",
+    frames: (k) => [k.rect(3, 3, W - 6, H - 6, "transparent", { stroke: "#1f2937", strokeWidth: 1, radius: 6 })],
+  }),
+  backDesign({
+    id: -112,
+    key: "id-back-emerald",
+    chip: "#e6f2ea",
+    name: "ইসলামিক গ্রিন (পিছন)",
+    description: "সবুজ ব্যান্ড ও সোনালি রেখা",
+    bg: "#f7faf6",
+    ink: "#1f2937",
+    muted: "#4b5563",
+    accent: "#c9a24b",
+    titleColor: "#ffffff",
+    band: "linear-gradient(135deg,#0a4d31 0%,#137a4c 100%)",
+    bandBar: "#c9a24b",
+    strip: "#0a4d31",
+    stripText: "#ffffff",
+  }),
+  backDesign({
+    id: -113,
+    key: "id-back-royal",
+    chip: "#eff6ff",
+    name: "রয়্যাল ব্লু (পিছন)",
+    description: "নীল ব্যান্ড ও নীল ফুটার",
+    bg: "#ffffff",
+    ink: "#0f172a",
+    muted: "#475569",
+    accent: "#93c5fd",
+    titleColor: "#ffffff",
+    band: "linear-gradient(160deg,#0b2a5b 0%,#1d4ed8 100%)",
+    strip: "#0b2a5b",
+    stripText: "#ffffff",
+  }),
+  backDesign({
+    id: -114,
+    key: "id-back-maroon",
+    chip: "#f3e7c9",
+    name: "মেরুন গোল্ড (পিছন)",
+    description: "ক্রিম জমিনে দ্বৈত সোনালি ফ্রেম",
+    bg: "#fbf5e6",
+    ink: "#3b2a1a",
+    muted: "#6b5b45",
+    accent: "#c9a24b",
+    titleColor: "#7a1f2b",
+    stripText: "#7a1f2b",
+    frames: (k) => [
+      k.rect(4, 4, W - 8, H - 8, "transparent", { stroke: "#7a1f2b", strokeWidth: 2 }),
+      k.rect(9, 9, W - 18, H - 18, "transparent", { stroke: "#c9a24b", strokeWidth: 1 }),
+    ],
+  }),
+  backDesign({
+    id: -115,
+    key: "id-back-modern",
+    chip: "#ecfdf9",
+    name: "আধুনিক টিল (পিছন)",
+    description: "টিল ব্যান্ড ও ফুটার স্ট্রিপ",
+    bg: "#ffffff",
+    ink: "#134e4a",
+    muted: "#475569",
+    accent: "#14b8a6",
+    titleColor: "#ffffff",
+    band: "linear-gradient(135deg,#0f766e 0%,#14b8a6 100%)",
+    strip: "#0f766e",
+    stripText: "#ffffff",
+  }),
+];

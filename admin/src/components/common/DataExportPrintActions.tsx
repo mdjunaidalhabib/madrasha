@@ -104,6 +104,9 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   const [internalMargins, setInternalMargins] = useState<PageMargins>(getDefaultMargins("a4"));
   const [marginPanelOpen, setMarginPanelOpen] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  // "downloading" = the PDF is ready and the browser is fetching it (the
+  // button shows that instead of "তৈরি হচ্ছে", and cancel no longer applies).
+  const [pdfPhase, setPdfPhase] = useState<"generating" | "downloading">("generating");
   const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
   const marginPanelRef = useRef<HTMLDivElement>(null);
   const pdfCancelRef = useRef(false);
@@ -298,7 +301,9 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   // ServerPdfExportConfig.
   const downloadClientPdf = async () => {
     const pageEls = Array.from(
-      document.querySelectorAll<HTMLElement>(".print-pages .print-page-preview"),
+      // .marksheet-half = A4-landscape marksheet sheet's inner A5 halves (part of
+      // the sheet page itself, not separate pages).
+      document.querySelectorAll<HTMLElement>(".print-pages .print-page-preview:not(.marksheet-half)"),
     );
 
     if (!pageEls.length) {
@@ -433,9 +438,16 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     const controller = new AbortController();
     pdfAbortControllerRef.current = controller;
 
+    // One persistent toast, updated in place as the export moves through its
+    // stages (duration 0 = it never auto-dismisses mid-export - the old 3s
+    // toast vanished long before a big report finished rendering).
+    const toastId = useToastStore.getState().show("PDF তৈরি হচ্ছে, অপেক্ষা করুন...", "info", {
+      duration: 0,
+      loading: true,
+    });
+
     try {
       setGeneratingPdf(true);
-      useToastStore.getState().show("PDF তৈরি হচ্ছে, একটু অপেক্ষা করুন...", "info");
 
       const response = await api.post(
         "/reports/export-pdf",
@@ -472,6 +484,14 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       // Content-Disposition: attachment (see report-export.controller.ts's
       // downloadReportPdf) is something both the browser's native download
       // handling and IDM-style managers can complete.
+      setPdfPhase("downloading");
+      useToastStore.getState().update(toastId, {
+        message: "ডাউনলোড হচ্ছে...",
+        type: "info",
+        loading: true,
+        duration: 0,
+      });
+
       const link = document.createElement("a");
       link.href = `${API_BASE_URL}/reports/export-pdf/${downloadId}`;
       link.download = `${fileName}.pdf`;
@@ -479,17 +499,72 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       link.click();
       document.body.removeChild(link);
 
-      useToastStore.getState().show(`PDF ডাউনলোড হয়েছে (${fileName}.pdf)`, "success");
+      // The browser/download manager takes over from here and gives the page
+      // no completion event for a plain link click - so the backend records
+      // when it has finished sending the whole file, and this polls that
+      // (see report-export.controller.ts's getReportPdfDownloadStatus).
+      // Stops at the store's 2-minute TTL, on a expired/failed status check,
+      // or if the download never reaches the server (blocked/cancelled in
+      // the browser) - in which case the fallback message below still
+      // points the user at the browser's download list.
+      let completed = false;
+      let failedChecks = 0;
+      const pollDeadline = Date.now() + 110_000;
+      while (Date.now() < pollDeadline && failedChecks < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        try {
+          const status = await api.get(`/reports/export-pdf/${downloadId}/status`, {
+            timeout: 8_000,
+          });
+          failedChecks = 0;
+          if (status.data?.downloaded) {
+            completed = true;
+            break;
+          }
+        } catch {
+          failedChecks += 1;
+        }
+      }
+
+      useToastStore.getState().update(
+        toastId,
+        completed
+          ? {
+              message: `✓ PDF ডাউনলোড সম্পন্ন হয়েছে (${fileName}.pdf)`,
+              type: "success",
+              loading: false,
+              duration: 8000,
+            }
+          : {
+              message: `PDF ডাউনলোড শুরু হয়েছে (${fileName}.pdf) - ব্রাউজারের ডাউনলোড তালিকা দেখুন`,
+              type: "info",
+              loading: false,
+              duration: 8000,
+            },
+      );
     } catch (error: any) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
-        useToastStore.getState().show("PDF তৈরি বাতিল করা হয়েছে", "error");
+        useToastStore.getState().update(toastId, {
+          message: "PDF তৈরি বাতিল করা হয়েছে",
+          type: "error",
+          loading: false,
+          duration: 4000,
+        });
       } else {
         const detail = error?.response?.data?.message;
         logger.error("PDF generation failed:", error);
-        useToastStore.getState().show(detail || "PDF তৈরি করা যায়নি", "error");
+        // Errors stay until the user closes them - a failure shouldn't be
+        // missable.
+        useToastStore.getState().update(toastId, {
+          message: detail || "PDF তৈরি করা যায়নি, আবার চেষ্টা করুন",
+          type: "error",
+          loading: false,
+          duration: 0,
+        });
       }
     } finally {
       setGeneratingPdf(false);
+      setPdfPhase("generating");
       pdfAbortControllerRef.current = null;
     }
   };
@@ -626,16 +701,36 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           <button
             type="button"
             onClick={handlePdfButtonClick}
-            title={generatingPdf ? "PDF তৈরি বাতিল করুন" : undefined}
-            className={`flex h-8 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold text-white shadow-sm transition sm:flex-none ${
-              generatingPdf ? "bg-rose-600 hover:bg-rose-700" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            disabled={generatingPdf}
+            aria-busy={generatingPdf}
+            className="flex h-8 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-blue-600 px-3 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-80 disabled:hover:bg-blue-600 sm:flex-none"
           >
-            {generatingPdf ? <X className="h-3 w-3" /> : <FileDown className="h-3 w-3" />}
+            {generatingPdf ? (
+              <span
+                className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                aria-hidden="true"
+              />
+            ) : (
+              <FileDown className="h-3 w-3" />
+            )}
             {generatingPdf
-              ? `বাতিল করুন${pdfProgress ? ` (${pdfProgress.current}/${pdfProgress.total})` : ""}`
+              ? pdfPhase === "downloading"
+                ? "ডাউনলোড হচ্ছে..."
+                : `তৈরি হচ্ছে...${pdfProgress ? ` (${pdfProgress.current}/${pdfProgress.total})` : ""}`
               : "PDF"}
           </button>
+
+          {generatingPdf && pdfPhase === "generating" && (
+            <button
+              type="button"
+              onClick={handlePdfButtonClick}
+              title="PDF তৈরি বাতিল করুন"
+              aria-label="PDF তৈরি বাতিল করুন"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </>
       )}
     </>

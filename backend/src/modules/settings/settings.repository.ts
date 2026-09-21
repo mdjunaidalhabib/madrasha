@@ -69,6 +69,17 @@ export class SettingsRepository {
     return prisma.madrasa.update({ where: { id: madrasaId }, data });
   }
 
+  findIdCardBack(madrasaId: number) {
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { idCardBackSettings: true },
+    });
+  }
+
+  updateIdCardBack(madrasaId: number, data: Prisma.MadrasaUpdateInput) {
+    return prisma.madrasa.update({ where: { id: madrasaId }, data });
+  }
+
   findIdCardDesign(madrasaId: number) {
     return prisma.madrasa.findUnique({
       where: { id: madrasaId },

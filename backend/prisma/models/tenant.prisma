@@ -119,6 +119,9 @@ model Madrasa {
 
   idCardDesign          String? @map("id_card_design") @db.VarChar(20)
   idCardBackgroundImage String? @map("id_card_background_image") @db.Text
+  // আইডি কার্ডের পিছনের পাতার তথ্য (ইস্যু/মেয়াদ তারিখ, অধ্যক্ষের পদবি ও স্বাক্ষর, হারিয়ে গেলে
+  // ফেরতের ঠিকানা) - একটি JSON ব্লব, আকার দেখুন IdCardBackData (settings.types.ts)।
+  idCardBackSettings    Json?   @map("id_card_back_settings")
 
   admitCardDesign          String? @map("admit_card_design") @db.VarChar(20)
   admitCardBackgroundImage String? @map("admit_card_background_image") @db.Text

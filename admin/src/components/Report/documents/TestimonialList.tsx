@@ -1,6 +1,7 @@
 import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import TemplatedLetter from "./engine/TemplatedLetter";
+import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
 import { DEFAULT_TESTIMONIAL_TEMPLATE } from "@madrasha/shared-ui/src/utils/documentTemplates";
 
 type TestimonialListProps = {
@@ -34,13 +35,16 @@ const TestimonialList = ({
         <LetterDocument
           row={row}
           heading="প্রত্যয়ন পত্র"
-          headingClassName="mb-8 text-center text-2xl font-bold"
-          bodyClassName="whitespace-pre-line text-lg leading-9 text-slate-800"
+          headingClassName={LETTER_HEADING_CLASS}
+          bodyClassName={LETTER_BODY_CLASS}
           template={template}
           isFirstPage={isFirstPage}
           isLastPage={isLastPage}
           bodyTextOverride={bodyTextOverride}
-          footer={<div className="mt-16 text-right text-sm font-semibold">প্রধান শিক্ষকের স্বাক্ষর</div>}
+          bare
+          letterhead
+          beforeHeading={<LetterDateLine />}
+          footer={<LetterSignatureFooter label="প্রধান শিক্ষকের স্বাক্ষর" />}
         />
       }
     />

@@ -17,7 +17,9 @@ import { getPrintableConfig } from "./pagination/printableConfig";
 import { useDocumentTemplateDetailStore } from "../../store/documentTemplateDetailStore";
 import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 import { PageGeometryContext } from "./pagination/PageGeometryContext";
-import { resolveCardsPerSheet } from "./documents/engine/cardSheetLayout";
+import { PX_TO_MM, computeContentGrid, resolveCardsPerSheet } from "./documents/engine/cardSheetLayout";
+import { useBackLayout, useDocumentLayout } from "./documents/engine/useDocumentLayout";
+import { DEFAULT_ID_CARD_BACK_ID } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 import { useBrandingStore } from "../../store/brandingStore";
 
 type PaginatedReportPreviewProps = {
@@ -93,6 +95,11 @@ const TWO_COLUMN_GAP_PX = 48;
 // gap too, matching TWO_COLUMN_GAP_PX's vertical-cut divider, so there's
 // blank paper to cut through between classes as well as between columns.
 const COLUMN_CLASS_GAP_PX = 40;
+// marksheet/admit-card ল্যান্ডস্কেপ ২-আপ: প্রতিটি লজিক্যাল A5 পোর্ট্রেট পাতা (১৪৮×২১০) একটি "টাইল"-এ
+// বসে। A4 ল্যান্ডস্কেপে টাইল ১৪৮.৫×২১০ (স্কেল ১), A5 ল্যান্ডস্কেপে ১০৫×১৪৮ (স্কেল ১৪৮/২১০)।
+// টাইলের চার পাশে সমান মার্জিন থাকে, তাই মাঝখানে কাটলে দুই টুকরোতেই চার পাশে সমান জায়গা।
+const TWO_UP_TILE_A4 = { widthMm: 148.5, heightMm: 210, scale: 1 };
+const TWO_UP_TILE_A5 = { widthMm: 105, heightMm: 148, scale: 148 / 210 };
 
 // The report face (shared-ui utils/reportFontFace.ts @font-face) is a single static Regular file, so
 // any font-weight in the report renders at the same thin stroke - but the
@@ -586,14 +593,41 @@ const PaginatedReportPreview = ({
   selectedClassName = "",
   repeatTableHeader = false,
   hideBrandHeader = false,
-  paperSize,
-  orientation,
+  paperSize: sheetPaperSize,
+  orientation: sheetOrientation,
   margins: marginsProp,
   emptyMessage,
 }: PaginatedReportPreviewProps) => {
+  // A4 ল্যান্ডস্কেপে মার্কশিট = এক কাগজে ২টি A5 (পোর্ট্রেট) মার্কশিট পাশাপাশি। প্রতিটি মার্কশিট
+  // এখানে A5 পোর্ট্রেট "লজিক্যাল পাতা" - পেজিনেশন/মাপ/ফন্ট সব A5-এর মতোই হয়; শুধু ভৌত কাগজ
+  // (প্রিভিউ স্কেল, প্রিন্ট সাইজ) sheetPaperSize/sheetOrientation থেকে আসে।
+  // প্রবেশপত্রও একইভাবে: A4 ল্যান্ডস্কেপ = ২টি A5 পোর্ট্রেট পাতা পাশাপাশি, প্রতিটিতে উপর-নিচ ২টি প্রবেশপত্র (মোট ৪টি)।
+  // A5 ল্যান্ডস্কেপেও একই: ২টি A5 পোর্ট্রেট পাতা ০.৭০৫ স্কেলে ছোট করে (প্রতিটি ১০৫×১৪৮মিমি টাইলে) পাশাপাশি।
+  // প্রবেশপত্র/নিয়মাবলী শুধু A4 ল্যান্ডস্কেপে ২-আপ; A5 ল্যান্ডস্কেপে ঠিক ১টি (১০০% মাপে) - মার্কশিটের নিয়ম আলাদা।
+  // আইডি কার্ডও A4 ল্যান্ডস্কেপে "একক শিক্ষার্থী" মোডে একই: দুই A5 পোর্ট্রেট পাতা পাশাপাশি, প্রতিটিতে একজনের
+  // (দুই পাশ হলে উপরে সামনে + নিচে পিছনে)। "সকল শিক্ষার্থী" মোডে কাগজ নিজেই ঘরে ভাগ হয়, তাই ২-আপ নয়।
+  const idCardSingleMode = useSelectedTemplateOverrideStore((s) => s.cardsPerPage) === "1";
+  const marksheetTwoUp =
+    sheetOrientation === "landscape" &&
+    (report.printable === "marksheet" ||
+      (sheetPaperSize === "a4" &&
+        (report.printable === "admit-card" ||
+          report.printable === "admit-card-with-rules" ||
+          (report.printable === "id-card" && idCardSingleMode))));
+  const twoUpTile = sheetPaperSize === "a4" ? TWO_UP_TILE_A4 : TWO_UP_TILE_A5;
+  // প্রবেশপত্রে পৃষ্ঠা নম্বর ছাপা হয় না - কাটার পর প্রতিটি কার্ড আলাদা হয়ে যায়।
+  const showPageNumber =
+    report.printable !== "admit-card" &&
+    report.printable !== "admit-card-with-rules" &&
+    report.printable !== "id-card" &&
+    report.printable !== "book-label";
+  const paperSize: PaperSize = marksheetTwoUp ? "a5" : sheetPaperSize;
+  const orientation: Orientation = marksheetTwoUp ? "portrait" : sheetOrientation;
+  // ২-আপ মোডে প্রতিটি অর্ধেকের চার পাশে A5-এর সমান মার্জিন (৭মিমি) - মাঝখানে কাটলে দুই টুকরোর
+  // চার পাশেই সমান জায়গা থাকে, তাই ব্যবহারকারীর মার্জিন এখানে প্রযোজ্য নয়।
   const margins = useMemo(
-    () => marginsProp ?? getDefaultPageMargins(paperSize),
-    [marginsProp, paperSize],
+    () => (marksheetTwoUp ? getDefaultPageMargins("a5") : marginsProp ?? getDefaultPageMargins(paperSize)),
+    [marksheetTwoUp, marginsProp, paperSize],
   );
   const viewportRef = useRef<HTMLDivElement>(null);
   const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -653,6 +687,8 @@ const PaginatedReportPreview = ({
   // (no async template), so it needs no such subscription.
   const templateLoadVersion = useDocumentTemplateDetailStore((s) => s.version);
   const cardsPerPageOption = useSelectedTemplateOverrideStore((s) => s.cardsPerPage);
+  // আইডি কার্ডের পিছনের পাতা বাছা থাকলে গ্রিডের ঘর/শিটের বিন্যাস বদলায় - পুনঃমাপের জন্য নিচের deps-এ আছে।
+  const idCardBackId = useSelectedTemplateOverrideStore((s) => s.idCardBackId);
 
   const branding = useBrandingStore((s) => s.branding);
   // "লেটারহেড" print mode: the physical paper is already pre-printed at a
@@ -666,9 +702,39 @@ const PaginatedReportPreview = ({
   // each page is split into equal cells and every card is scaled to sit
   // centered in its own cell. Sheet pages are pure arithmetic (rows / perSheet)
   // so they need no off-screen measurement. null = the ordinary flow grid.
+  // আইডি কার্ডে কাগজ (মার্জিনসহ) সমান ঘরে ভাগ হয় (প্রবেশপত্রের মতো) - কয়টি ঘর আঁটে তা কার্ডের
+  // মাপ থেকে হিসাব হয়, তাই এখানেই কার্ডের লেআউট (সামনের ডিজাইন, বা "আইডি কার্ড ব্যাক" রিপোর্টে পিছনের) লাগে।
+  const isIdCard = report.printable === "id-card";
+  const idCardTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
+  const idCardFront = useDocumentLayout("ID_CARD", isIdCard && !report.backOnly ? idCardTemplateId : null).layout;
+  const idCardBack = useBackLayout(isIdCard && report.backOnly ? (idCardBackId ?? DEFAULT_ID_CARD_BACK_ID) : null);
+  const idCardLayout = report.backOnly ? idCardBack : idCardFront;
+  // পুরস্কার বই-লেবেলও আইডি কার্ডের মতো কাগজ-ভাগ করা শিট - ঘর-সংখ্যা লেবেলের ডিজাইনের মাপ থেকে।
+  const isBookLabel = report.printable === "book-label";
+  const bookLabelLayout = useDocumentLayout("BOOK_LABEL", isBookLabel ? idCardTemplateId : null).layout;
+  const gridCardLayout = isBookLabel ? bookLabelLayout : idCardLayout;
+  const idCardGridCount = useMemo(() => {
+    if (!(isIdCard || isBookLabel) || !gridCardLayout) return 1;
+    // পুরো কাগজ (মার্জিনসহ) ভাগ হয় - CardSheet-এর সাথে একই হিসাব।
+    const grid = computeContentGrid(
+      getPaperWidthMm(paperSize, orientation),
+      getPaperHeightMm(paperSize, orientation),
+      gridCardLayout.width * PX_TO_MM,
+      gridCardLayout.height * PX_TO_MM,
+    );
+    return grid.cols * grid.rows;
+  }, [isIdCard, isBookLabel, gridCardLayout, paperSize, orientation]);
   const cardsPerSheet =
     config.kind === "grid"
-      ? resolveCardsPerSheet(report.printable, cardsPerPageOption, rows.length, paperSize, orientation)
+      ? resolveCardsPerSheet(
+          report.printable,
+          cardsPerPageOption,
+          rows.length,
+          paperSize,
+          orientation,
+          false,
+          idCardGridCount,
+        )
       : null;
   // Marksheet always carries the madrasa logo/name header even on the
   // "ডকুমেন্ট সমূহ" page (hideBrandHeader=true there) - unlike id-card/
@@ -942,15 +1008,19 @@ const PaginatedReportPreview = ({
         // admit-card-with-rules: always exactly one page (the exam rules
         // notice), never one page per student - see ReportContent's routing
         // for this printable and AdmitCardRulesPage.
-        nextPages.push({
-          key: `${report.key}-single`,
-          rows,
-          startIndex: 0,
-          isFirstPageOfGroup: true,
-          isFirstPage: true,
-          isLastPage: true,
-          density: "comfortable",
-        });
+        // A4 ল্যান্ডস্কেপে (দুই A5 অর্ধেক) নিয়মাবলী দুই অর্ধেকেই ছাপা হয় - পাতা দ্বিগুণ।
+        const copies = marksheetTwoUp && report.printable === "admit-card-with-rules" ? 2 : 1;
+        for (let copy = 0; copy < copies; copy += 1) {
+          nextPages.push({
+            key: copy === 0 ? `${report.key}-single` : `${report.key}-single-${copy + 1}`,
+            rows,
+            startIndex: 0,
+            isFirstPageOfGroup: true,
+            isFirstPage: true,
+            isLastPage: true,
+            density: "comfortable",
+          });
+        }
       } else {
         const continuationBudgetPx = availableHeightPx - CONTINUATION_TOP_OFFSET_PX;
         const firstContainer = measureRefs.current.get("blocks-0");
@@ -1040,6 +1110,7 @@ const PaginatedReportPreview = ({
     measureTargets,
     templateLoadVersion,
     cardsPerSheet,
+    idCardBackId,
     branding,
     repeatTableHeader,
   ]);
@@ -1050,7 +1121,7 @@ const PaginatedReportPreview = ({
 
     const updateScale = () => {
       const availableWidth = Math.max(240, viewport.clientWidth - 16);
-      const paperWidth = getPaperWidthPx(paperSize, orientation);
+      const paperWidth = getPaperWidthPx(sheetPaperSize, sheetOrientation);
       const nextScale = Math.min(1, availableWidth / paperWidth);
       setPreviewScale(Number(nextScale.toFixed(3)));
     };
@@ -1064,7 +1135,7 @@ const PaginatedReportPreview = ({
       observer?.disconnect();
       window.removeEventListener("resize", updateScale);
     };
-  }, [orientation, paperSize]);
+  }, [sheetOrientation, sheetPaperSize]);
 
   // `.print-page-preview`'s own fixed width/height (both the screen-mode
   // rule and the `@media print` one, in index.css) only apply under
@@ -1080,9 +1151,9 @@ const PaginatedReportPreview = ({
   // bottom. Setting it here too - redundant with DataExportPrintActions in
   // the interactive view, but the only place that covers printMode.
   useLayoutEffect(() => {
-    document.documentElement.setAttribute("data-print-size", paperSize);
-    document.documentElement.setAttribute("data-print-orientation", orientation);
-  }, [paperSize, orientation]);
+    document.documentElement.setAttribute("data-print-size", sheetPaperSize);
+    document.documentElement.setAttribute("data-print-orientation", sheetOrientation);
+  }, [sheetPaperSize, sheetOrientation]);
 
   const scaleStyle = { "--report-preview-scale": previewScale } as CSSProperties;
   const pageGeometry = useMemo(() => ({ paperSize, orientation, margins }), [paperSize, orientation, margins]);
@@ -1138,6 +1209,64 @@ const PaginatedReportPreview = ({
           return columns;
         }, [])
       : null;
+
+  // marksheetTwoUp only: ২টি করে A5 লজিক্যাল পাতা এক ভৌত A4 ল্যান্ডস্কেপ কাগজে।
+  const twoUpSheets = marksheetTwoUp
+    ? Array.from({ length: Math.ceil(pages.length / 2) }, (_, i) => pages.slice(i * 2, i * 2 + 2))
+    : null;
+
+  const renderPageSection = (page: ResolvedPage, pageIndex: number, className: string) => {
+    const showsBrandHeader =
+      showBrandAtAll && (page.isFirstPageOfGroup || (brandOnEveryRecord && page.isFirstPage));
+
+    return (
+      <section
+        key={page.key}
+        className={className}
+        data-report={report.printable || "table"}
+        data-paper-size={paperSize}
+        data-orientation={orientation}
+        data-density={page.density}
+        style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
+      >
+        {!isLetterhead && (
+          <>
+            <ReportBackground />
+            <ReportWatermark />
+          </>
+        )}
+        <ReportBrandFooter />
+        {showsBrandHeader && <ReportBrandHeader />}
+        {showPageNumber && (
+          <div className="report-page-footer">
+            <span className="report-page-footer-label">পৃষ্ঠা:</span>
+            <span className="report-page-footer-number">
+              {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
+            </span>
+          </div>
+        )}
+        <div className="report-content-body">
+          <ReportContent
+            loading={loading}
+            report={report}
+            rows={page.rows}
+            selectedDivisionName={selectedDivisionName}
+            selectedDivisionId={selectedDivisionId}
+            repeatTableHeader={repeatTableHeader}
+            selectedClassName={selectedClassName}
+            startIndex={page.startIndex}
+            isFirstPage={page.isFirstPage}
+            isLastPage={page.isLastPage}
+            cardsPerSheet={cardsPerSheet}
+            bodyTextOverride={page.bodyTextOverride}
+            resultStats={page.resultStats}
+            subjectSourceRows={page.groupRows}
+            emptyMessage={emptyMessage}
+          />
+        </div>
+      </section>
+    );
+  };
 
   return (
     <PageGeometryContext.Provider value={pageGeometry}>
@@ -1224,12 +1353,14 @@ const PaginatedReportPreview = ({
                       </>
                     )}
                     <ReportBrandFooter />
-                    <div className="report-page-footer">
-                      <span className="report-page-footer-label">পৃষ্ঠা:</span>
-                      <span className="report-page-footer-number">
-                        {toBanglaDigits(physicalIndex + 1)}/{toBanglaDigits(physicalPageCount)}
-                      </span>
-                    </div>
+                    {showPageNumber && (
+                      <div className="report-page-footer">
+                        <span className="report-page-footer-label">পৃষ্ঠা:</span>
+                        <span className="report-page-footer-number">
+                          {toBanglaDigits(physicalIndex + 1)}/{toBanglaDigits(physicalPageCount)}
+                        </span>
+                      </div>
+                    )}
                     <div className="report-content-body flex">
                       <div style={{ width: columnContentWidthPx ?? undefined, flex: "none" }}>
                         {left?.map((chunk, chunkIndex) => (
@@ -1307,56 +1438,36 @@ const PaginatedReportPreview = ({
                   </section>
                 );
               })
-            : pages.map((page, pageIndex) => {
-                const showsBrandHeader =
-                  showBrandAtAll && (page.isFirstPageOfGroup || (brandOnEveryRecord && page.isFirstPage));
-
-                return (
-                  <section
-                    key={page.key}
-                    className="print-page-preview report-print-page bg-white"
-                    data-report={report.printable || "table"}
-                    data-paper-size={paperSize}
-                    data-orientation={orientation}
-                    data-density={page.density}
-                    style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
+            : twoUpSheets
+              ? twoUpSheets.map((sheetPages, sheetIndex) => (
+                  // ভৌত ল্যান্ডস্কেপ কাগজ: দুই টাইল (প্রতিটিতে একটি A5 পোর্ট্রেট পাতা, দরকারে স্কেল করা)
+                  // + মাঝখানে কাটার রেখা। ইচ্ছাকৃতভাবে data-paper-size/data-orientation নেই - নইলে
+                  // ল্যান্ডস্কেপ-নির্ভর ডিসেন্ডেন্ট CSS ভেতরের A5 পোর্ট্রেট পাতায় চুঁইয়ে পড়ত।
+                  <div
+                    key={sheetPages[0].key}
+                    className="print-page-preview report-print-page marksheet-sheet bg-white"
+                    style={
+                      {
+                        "--tile-w": `${twoUpTile.widthMm}mm`,
+                        "--tile-h": `${twoUpTile.heightMm}mm`,
+                        "--tile-scale": twoUpTile.scale,
+                      } as CSSProperties
+                    }
                   >
-                    {!isLetterhead && (
-                      <>
-                        <ReportBackground />
-                        <ReportWatermark />
-                      </>
-                    )}
-                    <ReportBrandFooter />
-                    {showsBrandHeader && <ReportBrandHeader />}
-                    <div className="report-page-footer">
-                      <span className="report-page-footer-label">পৃষ্ঠা:</span>
-                      <span className="report-page-footer-number">
-                        {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
-                      </span>
-                    </div>
-                    <div className="report-content-body">
-                      <ReportContent
-                        loading={loading}
-                        report={report}
-                        rows={page.rows}
-                        selectedDivisionName={selectedDivisionName}
-                        selectedDivisionId={selectedDivisionId}
-                        repeatTableHeader={repeatTableHeader}
-                        selectedClassName={selectedClassName}
-                        startIndex={page.startIndex}
-                        isFirstPage={page.isFirstPage}
-                        isLastPage={page.isLastPage}
-                        cardsPerSheet={cardsPerSheet}
-                        bodyTextOverride={page.bodyTextOverride}
-                        resultStats={page.resultStats}
-                        subjectSourceRows={page.groupRows}
-                        emptyMessage={emptyMessage}
-                      />
-                    </div>
-                  </section>
-                );
-              })}
+                    {sheetPages.map((page, i) => (
+                      <div key={page.key} className="marksheet-tile">
+                        <div className="marksheet-tile-scaler">
+                          {renderPageSection(page, sheetIndex * 2 + i, "print-page-preview marksheet-half bg-white")}
+                        </div>
+                      </div>
+                    ))}
+                    {sheetPages.length < 2 && <div aria-hidden="true" className="marksheet-tile" />}
+                    <div aria-hidden="true" className="marksheet-cut-line" />
+                  </div>
+                ))
+              : pages.map((page, pageIndex) =>
+                  renderPageSection(page, pageIndex, "print-page-preview report-print-page bg-white"),
+                )}
         </div>
       </div>
     </PageGeometryContext.Provider>

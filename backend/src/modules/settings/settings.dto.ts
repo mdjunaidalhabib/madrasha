@@ -69,3 +69,12 @@ export interface UpdateBookLabelDesignRequestDto {
   book_label_design?: string;
   book_label_background_image?: string | null;
 }
+
+export interface UpdateIdCardBackRequestDto {
+  issue_date?: string | null;
+  expiry_date?: string | null;
+  principal_title?: string | null;
+  principal_signature?: string | null;
+  lost_return_text?: string | null;
+  default_design_id?: number | null;
+}

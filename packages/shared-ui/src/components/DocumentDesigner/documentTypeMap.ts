@@ -14,7 +14,8 @@ export type BackendDocumentType =
   | "TESTIMONIAL"
   | "MARKSHEET"
   | "FEE_RECEIPT"
-  | "SALARY_SLIP";
+  | "SALARY_SLIP"
+  | "BOOK_LABEL";
 
 export const DOCUMENT_TYPE_TO_KIND: Record<BackendDocumentType, DocumentKind> = {
   ID_CARD: "id-card",
@@ -25,6 +26,7 @@ export const DOCUMENT_TYPE_TO_KIND: Record<BackendDocumentType, DocumentKind> = 
   MARKSHEET: "marksheet",
   FEE_RECEIPT: "fee-receipt",
   SALARY_SLIP: "salary-slip",
+  BOOK_LABEL: "book-label",
 };
 
 export const DOCUMENT_TYPE_LABELS_BN: Record<BackendDocumentType, string> = {
@@ -36,6 +38,7 @@ export const DOCUMENT_TYPE_LABELS_BN: Record<BackendDocumentType, string> = {
   MARKSHEET: "মার্কশিট",
   FEE_RECEIPT: "ফি রশিদ",
   SALARY_SLIP: "বেতন স্লিপ",
+  BOOK_LABEL: "পুরস্কার বই-লেবেল",
 };
 
 /** Document types the new template designer is fully wired for in this
@@ -49,6 +52,7 @@ export const FULLY_WIRED_DOCUMENT_TYPES: BackendDocumentType[] = [
   "CLEARANCE_CERTIFICATE",
   "TESTIMONIAL",
   "MARKSHEET",
+  "BOOK_LABEL",
 ];
 
 const ALL_BACKEND_TYPES: BackendDocumentType[] = [
@@ -60,6 +64,7 @@ const ALL_BACKEND_TYPES: BackendDocumentType[] = [
   "MARKSHEET",
   "FEE_RECEIPT",
   "SALARY_SLIP",
+  "BOOK_LABEL",
 ];
 
 /** URL-friendly slug for a BackendDocumentType, e.g. "ID_CARD" -> "id-card".

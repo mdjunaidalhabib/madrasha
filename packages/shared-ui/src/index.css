@@ -758,6 +758,54 @@ html[data-print-size="a5"][data-print-orientation="landscape"] .print-page-previ
   padding: 7mm;
 }
 
+/* Marksheet/admit card on landscape paper = two A5 portrait pages side by
+   side (PaginatedReportPreview's marksheetTwoUp). The sheet itself carries no
+   padding and sets --tile-w/--tile-h/--tile-scale: A4 landscape -> two
+   148.5 x 210mm tiles at scale 1; A5 landscape -> two 105 x 148mm tiles with
+   the A5 page scaled down (transform on .marksheet-tile-scaler, NOT on a
+   .print-page-preview - print CSS forces `transform: none` on those). Each page
+   keeps the same 7mm margin on all four sides, so the dashed cut line down the
+   middle leaves both pieces with equal blank paper all around. !important + the
+   html[...] prefix beats the paper-size width/height/padding rules above and
+   the print-time margin override in DataExportPrintActions. */
+.print-page-preview.marksheet-sheet {
+  display: flex !important;
+  padding: 0 !important;
+}
+
+.marksheet-tile {
+  position: relative;
+  flex: none;
+  width: var(--tile-w);
+  height: var(--tile-h);
+  overflow: hidden;
+}
+
+.marksheet-tile-scaler {
+  width: calc(var(--tile-w) / var(--tile-scale));
+  height: calc(var(--tile-h) / var(--tile-scale));
+  transform: scale(var(--tile-scale));
+  transform-origin: 0 0;
+}
+
+html[data-print-size][data-print-orientation] .print-page-preview.marksheet-half {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 7mm !important;
+  box-shadow: none !important;
+}
+
+.marksheet-cut-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--tile-w);
+  z-index: 5;
+  width: 0;
+  border-left: 0.3mm dashed #64748b;
+  pointer-events: none;
+}
+
 .print-page-preview table {
   width: 100%;
   max-width: 100%;

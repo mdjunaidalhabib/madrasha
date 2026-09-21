@@ -17,8 +17,12 @@ import { getRowClassId, getRowDivisionId } from "@madrasha/shared-ui/src/utils/r
 import { filterPeopleBySearch } from "../../utils/personSearch";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { listTemplates, type TemplateListItemDto } from "../../services/documentTemplateLibraryApi";
+import { useIdCardBackStore } from "../../store/idCardBackStore";
 import { useSelectedTemplateOverrideStore, type CardsPerPage } from "../../store/selectedTemplateOverrideStore";
-import { getBuiltinDesign } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
+import {
+  DEFAULT_ID_CARD_BACK_ID,
+  getBuiltinDesign,
+} from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
@@ -117,6 +121,18 @@ const ReportShell = ({
   const setSelectedTemplateId = useSelectedTemplateOverrideStore((s) => s.setTemplateId);
   const cardsPerPage = useSelectedTemplateOverrideStore((s) => s.cardsPerPage);
   const setCardsPerPage = useSelectedTemplateOverrideStore((s) => s.setCardsPerPage);
+  const idCardBackId = useSelectedTemplateOverrideStore((s) => s.idCardBackId);
+  const setIdCardBackId = useSelectedTemplateOverrideStore((s) => s.setIdCardBackId);
+  const idCardPairBackId = useSelectedTemplateOverrideStore((s) => s.idCardPairBackId);
+  const setIdCardPairBackId = useSelectedTemplateOverrideStore((s) => s.setIdCardPairBackId);
+  const idCardBackWithFront = useSelectedTemplateOverrideStore((s) => s.idCardBackWithFront);
+  const setIdCardBackWithFront = useSelectedTemplateOverrideStore((s) => s.setIdCardBackWithFront);
+  // অ্যাডমিনের সেট করা ডিফল্ট পিছনের ডিজাইন (Talimat → ডকুমেন্টস টেমপ্লেট → আইডি কার্ড ব্যাক)। ব্যবহারকারী
+  // ড্রপডাউনে নিজে বেছে নিলে (বা print URL-এ id_back থাকলে) আর ডিফল্ট দিয়ে ওভাররাইট হয় না।
+  const tenantBackDefault = useIdCardBackStore((s) => s.settings?.default_design_id) ?? DEFAULT_ID_CARD_BACK_ID;
+  const fetchIdCardBackSettings = useIdCardBackStore((s) => s.fetchSettings);
+  const backChosenByUser = useRef(false);
+  const pairChosenByUser = useRef(false);
 
   const activeReport = useMemo(
     () => reports.find((item) => item.key === activeKey) || reports[0],
@@ -201,6 +217,18 @@ const ReportShell = ({
   // more characters doesn't retrigger the fetch effect on every keystroke -
   // narrowing further is still handled client-side by filteredRows.
   const hasSearchQuery = search.trim().length > 0;
+  // A specific division picked but no class yet: don't auto-load "all classes"
+  // of that division - the user must pick a class first (the শ্রেণি dropdown
+  // shows "শ্রেণি নির্বাচন করুন"). Teacher reports have no class dropdown, and
+  // "সকল বিভাগ" keeps loading everything as before.
+  const classRequired =
+    divisionRequired &&
+    activeReport.printable !== "teacher-list" &&
+    activeReport.printable !== "teacher-phone-list" &&
+    !!selectedDivision &&
+    selectedDivision !== "all" &&
+    !selectedClass &&
+    !hasSearchQuery;
 
   // Guards against an older, slower loadReport() call resolving AFTER a
   // newer one (production network jitter makes this far more likely than
@@ -236,6 +264,15 @@ const ReportShell = ({
         return;
       }
 
+      if (classRequired) {
+        if (isCurrent()) {
+          setRows([]);
+          setTotalCount(0);
+          setWarning("শ্রেণি নির্বাচন করুন");
+        }
+        return;
+      }
+
       const params = new URLSearchParams();
       if (activeReport.requiresExam) params.set("exam_id", selectedExam);
       if (activeReport.extraParams) {
@@ -243,7 +280,7 @@ const ReportShell = ({
       }
       if (divisionRequired) {
         if (selectedDivision && selectedDivision !== "all") params.set("division_id", selectedDivision);
-        if (selectedClass) params.set("class_id", selectedClass);
+        if (selectedClass && selectedClass !== "all") params.set("class_id", selectedClass);
       }
       if (isPaginatedAcademicResult) {
         params.set("page", String(page));
@@ -334,9 +371,31 @@ const ReportShell = ({
     setOrientation(activeReport.defaultOrientation || "portrait");
     setPaperSize(activeReport.defaultPaperSize || "a4");
     setSelectedTemplateId(null);
-    setCardsPerPage("auto");
+    // আইডি কার্ড ডিফল্টে "একক শিক্ষার্থী" (প্রতি পাতায় ১টি); বাকিগুলোতে স্বয়ংক্রিয়।
+    setCardsPerPage(activeReport.printable === "id-card" ? "1" : "auto");
+    // আইডি কার্ড "একক শিক্ষার্থী": ডিফল্টে দুই পাশ (সামনে + পিছনে)।
+    pairChosenByUser.current = false;
+    setIdCardPairBackId(tenantBackDefault);
+    setIdCardBackWithFront(true);
+    backChosenByUser.current = false;
+    setIdCardBackId(tenantBackDefault);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, activeReport.defaultOrientation, activeReport.defaultPaperSize]);
+
+  useEffect(() => {
+    if (activeReport.printable === "id-card") fetchIdCardBackSettings();
+  }, [activeReport.printable, fetchIdCardBackSettings]);
+
+  useEffect(() => {
+    if (!backChosenByUser.current) setIdCardBackId(tenantBackDefault);
+    if (!pairChosenByUser.current) setIdCardPairBackId(tenantBackDefault);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantBackDefault]);
+
+  const handleIdCardBackChange = (id: number | null) => {
+    backChosenByUser.current = true;
+    setIdCardBackId(id);
+  };
 
   // ডিজাইন বদলালে কাগজের দিকও সেটার সাথে মিলিয়ে নেয় (ল্যান্ডস্কেপ সনদ → ল্যান্ডস্কেপ পাতা),
   // যাতে ডিজাইন ছোট হয়ে আঁটার বদলে পুরো পাতা জুড়ে বসে। DB টেমপ্লেটের মাপ তালিকায় নেই,
@@ -344,6 +403,8 @@ const ReportShell = ({
   const handleTemplateChange = (id: number | null) => {
     setSelectedTemplateId(id);
     const design = getBuiltinDesign(id);
+    // প্রবেশপত্র সবসময় শিটে (২টি উপর-নিচ) বসে - ডিজাইনের ল্যান্ডস্কেপ মাপে কাগজ ঘোরানো হয় না।
+    if (activeReport.printable === "admit-card" || activeReport.printable === "book-label") return;
     if (design) setOrientation(design.width > design.height ? "landscape" : "portrait");
     else if (id === null) setOrientation(activeReport.defaultOrientation || "portrait");
   };
@@ -407,6 +468,26 @@ const ReportShell = ({
       cardsPerPageParam === "2"
     ) {
       setCardsPerPage(cardsPerPageParam as CardsPerPage);
+    }
+
+    if (searchParams.get("id_with_front") === "0") setIdCardBackWithFront(false);
+
+    const idPairParam = searchParams.get("id_pair");
+    if (idPairParam === "none") {
+      pairChosenByUser.current = true;
+      setIdCardPairBackId(null);
+    } else if (idPairParam && Number.isInteger(Number(idPairParam))) {
+      pairChosenByUser.current = true;
+      setIdCardPairBackId(Number(idPairParam));
+    }
+
+    const idBackParam = searchParams.get("id_back");
+    if (idBackParam === "none") {
+      backChosenByUser.current = true;
+      setIdCardBackId(null);
+    } else if (idBackParam && Number.isInteger(Number(idBackParam))) {
+      backChosenByUser.current = true;
+      setIdCardBackId(Number(idBackParam));
     }
 
     const paperSizeParam = searchParams.get("paper_size");
@@ -496,7 +577,7 @@ const ReportShell = ({
   // a class is picked, matching how the শ্রেণি select itself stays empty
   // until a division is picked.
   const subjectOptions = useMemo(() => {
-    if (!activeReport.hasSubjectFilter || !selectedClass) return [];
+    if (!activeReport.hasSubjectFilter || !selectedClass || selectedClass === "all") return [];
     const map = new Map<string, string>();
     rows
       .filter((row) => String(getRowClassId(row)) === String(selectedClass))
@@ -532,7 +613,7 @@ const ReportShell = ({
     const rowClassId = String(getRowClassId(row));
     return (
       (!selectedDivision || selectedDivision === "all" || rowDivisionId === String(selectedDivision)) &&
-      (!selectedClass || rowClassId === String(selectedClass))
+      (!selectedClass || selectedClass === "all" || rowClassId === String(selectedClass))
     );
   });
 
@@ -623,8 +704,10 @@ const ReportShell = ({
   const previewEmptyMessage = activeReport.requiresExam && !selectedExam
     ? "রিপোর্ট দেখতে উপর থেকে পরীক্ষা নির্বাচন করুন"
     : divisionRequired && !selectedDivision && !hasSearchQuery
-      ? "রিপোর্ট দেখতে বিভাগ নির্বাচন করুন (প্রয়োজনে শ্রেণিও নির্বাচন করতে পারেন)"
-      : warning || undefined;
+      ? "রিপোর্ট দেখতে বিভাগ ও শ্রেণি নির্বাচন করুন"
+      : classRequired
+        ? "রিপোর্ট দেখতে শ্রেণি নির্বাচন করুন"
+        : warning || undefined;
 
   const totalRecords = isPaginatedAcademicResult ? totalCount : filteredRows.length;
   const pageStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -646,6 +729,19 @@ const ReportShell = ({
       subject: selectedSubject || undefined,
       template_id: selectedTemplateId ? String(selectedTemplateId) : undefined,
       cards_per_page: cardsPerPage !== "auto" ? cardsPerPage : undefined,
+      id_with_front: activeReport.backOnly && !idCardBackWithFront ? "0" : undefined,
+      id_pair:
+        activeReport.printable === "id-card" && !activeReport.backOnly && idCardPairBackId !== tenantBackDefault
+          ? idCardPairBackId === null
+            ? "none"
+            : String(idCardPairBackId)
+          : undefined,
+      id_back:
+        activeReport.backOnly && idCardBackId !== tenantBackDefault
+          ? idCardBackId === null
+            ? "none"
+            : String(idCardBackId)
+          : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
       search: search.trim() || undefined,
@@ -769,6 +865,15 @@ const ReportShell = ({
               onTemplateChange={handleTemplateChange}
               cardsPerPage={cardsPerPage}
               onCardsPerPageChange={setCardsPerPage}
+              idCardBackId={idCardBackId}
+              onIdCardBackChange={handleIdCardBackChange}
+              idCardPairBackId={idCardPairBackId}
+              idCardBackWithFront={idCardBackWithFront}
+              onIdCardBackWithFrontChange={setIdCardBackWithFront}
+              onIdCardPairChange={(both) => {
+                pairChosenByUser.current = true;
+                setIdCardPairBackId(both ? tenantBackDefault : null);
+              }}
               marksheetPanelOpen={marksheetPanelOpen}
               onMarksheetPanelToggle={() => setMarksheetPanelOpen((prev) => !prev)}
               setupExtras={

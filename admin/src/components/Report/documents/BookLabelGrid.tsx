@@ -1,48 +1,30 @@
-import { useEffect } from "react";
-import { useBrandingStore } from "../../../store/brandingStore";
-import { useBookLabelDesignStore } from "../../../store/bookLabelDesignStore";
-import BookLabelClassic from "./book-label-designs/BookLabelClassic";
-import BookLabelMinimal from "./book-label-designs/BookLabelMinimal";
-import BookLabelArch from "./book-label-designs/BookLabelArch";
-import BookLabelCustom from "./book-label-designs/BookLabelCustom";
+import { useBrandedRows, useDocumentLayout } from "./engine/useDocumentLayout";
+import { useBookLabelRows } from "./engine/useBookLabelRows";
+import { CardSheet } from "./engine/CardSheet";
 
 type BookLabelGridProps = {
   rows: Record<string, any>[];
+  // Explicit design chosen from the Reports screen (ReportFilterBar): positive
+  // = DB template, negative = built-in design. Null/undefined = the plain
+  // default design.
+  templateId?: number | null;
+  // Labels on this page - decided once for the whole report by
+  // PaginatedReportPreview (see resolveCardsPerSheet): 1 = one centered label,
+  // more = the paper divided into equal cells with dotted cut lines.
+  cardsPerSheet?: number | null;
 };
 
-const BookLabelGrid = ({ rows }: BookLabelGridProps) => {
-  const branding = useBrandingStore((s) => s.branding);
-  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
-  const design = useBookLabelDesignStore((s) => s.design);
-  const fetchDesign = useBookLabelDesignStore((s) => s.fetchDesign);
+/**
+ * পুরস্কার বই-লেবেল: প্রতিটি row বাছা BOOK_LABEL ডিজাইনে (ডিফল্ট: সাধারণ) আঁকা হয়। পুরো কাগজ (মার্জিনসহ)
+ * সমান ঘরে ভাগ হয়, লেবেল ঘরের মাঝখানে বসে আর ঘরের সীমানায় ডটেড কাটার-রেখা থাকে (দেখুন CardSheet)।
+ */
+const BookLabelGrid = ({ rows, templateId, cardsPerSheet }: BookLabelGridProps) => {
+  const { layout, loaded } = useDocumentLayout("BOOK_LABEL", templateId);
+  const labelRows = useBookLabelRows(useBrandedRows(rows));
 
-  useEffect(() => {
-    fetchBranding();
-    fetchDesign();
-  }, [fetchBranding, fetchDesign]);
+  if (!layout || !loaded) return null;
 
-  const madrasaName = branding?.name || "";
-  const designKey = design?.book_label_design || "classic";
-  const backgroundImage = design?.book_label_background_image;
-
-  return (
-    <div className="report-book-label-grid grid justify-center gap-[3mm]">
-      {rows.map((row, index) => {
-        const key = `book-label-${row.id || index}`;
-
-        if (designKey === "minimal") {
-          return <BookLabelMinimal key={key} row={row} madrasaName={madrasaName} />;
-        }
-        if (designKey === "arch") {
-          return <BookLabelArch key={key} row={row} madrasaName={madrasaName} />;
-        }
-        if (designKey === "custom" && backgroundImage) {
-          return <BookLabelCustom key={key} row={row} backgroundImage={backgroundImage} />;
-        }
-        return <BookLabelClassic key={key} row={row} madrasaName={madrasaName} />;
-      })}
-    </div>
-  );
+  return <CardSheet layout={layout} rows={labelRows} perPage={cardsPerSheet || 1} />;
 };
 
 export default BookLabelGrid;

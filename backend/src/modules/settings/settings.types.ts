@@ -98,3 +98,14 @@ export interface MyPlanData {
     users: number;
   };
 }
+
+/** আইডি কার্ডের পিছনের পাতার তথ্য (Madrasa.idCardBackSettings JSON)। তারিখ ISO "YYYY-MM-DD"। */
+export interface IdCardBackData {
+  issue_date: string | null;
+  expiry_date: string | null;
+  principal_title: string | null;
+  principal_signature: string | null;
+  lost_return_text: string | null;
+  /** ডিফল্ট পিছনের ডিজাইনের id (বিল্ট-ইন, ঋণাত্মক) - null = "সাধারণ পিছন"। রিপোর্টের "পিছনের পাতা" ড্রপডাউন এটা দিয়েই শুরু হয়। */
+  default_design_id: number | null;
+}

@@ -4,6 +4,7 @@ import { logger } from "../shared/logger/logger";
 import {
   verifyDatabaseConnection,
   registerGracefulShutdown,
+  registerProcessSafetyNets,
   startTrashPurgeScheduler,
   startActivityLogPurgeScheduler,
   startMessageSubscriptionExpirySync,
@@ -13,6 +14,7 @@ import {
 } from "./bootstrap";
 
 async function start() {
+  registerProcessSafetyNets();
   await verifyDatabaseConnection();
 
   const server = app.listen(config.app.port, () => {

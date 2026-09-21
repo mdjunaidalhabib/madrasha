@@ -140,3 +140,6 @@ export const SETTINGS_SECTION_KEYS = [
   "website_committee_add",
   "website_committee_list",
 ] as const;
+
+export const MAX_ID_CARD_BACK_TITLE_LENGTH = 60;
+export const MAX_ID_CARD_BACK_LOST_TEXT_LENGTH = 400;

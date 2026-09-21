@@ -37,3 +37,31 @@ export const usePageContentBoxMm = (): ContentBoxMm | null => {
       0.5,
   };
 };
+
+export type PageSheetMm = {
+  /** পুরো কাগজের মাপ (মার্জিনসহ)। */
+  paperWidth: number;
+  paperHeight: number;
+  /** কনটেন্ট-বক্সের বাঁ/উপরের কোণ কাগজের কোণ থেকে কত দূরে। */
+  offsetLeft: number;
+  offsetTop: number;
+  /** কার্ডের চারপাশে ন্যূনতম ফাঁকা - সবচেয়ে বড় মার্জিন (নিচেরটা ফুটার-ব্যান্ডসহ)। */
+  margin: number;
+};
+
+/** কাগজ-ভিত্তিক মাপ (কার্ড শিটের ভাগ করা টুকরোর জন্য)। Provider না থাকলে null। */
+export const usePageSheetMm = (): PageSheetMm | null => {
+  const geometry = useContext(PageGeometryContext);
+  const branding = useBrandingStore((s) => s.branding);
+  if (!geometry) return null;
+
+  const { paperSize, orientation, margins } = geometry;
+  const bottom = margins.bottom + getFooterBandReserveMm(branding) + 0.5;
+  return {
+    paperWidth: getPaperWidthMm(paperSize, orientation),
+    paperHeight: getPaperHeightMm(paperSize, orientation),
+    offsetLeft: margins.left,
+    offsetTop: margins.top,
+    margin: Math.max(margins.top, margins.right, bottom, margins.left),
+  };
+};

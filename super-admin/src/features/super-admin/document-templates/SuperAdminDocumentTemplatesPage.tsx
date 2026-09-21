@@ -29,6 +29,7 @@ const ALL_TYPES: BackendDocumentType[] = [
   "MARKSHEET",
   "FEE_RECEIPT",
   "SALARY_SLIP",
+  "BOOK_LABEL",
 ];
 
 // Previews are fit into this box (aspect-ratio preserved) instead of a fixed

@@ -36,6 +36,7 @@ const DOCUMENT_TYPES = new Set<DocumentType>([
   "MARKSHEET",
   "FEE_RECEIPT",
   "SALARY_SLIP",
+  "BOOK_LABEL",
 ]);
 
 export function assertDocumentType(value: unknown): DocumentType {

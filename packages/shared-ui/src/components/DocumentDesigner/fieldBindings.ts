@@ -25,9 +25,33 @@ const STUDENT_FIELDS: FieldBinding[] = [
   { field: "guardian_phone", label: "অভিভাবকের মোবাইল" },
 ];
 
+/** আইডি কার্ডের পিছনের পাতা - Talimat → ডকুমেন্টস টেমপ্লেট → "আইডি কার্ড ব্যাক" ট্যাবের মান (দেখুন useIdCardBackRows)। */
+const ID_CARD_BACK_FIELDS: FieldBinding[] = [
+  { field: "id_issue_date", label: "কার্ড ইস্যুর তারিখ" },
+  { field: "id_expiry_date", label: "কার্ডের মেয়াদ শেষ" },
+  { field: "principal_title", label: "অধ্যক্ষের পদবি" },
+  { field: "id_lost_return", label: "হারিয়ে গেলে ফেরতের ঠিকানা" },
+  { field: "principal_signature", label: "অধ্যক্ষের স্বাক্ষর", isImage: true },
+];
+
 const ADMIT_CARD_ONLY_FIELDS: FieldBinding[] = [
   { field: "exam_name", label: "পরীক্ষার নাম" },
   { field: "exam_year", label: "পরীক্ষার বছর" },
+];
+
+/** পুরস্কার বই-লেবেল - reports.repository-র prize-book-labels row + useBookLabelRows-এর তৈরি `rank_label`/`exam_label`। */
+const BOOK_LABEL_FIELDS: FieldBinding[] = [
+  { field: "student_name", label: "শিক্ষার্থীর নাম" },
+  { field: "rank_label", label: "মেধাক্রম (১ম/২য়/৩য়...)" },
+  { field: "rank_no", label: "মেধাক্রম (সংখ্যা)" },
+  { field: "class_info", label: "শ্রেণি (বিভাগ) • রোল" },
+  { field: "roll", label: "রোল নং" },
+  { field: "class_name", label: "শ্রেণি" },
+  { field: "division_name", label: "বিভাগ" },
+  { field: "madrasa_grade", label: "মাদরাসা গ্রেড" },
+  { field: "exam_name", label: "পরীক্ষার নাম" },
+  { field: "exam_year", label: "পরীক্ষার বছর" },
+  { field: "exam_label", label: "পরীক্ষা ও বছর" },
 ];
 
 /** Per document type, the fields an admin can bind a layer to in the
@@ -36,7 +60,7 @@ const ADMIT_CARD_ONLY_FIELDS: FieldBinding[] = [
  * fields as a reasonable default since most documents are student-centric,
  * and can be refined when that type gets fully wired up. */
 export const FIELD_BINDINGS: Record<BackendDocumentType, FieldBinding[]> = {
-  ID_CARD: STUDENT_FIELDS,
+  ID_CARD: [...STUDENT_FIELDS, ...ID_CARD_BACK_FIELDS],
   ADMIT_CARD: [...STUDENT_FIELDS, ...ADMIT_CARD_ONLY_FIELDS],
   CERTIFICATE: STUDENT_FIELDS,
   CLEARANCE_CERTIFICATE: STUDENT_FIELDS,
@@ -44,6 +68,7 @@ export const FIELD_BINDINGS: Record<BackendDocumentType, FieldBinding[]> = {
   MARKSHEET: STUDENT_FIELDS,
   FEE_RECEIPT: STUDENT_FIELDS,
   SALARY_SLIP: STUDENT_FIELDS,
+  BOOK_LABEL: BOOK_LABEL_FIELDS,
 };
 
 export const getImageFieldBindings = (type: BackendDocumentType) =>

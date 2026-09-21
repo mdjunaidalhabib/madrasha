@@ -122,14 +122,16 @@ const ReportContent = ({
     );
   }
   if (report.printable === "id-card") {
-    return <IdCardGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} />;
+    return <IdCardGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} backOnly={report.backOnly} />;
   }
   if (report.printable === "admit-card") {
     return <AdmitCardGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} />;
   }
   if (report.printable === "admit-card-with-rules") return <AdmitCardRulesPage rows={rows} />;
   if (report.printable === "notice-board") return <NoticeBoardReportView rows={rows} />;
-  if (report.printable === "book-label") return <BookLabelGrid rows={rows} />;
+  if (report.printable === "book-label") {
+    return <BookLabelGrid rows={rows} templateId={templateId} cardsPerSheet={cardsPerSheet} />;
+  }
   if (report.printable === "certificate") {
     return (
       <SanadList

@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from "react";
-import { useBrandingStore } from "../../../../store/brandingStore";
+import type { ReactNode } from "react";
+import { ReportBrandHeader } from "../../ReportBranding";
 // Routed through the shared Document Designer engine (see
 // components/DocumentDesigner) so Talimat's admin-editable templates and
 // every printed report/document go through one token-rendering entry point.
@@ -17,7 +17,7 @@ export type LetterDocumentProps = {
   bodyClassName?: string;
   template: string;
   footer: ReactNode;
-  /** Visual shell/frame style. Defaults to "plain" - the ordinary report-style page (letterhead + heading + body), no frame. */
+  /** Visual shell/frame style. Defaults to "plain" - the ordinary report-style page (heading + body), no frame. */
   design?: LetterDesignKey;
   /** Only used when design === "custom": a full-page background image. */
   backgroundImage?: string | null;
@@ -32,30 +32,12 @@ export type LetterDocumentProps = {
    * physical page - overriding the full `template` render.
    */
   bodyTextOverride?: string;
-};
-
-/** মাদরাসার লোগো/নাম/ঠিকানা - সাধারণ (plain) ডিজাইনে প্রতিটি ডকুমেন্টের মাথায়, অন্যান্য রিপোর্টের হেডারের মতো। */
-const Letterhead = () => {
-  const branding = useBrandingStore((s) => s.branding);
-  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
-
-  useEffect(() => {
-    fetchBranding();
-  }, [fetchBranding]);
-
-  if (!branding?.name && !branding?.report_logo) return null;
-
-  return (
-    <div className="mb-6 flex items-center justify-center gap-4 border-b-2 border-black pb-3 text-center">
-      {branding.report_logo && (
-        <img src={branding.report_logo} alt="" className="h-16 w-16 shrink-0 object-contain" />
-      )}
-      <div>
-        {branding.name && <p className="text-2xl font-bold text-black">{branding.name}</p>}
-        {branding.address && <p className="mt-0.5 text-sm text-slate-600">{branding.address}</p>}
-      </div>
-    </div>
-  );
+  /** No frame, border, background or letterhead - just the heading/body/footer (e.g. a wall notice). Overrides `design`. */
+  bare?: boolean;
+  /** With `bare`: still show the madrasa logo/name/address + underline on the first page (where the page itself doesn't render the brand header). */
+  letterhead?: boolean;
+  /** Rendered above the heading, on the record's first physical page only (e.g. a right-aligned date). */
+  beforeHeading?: ReactNode;
 };
 
 const ArchCorners = () => (
@@ -96,11 +78,15 @@ const LetterDocument = ({
   isFirstPage = true,
   isLastPage = true,
   bodyTextOverride,
+  bare = false,
+  letterhead = false,
+  beforeHeading,
 }: LetterDocumentProps) => {
   const bodyText = bodyTextOverride ?? renderTemplateText(template, row);
 
   const content = (
     <>
+      {isFirstPage && beforeHeading}
       {isFirstPage &&
         (showBismillah ? (
           <div className="report-block-heading text-center">
@@ -117,10 +103,25 @@ const LetterDocument = ({
     </>
   );
 
+  if (bare) {
+    return (
+      <div className="print-page-break px-12 py-2">
+        {/* অন্য সব রিপোর্টের মতো একই ReportBrandHeader (ব্র্যান্ডিং সেটিংসের লোগো/নামের ফন্ট/ঠিকানা), নিচে
+            পুরো প্রস্থে দাগ - -mx-12 দিয়ে লেখার পাশের মার্জিন ছাড়ানো। */}
+        {letterhead && isFirstPage && (
+          <div className="-mx-12">
+            <ReportBrandHeader />
+            <div className="mb-3 border-b-2 border-black" />
+          </div>
+        )}
+        {content}
+      </div>
+    );
+  }
+
   if (design === "plain") {
     return (
       <div className="print-page-break bg-white p-2">
-        {isFirstPage && <Letterhead />}
         {content}
       </div>
     );

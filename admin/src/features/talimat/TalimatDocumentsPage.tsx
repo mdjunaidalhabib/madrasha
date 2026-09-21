@@ -11,8 +11,6 @@ import { useAdmitCardDesignStore } from "../../store/admitCardDesignStore";
 import { saveAdmitCardDesign, type AdmitCardDesignKey } from "../../services/admitCardDesignApi";
 import { useLetterDesignStore } from "../../store/letterDesignStore";
 import { saveLetterDesign, type LetterDesignKey } from "../../services/letterDesignApi";
-import { useBookLabelDesignStore } from "../../store/bookLabelDesignStore";
-import { saveBookLabelDesign, type BookLabelDesignKey } from "../../services/bookLabelDesignApi";
 import IdCardClassic from "../../components/Report/documents/id-card-designs/IdCardClassic";
 import IdCardMinimal from "../../components/Report/documents/id-card-designs/IdCardMinimal";
 import IdCardArch from "../../components/Report/documents/id-card-designs/IdCardArch";
@@ -21,12 +19,9 @@ import AdmitCardClassic from "../../components/Report/documents/admit-card-desig
 import AdmitCardMinimal from "../../components/Report/documents/admit-card-designs/AdmitCardMinimal";
 import AdmitCardArch from "../../components/Report/documents/admit-card-designs/AdmitCardArch";
 import AdmitCardCustom from "../../components/Report/documents/admit-card-designs/AdmitCardCustom";
-import BookLabelClassic from "../../components/Report/documents/book-label-designs/BookLabelClassic";
-import BookLabelMinimal from "../../components/Report/documents/book-label-designs/BookLabelMinimal";
-import BookLabelArch from "../../components/Report/documents/book-label-designs/BookLabelArch";
-import BookLabelCustom from "../../components/Report/documents/book-label-designs/BookLabelCustom";
 import LetterDocument from "../../components/Report/documents/engine/LetterDocument";
 import TenantDocumentTemplateLibrary from "./TenantDocumentTemplateLibrary";
+import IdCardBackSettingsForm from "./IdCardBackSettingsForm";
 import type { BackendDocumentType } from "@madrasha/shared-ui/src/components/DocumentDesigner/documentTypeMap";
 import {
   ADMIT_CARD_RULE_TOKENS,
@@ -65,6 +60,12 @@ const docTypes: DocType[] = [
     title: "আইডি কার্ড",
     subtitle: "শিক্ষার্থীর পরিচয়পত্র",
     dataFields: ["ছবি", "নাম", "রেজিস্ট্রেশন নম্বর", "রোল নম্বর", "শ্রেণি", "বিভাগ", "পিতা", "মোবাইল"],
+  },
+  {
+    key: "id-card-back",
+    title: "আইডি কার্ড ব্যাক",
+    subtitle: "আইডি কার্ডের পিছনের পাতা - ইস্যু/মেয়াদ, অধ্যক্ষের স্বাক্ষর",
+    dataFields: ["মাদরাসার নাম", "ইস্যু তারিখ", "মেয়াদ", "অধ্যক্ষের স্বাক্ষর", "ফেরতের ঠিকানা"],
   },
   {
     key: "admit-card",
@@ -110,13 +111,13 @@ const docTypes: DocType[] = [
   },
 ];
 
-// ID Card / Admit Card / Certificate / Testimonial / Transfer Letter route
+// ID Card / Admit Card / Book Label / Certificate / Testimonial / Transfer Letter route
 // through the new Document Template Designer's tenant library (see the
-// docTypes.key -> TenantDocumentTemplateLibrary branch below). Book-label
-// has no backend DocumentType enum value, so it stays legacy-only.
+// docTypes.key -> TenantDocumentTemplateLibrary branch below).
 const NEW_ENGINE_DOCUMENT_TYPE_BY_KEY: Partial<Record<string, BackendDocumentType>> = {
   "id-card": "ID_CARD",
   "admit-card": "ADMIT_CARD",
+  "book-label": "BOOK_LABEL",
   certificate: "CERTIFICATE",
   testimonial: "TESTIMONIAL",
   transfer: "CLEARANCE_CERTIFICATE",
@@ -249,23 +250,6 @@ const LetterThumb = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const BOOK_LABEL_THUMB_SCALE = 0.42;
-
-const BookLabelThumb = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ width: `${92 * BOOK_LABEL_THUMB_SCALE}mm`, height: `${58 * BOOK_LABEL_THUMB_SCALE}mm`, overflow: "hidden" }}>
-    <div
-      style={{
-        transform: `scale(${BOOK_LABEL_THUMB_SCALE})`,
-        transformOrigin: "top left",
-        width: "92mm",
-        height: "58mm",
-      }}
-    >
-      {children}
-    </div>
-  </div>
-);
-
 const PRESET_LABELS: { key: "classic" | "minimal" | "arch"; label: string }[] = [
   { key: "classic", label: "ধ্রুপদী" },
   { key: "minimal", label: "মিনিমাল" },
@@ -291,10 +275,6 @@ export default function TalimatDocumentsPage() {
   const letterDesign = useLetterDesignStore((s) => s.design);
   const fetchLetterDesign = useLetterDesignStore((s) => s.fetchDesign);
   const setLetterDesignStore = useLetterDesignStore((s) => s.setDesign);
-
-  const bookLabelDesign = useBookLabelDesignStore((s) => s.design);
-  const fetchBookLabelDesign = useBookLabelDesignStore((s) => s.fetchDesign);
-  const setBookLabelDesignStore = useBookLabelDesignStore((s) => s.setDesign);
 
   const [activeKey, setActiveKey] = useState(docTypes[0].key);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -324,13 +304,6 @@ export default function TalimatDocumentsPage() {
   const [letterDesignError, setLetterDesignError] = useState("");
   const letterFileRef = useRef<HTMLInputElement>(null);
 
-  const [bookLabelDesignKey, setBookLabelDesignKey] = useState<BookLabelDesignKey>("classic");
-  const [bookLabelCustomBg, setBookLabelCustomBg] = useState<string | null>(null);
-  const [bookLabelDesignSaving, setBookLabelDesignSaving] = useState(false);
-  const [bookLabelDesignMessage, setBookLabelDesignMessage] = useState("");
-  const [bookLabelDesignError, setBookLabelDesignError] = useState("");
-  const bookLabelFileRef = useRef<HTMLInputElement>(null);
-
   const active = useMemo(
     () => docTypes.find((item) => item.key === activeKey) || docTypes[0],
     [activeKey],
@@ -346,7 +319,6 @@ export default function TalimatDocumentsPage() {
         fetchIdCardDesign(true),
         fetchAdmitCardDesign(true),
         fetchLetterDesign(true),
-        fetchBookLabelDesign(true),
         fetchBranding(),
       ]);
       setLoading(false);
@@ -382,12 +354,6 @@ export default function TalimatDocumentsPage() {
     setLetterDesignKey(letterDesign.letter_design);
     setLetterCustomBg(letterDesign.letter_background_image);
   }, [letterDesign]);
-
-  useEffect(() => {
-    if (!bookLabelDesign) return;
-    setBookLabelDesignKey(bookLabelDesign.book_label_design);
-    setBookLabelCustomBg(bookLabelDesign.book_label_background_image);
-  }, [bookLabelDesign]);
 
   const insertToken = (token: string) => {
     if (!active.templateKey) return;
@@ -567,46 +533,6 @@ export default function TalimatDocumentsPage() {
     }
   };
 
-  const handleBookLabelBackgroundFile = (e: React.ChangeEvent<HTMLInputElement>) =>
-    readImageFile(e, setBookLabelDesignError, (dataUrl) => {
-      setBookLabelCustomBg(dataUrl);
-      setBookLabelDesignKey("custom");
-    });
-
-  const handleRemoveBookLabelBackground = () => {
-    setBookLabelCustomBg(null);
-    setBookLabelDesignKey("classic");
-  };
-
-  const handleSaveBookLabelDesign = async () => {
-    setBookLabelDesignMessage("");
-    setBookLabelDesignError("");
-    setBookLabelDesignSaving(true);
-    try {
-      const payload: {
-        book_label_design: BookLabelDesignKey;
-        book_label_background_image?: string | null;
-      } = { book_label_design: bookLabelDesignKey };
-      if (bookLabelCustomBg !== (bookLabelDesign?.book_label_background_image ?? null)) {
-        payload.book_label_background_image = bookLabelCustomBg;
-      }
-
-      await saveBookLabelDesign(payload);
-      setBookLabelDesignStore({
-        book_label_design: bookLabelDesignKey,
-        book_label_background_image:
-          payload.book_label_background_image !== undefined
-            ? payload.book_label_background_image
-            : bookLabelDesign?.book_label_background_image ?? null,
-      });
-      setBookLabelDesignMessage("ডিজাইন সেভ হয়েছে। এখন থেকে পুরস্কার বই-লেবেল প্রিন্টে এই ডিজাইন দেখাবে।");
-    } catch {
-      setBookLabelDesignError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
-    } finally {
-      setBookLabelDesignSaving(false);
-    }
-  };
-
   if (loading) {
     return <SkeletonCard lines={5} />;
   }
@@ -615,10 +541,9 @@ export default function TalimatDocumentsPage() {
   // go through the real Document Template Designer (system+tenant template
   // library, drag/resize/rotate layers, QR codes, versioning) instead of
   // the old fixed classic/minimal/arch/custom preset picker below.
-  // Book-label is untouched (no backend DocumentType enum value for it) and
-  // keeps falling through to the original render path further down.
   const newEngineType = NEW_ENGINE_DOCUMENT_TYPE_BY_KEY[active.key];
-  if (newEngineType) {
+  const isIdCardBack = active.key === "id-card-back";
+  if (newEngineType || isIdCardBack) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -626,7 +551,7 @@ export default function TalimatDocumentsPage() {
           subtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেলের লেখা ও ডিজাইন এখান থেকে সাজান"
         />
 
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
           {docTypes.map((item) => (
             <button
               key={item.key}
@@ -640,7 +565,11 @@ export default function TalimatDocumentsPage() {
           ))}
         </div>
 
-        <TenantDocumentTemplateLibrary type={newEngineType} title={active.title} />
+        {isIdCardBack ? (
+          <IdCardBackSettingsForm />
+        ) : (
+          <TenantDocumentTemplateLibrary type={newEngineType!} title={active.title} />
+        )}
       </div>
     );
   }
@@ -655,19 +584,6 @@ export default function TalimatDocumentsPage() {
       return <IdCardCustom row={PREVIEW_ROW} backgroundImage={customBg} />;
     }
     return <IdCardClassic row={PREVIEW_ROW} madrasaName={madrasaName} />;
-  };
-
-  const renderBookLabelPreview = () => {
-    if (bookLabelDesignKey === "minimal") {
-      return <BookLabelMinimal row={PREVIEW_ROW} madrasaName={madrasaName} />;
-    }
-    if (bookLabelDesignKey === "arch") {
-      return <BookLabelArch row={PREVIEW_ROW} madrasaName={madrasaName} />;
-    }
-    if (bookLabelDesignKey === "custom" && bookLabelCustomBg) {
-      return <BookLabelCustom row={PREVIEW_ROW} backgroundImage={bookLabelCustomBg} />;
-    }
-    return <BookLabelClassic row={PREVIEW_ROW} madrasaName={madrasaName} />;
   };
 
   const admitRulesTemplate = values.admit_card_rules ?? DEFAULT_ADMIT_CARD_RULES;
@@ -712,7 +628,7 @@ export default function TalimatDocumentsPage() {
         subtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেলের লেখা ও ডিজাইন এখান থেকে সাজান"
       />
 
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
         {docTypes.map((item) => (
           <button
             key={item.key}
@@ -754,12 +670,6 @@ export default function TalimatDocumentsPage() {
       )}
       {letterDesignError && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{letterDesignError}</div>
-      )}
-      {bookLabelDesignMessage && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{bookLabelDesignMessage}</div>
-      )}
-      {bookLabelDesignError && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{bookLabelDesignError}</div>
       )}
       {message && <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/40 dark:text-green-400">{message}</div>}
       {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
@@ -1046,92 +956,6 @@ export default function TalimatDocumentsPage() {
             </div>
           )}
 
-          {active.key === "book-label" && (
-            <div className="mt-5 space-y-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {PRESET_LABELS.map((preset) => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    onClick={() => setBookLabelDesignKey(preset.key)}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === preset.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"}`}
-                  >
-                    <BookLabelThumb>
-                      {preset.key === "classic" && (
-                        <BookLabelClassic row={PREVIEW_ROW} madrasaName={madrasaName} />
-                      )}
-                      {preset.key === "minimal" && (
-                        <BookLabelMinimal row={PREVIEW_ROW} madrasaName={madrasaName} />
-                      )}
-                      {preset.key === "arch" && (
-                        <BookLabelArch row={PREVIEW_ROW} madrasaName={madrasaName} />
-                      )}
-                    </BookLabelThumb>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
-                  </button>
-                ))}
-
-                <div
-                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition ${bookLabelDesignKey === "custom" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}
-                >
-                  {bookLabelCustomBg ? (
-                    <button type="button" onClick={() => setBookLabelDesignKey("custom")}>
-                      <BookLabelThumb>
-                        <BookLabelCustom row={PREVIEW_ROW} backgroundImage={bookLabelCustomBg} />
-                      </BookLabelThumb>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => bookLabelFileRef.current?.click()}
-                      style={{ width: `${92 * BOOK_LABEL_THUMB_SCALE}mm`, height: `${58 * BOOK_LABEL_THUMB_SCALE}mm` }}
-                      className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
-                    >
-                      নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
-                    </button>
-                  )}
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
-                  <div className="flex gap-2 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => bookLabelFileRef.current?.click()}
-                      className="font-medium text-blue-600 underline"
-                    >
-                      {bookLabelCustomBg ? "পরিবর্তন" : "আপলোড"}
-                    </button>
-                    {bookLabelCustomBg && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveBookLabelBackground}
-                        className="font-medium text-red-500 underline"
-                      >
-                        মুছুন
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    ref={bookLabelFileRef}
-                    hidden
-                    accept="image/png,image/jpeg"
-                    onChange={handleBookLabelBackgroundFile}
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                কাস্টম ডিজাইনে তুমি নিজের বানানো ব্যাকগ্রাউন্ড ছবি (Canva/Photoshop-এ ডিজাইন করা)
-                আপলোড করলে তার উপর শিক্ষার্থীর নাম, মেধাক্রম, রোল ইত্যাদি স্বয়ংক্রিয়ভাবে বসে যাবে।
-              </p>
-
-              <Button disabled={bookLabelDesignSaving} onClick={handleSaveBookLabelDesign}>
-                {bookLabelDesignSaving ? "সেভ হচ্ছে..." : "ডিজাইন সেভ করুন"}
-              </Button>
-            </div>
-          )}
-
           {active.templateKey ? (
             <div className="mt-5 space-y-3">
               <div>
@@ -1175,8 +999,7 @@ export default function TalimatDocumentsPage() {
               </div>
             </div>
           ) : (
-            active.key !== "id-card" &&
-            active.key !== "book-label" && (
+            active.key !== "id-card" && (
               <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 এই ডকুমেন্টে এডিট করার মতো কোনো বাক্য নেই — এটি শুধু শিক্ষার্থীর তথ্য দেখায়।
               </div>
@@ -1200,11 +1023,6 @@ export default function TalimatDocumentsPage() {
           {isLetterDoc && (
             <div className="flex justify-center overflow-auto rounded-xl bg-slate-100 p-6">
               <div style={{ width: 420 }}>{renderLetterPreview()}</div>
-            </div>
-          )}
-          {active.key === "book-label" && (
-            <div className="flex justify-center overflow-auto rounded-xl bg-slate-100 p-6">
-              {renderBookLabelPreview()}
             </div>
           )}
         </section>

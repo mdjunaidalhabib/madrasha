@@ -19,6 +19,7 @@ enum DocumentType {
   MARKSHEET
   FEE_RECEIPT
   SALARY_SLIP
+  BOOK_LABEL
 }
 
 enum DocumentTemplateScope {
