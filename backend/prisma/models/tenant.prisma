@@ -419,6 +419,7 @@ model WebsiteSettings {
   heroTitle      String? @map("hero_title") @db.VarChar(190)
   heroSubtitle   String? @map("hero_subtitle") @db.Text
   themeColor     String? @default("#2563eb") @map("theme_color") @db.VarChar(30)
+  themeKey       String? @default("classic") @map("theme_key") @db.VarChar(30)
   showNotices    Int?    @default(1) @map("show_notices")
   showGallery    Int?    @default(1) @map("show_gallery")
   showTeachers   Int?    @default(1) @map("show_teachers")

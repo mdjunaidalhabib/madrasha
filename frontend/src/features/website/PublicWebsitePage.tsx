@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowRight,
   Bell,
   ChevronUp,
   Facebook,
-  GraduationCap,
   Info,
   Instagram,
   Loader2,
@@ -26,6 +25,7 @@ import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
 import NoticeMarquee from "./NoticeMarquee";
+import { resolveTheme, type ThemeTokens } from "./themes";
 
 const NAV_LABELS: Record<string, string> = {
   about: "পরিচিতি",
@@ -93,15 +93,69 @@ function SectionHeader({
   title,
   accentSolid,
   accentLabel,
+  theme,
   light = false,
 }: {
   eyebrow: string;
   title: string;
   accentSolid: string;
   accentLabel: string;
+  theme: ThemeTokens;
   light?: boolean;
 }) {
   const line = light ? "rgba(255,255,255,0.5)" : withAlpha(accentSolid, 0.45);
+  const titleColor = light ? "text-white" : "text-slate-900";
+
+  // Modern: left-aligned, eyebrow as an accent pill, accent bar beside the title.
+  if (theme.sectionHeader === "left-bar") {
+    return (
+      <div className="reveal flex flex-col items-start text-left">
+        <span
+          className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] ${theme.round}`}
+          style={{
+            backgroundColor: light ? "rgba(255,255,255,0.15)" : withAlpha(accentSolid, 0.1),
+            color: light ? "rgba(255,255,255,0.9)" : accentLabel,
+          }}
+        >
+          {eyebrow}
+        </span>
+        <div className="mt-3 flex items-stretch gap-3">
+          <span
+            className="w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: light ? "#ffffff" : accentSolid }}
+            aria-hidden="true"
+          />
+          <h2 className={`text-2xl font-extrabold tracking-tight md:text-4xl ${titleColor}`}>{title}</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Minimal: plain uppercase title with a thin full-width underline.
+  if (theme.sectionHeader === "underline") {
+    return (
+      <div className="reveal text-left">
+        <p
+          className="text-[11px] font-bold uppercase tracking-[0.24em]"
+          style={{ color: light ? "rgba(255,255,255,0.75)" : accentLabel }}
+        >
+          {eyebrow}
+        </p>
+        <h2 className={`mt-2 text-xl font-bold uppercase tracking-wide md:text-3xl ${titleColor}`}>{title}</h2>
+        <div
+          className="relative mt-4 h-px w-full"
+          style={{ backgroundColor: light ? "rgba(255,255,255,0.3)" : "#e2e8f0" }}
+          aria-hidden="true"
+        >
+          <span
+            className="absolute left-0 top-[-1px] h-[3px] w-16"
+            style={{ backgroundColor: light ? "#ffffff" : accentSolid }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="reveal flex flex-col items-center text-center">
       <div className="flex items-center gap-3">
@@ -115,7 +169,7 @@ function SectionHeader({
         <span className="h-px w-8 md:w-12" style={{ backgroundColor: line }} />
       </div>
       <h2
-        className={`mt-3 text-2xl font-extrabold tracking-tight md:text-4xl ${light ? "text-white" : "text-slate-900"}`}
+        className={`mt-3 text-2xl font-extrabold tracking-tight md:text-4xl ${titleColor}`}
       >
         {title}
       </h2>
@@ -128,55 +182,6 @@ function SectionHeader({
   );
 }
 
-type QuickLinkItem = {
-  key: string;
-  icon: ReactNode;
-  title: string;
-  sub: string;
-  to?: string;
-  href?: string;
-};
-
-function QuickLink({
-  item,
-  accentSolid,
-  onAccent,
-}: {
-  item: QuickLinkItem;
-  accentSolid: string;
-  onAccent: string;
-}) {
-  const className =
-    "group flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-xl lg:flex-1";
-  const inner = (
-    <>
-      <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-        style={{ backgroundColor: accentSolid, color: onAccent }}
-      >
-        {item.icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-extrabold text-slate-900">{item.title}</span>
-        <span className="block truncate text-xs font-medium text-slate-500">{item.sub}</span>
-      </span>
-      <ArrowRight
-        size={16}
-        className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-500"
-      />
-    </>
-  );
-  return item.to ? (
-    <Link to={item.to} className={className}>
-      {inner}
-    </Link>
-  ) : (
-    <a href={item.href} className={className}>
-      {inner}
-    </a>
-  );
-}
-
 function PersonCard({
   name,
   role,
@@ -184,6 +189,7 @@ function PersonCard({
   accentSolid,
   accentLabel,
   onAccent,
+  theme,
   delay = 0,
 }: {
   name: string;
@@ -192,11 +198,12 @@ function PersonCard({
   accentSolid: string;
   accentLabel: string;
   onAccent: string;
+  theme: ThemeTokens;
   delay?: number;
 }) {
   return (
     <div
-      className="reveal group overflow-hidden rounded-2xl border border-slate-100 bg-white text-center shadow-sm transition-shadow hover:shadow-lg"
+      className={`reveal group overflow-hidden ${theme.card} ${theme.person} text-center`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div
@@ -210,11 +217,11 @@ function PersonCard({
             alt={name}
             loading="lazy"
             decoding="async"
-            className="mx-auto h-20 w-20 rounded-full object-cover shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105"
+            className={`mx-auto h-20 w-20 ${theme.round} object-cover shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105`}
           />
         ) : (
           <div
-            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-xl font-bold shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105"
+            className={`mx-auto flex h-20 w-20 items-center justify-center ${theme.round} text-xl font-bold shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105`}
             style={{ backgroundColor: accentSolid, color: onAccent }}
           >
             {initials(name)}
@@ -222,7 +229,7 @@ function PersonCard({
         )}
         <div className="mt-4 font-bold leading-snug text-slate-900">{name}</div>
         <div
-          className="mx-auto mt-2 inline-block max-w-full rounded-full px-3 py-1 text-xs font-semibold"
+          className={`mx-auto mt-2 inline-block max-w-full ${theme.round} px-3 py-1 text-xs font-semibold`}
           style={{ backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel }}
         >
           {role}
@@ -274,6 +281,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     return map;
   }, [data]);
 
+  const theme = resolveTheme(settings.theme_key);
   const themeColor = settings.theme_color || "#2563eb";
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
@@ -389,7 +397,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
       <div className="min-h-screen bg-white text-slate-900">
         {/* Navbar skeleton — mirrors the real header layout so it never renders blank */}
         <header className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
               <div className="min-w-0 space-y-1.5">
@@ -454,45 +462,20 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
   const hasTopBar = Boolean(madrasa?.phone || madrasa?.email || socials.length);
 
-  const quickLinks: QuickLinkItem[] = [
-    {
-      key: "admission",
-      icon: <GraduationCap size={20} />,
-      title: "অনলাইনে ভর্তি",
-      sub: "ভর্তি ফরম পূরণ করুন",
-      to: admissionUrl,
-    },
-    visibleSections.includes("notices") && {
-      key: "notices",
-      icon: <Bell size={20} />,
-      title: "নোটিশ বোর্ড",
-      sub: "সর্বশেষ বিজ্ঞপ্তি দেখুন",
-      href: "#notices",
-    },
-    {
-      key: "guardian",
-      icon: <LogIn size={20} />,
-      title: "অভিভাবক লগইন",
-      sub: "অভিভাবক পোর্টালে প্রবেশ",
-      to: guardianLoginUrl,
-    },
-    (madrasa?.phone || visibleSections.includes("contact")) && {
-      key: "contact",
-      icon: <Phone size={20} />,
-      title: "যোগাযোগ",
-      sub: madrasa?.phone || "আমাদের সাথে যোগাযোগ করুন",
-      href: madrasa?.phone ? `tel:${madrasa.phone}` : "#contact",
-    },
-  ].filter(Boolean) as QuickLinkItem[];
-
   const sectionBase = "py-16 md:py-24 scroll-mt-28";
+
+  // Band nav colours: "band" uses the theme colour, "dark" a slate-900 bar.
+  const navDark = theme.nav === "dark";
+  const navBg = navDark ? "#0f172a" : accentSolid;
+  const navFg = navDark ? "#ffffff" : onAccent;
+  const navUnderline = navDark ? accentLabelOnDark : onAccent;
 
   return (
     <div id="page-top" className="min-h-screen bg-white text-slate-900">
       {/* Top info bar (desktop) */}
       {hasTopBar && (
         <div className="hidden bg-slate-950 text-slate-300 lg:block">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-2 text-xs">
+          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-4 py-2 text-xs">
             <div className="flex items-center gap-6">
               {madrasa?.phone && (
                 <a href={`tel:${madrasa.phone}`} className="flex items-center gap-1.5 transition hover:text-white">
@@ -528,10 +511,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
       )}
 
       {/* Header — sticky in normal flow (never overlaps the hero) */}
-      <header className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-md" : ""}`}>
-        {/* Row 1: brand (full name, never truncated) + actions */}
+      <header
+        className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${theme.header} ${
+          scrolled ? theme.headerScrolled : ""
+        }`}
+      >
+        {/* Row 1: brand (full name, never truncated) + actions (+ inline nav for the "inline" variant) */}
         <div
-          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 transition-all duration-300 ${
+          className={`mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 transition-all duration-300 ${
             scrolled ? "py-2" : "py-3"
           }`}
         >
@@ -540,11 +527,11 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               <img
                 src={madrasa?.logo_url}
                 alt="Logo"
-                className="h-11 w-11 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
+                className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
               />
             ) : (
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.round} text-sm font-bold shadow`}
                 style={{ backgroundColor: accentSolid, color: onAccent }}
               >
                 {initials(madrasa?.name)}
@@ -558,10 +545,33 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             </div>
           </a>
 
+          {/* Inline nav (modern): links share the brand row instead of a separate band */}
+          {theme.nav === "inline" && (
+            <nav className="no-scrollbar hidden min-w-0 flex-1 overflow-x-auto lg:block">
+              <div className="mx-auto flex w-max items-center gap-0.5">
+                {visibleSections.map((key) => {
+                  const active = activeId === key;
+                  return (
+                    <a
+                      key={key}
+                      href={`#${key}`}
+                      className={`whitespace-nowrap ${theme.round} px-3 py-1.5 text-[13px] font-semibold transition ${
+                        active ? "" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                      style={active ? { backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel } : undefined}
+                    >
+                      {NAV_LABELS[key]}
+                    </a>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
+
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <Link
               to={guardianLoginUrl}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50"
+              className={`${theme.nav === "inline" ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap ${theme.button} border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50`}
               style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
             >
               <LogIn size={15} />
@@ -569,7 +579,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             </Link>
             <Link
               to={admissionUrl}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90"
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${theme.button} px-4 py-2 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
               অনলাইনে ভর্তি
@@ -588,24 +598,26 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         </div>
 
         {/* Row 2: menu bar — distinct band, desktop only (mobile uses the drawer) */}
-        <nav className="no-scrollbar hidden overflow-x-auto lg:block" style={{ backgroundColor: accentSolid }}>
-          <div className="mx-auto flex max-w-6xl items-center justify-center gap-1 px-4">
-            {visibleSections.map((key) => (
-              <a
-                key={key}
-                href={`#${key}`}
-                className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
-                style={{ color: onAccent, opacity: activeId === key ? 1 : 0.78 }}
-              >
-                {NAV_LABELS[key]}
-                <span
-                  className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
-                  style={{ backgroundColor: onAccent, opacity: activeId === key ? 1 : 0 }}
-                />
-              </a>
-            ))}
-          </div>
-        </nav>
+        {theme.nav !== "inline" && (
+          <nav className="no-scrollbar hidden overflow-x-auto lg:block" style={{ backgroundColor: navBg }}>
+            <div className="mx-auto flex max-w-[1200px] items-center justify-center gap-1 px-4">
+              {visibleSections.map((key) => (
+                <a
+                  key={key}
+                  href={`#${key}`}
+                  className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
+                  style={{ color: navFg, opacity: activeId === key ? 1 : 0.78 }}
+                >
+                  {NAV_LABELS[key]}
+                  <span
+                    className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
+                    style={{ backgroundColor: navUnderline, opacity: activeId === key ? 1 : 0 }}
+                  />
+                </a>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
 
       {settings.show_notice_bar !== 0 && (
@@ -703,12 +715,13 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         fallbackTitle={settings.hero_title || madrasa?.name || ""}
         fallbackSubtitle={settings.hero_subtitle || madrasa?.address || "Welcome to our madrasa website."}
         accentSolid={accentSolid}
+        variant={theme.hero}
         websiteStatus={madrasa?.website_status}
         actions={
           <>
             <Link
               to={admissionUrl}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 ${theme.button} bg-white px-6 py-3 text-sm font-bold text-slate-900 ${theme.shadowLg} transition hover:bg-slate-100`}
             >
               অনলাইনে ভর্তি
               <ArrowRight size={16} />
@@ -716,7 +729,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             {visibleSections.includes("about") && (
               <a
                 href="#about"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
+                className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20`}
               >
                 আমাদের সম্পর্কে জানুন
               </a>
@@ -725,27 +738,22 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         }
       />
 
-      {/* Quick links — overlaps the hero's bottom edge */}
-      <div className="relative z-10 mx-auto -mt-8 max-w-6xl px-4 md:-mt-10">
-        <div className="grid gap-3 sm:grid-cols-2 lg:flex">
-          {quickLinks.map((item) => (
-            <QuickLink key={item.key} item={item} accentSolid={accentSolid} onAccent={onAccent} />
-          ))}
-        </div>
-      </div>
-
       {visibleSections.map((key, index) => {
-        const bandClass = `${index % 2 === 1 ? "bg-slate-50" : "bg-white"} ${sectionBase}`;
+        const isAlt = index % 2 === 1;
+        const bandClass = `${isAlt ? theme.altBg : "bg-white"} ${sectionBase}`;
+        const bandStyle: CSSProperties | undefined =
+          isAlt && theme.altTint ? { backgroundColor: withAlpha(accentSolid, theme.altTint) } : undefined;
 
         if (key === "about") {
           return (
-            <section key="about" id="about" className={bandClass}>
-              <div className="mx-auto max-w-6xl px-4">
+            <section key="about" id="about" className={bandClass} style={bandStyle}>
+              <div className="mx-auto max-w-[1200px] px-4">
                 <SectionHeader
                   eyebrow="পরিচিতি"
                   title={pageMap.about.title}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 <div className="mt-12 grid items-start gap-8 lg:grid-cols-5 lg:gap-12">
                   <div
@@ -758,7 +766,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                   </div>
 
                   <aside
-                    className="reveal relative overflow-hidden rounded-3xl p-6 text-white shadow-xl md:p-8 lg:col-span-2"
+                    className={`reveal relative overflow-hidden ${theme.panel} p-6 text-white ${theme.shadowXl} md:p-8 lg:col-span-2`}
                     style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
                   >
                     <div
@@ -771,10 +779,10 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                           <img
                             src={madrasa.logo_url}
                             alt="Logo"
-                            className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/30"
+                            className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
                           />
                         ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-bold ring-2 ring-white/30">
+                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center ${theme.round} bg-white/15 text-sm font-bold ring-2 ring-white/30`}>
                             {initials(madrasa?.name)}
                           </div>
                         )}
@@ -804,7 +812,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                       </div>
                       <Link
                         to={admissionUrl}
-                        className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
+                        className={`mt-7 inline-flex w-full items-center justify-center gap-2 ${theme.button} bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100`}
                       >
                         ভর্তির তথ্য ও আবেদন
                         <ArrowRight size={16} />
@@ -819,16 +827,17 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "muhtamim") {
           return (
-            <section key="muhtamim" id="muhtamim" className={bandClass}>
+            <section key="muhtamim" id="muhtamim" className={bandClass} style={bandStyle}>
               <div className="mx-auto max-w-5xl px-4">
                 <SectionHeader
                   eyebrow="মুহতামিমের বাণী"
                   title={settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 <div
-                  className="reveal relative mt-12 overflow-hidden rounded-3xl border bg-white p-6 shadow-sm md:p-10"
+                  className={`reveal relative mt-12 overflow-hidden ${theme.panel} ${theme.panelSurface} p-6 md:p-10`}
                   style={{ borderColor: withAlpha(accentSolid, 0.18) }}
                 >
                   <Quote
@@ -844,12 +853,12 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                         <img
                           src={settings.muhtamim_photo}
                           alt={settings.muhtamim_name || "Muhtamim"}
-                          className="h-36 w-36 rounded-2xl object-cover shadow-lg ring-4 md:h-44 md:w-44"
+                          className={`h-36 w-36 ${theme.media} object-cover ${theme.shadowLg} ring-4 md:h-44 md:w-44`}
                           style={{ ["--tw-ring-color" as any]: withAlpha(accentSolid, 0.25) }}
                         />
                       ) : (
                         <div
-                          className="flex h-36 w-36 items-center justify-center rounded-2xl text-3xl font-bold shadow-lg md:h-44 md:w-44"
+                          className={`flex h-36 w-36 items-center justify-center ${theme.media} text-3xl font-bold ${theme.shadowLg} md:h-44 md:w-44`}
                           style={{ backgroundColor: accentSolid, color: onAccent }}
                         >
                           {initials(settings.muhtamim_name)}
@@ -919,15 +928,16 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                   title={pageMap.admission.title}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
-                <div className="reveal mt-10 rounded-3xl bg-white/10 p-6 ring-1 ring-white/20 backdrop-blur md:p-10">
+                <div className={`reveal mt-10 ${theme.panel} bg-white/10 p-6 ring-1 ring-white/20 backdrop-blur md:p-10`}>
                   <p className="whitespace-pre-line text-sm leading-8 text-white/90 md:text-base md:leading-9">
                     {pageMap.admission.content}
                   </p>
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Link
                       to={admissionUrl}
-                      className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:bg-slate-100"
+                      className={`inline-flex items-center gap-2 ${theme.button} bg-white px-6 py-3 text-sm font-bold text-slate-900 ${theme.shadowLg} transition hover:bg-slate-100`}
                     >
                       অনলাইনে ভর্তি ফরম পূরণ করুন
                       <ArrowRight size={16} />
@@ -935,7 +945,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                     {settings.show_contact !== 0 && (
                       <a
                         href="#contact"
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+                        className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10`}
                       >
                         যোগাযোগ করুন
                       </a>
@@ -949,13 +959,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "teachers") {
           return (
-            <section key="teachers" id="teachers" className={bandClass}>
-              <div className="mx-auto max-w-6xl px-4">
+            <section key="teachers" id="teachers" className={bandClass} style={bandStyle}>
+              <div className="mx-auto max-w-[1200px] px-4">
                 <SectionHeader
                   eyebrow="আমাদের শিক্ষকবৃন্দ"
                   title="শিক্ষকবৃন্দ"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 {teachers.length ? (
                   <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -967,6 +978,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                         accentSolid={accentSolid}
                         accentLabel={accentLabel}
                         onAccent={onAccent}
+                        theme={theme}
                         delay={(idx % 4) * 80}
                       />
                     ))}
@@ -983,13 +995,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "committee") {
           return (
-            <section key="committee" id="committee" className={bandClass}>
-              <div className="mx-auto max-w-6xl px-4">
+            <section key="committee" id="committee" className={bandClass} style={bandStyle}>
+              <div className="mx-auto max-w-[1200px] px-4">
                 <SectionHeader
                   eyebrow="পরিচালনা পর্ষদ"
                   title="মাদ্রাসা কমিটি"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                   {committee.map((member: any, idx: number) => (
@@ -1001,6 +1014,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                       accentSolid={accentSolid}
                       accentLabel={accentLabel}
                       onAccent={onAccent}
+                      theme={theme}
                       delay={(idx % 4) * 80}
                     />
                   ))}
@@ -1012,13 +1026,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "gallery") {
           return (
-            <section key="gallery" id="gallery" className={bandClass}>
-              <div className="mx-auto max-w-6xl px-4">
+            <section key="gallery" id="gallery" className={bandClass} style={bandStyle}>
+              <div className="mx-auto max-w-[1200px] px-4">
                 <SectionHeader
                   eyebrow="আমাদের মুহূর্তগুলো"
                   title="গ্যালারি"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 {gallery.length ? (
                   <div
@@ -1032,7 +1047,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                         type="button"
                         key={item.id || item.image_url}
                         onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
-                        className="gallery-item group relative aspect-square overflow-hidden rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-xl"
+                        className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
                         style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
                         aria-label={item.title || "Gallery"}
                       >
@@ -1063,13 +1078,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
 
         if (key === "notices") {
           return (
-            <section key="notices" id="notices" className={bandClass}>
+            <section key="notices" id="notices" className={bandClass} style={bandStyle}>
               <div className="mx-auto max-w-3xl px-4">
                 <SectionHeader
                   eyebrow="সর্বশেষ"
                   title="নোটিশ বোর্ড"
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 {notices.length ? (
                   <div className="mt-12 space-y-4">
@@ -1078,10 +1094,10 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                       return (
                         <article
                           key={notice.id}
-                          className="reveal flex gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md md:p-5"
+                          className={`reveal flex gap-4 ${theme.card} ${theme.notice} p-4 md:p-5`}
                         >
                           <div
-                            className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl text-center"
+                            className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center ${theme.tile} text-center`}
                             style={{ backgroundColor: accentSolid, color: onAccent }}
                           >
                             {parts ? (
@@ -1098,7 +1114,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                               <h3 className="font-bold leading-snug text-slate-900">{notice.title}</h3>
                               {isRecent(notice.published_at) && (
                                 <span
-                                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                                  className={`${theme.round} px-2 py-0.5 text-[10px] font-bold`}
                                   style={{ backgroundColor: withAlpha(accentSolid, 0.12), color: accentLabel }}
                                 >
                                   নতুন
@@ -1154,16 +1170,19 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
           ].filter((row) => row.value);
 
           return (
-            <section key="contact" id="contact" className={bandClass}>
-              <div className="mx-auto max-w-6xl px-4">
+            <section key="contact" id="contact" className={bandClass} style={bandStyle}>
+              <div className="mx-auto max-w-[1200px] px-4">
                 <SectionHeader
                   eyebrow="যোগাযোগ"
                   title={pageMap.contact?.title || "যোগাযোগ"}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
+                theme={theme}
                 />
                 {pageMap.contact?.content && (
-                  <p className="reveal mx-auto mt-6 max-w-2xl whitespace-pre-line text-center text-sm leading-7 text-slate-600">
+                  <p className={`reveal mt-6 max-w-2xl whitespace-pre-line text-sm leading-7 text-slate-600 ${
+                      theme.headerCentered ? "mx-auto text-center" : ""
+                    }`}>
                     {pageMap.contact.content}
                   </p>
                 )}
@@ -1177,10 +1196,10 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                         href={row.href}
                         target={row.external ? "_blank" : undefined}
                         rel={row.external ? "noreferrer" : undefined}
-                        className="reveal flex items-start gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                        className={`reveal flex items-start gap-4 ${theme.card} ${theme.contactRow} p-5`}
                       >
                         <span
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.tile}`}
                           style={{ backgroundColor: accentSolid, color: onAccent }}
                         >
                           {row.icon}
@@ -1198,7 +1217,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                   </div>
 
                   {mapEmbedUrl && (
-                    <div className="reveal overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:col-span-3">
+                    <div className={`reveal overflow-hidden ${theme.card} ${theme.mapBox} lg:col-span-3`}>
                       <iframe
                         title="Location map"
                         src={mapEmbedUrl}
@@ -1221,7 +1240,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
       <footer className="relative bg-slate-950 text-slate-300">
         <div className="h-1 w-full" style={{ backgroundColor: accentSolid }} />
 
-        <div className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mx-auto max-w-[1200px] px-4 py-14">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
@@ -1230,11 +1249,11 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                   <img
                     src={madrasa?.logo_url}
                     alt="Logo"
-                    className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white/10"
+                    className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
                   />
                 ) : (
                   <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.round} text-sm font-bold`}
                     style={{ backgroundColor: accentSolid, color: onAccent }}
                   >
                     {initials(madrasa?.name)}
@@ -1257,7 +1276,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                       target="_blank"
                       rel="noreferrer"
                       aria-label={social.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white"
+                      className={`flex h-9 w-9 items-center justify-center ${theme.round} bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white`}
                       style={{ ["--accent" as any]: accentSolid }}
                     >
                       {social.icon}
@@ -1323,14 +1342,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               <div className="mt-4 flex flex-col gap-2.5">
                 <Link
                   to={admissionUrl}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
+                  className={`inline-flex items-center justify-center gap-1.5 ${theme.button} px-4 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90`}
                   style={{ backgroundColor: accentSolid, color: onAccent }}
                 >
                   অনলাইনে ভর্তি
                 </Link>
                 <Link
                   to={guardianLoginUrl}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-white/5"
+                  className={`inline-flex items-center justify-center gap-1.5 ${theme.button} border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-white/5`}
                 >
                   অভিভাবক লগইন
                 </Link>
@@ -1340,7 +1359,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         </div>
 
         <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-left">
+          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-left">
             <p className="text-xs text-slate-500">
               &copy; {new Date().getFullYear()} {madrasa?.name}. সর্বস্বত্ব সংরক্ষিত।
             </p>
@@ -1392,7 +1411,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
           <img
             src={lightbox.url}
             alt={lightbox.title}
-            className="animate-lightboxImage max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl"
+            className={`animate-lightboxImage max-h-[85vh] max-w-full ${theme.media} object-contain shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           />
         </div>

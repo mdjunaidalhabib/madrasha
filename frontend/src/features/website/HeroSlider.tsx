@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { withAlpha } from "./colorUtils";
+import type { HeroVariant } from "./themes";
 
 export type PublicSlide = {
   id?: number;
@@ -12,10 +13,22 @@ export type PublicSlide = {
 const AUTOPLAY_MS = 5500;
 const TRANSITION_MS = 1000;
 
-// Fixed height per breakpoint, sized for object-contain (the full photo
-// always visible, never cropped) rather than object-cover — a shorter box
-// on phones keeps a landscape photo from leaving tall empty margins.
-const HERO_HEIGHT = "h-[300px] sm:h-[400px] md:h-[480px] lg:h-[560px] xl:h-[620px]";
+// Aspect-ratio driven (not a fixed-pixel ladder) so the box always keeps a
+// clean, professional proportion as it scales with the 1200px-capped width
+// below. Base ratio matches the recommended slide upload size (1600x900,
+// 16:9) so an image fits edge-to-edge with no letterbox padding on phones
+// and tablets; it only opens up to a wide 21:9 banner on desktop. Paired
+// with object-contain (the full photo always visible, never cropped)
+// rather than object-cover.
+const HERO_ASPECT = "aspect-[16/9] lg:aspect-[21/9]";
+
+// Per-theme hero shape. "classic" is the original; "rounded" (modern) softens
+// the bottom corners; "flat" (minimal) is a touch shorter with square edges.
+const HERO_VARIANT_CLASS: Record<HeroVariant, string> = {
+  classic: HERO_ASPECT,
+  rounded: `${HERO_ASPECT} rounded-b-[1.75rem] md:rounded-b-[3rem]`,
+  flat: "aspect-[16/9] lg:aspect-[24/9]",
+};
 
 // One consistent crossfade + gentle scale-in every time a slide changes —
 // a mix of different effects (slide/zoom-in/zoom-out) read as jumpy when
@@ -31,6 +44,7 @@ export default function HeroSlider({
   fallbackTitle,
   fallbackSubtitle,
   accentSolid,
+  variant = "classic",
   websiteStatus,
   actions,
 }: {
@@ -38,6 +52,7 @@ export default function HeroSlider({
   fallbackTitle: string;
   fallbackSubtitle: string;
   accentSolid: string;
+  variant?: HeroVariant;
   websiteStatus?: string;
   actions?: ReactNode;
 }) {
@@ -118,7 +133,7 @@ export default function HeroSlider({
   return (
     <section
       id="top"
-      className={`relative overflow-hidden text-white ${HERO_HEIGHT}`}
+      className={`relative mx-auto mt-1.5 overflow-hidden rounded-xl text-white max-w-[1200px] md:mt-2 ${HERO_VARIANT_CLASS[variant] ?? HERO_ASPECT}`}
       style={{ background: `linear-gradient(135deg, ${accentSolid} 0%, #05070d 85%)` }}
     >
       {hasSlides && (

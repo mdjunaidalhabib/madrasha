@@ -52,7 +52,7 @@ export default function NoticeMarquee({ text, speed }: { text?: string | null; s
 
   return (
     <div className="overflow-hidden" style={{ backgroundColor: NOTICE_BG }}>
-      <div className="mx-auto flex max-w-6xl items-stretch">
+      <div className="mx-auto flex max-w-[1200px] items-stretch">
         <div
           className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
           style={{ backgroundColor: withAlpha("#000000", 0.12), color: NOTICE_TEXT }}

@@ -7,6 +7,7 @@ export interface UpsertWebsiteSettingsRequestDto {
   hero_title?: string;
   hero_subtitle?: string;
   theme_color?: string;
+  theme_key?: string;
   show_notices?: unknown;
   show_gallery?: unknown;
   show_teachers?: unknown;

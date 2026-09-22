@@ -71,6 +71,7 @@ const defaultSettings: WebsiteSettingsPayload = {
   hero_title: "",
   hero_subtitle: "",
   theme_color: "#2563eb",
+  theme_key: "classic",
   show_notices: 1,
   show_gallery: 1,
   show_teachers: 1,
@@ -211,6 +212,147 @@ function PublishAndSubmitAction({
         {!saving && <Plus size={15} />}
         {saving ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
       </Button>
+    </div>
+  );
+}
+
+type WebsiteThemeKey = "classic" | "modern" | "minimal";
+
+const websiteThemes: { key: WebsiteThemeKey; name: string; description: string }[] = [
+  {
+    key: "classic",
+    name: "ক্লাসিক",
+    description: "সাদা হেডারের নিচে রঙিন মেনু ব্যান্ড, নরম শ্যাডো কার্ড (বর্তমান ডিজাইন)",
+  },
+  {
+    key: "modern",
+    name: "মডার্ন",
+    description: "গোলাকার কার্ড, হালকা রঙিন সেকশন ব্যাকগ্রাউন্ড, এক লাইনের হেডার",
+  },
+  {
+    key: "minimal",
+    name: "মিনিমাল",
+    description: "ধারালো কোণ, বর্ডার-ভিত্তিক সাদামাটা ও পরিষ্কার লুক",
+  },
+];
+
+/** প্রতিটি থিমের ছোট CSS মিনি-প্রিভিউ - শুধু লেআউটের ধরন বোঝানোর জন্য, আসল সাইটের রেন্ডার নয়। */
+function ThemeMiniPreview({ themeKey, accent }: { themeKey: WebsiteThemeKey; accent: string }) {
+  if (themeKey === "classic") {
+    return (
+      <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-800">
+        <div className="flex h-4 items-center gap-1 bg-white px-1.5 dark:bg-slate-900">
+          <span className="h-2 w-2 rounded-full bg-slate-300" />
+          <span className="h-1 w-8 rounded-sm bg-slate-300" />
+        </div>
+        <div className="h-2.5" style={{ backgroundColor: accent }} />
+        <div className="flex flex-1 gap-1.5 p-1.5">
+          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
+          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
+          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
+        </div>
+      </div>
+    );
+  }
+  if (themeKey === "modern") {
+    return (
+      <div className="relative flex h-full flex-col bg-white dark:bg-slate-900">
+        <div className="flex h-4 items-center gap-1 px-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
+          <span className="ml-auto h-1 w-3 rounded-full bg-slate-300" />
+          <span className="h-1 w-3 rounded-full bg-slate-300" />
+          <span className="h-1 w-3 rounded-full bg-slate-300" />
+        </div>
+        <div className="relative flex flex-1 gap-1.5 p-1.5">
+          <span className="absolute inset-0 opacity-15" style={{ backgroundColor: accent }} />
+          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
+          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
+          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-full flex-col bg-white dark:bg-slate-900">
+      <div className="flex h-4 items-center gap-1 border-b border-slate-300 px-1.5 dark:border-slate-600">
+        <span className="h-2 w-2 border border-slate-400" />
+        <span className="h-1 w-8 bg-slate-300" />
+      </div>
+      <div className="flex flex-1 gap-1.5 p-1.5">
+        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
+        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
+        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
+      </div>
+    </div>
+  );
+}
+
+/** থিম বাছাইয়ের রেডিও-গ্রুপ - নেটিভ radio ইনপুট (sr-only) ব্যবহার করায় কিবোর্ডের
+ * তীর-চিহ্ন/ট্যাব ও স্ক্রিন-রিডার এমনিতেই কাজ করে। সংরক্ষণ শেষ হওয়ার আগেই নির্বাচন দেখানো হয়,
+ * ব্যর্থ হলে আগের মানে ফিরে যায়। */
+function WebsiteThemePicker({
+  value,
+  accent,
+  onSave,
+}: {
+  value: WebsiteThemeKey;
+  accent: string;
+  onSave: (v: WebsiteThemeKey) => Promise<void>;
+}) {
+  const [pending, setPending] = useState<WebsiteThemeKey | null>(null);
+  const selected = pending ?? value;
+
+  const choose = async (next: WebsiteThemeKey) => {
+    if (next === selected) return;
+    setPending(next);
+    try {
+      await onSave(next);
+    } catch {
+      // saveSettingsField ইতিমধ্যে টোস্ট দেখিয়েছে
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div role="radiogroup" aria-label="ওয়েবসাইট থিম" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {websiteThemes.map((theme) => {
+        const active = selected === theme.key;
+        return (
+          <label
+            key={theme.key}
+            className={`relative flex cursor-pointer flex-col gap-2 rounded-xl border p-3 transition focus-within:ring-2 focus-within:ring-blue-500/40 ${
+              active
+                ? "border-blue-500 bg-blue-50/60 ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-950/30"
+                : "border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600"
+            }`}
+          >
+            <input
+              type="radio"
+              name="website_theme_key"
+              value={theme.key}
+              checked={active}
+              onChange={() => choose(theme.key)}
+              className="sr-only"
+            />
+            <div className="h-20 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700">
+              <ThemeMiniPreview themeKey={theme.key} accent={accent} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                  active ? "border-blue-500 bg-blue-500" : "border-gray-300 dark:border-slate-600"
+                }`}
+              >
+                {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+              </span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">{theme.name}</span>
+            </div>
+            <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">{theme.description}</p>
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -952,6 +1094,21 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
+            title="ওয়েবসাইট থিম"
+            hint="নিচের থিম কালার প্রতিটি থিমেই প্রযোজ্য হবে।"
+            toggle={{
+              checked: isSectionEnabled("website_theme_key"),
+              onChange: (v) => setSectionToggle("website_theme_key", v),
+            }}
+          >
+            <WebsiteThemePicker
+              value={websiteThemes.find((t) => t.key === form.theme_key)?.key ?? "classic"}
+              accent={form.theme_color || "#2563eb"}
+              onSave={(v) => saveSettingsField("theme_key", v)}
+            />
+          </SectionCard>
+
+          <SectionCard
             title="থিম কালার"
             toggle={{
               checked: isSectionEnabled("website_theme_color"),
@@ -1484,16 +1641,15 @@ export default function AdminWebsiteSettingsPage() {
               onChange: (v) => setSectionToggle("website_slider_add", v),
             }}
           >
-            <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
-              প্রস্তাবিত ছবির সাইজ: 1600 x 900px (16:9, landscape) — সব ডিভাইসে ঠিকভাবে ফিট হবে।
-            </p>
             <form onSubmit={submitSlide} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-xs">
                   <BrandImageBox
                     label="স্লাইড ছবি"
+                    hint="সাইজ: 1600 × 900px (১৬:৯) — অন্য সাইজ দিলেও স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
                     folder="gallery"
                     shape="wide"
+                    resizeTo={{ width: 1600, height: 900 }}
                     value={slideDraft.image_url}
                     onChange={(url) => setSlideDraft((prev) => ({ ...prev, image_url: url }))}
                     onRemove={() => setSlideDraft((prev) => ({ ...prev, image_url: "" }))}
@@ -1557,8 +1713,10 @@ export default function AdminWebsiteSettingsPage() {
                       <div className="max-w-xs">
                         <BrandImageBox
                           label="স্লাইড ছবি"
+                          hint="সাইজ: 1600 × 900px (১৬:৯) — অন্য সাইজ দিলেও স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
                           folder="gallery"
                           shape="wide"
+                          resizeTo={{ width: 1600, height: 900 }}
                           value={slideEditDraft.image_url}
                           onChange={(url) =>
                             setSlideEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))

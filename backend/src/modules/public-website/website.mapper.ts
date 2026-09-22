@@ -9,6 +9,13 @@
  * teacher.mapper.ts / student.mapper.ts.
  */
 
+import { DEFAULT_WEBSITE_THEME, WEBSITE_THEME_KEYS } from "./website.constants";
+
+const toThemeKey = (value: unknown): string =>
+  typeof value === "string" && (WEBSITE_THEME_KEYS as readonly string[]).includes(value)
+    ? value
+    : DEFAULT_WEBSITE_THEME;
+
 export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => {
   if (!row) return null;
   return {
@@ -33,6 +40,7 @@ export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefi
     hero_title: row.heroTitle ?? null,
     hero_subtitle: row.heroSubtitle ?? null,
     theme_color: row.themeColor ?? "#2563eb",
+    theme_key: toThemeKey(row.themeKey),
     show_notices: row.showNotices ?? 1,
     show_gallery: row.showGallery ?? 1,
     show_teachers: row.showTeachers ?? 1,

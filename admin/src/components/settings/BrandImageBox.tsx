@@ -20,9 +20,52 @@ type Props = {
    * a report header/footer banner, much thinner than 16:9). */
   ratioLabel?: string;
   folder?: UploadFolder;
+  /** When set, any picked image is center-cropped and scaled to exactly
+   * this pixel size (cover-fit, no distortion) and re-encoded as JPEG
+   * client-side before preview/upload - so admins can drop in any photo
+   * of any size/ratio and it still lands at the exact dimensions the
+   * public site expects. */
+  resizeTo?: { width: number; height: number };
 };
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+const RESIZED_MAX_SIZE = 8 * 1024 * 1024; // 8MB - looser cap when resizeTo will shrink it anyway
+
+/** Center-crops `src` to the target aspect ratio (cover-fit, never
+ * stretched) then scales to exactly width x height, returning a JPEG
+ * data URL. */
+function resizeImageToJpeg(src: string, width: number, height: number, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("canvas 2d context unavailable"));
+        return;
+      }
+      const targetRatio = width / height;
+      const srcRatio = img.width / img.height;
+      let sx = 0;
+      let sy = 0;
+      let sw = img.width;
+      let sh = img.height;
+      if (srcRatio > targetRatio) {
+        sw = img.height * targetRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = img.width / targetRatio;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("image decode failed"));
+    img.src = src;
+  });
+}
 
 export default function BrandImageBox({
   label,
@@ -34,6 +77,7 @@ export default function BrandImageBox({
   shape = "square",
   ratioLabel: ratioLabelProp,
   folder = "branding",
+  resizeTo,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -48,14 +92,24 @@ export default function BrandImageBox({
       return;
     }
 
-    if (file.size > MAX_SIZE) {
-      useToastStore.getState().show("ছবির সাইজ ২MB এর কম হতে হবে", "error");
+    if (file.size > (resizeTo ? RESIZED_MAX_SIZE : MAX_SIZE)) {
+      useToastStore.getState().show(
+        `ছবির সাইজ ${resizeTo ? RESIZED_MAX_SIZE / (1024 * 1024) : MAX_SIZE / (1024 * 1024)}MB এর কম হতে হবে`,
+        "error"
+      );
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const base64 = reader.result as string;
+      let base64 = reader.result as string;
+      if (resizeTo) {
+        try {
+          base64 = await resizeImageToJpeg(base64, resizeTo.width, resizeTo.height);
+        } catch (err) {
+          logger.error("IMAGE RESIZE ERROR:", err);
+        }
+      }
       onChange(base64);
 
       try {

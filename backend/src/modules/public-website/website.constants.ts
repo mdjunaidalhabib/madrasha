@@ -1,4 +1,7 @@
 export const DEFAULT_THEME_COLOR = "#2563eb";
+export const WEBSITE_THEME_KEYS = ["classic", "modern", "minimal"] as const;
+export type WebsiteThemeKey = (typeof WEBSITE_THEME_KEYS)[number];
+export const DEFAULT_WEBSITE_THEME: WebsiteThemeKey = "classic";
 export const VALID_WEBSITE_STATUSES = ["active", "limited", "disabled"] as const;
 export const VALID_ADMISSION_STATUSES = ["pending", "approved", "rejected"] as const;
 export const PUBLIC_NOTICES_LIMIT = 10;

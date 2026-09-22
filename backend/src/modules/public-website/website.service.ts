@@ -14,7 +14,13 @@ import {
   UpsertWebsitePageRequestDto,
   UpsertWebsiteSettingsRequestDto,
 } from "./website.dto";
-import { DEFAULT_THEME_COLOR, VALID_ADMISSION_STATUSES, VALID_WEBSITE_STATUSES } from "./website.constants";
+import {
+  DEFAULT_THEME_COLOR,
+  DEFAULT_WEBSITE_THEME,
+  VALID_ADMISSION_STATUSES,
+  VALID_WEBSITE_STATUSES,
+  WEBSITE_THEME_KEYS,
+} from "./website.constants";
 import {
   toMadrasaApiDto,
   toWebsiteAdmissionApplicationApiDto,
@@ -136,6 +142,7 @@ export class WebsiteService {
       hero_title,
       hero_subtitle,
       theme_color,
+      theme_key,
       show_notices,
       show_gallery,
       show_teachers,
@@ -159,6 +166,12 @@ export class WebsiteService {
       whatsapp_channel_url,
     } = body;
 
+    const themeKey =
+      theme_key === undefined || theme_key === null || theme_key === "" ? DEFAULT_WEBSITE_THEME : theme_key;
+    if (typeof themeKey !== "string" || !(WEBSITE_THEME_KEYS as readonly string[]).includes(themeKey)) {
+      throw new BadRequestError("Invalid theme");
+    }
+
     await this.repository.updateMadrasaContactInfo(madrasaId, {
       ...(name ? { name } : {}),
       phone: phone || null,
@@ -171,6 +184,7 @@ export class WebsiteService {
       heroTitle: hero_title || null,
       heroSubtitle: hero_subtitle || null,
       themeColor: theme_color || DEFAULT_THEME_COLOR,
+      themeKey,
       showNotices: boolValue(show_notices),
       showGallery: boolValue(show_gallery),
       showTeachers: boolValue(show_teachers),

@@ -5,6 +5,7 @@ import { getPublicWebsite, submitFullAdmissionApplication } from "../../services
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { useTenantSlug } from "../../utils/useTenantSlug";
 import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
+import { resolveTheme } from "./themes";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
@@ -59,10 +60,7 @@ const emptyForm = {
 
 const cleanPhone = (phone: string) => phone.replace(/[^0-9]/g, "");
 
-const cardClass = "rounded-3xl border border-slate-100 bg-white p-6 shadow-sm md:p-8";
 const labelClass = "text-sm font-semibold text-slate-700";
-const baseInputClass = "mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2";
-const inputClass = `${baseInputClass} border-slate-200`;
 const requiredMark = <span className="text-red-500">*</span>;
 
 export default function AdmissionApplyPage() {
@@ -99,6 +97,14 @@ export default function AdmissionApplyPage() {
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
   const onAccent = useMemo(() => pickTextOn(accentSolid), [accentSolid]);
+
+  // Theme tokens (radius / shadow style) shared with the public website.
+  const theme = resolveTheme(settings.theme_key);
+  const cardClass = `${theme.panel} border ${
+    theme.key === "minimal" ? "border-slate-300" : "border-slate-100"
+  } bg-white ${theme.shadowSm} p-6 md:p-8`;
+  const baseInputClass = `mt-1 w-full ${theme.button} border px-3 py-2.5 text-sm outline-none focus:ring-2`;
+  const inputClass = `${baseInputClass} border-slate-200`;
 
   const classesInDivision = useMemo(
     () => allClasses.filter((c) => String(c.division_id) === String(form.division_id)),
@@ -287,7 +293,7 @@ export default function AdmissionApplyPage() {
             <Link
               to=".."
               relative="path"
-              className="mt-6 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90"
+              className={`mt-6 inline-flex items-center gap-1.5 ${theme.button} px-5 py-2.5 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
               হোমপেজে ফিরে যান
@@ -713,7 +719,7 @@ export default function AdmissionApplyPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl px-5 py-3 text-sm font-bold shadow-sm transition hover:opacity-90 disabled:opacity-60"
+              className={`w-full ${theme.button} px-5 py-3 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90 disabled:opacity-60`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
               {submitting ? "জমা দেওয়া হচ্ছে..." : "আবেদন জমা দিন"}

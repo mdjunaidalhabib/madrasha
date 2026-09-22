@@ -126,6 +126,7 @@ export const SETTINGS_SECTION_KEYS = [
   "website_section_visibility",
   "website_institution_info",
   "website_theme_color",
+  "website_theme_key",
   "website_hero_banner",
   "website_notice_bar",
   "website_muhtamim_message",

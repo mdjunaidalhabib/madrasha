@@ -10,6 +10,7 @@ export type WebsiteSettingsPayload = {
   hero_title?: string;
   hero_subtitle?: string;
   theme_color?: string;
+  theme_key?: string;
   show_notices?: 0 | 1;
   show_gallery?: 0 | 1;
   show_teachers?: 0 | 1;
