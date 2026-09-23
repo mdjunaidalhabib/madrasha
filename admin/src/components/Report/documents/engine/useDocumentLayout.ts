@@ -8,8 +8,10 @@ import {
   getDefaultBuiltinDesign,
   isBuiltinDesignId,
 } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
+import { buildAdmitCardDesign } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/admitCardDesigns";
 import { useDocumentTemplateDetailStore } from "../../../../store/documentTemplateDetailStore";
 import { useBrandingStore } from "../../../../store/brandingStore";
+import { DEFAULT_ADMIT_CARD_FIELDS } from "../../../../services/brandingApi";
 
 export type ResolvedDocumentLayout = {
   layout: DocumentLayout | null;
@@ -36,14 +38,28 @@ export const useDocumentLayout = (
   const isDbTemplate = dbId > 0;
   const detail = useDocumentTemplateDetailStore((s) => (dbId ? s.details[dbId] : undefined));
   const ensure = useDocumentTemplateDetailStore((s) => s.ensure);
+  // ADMIT_CARD-এর চারটা বিল্ট-ইন ডিজাইনেই লাগে - কোন তথ্য-ফিল্ড দেখাবে/কোন ক্রমে
+  // (দেখুন brandingApi.ts-এর admit_card_fields)।
+  const admitCardFields = useBrandingStore((s) => s.branding?.admit_card_fields);
 
   useEffect(() => {
     if (dbId) ensure(dbId);
   }, [dbId, ensure]);
 
   return useMemo(() => {
-    const builtin = isBuiltinDesignId(templateId) ? getBuiltinDesign(templateId) : null;
-    const design = builtin ?? (templateId ? null : getDefaultBuiltinDesign(type));
+    // ADMIT_CARD-এ templateId null/undefined (ডিফল্ট) অথবা কোনো বিল্ট-ইন id (ঋণাত্মক)
+    // হলে চারটা ডিজাইনই লাইভ ফিল্ড-সেটিংসসহ বানানো হয় - registry-র স্ট্যাটিক
+    // getBuiltinDesign() এড়িয়ে (সেটা ডিফল্ট ফিল্ড দিয়ে একবারই বানানো, সেটিংস বদলালে
+    // রিঅ্যাক্ট করবে না)।
+    const isAdmitCardBuiltin = type === "ADMIT_CARD" && (templateId == null || isBuiltinDesignId(templateId));
+    const builtin = !isAdmitCardBuiltin && isBuiltinDesignId(templateId) ? getBuiltinDesign(templateId) : null;
+    const design =
+      builtin ??
+      (isAdmitCardBuiltin
+        ? buildAdmitCardDesign(templateId, admitCardFields || DEFAULT_ADMIT_CARD_FIELDS)
+        : templateId
+          ? null
+          : getDefaultBuiltinDesign(type));
 
     if (design) {
       return {
@@ -76,7 +92,7 @@ export const useDocumentLayout = (
         layers: version.layers,
       },
     };
-  }, [type, templateId, isDbTemplate, detail]);
+  }, [type, templateId, isDbTemplate, detail, admitCardFields]);
 };
 
 /**

@@ -58,6 +58,12 @@ export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefi
     muhtamim_designation: row.muhtamimDesignation ?? null,
     muhtamim_photo: row.muhtamimPhoto ?? null,
     muhtamim_message: row.muhtamimMessage ?? null,
+    show_sovapoti: row.showSovapoti ?? 1,
+    sovapoti_name: row.sovapotiName ?? null,
+    sovapoti_designation: row.sovapotiDesignation ?? null,
+    sovapoti_photo: row.sovapotiPhoto ?? null,
+    sovapoti_message: row.sovapotiMessage ?? null,
+    show_video_gallery: row.showVideoGallery ?? 1,
     facebook_url: row.facebookUrl ?? null,
     youtube_url: row.youtubeUrl ?? null,
     instagram_url: row.instagramUrl ?? null,
@@ -96,6 +102,14 @@ export const toWebsiteSlideApiDto = (row: Record<string, any>) => ({
   image_url: row.imageUrl,
   button_text: row.buttonText ?? null,
   button_link: row.buttonLink ?? null,
+  is_published: row.isPublished ?? 1,
+  sort_order: row.sortOrder ?? 0,
+});
+
+export const toWebsiteVideoApiDto = (row: Record<string, any>) => ({
+  id: row.id,
+  title: row.title ?? null,
+  video_url: row.videoUrl,
   is_published: row.isPublished ?? 1,
   sort_order: row.sortOrder ?? 0,
 });

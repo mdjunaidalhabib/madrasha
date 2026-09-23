@@ -13,6 +13,7 @@ import {
   BookLabelDesignData,
   IdCardBackData,
   MarksheetFieldItem,
+  AdmitCardFieldItem,
   MyPlanData,
   SectionTogglesData,
 } from "./settings.types";
@@ -46,6 +47,7 @@ import {
   BRAND_LAYOUT_LIMITS,
   MAX_BRAND_FOOTER_TEXT_LENGTH,
   MARKSHEET_FIELD_KEYS,
+  ADMIT_CARD_FIELD_KEYS,
   MAX_ID_CARD_BACK_TITLE_LENGTH,
   MAX_ID_CARD_BACK_LOST_TEXT_LENGTH,
 } from "./settings.constants";
@@ -251,6 +253,56 @@ function fillMarksheetFields(stored: unknown): MarksheetFieldItem[] {
   return cleaned;
 }
 
+/** Validates + normalizes a full admit_card_fields replacement - same
+ * "always resend the whole ordered list" contract as sanitizeMarksheetFields,
+ * minus the signature-position handling (this design has one fixed
+ * signature line, not user-togglable). Returns undefined when the caller
+ * sent nothing at all. */
+function sanitizeAdmitCardFields(
+  value: UpdateBrandingRequestDto["admit_card_fields"],
+): AdmitCardFieldItem[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new BadRequestError("Invalid admit_card_fields");
+
+  const seen = new Set<string>();
+  const cleaned: AdmitCardFieldItem[] = [];
+  for (const item of value) {
+    const key = item && typeof item === "object" ? (item as { key?: unknown }).key : undefined;
+    if (typeof key !== "string" || !(ADMIT_CARD_FIELD_KEYS as readonly string[]).includes(key)) {
+      throw new BadRequestError("Invalid admit card field key");
+    }
+    if (seen.has(key)) throw new BadRequestError("Duplicate admit card field key");
+    seen.add(key);
+    cleaned.push({ key, visible: !!(item as { visible?: unknown }).visible });
+  }
+
+  for (const key of ADMIT_CARD_FIELD_KEYS) {
+    if (!seen.has(key)) cleaned.push({ key, visible: true });
+  }
+
+  return cleaned;
+}
+
+/** Read-side counterpart: fills in any known field missing from what's
+ * stored, without throwing (same reasoning as fillMarksheetFields). */
+function fillAdmitCardFields(stored: unknown): AdmitCardFieldItem[] {
+  const list = Array.isArray(stored) ? (stored as Partial<AdmitCardFieldItem>[]) : [];
+  const seen = new Set<string>();
+  const cleaned: AdmitCardFieldItem[] = [];
+  for (const item of list) {
+    const key = item?.key;
+    if (typeof key !== "string" || seen.has(key) || !(ADMIT_CARD_FIELD_KEYS as readonly string[]).includes(key)) {
+      continue;
+    }
+    seen.add(key);
+    cleaned.push({ key, visible: !!item?.visible });
+  }
+  for (const key of ADMIT_CARD_FIELD_KEYS) {
+    if (!seen.has(key)) cleaned.push({ key, visible: true });
+  }
+  return cleaned;
+}
+
 function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
   return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
 }
@@ -335,6 +387,7 @@ export class SettingsService {
         ...((madrasa.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
       },
       marksheet_fields: fillMarksheetFields(madrasa.marksheetFieldLayout),
+      admit_card_fields: fillAdmitCardFields(madrasa.admitCardFieldLayout),
     };
   }
 
@@ -354,6 +407,7 @@ export class SettingsService {
       report_print_mode,
       report_brand_layout,
       marksheet_fields,
+      admit_card_fields,
     } = body;
 
     for (const [key, value] of Object.entries({
@@ -422,6 +476,7 @@ export class SettingsService {
     }
 
     const sanitizedMarksheetFields = sanitizeMarksheetFields(marksheet_fields);
+    const sanitizedAdmitCardFields = sanitizeAdmitCardFields(admit_card_fields);
 
     const changes: string[] = [];
     if (name !== undefined && String(name).trim() !== "" && current && name !== current.name) {
@@ -468,6 +523,7 @@ export class SettingsService {
     }
     if (mergedBrandLayout !== undefined) changes.push("রিপোর্ট লেআউট (ফন্ট/রঙ/অবস্থান) আপডেট করা হয়েছে");
     if (sanitizedMarksheetFields !== undefined) changes.push("মার্কশিট তথ্য ফিল্ড আপডেট করা হয়েছে");
+    if (sanitizedAdmitCardFields !== undefined) changes.push("প্রবেশপত্র তথ্য ফিল্ড আপডেট করা হয়েছে");
 
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
@@ -503,6 +559,9 @@ export class SettingsService {
         : {}),
       ...(sanitizedMarksheetFields !== undefined
         ? { marksheetFieldLayout: sanitizedMarksheetFields as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(sanitizedAdmitCardFields !== undefined
+        ? { admitCardFieldLayout: sanitizedAdmitCardFields as unknown as Prisma.InputJsonValue }
         : {}),
     });
 

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
 import { Orientation, PaperSize, PageMargins } from "../../components/common/DataExportPrintActions";
 import { getDefaultPageMargins } from "../../components/Report/pagination/pageGeometry";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import { MarksheetSettingsPanel } from "../../components/Report/student/MarksheetSignatureControls";
+import { AdmitCardSettingsPanel } from "../../components/Report/documents/AdmitCardFieldControls";
 import ReportSidebar from "../../components/Report/ReportSidebar";
 import FilterSelect from "../../components/common/FilterSelect";
 import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
@@ -114,6 +115,8 @@ const ReportShell = ({
   const [page, setPage] = useState(1);
   // Marksheet report only: docked settings panel next to the preview.
   const [marksheetPanelOpen, setMarksheetPanelOpen] = useState(false);
+  // Admit-card report only: docked field-settings panel next to the preview.
+  const [admitCardPanelOpen, setAdmitCardPanelOpen] = useState(false);
   const [pageSize, setPageSize] = useState(100);
   const [totalCount, setTotalCount] = useState(0);
   const [templates, setTemplates] = useState<TemplateListItemDto[]>([]);
@@ -199,6 +202,7 @@ const ReportShell = ({
   }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys]);
 
   const showMarksheetPanel = effectiveReport.printable === "marksheet" && marksheetPanelOpen;
+  const showAdmitCardPanel = effectiveReport.printable === "admit-card" && admitCardPanelOpen;
 
   // The "ফলাফল" / "ফলাফল (মেধাক্রম অনুযায়ী)" reports are the only ones whose
   // endpoint understands page/page_size - every other report keeps loading
@@ -876,6 +880,8 @@ const ReportShell = ({
               }}
               marksheetPanelOpen={marksheetPanelOpen}
               onMarksheetPanelToggle={() => setMarksheetPanelOpen((prev) => !prev)}
+              admitCardPanelOpen={admitCardPanelOpen}
+              onAdmitCardPanelToggle={() => setAdmitCardPanelOpen((prev) => !prev)}
               setupExtras={
                 <>
                 {supportsRepeatHeader && (
@@ -961,15 +967,36 @@ const ReportShell = ({
             />
 
             {warning && (
-              <div className="mt-4 border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400">
-                {warning}
+              <div className="mt-4 flex flex-wrap items-center gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400">
+                <span>{warning}</span>
+                {/* এই ওয়ার্নিং শুধু প্রবেশপত্রে আসে যখন এই পরীক্ষায় কেউ এখনো পরীক্ষার্থী
+                    হিসেবে নিবন্ধিত না (দেখুন reports.repository.ts-এর
+                    admitCardRosterFallback) - নিবন্ধন সম্পূর্ণ অটোমেটিক, ফ্রি পরীক্ষায়
+                    পরীক্ষার রুটিন তৈরি করলেই ক্লাসের সবাই নিবন্ধিত হয়ে যায় (দেখুন
+                    exam-candidate.service.ts-এর autoRegisterForRoutine), তাই সরাসরি
+                    রুটিন পেজের শর্টকাট। */}
+                {effectiveReport.printable === "admit-card" && (
+                  <Link
+                    to="/routine"
+                    className="shrink-0 whitespace-nowrap rounded-md border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60"
+                  >
+                    পরীক্ষার রুটিন যোগ করুন →
+                  </Link>
+                )}
               </div>
             )}
           </div>
 
-          {/* Wrapper only becomes a flex row while the marksheet panel is open, so the
-              preview keeps the same place in the tree (no remount) and prints exactly as before. */}
-          <div className={showMarksheetPanel ? "flex flex-col bg-[#eef2f7] lg:flex-row lg:items-start" : undefined}>
+          {/* Wrapper only becomes a flex row while the marksheet/admit-card settings panel is
+              open, so the preview keeps the same place in the tree (no remount) and prints
+              exactly as before. */}
+          <div
+            className={
+              showMarksheetPanel || showAdmitCardPanel
+                ? "flex flex-col bg-[#eef2f7] lg:flex-row lg:items-start"
+                : undefined
+            }
+          >
             <div className="min-w-0 flex-1">
               <div className="print-preview-wrap">
                 <PaginatedReportPreview
@@ -989,6 +1016,7 @@ const ReportShell = ({
               </div>
             </div>
             {showMarksheetPanel && <MarksheetSettingsPanel onClose={() => setMarksheetPanelOpen(false)} />}
+            {showAdmitCardPanel && <AdmitCardSettingsPanel onClose={() => setAdmitCardPanelOpen(false)} />}
           </div>
         </main>
       </div>

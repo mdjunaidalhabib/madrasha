@@ -96,6 +96,12 @@ model Madrasa {
   // original hardcoded order.
   marksheetFieldLayout Json? @map("marksheet_field_layout")
 
+  // Admit-card "ডিফল্ট (সাধারণ)" ডিজাইনের তথ্য-ফিল্ড ভিজিবিলিটি + ক্রম (নাম/
+  // পিতার নাম/শ্রেণি/রোল/রেজি. নম্বর/শিক্ষাবর্ষ) - marksheetFieldLayout-এর মতোই
+  // একটি JSON array of { key, visible } (দেখুন AdmitCardFieldItem, settings.types.ts)।
+  // Null/missing = সবকিছু দৃশ্যমান, admitCardDesigns.ts-এর মূল হার্ডকোড করা ক্রমে।
+  admitCardFieldLayout Json? @map("admit_card_field_layout")
+
   // Per-section enabled/disabled state for the admin settings pages
   // (ProfileSettingsPage/BrandingSettingsPage's SectionCards) - a single
   // JSON map { sectionKey: boolean } instead of one column per section, since
@@ -156,6 +162,7 @@ model Madrasa {
   websiteNotices               WebsiteNotice[]
   websiteGallery               WebsiteGallery[]
   websiteSlides                WebsiteSlide[]
+  websiteVideos                WebsiteVideo[]
   websiteCommitteeMembers      WebsiteCommitteeMember[]
   websiteAdmissionApplications WebsiteAdmissionApplication[]
   attendances                  Attendance[]
@@ -439,6 +446,14 @@ model WebsiteSettings {
   muhtamimPhoto       String? @map("muhtamim_photo") @db.VarChar(255)
   muhtamimMessage     String? @map("muhtamim_message") @db.Text
 
+  showSovapoti        Int?    @default(1) @map("show_sovapoti")
+  sovapotiName        String? @map("sovapoti_name") @db.VarChar(190)
+  sovapotiDesignation String? @map("sovapoti_designation") @db.VarChar(190)
+  sovapotiPhoto       String? @map("sovapoti_photo") @db.VarChar(255)
+  sovapotiMessage     String? @map("sovapoti_message") @db.Text
+
+  showVideoGallery Int? @default(1) @map("show_video_gallery")
+
   facebookUrl        String? @map("facebook_url") @db.VarChar(255)
   youtubeUrl         String? @map("youtube_url") @db.VarChar(255)
   instagramUrl       String? @map("instagram_url") @db.VarChar(255)
@@ -542,6 +557,22 @@ model WebsiteSlide {
 
   @@index([madrasaId, isPublished, sortOrder], map: "idx_website_slides_madrasa")
   @@map("website_slides")
+}
+
+model WebsiteVideo {
+  id          Int      @id @default(autoincrement())
+  madrasaId   Int      @map("madrasa_id")
+  title       String?  @db.VarChar(190)
+  videoUrl    String   @map("video_url") @db.VarChar(255)
+  isPublished Int?     @default(1) @map("is_published")
+  sortOrder   Int?     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, isPublished, sortOrder], map: "idx_website_videos_madrasa")
+  @@map("website_videos")
 }
 
 model WebsiteCommitteeMember {

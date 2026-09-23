@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Award,
   Bell,
   ExternalLink,
   FileText,
@@ -16,6 +17,7 @@ import {
   Share2,
   Trash2,
   Users,
+  Video,
 } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
@@ -35,6 +37,7 @@ import {
   deleteWebsiteGalleryItem,
   deleteWebsiteNotice,
   deleteWebsiteSlide,
+  deleteWebsiteVideo,
   getWebsiteSettings,
   saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
@@ -42,12 +45,14 @@ import {
   saveWebsitePage,
   saveWebsiteSettings,
   saveWebsiteSlide,
+  saveWebsiteVideo,
   type WebsiteCommitteeMemberPayload,
   type WebsiteGalleryPayload,
   type WebsiteNoticePayload,
   type WebsitePagePayload,
   type WebsiteSettingsPayload,
   type WebsiteSlidePayload,
+  type WebsiteVideoPayload,
 } from "../../../services/websiteApi";
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
@@ -87,6 +92,12 @@ const defaultSettings: WebsiteSettingsPayload = {
   muhtamim_designation: "",
   muhtamim_photo: "",
   muhtamim_message: "",
+  show_sovapoti: 1,
+  sovapoti_name: "",
+  sovapoti_designation: "",
+  sovapoti_photo: "",
+  sovapoti_message: "",
+  show_video_gallery: 1,
   notice_bar_text: "",
   notice_bar_speed: 20,
   facebook_url: "",
@@ -132,15 +143,26 @@ const emptyCommittee: WebsiteCommitteeMemberPayload = {
   is_published: 1,
   sort_order: 0,
 };
+const emptyVideo: WebsiteVideoPayload = { title: "", video_url: "", is_published: 1, sort_order: 0 };
+
+/** YouTube লিংক থেকে thumbnail URL বের করে - admin এ ভিডিও লিস্টে ছবির মতো প্রিভিউ
+ * দেখাতে (আপলোড করা কোনো থাম্বনেইল ফাইল নেই, শুধু ভিডিও লিংক সংরক্ষণ করা হয়)। */
+function youtubeThumbnail(url?: string | null): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
+}
 
 const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
   ["show_notice_bar", "চলমান নোটিশ বার", "নেভবারের নিচে স্ক্রলিং নোটিশ বার দেখাবে"],
   ["show_slider", "হোম স্লাইডার", "হোমপেজে ছবির স্লাইডার দেখাবে"],
   ["show_about", "আমাদের সম্পর্কে", "মাদ্রাসার পরিচিতি সেকশন দেখাবে"],
   ["show_muhtamim", "মুহতামিমের বাণী", "মুহতামিম সাহেবের বাণী সেকশন দেখাবে"],
+  ["show_sovapoti", "সভাপতির বাণী", "সভাপতি সাহেবের বাণী সেকশন দেখাবে"],
   ["show_admission", "ভর্তি তথ্য", "ভর্তি সংক্রান্ত সেকশন দেখাবে"],
   ["show_notices", "নোটিশ বোর্ড", "নোটিশ বোর্ড সেকশন দেখাবে"],
   ["show_gallery", "গ্যালারি", "ছবি গ্যালারি সেকশন দেখাবে"],
+  ["show_video_gallery", "ভিডিও গ্যালারি", "ভিডিও গ্যালারি সেকশন দেখাবে"],
   ["show_teachers", "শিক্ষকমণ্ডলী", "শিক্ষকদের তালিকা সেকশন দেখাবে"],
   ["show_committee", "মাদ্রাসা কমিটি", "কমিটির সদস্যদের তালিকা দেখাবে"],
   ["show_contact", "যোগাযোগ", "যোগাযোগ তথ্য সেকশন দেখাবে"],
@@ -152,8 +174,10 @@ type TabKey =
   | "notice-bar"
   | "notices"
   | "gallery"
+  | "video"
   | "slider"
   | "muhtamim"
+  | "sovapoti"
   | "committee"
   | "social"
   | "pages";
@@ -385,16 +409,19 @@ export default function AdminWebsiteSettingsPage() {
   const [pages, setPages] = useState<WebsitePagePayload[]>(defaultPages);
   const [notices, setNotices] = useState<WebsiteNoticePayload[]>([]);
   const [gallery, setGallery] = useState<WebsiteGalleryPayload[]>([]);
+  const [videos, setVideos] = useState<WebsiteVideoPayload[]>([]);
   const [slides, setSlides] = useState<WebsiteSlidePayload[]>([]);
   const [committee, setCommittee] = useState<WebsiteCommitteeMemberPayload[]>([]);
 
   const [noticeDraft, setNoticeDraft] = useState<WebsiteNoticePayload>(emptyNotice);
   const [galleryDraft, setGalleryDraft] = useState<WebsiteGalleryPayload>(emptyGallery);
+  const [videoDraft, setVideoDraft] = useState<WebsiteVideoPayload>(emptyVideo);
   const [slideDraft, setSlideDraft] = useState<WebsiteSlidePayload>(emptySlide);
   const [committeeDraft, setCommitteeDraft] = useState<WebsiteCommitteeMemberPayload>(emptyCommittee);
 
   const [savingNotice, setSavingNotice] = useState(false);
   const [savingGallery, setSavingGallery] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
   const [savingSlide, setSavingSlide] = useState(false);
   const [savingCommittee, setSavingCommittee] = useState(false);
 
@@ -415,6 +442,10 @@ export default function AdminWebsiteSettingsPage() {
   const [editingGalleryId, setEditingGalleryId] = useState<number | null>(null);
   const [galleryEditDraft, setGalleryEditDraft] = useState<WebsiteGalleryPayload | null>(null);
   const [savingGalleryEdit, setSavingGalleryEdit] = useState(false);
+
+  const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
+  const [videoEditDraft, setVideoEditDraft] = useState<WebsiteVideoPayload | null>(null);
+  const [savingVideoEdit, setSavingVideoEdit] = useState(false);
 
   const [editingSlideId, setEditingSlideId] = useState<number | null>(null);
   const [slideEditDraft, setSlideEditDraft] = useState<WebsiteSlidePayload | null>(null);
@@ -454,6 +485,7 @@ export default function AdminWebsiteSettingsPage() {
 
         if (Array.isArray(data?.notices)) setNotices(data.notices);
         if (Array.isArray(data?.gallery)) setGallery(data.gallery);
+        if (Array.isArray(data?.videos)) setVideos(data.videos);
         if (Array.isArray(data?.slides)) setSlides(data.slides);
         if (Array.isArray(data?.committee)) setCommittee(data.committee);
       })
@@ -608,6 +640,99 @@ export default function AdminWebsiteSettingsPage() {
         } catch (err) {
           logger.error("DELETE NOTICE ERROR:", err);
           toast("নোটিশ মুছতে সমস্যা হয়েছে।", "error");
+        }
+      },
+    });
+  };
+
+  // ---------- Video Gallery ----------
+  const submitVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoDraft.video_url?.trim()) {
+      toast("ভিডিও লিংক দিন।", "error");
+      return;
+    }
+    const chosenPosition = videoDraft.sort_order || videos.length + 1;
+    setSavingVideo(true);
+    try {
+      const saved = await saveWebsiteVideo({ ...videoDraft, sort_order: videos.length + 1 });
+      let nextVideos = [saved.data, ...videos];
+      if (chosenPosition <= videos.length) {
+        nextVideos = reorderBySortOrder(nextVideos, saved.data.id!, chosenPosition);
+        await Promise.all(
+          nextVideos.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteVideo(item)),
+        );
+      }
+      setVideos(nextVideos.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+      setVideoDraft(emptyVideo);
+      toast("ভিডিও যোগ করা হয়েছে।", "success");
+    } catch (err) {
+      logger.error("SAVE VIDEO ERROR:", err);
+      toast("ভিডিও সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
+  const startEditVideo = (item: WebsiteVideoPayload) => {
+    setEditingVideoId(item.id!);
+    const position = videos.findIndex((v) => v.id === item.id) + 1;
+    setVideoEditDraft({ ...item, sort_order: position || videos.length });
+  };
+
+  const cancelEditVideo = () => {
+    setEditingVideoId(null);
+    setVideoEditDraft(null);
+  };
+
+  const saveVideoEdit = async () => {
+    if (!videoEditDraft) return;
+    if (!videoEditDraft.video_url?.trim()) {
+      toast("ভিডিও লিংক দিন।", "error");
+      return;
+    }
+    const desiredPosition = videoEditDraft.sort_order || videos.length;
+    const originalItem = videos.find((v) => v.id === videoEditDraft.id);
+    setSavingVideoEdit(true);
+    try {
+      const saved = await saveWebsiteVideo({ ...videoEditDraft, sort_order: originalItem?.sort_order });
+      let nextVideos = videos.map((item) => (item.id === saved.data.id ? saved.data : item));
+      const currentPosition = nextVideos.findIndex((item) => item.id === saved.data.id) + 1;
+
+      if (desiredPosition !== currentPosition) {
+        nextVideos = reorderBySortOrder(nextVideos, saved.data.id, desiredPosition);
+        await Promise.all(
+          nextVideos.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteVideo(item)),
+        );
+      }
+
+      setVideos(nextVideos.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+      toast("ভিডিও আপডেট হয়েছে।", "success");
+      cancelEditVideo();
+    } catch (err) {
+      logger.error("SAVE VIDEO ERROR:", err);
+      toast("ভিডিও সংরক্ষণ করা যায়নি।", "error");
+    } finally {
+      setSavingVideoEdit(false);
+    }
+  };
+
+  const removeVideo = (item: WebsiteVideoPayload) => {
+    if (!item.id) return;
+    useConfirmStore.getState().show({
+      title: "ভিডিও মুছুন",
+      message: `"${item.title || "এই ভিডিওটি"}" স্থায়ীভাবে মুছে ফেলতে চান?`,
+      confirmText: "মুছুন",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteWebsiteVideo(item.id!);
+          setVideos((prev) => prev.filter((v) => v.id !== item.id));
+          if (editingVideoId === item.id) cancelEditVideo();
+          toast("ভিডিও মুছে ফেলা হয়েছে।", "success");
+        } catch (err) {
+          logger.error("DELETE VIDEO ERROR:", err);
+          toast("ভিডিও মুছতে সমস্যা হয়েছে।", "error");
         }
       },
     });
@@ -905,8 +1030,10 @@ export default function AdminWebsiteSettingsPage() {
     { key: "notice-bar", label: "নোটিশ বার", icon: Megaphone },
     { key: "notices", label: "নোটিশ", icon: Bell, badge: notices.length },
     { key: "gallery", label: "গ্যালারি", icon: Images, badge: gallery.length },
+    { key: "video", label: "ভিডিও গ্যালারি", icon: Video, badge: videos.length },
     { key: "slider", label: "হিরো স্লাইডার", icon: GalleryHorizontalEnd, badge: slides.length },
     { key: "muhtamim", label: "মুহতামিমের বাণী", icon: Quote },
+    { key: "sovapoti", label: "সভাপতির বাণী", icon: Award },
     { key: "committee", label: "মাদ্রাসা কমিটি", icon: Users, badge: committee.length },
     { key: "social", label: "সোশ্যাল মিডিয়া", icon: Share2 },
     { key: "pages", label: "পেজ কন্টেন্ট", icon: FileText },
@@ -1225,6 +1352,47 @@ export default function AdminWebsiteSettingsPage() {
                 rows={6}
                 placeholder="মুহতামিম সাহেবের বাণী লিখুন..."
                 onSave={(v) => saveSettingsField("muhtamim_message", v)}
+              />
+            </div>
+          </SectionCard>
+        </div>
+      )}
+
+      {tab === "sovapoti" && (
+        <div className="space-y-6">
+          <SectionCard
+            title="সভাপতি সাহেবের বাণী"
+            toggle={{
+              checked: isSectionEnabled("website_sovapoti_message"),
+              onChange: (v) => setSectionToggle("website_sovapoti_message", v),
+            }}
+          >
+            <div className="space-y-2">
+              <InlineTextField
+                label="নাম"
+                value={form.sovapoti_name || ""}
+                placeholder="আলহাজ্ব মুহাম্মদ ..."
+                onSave={(v) => saveSettingsField("sovapoti_name", v)}
+              />
+              <InlineTextField
+                label="পদবি"
+                value={form.sovapoti_designation || ""}
+                placeholder="সভাপতি, মাদ্রাসা পরিচালনা পর্ষদ"
+                onSave={(v) => saveSettingsField("sovapoti_designation", v)}
+              />
+              <InlineImageField
+                label="সভাপতি সাহেবের ছবি"
+                value={form.sovapoti_photo}
+                folder="branding"
+                onSave={(v) => saveSettingsField("sovapoti_photo", v)}
+              />
+              <InlineTextField
+                label="বাণী"
+                value={form.sovapoti_message || ""}
+                multiline
+                rows={6}
+                placeholder="সভাপতি সাহেবের বাণী লিখুন..."
+                onSave={(v) => saveSettingsField("sovapoti_message", v)}
               />
             </div>
           </SectionCard>
@@ -1627,6 +1795,172 @@ export default function AdminWebsiteSettingsPage() {
               </div>
             ) : (
               <EmptyState title="এখনো কোনো গ্যালারি ছবি যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম ছবিটি যোগ করুন।" />
+            )}
+          </SectionCard>
+        </div>
+      )}
+
+      {tab === "video" && (
+        <div className="space-y-6">
+          <SectionCard
+            title="নতুন ভিডিও যোগ করুন"
+            hint="ইউটিউব ভিডিওর লিংক পেস্ট করুন (যেমন: https://youtube.com/watch?v=... বা https://youtu.be/...)"
+            toggle={{
+              checked: isSectionEnabled("website_video_add"),
+              onChange: (v) => setSectionToggle("website_video_add", v),
+            }}
+          >
+            <form onSubmit={submitVideo} className="space-y-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={fieldLabelClass}>ভিডিও লিংক</label>
+                  <Input
+                    value={videoDraft.video_url || ""}
+                    onChange={(e) => setVideoDraft((prev) => ({ ...prev, video_url: e.target.value }))}
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className={fieldLabelClass}>ভিডিওর শিরোনাম</label>
+                    <Input
+                      value={videoDraft.title || ""}
+                      onChange={(e) => setVideoDraft((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="যেমন: বার্ষিক মাহফিল ২০২৬"
+                    />
+                  </div>
+                  <div>
+                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <select
+                      value={videoDraft.sort_order || videos.length + 1}
+                      onChange={(e) =>
+                        setVideoDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
+                      }
+                      className={selectFieldClass}
+                    >
+                      {Array.from({ length: videos.length + 1 }, (_, i) => i + 1).map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                          {pos === videos.length + 1 ? " (সবার শেষে)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <PublishAndSubmitAction
+                published={videoDraft.is_published !== 0}
+                onPublishedChange={(v) => setVideoDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
+                saving={savingVideo}
+              />
+            </form>
+          </SectionCard>
+
+          <SectionCard
+            title="সব ভিডিও"
+            hint="যেকোনো ভিডিওর পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            toggle={{
+              checked: isSectionEnabled("website_video_list"),
+              onChange: (v) => setSectionToggle("website_video_list", v),
+            }}
+          >
+            {videos.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {videos.map((item) =>
+                  editingVideoId === item.id && videoEditDraft ? (
+                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
+                      <div>
+                        <label className={fieldLabelClass}>ভিডিও লিংক</label>
+                        <Input
+                          value={videoEditDraft.video_url || ""}
+                          onChange={(e) =>
+                            setVideoEditDraft((prev) => (prev ? { ...prev, video_url: e.target.value } : prev))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <label className={fieldLabelClass}>ভিডিওর শিরোনাম</label>
+                        <Input
+                          value={videoEditDraft.title || ""}
+                          onChange={(e) =>
+                            setVideoEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                        <select
+                          value={videoEditDraft.sort_order || videos.length}
+                          onChange={(e) =>
+                            setVideoEditDraft((prev) =>
+                              prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
+                            )
+                          }
+                          className={selectFieldClass}
+                        >
+                          {videos.map((_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {i + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <PublishAndSaveActions
+                        published={videoEditDraft.is_published !== 0}
+                        onPublishedChange={(v) =>
+                          setVideoEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
+                        }
+                        saving={savingVideoEdit}
+                        onCancel={cancelEditVideo}
+                        onSave={saveVideoEdit}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      key={item.id}
+                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+                    >
+                      {youtubeThumbnail(item.video_url) ? (
+                        <img
+                          src={youtubeThumbnail(item.video_url)!}
+                          alt={item.title || "Video"}
+                          className="h-32 w-full rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-32 w-full items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
+                          <Video size={28} />
+                        </div>
+                      )}
+                      <div className="mt-2 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || "ভিডিও"}</p>
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEditVideo(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                            title="সম্পাদনা"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeVideo(item)}
+                            className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                            title="মুছুন"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyState title="এখনো কোনো ভিডিও যোগ করা হয়নি" hint="উপরের ফর্ম থেকে ইউটিউব লিংক যোগ করুন।" />
             )}
           </SectionCard>
         </div>

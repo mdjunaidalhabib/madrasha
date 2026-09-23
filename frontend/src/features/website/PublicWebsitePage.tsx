@@ -13,6 +13,7 @@ import {
   MapPin,
   Menu,
   Phone,
+  PlayCircle,
   Quote,
   X,
   Youtube,
@@ -30,13 +31,32 @@ import { resolveTheme, type ThemeTokens } from "./themes";
 const NAV_LABELS: Record<string, string> = {
   about: "পরিচিতি",
   muhtamim: "মুহতামিমের বাণী",
+  sovapoti: "সভাপতির বাণী",
   admission: "ভর্তি তথ্য",
   teachers: "শিক্ষকবৃন্দ",
   committee: "কমিটি",
   gallery: "গ্যালারি",
+  video: "ভিডিও গ্যালারি",
   notices: "নোটিশ",
   contact: "যোগাযোগ",
 };
+
+/** YouTube লিংক থেকে ভিডিও আইডি বের করে - এম্বেড প্লেয়ার ও থাম্বনেইল দুটোতেই লাগে। */
+function youtubeId(url?: string | null): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  return match ? match[1] : null;
+}
+
+function youtubeThumbnail(url?: string | null): string | null {
+  const id = youtubeId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+function youtubeEmbedUrl(url?: string | null): string | null {
+  const id = youtubeId(url);
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : null;
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -250,6 +270,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const [showTop, setShowTop] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [videoLightbox, setVideoLightbox] = useState<{ url: string; title: string } | null>(null);
   const [galleryInView, setGalleryInView] = useState(false);
   const galleryGridRef = useRef<HTMLDivElement | null>(null);
 
@@ -271,6 +292,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const gallery = data?.gallery || [];
   const slides = data?.slides || [];
   const committee = data?.committee || [];
+  const videos = data?.videos || [];
 
   const pageMap = useMemo(() => {
     const pages = data?.pages || [];
@@ -295,20 +317,39 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const accentLabelOnDark = useMemo(() => mixHex(accentSolid, "#ffffff", 0.4), [accentSolid]);
   const guardianLoginUrl = `${getTenantGuardianBase(slug)}/login`;
   const admissionUrl = "admission";
+  const contactUrl = "contact";
 
   const visibleSections = useMemo(() => {
     const s = data?.settings || {};
     const list: string[] = [];
     if (s.show_about !== 0 && pageMap.about) list.push("about");
-    if (s.show_muhtamim !== 0 && settings.muhtamim_message) list.push("muhtamim");
-    if (s.show_admission !== 0 && pageMap.admission) list.push("admission");
-    if (s.show_teachers !== 0) list.push("teachers");
-    if (s.show_committee !== 0 && committee.length) list.push("committee");
     if (s.show_gallery !== 0) list.push("gallery");
+    if (s.show_video_gallery !== 0 && videos.length) list.push("video");
+    if (s.show_teachers !== 0 && teachers.length) list.push("teachers");
+    if (s.show_muhtamim !== 0 && settings.muhtamim_message) list.push("muhtamim");
+    if (s.show_sovapoti !== 0 && settings.sovapoti_message) list.push("sovapoti");
+    if (s.show_committee !== 0 && committee.length) list.push("committee");
+    if (s.show_admission !== 0 && pageMap.admission) list.push("admission");
     if (s.show_notices !== 0) list.push("notices");
     if (s.show_contact !== 0) list.push("contact");
     return list;
-  }, [data, pageMap, committee.length, settings.muhtamim_message]);
+  }, [data, pageMap, committee.length, settings.muhtamim_message, settings.sovapoti_message, videos.length, teachers.length]);
+
+  // Left column (main reading flow) vs. right sidebar (notices + বাণী + committee),
+  // in the fixed order the sidebar was designed around: notices on top, then
+  // Muhtamim's message, then Sovapoti's message, then the committee list.
+  const mainFlowKeys = useMemo(
+    () => visibleSections.filter((key) => key === "about" || key === "gallery" || key === "video" || key === "teachers"),
+    [visibleSections],
+  );
+  const sidebarFlowKeys = useMemo(() => {
+    const order = ["notices", "muhtamim", "sovapoti", "committee"];
+    return order.filter((key) => visibleSections.includes(key));
+  }, [visibleSections]);
+  const tailFlowKeys = useMemo(
+    () => visibleSections.filter((key) => key === "admission" || key === "contact"),
+    [visibleSections],
+  );
 
   useEffect(() => {
     const onScroll = () => {
@@ -327,13 +368,16 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   }, [visibleSections]);
 
   useEffect(() => {
-    if (!lightbox) return;
+    if (!lightbox && !videoLightbox) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "Escape") {
+        setLightbox(null);
+        setVideoLightbox(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lightbox]);
+  }, [lightbox, videoLightbox]);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -738,169 +782,414 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         }
       />
 
-      {visibleSections.map((key, index) => {
+      {(mainFlowKeys.length > 0 || sidebarFlowKeys.length > 0) && (
+        <section className={`bg-white ${sectionBase}`}>
+          <div className="mx-auto max-w-[1200px] px-4">
+            <div className="grid gap-12 lg:grid-cols-3 lg:gap-14">
+              {/* Main reading column: intro → gallery → video gallery → teachers */}
+              <div className="space-y-16 md:space-y-20 lg:col-span-2">
+                {mainFlowKeys.map((key) => {
+                  if (key === "about") {
+                    return (
+                      <div key="about" id="about" className="scroll-mt-28">
+                        <SectionHeader
+                          eyebrow="পরিচিতি"
+                          title={pageMap.about.title}
+                          accentSolid={accentSolid}
+                          accentLabel={accentLabel}
+                          theme={theme}
+                        />
+                        <div
+                          className="reveal mt-8 border-l-4 pl-5 md:pl-6"
+                          style={{ borderColor: accentSolid }}
+                        >
+                          <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
+                            {pageMap.about.content}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`reveal relative mt-6 overflow-hidden ${theme.panel} p-6 text-white ${theme.shadowXl} md:p-8`}
+                          style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
+                        >
+                          <div
+                            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl"
+                            style={{ backgroundColor: withAlpha(accentSolid, 0.55) }}
+                          />
+                          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                              {madrasa?.logo_url ? (
+                                <img
+                                  src={madrasa.logo_url}
+                                  alt="Logo"
+                                  className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
+                                />
+                              ) : (
+                                <div className={`flex h-12 w-12 shrink-0 items-center justify-center ${theme.round} bg-white/15 text-sm font-bold ring-2 ring-white/30`}>
+                                  {initials(madrasa?.name)}
+                                </div>
+                              )}
+                              <div className="min-w-0 space-y-1.5 text-sm text-white/90">
+                                <div className="break-words text-base font-extrabold leading-tight text-white">
+                                  {madrasa?.name}
+                                </div>
+                                {madrasa?.address && (
+                                  <div className="flex items-start gap-2">
+                                    <MapPin size={14} className="mt-0.5 shrink-0 text-white/70" />
+                                    <span>{madrasa.address}</span>
+                                  </div>
+                                )}
+                                {madrasa?.phone && (
+                                  <div className="flex items-start gap-2">
+                                    <Phone size={14} className="mt-0.5 shrink-0 text-white/70" />
+                                    <span>{madrasa.phone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Link
+                              to={admissionUrl}
+                              className={`inline-flex shrink-0 items-center justify-center gap-2 ${theme.button} bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100`}
+                            >
+                              ভর্তির তথ্য ও আবেদন
+                              <ArrowRight size={16} />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === "gallery") {
+                    return (
+                      <div key="gallery" id="gallery" className="scroll-mt-28">
+                        <SectionHeader
+                          eyebrow="আমাদের মুহূর্তগুলো"
+                          title="গ্যালারি"
+                          accentSolid={accentSolid}
+                          accentLabel={accentLabel}
+                          theme={theme}
+                        />
+                        {gallery.length ? (
+                          <div
+                            ref={galleryGridRef}
+                            className={`gallery-grid mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 ${
+                              galleryInView ? "in-view" : ""
+                            }`}
+                          >
+                            {gallery.map((item: any, idx: number) => (
+                              <button
+                                type="button"
+                                key={item.id || item.image_url}
+                                onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
+                                className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
+                                style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
+                                aria-label={item.title || "Gallery"}
+                              >
+                                <img
+                                  src={item.image_url}
+                                  alt={item.title || "Gallery"}
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-black/0 opacity-0 transition duration-300 group-hover:opacity-100">
+                                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
+                                    <ZoomIn size={20} />
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-8 text-center text-sm text-slate-500">
+                            Gallery section চালু আছে। ছবি upload করলে এখানে দেখা যাবে।
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (key === "video") {
+                    return (
+                      <div key="video" id="video" className="scroll-mt-28">
+                        <SectionHeader
+                          eyebrow="আমাদের ভিডিও"
+                          title="ভিডিও গ্যালারি"
+                          accentSolid={accentSolid}
+                          accentLabel={accentLabel}
+                          theme={theme}
+                        />
+                        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                          {videos.map((item: any) => {
+                            const thumb = youtubeThumbnail(item.video_url);
+                            const embed = youtubeEmbedUrl(item.video_url);
+                            return (
+                              <button
+                                type="button"
+                                key={item.id || item.video_url}
+                                onClick={() =>
+                                  embed
+                                    ? setVideoLightbox({ url: embed, title: item.title || "Video" })
+                                    : window.open(item.video_url, "_blank", "noopener,noreferrer")
+                                }
+                                className={`group relative aspect-video overflow-hidden text-left ${theme.media} ${theme.gallery}`}
+                                aria-label={item.title || "Video"}
+                              >
+                                {thumb ? (
+                                  <img
+                                    src={thumb}
+                                    alt={item.title || "Video"}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center bg-slate-900 text-white/70">
+                                    <PlayCircle size={36} />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/25 transition duration-300 group-hover:bg-black/40">
+                                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
+                                    <PlayCircle size={24} />
+                                  </span>
+                                </div>
+                                {item.title && (
+                                  <span className="absolute inset-x-0 bottom-0 line-clamp-1 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-xs font-semibold text-white">
+                                    {item.title}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === "teachers") {
+                    return (
+                      <div key="teachers" id="teachers" className="scroll-mt-28">
+                        <SectionHeader
+                          eyebrow="আমাদের শিক্ষকবৃন্দ"
+                          title="শিক্ষকবৃন্দ"
+                          accentSolid={accentSolid}
+                          accentLabel={accentLabel}
+                          theme={theme}
+                        />
+                        <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                          {teachers.map((teacher: any, idx: number) => (
+                            <PersonCard
+                              key={teacher.id}
+                              name={teacher.name || teacher.teacher_name}
+                              role={teacher.designation || teacher.subject || "Teacher"}
+                              accentSolid={accentSolid}
+                              accentLabel={accentLabel}
+                              onAccent={onAccent}
+                              theme={theme}
+                              delay={(idx % 4) * 80}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })}
+              </div>
+
+              {/* Sidebar: নোটিশ → মুহতামিমের বাণী → সভাপতির বাণী → কমিটি */}
+              {sidebarFlowKeys.length > 0 && (
+                <aside className="lg:col-span-1">
+                  <div className="space-y-6">
+                    {sidebarFlowKeys.map((key) => {
+                      if (key === "notices") {
+                        return (
+                          <div
+                            key="notices"
+                            id="notices"
+                            className={`reveal scroll-mt-28 ${theme.card} ${theme.panelSurface} p-5`}
+                          >
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                              <Bell size={18} style={{ color: accentSolid }} />
+                              <h3 className="text-base font-bold text-slate-900">নোটিশ বোর্ড</h3>
+                            </div>
+                            {notices.length ? (
+                              <ul className="mt-3 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                                {notices.map((notice: any) => {
+                                  const parts = dateParts(notice.published_at);
+                                  return (
+                                    <li key={notice.id} className="border-b border-slate-50 pb-3 last:border-0 last:pb-0">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <p className="text-sm font-semibold leading-snug text-slate-800">
+                                          {notice.title}
+                                        </p>
+                                        {isRecent(notice.published_at) && (
+                                          <span
+                                            className={`${theme.round} shrink-0 px-2 py-0.5 text-[10px] font-bold`}
+                                            style={{ backgroundColor: withAlpha(accentSolid, 0.12), color: accentLabel }}
+                                          >
+                                            নতুন
+                                          </span>
+                                        )}
+                                      </div>
+                                      {notice.content && (
+                                        <p className="mt-1 line-clamp-2 text-xs leading-6 text-slate-500">
+                                          {notice.content}
+                                        </p>
+                                      )}
+                                      {parts && (
+                                        <p className="mt-1 text-[11px] font-medium text-slate-400">
+                                          {formatDate(notice.published_at)}
+                                        </p>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            ) : (
+                              <p className="mt-3 text-xs text-slate-400">এখনো কোনো নোটিশ নেই।</p>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (key === "muhtamim") {
+                        return (
+                          <div
+                            key="muhtamim"
+                            id="muhtamim"
+                            className={`reveal scroll-mt-28 ${theme.card} ${theme.panelSurface} p-5`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {settings.muhtamim_photo ? (
+                                <img
+                                  src={settings.muhtamim_photo}
+                                  alt={settings.muhtamim_name || "Muhtamim"}
+                                  className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
+                                />
+                              ) : (
+                                <div
+                                  className={`flex h-14 w-14 shrink-0 items-center justify-center ${theme.round} text-base font-bold`}
+                                  style={{ backgroundColor: accentSolid, color: onAccent }}
+                                >
+                                  {initials(settings.muhtamim_name)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900">
+                                  {settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
+                                </p>
+                                {settings.muhtamim_designation && (
+                                  <p className="text-xs font-semibold" style={{ color: accentLabel }}>
+                                    {settings.muhtamim_designation}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Quote size={22} className="mt-3" style={{ color: withAlpha(accentSolid, 0.4) }} />
+                            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">
+                              {settings.muhtamim_message}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      if (key === "sovapoti") {
+                        return (
+                          <div
+                            key="sovapoti"
+                            id="sovapoti"
+                            className={`reveal scroll-mt-28 ${theme.card} ${theme.panelSurface} p-5`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {settings.sovapoti_photo ? (
+                                <img
+                                  src={settings.sovapoti_photo}
+                                  alt={settings.sovapoti_name || "Sovapoti"}
+                                  className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
+                                />
+                              ) : (
+                                <div
+                                  className={`flex h-14 w-14 shrink-0 items-center justify-center ${theme.round} text-base font-bold`}
+                                  style={{ backgroundColor: accentSolid, color: onAccent }}
+                                >
+                                  {initials(settings.sovapoti_name)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900">
+                                  {settings.sovapoti_name || "সভাপতি সাহেবের বাণী"}
+                                </p>
+                                {settings.sovapoti_designation && (
+                                  <p className="text-xs font-semibold" style={{ color: accentLabel }}>
+                                    {settings.sovapoti_designation}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Quote size={22} className="mt-3" style={{ color: withAlpha(accentSolid, 0.4) }} />
+                            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">
+                              {settings.sovapoti_message}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      if (key === "committee") {
+                        return (
+                          <div
+                            key="committee"
+                            id="committee"
+                            className={`reveal scroll-mt-28 ${theme.card} ${theme.panelSurface} p-5`}
+                          >
+                            <h3 className="text-base font-bold text-slate-900">মাদ্রাসা কমিটি</h3>
+                            <ul className="mt-3 space-y-3">
+                              {committee.map((member: any) => (
+                                <li key={member.id} className="flex items-center gap-3">
+                                  {member.photo_url ? (
+                                    <img
+                                      src={member.photo_url}
+                                      alt={member.name}
+                                      className={`h-10 w-10 shrink-0 ${theme.round} object-cover`}
+                                    />
+                                  ) : (
+                                    <div
+                                      className={`flex h-10 w-10 shrink-0 items-center justify-center ${theme.round} text-xs font-bold`}
+                                      style={{ backgroundColor: accentSolid, color: onAccent }}
+                                    >
+                                      {initials(member.name)}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-slate-800">{member.name}</p>
+                                    {member.designation && (
+                                      <p className="truncate text-xs text-slate-500">{member.designation}</p>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
+                </aside>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tailFlowKeys.map((key, index) => {
         const isAlt = index % 2 === 1;
         const bandClass = `${isAlt ? theme.altBg : "bg-white"} ${sectionBase}`;
         const bandStyle: CSSProperties | undefined =
           isAlt && theme.altTint ? { backgroundColor: withAlpha(accentSolid, theme.altTint) } : undefined;
-
-        if (key === "about") {
-          return (
-            <section key="about" id="about" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-[1200px] px-4">
-                <SectionHeader
-                  eyebrow="পরিচিতি"
-                  title={pageMap.about.title}
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                <div className="mt-12 grid items-start gap-8 lg:grid-cols-5 lg:gap-12">
-                  <div
-                    className="reveal border-l-4 pl-5 lg:col-span-3 md:pl-6"
-                    style={{ borderColor: accentSolid }}
-                  >
-                    <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
-                      {pageMap.about.content}
-                    </p>
-                  </div>
-
-                  <aside
-                    className={`reveal relative overflow-hidden ${theme.panel} p-6 text-white ${theme.shadowXl} md:p-8 lg:col-span-2`}
-                    style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
-                  >
-                    <div
-                      className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl"
-                      style={{ backgroundColor: withAlpha(accentSolid, 0.55) }}
-                    />
-                    <div className="relative">
-                      <div className="flex items-center gap-3">
-                        {madrasa?.logo_url ? (
-                          <img
-                            src={madrasa.logo_url}
-                            alt="Logo"
-                            className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
-                          />
-                        ) : (
-                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center ${theme.round} bg-white/15 text-sm font-bold ring-2 ring-white/30`}>
-                            {initials(madrasa?.name)}
-                          </div>
-                        )}
-                        <div className="min-w-0 break-words text-base font-extrabold leading-tight">
-                          {madrasa?.name}
-                        </div>
-                      </div>
-                      <div className="mt-6 space-y-4 text-sm text-white/90">
-                        {madrasa?.address && (
-                          <div className="flex items-start gap-3">
-                            <MapPin size={16} className="mt-0.5 shrink-0 text-white/70" />
-                            <span>{madrasa.address}</span>
-                          </div>
-                        )}
-                        {madrasa?.phone && (
-                          <div className="flex items-start gap-3">
-                            <Phone size={16} className="mt-0.5 shrink-0 text-white/70" />
-                            <span>{madrasa.phone}</span>
-                          </div>
-                        )}
-                        {madrasa?.email && (
-                          <div className="flex items-start gap-3 break-all">
-                            <Mail size={16} className="mt-0.5 shrink-0 text-white/70" />
-                            <span>{madrasa.email}</span>
-                          </div>
-                        )}
-                      </div>
-                      <Link
-                        to={admissionUrl}
-                        className={`mt-7 inline-flex w-full items-center justify-center gap-2 ${theme.button} bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100`}
-                      >
-                        ভর্তির তথ্য ও আবেদন
-                        <ArrowRight size={16} />
-                      </Link>
-                    </div>
-                  </aside>
-                </div>
-              </div>
-            </section>
-          );
-        }
-
-        if (key === "muhtamim") {
-          return (
-            <section key="muhtamim" id="muhtamim" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-5xl px-4">
-                <SectionHeader
-                  eyebrow="মুহতামিমের বাণী"
-                  title={settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                <div
-                  className={`reveal relative mt-12 overflow-hidden ${theme.panel} ${theme.panelSurface} p-6 md:p-10`}
-                  style={{ borderColor: withAlpha(accentSolid, 0.18) }}
-                >
-                  <Quote
-                    size={140}
-                    strokeWidth={1.5}
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -right-4 -top-4 rotate-12"
-                    style={{ color: withAlpha(accentSolid, 0.07) }}
-                  />
-                  <div className="relative flex flex-col items-center gap-8 text-center md:flex-row md:items-start md:text-left">
-                    <div className="flex shrink-0 flex-col items-center">
-                      {settings.muhtamim_photo ? (
-                        <img
-                          src={settings.muhtamim_photo}
-                          alt={settings.muhtamim_name || "Muhtamim"}
-                          className={`h-36 w-36 ${theme.media} object-cover ${theme.shadowLg} ring-4 md:h-44 md:w-44`}
-                          style={{ ["--tw-ring-color" as any]: withAlpha(accentSolid, 0.25) }}
-                        />
-                      ) : (
-                        <div
-                          className={`flex h-36 w-36 items-center justify-center ${theme.media} text-3xl font-bold ${theme.shadowLg} md:h-44 md:w-44`}
-                          style={{ backgroundColor: accentSolid, color: onAccent }}
-                        >
-                          {initials(settings.muhtamim_name)}
-                        </div>
-                      )}
-                      {(settings.muhtamim_name || settings.muhtamim_designation) && (
-                        <div className="mt-4 hidden max-w-[11rem] text-center md:block">
-                          {settings.muhtamim_name && (
-                            <p className="text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
-                          )}
-                          {settings.muhtamim_designation && (
-                            <p className="mt-0.5 text-xs font-semibold" style={{ color: accentLabel }}>
-                              {settings.muhtamim_designation}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <Quote size={30} style={{ color: accentSolid }} className="mx-auto md:mx-0" />
-                      <p className="mt-4 whitespace-pre-line text-sm leading-8 text-slate-700 md:text-base md:leading-9">
-                        {settings.muhtamim_message}
-                      </p>
-                      {(settings.muhtamim_name || settings.muhtamim_designation) && (
-                        <div className="mt-6 border-t border-slate-100 pt-4 md:hidden">
-                          {settings.muhtamim_name && (
-                            <p className="text-sm font-extrabold text-slate-900">{settings.muhtamim_name}</p>
-                          )}
-                          {settings.muhtamim_designation && (
-                            <p className="text-xs font-semibold" style={{ color: accentLabel }}>
-                              {settings.muhtamim_designation}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          );
-        }
 
         if (key === "admission") {
           return (
@@ -957,276 +1246,64 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
           );
         }
 
-        if (key === "teachers") {
-          return (
-            <section key="teachers" id="teachers" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-[1200px] px-4">
-                <SectionHeader
-                  eyebrow="আমাদের শিক্ষকবৃন্দ"
-                  title="শিক্ষকবৃন্দ"
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                {teachers.length ? (
-                  <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    {teachers.map((teacher: any, idx: number) => (
-                      <PersonCard
-                        key={teacher.id}
-                        name={teacher.name || teacher.teacher_name}
-                        role={teacher.designation || teacher.subject || "Teacher"}
-                        accentSolid={accentSolid}
-                        accentLabel={accentLabel}
-                        onAccent={onAccent}
-                        theme={theme}
-                        delay={(idx % 4) * 80}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-8 text-center text-sm text-slate-500">
-                    শিক্ষক তথ্য এখনো প্রকাশ করা হয়নি।
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        }
-
-        if (key === "committee") {
-          return (
-            <section key="committee" id="committee" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-[1200px] px-4">
-                <SectionHeader
-                  eyebrow="পরিচালনা পর্ষদ"
-                  title="মাদ্রাসা কমিটি"
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {committee.map((member: any, idx: number) => (
-                    <PersonCard
-                      key={member.id}
-                      name={member.name}
-                      role={member.designation || "Committee Member"}
-                      photo={member.photo_url}
-                      accentSolid={accentSolid}
-                      accentLabel={accentLabel}
-                      onAccent={onAccent}
-                      theme={theme}
-                      delay={(idx % 4) * 80}
-                    />
-                  ))}
-                </div>
-              </div>
-            </section>
-          );
-        }
-
-        if (key === "gallery") {
-          return (
-            <section key="gallery" id="gallery" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-[1200px] px-4">
-                <SectionHeader
-                  eyebrow="আমাদের মুহূর্তগুলো"
-                  title="গ্যালারি"
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                {gallery.length ? (
-                  <div
-                    ref={galleryGridRef}
-                    className={`gallery-grid mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 ${
-                      galleryInView ? "in-view" : ""
-                    }`}
-                  >
-                    {gallery.map((item: any, idx: number) => (
-                      <button
-                        type="button"
-                        key={item.id || item.image_url}
-                        onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
-                        className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
-                        style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
-                        aria-label={item.title || "Gallery"}
-                      >
-                        <img
-                          src={item.image_url}
-                          alt={item.title || "Gallery"}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-black/0 opacity-0 transition duration-300 group-hover:opacity-100">
-                          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
-                            <ZoomIn size={20} />
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-8 text-center text-sm text-slate-500">
-                    Gallery section চালু আছে। ছবি upload করলে এখানে দেখা যাবে।
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        }
-
-        if (key === "notices") {
-          return (
-            <section key="notices" id="notices" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-3xl px-4">
-                <SectionHeader
-                  eyebrow="সর্বশেষ"
-                  title="নোটিশ বোর্ড"
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                theme={theme}
-                />
-                {notices.length ? (
-                  <div className="mt-12 space-y-4">
-                    {notices.map((notice: any) => {
-                      const parts = dateParts(notice.published_at);
-                      return (
-                        <article
-                          key={notice.id}
-                          className={`reveal flex gap-4 ${theme.card} ${theme.notice} p-4 md:p-5`}
-                        >
-                          <div
-                            className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center ${theme.tile} text-center`}
-                            style={{ backgroundColor: accentSolid, color: onAccent }}
-                          >
-                            {parts ? (
-                              <>
-                                <span className="text-xl font-extrabold leading-none">{parts.day}</span>
-                                <span className="mt-1 text-[11px] font-semibold opacity-90">{parts.month}</span>
-                              </>
-                            ) : (
-                              <Bell size={22} />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                              <h3 className="font-bold leading-snug text-slate-900">{notice.title}</h3>
-                              {isRecent(notice.published_at) && (
-                                <span
-                                  className={`${theme.round} px-2 py-0.5 text-[10px] font-bold`}
-                                  style={{ backgroundColor: withAlpha(accentSolid, 0.12), color: accentLabel }}
-                                >
-                                  নতুন
-                                </span>
-                              )}
-                            </div>
-                            {notice.content && (
-                              <p className="mt-1.5 whitespace-pre-line text-sm leading-7 text-slate-600">
-                                {notice.content}
-                              </p>
-                            )}
-                            {parts && (
-                              <p className="mt-2 text-xs font-medium text-slate-400">
-                                {formatDate(notice.published_at)}
-                              </p>
-                            )}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="mt-8 text-center text-sm text-slate-500">No notices published.</p>
-                )}
-              </div>
-            </section>
-          );
-        }
-
         if (key === "contact") {
-          const rows = [
-            {
-              icon: <Phone size={18} />,
-              label: "Phone",
-              value: madrasa?.phone,
-              href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined,
-              external: false,
-            },
-            {
-              icon: <Mail size={18} />,
-              label: "Email",
-              value: madrasa?.email,
-              href: madrasa?.email ? `mailto:${madrasa.email}` : undefined,
-              external: false,
-            },
-            {
-              icon: <MapPin size={18} />,
-              label: "Address",
-              value: madrasa?.address,
-              href: mapsUrl || undefined,
+          const quickRows = [
+            madrasa?.phone && { icon: <Phone size={16} />, value: madrasa.phone, href: `tel:${madrasa.phone}` },
+            madrasa?.phone && {
+              icon: <WhatsAppIcon size={16} />,
+              value: "হোয়াটসঅ্যাপ",
+              href: waLink(madrasa.phone),
               external: true,
             },
-          ].filter((row) => row.value);
+            madrasa?.email && { icon: <Mail size={16} />, value: madrasa.email, href: `mailto:${madrasa.email}` },
+          ].filter(Boolean) as { icon: ReactNode; value: string; href: string; external?: boolean }[];
 
           return (
             <section key="contact" id="contact" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-[1200px] px-4">
+              <div className="mx-auto max-w-3xl px-4">
                 <SectionHeader
                   eyebrow="যোগাযোগ"
                   title={pageMap.contact?.title || "যোগাযোগ"}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
-                theme={theme}
+                  theme={theme}
                 />
-                {pageMap.contact?.content && (
-                  <p className={`reveal mt-6 max-w-2xl whitespace-pre-line text-sm leading-7 text-slate-600 ${
-                      theme.headerCentered ? "mx-auto text-center" : ""
-                    }`}>
-                    {pageMap.contact.content}
-                  </p>
-                )}
                 <div
-                  className={`mt-12 grid gap-6 ${mapEmbedUrl ? "lg:grid-cols-5" : "mx-auto max-w-xl"}`}
+                  className={`reveal mt-10 ${theme.panel} ${theme.panelSurface} p-6 text-center md:p-10`}
+                  style={{ borderColor: withAlpha(accentSolid, 0.18) }}
                 >
-                  <div className={`flex flex-col gap-4 ${mapEmbedUrl ? "lg:col-span-2" : ""}`}>
-                    {rows.map((row) => (
-                      <a
-                        key={row.label}
-                        href={row.href}
-                        target={row.external ? "_blank" : undefined}
-                        rel={row.external ? "noreferrer" : undefined}
-                        className={`reveal flex items-start gap-4 ${theme.card} ${theme.contactRow} p-5`}
-                      >
-                        <span
-                          className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.tile}`}
-                          style={{ backgroundColor: accentSolid, color: onAccent }}
+                  {pageMap.contact?.content && (
+                    <p className="mx-auto max-w-xl whitespace-pre-line text-sm leading-7 text-slate-600 md:text-base">
+                      {pageMap.contact.content}
+                    </p>
+                  )}
+
+                  {quickRows.length > 0 && (
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                      {quickRows.map((row) => (
+                        <a
+                          key={row.value}
+                          href={row.href}
+                          target={row.external ? "_blank" : undefined}
+                          rel={row.external ? "noreferrer" : undefined}
+                          className={`inline-flex items-center gap-2 ${theme.round} px-4 py-2 text-sm font-semibold`}
+                          style={{ backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel }}
                         >
                           {row.icon}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            {row.label}
-                          </span>
-                          <span className="mt-0.5 block break-words text-sm font-bold text-slate-800">
-                            {row.value}
-                          </span>
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-
-                  {mapEmbedUrl && (
-                    <div className={`reveal overflow-hidden ${theme.card} ${theme.mapBox} lg:col-span-3`}>
-                      <iframe
-                        title="Location map"
-                        src={mapEmbedUrl}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        className="block h-72 w-full border-0 lg:h-full lg:min-h-[320px]"
-                      />
+                          {row.value}
+                        </a>
+                      ))}
                     </div>
                   )}
+
+                  <Link
+                    to={contactUrl}
+                    className={`mt-8 inline-flex items-center gap-2 ${theme.button} px-6 py-3 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
+                    style={{ backgroundColor: accentSolid, color: onAccent }}
+                  >
+                    সম্পূর্ণ যোগাযোগ তথ্য ও মানচিত্র দেখুন
+                    <ArrowRight size={16} />
+                  </Link>
                 </div>
               </div>
             </section>
@@ -1312,6 +1389,17 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                     <span>{madrasa.phone}</span>
                   </a>
                 )}
+                {madrasa?.phone && (
+                  <a
+                    href={waLink(madrasa.phone)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start gap-2.5 transition hover:text-white"
+                  >
+                    <WhatsAppIcon size={16} />
+                    <span>হোয়াটসঅ্যাপে মেসেজ করুন</span>
+                  </a>
+                )}
                 {madrasa?.email && (
                   <a
                     href={`mailto:${madrasa.email}`}
@@ -1356,6 +1444,18 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               </div>
             </div>
           </div>
+
+          {mapEmbedUrl && (
+            <div className="mt-10 overflow-hidden rounded-2xl ring-1 ring-white/10">
+              <iframe
+                title="Location map"
+                src={mapEmbedUrl}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="block h-56 w-full border-0 grayscale-[0.3]"
+              />
+            </div>
+          )}
         </div>
 
         <div className="border-t border-white/10">
@@ -1414,6 +1514,35 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             className={`animate-lightboxImage max-h-[85vh] max-w-full ${theme.media} object-contain shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Video lightbox */}
+      {videoLightbox && (
+        <div
+          className="animate-lightboxBackdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setVideoLightbox(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setVideoLightbox(null)}
+            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Close"
+          >
+            <X size={22} />
+          </button>
+          <div
+            className="animate-lightboxImage aspect-video w-full max-w-3xl overflow-hidden rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              title={videoLightbox.title}
+              src={videoLightbox.url}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full border-0"
+            />
+          </div>
         </div>
       )}
     </div>

@@ -34,6 +34,15 @@ export interface MarksheetFieldItem {
   position?: MarksheetSignaturePosition;
 }
 
+// One row of the admit-card "ডিফল্ট (সাধারণ)" design's info-field grid (see
+// ADMIT_CARD_FIELD_KEYS in settings.constants.ts) - same visible/order shape
+// as MarksheetFieldItem but no `position` (only one fixed signature line on
+// this design, not user-configurable).
+export interface AdmitCardFieldItem {
+  key: string;
+  visible: boolean;
+}
+
 export interface BrandingData {
   name: string | null;
   address: string | null;
@@ -49,6 +58,7 @@ export interface BrandingData {
   report_print_mode: string;
   report_brand_layout: BrandLayoutData;
   marksheet_fields: MarksheetFieldItem[];
+  admit_card_fields: AdmitCardFieldItem[];
 }
 
 export type SectionTogglesData = Record<string, boolean>;

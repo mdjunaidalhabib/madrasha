@@ -119,6 +119,31 @@ export const deleteWebsiteGalleryItem = async (req: Request, res: Response) => {
   }
 };
 
+export const saveWebsiteVideo = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    if (!madrasaId) throw new BadRequestError("madrasa_id required");
+
+    const latest = await websiteService.saveWebsiteVideo(madrasaId, req.body);
+    res.json({ message: "Video saved", data: latest });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const deleteWebsiteVideo = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = resolveTenantId(req);
+    const id = Number(req.params.id);
+    if (!madrasaId || !id) throw new BadRequestError("Invalid request");
+
+    await websiteService.deleteWebsiteVideo(madrasaId, id);
+    res.json({ message: "Video deleted" });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
 export const saveWebsiteSlide = async (req: Request, res: Response) => {
   try {
     const madrasaId = resolveTenantId(req);

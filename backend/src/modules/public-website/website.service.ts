@@ -9,6 +9,7 @@ import {
   SaveWebsiteGalleryItemRequestDto,
   SaveWebsiteNoticeRequestDto,
   SaveWebsiteSlideRequestDto,
+  SaveWebsiteVideoRequestDto,
   SubmitFullAdmissionRequestDto,
   SubmitWebsiteAdmissionApplicationRequestDto,
   UpsertWebsitePageRequestDto,
@@ -30,6 +31,7 @@ import {
   toWebsitePageApiDto,
   toWebsiteSettingsApiDto,
   toWebsiteSlideApiDto,
+  toWebsiteVideoApiDto,
 } from "./website.mapper";
 
 export const resolveTenantId = (req: Request): number =>
@@ -68,13 +70,14 @@ export class WebsiteService {
       throw new ForbiddenError("This website is not published yet");
     }
 
-    const [pages, notices, teachers, gallery, slides, committee, divisions] = await Promise.all([
+    const [pages, notices, teachers, gallery, slides, committee, videos, divisions] = await Promise.all([
       this.repository.findPublishedPages(madrasa.id),
       this.repository.findPublishedNotices(madrasa.id),
       this.repository.findTeachersOptional(madrasa.id),
       this.repository.findPublishedGallery(madrasa.id),
       this.repository.findPublishedSlides(madrasa.id),
       this.repository.findPublishedCommittee(madrasa.id),
+      this.repository.findPublishedVideos(madrasa.id),
       // Reused as-is from the admin class panel - madrasaId is passed
       // directly so no tenant-header auth is needed for this public route.
       classPanelService.listDivisions(madrasa.id),
@@ -94,6 +97,7 @@ export class WebsiteService {
       gallery: gallery.map(toWebsiteGalleryApiDto),
       slides: slides.map(toWebsiteSlideApiDto),
       committee: committee.map(toWebsiteCommitteeMemberApiDto),
+      videos: videos.map(toWebsiteVideoApiDto),
       divisions,
       classes,
     };
@@ -109,7 +113,7 @@ export class WebsiteService {
   }
 
   async getWebsiteSettings(madrasaId: number) {
-    const [madrasa, settings, pages, notices, gallery, slides, committee, admissions] = await Promise.all([
+    const [madrasa, settings, pages, notices, gallery, slides, committee, videos, admissions] = await Promise.all([
       this.repository.findMadrasaForAdmin(madrasaId),
       this.repository.findSettings(madrasaId),
       this.repository.findAllPages(madrasaId),
@@ -117,6 +121,7 @@ export class WebsiteService {
       this.repository.findAllGallery(madrasaId),
       this.repository.findAllSlides(madrasaId),
       this.repository.findAllCommittee(madrasaId),
+      this.repository.findAllVideos(madrasaId),
       this.repository.findAllAdmissionApplications(madrasaId),
     ]);
 
@@ -128,6 +133,7 @@ export class WebsiteService {
       gallery: gallery.map(toWebsiteGalleryApiDto),
       slides: slides.map(toWebsiteSlideApiDto),
       committee: committee.map(toWebsiteCommitteeMemberApiDto),
+      videos: videos.map(toWebsiteVideoApiDto),
       admissions: admissions.map(toWebsiteAdmissionApplicationApiDto),
     };
   }
@@ -160,6 +166,12 @@ export class WebsiteService {
       muhtamim_designation,
       muhtamim_photo,
       muhtamim_message,
+      show_sovapoti,
+      sovapoti_name,
+      sovapoti_designation,
+      sovapoti_photo,
+      sovapoti_message,
+      show_video_gallery,
       facebook_url,
       youtube_url,
       instagram_url,
@@ -202,6 +214,12 @@ export class WebsiteService {
       muhtamimDesignation: muhtamim_designation || null,
       muhtamimPhoto: muhtamim_photo || null,
       muhtamimMessage: muhtamim_message || null,
+      showSovapoti: boolValue(show_sovapoti),
+      sovapotiName: sovapoti_name || null,
+      sovapotiDesignation: sovapoti_designation || null,
+      sovapotiPhoto: sovapoti_photo || null,
+      sovapotiMessage: sovapoti_message || null,
+      showVideoGallery: boolValue(show_video_gallery),
       facebookUrl: facebook_url || null,
       youtubeUrl: youtube_url || null,
       instagramUrl: instagram_url || null,
@@ -281,6 +299,33 @@ export class WebsiteService {
 
   async deleteWebsiteGalleryItem(madrasaId: number, id: number) {
     await this.repository.deleteGalleryItem(id, madrasaId);
+  }
+
+  async saveWebsiteVideo(madrasaId: number, body: SaveWebsiteVideoRequestDto) {
+    const { id, title, video_url, is_published = 1, sort_order = 0 } = body;
+    if (!video_url?.trim()) throw new BadRequestError("Video URL required");
+
+    const shared = {
+      title: title || null,
+      videoUrl: video_url,
+      isPublished: boolValue(is_published),
+      sortOrder: Number(sort_order) || 0,
+    };
+
+    let videoId = Number(id) || 0;
+    if (videoId) {
+      await this.repository.updateVideo(videoId, madrasaId, shared);
+    } else {
+      const created = await this.repository.createVideo({ madrasaId, ...shared });
+      videoId = created.id;
+    }
+
+    const saved = await this.repository.findVideoById(videoId, madrasaId);
+    return saved ? toWebsiteVideoApiDto(saved) : null;
+  }
+
+  async deleteWebsiteVideo(madrasaId: number, id: number) {
+    await this.repository.deleteVideo(id, madrasaId);
   }
 
   async saveWebsiteSlide(madrasaId: number, body: SaveWebsiteSlideRequestDto) {

@@ -6,10 +6,12 @@ import {
   PUBLIC_GALLERY_LIMIT,
   PUBLIC_SLIDES_LIMIT,
   PUBLIC_COMMITTEE_LIMIT,
+  PUBLIC_VIDEOS_LIMIT,
   ADMIN_NOTICES_LIMIT,
   ADMIN_GALLERY_LIMIT,
   ADMIN_SLIDES_LIMIT,
   ADMIN_COMMITTEE_LIMIT,
+  ADMIN_VIDEOS_LIMIT,
   ADMIN_ADMISSIONS_LIMIT,
 } from "./website.constants";
 
@@ -106,6 +108,15 @@ export class WebsiteRepository {
     });
   }
 
+  findPublishedVideos(madrasaId: number) {
+    return prisma.websiteVideo.findMany({
+      where: { madrasaId, isPublished: 1 },
+      select: { id: true, title: true, videoUrl: true, isPublished: true, sortOrder: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
+      take: PUBLIC_VIDEOS_LIMIT,
+    });
+  }
+
   findPublishedCommittee(madrasaId: number) {
     return prisma.websiteCommitteeMember.findMany({
       where: { madrasaId, isPublished: 1 },
@@ -162,6 +173,14 @@ export class WebsiteRepository {
       where: { madrasaId },
       orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
       take: ADMIN_SLIDES_LIMIT,
+    });
+  }
+
+  findAllVideos(madrasaId: number) {
+    return prisma.websiteVideo.findMany({
+      where: { madrasaId },
+      orderBy: [{ sortOrder: "asc" }, { id: "desc" }],
+      take: ADMIN_VIDEOS_LIMIT,
     });
   }
 
@@ -260,6 +279,22 @@ export class WebsiteRepository {
 
   deleteSlide(id: number, madrasaId: number) {
     return prisma.websiteSlide.deleteMany({ where: { id, madrasaId } });
+  }
+
+  updateVideo(id: number, madrasaId: number, data: Prisma.WebsiteVideoUpdateInput) {
+    return prisma.websiteVideo.updateMany({ where: { id, madrasaId }, data });
+  }
+
+  createVideo(data: Prisma.WebsiteVideoUncheckedCreateInput) {
+    return prisma.websiteVideo.create({ data });
+  }
+
+  findVideoById(id: number, madrasaId: number) {
+    return prisma.websiteVideo.findFirst({ where: { id, madrasaId } });
+  }
+
+  deleteVideo(id: number, madrasaId: number) {
+    return prisma.websiteVideo.deleteMany({ where: { id, madrasaId } });
   }
 
   updateCommitteeMember(id: number, madrasaId: number, data: Prisma.WebsiteCommitteeMemberUpdateInput) {

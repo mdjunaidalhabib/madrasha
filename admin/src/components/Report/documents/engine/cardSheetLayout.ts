@@ -36,10 +36,9 @@ export const resolveCardsPerSheet = (
   }
 
   if (printable === "admit-card") {
-    // A5 ল্যান্ডস্কেপ = ঠিক একটি প্রবেশপত্রের মাপ - "২টি" বাছা থাকলেও ১টিই বসে।
+    // সবসময় স্বয়ংক্রিয় বিন্যাস (কোনো ইউজার-পছন্দ নেই) - A5 ল্যান্ডস্কেপ = ঠিক একটি
+    // প্রবেশপত্রের মাপ, বাকি সব কাগজে পোর্ট্রেটে ২টি (উপর-নিচ), ল্যান্ডস্কেপে ১টি।
     if (paperSize === "a5" && orientation === "landscape") return 1;
-    if (option === "1") return 1;
-    if (option === "2") return 2;
     return orientation === "portrait" ? 2 : 1;
   }
 

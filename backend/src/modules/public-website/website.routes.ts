@@ -12,10 +12,12 @@ import {
   getPublicWebsite,
   getWebsiteSettings,
   resolveDomain,
+  deleteWebsiteVideo,
   saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
   saveWebsiteNotice,
   saveWebsiteSlide,
+  saveWebsiteVideo,
   submitAdmissionApplication,
   submitFullAdmissionApplication,
   updateAdmissionApplicationStatus,
@@ -44,6 +46,8 @@ router.post("/admin/gallery", ...adminGuard, saveWebsiteGalleryItem);
 router.delete("/admin/gallery/:id", ...adminGuard, deleteWebsiteGalleryItem);
 router.post("/admin/slides", ...adminGuard, saveWebsiteSlide);
 router.delete("/admin/slides/:id", ...adminGuard, deleteWebsiteSlide);
+router.post("/admin/videos", ...adminGuard, saveWebsiteVideo);
+router.delete("/admin/videos/:id", ...adminGuard, deleteWebsiteVideo);
 router.post("/admin/committee", ...adminGuard, saveWebsiteCommitteeMember);
 router.delete("/admin/committee/:id", ...adminGuard, deleteWebsiteCommitteeMember);
 router.patch("/admin/admissions/:id/status", ...adminGuard, updateAdmissionApplicationStatus);

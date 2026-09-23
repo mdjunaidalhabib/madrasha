@@ -104,6 +104,25 @@ export const DEFAULT_MARKSHEET_FIELDS: { key: string; visible: boolean }[] = MAR
   (key) => ({ key, visible: true }),
 );
 
+// Admit-card "ডিফল্ট (সাধারণ)" design's info-field grid (see
+// packages/shared-ui/.../admitCardDesigns.ts's PLAIN_FIELD_ROW_DEFS and
+// admin/src/services/brandingApi.ts's ADMIT_CARD_FIELD_LABELS_BN, which
+// mirror this key list exactly) - same allow-list/defaults pattern as
+// MARKSHEET_FIELD_KEYS above. The Muhtamim's signature on that design is
+// fixed (not part of this list) - only these info fields are togglable.
+export const ADMIT_CARD_FIELD_KEYS = [
+  "student_name",
+  "father_name",
+  "class_name",
+  "roll",
+  "registration_no",
+  "academic_year",
+] as const;
+
+export const DEFAULT_ADMIT_CARD_FIELDS: { key: string; visible: boolean }[] = ADMIT_CARD_FIELD_KEYS.map(
+  (key) => ({ key, visible: true }),
+);
+
 export const MAX_BRAND_FOOTER_TEXT_LENGTH = 300;
 export const BRAND_LAYOUT_LIMITS = {
   name_font_size: { min: 12, max: 48 },

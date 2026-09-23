@@ -89,6 +89,32 @@ export const MARKSHEET_FIELD_LABELS_BN: Record<string, string> = {
   sig_principal: "মুহতামিমের স্বাক্ষর",
 };
 
+// প্রবেশপত্রের "ডিফল্ট (সাধারণ)" ডিজাইনের তথ্য-ফিল্ড গ্রিড (নাম/পিতার নাম/শ্রেণি/
+// রোল/রেজি. নম্বর/শিক্ষাবর্ষ) - marksheet_fields-এর মতোই: `visible` প্রিন্ট থেকে
+// বাদ দেয়, array-এর ক্রমই প্রদর্শনের ক্রম।
+export type AdmitCardFieldItem = { key: string; visible: boolean };
+
+// backend/src/modules/settings/settings.constants.ts-এর ADMIT_CARD_FIELD_KEYS ও
+// packages/shared-ui/.../admitCardDesigns.ts-এর ADMIT_CARD_FIELD_KEYS মিরর করে -
+// একই কী-লিস্ট, মূল হার্ডকোড করা ক্রম (আনটাচড মাদরাসার প্রবেশপত্র আগের মতোই দেখাবে)।
+export const DEFAULT_ADMIT_CARD_FIELDS: AdmitCardFieldItem[] = [
+  "student_name",
+  "father_name",
+  "class_name",
+  "roll",
+  "registration_no",
+  "academic_year",
+].map((key) => ({ key, visible: true }));
+
+export const ADMIT_CARD_FIELD_LABELS_BN: Record<string, string> = {
+  student_name: "পরীক্ষার্থীর নাম",
+  father_name: "পিতার নাম",
+  class_name: "শ্রেণি",
+  roll: "রোল নম্বর",
+  registration_no: "রেজিস্ট্রেশন নম্বর",
+  academic_year: "শিক্ষাবর্ষ",
+};
+
 export type BrandingPayload = {
   name?: string | null;
   address?: string | null;
@@ -104,6 +130,7 @@ export type BrandingPayload = {
   report_print_mode?: ReportPrintMode;
   report_brand_layout?: BrandLayoutPatch | BrandLayout;
   marksheet_fields?: MarksheetFieldItem[];
+  admit_card_fields?: AdmitCardFieldItem[];
 };
 
 export async function getBranding(): Promise<BrandingPayload> {

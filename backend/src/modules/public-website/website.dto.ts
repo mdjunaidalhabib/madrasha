@@ -25,6 +25,12 @@ export interface UpsertWebsiteSettingsRequestDto {
   muhtamim_designation?: string;
   muhtamim_photo?: string;
   muhtamim_message?: string;
+  show_sovapoti?: unknown;
+  sovapoti_name?: string;
+  sovapoti_designation?: string;
+  sovapoti_photo?: string;
+  sovapoti_message?: string;
+  show_video_gallery?: unknown;
   facebook_url?: string;
   youtube_url?: string;
   instagram_url?: string;
@@ -97,6 +103,14 @@ export interface SaveWebsiteGalleryItemRequestDto {
   id?: number;
   title?: string;
   image_url: string;
+  is_published?: unknown;
+  sort_order?: number | string;
+}
+
+export interface SaveWebsiteVideoRequestDto {
+  id?: number;
+  title?: string;
+  video_url: string;
   is_published?: unknown;
   sort_order?: number | string;
 }

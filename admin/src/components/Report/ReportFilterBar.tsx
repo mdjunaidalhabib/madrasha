@@ -24,6 +24,7 @@ import {
 } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
 import type { CardsPerPage } from "../../store/selectedTemplateOverrideStore";
 import { MarksheetSettingsToggleButton } from "./student/MarksheetSignatureControls";
+import { AdmitCardSettingsToggleButton } from "./documents/AdmitCardFieldControls";
 import NoticeBoardPicker from "./documents/NoticeBoardPicker";
 
 const fieldClass =
@@ -79,13 +80,18 @@ type ReportFilterBarProps = {
   /** Marksheet report only: whether the docked settings panel is open, and how to toggle it. */
   marksheetPanelOpen?: boolean;
   onMarksheetPanelToggle?: () => void;
+  /** Admit-card report only: whether the docked field-settings panel is open, and how to toggle it. */
+  admitCardPanelOpen?: boolean;
+  onAdmitCardPanelToggle?: () => void;
   /** টুলবারের ২য় লাইনে পেজ সেটআপের পাশে বসে (যেমন কলাম মেনু, প্রতি পেজে হেডার টগল)। */
   setupExtras?: ReactNode;
   /** টুলবারের ২য় লাইনে এক্সপোর্ট বাটনের আগে বসে (যেমন পেজিনেশন)। */
   summary?: ReactNode;
 };
 
-// আইডি কার্ড / প্রবেশপত্রের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
+// আইডি কার্ড / বই-লেবেলের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
+// প্রবেশপত্র সবসময় স্বয়ংক্রিয় বিন্যাসে ছাপা হয় (দেখুন resolveCardsPerSheet) - আলাদা
+// পছন্দের দরকার নেই, তাই ওই রিপোর্টে এই ড্রপডাউন নেই।
 const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: string }[]> = {
   // "1" = একক শিক্ষার্থী (প্রতি পাতায় ১টি) - ডিফল্ট; "grid" = সকল শিক্ষার্থী (কাগজ ভাগ হয়ে একপাতায় অনেকগুলো)।
   "id-card": [
@@ -96,11 +102,6 @@ const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: string }
   "book-label": [
     { value: "auto", label: "সকল লেবেল (কাটার-রেখাসহ)" },
     { value: "1", label: "প্রতি পাতায় ১টি" },
-  ],
-  "admit-card": [
-    { value: "auto", label: "বিন্যাস: স্বয়ংক্রিয়" },
-    { value: "1", label: "প্রতি পাতায় ১টি" },
-    { value: "2", label: "প্রতি পাতায় ২টি" },
   ],
 };
 
@@ -145,6 +146,8 @@ const ReportFilterBar = ({
   onIdCardBackWithFrontChange,
   marksheetPanelOpen = false,
   onMarksheetPanelToggle,
+  admitCardPanelOpen = false,
+  onAdmitCardPanelToggle,
   setupExtras,
   summary,
 }: ReportFilterBarProps) => {
@@ -361,6 +364,10 @@ const ReportFilterBar = ({
 
         {activeReport.printable === "marksheet" && onMarksheetPanelToggle && (
           <MarksheetSettingsToggleButton open={marksheetPanelOpen} onToggle={onMarksheetPanelToggle} />
+        )}
+
+        {activeReport.printable === "admit-card" && onAdmitCardPanelToggle && (
+          <AdmitCardSettingsToggleButton open={admitCardPanelOpen} onToggle={onAdmitCardPanelToggle} />
         )}
 
         {activeReport.documentType && (

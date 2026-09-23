@@ -28,6 +28,12 @@ export type WebsiteSettingsPayload = {
   muhtamim_designation?: string;
   muhtamim_photo?: string;
   muhtamim_message?: string;
+  show_sovapoti?: 0 | 1;
+  sovapoti_name?: string;
+  sovapoti_designation?: string;
+  sovapoti_photo?: string;
+  sovapoti_message?: string;
+  show_video_gallery?: 0 | 1;
   facebook_url?: string;
   youtube_url?: string;
   instagram_url?: string;
@@ -96,6 +102,14 @@ export type WebsiteGalleryPayload = {
   sort_order?: number;
 };
 
+export type WebsiteVideoPayload = {
+  id?: number;
+  title?: string;
+  video_url: string;
+  is_published?: 0 | 1;
+  sort_order?: number;
+};
+
 export async function getWebsiteSettings(madrasaId?: number) {
   const res = await cachedGet("/website/admin/settings", {
     params: madrasaId ? { madrasa_id: madrasaId } : undefined,
@@ -140,6 +154,16 @@ export async function saveWebsiteSlide(payload: WebsiteSlidePayload) {
 
 export async function deleteWebsiteSlide(id: number) {
   const res = await api.delete(`/website/admin/slides/${id}`);
+  return res.data;
+}
+
+export async function saveWebsiteVideo(payload: WebsiteVideoPayload) {
+  const res = await api.post("/website/admin/videos", payload);
+  return res.data;
+}
+
+export async function deleteWebsiteVideo(id: number) {
+  const res = await api.delete(`/website/admin/videos/${id}`);
   return res.data;
 }
 

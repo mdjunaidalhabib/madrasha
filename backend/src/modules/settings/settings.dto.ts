@@ -35,6 +35,9 @@ export interface UpdateBrandingRequestDto {
   // every field it knows about, in the order it wants them displayed, same
   // "resend the whole thing" pattern the designer's layer arrays use.
   marksheet_fields?: { key?: unknown; visible?: unknown; position?: unknown }[];
+  // Same full-replacement pattern, for the admit-card "ডিফল্ট (সাধারণ)"
+  // design's info fields.
+  admit_card_fields?: { key?: unknown; visible?: unknown }[];
 }
 
 export interface UpdateSectionToggleRequestDto {

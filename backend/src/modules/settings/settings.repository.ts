@@ -36,6 +36,7 @@ export class SettingsRepository {
         reportPrintMode: true,
         reportBrandLayout: true,
         marksheetFieldLayout: true,
+        admitCardFieldLayout: true,
       },
     });
   }
