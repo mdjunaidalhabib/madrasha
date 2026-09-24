@@ -118,6 +118,32 @@ export class ExamFeeRepository {
     return prisma.feeStructure.updateMany({ where: { id, madrasaId }, data });
   }
 
+  /** Invoices of these fee rows nothing has touched yet - no payment, no
+   * মওকুফ. These are the ones switching an exam's fee off withdraws. */
+  private untouchedInvoicesWhere(madrasaId: number, feeStructureIds: number[]): Prisma.InvoiceWhereInput {
+    return {
+      madrasaId,
+      feeStructureId: { in: feeStructureIds },
+      status: { in: ["UNPAID", "OVERDUE"] },
+      paidAmount: 0,
+      waivedAmount: 0,
+      payments: { none: {} },
+    };
+  }
+
+  /** Withdraws the untouched invoices of these fee rows and counts the ones
+   * kept because money was already collected / forgiven against them. */
+  async withdrawUntouchedInvoices(madrasaId: number, feeStructureIds: number[]) {
+    if (!feeStructureIds.length) return { removed: 0, kept: 0 };
+    return prisma.$transaction(async (tx) => {
+      const { count: removed } = await tx.invoice.deleteMany({
+        where: this.untouchedInvoicesWhere(madrasaId, feeStructureIds),
+      });
+      const kept = await tx.invoice.count({ where: { madrasaId, feeStructureId: { in: feeStructureIds } } });
+      return { removed, kept };
+    });
+  }
+
   deleteRow(id: number, madrasaId: number) {
     return prisma.feeStructure.deleteMany({ where: { id, madrasaId } });
   }

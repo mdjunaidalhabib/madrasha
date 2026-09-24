@@ -82,9 +82,14 @@ const ReportShell = ({
   // change again after mount, which would otherwise wipe out the
   // division/class/orientation values the hydration effect further down
   // sets.
-  const [activeKey, setActiveKey] = useState(
-    (printMode && searchParams.get("key")) || reports[0]?.key || "",
-  );
+  // Outside print mode a ?key=... link (e.g. শিক্ষার্থী প্রোফাইলের "আইডি কার্ড
+  // প্রিন্ট" / "মার্কশিট ডাউনলোড") opens that report with its filters
+  // pre-filled - hydrated by the same effect print mode uses.
+  const urlPrefill = !printMode && searchParams.has("key");
+  const [activeKey, setActiveKey] = useState(() => {
+    const urlKey = printMode || urlPrefill ? searchParams.get("key") : null;
+    return (urlKey && reports.some((item) => item.key === urlKey) ? urlKey : reports[0]?.key) || "";
+  });
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -103,9 +108,12 @@ const ReportShell = ({
   // pre-hydration "no division selected" state first. See that effect's own
   // comment for the empty-PDF bug this was causing. Non-print mode has
   // nothing to hydrate, so it starts (and stays) true.
-  const [hydrated, setHydrated] = useState(!printMode);
+  const [hydrated, setHydrated] = useState(!printMode && !urlPrefill);
 
   const [search, setSearch] = useState("");
+  // একজন নির্দিষ্ট শিক্ষার্থীতে সীমাবদ্ধ (প্রোফাইল থেকে আসা ?student_id=) - DB id,
+  // registration_no/roll নয়, কারণ ছোট রেজি. নম্বর অন্য কারো রোলের সাথে মিলে যেতে পারে।
+  const [studentFilter, setStudentFilter] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
@@ -368,6 +376,7 @@ const ReportShell = ({
 
   useEffect(() => {
     setSearch("");
+    setStudentFilter("");
     setSelectedDivision("");
     setSelectedClass("");
     setClasses([]);
@@ -445,13 +454,16 @@ const ReportShell = ({
   // must be threaded through here (filters, search, page/page size, margins),
   // otherwise the exported PDF silently differs from what the user saw.
   useEffect(() => {
-    if (!printMode) return;
+    if (!printMode && !urlPrefill) return;
 
     const examId = searchParams.get("exam_id");
     if (examId) setSelectedExam(examId);
 
     const searchText = searchParams.get("search");
     if (searchText) setSearch(searchText);
+
+    const studentIdParam = searchParams.get("student_id");
+    if (studentIdParam) setStudentFilter(studentIdParam);
 
     const pageParam = Number(searchParams.get("page"));
     if (Number.isInteger(pageParam) && pageParam >= 1) setPage(pageParam);
@@ -515,7 +527,7 @@ const ReportShell = ({
       setHydrated(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [printMode]);
+  }, [printMode, urlPrefill]);
 
   // A requiresDivision report also refetches on division/class change, since
   // those are sent to the server as real filters now - the paginated
@@ -617,6 +629,7 @@ const ReportShell = ({
     const rowDivisionId = String(getRowDivisionId(row));
     const rowClassId = String(getRowClassId(row));
     return (
+      (!studentFilter || String(row.student_id ?? row.id) === studentFilter) &&
       (!selectedDivision || selectedDivision === "all" || rowDivisionId === String(selectedDivision)) &&
       (!selectedClass || selectedClass === "all" || rowClassId === String(selectedClass))
     );
@@ -695,6 +708,7 @@ const ReportShell = ({
 
   const clearFilters = () => {
     setSearch("");
+    setStudentFilter("");
     setSelectedDivision("");
     setSelectedClass("");
     setClasses([]);
@@ -750,6 +764,7 @@ const ReportShell = ({
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
       search: search.trim() || undefined,
+      student_id: studentFilter || undefined,
       page: isPaginatedAcademicResult ? String(page) : undefined,
       page_size: isPaginatedAcademicResult ? String(pageSize) : undefined,
       margin_top: String(margins.top),
@@ -816,7 +831,21 @@ const ReportShell = ({
                 <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">{activeReport.subtitle}</p>
               </div>
 
-              <div className="flex shrink-0 items-center">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {studentFilter && (
+                  <div className="flex w-fit items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 pl-2.5 pr-1 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 sm:text-[13px]">
+                    <span>
+                      শুধু: <b className="font-bold">{filteredRows[0]?.student_name || "নির্বাচিত শিক্ষার্থী"}</b>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStudentFilter("")}
+                      className="rounded px-1.5 py-0.5 font-medium hover:bg-blue-100 dark:hover:bg-blue-900/60"
+                    >
+                      সবাই দেখুন
+                    </button>
+                  </div>
+                )}
                 <div className="w-fit rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:text-[13px]">
                   মোট <span className="font-bold text-slate-900 dark:text-slate-100">{totalRecords}</span> টি
                   রেকর্ড

@@ -8,6 +8,7 @@ import { accountService } from "../accounts/account.service";
 import { logActivity } from "../../shared/utils/activity.util";
 import { autoRegisterOnInvoicePaid } from "../exam-candidate/exam-candidate.hooks";
 import {
+  BulkExamFeePaymentRequestDto,
   CreateFeeCategoryRequestDto,
   CreateFeeStructureRequestDto,
   CreatePaymentMethodSettingRequestDto,
@@ -325,6 +326,15 @@ export class FeeService {
     }
     if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
 
+    // A পরীক্ষার ফি row is switched on only through ইহতেমাম's per-exam
+    // switch (ExamFeeService.setFeeActive), which checks the exam is on.
+    if (data.isActive === true) {
+      const existing = await this.repository.findStructureForTenant(id, madrasaId);
+      if (existing?.examId) {
+        throw new BadRequestError("পরীক্ষার ফি 'পরীক্ষার ফি' টেবিলের চালু/বন্ধ সুইচ থেকে চালু করুন");
+      }
+    }
+
     try {
       const result = await this.repository.updateStructure(id, madrasaId, data);
       if (!result.count) throw new NotFoundError("Fee structure not found");
@@ -608,21 +618,9 @@ export class FeeService {
     return { totalStudents: students.length, studentsProcessed, invoicesCreated, failed };
   }
 
-  /* ================= EXAM-LINKED FEE ACTIVATION (see ExamService.activateExamFee) ================= */
+  /* ================= EXAM-LINKED FEE ACTIVATION (see ExamFeeService.setFeeActive) ================= */
 
-  /** Step 2 of activating an exam's fee - flips every FeeStructure linked to
-   * this exam active. Returns how many structures were touched. */
-  /** Whether any of this exam's fee rows is already billing. */
-  async isExamFeeLive(madrasaId: number, examId: number) {
-    return (await this.repository.countLiveStructuresByExam(madrasaId, examId)) > 0;
-  }
-
-  async activateExamLinkedFee(madrasaId: number, examId: number) {
-    const result = await this.repository.activateStructuresByExam(madrasaId, examId);
-    return result.count;
-  }
-
-  /** Step 3 of activating an exam's fee - bills every currently-enrolled
+  /** Once ইহতেমাম switches an exam's fee on - bills every currently-enrolled
    * student covered by this exam's FeeStructure row(s), reusing
    * backfillInvoicesForAllStudents (already idempotent - a re-run, e.g. from
    * a second routine on the same exam, never double-bills) once per distinct
@@ -647,7 +645,7 @@ export class FeeService {
     return { invoicesCreated, studentsProcessed };
   }
 
-  /** Step 4 of activating an exam's fee - fire-and-forget SMS to every
+  /** Once ইহতেমাম switches an exam's fee on - fire-and-forget SMS to every
    * guardian in the classes/sessions this exam's fee now covers
    * (triggerEvent itself never throws, so a bad phone/template can't stop
    * the rest of the loop). Returns how many guardians were targeted. */
@@ -941,27 +939,30 @@ export class FeeService {
   /** Records a (possibly partial) payment against an invoice, keeps the
    * invoice's paidAmount/status in sync, and mirrors the payment into the
    * existing accounts/income ledger so it shows up in financial reports
-   * without any separate manual entry. */
+   * without any separate manual entry. `options.notifyGuardian === false`
+   * skips only the guardian SMS (bulk collection opts out by default) - the
+   * activity log and exam auto-registration still run. */
   async recordPayment(
     invoiceId: number,
     madrasaId: number,
     receivedById: number | undefined,
     dto: RecordPaymentRequestDto,
+    options: { notifyGuardian?: boolean } = {},
   ) {
     if (isEmpty(dto.amount) || isEmpty(dto.method)) {
-      throw new BadRequestError("amount and method are required");
+      throw new BadRequestError("টাকার পরিমাণ ও পেমেন্ট পদ্ধতি দিন");
     }
     if (!PAYMENT_METHODS.includes(String(dto.method).toUpperCase() as any)) {
-      throw new BadRequestError(`method must be one of: ${PAYMENT_METHODS.join(", ")}`);
+      throw new BadRequestError("সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন");
     }
     const paymentAmount = toAmount(dto.amount, "amount");
 
     let paidAt = new Date();
     if (!isEmpty(dto.paid_at)) {
       const parsed = new Date(String(dto.paid_at));
-      if (Number.isNaN(parsed.getTime())) throw new BadRequestError("paid_at is invalid");
+      if (Number.isNaN(parsed.getTime())) throw new BadRequestError("পরিশোধের তারিখ সঠিক নয়");
       if (parsed.getTime() > Date.now() + 60_000)
-        throw new BadRequestError("paid_at cannot be in the future");
+        throw new BadRequestError("পরিশোধের তারিখ ভবিষ্যতের হতে পারে না");
       paidAt = parsed;
     }
 
@@ -971,7 +972,7 @@ export class FeeService {
         Number(dto.payment_method_setting_id),
         madrasaId,
       );
-      if (!setting) throw new NotFoundError("Selected payment method is not set up");
+      if (!setting) throw new NotFoundError("নির্বাচিত পেমেন্ট মাধ্যমটি সেটআপ করা নেই");
       methodLabel = setting.label;
     }
 
@@ -999,16 +1000,16 @@ export class FeeService {
     try {
       result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
-        if (!invoice) throw new NotFoundError("Invoice not found");
+        if (!invoice) throw new NotFoundError("ইনভয়েসটি পাওয়া যায়নি");
         if (invoice.status === "PAID")
-          throw new BadRequestError("This invoice is already fully paid");
+          throw new BadRequestError("এই ইনভয়েসটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত");
 
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
         const alreadyWaived = Number(invoice.waivedAmount);
         const remaining = invoiceAmount - alreadyPaid - alreadyWaived;
         if (paymentAmount > remaining + 0.01) {
-          throw new BadRequestError(`Payment exceeds the remaining due amount (${remaining})`);
+          throw new BadRequestError(`পরিশোধের পরিমাণ বাকি টাকার (৳${remaining}) চেয়ে বেশি`);
         }
 
         const newPaidAmount = alreadyPaid + paymentAmount;
@@ -1063,7 +1064,7 @@ export class FeeService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("recordPayment error:", err, "Failed to record payment");
+      return friendlyFailure("recordPayment error:", err, "পেমেন্ট রেকর্ড করা যায়নি");
     }
 
     // Fire-and-forget: notify the guardian and write the activity log entry.
@@ -1072,7 +1073,7 @@ export class FeeService {
     // failed payment - the payment already committed by this point.
     try {
       const student = await studentRepository.findByIdForTenant(result.studentId, madrasaId);
-      if (student?.guardianPhone) {
+      if (student?.guardianPhone && options.notifyGuardian !== false) {
         await notificationService.triggerEvent(madrasaId, "FEE_PAYMENT", student.guardianPhone, {
           name: student.nameBn,
           amount: paymentAmount,
@@ -1121,6 +1122,171 @@ export class FeeService {
     }
 
     return result;
+  }
+
+  /* ================= পরীক্ষার ফি একসাথে গ্রহণ ================= */
+
+  /** Remaining due of one invoice - a WAIVED invoice is never due, same rule
+   * as ResultPanelService.getDashboardExamFee. Rounded to paisa so a
+   * Decimal subtraction can't leave a 0.0000001 "due". */
+  private invoiceDue(inv: { amount: unknown; paidAmount: unknown; waivedAmount: unknown; status: string }) {
+    if (inv.status === "WAIVED" || inv.status === "PAID") return 0;
+    const due = Number(inv.amount) - Number(inv.paidAmount) - Number(inv.waivedAmount);
+    return due > 0.01 ? Math.round(due * 100) / 100 : 0;
+  }
+
+  private async requireExamAndClass(madrasaId: number, examId: number, classId: number) {
+    if (!examId || !classId) throw new BadRequestError("পরীক্ষা ও শ্রেণি নির্বাচন করুন");
+    const [exam, cls] = await Promise.all([
+      this.repository.findExamForTenant(madrasaId, examId),
+      this.repository.findClassName(classId),
+    ]);
+    if (!exam) throw new NotFoundError("পরীক্ষাটি পাওয়া যায়নি");
+    if (!cls) throw new NotFoundError("শ্রেণিটি পাওয়া যায়নি");
+    return { exam, cls };
+  }
+
+  /** One exam × class collection sheet: every student whose পরীক্ষার ফি
+   * invoice still has something due (roll order), plus how many of the
+   * class have already cleared it. */
+  async getExamFeeCollectSheet(madrasaId: number, examId: number, classId: number) {
+    const { exam, cls } = await this.requireExamAndClass(madrasaId, examId, classId);
+    const invoices = await this.repository.findExamFeeInvoicesForClass(madrasaId, exam.id, cls.id);
+
+    const DUE_STATUSES = ["UNPAID", "PARTIALLY_PAID", "OVERDUE"];
+    const rows = invoices
+      .map((inv) => ({
+        invoice_id: inv.id,
+        student_id: inv.student.id,
+        name_bn: inv.student.nameBn,
+        roll: inv.student.roll ?? null,
+        amount: Number(inv.amount),
+        paid: Number(inv.paidAmount),
+        waived: Number(inv.waivedAmount),
+        due: this.invoiceDue(inv),
+        status: inv.status as string,
+      }))
+      .filter((r) => DUE_STATUSES.includes(r.status) && r.due > 0)
+      .sort(
+        (a, b) =>
+          (a.roll ?? 1e9) - (b.roll ?? 1e9) ||
+          a.name_bn.localeCompare(b.name_bn, "bn") ||
+          a.invoice_id - b.invoice_id,
+      );
+
+    // A student counts as paid only once none of their exam-fee invoices
+    // (normally just one) has anything left due.
+    const owing = new Set(invoices.filter((inv) => this.invoiceDue(inv) > 0).map((inv) => inv.student.id));
+    const cleared = new Set(
+      invoices
+        .filter((inv) => (inv.status === "PAID" || inv.status === "WAIVED") && !owing.has(inv.student.id))
+        .map((inv) => inv.student.id),
+    );
+
+    return {
+      exam: { id: exam.id, name: exam.name, year: exam.year },
+      class: { id: cls.id, name_bn: cls.nameBn },
+      rows,
+      paid_count: cleared.size,
+      totals: { due: Math.round(rows.reduce((sum, r) => sum + r.due, 0) * 100) / 100 },
+    };
+  }
+
+  /** Pays the full remaining due of many exam-fee invoices of one exam ×
+   * class. Every invoice goes through recordPayment() on its own (own
+   * transaction + ledger mirror + auto exam registration), one after
+   * another, so one bad invoice never rolls back or blocks the rest - it
+   * just lands in `failed` with a reason. */
+  async bulkPayExamFee(madrasaId: number, receivedById: number | undefined, dto: BulkExamFeePaymentRequestDto) {
+    const examId = Number(dto?.exam_id);
+    const classId = Number(dto?.class_id);
+    if (!examId || !classId) throw new BadRequestError("পরীক্ষা ও শ্রেণি নির্বাচন করুন");
+    if (!Array.isArray(dto.invoice_ids) || dto.invoice_ids.length === 0) {
+      throw new BadRequestError("অন্তত একজন ছাত্র নির্বাচন করুন");
+    }
+    const invoiceIds = [
+      ...new Set(dto.invoice_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0)),
+    ];
+    if (invoiceIds.length === 0) throw new BadRequestError("অন্তত একজন ছাত্র নির্বাচন করুন");
+    if (invoiceIds.length > 500) throw new BadRequestError("একবারে সর্বোচ্চ ৫০০টি ইনভয়েস গ্রহণ করা যাবে");
+    // Request-level checks up front, so a bad method fails the whole request
+    // once instead of every invoice separately.
+    if (isEmpty(dto.method) || !PAYMENT_METHODS.includes(String(dto.method).toUpperCase() as any)) {
+      throw new BadRequestError("সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন");
+    }
+
+    const { exam, cls } = await this.requireExamAndClass(madrasaId, examId, classId);
+    const found = await this.repository.findInvoicesWithExamLink(madrasaId, invoiceIds);
+    const byId = new Map(found.map((inv) => [inv.id, inv]));
+
+    const succeeded: Array<{ invoice_id: number; student_id: number; amount: number; payment_id: number }> = [];
+    const failed: Array<{ invoice_id: number; student_id: number | null; name_bn: string | null; reason: string }> = [];
+
+    for (const invoiceId of invoiceIds) {
+      const inv = byId.get(invoiceId);
+      if (!inv) {
+        failed.push({ invoice_id: invoiceId, student_id: null, name_bn: null, reason: "ইনভয়েসটি পাওয়া যায়নি" });
+        continue;
+      }
+      const who = { invoice_id: invoiceId, student_id: inv.studentId, name_bn: inv.student?.nameBn ?? null };
+      if (inv.feeStructure?.examId !== exam.id || inv.feeStructure?.classId !== cls.id) {
+        failed.push({ ...who, reason: "এই ইনভয়েসটি নির্বাচিত পরীক্ষা/শ্রেণির পরীক্ষার ফি নয়" });
+        continue;
+      }
+      const due = this.invoiceDue(inv);
+      if (due <= 0) {
+        failed.push({ ...who, reason: "ইতিমধ্যে পরিশোধিত" });
+        continue;
+      }
+
+      try {
+        const result = await this.recordPayment(
+          invoiceId,
+          madrasaId,
+          receivedById,
+          {
+            amount: due,
+            method: dto.method,
+            payment_method_setting_id: dto.payment_method_setting_id,
+            transaction_ref: dto.transaction_ref,
+            note: dto.note,
+            paid_at: dto.paid_at,
+          },
+          { notifyGuardian: dto.notify_guardian === true },
+        );
+        succeeded.push({ invoice_id: invoiceId, student_id: inv.studentId, amount: due, payment_id: result.paymentId });
+      } catch (err) {
+        logger.error(`bulkPayExamFee: invoice #${invoiceId} failed:`, err);
+        failed.push({
+          ...who,
+          // 4xx carries a specific reason (e.g. no fund set up); anything
+          // else is an internal failure - shown generically.
+          reason:
+            err instanceof ApiError && err.statusCode < 500 && err.message
+              ? err.message
+              : "পেমেন্ট রেকর্ড করা যায়নি",
+        });
+      }
+    }
+
+    const totalCollected = Math.round(succeeded.reduce((sum, s) => sum + s.amount, 0) * 100) / 100;
+
+    if (succeeded.length > 0) {
+      try {
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: receivedById ?? null,
+          action: "CREATE",
+          entity: "invoices/exam-fee/bulk-pay",
+          entity_id: exam.id,
+          details: `পরীক্ষার ফি একসাথে গ্রহণ: ${exam.name} — ${cls.nameBn || "অজানা"}, ${succeeded.length} জন, মোট ${totalCollected} টাকা`,
+        });
+      } catch (err) {
+        logger.error("bulkPayExamFee activity log failed:", err);
+      }
+    }
+
+    return { succeeded, failed, total_collected: totalCollected };
   }
 
   /** Forgives all or part of the remaining due on an invoice. Route-level

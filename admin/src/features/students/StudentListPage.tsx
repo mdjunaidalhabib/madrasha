@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { studentPath } from "./studentRoute";
 import FilterSelect from "../../components/common/FilterSelect";
 import api, { cachedGet } from "../../services/api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
@@ -13,6 +14,12 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { filterPeopleBySearch } from "../../utils/personSearch";
+import {
+  STUDENT_STATUS_BADGE_CLASS,
+  STUDENT_STATUS_LABEL,
+  studentStatus,
+  studentStatusLabel,
+} from "../../utils/studentStatus";
 import { type Session } from "../../services/sessionApi";
 import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
 
@@ -186,8 +193,23 @@ type Student = {
 
 const StudentListPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const urlSessionId = searchParams.get("session");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // ফিল্টারগুলো URL-এ রাখা হয় (?session=&division=&class=&gender=&q=&page=&size=)
+  // যাতে রিফ্রেশে টিকে থাকে এবং কপি-করা লিংক একই তালিকা দেখায়। প্রাথমিক মান
+  // শুধু মাউন্টের সময় একবার পড়া হয় — এরপর state-ই সত্য, URL শুধু তার প্রতিফলন।
+  // session=all মানে বিভাগ থাকা সত্ত্বেও "সব সেশন" ইচ্ছাকৃতভাবে বাছাই করা।
+  const [initialParams] = useState(() => ({
+    session: searchParams.get("session"),
+    division: searchParams.get("division") || "",
+    class: searchParams.get("class") || "",
+    gender: searchParams.get("gender") || "",
+    q: searchParams.get("q") || "",
+    page: Math.max(1, Number(searchParams.get("page")) || 1),
+    size: [20, 50, 100].includes(Number(searchParams.get("size")))
+      ? Number(searchParams.get("size"))
+      : 20,
+  }));
+  const urlSessionId = initialParams.session;
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -204,10 +226,10 @@ const StudentListPage = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [selectedDivision, setSelectedDivision] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedGender, setSelectedGender] = useState("");
+  const [search, setSearch] = useState(initialParams.q);
+  const [selectedDivision, setSelectedDivision] = useState(initialParams.division);
+  const [selectedClass, setSelectedClass] = useState(initialParams.class);
+  const [selectedGender, setSelectedGender] = useState(initialParams.gender);
 
   // ডিফল্টে "সব সেশন" (কোনো ফিল্টার নয়) দেখানো হয় — null মানে সেশন তালিকা
   // এখনো লোড হচ্ছে (প্রথম fetch আটকে থাকে), লোড শেষ হলে "" (সব সেশন) বসে।
@@ -218,8 +240,8 @@ const StudentListPage = () => {
   // অটো-সিলেক্ট ইফেক্ট যেন এটাকে বারবার ওভাররাইড করতে না পারে (নিচে দেখুন)।
   const urlSessionAppliedRef = useRef(false);
 
-  const [pageSize, setPageSize] = useState(20);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialParams.size);
+  const [currentPage, setCurrentPage] = useState(initialParams.page);
 
   const {
     visible: visibleColumns,
@@ -315,7 +337,7 @@ const StudentListPage = () => {
     if (!urlSessionAppliedRef.current) {
       urlSessionAppliedRef.current = true;
       if (urlSessionId) {
-        setSelectedSessionId(urlSessionId);
+        setSelectedSessionId(urlSessionId === "all" ? "" : urlSessionId);
         return;
       }
     }
@@ -329,8 +351,8 @@ const StudentListPage = () => {
     setSelectedSessionId(current ? String(current.id) : "");
   }, [selectedDivision, sessions, sessionsLoaded, urlSessionId]);
 
-  const loadClassesByDivision = async (divisionId: string) => {
-    setSelectedClass("");
+  const loadClassesByDivision = async (divisionId: string, keepClass = false) => {
+    if (!keepClass) setSelectedClass("");
 
     if (!divisionId) {
       setClasses([]);
@@ -353,6 +375,12 @@ const StudentListPage = () => {
     loadStudents();
     loadDivisions();
   }, [loadStudents, loadDivisions]);
+
+  // URL থেকে বিভাগ এলে সেই বিভাগের শ্রেণি তালিকা লোড — URL-এর শ্রেণি বহাল রেখে।
+  useEffect(() => {
+    if (initialParams.division) loadClassesByDivision(initialParams.division, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getDivisionName = useCallback(
     (divisionId?: number | string) => {
@@ -381,7 +409,7 @@ const StudentListPage = () => {
     academicYear: (s) => orNone(s.academic_year),
     division: (s) => getDivisionName(s.division_id),
     currentClass: (s) => getClassName(s.class_id, s.current_class || s.class_name || s.class),
-    status: (s) => (Number(s.is_active) === 0 ? "বহিষ্কৃত" : "সক্রিয়"),
+    status: (s) => studentStatusLabel(s.is_active),
     arabicName: (s) => orNone(s.arabic_name),
     nid: (s) => orNone(s.nid),
     gender: (s) => genderLabel(s.gender),
@@ -437,18 +465,72 @@ const StudentListPage = () => {
   }, [search, selectedDivision, selectedClass, selectedGender, selectedSessionId]);
 
   // ফিল্টার বা পেজ সাইজ বদলালে ১ নম্বর পাতায় ফিরে যাবে, নাহলে ফিল্টার করার পর
-  // খালি পাতায় আটকে থাকতে পারে।
+  // খালি পাতায় আটকে থাকতে পারে। প্রথমবার সেশন রেজল্ভ হওয়াটা "বদল" ধরা হয়
+  // না — নাহলে URL-এর ?page= মাউন্টেই মুছে যেত।
+  const filterKey = JSON.stringify([
+    search,
+    selectedDivision,
+    selectedClass,
+    selectedGender,
+    selectedSessionId,
+    pageSize,
+  ]);
+  const prevFilterKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedDivision, selectedClass, selectedGender, selectedSessionId, pageSize]);
+    if (selectedSessionId === null) return;
+    if (prevFilterKeyRef.current !== null && prevFilterKeyRef.current !== filterKey) {
+      setCurrentPage(1);
+    }
+    prevFilterKeyRef.current = filterKey;
+  }, [filterKey, selectedSessionId]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
 
   // ফলাফল সংখ্যা কমে গেলে (যেমন বাল্ক ডিলিট) বর্তমান পাতা সীমার বাইরে চলে
-  // যেতে পারে — শেষ বৈধ পাতায় নামিয়ে আনা হয়।
+  // যেতে পারে — শেষ বৈধ পাতায় নামিয়ে আনা হয়। লোড চলাকালীন (তালিকা খালি)
+  // নয়, নাহলে URL-এর পাতা নম্বর ডেটা আসার আগেই ১-এ নেমে যেত।
   useEffect(() => {
+    if (loading) return;
     if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, loading]);
+
+  // state → URL সিঙ্ক (replace, তাই history ভরে না)। সার্চ টাইপ করার সময়
+  // প্রতি কি-স্ট্রোকে না লিখে সামান্য ডিবাউন্স। ডিফল্ট/খালি মান বাদ দেওয়া হয়;
+  // অন্য অজানা query param থাকলে সেগুলো অক্ষত থাকে।
+  useEffect(() => {
+    if (selectedSessionId === null) return; // সেশন রেজল্ভের আগে URL-এর session মুছব না
+    const timer = window.setTimeout(() => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          const put = (key: string, value: string) => {
+            if (value) next.set(key, value);
+            else next.delete(key);
+          };
+          // বিভাগ থাকলে ফাঁকা সেশন অটো-সিলেক্টে বদলে যায়, তাই "সব সেশন" স্পষ্টভাবে লেখা হয়।
+          put("session", selectedSessionId || (selectedDivision ? "all" : ""));
+          put("division", selectedDivision);
+          put("class", selectedClass);
+          put("gender", selectedGender);
+          put("q", search.trim());
+          put("page", currentPage > 1 ? String(currentPage) : "");
+          put("size", pageSize !== 20 ? String(pageSize) : "");
+          return next.toString() === prev.toString() ? prev : next;
+        },
+        { replace: true },
+      );
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [
+    selectedSessionId,
+    selectedDivision,
+    selectedClass,
+    selectedGender,
+    search,
+    currentPage,
+    pageSize,
+    setSearchParams,
+  ]);
 
   const paginatedStudents = useMemo(
     () => filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize),
@@ -479,16 +561,12 @@ const StudentListPage = () => {
   };
 
   const statusBadge = (isActive?: number) => {
-    const expelled = Number(isActive) === 0;
+    const status = studentStatus(isActive);
     return (
       <span
-        className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-          expelled
-            ? "border-red-300 bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
-            : "border-green-300 bg-green-100 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400"
-        }`}
+        className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STUDENT_STATUS_BADGE_CLASS[status]}`}
       >
-        {expelled ? "বহিষ্কৃত" : "সক্রিয়"}
+        {STUDENT_STATUS_LABEL[status]}
       </span>
     );
   };
@@ -551,7 +629,7 @@ const StudentListPage = () => {
 
           <button
             type="button"
-            onClick={() => navigate(`/students/new_admission`)}
+            onClick={() => navigate(`/students/new`)}
             className="h-10 w-full rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 md:w-auto"
           >
             + নতুন ছাত্র ভর্তি
@@ -750,7 +828,7 @@ const StudentListPage = () => {
                   <div className="mt-4 flex gap-2">
                     <button
                       type="button"
-                      onClick={() => navigate(`/students/${student.id}/profile`)}
+                      onClick={() => navigate(studentPath(student))}
                       className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                     >
                       প্রোফাইল
@@ -808,7 +886,7 @@ const StudentListPage = () => {
                           <div className="flex justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => navigate(`/students/${student.id}/profile`)}
+                              onClick={() => navigate(studentPath(student))}
                               className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
                             >
                               প্রোফাইল

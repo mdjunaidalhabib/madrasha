@@ -64,6 +64,22 @@ export interface RecordPaymentRequestDto {
   paid_at?: string;
 }
 
+/// পরীক্ষার ফি একসাথে গ্রহণ - pays the full remaining due of every listed
+/// exam-fee invoice of one exam × class, one invoice at a time.
+export interface BulkExamFeePaymentRequestDto {
+  exam_id: number | string;
+  class_id: number | string;
+  invoice_ids: Array<number | string>;
+  method: string;
+  payment_method_setting_id?: number | string;
+  transaction_ref?: string;
+  note?: string;
+  paid_at?: string;
+  /// Guardian FEE_PAYMENT SMS per student - off unless explicitly asked for,
+  /// since a whole class at once can mean a lot of SMS credit.
+  notify_guardian?: boolean;
+}
+
 /* ================= ফি ধরণ ব্যবস্থাপনা (settings CRUD) ================= */
 
 export interface CreateFeeCategoryRequestDto {

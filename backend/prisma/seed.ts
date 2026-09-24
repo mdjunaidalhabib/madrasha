@@ -678,16 +678,29 @@ async function main() {
         sortOrder: 1,
       },
       {
+        keyName: "rejected",
+        name: "Rejected Admissions",
+        nameBn: "বাতিল হওয়া আবেদন",
+        sortOrder: 2,
+      },
+      {
         keyName: "fee_management",
         name: "Fee Setup",
         nameBn: "ফি সেটাপ",
-        sortOrder: 2,
+        sortOrder: 3,
       },
+      {
+        keyName: "fee_categories",
+        name: "Fee Categories",
+        nameBn: "ফি ধরণ সেটিংস",
+        sortOrder: 4,
+      },
+      // Always last in ইহতিমাম.
       {
         keyName: "activity",
         name: "Activity Log",
         nameBn: "অ্যাক্টিভিটি লগ",
-        sortOrder: 3,
+        sortOrder: 99,
       },
     ],
     // "teacher_admission"/"all_teacher" moved here from ইহতিমাম, joined by

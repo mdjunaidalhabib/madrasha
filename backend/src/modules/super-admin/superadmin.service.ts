@@ -6,6 +6,7 @@ import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
 import {
+  ALWAYS_PROVISIONED_ROLE_KEYS,
   DEFAULT_MADRASA_ROLES,
   DEFAULT_STUDENT_LIMIT,
   DEFAULT_USER_LIMIT,
@@ -194,7 +195,11 @@ export class SuperAdminService {
 
       /* ========================= ROLES ========================= */
       const roleMap: Record<string, number> = {};
-      for (const r of DEFAULT_MADRASA_ROLES) {
+      const requestedRoleKeys = new Set(default_users.map((u) => u.role?.toUpperCase()));
+      const rolesToCreate = DEFAULT_MADRASA_ROLES.filter(
+        (r) => ALWAYS_PROVISIONED_ROLE_KEYS.includes(r.key) || requestedRoleKeys.has(r.key),
+      );
+      for (const r of rolesToCreate) {
         const role = await this.repository.createRoleOnTx(tx, madrasaId, r.key, r.name);
         roleMap[r.key] = role.id;
 
@@ -298,9 +303,10 @@ export class SuperAdminService {
          class - the class's own template amount, else the generic one. A
          new student is never billed for an exam that hasn't been scheduled
          yet, and each exam's fee activates independently of the others,
-         either by an admin (POST /exams/:id/activate-fee, or switching the
-         exam on) or automatically once that exam's first routine is created
-         (see exam.hooks.ts). Default exams cover সকল বিভাগ, so every
+         only by ইহতেমাম (PATCH /fee-structures/exam-fees/:examId/status),
+         and only while তা'লীমাত has the exam itself switched on - an
+         exam's first routine switches the exam on, never its fee.
+         Default exams cover সকল বিভাগ, so every
          activated class gets a row. */
       const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
       const examFeeTemplates = defaultFeeStructures.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);

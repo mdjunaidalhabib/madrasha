@@ -77,6 +77,20 @@ export const getStudentById = async (req: Request, res: Response) => {
 };
 
 /* =========================================================
+   RESOLVE REGISTRATION NO -> ID (short, per-madrasa URLs in admin)
+========================================================= */
+export const getStudentIdByRegistrationNo = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.resolveIdByRegistrationNo(Number(req.params.regNo), madrasaId);
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "RESOLVE STUDENT REGISTRATION NO ERROR:");
+  }
+};
+
+/* =========================================================
    LOOKUP STUDENT BY NID (returning-student check for admission)
 ========================================================= */
 export const lookupStudentByNid = async (req: Request, res: Response) => {
@@ -267,6 +281,24 @@ export const expelStudent = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return respondWithError(res, error, "EXPEL STUDENT ERROR:");
+  }
+};
+
+/* =========================================================
+   INACTIVE / REACTIVATE STUDENT (status only, not Trash)
+========================================================= */
+export const setStudentInactive = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const inactive: boolean = req.body.inactive;
+    await studentService.setInactiveStatus(Number(req.params.id), madrasaId, inactive);
+
+    return res.json({
+      success: true,
+      message: inactive ? "Student marked inactive" : "Student reactivated",
+    });
+  } catch (error) {
+    return respondWithError(res, error, "SET STUDENT INACTIVE ERROR:");
   }
 };
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { studentPath } from "../students/studentRoute";
 import {
   invoiceApi,
   paymentMethodSettingApi,
@@ -387,7 +388,7 @@ const PendingAdmissionFeePage = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => navigate(`/students/${row.studentId}`)}
+                        onClick={() => navigate(studentPath({ id: row.studentId, registrationNo: row.student?.registrationNo }, "/edit"))}
                         className="min-w-0 text-left"
                       >
                         <div className="truncate font-medium text-gray-800 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400">

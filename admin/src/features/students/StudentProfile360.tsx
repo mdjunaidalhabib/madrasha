@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useStudentIdParam } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
@@ -8,19 +9,24 @@ import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { SkeletonCard, SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { studentStatusLabel } from "../../utils/studentStatus";
 import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 
 const TABS = [
-  { key: "overview", label: "ওভারভিউ" },
-  { key: "academic", label: "একাডেমিক" },
-  { key: "attendance", label: "উপস্থিতি" },
-  { key: "financial", label: "আর্থিক" },
-  { key: "library", label: "লাইব্রেরি" },
+  { key: "overview", label: "ওভারভিউ", slug: "" },
+  { key: "academic", label: "একাডেমিক", slug: "academic" },
+  { key: "attendance", label: "উপস্থিতি", slug: "attendance" },
+  { key: "financial", label: "আর্থিক", slug: "fees" },
+  { key: "library", label: "লাইব্রেরি", slug: "library" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+/** URL-এর ট্যাব সেগমেন্ট → TabKey; অজানা/খালি হলে ওভারভিউ */
+const tabFromSlug = (slug: string | undefined): TabKey =>
+  (slug && TABS.find((t) => t.slug === slug)?.key) || "overview";
 
 const money = (value: number | string | undefined) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
 
@@ -54,12 +60,19 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function StudentProfile360() {
-  const { id } = useParams();
+  const { id: ref } = useParams();
+  const id = useStudentIdParam();
   const navigate = useNavigate();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<TabKey>("overview");
+  // ট্যাব URL-এ থাকে: /students/:id (ওভারভিউ) বা /students/:id/:tab
+  const { tab: tabSlug } = useParams();
+  const tab = tabFromSlug(tabSlug);
+  const setTab = (key: TabKey) => {
+    const slug = TABS.find((t) => t.key === key)?.slug;
+    navigate(slug ? `/students/${ref}/${slug}` : `/students/${ref}`, { replace: true });
+  };
 
   // পূর্ণাঙ্গ (বিস্তারিত) তথ্য — ছাত্র/অভিভাবক/ঠিকানার সব ফিল্ড, শুধু দেখার জন্য (রিড-অনলি)
   const [fullStudent, setFullStudent] = useState<any>(null);
@@ -105,6 +118,19 @@ export default function StudentProfile360() {
     [student],
   );
 
+  // ডকুমেন্ট রিপোর্ট পাতায় এই শিক্ষার্থীকেই আগে থেকে বেছে খোলে (বিভাগ/শ্রেণি + student_id)
+  const documentsLink = (reportKey: string, examId?: number | null) => {
+    const params = new URLSearchParams({ key: reportKey, student_id: String(student.id) });
+    if (student.divisionId) params.set("division_id", String(student.divisionId));
+    if (student.classId) params.set("class_id", String(student.classId));
+    if (examId) params.set("exam_id", String(examId));
+    return `/reports/documents?${params.toString()}`;
+  };
+
+  // মার্কশিট: সর্বশেষ প্রকাশিত ফলাফলের পরীক্ষা (results ইতিমধ্যে নতুন→পুরাতন সাজানো)
+  const latestPublishedExamId =
+    results.find((row: any) => row.resultMaster?.status === "PUBLISHED")?.resultMaster?.examId ?? null;
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
@@ -133,28 +159,28 @@ export default function StudentProfile360() {
           <>
             <button
               type="button"
-              onClick={() => navigate(`/students/${id}`, { state: { autoEdit: true } })}
+              onClick={() => navigate(`/students/${ref}/edit`, { state: { autoEdit: true } })}
               className="h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               সম্পাদনা
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/reports/documents`)}
+              onClick={() => navigate(documentsLink("student-id-cards"))}
               className="h-9 rounded-md bg-teal-600 px-3 text-sm font-medium text-white hover:bg-teal-700"
             >
               আইডি কার্ড প্রিন্ট
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/reports/documents`)}
+              onClick={() => navigate(documentsLink("student-marksheets", latestPublishedExamId))}
               className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
             >
               মার্কশিট ডাউনলোড
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/fee-collection`)}
+              onClick={() => navigate(`/fee-collection?student_id=${student.id}`)}
               className="h-9 rounded-md bg-green-600 px-3 text-sm font-medium text-white hover:bg-green-700"
             >
               ফি কালেক্ট
@@ -211,7 +237,7 @@ export default function StudentProfile360() {
               <div>
                 <dt className="text-xs text-gray-400 dark:text-slate-500">অবস্থা</dt>
                 <dd className="text-gray-700 dark:text-slate-300">
-                  {Number(student.isActive) === 0 ? "বহিষ্কৃত" : "সক্রিয়"}
+                  {studentStatusLabel(student.isActive)}
                 </dd>
               </div>
             </dl>

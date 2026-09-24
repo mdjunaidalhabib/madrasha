@@ -22,8 +22,8 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "talimat/settings/documents": () => import("../features/talimat/TalimatDocumentsPage"),
   "talimat/settings/sessions": () => import("../features/session/SessionPage"),
   "talimat/settings/registration": () => import("../features/talimat/settings/RegistrationBlockSettingsPage"),
-  "students/new_admission": () => import("../features/students/AdmissionPage"),
-  "students/list": () => import("../features/students/StudentListPage"),
+  "students/new": () => import("../features/students/AdmissionPage"),
+  students: () => import("../features/students/StudentListPage"),
   "fee-management": () => import("../features/fee/FeeStructurePage"),
   "fee-collection": () => import("../features/fee/FeeInvoicesPage"),
   "fee/pending-fee": () => import("../features/fee/PendingAdmissionFeePage"),
@@ -56,7 +56,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "settings/users": () => import("../features/users/UsersPage"),
   "settings/trash": () => import("../features/admin/TrashPage"),
   "ihtemam/activity": () => import("../features/activity/ActivityPage"),
-  "hikmah-it": () => import("../features/vendor/HikmahItPage"),
+  "settings/about": () => import("../features/vendor/HikmahItPage"),
 };
 
 const prefetchedRoutes = new Set<string>();

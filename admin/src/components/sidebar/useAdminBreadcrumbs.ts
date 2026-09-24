@@ -13,7 +13,9 @@ import type { BreadcrumbItem } from "@madrasha/shared-ui/src/components/ui/Bread
 // same "হোম > সেটিংস > X" trail they had back when every settings page was
 // its own sidebar accordion child.
 const FALLBACK_LABELS: { test: RegExp; labels: string[] }[] = [
-  { test: /^students\/[^/]+$/, labels: ["শিক্ষার্থী প্রোফাইল"] },
+  { test: /^students\/[^/]+\/edit$/, labels: ["শিক্ষার্থী প্রোফাইল", "এডিট"] },
+  // /students/:id and /students/:id/:tab (profile tabs)
+  { test: /^students\/(?!admissions\/)[^/]+(\/[^/]+)?$/, labels:["শিক্ষার্থী প্রোফাইল"] },
   { test: /^teacher_staff\/teacher\/[^/]+$/, labels: ["শিক্ষক প্রোফাইল"] },
   { test: /^teacher_staff\/staff\/[^/]+$/, labels: ["স্টাফ প্রোফাইল"] },
   { test: /^talimat\/settings\/documents\/[^/]+\/[^/]+\/edit$/, labels: ["ডকুমেন্ট ডিজাইনার"] },
@@ -24,6 +26,7 @@ const FALLBACK_LABELS: { test: RegExp; labels: string[] }[] = [
   { test: /^settings\/roles$/, labels: ["সেটিংস", "রোল ও পারমিশন"] },
   { test: /^settings\/plan$/, labels: ["সেটিংস", "প্ল্যান"] },
   { test: /^settings\/trash$/, labels: ["সেটিংস", "ট্র্যাশ"] },
+  { test: /^settings\/about$/, labels: ["সেটিংস", "সফটওয়্যার সম্পর্কে"] },
 ];
 
 /**

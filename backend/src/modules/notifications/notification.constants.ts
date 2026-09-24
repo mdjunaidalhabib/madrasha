@@ -4,8 +4,8 @@ export const NOTIFICATION_CHANNELS = ["SMS", "EMAIL"] as const;
 /// notification.service.ts#triggerEvent and the hook call sites in
 /// student.service.ts (approveAdmission/updateStudent),
 /// fee.service.ts (recordPayment), payroll.service.ts (markPaid),
-/// result-panel.service.ts (publishResult), and exam.service.ts
-/// (activateExamFee).
+/// result-panel.service.ts (publishResult), and exam-fee.service.ts
+/// (setFeeActive).
 export const NOTIFICATION_EVENTS = [
   "ADMISSION",
   "INFO_UPDATE",

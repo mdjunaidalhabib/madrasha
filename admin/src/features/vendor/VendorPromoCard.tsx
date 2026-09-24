@@ -51,7 +51,7 @@ export default function VendorPromoCard() {
       </div>
 
       <div className="space-y-2.5 p-5">
-        <Link to={`/hikmah-it`} className={rowClass}>
+        <Link to={`/settings/about`} className={rowClass}>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white">
             <Sparkles className="h-5 w-5" strokeWidth={1.75} />
           </span>
@@ -62,51 +62,63 @@ export default function VendorPromoCard() {
           <ChevronRight className={rowTrailIconClass} strokeWidth={1.75} />
         </Link>
 
-        {(() => {
-          const founderRowClass =
-            "flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition hover:border-emerald-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-900";
-
-          const founderContent = (
-            <>
-              {promo.founder.photo_url ? (
-                <img
-                  src={promo.founder.photo_url}
-                  alt={promo.founder.name}
-                  className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-emerald-50 dark:ring-emerald-950/40"
-                />
-              ) : (
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-xs font-bold text-white ring-2 ring-emerald-50 dark:ring-emerald-950/40">
-                  {initials(promo.founder.name)}
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  <span className="truncate">{promo.founder.name}</span>
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={2} />
-                </span>
-                <span className={rowSubtitleClass}>{promo.founder.title}</span>
-              </span>
-            </>
-          );
-
-          return promo.contact.portfolio_url ? (
-            <a
-              href={promo.contact.portfolio_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={founderRowClass}
-            >
-              {founderContent}
-              <ExternalLink className={rowTrailIconClass} strokeWidth={1.75} />
-            </a>
-          ) : (
-            <Link to={`/hikmah-it`} className={founderRowClass}>
-              {founderContent}
-              <ChevronRight className={rowTrailIconClass} strokeWidth={1.75} />
-            </Link>
-          );
-        })()}
+        <FounderRow promo={promo} />
       </div>
     </Card>
   );
+}
+
+const founderRowClass =
+  "flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition hover:border-emerald-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-900";
+
+/** ফাউন্ডারের ছোট কার্ড — ড্যাশবোর্ড ও "সফটওয়্যার সম্পর্কে" পেজে একই রকম।
+ * portfolio_url থাকলে সেখানে যায়; না থাকলে `fallbackTo` (ড্যাশবোর্ডে এই
+ * পেজ), আর সেটাও না থাকলে শুধু দেখায়, ক্লিক হয় না। */
+export function FounderRow({
+  promo,
+  fallbackTo = "/settings/about",
+}: {
+  promo: Extract<VendorPromoPayload, { enabled: true }>;
+  fallbackTo?: string | null;
+}) {
+  const content = (
+    <>
+      {promo.founder.photo_url ? (
+        <img
+          src={promo.founder.photo_url}
+          alt={promo.founder.name}
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-emerald-50 dark:ring-emerald-950/40"
+        />
+      ) : (
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-xs font-bold text-white ring-2 ring-emerald-50 dark:ring-emerald-950/40">
+          {initials(promo.founder.name)}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
+          <span className="truncate">{promo.founder.name}</span>
+          <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={2} />
+        </span>
+        <span className={rowSubtitleClass}>{promo.founder.title}</span>
+      </span>
+    </>
+  );
+
+  if (promo.contact.portfolio_url) {
+    return (
+      <a href={promo.contact.portfolio_url} target="_blank" rel="noopener noreferrer" className={founderRowClass}>
+        {content}
+        <ExternalLink className={rowTrailIconClass} strokeWidth={1.75} />
+      </a>
+    );
+  }
+  if (fallbackTo) {
+    return (
+      <Link to={fallbackTo} className={founderRowClass}>
+        {content}
+        <ChevronRight className={rowTrailIconClass} strokeWidth={1.75} />
+      </Link>
+    );
+  }
+  return <div className={founderRowClass}>{content}</div>;
 }

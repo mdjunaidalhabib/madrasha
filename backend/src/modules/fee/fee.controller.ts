@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
-import { TenantNotFoundInRequestError } from "../../shared/errors";
+import { BadRequestError, TenantNotFoundInRequestError } from "../../shared/errors";
 import { feeService } from "./fee.service";
 import { examFeeService } from "./exam-fee.service";
 
@@ -110,6 +110,22 @@ export const payInvoice = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(res, { message: "Payment recorded successfully", data });
 });
 
+/* ---------- পরীক্ষার ফি একসাথে গ্রহণ ---------- */
+
+export const getExamFeeCollectSheet = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.getExamFeeCollectSheet(
+    getMadrasaId(req),
+    Number(req.query.exam_id) || 0,
+    Number(req.query.class_id) || 0,
+  );
+  return ApiResponse.success(res, { data });
+});
+
+export const bulkPayExamFee = asyncHandler(async (req: Request, res: Response) => {
+  const data = await feeService.bulkPayExamFee(getMadrasaId(req), req.user?.id, req.body);
+  return ApiResponse.success(res, { message: "পরীক্ষার ফি গ্রহণ সম্পন্ন হয়েছে", data });
+});
+
 export const waiveInvoice = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.waiveInvoice(
     Number(req.params.id),
@@ -153,4 +169,14 @@ export const getExamFees = asyncHandler(async (req: Request, res: Response) => {
 export const setExamFees = asyncHandler(async (req: Request, res: Response) => {
   const data = await examFeeService.setAmounts(getMadrasaId(req), Number(req.params.examId), req.body?.amounts);
   return ApiResponse.success(res, { data, message: "Exam fee updated successfully" });
+});
+
+/** ইহতেমাম's per-exam পরীক্ষার ফি on/off switch (see ExamFeeService.setFeeActive). */
+export const setExamFeeStatus = asyncHandler(async (req: Request, res: Response) => {
+  if (typeof req.body?.is_active !== "boolean") throw new BadRequestError("is_active must be true or false");
+  const data = await examFeeService.setFeeActive(getMadrasaId(req), Number(req.params.examId), req.body.is_active);
+  return ApiResponse.success(res, {
+    data,
+    message: data.fee_active ? "Exam fee switched on" : "Exam fee switched off",
+  });
 });

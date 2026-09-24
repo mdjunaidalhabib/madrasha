@@ -74,6 +74,72 @@ export const examFeeApi = {
       success: boolean;
       data: { created: number; updated: number; removed: number; invoicesCreated: number };
     }>(`/fee-structures/exam-fees/${examId}`, { amounts }),
+  /** ইহতেমাম's per-exam fee switch. On is refused while the exam itself is
+   * off; switching on bills every student and texts guardians. */
+  setStatus: (examId: number, isActive: boolean) =>
+    api.patch<{
+      success: boolean;
+      data: {
+        fee_active: boolean;
+        switchedOff: number;
+        invoicesRemoved: number;
+        invoicesKept: number;
+        invoicesCreated: number;
+        studentsNotified: number;
+      };
+    }>(`/fee-structures/exam-fees/${examId}/status`, { is_active: isActive }),
+};
+
+/* ================= পরীক্ষার ফি — শ্রেণিভিত্তিক একসাথে গ্রহণ ================= */
+// এক শ্রেণির বহু ছাত্রের পরীক্ষার ফি (সম্পূর্ণ বাকি) এক ক্লিকে গ্রহণ করার জন্য।
+
+export interface ExamFeeCollectRow {
+  invoice_id: number;
+  student_id: number;
+  name_bn: string;
+  roll: number | null;
+  amount: number;
+  paid: number;
+  waived: number;
+  due: number;
+  status: InvoiceStatus;
+}
+
+export interface ExamFeeCollectSheet {
+  exam: { id: number; name: string; year: string };
+  class: { id: number; name_bn: string };
+  rows: ExamFeeCollectRow[];
+  paid_count: number;
+  totals: { due: number };
+}
+
+export interface ExamFeeBulkPayPayload {
+  exam_id: number;
+  class_id: number;
+  invoice_ids: number[];
+  method: PaymentMethod;
+  payment_method_setting_id?: number;
+  transaction_ref?: string;
+  note?: string;
+  paid_at?: string;
+  notify_guardian: boolean;
+}
+
+export interface ExamFeeBulkPayResult {
+  succeeded: { invoice_id: number; student_id: number; amount: number; payment_id: number }[];
+  failed: { invoice_id: number; student_id: number; name_bn: string; reason: string }[];
+  total_collected: number;
+}
+
+export const examFeeCollectApi = {
+  /** Same exam × class overview as examFeeApi.overview, gated on fee.collect_payment. */
+  options: () => api.get<{ success: boolean; data: ExamFeeOverview }>("/invoices/exam-fee/options"),
+  getSheet: (examId: number, classId: number) =>
+    api.get<{ success: boolean; data: ExamFeeCollectSheet }>("/invoices/exam-fee/collect-sheet", {
+      params: { exam_id: examId, class_id: classId },
+    }),
+  bulkPay: (payload: ExamFeeBulkPayPayload) =>
+    api.post<{ success: boolean; data: ExamFeeBulkPayResult }>("/invoices/exam-fee/bulk-pay", payload),
 };
 
 /* ================= FEE CATEGORY SETTINGS (ফি ধরণ সেটিংস) ================= */

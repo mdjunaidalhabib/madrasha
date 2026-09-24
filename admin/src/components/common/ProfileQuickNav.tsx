@@ -24,7 +24,7 @@ type Props = {
   endpoint: string | null;
   currentId: string | number;
   /** id থেকে প্রোফাইল রুট বানায় */
-  profilePath: (id: string | number) => string;
+  profilePath: (id: string | number, record?: QuickNavRecord) => string;
   placeholder: string;
   ariaLabel: string;
   /** ড্রপডাউনের দ্বিতীয় লাইন — খালি অংশগুলো বাদ পড়ে */
@@ -175,12 +175,13 @@ const ProfileQuickNav = ({
   }, [open]);
 
   const goToRecord = useCallback(
-    (id?: number | string | null) => {
+    (record?: QuickNavRecord | null) => {
+      const id = record?.id;
       if (id === null || id === undefined) return;
       setQuery("");
       setOpen(false);
       inputRef.current?.blur();
-      navigate(profilePath(id));
+      navigate(profilePath(id, record ?? undefined));
     },
     [navigate, profilePath],
   );
@@ -203,7 +204,7 @@ const ProfileQuickNav = ({
       setHighlight((prev) => (prev - 1 + suggestions.length) % suggestions.length);
     } else if (event.key === "Enter") {
       event.preventDefault();
-      goToRecord(suggestions[highlight]?.id);
+      goToRecord(suggestions[highlight]);
     }
   };
 
@@ -280,7 +281,7 @@ const ProfileQuickNav = ({
                         optionRefs.current[index] = node;
                       }}
                       onMouseEnter={() => setHighlight(index)}
-                      onClick={() => goToRecord(record.id)}
+                      onClick={() => goToRecord(record)}
                       className={`group relative flex w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-all duration-200 ease-out ${
                         active
                           ? "bg-gradient-to-r from-blue-50 via-blue-50/50 to-transparent dark:from-blue-500/10 dark:via-blue-500/5"
@@ -300,6 +301,11 @@ const ProfileQuickNav = ({
                           {Number(record.is_active) === 0 && (
                             <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-px text-[11px] font-normal text-red-600 dark:bg-red-950/40 dark:text-red-400">
                               বহিষ্কৃত
+                            </span>
+                          )}
+                          {Number(record.is_active) === 2 && (
+                            <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-px text-[11px] font-normal text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              নিষ্ক্রিয়
                             </span>
                           )}
                         </p>
@@ -340,7 +346,7 @@ const ProfileQuickNav = ({
         <button
           type="button"
           disabled={!previousRecord}
-          onClick={() => goToRecord(previousRecord?.id)}
+          onClick={() => goToRecord(previousRecord)}
           aria-label="আগের প্রোফাইল"
           title={previousRecord ? `আগের: ${recordName(previousRecord)}` : "আগের কেউ নেই"}
           className={navButtonClass}
@@ -367,7 +373,7 @@ const ProfileQuickNav = ({
         <button
           type="button"
           disabled={!nextRecord}
-          onClick={() => goToRecord(nextRecord?.id)}
+          onClick={() => goToRecord(nextRecord)}
           aria-label="পরের প্রোফাইল"
           title={nextRecord ? `পরের: ${recordName(nextRecord)}` : "পরের কেউ নেই"}
           className={navButtonClass}

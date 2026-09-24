@@ -1,5 +1,5 @@
 import { lazy, Suspense, type JSX } from "react";
-import { Navigate, createBrowserRouter, useParams } from "react-router-dom";
+import { Navigate, createBrowserRouter, useLocation, useParams } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import AuthGuard from "../components/guards/AuthGuard";
@@ -129,6 +129,14 @@ const LegacyTeacherProfileRedirect = () => {
   return <Navigate to={`../teacher_staff/teacher/${id}`} replace />;
 };
 
+// Old student URLs (students/list, students/new_admission, students/:id/profile)
+// redirect to the REST-style ones, keeping any ?query / #hash (e.g. list filters).
+const LegacyStudentRedirect = ({ to }: { to: (id?: string) => string }) => {
+  const { id } = useParams();
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to(id)}${search}${hash}`} replace />;
+};
+
 const madrasaAdminChildren = [
   { index: true, element: <Navigate to="dashboard" replace /> },
   { path: "unauthorized", element: withSuspense(<UnauthorizedPage />) },
@@ -137,9 +145,8 @@ const madrasaAdminChildren = [
     path: "dashboard",
     element: <ModuleGuard module="dashboard">{withSuspense(<DashboardPage />)}</ModuleGuard>,
   },
-  // Not module-gated — every tenant admin can see who built/maintains their
-  // QMS, regardless of which modules their madrasa has activated.
-  { path: "hikmah-it", element: withSuspense(<HikmahItPage />) },
+  // পুরনো URL — ডেভেলপার তথ্য এখন সেটিংসের ভেতরে (/settings/about)।
+  { path: "hikmah-it", element: <Navigate to="/settings/about" replace /> },
 
   {
     path: "ihtemam/pending",
@@ -335,8 +342,14 @@ const madrasaAdminChildren = [
     path: "students/dashboard",
     element: <ModuleGuard module="students">{withSuspense(<StudentsDashboardPage />)}</ModuleGuard>,
   },
+  // REST-style student URLs: /students (list), /students/new (admission),
+  // /students/:id (profile), /students/:id/edit, /students/:id/:tab (profile tab).
   {
-    path: "students/new_admission",
+    path: "students",
+    element: <ModuleGuard module="students">{withSuspense(<StudentListPage />)}</ModuleGuard>,
+  },
+  {
+    path: "students/new",
     element: <ModuleGuard module="students">{withSuspense(<AdmissionPage />)}</ModuleGuard>,
   },
   {
@@ -347,10 +360,10 @@ const madrasaAdminChildren = [
     path: "students/admissions/rejected",
     element: <ModuleGuard module="students">{withSuspense(<RejectedAdmissionsPage />)}</ModuleGuard>,
   },
-  {
-    path: "students/list",
-    element: <ModuleGuard module="students">{withSuspense(<StudentListPage />)}</ModuleGuard>,
-  },
+  // Old student URLs -> new ones (query string preserved).
+  { path: "students/list", element: <LegacyStudentRedirect to={() => "/students"} /> },
+  { path: "students/new_admission", element: <LegacyStudentRedirect to={() => "/students/new"} /> },
+  { path: "students/:id/profile", element: <LegacyStudentRedirect to={(id) => `/students/${id}`} /> },
   {
     path: "attendance/mark",
     element: <ModuleGuard module="attendance">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>,
@@ -446,12 +459,21 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="accounts">{withSuspense(<PayrollPage />)}</ModuleGuard>,
   },
   {
+    // Profile, with an optional tab in the URL (e.g. /students/1045/fees).
+    // The ":tab" child renders nothing itself - it only puts `tab` into
+    // useParams() and keeps StudentProfile360 mounted while tabs switch.
+    // Static routes such as students/admissions/pending and students/:id/edit
+    // rank higher than ":tab", so they still win.
     path: "students/:id",
-    element: <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>,
+    element: <ModuleGuard module="students">{withSuspense(<StudentProfile360 />)}</ModuleGuard>,
+    children: [
+      { index: true, element: null },
+      { path: ":tab", element: null },
+    ],
   },
   {
-    path: "students/:id/profile",
-    element: <ModuleGuard module="students">{withSuspense(<StudentProfile360 />)}</ModuleGuard>,
+    path: "students/:id/edit",
+    element: <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>,
   },
 
   {
@@ -511,6 +533,9 @@ const madrasaAdminChildren = [
       { index: true, element: <Navigate to="profile" replace /> },
       { path: "profile", element: withSuspense(<ProfileSettingsPage />) },
       { path: "plan", element: withSuspense(<PlanSettingsPage />) },
+      // Not module/permission-gated — every tenant admin can see who
+      // built/maintains their QMS.
+      { path: "about", element: withSuspense(<HikmahItPage />) },
       {
         path: "branding",
         element: (

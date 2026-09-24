@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { studentPath, useStudentIdParam } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
 
 import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfile";
@@ -21,6 +22,7 @@ import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPr
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { sessionApi, type Session } from "../../services/sessionApi";
 import { assignStudentCard } from "../../services/phase1Api";
+import { STUDENT_STATUS_BADGE_CLASS, STUDENT_STATUS_LABEL, studentStatus } from "../../utils/studentStatus";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -52,7 +54,7 @@ const normalizeStudent = (raw: any) => {
 };
 
 const StudentProfilePage = () => {
-  const { id } = useParams();
+  const id = useStudentIdParam();
   const navigate = useNavigate();
 
   const [student, setStudent] = useState<any>(null);
@@ -162,7 +164,7 @@ const StudentProfilePage = () => {
         try {
           await api.delete(`/students/${id}`);
           useToastStore.getState().show("ট্র্যাশে সরানো হয়েছে", "success");
-          navigate(`/students/list`);
+          navigate(`/students`);
         } catch (error) {
           logger.error("DELETE ERROR:", error);
           useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
@@ -171,7 +173,38 @@ const StudentProfilePage = () => {
     });
   };
 
-  const isExpelled = Number(student?.is_active) === 0;
+  const status = studentStatus(student?.is_active);
+  const isExpelled = status === "EXPELLED";
+  const isInactive = status === "INACTIVE";
+
+  const handleInactiveToggle = () => {
+    const deactivating = !isInactive;
+
+    useConfirmStore.getState().show({
+      title: deactivating ? "শিক্ষার্থীকে নিষ্ক্রিয় করবেন?" : "শিক্ষার্থীকে সক্রিয় করবেন?",
+      message: deactivating
+        ? "নিষ্ক্রিয় শিক্ষার্থী হাজিরা, পরীক্ষা ও বিভিন্ন তালিকায় আসবে না। এটি বহিষ্কার নয় — রেকর্ড থাকবে, পরে চাইলে আবার সক্রিয় করা যাবে।"
+        : "এই শিক্ষার্থীকে আবার সক্রিয় করতে চান?",
+      confirmText: deactivating ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন",
+      onConfirm: async () => {
+        try {
+          setExpelBusy(true);
+          await api.patch(`/students/${id}/inactive`, { inactive: deactivating });
+          const next = deactivating ? 2 : 1;
+          setStudent((prev: any) => ({ ...prev, is_active: next }));
+          setOriginal((prev: any) => ({ ...prev, is_active: next }));
+          useToastStore
+            .getState()
+            .show(deactivating ? "নিষ্ক্রিয় করা হয়েছে" : "সক্রিয় করা হয়েছে", "success");
+        } catch (error) {
+          logger.error("SET STUDENT INACTIVE ERROR:", error);
+          useToastStore.getState().show("করা যায়নি", "error");
+        } finally {
+          setExpelBusy(false);
+        }
+      },
+    });
+  };
 
   const handleExpelToggle = () => {
     const expelling = !isExpelled;
@@ -270,7 +303,9 @@ const StudentProfilePage = () => {
   };
 
   const quickNavPath = useCallback(
-    (studentId: string | number) => `/students/${studentId}`,
+    // রেজি. নং থাকলে সেটাই URL-এ, না থাকলে `a-<id>`।
+    (studentId: string | number, record?: QuickNavRecord) =>
+      studentPath({ id: studentId, registration_no: record?.registration_no }, "/edit"),
     [],
   );
 
@@ -337,13 +372,9 @@ const StudentProfilePage = () => {
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold sm:text-2xl">Student Profile</h1>
           <span
-            className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-              isExpelled
-                ? "border-red-300 bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
-                : "border-green-300 bg-green-100 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400"
-            }`}
+            className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STUDENT_STATUS_BADGE_CLASS[status]}`}
           >
-            {isExpelled ? "বহিষ্কৃত" : "সক্রিয়"}
+            {STUDENT_STATUS_LABEL[status]}
           </span>
         </div>
 
@@ -365,6 +396,16 @@ const StudentProfilePage = () => {
           <button onClick={openCardModal} className={`${actionButtonClass} bg-teal-600`}>
             RFID কার্ড যুক্ত করুন
           </button>
+
+          {!isExpelled && (
+            <button
+              onClick={handleInactiveToggle}
+              disabled={expelBusy}
+              className={`${actionButtonClass} ${isInactive ? "bg-green-600" : "bg-slate-500"}`}
+            >
+              {isInactive ? "সক্রিয় করুন" : "নিষ্ক্রিয়"}
+            </button>
+          )}
 
           <button
             onClick={handleExpelToggle}

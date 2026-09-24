@@ -19,12 +19,11 @@ export interface ExamFeeAmountInput {
 const examCoversDivision = (exam: ExamRow, divisionId: number) =>
   exam.divisions.length === 0 || exam.divisions.some((d) => d.divisionId === divisionId);
 
-/** Whether this exam's fee has been switched on. Once rows exist their own
- * state is the truth (activateExamFee flips them all together); an exam with
- * no rows yet follows the exam itself, so a class added to an already-running
- * exam is billed straight away rather than sitting dormant. */
-const isFeeLive = (exam: ExamRow, rows: FeeRow[]) =>
-  rows.length ? rows.some((r) => r.isActive) : exam.isActive;
+/** Whether this exam's fee is billing. ইহতেমাম switches each exam's fee
+ * on/off (setFeeActive), independently of the exam itself - but it can only
+ * be live while the exam is on: switching the exam off stops its fee, and
+ * switching the exam back on does NOT restart it. */
+const isFeeLive = (exam: ExamRow, rows: FeeRow[]) => exam.isActive && rows.some((r) => r.isActive);
 
 const parseAmount = (value: ExamFeeAmountInput["amount"]): number | null => {
   if (value === null || value === undefined || String(value).trim() === "") return null;
@@ -43,6 +42,8 @@ const parseAmount = (value: ExamFeeAmountInput["amount"]): number | null => {
  *    billed, have it switched off), newly covered classes get one with a
  *    sensible default amount.
  *  - setAmounts() backs the ফি সেটাপ table edits.
+ *  - setFeeActive() is ইহতেমাম's per-exam on/off switch. The exam's own
+ *    on/off (তা'লীমাত) never starts the fee; switching the exam off stops it.
  *
  * Billing itself stays in FeeService; FeeRepository.findActiveStructuresForBilling
  * additionally refuses exam-linked rows for a class outside the exam's scope.
@@ -229,6 +230,92 @@ export class ExamFeeService {
     }
 
     await this.bill(madrasaId, billScopes);
+  }
+
+  /** ইহতেমাম's per-exam পরীক্ষার ফি switch (same idea as বেতন / বোর্ডিং ফি).
+   *  - on: only while the exam itself is on (তা'লীমাত controls that). Every
+   *    covered class's row goes live, enrolled students are billed and -
+   *    unless the fee was already live - every guardian gets an SMS.
+   *  - off: every row of the exam stops billing and its untouched invoices
+   *    are withdrawn (see deactivateFee); on again re-issues them. */
+  async setFeeActive(madrasaId: number, examId: number, active: boolean) {
+    const [exam] = await this.repository.findExams(madrasaId, examId);
+    if (!exam) throw new NotFoundError("Exam not found");
+
+    if (!active) {
+      const off = await this.deactivateFee(madrasaId, examId);
+      return { fee_active: false, ...off, invoicesCreated: 0, studentsNotified: 0 };
+    }
+
+    if (!exam.isActive) {
+      throw new BadRequestError(
+        `"${exam.name}" পরীক্ষাটি বন্ধ আছে — তা'লীমাত থেকে পরীক্ষা চালু হলে তবেই এর ফি চালু করা যাবে`,
+      );
+    }
+
+    const wasLive = isFeeLive(exam, await this.repository.findExamFeeRows(madrasaId, examId));
+
+    // Every covered class gets its row first (e.g. a class added since the
+    // exam was created), then the in-scope rows are switched on. A billed
+    // pre-dynamic "every class" row is switched on as-is.
+    await this.syncExam(madrasaId, examId);
+    const [rows, classes] = await Promise.all([
+      this.repository.findExamFeeRows(madrasaId, examId),
+      this.repository.findActiveClasses(madrasaId),
+    ]);
+    const covered = new Set(classes.filter((c) => examCoversDivision(exam, c.divisionId)).map((c) => c.classId));
+    const inScope = rows.filter((r) => (r.classId === null ? r._count.invoices > 0 : covered.has(r.classId)));
+    if (!inScope.length) {
+      throw new BadRequestError(`"${exam.name}" পরীক্ষার কোনো শ্রেণির ফি নির্ধারণ করা নেই — আগে ফি-এর পরিমাণ বসান`);
+    }
+    for (const row of inScope) {
+      if (!row.isActive) await this.repository.updateRow(row.id, madrasaId, { isActive: true });
+    }
+
+    let invoicesCreated = 0;
+    try {
+      invoicesCreated = (await feeService.backfillInvoicesForExam(madrasaId, examId)).invoicesCreated;
+    } catch (err) {
+      logger.error("exam fee billing failed:", err);
+    }
+
+    let studentsNotified = 0;
+    if (!wasLive) {
+      try {
+        studentsNotified = await feeService.notifyGuardiansOfExamFee(madrasaId, examId, exam.name);
+      } catch (err) {
+        logger.error("exam fee guardian notification failed:", err);
+      }
+    }
+
+    return {
+      fee_active: true,
+      switchedOff: 0,
+      invoicesRemoved: 0,
+      invoicesKept: 0,
+      invoicesCreated,
+      studentsNotified,
+    };
+  }
+
+  /** Switches this exam's পরীক্ষার ফি off - setFeeActive(false), and whenever
+   * তা'লীমাত switches the exam itself off. Every row stops billing and its
+   * not-yet-touched invoices are withdrawn, so no student is left owing a
+   * fee that is off; switching the fee on again re-issues them. Invoices
+   * with a payment or মওকুফ are kept - collected money is never undone. */
+  async deactivateFee(madrasaId: number, examId: number) {
+    const rows = await this.repository.findExamFeeRows(madrasaId, examId);
+    let switchedOff = 0;
+    for (const row of rows) {
+      if (!row.isActive) continue;
+      await this.repository.updateRow(row.id, madrasaId, { isActive: false });
+      switchedOff += 1;
+    }
+    const { removed, kept } = await this.repository.withdrawUntouchedInvoices(
+      madrasaId,
+      rows.map((r) => r.id),
+    );
+    return { switchedOff, invoicesRemoved: removed, invoicesKept: kept };
   }
 
   /** Re-syncs every exam - after a class is activated/deactivated for the madrasa. */

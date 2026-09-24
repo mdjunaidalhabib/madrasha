@@ -41,7 +41,7 @@ export class FeeRepository {
    * default for a freshly-created one, see createDefaultExamsOnTx) still
    * needs to be linkable here, since attaching its পরীক্ষার ফি structure
    * ahead of time is exactly what keeps it dormant until the exam is
-   * actually scheduled (see ExamService.activateExamFee). */
+   * switched on by ইহতেমাম (see ExamFeeService.setFeeActive). */
   findExamsForTenant(madrasaId: number) {
     return prisma.exam.findMany({
       where: { madrasaId, deletedAt: null },
@@ -78,7 +78,13 @@ export class FeeRepository {
    * it from being billed, not just hides it from the picklist. Matches by
    * feeType text since FeeStructure.feeType is a decoupled plain string. */
   updateStructuresActiveByFeeType(madrasaId: number, feeType: string, isActive: boolean) {
-    return prisma.feeStructure.updateMany({ where: { madrasaId, feeType }, data: { isActive } });
+    // Switching on never touches exam-linked rows: each exam's পরীক্ষার ফি
+    // is started only by ইহতেমাম, and only while its exam is on
+    // (ExamFeeService.setFeeActive). Switching off stops them all.
+    return prisma.feeStructure.updateMany({
+      where: { madrasaId, feeType, ...(isActive ? { examId: null } : {}) },
+      data: { isActive },
+    });
   }
 
   deleteStructure(id: number, madrasaId: number) {
@@ -86,7 +92,7 @@ export class FeeRepository {
   }
 
   /** Every FeeStructure linked to one specific Exam - drives
-   * ExamService.activateExamFee (find what to flip on + which classes/
+   * ExamFeeService.setFeeActive (which classes/
    * sessions to backfill invoices for). */
   findStructuresByExam(madrasaId: number, examId: number) {
     return prisma.feeStructure.findMany({
@@ -95,16 +101,6 @@ export class FeeRepository {
       where: { madrasaId, examId, isActive: true },
       select: { id: true, classId: true, sessionId: true, amount: true, name: true },
     });
-  }
-
-  /** Flips every FeeStructure linked to this Exam active - see
-   * ExamService.activateExamFee. */
-  countLiveStructuresByExam(madrasaId: number, examId: number) {
-    return prisma.feeStructure.count({ where: { madrasaId, examId, isActive: true } });
-  }
-
-  activateStructuresByExam(madrasaId: number, examId: number) {
-    return prisma.feeStructure.updateMany({ where: { madrasaId, examId }, data: { isActive: true } });
   }
 
   /* ================= INVOICES ================= */
@@ -461,6 +457,65 @@ export class FeeRepository {
    * skips the hook entirely. */
   findFeeStructureExamLink(madrasaId: number, feeStructureId: number) {
     return prisma.feeStructure.findFirst({ where: { id: feeStructureId, madrasaId }, select: { examId: true } });
+  }
+
+  /* ---------- পরীক্ষার ফি একসাথে গ্রহণ (class-wide exam-fee collection) ---------- */
+
+  /** The exam a collect-sheet/bulk-pay targets - tenant-scoped, and (like
+   * findExamsForTenant) not filtered to isActive so a dormant exam's
+   * already-billed fee can still be collected. */
+  findExamForTenant(madrasaId: number, examId: number) {
+    return prisma.exam.findFirst({
+      where: { id: examId, madrasaId, deletedAt: null },
+      select: { id: true, name: true, year: true },
+    });
+  }
+
+  /** Classes are platform-wide rows (tenants opt in via MadrasaClass), so
+   * this is only a display-name lookup - every invoice query below is what
+   * actually carries the tenant scope. */
+  findClassName(classId: number) {
+    return prisma.class.findUnique({ where: { id: classId }, select: { id: true, nameBn: true } });
+  }
+
+  /** Every পরীক্ষার ফি invoice of one exam × class (same "fee structure
+   * linked to the exam" rule as ResultPanelRepository.findExamFeeInvoices),
+   * limited to active students still in that class. */
+  findExamFeeInvoicesForClass(madrasaId: number, examId: number, classId: number) {
+    return prisma.invoice.findMany({
+      where: {
+        madrasaId,
+        feeStructure: { examId, classId },
+        student: { madrasaId, classId, isActive: 1, deletedAt: null },
+      },
+      select: {
+        id: true,
+        amount: true,
+        paidAmount: true,
+        waivedAmount: true,
+        status: true,
+        student: { select: { id: true, nameBn: true, roll: true } },
+      },
+    });
+  }
+
+  /** Bulk-pay pre-check: the requested invoices (tenant-scoped) with the
+   * exam/class their fee structure is linked to, so each one can be
+   * verified as belonging to the chosen exam × class before any payment. */
+  findInvoicesWithExamLink(madrasaId: number, ids: number[]) {
+    return prisma.invoice.findMany({
+      where: { id: { in: ids }, madrasaId },
+      select: {
+        id: true,
+        studentId: true,
+        amount: true,
+        paidAmount: true,
+        waivedAmount: true,
+        status: true,
+        feeStructure: { select: { examId: true, classId: true } },
+        student: { select: { nameBn: true } },
+      },
+    });
   }
 
   updateInvoiceOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { studentPath } from "./studentRoute";
 import { admissionApi } from "../../services/phase1Api";
 import { studentFeeDiscountApi, type FeePreviewRow } from "../../services/phase2Api";
 import { refreshSidebar } from "../../services/sidebarApi";
@@ -580,7 +581,7 @@ const RejectedAdmissionsPage = () => {
               <AdmissionFormPrintButton row={detailTarget} />
               <button
                 type="button"
-                onClick={() => navigate(`/students/${detailTarget.id}`)}
+                onClick={() => navigate(studentPath(detailTarget, "/edit"))}
                 className="h-9 rounded-md border border-blue-200 px-4 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-950/40"
               >
                 তথ্য সম্পাদনা করুন

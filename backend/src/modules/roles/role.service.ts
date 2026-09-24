@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { ApiError, BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
-import { isMuhtamimRole } from "../../shared/permissions";
+import { DEFAULT_ROLE_PERMISSION_KEYS, isMuhtamimRole, normalizeAppRole } from "../../shared/permissions";
 import { roleRepository, RoleRepository } from "./role.repository";
 import { CreateRoleRequestDto, UpdateRoleRequestDto } from "./role.dto";
 import { PROTECTED_ROLE_KEYS } from "./role.constants";
@@ -56,19 +56,32 @@ export class RoleService {
       throw new BadRequestError("name_bn is required");
     }
 
-    let keyName = dto.key_name?.trim().toUpperCase() || deriveKeyName(dto.name_bn);
+    // "তালিমাত"/"হিসাবরক্ষক" are no longer provisioned for every madrasa, so
+    // when one is created here it must get its built-in key - TALIMAT's
+    // exam-department authority (rbac-policy.ts) is keyed on it.
+    const builtinKey = normalizeAppRole(dto.key_name || dto.name_bn);
+    const isBuiltin = Object.prototype.hasOwnProperty.call(DEFAULT_ROLE_PERMISSION_KEYS, builtinKey);
+
+    let keyName = isBuiltin ? builtinKey : dto.key_name?.trim().toUpperCase() || deriveKeyName(dto.name_bn);
     const existing = await this.repository.findRoleByKeyForTenant(madrasaId, keyName);
     if (existing) {
+      if (isBuiltin) throw new ConflictError("এই রোলটি আগে থেকেই আছে");
       // Auto-disambiguate rather than fail outright on an auto-derived key.
       keyName = `${keyName}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
     }
+
+    const permissionKeys = dto.permission_keys?.length
+      ? dto.permission_keys
+      : isBuiltin
+        ? DEFAULT_ROLE_PERMISSION_KEYS[builtinKey]
+        : [];
 
     try {
       return await this.repository.runTransaction(async (tx) => {
         const role = await this.repository.createRoleOnTx(tx, madrasaId, keyName, dto.name_bn.trim());
 
-        if (dto.permission_keys?.length) {
-          const permissions = await this.repository.findPermissionIdsByKeys(dto.permission_keys);
+        if (permissionKeys.length) {
+          const permissions = await this.repository.findPermissionIdsByKeys(permissionKeys);
           await this.repository.setRolePermissionsOnTx(
             tx,
             role.id,

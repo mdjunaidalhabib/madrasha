@@ -22,7 +22,7 @@ export class ExamRepository {
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       include: {
         // Any linked fee row counts - a dormant exam's fee rows are
-        // themselves inactive until activateExamFee flips them on.
+        // themselves inactive until ইহতেমাম switches them on (ExamFeeService.setFeeActive).
         _count: { select: { feeStructures: true } },
         divisions: examDivisionsInclude,
       },

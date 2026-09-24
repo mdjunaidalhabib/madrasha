@@ -7,6 +7,7 @@ import {
   getFeeStructureExams,
   getExamFees,
   setExamFees,
+  setExamFeeStatus,
   createFeeStructure,
   updateFeeStructure,
   deleteFeeStructure,
@@ -21,6 +22,8 @@ import {
   clearPendingInvoices,
   backfillInvoices,
   payInvoice,
+  getExamFeeCollectSheet,
+  bulkPayExamFee,
   waiveInvoice,
   getPaymentMethodSettings,
   createPaymentMethodSetting,
@@ -45,6 +48,8 @@ router.get("/fee-structures/exams", rbacMiddleware("fee.read"), getFeeStructureE
 // paths, registered before /fee-structures/:id.
 router.get("/fee-structures/exam-fees", rbacMiddleware("fee.read"), getExamFees);
 router.put("/fee-structures/exam-fees/:examId", rbacMiddleware("fee.manage"), setExamFees);
+// ইহতেমাম-এর প্রতি-পরীক্ষা ফি চালু/বন্ধ - চালু শুধু পরীক্ষা চালু থাকলে, চালু হলে অভিভাবকদের SMS.
+router.patch("/fee-structures/exam-fees/:examId/status", rbacMiddleware("fee.manage"), setExamFeeStatus);
 router.post("/fee-structures", rbacMiddleware("fee.manage"), createFeeStructure);
 router.put("/fee-structures/:id", rbacMiddleware("fee.manage"), updateFeeStructure);
 router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStructure);
@@ -61,6 +66,13 @@ router.delete("/fee-categories/:id", rbacMiddleware("fee.manage"), deleteFeeCate
 // existed, and called automatically right after a fee structure is created.
 router.post("/invoices/backfill", rbacMiddleware("fee.manage"), backfillInvoices);
 router.get("/invoices", rbacMiddleware("fee.read"), getInvoices);
+// পরীক্ষার ফি একসাথে গ্রহণ (one exam × class) - literal paths, registered
+// before every /invoices/:id route so "exam-fee" is never read as an id.
+// "options" is the ফি সেটাপ exam × class overview for the picker, gated on
+// fee.collect_payment so a collector without fee.read can still use it.
+router.get("/invoices/exam-fee/options", rbacMiddleware("fee.collect_payment"), getExamFees);
+router.get("/invoices/exam-fee/collect-sheet", rbacMiddleware("fee.collect_payment"), getExamFeeCollectSheet);
+router.post("/invoices/exam-fee/bulk-pay", rbacMiddleware("fee.collect_payment"), bulkPayExamFee);
 // Backs the dedicated "বকেয়া ফী" management page - every overdue invoice
 // across every fee type, grouped per student.
 router.get("/invoices/overdue", rbacMiddleware("fee.read"), getOverdueFees);

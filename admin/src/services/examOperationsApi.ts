@@ -4,7 +4,7 @@ import api from "./api";
  * Exam Operations API bindings: Room/Hall, Invigilator Assignment, Seat
  * Allocation, Exam Attendance (backend modules mounted at /exam-rooms,
  * /exam-invigilators, /exam-seats, /exam-attendance). Thin typed wrappers
- * only, same pattern as phase1Api.ts/examCandidateApi.ts - pages call these
+ * only, same pattern as phase1Api.ts/phase2Api.ts - pages call these
  * directly, no React Query.
  */
 

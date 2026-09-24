@@ -157,7 +157,7 @@ export default function StudentsDashboardPage() {
                 value={bn(data.totalActiveStudents)}
                 tone="indigo"
                 icon={<Users size={20} />}
-                to="/students/list"
+                to="/students"
               />
               <PremiumStat
                 label="ছাত্র"
@@ -188,7 +188,7 @@ export default function StudentsDashboardPage() {
           </p>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
-            to="/students/new_admission"
+            to="/students/new"
           >
             <UserPlus size={16} /> নতুন ভর্তি
           </Link>
@@ -208,7 +208,7 @@ export default function StudentsDashboardPage() {
           )}
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
-            to="/students/list"
+            to="/students"
           >
             শিক্ষার্থী সমূহ
           </Link>

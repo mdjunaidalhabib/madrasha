@@ -4,7 +4,11 @@ import { Prisma } from "@prisma/client";
 vi.mock("../../../shared/database/prisma", () => ({ prisma: {} }));
 vi.mock("../../session/session.repository", () => ({ sessionRepository: {} }));
 vi.mock("../fee.service", () => ({
-  feeService: { backfillInvoicesForAllStudents: vi.fn(async () => ({ invoicesCreated: 3 })) },
+  feeService: {
+    backfillInvoicesForAllStudents: vi.fn(async () => ({ invoicesCreated: 3 })),
+    backfillInvoicesForExam: vi.fn(async () => ({ invoicesCreated: 4 })),
+    notifyGuardiansOfExamFee: vi.fn(async () => 9),
+  },
 }));
 
 import { feeService } from "../fee.service";
@@ -69,6 +73,7 @@ function build(opts: { examActive?: boolean; divisions?: number[]; rows?: Partia
       if (row) Object.assign(row, data);
       return { count: row ? 1 : 0 };
     }),
+    withdrawUntouchedInvoices: vi.fn(async () => ({ removed: 12, kept: 1 })),
     deleteRow: vi.fn(async (id: number) => {
       const i = rows.findIndex((r) => r.id === id);
       if (i >= 0) rows.splice(i, 1);
@@ -80,7 +85,7 @@ function build(opts: { examActive?: boolean; divisions?: number[]; rows?: Partia
   return { service, repository, rows, exam };
 }
 
-beforeEach(() => vi.mocked(feeService.backfillInvoicesForAllStudents).mockClear());
+beforeEach(() => vi.clearAllMocks());
 
 describe("ExamFeeService.syncExam - পরীক্ষার ফি follows the exam's বিভাগ", () => {
   it("creates a dormant row for every covered class from the template", async () => {
@@ -112,6 +117,7 @@ describe("ExamFeeService.syncExam - পরীক্ষার ফি follows the 
 
   it("bills newly covered classes immediately when the exam's fee is already live", async () => {
     const { service, rows } = build({
+      examActive: true,
       divisions: [HIFZ, KITAB],
       rows: [{ classId: 101, isActive: true }, { classId: 102, isActive: true }],
       template: 100,
@@ -168,5 +174,54 @@ describe("ExamFeeService.setAmounts", () => {
       ]),
     ).rejects.toBeInstanceOf(ConflictError);
     expect(repository.createRow).not.toHaveBeenCalled();
+  });
+});
+
+describe("ExamFeeService.setFeeActive - ইহতেমাম's per-exam switch", () => {
+  it("refuses to switch the fee on while the exam itself is off", async () => {
+    const { service, repository } = build({ examActive: false, rows: [{ classId: 101 }] });
+    await expect(service.setFeeActive(M, 7, true)).rejects.toBeInstanceOf(BadRequestError);
+    expect(repository.updateRow).not.toHaveBeenCalled();
+    expect(feeService.notifyGuardiansOfExamFee).not.toHaveBeenCalled();
+  });
+
+  it("switches covered rows on, bills and texts guardians", async () => {
+    const { service, rows } = build({
+      examActive: true,
+      divisions: [HIFZ],
+      rows: [{ classId: 101 }, { classId: 102 }],
+    });
+    const result = await service.setFeeActive(M, 7, true);
+    expect(rows.filter((r) => r.classId !== 201).every((r) => r.isActive)).toBe(true);
+    expect(result).toMatchObject({ fee_active: true, invoicesCreated: 4, studentsNotified: 9 });
+    expect(feeService.notifyGuardiansOfExamFee).toHaveBeenCalledWith(M, 7, "বার্ষিক");
+  });
+
+  it("does not text guardians again when the fee is already live", async () => {
+    const { service } = build({ examActive: true, divisions: [HIFZ], rows: [{ classId: 101, isActive: true }] });
+    await service.setFeeActive(M, 7, true);
+    expect(feeService.notifyGuardiansOfExamFee).not.toHaveBeenCalled();
+  });
+
+  it("refuses when no class has a fee amount", async () => {
+    const { service } = build({ examActive: true, divisions: [HIFZ], template: null });
+    await expect(service.setFeeActive(M, 7, true)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("switches every row off and withdraws its untouched invoices, whatever the exam's state", async () => {
+    const { service, rows, repository } = build({
+      examActive: false,
+      rows: [{ classId: 101, isActive: true }, { classId: 102, isActive: true }],
+    });
+    const result = await service.setFeeActive(M, 7, false);
+    expect(result).toMatchObject({ fee_active: false, switchedOff: 2, invoicesRemoved: 12, invoicesKept: 1 });
+    expect(repository.withdrawUntouchedInvoices).toHaveBeenCalledWith(M, rows.map((r) => r.id));
+    expect(rows.every((r) => !r.isActive)).toBe(true);
+  });
+
+  it("a live row never makes the fee count as live while the exam is off", async () => {
+    const { service } = build({ examActive: false, rows: [{ classId: 101, isActive: true }] });
+    const overview = await service.getOverview(M);
+    expect(overview.exams[0].fee_active).toBe(false);
   });
 });

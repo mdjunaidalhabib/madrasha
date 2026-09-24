@@ -1,10 +1,16 @@
 export const WEBSITE_STATUSES = ["active", "limited", "disabled"] as const;
 
+/** Built-in roles the permission layer knows by key (see rbac-policy.ts).
+ * Only MUHTAMIM is provisioned for every new madrasa - TALIMAT/ACCOUNTANT
+ * are created only when a default user is set up for them at creation
+ * time, otherwise the madrasa creates them itself from রোল ও পারমিশন. */
 export const DEFAULT_MADRASA_ROLES: Array<{ key: string; name: string }> = [
   { key: "MUHTAMIM", name: "মুহতামিম" },
   { key: "TALIMAT", name: "তালিমাত" },
   { key: "ACCOUNTANT", name: "হিসাবরক্ষক" },
 ];
+
+export const ALWAYS_PROVISIONED_ROLE_KEYS = ["MUHTAMIM"];
 
 export const DEFAULT_STUDENT_LIMIT = 100;
 export const DEFAULT_USER_LIMIT = 5;

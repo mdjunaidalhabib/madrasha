@@ -35,6 +35,14 @@ export class StudentRepository {
     });
   }
 
+  /** Resolves the madrasa's own registration no (used in admin URLs) to the DB id. */
+  findIdByRegistrationNo(madrasaId: number, registrationNo: number) {
+    return prisma.student.findFirst({
+      where: { madrasaId, registrationNo, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
   /**
    * Looks up a student by NID within a tenant, regardless of which
    * academic year they were last admitted under. Used to detect

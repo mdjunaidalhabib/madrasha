@@ -622,7 +622,7 @@ export default function DashboardPage() {
               </Link>
               <Link
                 className="flex items-center gap-3 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-md"
-                to={`/students/new_admission`}
+                to={`/students/new`}
               >
                 <UserPlus className="h-5 w-5 shrink-0" strokeWidth={1.75} />
                 নতুন ভর্তি

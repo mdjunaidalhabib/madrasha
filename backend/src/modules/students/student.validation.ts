@@ -11,6 +11,13 @@ import { idParamSchema } from "../../shared/validators";
  */
 export const studentIdParamSchema = idParamSchema;
 
+/** `/students/by-registration/:regNo` - the madrasa's own registration no. */
+export const registrationNoParamSchema = z.object({
+  params: z.object({
+    regNo: z.coerce.number().int().positive(),
+  }),
+});
+
 /** Body shape for the Student List bulk "move to Trash" action. */
 export const studentBulkDeleteSchema = z.object({
   body: z.object({
@@ -22,6 +29,12 @@ export const studentBulkDeleteSchema = z.object({
 export const studentExpelSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
   body: z.object({ expelled: z.boolean() }),
+});
+
+/** Body shape for toggling a student's Inactive (নিষ্ক্রিয়) status. */
+export const studentInactiveSchema = z.object({
+  params: z.object({ id: z.coerce.number().int().positive() }),
+  body: z.object({ inactive: z.boolean() }),
 });
 
 /** Body shape for directly transferring a student into a different session. */

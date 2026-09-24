@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Check, GraduationCap, GripVertical, Pencil, Plus, Trash2, Wallet, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Check,
+  GraduationCap,
+  GripVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -9,7 +19,6 @@ import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
-import { examStatusApi } from "../../services/examCandidateApi";
 import DivisionScopePicker from "./DivisionScopePicker";
 import { examCoversDivision, type ExamDivisionRef } from "./examDivisionScope";
 
@@ -22,8 +31,8 @@ type ExamItem = {
   endDate?: string | null;
   description?: string | null;
   /** Whether a পরীক্ষার ফি FeeStructure is linked to this exam - see
-   * backend ExamRepository.findExams. Drives the "এখনই ফি চালু করুন" action
-   * for a dormant (isActive: false) exam. */
+   * backend ExamRepository.findExams. Drives the "পরীক্ষা বন্ধ করলে ফি-ও বন্ধ হবে" confirmation
+   * when switching the exam off. */
   has_fee_link?: boolean;
   /** বিভাগভিত্তিক scope - empty = সকল বিভাগ. */
   division_ids?: number[];
@@ -53,7 +62,12 @@ const formatDateBn = (v?: string | null) => {
   return d.toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
 };
 
-export default function ExamList({ exams, reload, divisions = [], loading = false }: ExamListProps) {
+export default function ExamList({
+  exams,
+  reload,
+  divisions = [],
+  loading = false,
+}: ExamListProps) {
   const [name, setName] = useState("");
   const [divisionIds, setDivisionIds] = useState<number[]>([]);
   /** List filter: "" = সব পরীক্ষা, otherwise a division id. */
@@ -81,7 +95,6 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
   const [editDescription, setEditDescription] = useState("");
   const [editDivisionIds, setEditDivisionIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
-  const [activatingFeeId, setActivatingFeeId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setItems(exams);
@@ -119,49 +132,42 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
     }
   };
 
-  const toggleActive = async (exam: ExamItem) => {
-    // Switching on an exam with a linked fee also starts that fee (backend
-    // ExamService.updateExam -> activateExamFee): bills students and texts
-    // guardians - so it goes through the same confirmation as the button.
-    if (!exam.isActive && exam.has_fee_link) return activateFee(exam);
-
-    const nextActive = !exam.isActive;
-    setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, isActive: nextActive } : it)));
+  // তা'লীমাত only switches the exam. Its পরীক্ষার ফি is ইহতেমাম's own switch
+  // (ফি সেটাপ → পরীক্ষার ফি): switching the exam off stops that fee too,
+  // switching it back on leaves the fee off until ইহতেমাম turns it on.
+  const setExamActive = async (exam: ExamItem, nextActive: boolean) => {
+    setItems((prev) =>
+      prev.map((it) => (it.id === exam.id ? { ...it, isActive: nextActive } : it)),
+    );
 
     try {
       await api.put(`/exams/${exam.id}`, { is_active: nextActive });
+      if (nextActive && exam.has_fee_link) {
+        useToastStore
+          .getState()
+          .show(
+            `"${exam.name}" চালু হয়েছে — এর ফি ইহতেমাম (ফি সেটাপ) থেকে চালু করতে হবে`,
+            "success",
+          );
+      }
     } catch {
       useToastStore.getState().show("পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
       reload();
     }
   };
 
-  const activateFee = (exam: ExamItem) => {
-    useConfirmStore.getState().show({
-      title: "পরীক্ষার ফি চালু করবেন?",
-      message: `"${exam.name}" পরীক্ষাটি সক্রিয় হবে, এর সাথে যুক্ত ফি বিদ্যমান সব ছাত্রের জন্য বিল হবে এবং অভিভাবকদের এসএমএস পাঠানো হবে। চালিয়ে যেতে চান?`,
-      confirmText: "চালু করুন",
-      onConfirm: async () => {
-        try {
-          setActivatingFeeId(exam.id);
-          const res = await examStatusApi.activateFee(exam.id);
-          const data = res.data?.data;
-          useToastStore
-            .getState()
-            .show(
-              `ফি চালু হয়েছে - ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি, ${data?.studentsNotified ?? 0} জন অভিভাবককে জানানো হয়েছে`,
-              "success",
-            );
-          reload();
-        } catch (err: any) {
-          useToastStore
-            .getState()
-            .show(err?.response?.data?.message || "ফি চালু করা যায়নি", "error");
-        } finally {
-          setActivatingFeeId(null);
-        }
-      },
-    });
+  const toggleActive = (exam: ExamItem) => {
+    if (exam.isActive && exam.has_fee_link) {
+      useConfirmStore.getState().show({
+        title: "পরীক্ষা বন্ধ করবেন?",
+        message: `"${exam.name}" পরীক্ষাটি বন্ধ হলে এর ফি-ও স্বয়ংক্রিয়ভাবে বন্ধ হবে এবং অপরিশোধিত ইনভয়েসগুলো বাতিল হবে। পরে পরীক্ষা চালু করলে ফি আবার ইহতেমাম থেকে চালু করতে হবে।`,
+        confirmText: "বন্ধ করুন",
+        danger: true,
+        onConfirm: () => setExamActive(exam, false),
+      });
+      return;
+    }
+    return setExamActive(exam, !exam.isActive);
   };
 
   const deleteExam = (id: string | number, examName: string) => {
@@ -265,7 +271,9 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
 
   // Reordering a filtered subset would renumber only part of the list, so
   // drag-to-reorder is available on the unfiltered view only.
-  const visibleItems = filterDivision ? items.filter((it) => examCoversDivision(it, filterDivision)) : items;
+  const visibleItems = filterDivision
+    ? items.filter((it) => examCoversDivision(it, filterDivision))
+    : items;
   const canReorder = !filterDivision && items.length > 1;
   const filterOptions = [
     { id: "", label: "সব" },
@@ -299,7 +307,12 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
         </div>
 
         {divisions.length > 0 && (
-          <DivisionScopePicker divisions={divisions} value={divisionIds} onChange={setDivisionIds} disabled={adding} />
+          <DivisionScopePicker
+            divisions={divisions}
+            value={divisionIds}
+            onChange={setDivisionIds}
+            disabled={adding}
+          />
         )}
 
         <button
@@ -357,10 +370,14 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
         <div className="space-y-2">
           {divisions.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-              <span className="mr-1 text-xs text-slate-500 dark:text-slate-400">বিভাগ অনুযায়ী দেখুন:</span>
+              <span className="mr-1 text-xs text-slate-500 dark:text-slate-400">
+                বিভাগ অনুযায়ী দেখুন:
+              </span>
               {filterOptions.map((opt) => {
                 const on = filterDivision === opt.id;
-                const count = opt.id ? items.filter((it) => examCoversDivision(it, opt.id)).length : items.length;
+                const count = opt.id
+                  ? items.filter((it) => examCoversDivision(it, opt.id)).length
+                  : items.length;
                 return (
                   <button
                     key={opt.id || "all"}
@@ -374,7 +391,9 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
                     }`}
                   >
                     {opt.label}
-                    <span className={on ? "opacity-70" : "text-slate-400"}>({count.toLocaleString("bn-BD")})</span>
+                    <span className={on ? "opacity-70" : "text-slate-400"}>
+                      ({count.toLocaleString("bn-BD")})
+                    </span>
                   </button>
                 );
               })}
@@ -382,11 +401,16 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
           )}
 
           {canReorder && (
-            <p className="text-xs text-slate-400 dark:text-slate-500">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              টেনে (drag) ক্রম পরিবর্তন করা যাবে
+            </p>
           )}
 
           {visibleItems.length === 0 && (
-            <EmptyState title="এই বিভাগের কোনো পরীক্ষা নেই" hint="উপরে বিভাগ নির্বাচন করে নতুন পরীক্ষা যোগ করুন" />
+            <EmptyState
+              title="এই বিভাগের কোনো পরীক্ষা নেই"
+              hint="উপরে বিভাগ নির্বাচন করে নতুন পরীক্ষা যোগ করুন"
+            />
           )}
 
           {visibleItems.map((e) => {
@@ -464,7 +488,9 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
                         </span>
 
                         <div>
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">
+                            {e.name}
+                          </p>
                           {divisions.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {scopedDivisions.length === 0 ? (
@@ -500,25 +526,6 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
                         <Badge tone={e.isActive ? "green" : "slate"}>
                           {e.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
                         </Badge>
-                        {!e.isActive && e.has_fee_link && (
-                          <button
-                            onClick={() => activateFee(e)}
-                            disabled={activatingFeeId === e.id}
-                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
-                            title="এই পরীক্ষার ফি এখনই চালু করুন"
-                          >
-                            <Wallet size={14} />
-                            {activatingFeeId === e.id ? "চালু হচ্ছে..." : "এখনই ফি চালু করুন"}
-                          </button>
-                        )}
-                        {!e.isActive && !e.has_fee_link && (
-                          <span
-                            className="text-xs text-slate-400 dark:text-slate-500"
-                            title="এই পরীক্ষার সাথে এখনো কোনো ফি স্ট্রাকচার যুক্ত নেই - ফি সেটআপ থেকে যুক্ত করুন"
-                          >
-                            ফি যুক্ত নেই
-                          </span>
-                        )}
                         <ToggleSwitch
                           checked={e.isActive}
                           onChange={() => toggleActive(e)}
@@ -586,7 +593,6 @@ export default function ExamList({ exams, reload, divisions = [], loading = fals
                     />
                   </div>
                 )}
-
               </div>
             );
           })}

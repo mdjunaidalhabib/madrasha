@@ -462,7 +462,7 @@ const SessionPage = () => {
                   } else if (action === "fee_structures") {
                     handleCleanupFeeStructures(blockedSession);
                   } else {
-                    navigate(`/students/list?session=${blockedSession.id}`);
+                    navigate(`/students?session=${blockedSession.id}`);
                   }
                 }}
                 className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"

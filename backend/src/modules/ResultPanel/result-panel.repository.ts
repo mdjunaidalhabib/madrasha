@@ -935,6 +935,7 @@ export class ResultPanelRepository {
         resultMaster: {
           select: {
             status: true,
+            examId: true,
             exam: { select: { name: true } },
             class: { select: { nameBn: true, name: true } },
           },

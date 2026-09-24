@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Package,
   Trash2,
-  Code2,
+  Info,
 } from "lucide-react";
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
 import { useAuthStore } from "../../../store/authStore";
@@ -24,9 +24,7 @@ const SETTINGS_NAV_ITEMS: {
   icon: typeof Settings2;
   module?: string;
   permission?: string;
-  // Absolute override for entries that don't live under /settings/* (e.g. the
-  // developer-info page, which is a shared top-level route reused elsewhere —
-  // see HikmahItPage.tsx / VendorPromoCard.tsx).
+  // Absolute override for entries that don't live under /settings/*.
   path?: string;
 }[] = [
   { key: "profile", label: "প্রোফাইল সেটিংস", icon: UserCog },
@@ -36,7 +34,7 @@ const SETTINGS_NAV_ITEMS: {
   { key: "roles", label: "রোল ও পারমিশন", icon: ShieldCheck, module: "settings", permission: "roles.manage" },
   { key: "plan", label: "প্ল্যান", icon: Package },
   { key: "trash", label: "ট্র্যাশ", icon: Trash2, module: "settings" },
-  { key: "hikmah-it", label: "ডেভেলপার তথ্য", icon: Code2, path: "/hikmah-it" },
+  { key: "about", label: "সফটওয়্যার সম্পর্কে", icon: Info },
 ];
 
 export default function SettingsLayout() {

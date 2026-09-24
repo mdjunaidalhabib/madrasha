@@ -190,6 +190,15 @@ export class StudentService {
     return toStudentApiDto(row);
   }
 
+  async resolveIdByRegistrationNo(registrationNo: number, madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const row = await this.repository.findIdByRegistrationNo(madrasaId, registrationNo);
+    if (!row) throw new StudentNotFoundError();
+
+    return { id: row.id };
+  }
+
   async lookupByNid(
     nid: string,
     madrasaId: number | undefined,
@@ -1013,6 +1022,17 @@ export class StudentService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     const result = await this.repository.setActiveStatus(id, madrasaId, expelled ? 0 : 1);
+    if (result.count === 0) throw new StudentNotFoundError();
+    return result.count;
+  }
+
+  /** Flips the Inactive (নিষ্ক্রিয়, isActive = 2) status without touching Trash.
+   * Every roster/attendance/exam query filters `is_active = 1`, so an inactive
+   * student drops out of them exactly like an expelled one. */
+  async setInactiveStatus(id: number, madrasaId: number | undefined, inactive: boolean) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const result = await this.repository.setActiveStatus(id, madrasaId, inactive ? 2 : 1);
     if (result.count === 0) throw new StudentNotFoundError();
     return result.count;
   }

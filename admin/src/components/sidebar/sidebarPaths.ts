@@ -47,12 +47,28 @@ export const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   auto_settings: "communication/auto-settings",
 };
 
+// Per-module child routes that don't follow "module/childKey" - keyed by
+// `${moduleKey}/${childKey}` because a child key like "list" is too generic to
+// remap globally. Student URLs are REST-style: list at /students, admission at
+// /students/new (the DB sidebar keys stay "list" / "new_admission").
+export const MODULE_CHILD_PATHS: Record<string, string> = {
+  "students/list": "students",
+  "students/new_admission": "students/new",
+};
+
+// Child paths that only match exactly - "students" is the list page, but every
+// other students/* route (profile, dashboard, admission...) must not light up
+// the "শিক্ষার্থী সমূহ" entry via prefix matching.
+const EXACT_MATCH_CHILD_PATHS = new Set(["students"]);
+
 export function modulePath(key: string) {
   return MODULE_PATHS[key] || key;
 }
 
 export function childPath(moduleKey: string, childKey: string) {
   if (ABSOLUTE_CHILD_PATHS[childKey]) return ABSOLUTE_CHILD_PATHS[childKey];
+  const moduleChild = MODULE_CHILD_PATHS[`${moduleKey}/${childKey}`];
+  if (moduleChild) return moduleChild;
   return `${modulePath(moduleKey)}/${FEATURE_PATHS[childKey] || childKey}`;
 }
 
@@ -84,7 +100,7 @@ export function matchSidebarPath(
     for (const child of module.children) {
       if (child.disabled) continue;
       const cPath = childPath(module.key, child.key);
-      if (subpath === cPath || subpath.startsWith(`${cPath}/`)) {
+      if (subpath === cPath || (!EXACT_MATCH_CHILD_PATHS.has(cPath) && subpath.startsWith(`${cPath}/`))) {
         return { module, child };
       }
     }

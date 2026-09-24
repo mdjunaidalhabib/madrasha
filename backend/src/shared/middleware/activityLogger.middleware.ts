@@ -25,6 +25,9 @@ const SELF_LOGGED_ENTITIES = new Set(["users", "accounts", "document-templates",
 const SELF_LOGGED_ENTITY_PATHS = new Set([
   "invoices/pay",
   "invoices/waive",
+  // পরীক্ষার ফি একসাথে গ্রহণ - FeeService.bulkPayExamFee writes one summary
+  // row itself (plus recordPayment's per-invoice "invoices/pay" rows).
+  "invoices/exam-fee/bulk-pay",
   "students/admission",
   "students/approve",
   "students/reject",

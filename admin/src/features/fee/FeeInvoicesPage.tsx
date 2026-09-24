@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Wallet, CircleCheck, X, Pencil, Check } from "lucide-react";
+import { Search, Wallet, CircleCheck, X, Pencil, Check, Users } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   invoiceApi,
@@ -14,6 +14,9 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import InvoicePrintModal from "./InvoicePrintModal";
+import ExamFeeBulkCollectModal from "./ExamFeeBulkCollectModal";
+import { useAuthStore } from "../../store/authStore";
+import { hasPermission } from "../../utils/permissions";
 
 type StudentOption = {
   id: number;
@@ -171,6 +174,12 @@ const FeeInvoicesPage = () => {
   const [configuredMethods, setConfiguredMethods] = useState<PaymentMethodSetting[]>([]);
 
   const [printTarget, setPrintTarget] = useState<InvoiceRow | null>(null);
+
+  // শ্রেণিভিত্তিক পরীক্ষার ফি গ্রহণ (একসাথে বহু ছাত্র) - fee.collect_payment লাগে।
+  const authUser = useAuthStore((s) => s.user);
+  const authPermissions = useAuthStore((s) => s.permissions);
+  const canCollect = hasPermission(authUser, authPermissions, "fee.collect_payment");
+  const [bulkExamFeeOpen, setBulkExamFeeOpen] = useState(false);
 
   const loadConfiguredMethods = useCallback(async () => {
     try {
@@ -486,11 +495,23 @@ const FeeInvoicesPage = () => {
       className={`min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6 ${checkedInvoices.length > 0 ? "pb-28 sm:pb-20" : ""}`}
     >
       <div className="mx-auto max-w-6xl">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি গ্রহণ</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            ছাত্র খুঁজে নিন, মাসিক ফি আদায়-অনাদায় ছক দেখুন ও পেমেন্ট রেকর্ড করুন
-          </p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি গ্রহণ</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              ছাত্র খুঁজে নিন, মাসিক ফি আদায়-অনাদায় ছক দেখুন ও পেমেন্ট রেকর্ড করুন
+            </p>
+          </div>
+          {canCollect && (
+            <button
+              type="button"
+              onClick={() => setBulkExamFeeOpen(true)}
+              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:h-11"
+            >
+              <Users size={16} />
+              পরীক্ষার ফি — শ্রেণিভিত্তিক
+            </button>
+          )}
         </div>
 
         {/* Student search — always visible; type to find, pick a suggestion
@@ -1137,6 +1158,15 @@ const FeeInvoicesPage = () => {
           </button>
         </div>
       </Modal>
+
+      <ExamFeeBulkCollectModal
+        open={bulkExamFeeOpen}
+        onClose={() => setBulkExamFeeOpen(false)}
+        onCompleted={() => {
+          if (selectedStudent) loadInvoices();
+        }}
+        configuredMethods={configuredMethods}
+      />
 
       <InvoicePrintModal
         invoice={printTarget}

@@ -8,6 +8,7 @@ import {
   createStudentsBulk,
   updateStudentsBulk,
   lookupStudentByNid,
+  getStudentIdByRegistrationNo,
   getNextRoll,
   getPendingAdmissions,
   approveAdmission,
@@ -18,6 +19,7 @@ import {
   setFeeDiscount,
   bulkDeleteStudents,
   expelStudent,
+  setStudentInactive,
   transferStudentSession,
   getStudentsDashboardSummary,
 } from "./student.controller";
@@ -29,8 +31,10 @@ import { validate } from "../../shared/middleware/validate.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   studentIdParamSchema,
+  registrationNoParamSchema,
   studentBulkDeleteSchema,
   studentExpelSchema,
+  studentInactiveSchema,
   studentTransferSessionSchema,
 } from "./student.validation";
 
@@ -69,6 +73,17 @@ router.post(
 // registered before the "/:id" route below, otherwise "lookup" would be
 // parsed as an :id value.
 router.get("/lookup", tenantMiddleware, authMiddleware, rbacMiddleware("students.read"), lookupStudentByNid);
+
+// REGISTRATION NO -> ID (admin profile URLs show the madrasa's own reg no
+// instead of the global DB id).
+router.get(
+  "/by-registration/:regNo",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.read"),
+  validate(registrationNoParamSchema),
+  getStudentIdByRegistrationNo,
+);
 
 // NEXT ROLL SUGGESTION for a class+academic year - same ordering rule as
 // "/lookup" above, must come before "/:id".
@@ -150,6 +165,16 @@ router.patch(
   rbacMiddleware("students.expel"),
   validate(studentExpelSchema),
   expelStudent,
+);
+
+// INACTIVE / REACTIVATE - বহিষ্কার নয়, সাময়িক নিষ্ক্রিয় (isActive = 2); Trash-এ যায় না।
+router.patch(
+  "/:id/inactive",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.update"),
+  validate(studentInactiveSchema),
+  setStudentInactive,
 );
 
 // SESSION TRANSFER - direct reassignment into a different session.

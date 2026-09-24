@@ -138,7 +138,7 @@ const initialState: AdmissionFormData = {
   dob: "",
   age: null,
   bloodGroup: "",
-  residencyType: null,
+  residencyType: 1,
   isOrphan: false,
   roll: "",
   admissionDate: todayIso(),

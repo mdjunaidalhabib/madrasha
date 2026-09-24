@@ -440,8 +440,8 @@ export class SuperAdminRepository {
 
   // isActive: false - a brand-new madrasa's exams start as dormant
   // placeholders (no schedule, no fee) until an admin manually activates
-  // one or its first ExamRoutine is created (see ExamService.activateExamFee
-  // and exam.hooks.ts's autoActivateExamFeeForRoutine).
+  // one or its first ExamRoutine is created (see ExamService.activateExamForRoutine
+  // and exam.hooks.ts). Their fee stays off until ইহতেমাম switches it on.
   createDefaultExamsOnTx(tx: TransactionClient, madrasaId: number, names: string[], year: string) {
     return tx.exam.createMany({
       // `names` arrive in DefaultExam order - that order becomes the exams'

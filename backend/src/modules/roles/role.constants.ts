@@ -1,10 +1,10 @@
-import { DEFAULT_MADRASA_ROLES } from "../super-admin/superadmin.constants";
+import { ALWAYS_PROVISIONED_ROLE_KEYS } from "../super-admin/superadmin.constants";
 
-/** The 3 roles every madrasa is provisioned with (see
- * DEFAULT_MADRASA_ROLES). Some permission logic in
- * shared/permissions/rbac-policy.ts has hardcoded fallback behavior tied
- * to these key names (MUHTAMIM/TALIMAT/ACCOUNTANT), so deleting one could
- * silently break login/permission resolution for anyone still assigned
- * to it - block deletion of these regardless of user-count.
+/** Roles every madrasa is provisioned with (only MUHTAMIM). Permission
+ * logic in shared/permissions/rbac-policy.ts short-circuits on MUHTAMIM,
+ * so deleting it could silently break login/permission resolution - block
+ * deletion regardless of user-count. TALIMAT/ACCOUNTANT are optional and
+ * deletable like any custom role (the usual "no users assigned" rule still
+ * applies).
  */
-export const PROTECTED_ROLE_KEYS = DEFAULT_MADRASA_ROLES.map((r) => r.key);
+export const PROTECTED_ROLE_KEYS = ALWAYS_PROVISIONED_ROLE_KEYS;

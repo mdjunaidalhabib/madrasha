@@ -197,6 +197,8 @@ const UsersPage = () => {
             <Input
               type="text"
               placeholder="স্টাফের নাম"
+              name="staff-name"
+              autoComplete="off"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               className="h-10"
@@ -208,6 +210,8 @@ const UsersPage = () => {
             <Input
               type="email"
               placeholder="লগইন ইমেইল"
+              name="staff-email"
+              autoComplete="off"
               value={form.email}
               onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               className="h-10"
@@ -220,6 +224,8 @@ const UsersPage = () => {
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="কমপক্ষে ৬ অক্ষর"
+                name="staff-new-password"
+                autoComplete="new-password"
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
                 className="h-10 pr-9"
@@ -306,6 +312,7 @@ const UsersPage = () => {
                         <Input
                           type="text"
                           placeholder="মোবাইল নম্বর"
+                          autoComplete="off"
                           value={mobileDraft}
                           onChange={(e) => setMobileDraft(e.target.value)}
                           className="h-7 w-36 text-xs"
@@ -419,6 +426,7 @@ const UsersPage = () => {
                     <Input
                       type={resetShowPassword ? "text" : "password"}
                       placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)"
+                      autoComplete="new-password"
                       value={resetPassword}
                       onChange={(e) => setResetPassword(e.target.value)}
                       className="h-9 w-56 pr-9 text-xs"

@@ -273,6 +273,17 @@ export class SidebarService {
             disabled,
           });
         }
+
+        // Pin the menu order regardless of the seeded sortOrder values -
+        // already-seeded DB rows carry activity=3, which would otherwise wedge
+        // it between পেন্ডিং and the fallback entries above. ফি ধরণ সেটিংস
+        // follows ফি সেটাপ directly, and অ্যাক্টিভিটি লগ always sits last.
+        const ihtemamOrder = ["pending", "rejected", "fee_management", "fee_categories"];
+        for (const child of children) {
+          const idx = child.key ? ihtemamOrder.indexOf(child.key) : -1;
+          if (idx !== -1) child.sort_order = idx + 1;
+          else if (child.key === "activity") child.sort_order = 1000;
+        }
       }
 
       // Same reasoning as ihtemam/attendance above - surfaces the moved
