@@ -4,11 +4,11 @@ import { logger } from "../../shared/logger/logger";
 import { examRepository, ExamRepository } from "./exam.repository";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
 import { feeService } from "../fee/fee.service";
+import { examFeeService } from "../fee/exam-fee.service";
 import {
   CreateExamRequestDto,
   SaveGradeRequestDto,
   UpdateExamRequestDto,
-  UpdateExamStatusRequestDto,
   UpdateFailMarkRequestDto,
   UpdateDivisionFailMarkRequestDto,
 } from "./exam.dto";
@@ -18,7 +18,7 @@ import {
   resolveFailMark,
   withoutFailGradeRows,
 } from "../ResultPanel/division-grading";
-import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK, EXAM_STATUSES } from "./exam.constants";
+import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK } from "./exam.constants";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -66,6 +66,10 @@ const parseOptionalId = (value: unknown, label: string): number | null => {
   return id;
 };
 
+/** Two division scopes collide when either is "সকল বিভাগ" (empty) or they share a division. */
+const scopesOverlap = (a: number[], b: number[]) =>
+  a.length === 0 || b.length === 0 || a.some((id) => b.includes(id));
+
 const withDivisionId = <T extends { divisionId: number | null }>(row: T) => ({
   ...row,
   division_id: row.divisionId,
@@ -98,12 +102,20 @@ export class ExamService {
 
   /* ================= EXAMS ================= */
 
-  async listExams(madrasaId: number, activeOnly = false) {
+  async listExams(madrasaId: number, activeOnly = false, divisionIdInput?: unknown) {
+    const divisionId = parseOptionalId(divisionIdInput, "division_id");
     try {
-      const exams = await this.repository.findExams(madrasaId, activeOnly);
+      const exams = await this.repository.findExams(madrasaId, activeOnly, divisionId);
       return exams.map((exam) => {
-        const { _count, ...rest } = exam as typeof exam & { _count: { feeStructures: number } };
-        return { ...rest, has_fee_link: _count.feeStructures > 0 };
+        const { _count, divisions, ...rest } = exam;
+        return {
+          ...rest,
+          has_fee_link: _count.feeStructures > 0,
+          // বিভাগভিত্তিক scope: empty division_ids = সকল বিভাগ.
+          all_divisions: divisions.length === 0,
+          division_ids: divisions.map((d) => d.divisionId),
+          divisions: divisions.map((d) => ({ division_id: d.divisionId, division_name_bn: d.division.nameBn })),
+        };
       });
     } catch (err) {
       return friendlyFailure("getExams error:", err, "Failed to load exams");
@@ -121,12 +133,29 @@ export class ExamService {
     }
 
     const extra = this.buildExamMasterFields(dto);
+    const name = String(dto.name).trim();
+    const divisionIds = await this.parseDivisionIds(madrasaId, dto.division_ids ?? []);
+    await this.assertNoOverlappingExam(madrasaId, name, currentSession.name, divisionIds);
 
+    let examId: number;
     try {
-      await this.repository.createExam(madrasaId, String(dto.name).trim(), currentSession.name, extra);
+      const exam = await this.repository.createExam(madrasaId, name, currentSession.name, extra, divisionIds);
+      examId = exam.id;
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("createExam error:", err, "Failed to create exam");
+    }
+
+    // পরীক্ষার ফি rows for every class this exam covers (dormant until the
+    // exam's fee is activated). Never fails the exam creation itself.
+    await this.syncExamFeeSafely(madrasaId, examId);
+  }
+
+  private async syncExamFeeSafely(madrasaId: number, examId: number) {
+    try {
+      await examFeeService.syncExam(madrasaId, examId);
+    } catch (err) {
+      logger.error("exam fee sync failed:", err);
     }
   }
 
@@ -138,16 +167,103 @@ export class ExamService {
     }
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
 
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    const divisionIds =
+      dto.division_ids === undefined ? undefined : await this.parseDivisionIds(madrasaId, dto.division_ids);
+
+    if (!Object.keys(data).length && divisionIds === undefined) {
+      throw new BadRequestError("No valid data to update");
+    }
+
+    const current =
+      data.name !== undefined || divisionIds !== undefined || data.isActive === true
+        ? await this.repository.findExamById(id, madrasaId)
+        : null;
+
+    // Name or scope changing -> re-run the overlap-aware duplicate check
+    // against the exam's resulting (name, year, divisions).
+    if (data.name !== undefined || divisionIds !== undefined) {
+      if (!current) throw new NotFoundError("Exam not found");
+      await this.assertNoOverlappingExam(
+        madrasaId,
+        (data.name as string | undefined) ?? current.name,
+        current.year,
+        divisionIds ?? current.divisions.map((d) => d.divisionId),
+        id,
+      );
+    }
 
     try {
-      const result = await this.repository.updateExam(id, madrasaId, data);
+      const result = await this.repository.updateExam(id, madrasaId, data, divisionIds);
       if (!result.count) throw new NotFoundError("Exam not found");
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
       return friendlyFailure("updateExam error:", err, "Failed to update exam");
     }
+
+    // বিভাগ scope changed -> its পরীক্ষার ফি follows (classes added/removed).
+    if (divisionIds !== undefined) await this.syncExamFeeSafely(madrasaId, id);
+
+    // Switching a dormant exam on is the same event as "এখনই ফি চালু করুন":
+    // its linked fee goes live, students are billed and guardians told -
+    // otherwise the fee would stay dormant with no way left to start it.
+    if (current && !current.isActive && data.isActive === true) {
+      return this.activateExamFee(id, madrasaId);
+    }
+  }
+
+  /** Dedupes + validates the requested division scope against this
+   * madrasa's active divisions. Empty = সকল বিভাগ. Selecting every active
+   * division is also normalised to empty, so a division activated later is
+   * automatically covered by an exam that was meant for "everyone". */
+  private async parseDivisionIds(madrasaId: number, raw: unknown[]): Promise<number[]> {
+    const ids = [...new Set(raw.map((v) => Number(v)))];
+    if (ids.some((id) => !Number.isInteger(id) || id <= 0)) {
+      throw new BadRequestError("division_ids must be positive integers");
+    }
+    if (!ids.length) return [];
+
+    const active = await this.repository.findActiveDivisions(madrasaId);
+    const activeIds = new Set(active.map((d) => d.divisionId));
+    if (ids.some((id) => !activeIds.has(id))) {
+      throw new BadRequestError("নির্বাচিত বিভাগটি এই মাদরাসায় সক্রিয় নেই");
+    }
+    if (ids.length === activeIds.size) return [];
+    return ids.sort((a, b) => a - b);
+  }
+
+  /** Same name + year may exist more than once only for non-overlapping
+   * division scopes (e.g. হিফজ বিভাগ ও কিতাব বিভাগের আলাদা "বার্ষিক পরীক্ষা"). */
+  private async assertNoOverlappingExam(
+    madrasaId: number,
+    name: string,
+    year: string,
+    divisionIds: number[],
+    excludeExamId?: number,
+  ) {
+    const sameName = await this.repository.findExamsByNameAndYear(madrasaId, name, year);
+    const clash = sameName.some(
+      (exam) =>
+        exam.id !== excludeExamId &&
+        scopesOverlap(
+          divisionIds,
+          exam.divisions.map((d) => d.divisionId),
+        ),
+    );
+    if (clash) {
+      throw new ConflictError("এই নামে এই বিভাগের জন্য চলতি সেশনে ইতিমধ্যে একটি পরীক্ষা আছে");
+    }
+  }
+
+  /** Whether an exam is held for the given division (সকল বিভাগ exams cover
+   * every division). Used by routine/mark writes to refuse data for a
+   * division the exam doesn't belong to. A null division (class with no
+   * division) is only covered by a সকল বিভাগ exam. */
+  async examCoversDivision(examId: number, madrasaId: number, divisionId: number | null): Promise<boolean> {
+    const exam = await this.repository.findExamById(examId, madrasaId);
+    if (!exam) return false;
+    if (!exam.divisions.length) return true;
+    return divisionId !== null && exam.divisions.some((d) => d.divisionId === divisionId);
   }
 
   /** Shared Exam Master field parsing for create/update - only ever
@@ -171,19 +287,6 @@ export class ExamService {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) throw new BadRequestError(`Invalid ${label}`);
     return date;
-  }
-
-  async updateExamStatus(id: number, madrasaId: number, dto: UpdateExamStatusRequestDto) {
-    if (isEmpty(dto.status) || !EXAM_STATUSES.includes(dto.status as any)) {
-      throw new BadRequestError(`Invalid status "${dto.status}"`);
-    }
-    try {
-      const result = await this.repository.updateExamStatus(id, madrasaId, dto.status);
-      if (!result.count) throw new NotFoundError("Exam not found");
-    } catch (err) {
-      if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateExamStatus error:", err, "Failed to update exam status");
-    }
   }
 
   async deleteExam(id: number, madrasaId: number) {
@@ -218,6 +321,15 @@ export class ExamService {
     const exam = await this.repository.findExamById(examId, madrasaId);
     if (!exam) throw new NotFoundError("Exam not found");
 
+    // Already billing (e.g. the exam was switched off and on again): the
+    // re-run below stays idempotent, but guardians are not texted twice.
+    let feeAlreadyLive = false;
+    try {
+      feeAlreadyLive = await feeService.isExamFeeLive(madrasaId, examId);
+    } catch (err) {
+      logger.error("activateExamFee: fee state lookup failed:", err);
+    }
+
     const result = await this.repository.updateExam(examId, madrasaId, { isActive: true });
     if (!result.count) throw new NotFoundError("Exam not found");
 
@@ -227,6 +339,9 @@ export class ExamService {
     } catch (err) {
       logger.error("activateExamFee: fee-structure activation failed:", err);
     }
+    // Re-align with the exam's বিভাগ scope right away: the blanket
+    // activation above also flips rows of classes no longer covered.
+    await this.syncExamFeeSafely(madrasaId, examId);
 
     let invoicesCreated = 0;
     try {
@@ -238,7 +353,9 @@ export class ExamService {
 
     let studentsNotified = 0;
     try {
-      studentsNotified = await feeService.notifyGuardiansOfExamFee(madrasaId, examId, exam.name);
+      if (!feeAlreadyLive) {
+        studentsNotified = await feeService.notifyGuardiansOfExamFee(madrasaId, examId, exam.name);
+      }
     } catch (err) {
       logger.error("activateExamFee: guardian notification failed:", err);
     }

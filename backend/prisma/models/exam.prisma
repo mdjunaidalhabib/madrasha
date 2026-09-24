@@ -9,6 +9,11 @@
 /// moves through the workflow below. Defaults to DRAFT so every
 /// pre-existing exam row (migrated with this default) reads as "still being
 /// set up", which is the safest interpretation for historical data.
+///
+/// DEPRECATED (2026-09-24): nothing ever gated on this and the UI/API for it
+/// (খসড়া/প্রকাশিত) was removed - it read like result publishing, which lives
+/// on ResultMaster.status. The column stays only to avoid a destructive
+/// migration; an exam's lifecycle switch is `isActive` alone.
 enum ExamStatus {
   DRAFT
   PUBLISHED
@@ -48,8 +53,30 @@ model Exam {
   feeStructures  FeeStructure[]
   examCandidates ExamCandidate[]
   markComponentConfigs MarkComponentConfig[]
+  /// বিভাগভিত্তিক পরীক্ষা: which divisions this exam is held for. NO rows =
+  /// "সকল বিভাগ" (every division) - which is also how every exam created
+  /// before division scoping reads, so historical data needs no backfill.
+  divisions      ExamDivision[]
 
-  @@unique([madrasaId, name, year], map: "uniq_exam_madrasa")
+  /// Name uniqueness is no longer a DB constraint: two divisions may each
+  /// run their own "বার্ষিক পরীক্ষা" in the same year. ExamService enforces
+  /// "same name + year only when the division scopes don't overlap".
+  @@index([madrasaId, name, year], map: "idx_exam_madrasa_name_year")
   @@index([madrasaId, status], map: "idx_exam_madrasa_status")
   @@map("exams")
+}
+
+/// Exam <-> Division scope (see Exam.divisions). Composite PK, hard rows:
+/// the set is replaced wholesale on every exam create/update.
+model ExamDivision {
+  examId     Int      @map("exam_id")
+  divisionId Int      @map("division_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  exam     Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+
+  @@id([examId, divisionId])
+  @@index([divisionId], map: "idx_exam_divisions_division")
+  @@map("exam_divisions")
 }

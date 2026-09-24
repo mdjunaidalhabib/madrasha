@@ -720,7 +720,7 @@ export class ResultPanelRepository {
         ON rm.class_id = c.id AND rm.exam_id = ${examId} AND rm.madrasa_id = ${madrasaId}
         AND rm.deleted_at IS NULL
       WHERE mc.madrasa_id = ${madrasaId} AND c.division_id = ${divisionId} AND mc.is_active = 1
-      ORDER BY c.id ASC
+      ORDER BY mc.sort_order ASC, mc.id ASC
     `;
   }
 
@@ -728,14 +728,14 @@ export class ResultPanelRepository {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
       select: { division: { select: { id: true, nameBn: true } } },
-      orderBy: { division: { id: "asc" } },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
   findExams(madrasaId: number) {
     return prisma.exam.findMany({
       where: { madrasaId, deletedAt: null, isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, divisions: { select: { divisionId: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -744,7 +744,9 @@ export class ResultPanelRepository {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1 },
       select: { class: { select: { id: true, nameBn: true, divisionId: true } } },
-      orderBy: [{ class: { divisionId: "asc" } }, { class: { id: "asc" } }],
+      // Per-division serial; the grid groups these under findActiveDivisions'
+      // (already serial-ordered) divisions.
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
@@ -823,9 +825,10 @@ export class ResultPanelRepository {
    * only), this intentionally includes inactive/archived exams so a past
    * exam still shows up with its final "completed" status instead of just
    * disappearing. */
+  /** তালিমাত dashboard shows active exams only (list, status counts, fee picker). */
   findAllExamsForStatus(madrasaId: number) {
     return prisma.exam.findMany({
-      where: { madrasaId, deletedAt: null },
+      where: { madrasaId, deletedAt: null, isActive: true },
       select: { id: true, name: true, year: true, isActive: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
@@ -855,11 +858,50 @@ export class ResultPanelRepository {
     });
   }
 
-  countResultMastersByStatus(madrasaId: number) {
-    return prisma.resultMaster.groupBy({
-      by: ["status"],
-      where: { madrasaId, deletedAt: null },
+  findExamForDashboard(madrasaId: number, examId: number) {
+    return prisma.exam.findFirst({
+      where: { id: examId, madrasaId, deletedAt: null, isActive: true },
+      select: { id: true, name: true, year: true },
+    });
+  }
+
+  /** পরীক্ষার হাজিরা (exam-operations) of one exam, one row per candidate x
+   * status - the dashboard folds it into উপস্থিত/অনুপস্থিত ছাত্র counts. */
+  groupExamAttendanceForExam(madrasaId: number, examId: number) {
+    return prisma.examAttendance.groupBy({
+      by: ["examCandidateId", "status"],
+      where: { madrasaId, examRoutine: { examId } },
       _count: { _all: true },
+    });
+  }
+
+  /** How many routine slots of the exam have had attendance taken. */
+  countAttendedSlotsForExam(madrasaId: number, examId: number) {
+    return prisma.examAttendance
+      .groupBy({ by: ["examRoutineId"], where: { madrasaId, examRoutine: { examId } } })
+      .then((rows) => rows.length);
+  }
+
+  /** Every পরীক্ষার ফি invoice of one exam (its fee rows are the only
+   * FeeStructures linked to an exam) with the student it bills. */
+  findExamFeeInvoices(madrasaId: number, examId: number) {
+    return prisma.invoice.findMany({
+      where: { madrasaId, feeStructure: { examId }, student: { deletedAt: null } },
+      select: {
+        amount: true,
+        paidAmount: true,
+        waivedAmount: true,
+        status: true,
+        student: {
+          select: {
+            id: true,
+            nameBn: true,
+            roll: true,
+            classId: true,
+            classRef: { select: { nameBn: true, sortOrder: true } },
+          },
+        },
+      },
     });
   }
 
@@ -875,14 +917,6 @@ export class ResultPanelRepository {
     return prisma.resultSummary.groupBy({
       by: ["generalGrade"],
       where: { resultMaster: { madrasaId, examId, deletedAt: null }, generalGrade: { not: null } },
-      _count: { _all: true },
-    });
-  }
-
-  aggregateAverageForExam(madrasaId: number, examId: number) {
-    return prisma.resultSummary.aggregate({
-      where: { resultMaster: { madrasaId, examId, deletedAt: null } },
-      _avg: { average: true },
       _count: { _all: true },
     });
   }
@@ -935,7 +969,9 @@ export class ResultPanelRepository {
         passMark: true,
         book: { select: { id: true, nameBn: true, name: true } },
       },
-      orderBy: { book: { id: "asc" } },
+      // Subject serial within the class - this drives the full-result
+      // table's column order.
+      orderBy: [{ sortOrder: "asc" }, { book: { id: "asc" } }],
     });
   }
 

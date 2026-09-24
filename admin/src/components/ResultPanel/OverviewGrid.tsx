@@ -1,3 +1,4 @@
+import { examCoversDivision } from "../ExamPanel/examDivisionScope";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 
 interface Division {
@@ -8,6 +9,7 @@ interface Division {
 interface Exam {
   id: number;
   name: string;
+  division_ids?: number[];
 }
 
 interface ClassItem {
@@ -84,7 +86,7 @@ export default function OverviewGrid({
           <h2 className="text-base font-bold text-gray-800 mb-3 dark:text-slate-100">📝 {exam.name}</h2>
 
           <div className="space-y-4">
-            {divisions.map((div) => {
+            {divisions.filter((div) => examCoversDivision(exam, div.division_id)).map((div) => {
               const divClasses = classes.filter((c) => c.division_id === div.division_id);
               if (divClasses.length === 0) return null;
 

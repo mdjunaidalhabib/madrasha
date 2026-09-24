@@ -9,6 +9,8 @@ import {
   updateClass,
   deleteClass,
   reorderClasses,
+  getRegistrationBlocks,
+  updateRegistrationBlock,
   getSubjects,
   updateMiyariSubjects,
   reorderSubjects,
@@ -51,6 +53,11 @@ router.get("/madrasa-classes", getClasses);
 router.post("/madrasa-classes", manage, addClass);
 
 router.put("/madrasa-classes/reorder", manage, reorderClasses);
+
+// Per-class student registration-number blocks (e.g. 1-50, 51-100).
+router.get("/madrasa-classes/registration-blocks", getRegistrationBlocks);
+
+router.put("/madrasa-classes/:classId/registration-block", manage, updateRegistrationBlock);
 
 router.put("/madrasa-classes/:id", manage, updateClass);
 

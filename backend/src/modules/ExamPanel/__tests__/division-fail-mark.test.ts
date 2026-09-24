@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // otherwise open a DB connection at import time is stubbed.
 vi.mock("../../../shared/database/prisma", () => ({ prisma: {} }));
 vi.mock("../../fee/fee.service", () => ({ feeService: {} }));
+vi.mock("../../fee/exam-fee.service", () => ({ examFeeService: { syncExam: vi.fn() } }));
 vi.mock("../../session/session.repository", () => ({ sessionRepository: {} }));
 vi.mock("../../ResultPanel/result-panel.service", () => ({
   resultPanelService: { recalculateResults: vi.fn() },

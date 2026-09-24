@@ -292,23 +292,30 @@ export default function DashboardPage() {
                 আসন্ন কোনো পরীক্ষা নেই
               </p>
             )}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {/* One column, in routine order (date → time → শ্রেণি, see
+                dashboard.repository findUpcomingExams) - a 2-col grid read
+                left-to-right scattered same-day slots. */}
+            <div className="flex flex-col gap-1.5">
               {upcomingExams.map((exam: any) => (
                 <div
                   key={exam.id}
-                  className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
+                  className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
                 >
-                  <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                    পরীক্ষা
+                  <span className="w-24 shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                    {new Date(exam.examDate).toLocaleDateString("bn-BD", { day: "numeric", month: "short" })}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-medium text-slate-700 dark:text-slate-300">
-                    {exam.examName}
-                    {exam.className ? ` · ${exam.className}` : ""}
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {exam.examName}
+                      {exam.className ? ` · ${exam.className}` : ""}
+                    </span>
+                    {exam.subject && <span className="text-slate-500 dark:text-slate-400"> — {exam.subject}</span>}
                   </span>
-                  <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-                    {new Date(exam.examDate).toLocaleDateString("bn-BD")}
-                    {exam.startTime && exam.endTime ? ` · ${exam.startTime}-${exam.endTime}` : ""}
-                  </span>
+                  {exam.startTime && exam.endTime && (
+                    <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                      {exam.startTime}-{exam.endTime}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

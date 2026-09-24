@@ -11,10 +11,11 @@ import {
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { divisionsForExam, examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
-type Exam = { id: number; name: string; year: string | number };
+type Exam = { id: number; name: string; year: string | number; division_ids?: number[] };
 type ExamRoutineRow = {
   id: number;
   subject: string;
@@ -52,6 +53,9 @@ const ExamAttendancePage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<number, ExamAttendanceStatus>>({});
+
+  // বিভাগভিত্তিক পরীক্ষা: drop the exam if the picked division isn't one it's held for.
+  useClearMismatchedExam(exams, examId, division, () => setExamId(""));
 
   useEffect(() => {
     (async () => {
@@ -210,7 +214,7 @@ const ExamAttendancePage = () => {
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[180px]"
             >
               <option value="">পরীক্ষা নির্বাচন করুন</option>
-              {exams.map((exam) => (
+              {examsForDivision(exams, division).map((exam) => (
                 <option key={exam.id} value={exam.id}>
                   {exam.name} — {exam.year}
                 </option>
@@ -225,7 +229,10 @@ const ExamAttendancePage = () => {
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
               <option value="">বিভাগ নির্বাচন করুন</option>
-              {divisions.map((d) => (
+              {divisionsForExam(
+                divisions,
+                exams.find((e) => String(e.id) === examId),
+              ).map((d) => (
                 <option key={d.division_id} value={d.division_id}>
                   {d.division_name_bn}
                 </option>

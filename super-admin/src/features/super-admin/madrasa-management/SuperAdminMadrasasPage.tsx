@@ -49,6 +49,8 @@ export type Plan = {
   studentLimit: number;
   userLimit: number;
   durationDays: number;
+  /** Per-বিভাগ registration-number block size per class (see plan settings). */
+  regBlocks?: { divisionId: number; blockSize: number }[];
   website_status?: string;
   address?: string | null;
   phone?: string | null;

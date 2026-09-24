@@ -6,6 +6,7 @@ import { resultPanelRepository, ResultPanelRepository } from "./result-panel.rep
 import { logActivity } from "../../shared/utils/activity.util";
 import { hasFullMarksAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
 import { resultWorkflowService } from "./result-workflow.service";
+import { assertExamCoversClass } from "../ExamPanel/exam-scope";
 import {
   DEFAULT_GENERAL_GRADE_FALLBACK,
   DEFAULT_MADRASA_GRADE_FALLBACK,
@@ -664,6 +665,7 @@ export class ResultPanelService {
     const existing = await this.repository.findResultMaster(madrasaId, examId, classId);
     if (existing) return existing.id;
 
+    await assertExamCoversClass(madrasaId, examId, classId);
     const created = await this.repository.createResultMaster(madrasaId, examId, classId);
     return created.id;
   }
@@ -682,6 +684,7 @@ export class ResultPanelService {
       };
     }
 
+    await assertExamCoversClass(madrasaId, examId, classId);
     const created = await this.repository.createResultMaster(madrasaId, examId, classId);
     return { message: "Session created successfully", result_master_id: created.id };
   }
@@ -1151,7 +1154,12 @@ export class ResultPanelService {
       division_name_bn: r.division.nameBn,
     }));
 
-    const examRows = await this.repository.findExams(madrasaId);
+    // division_ids: বিভাগভিত্তিক scope (empty = সকল বিভাগ) so the overview
+    // grid only offers an exam under the divisions it is held for.
+    const examRows = (await this.repository.findExams(madrasaId)).map(({ divisions: scope, ...exam }) => ({
+      ...exam,
+      division_ids: scope.map((d) => d.divisionId),
+    }));
 
     const classRows = await this.repository.findActiveClasses(madrasaId);
     const classes = classRows.map((r) => ({
@@ -1211,34 +1219,22 @@ export class ResultPanelService {
     return { examStatusRows, examStatusBreakdown };
   }
 
-  /** Aggregate stats for the তালিমাত module's own dashboard - exam/publish
-   * counts, each exam's upcoming/ongoing/completed schedule status, plus
-   * for the most recent active exam a pass/fail/absent breakdown, average
-   * marks and grade distribution, and each class's entry status (entered
-   * vs total students). Separate from getResultOverview, which lists every
-   * division/exam/class for the marks-entry filters rather than
-   * summarizing outcomes. */
+  /** Aggregate stats for the তালিমাত module's own dashboard - exam counts,
+   * each exam's upcoming/ongoing/completed schedule status, plus for the
+   * most recent active exam a pass/fail breakdown, উপস্থিত/অনুপস্থিত
+   * (from পরীক্ষার হাজিরা), grade distribution, and each class's entry
+   * status (entered vs total students). Separate from getResultOverview,
+   * which lists every division/exam/class for the marks-entry filters
+   * rather than summarizing outcomes. */
   async getDashboardSummary(madrasaId: number) {
-    const [
-      totalExams,
-      activeExamsCount,
-      publishGroups,
-      overviewStatuses,
-      latestExam,
-      allExams,
-      routineRanges,
-    ] = await Promise.all([
+    const [totalExams, activeExamsCount, overviewStatuses, latestExam, allExams, routineRanges] = await Promise.all([
       this.repository.countAllExams(madrasaId),
       this.repository.countActiveExams(madrasaId),
-      this.repository.countResultMastersByStatus(madrasaId),
       this.repository.findOverviewStatuses(madrasaId),
       this.repository.findLatestActiveExam(madrasaId),
       this.repository.findAllExamsForStatus(madrasaId),
       this.repository.findExamRoutineDateRangeByExam(madrasaId),
     ]);
-
-    const published = publishGroups.find((g) => g.status === "PUBLISHED")?._count._all || 0;
-    const draft = publishGroups.find((g) => g.status === "DRAFT")?._count._all || 0;
 
     const { examStatusRows, examStatusBreakdown } = this.buildExamStatusRows(allExams, routineRanges);
 
@@ -1247,22 +1243,20 @@ export class ResultPanelService {
         latestExam: null,
         totalExams,
         activeExamsCount,
-        published,
-        draft,
         examStatusBreakdown,
         examStatusRows,
         statusBreakdown: { pass: 0, fail: 0, absent: 0 },
-        averageMarks: 0,
-        studentsGraded: 0,
+        attendance: { present: 0, absent: 0, slotsTaken: 0 },
         gradeDistribution: [] as { grade: string; count: number }[],
         classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number }[],
       };
     }
 
-    const [statusGroups, gradeGroups, avgAgg] = await Promise.all([
+    const [statusGroups, gradeGroups, attendanceGroups, slotsTaken] = await Promise.all([
       this.repository.groupResultStatusForExam(madrasaId, latestExam.id),
       this.repository.groupGeneralGradeForExam(madrasaId, latestExam.id),
-      this.repository.aggregateAverageForExam(madrasaId, latestExam.id),
+      this.repository.groupExamAttendanceForExam(madrasaId, latestExam.id),
+      this.repository.countAttendedSlotsForExam(madrasaId, latestExam.id),
     ]);
 
     const statusBreakdown = {
@@ -1270,6 +1264,17 @@ export class ResultPanelService {
       fail: statusGroups.find((g) => g.status === "FAIL")?._count._all || 0,
       absent: statusGroups.find((g) => g.status === "ABSENT")?._count._all || 0,
     };
+
+    // Per student (candidate): অনুপস্থিত = missed at least one বিষয়;
+    // উপস্থিত = sat (PRESENT/LATE) and missed none. EXCUSED/WITHHELD only
+    // slots count as neither.
+    const absentCandidates = new Set<number>();
+    const presentCandidates = new Set<number>();
+    for (const g of attendanceGroups) {
+      if (g.status === "ABSENT") absentCandidates.add(g.examCandidateId);
+      else if (g.status === "PRESENT" || g.status === "LATE") presentCandidates.add(g.examCandidateId);
+    }
+    for (const id of absentCandidates) presentCandidates.delete(id);
 
     const classStatus = overviewStatuses
       .filter((row: any) => row.exam_id === latestExam.id)
@@ -1283,15 +1288,72 @@ export class ResultPanelService {
       latestExam,
       totalExams,
       activeExamsCount,
-      published,
-      draft,
       examStatusBreakdown,
       examStatusRows,
       statusBreakdown,
-      averageMarks: Math.round(Number(avgAgg._avg.average || 0) * 100) / 100,
-      studentsGraded: avgAgg._count._all,
+      attendance: { present: presentCandidates.size, absent: absentCandidates.size, slotsTaken },
       gradeDistribution: gradeGroups.map((g) => ({ grade: g.generalGrade as string, count: g._count._all })),
       classStatus,
+    };
+  }
+
+  /** তালিমাত dashboard "পরীক্ষার ফি" panel: who has / hasn't paid one
+   * exam's fee (default: the latest active exam). A student counts as paid
+   * once nothing is left due on their exam-fee invoice(s) - paid or waived. */
+  async getDashboardExamFee(madrasaId: number, examId?: number) {
+    const exam = examId
+      ? await this.repository.findExamForDashboard(madrasaId, examId)
+      : await this.repository.findLatestActiveExam(madrasaId);
+    if (!exam) return { exam: null, paid: [], unpaid: [], totals: { collected: 0, due: 0 } };
+
+    const invoices = await this.repository.findExamFeeInvoices(madrasaId, exam.id);
+
+    type Row = {
+      student_id: number;
+      name_bn: string;
+      roll: number | null;
+      class_id: number;
+      class_name: string;
+      class_order: number;
+      amount: number;
+      paid: number;
+      due: number;
+    };
+    const byStudent = new Map<number, Row>();
+    for (const inv of invoices) {
+      const amount = Number(inv.amount);
+      const paid = Number(inv.paidAmount);
+      const due = inv.status === "WAIVED" ? 0 : Math.max(0, amount - paid - Number(inv.waivedAmount));
+      const row = byStudent.get(inv.student.id) ?? {
+        student_id: inv.student.id,
+        name_bn: inv.student.nameBn,
+        roll: inv.student.roll,
+        class_id: inv.student.classId,
+        class_name: inv.student.classRef?.nameBn || "",
+        class_order: inv.student.classRef?.sortOrder ?? 0,
+        amount: 0,
+        paid: 0,
+        due: 0,
+      };
+      row.amount += amount;
+      row.paid += paid;
+      row.due += due;
+      byStudent.set(inv.student.id, row);
+    }
+
+    const rows = [...byStudent.values()].sort(
+      (a, b) => a.class_order - b.class_order || (a.roll ?? 1e9) - (b.roll ?? 1e9) || a.student_id - b.student_id,
+    );
+    const strip = ({ class_order: _order, ...rest }: Row) => rest;
+
+    return {
+      exam,
+      paid: rows.filter((r) => r.due <= 0).map(strip),
+      unpaid: rows.filter((r) => r.due > 0).map(strip),
+      totals: {
+        collected: rows.reduce((sum, r) => sum + r.paid, 0),
+        due: rows.reduce((sum, r) => sum + r.due, 0),
+      },
     };
   }
 

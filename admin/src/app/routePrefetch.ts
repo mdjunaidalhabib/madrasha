@@ -21,6 +21,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "talimat/settings/grade": () => import("../features/talimat/settings/GradeSettingsPage"),
   "talimat/settings/documents": () => import("../features/talimat/TalimatDocumentsPage"),
   "talimat/settings/sessions": () => import("../features/session/SessionPage"),
+  "talimat/settings/registration": () => import("../features/talimat/settings/RegistrationBlockSettingsPage"),
   "students/new_admission": () => import("../features/students/AdmissionPage"),
   "students/list": () => import("../features/students/StudentListPage"),
   "fee-management": () => import("../features/fee/FeeStructurePage"),

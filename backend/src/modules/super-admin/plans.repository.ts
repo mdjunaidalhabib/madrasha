@@ -15,6 +15,7 @@ export class PlansRepository {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        regBlocks: { select: { divisionId: true, blockSize: true } },
       },
       orderBy: { id: "desc" },
     });
@@ -34,6 +35,7 @@ export class PlansRepository {
         deletedAt: true,
         createdAt: true,
         updatedAt: true,
+        regBlocks: { select: { divisionId: true, blockSize: true } },
       },
       orderBy: { deletedAt: "desc" },
     });
@@ -48,6 +50,14 @@ export class PlansRepository {
       where: { name, deletedAt: null, id: { not: excludeId } },
       select: { id: true },
     });
+  }
+
+  /** Replaces the plan's per-বিভাগ registration-block sizes. */
+  replaceRegBlocks(planId: number, rows: { divisionId: number; blockSize: number }[]) {
+    return prisma.$transaction([
+      prisma.planDivisionRegBlock.deleteMany({ where: { planId } }),
+      prisma.planDivisionRegBlock.createMany({ data: rows.map((r) => ({ planId, ...r })) }),
+    ]);
   }
 
   create(data: Prisma.PlanUncheckedCreateInput) {

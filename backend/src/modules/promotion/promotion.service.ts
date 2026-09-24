@@ -111,6 +111,9 @@ export class PromotionService {
         });
 
         let nextRoll = (await this.repository.getMaxRollOnTx(tx, madrasaId, toClassId, toYear)) + 1;
+        // Each class has its own registration-number block - a promoted
+        // student gets the next number of the destination class's block.
+        await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
         const summary = { promoted: 0, retained: 0, transferred: 0 };
 
         for (const decision of dto.decisions) {
@@ -128,6 +131,9 @@ export class PromotionService {
               previousClassId: fromClassId,
               academicYear: toYear,
               roll: assignedRoll,
+              ...(student.classId !== toClassId && student.registrationNo
+                ? { registrationNo: await this.repository.allocateRegistrationNoOnTx(tx, madrasaId, toClassId) }
+                : {}),
               ...(toSessionId !== undefined ? { sessionId: toSessionId } : {}),
             });
             await this.repository.createRecordOnTx(tx, {
@@ -166,6 +172,8 @@ export class PromotionService {
         return { batchId: batch.id, ...summary };
       });
     } catch (err) {
+      // e.g. RegistrationBlockFullError - the admin needs its actual message.
+      if (err instanceof BadRequestError) throw err;
       return friendlyFailure("promotionExecute error:", err, "Failed to execute promotion");
     }
   }

@@ -77,31 +77,64 @@ export class TrashRepository {
     });
   }
 
-  restoreExam(id: number, madrasaId: number) {
+  // Restored exams/divisions/classes/books come back as the LAST serial of
+  // their list (like a newly added one) - their old sortOrder may now clash
+  // with, or sit in the middle of, the list the madrasa re-arranged meanwhile.
+  async restoreExam(id: number, madrasaId: number) {
+    const last = await prisma.exam.findFirst({
+      where: { madrasaId, deletedAt: null },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
     return prisma.exam.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
-      data: { deletedAt: null },
+      data: { deletedAt: null, sortOrder: (last?.sortOrder ?? -1) + 1 },
     });
   }
 
-  restoreDivision(id: number, madrasaId: number) {
+  async restoreDivision(id: number, madrasaId: number) {
+    const last = await prisma.madrasaDivision.findFirst({
+      where: { madrasaId, isActive: 1 },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
     return prisma.madrasaDivision.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
-      data: { deletedAt: null, isActive: 1 },
+      data: { deletedAt: null, isActive: 1, sortOrder: (last?.sortOrder ?? -1) + 1 },
     });
   }
 
-  restoreClass(id: number, madrasaId: number) {
+  async restoreClass(id: number, madrasaId: number) {
+    const row = await prisma.madrasaClass.findFirst({
+      where: { id, madrasaId },
+      select: { class: { select: { divisionId: true } } },
+    });
+    const last = await prisma.madrasaClass.findFirst({
+      where: { madrasaId, isActive: 1, class: { divisionId: row?.class.divisionId ?? null } },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
     return prisma.madrasaClass.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
-      data: { deletedAt: null, isActive: 1 },
+      data: { deletedAt: null, isActive: 1, sortOrder: (last?.sortOrder ?? -1) + 1 },
     });
   }
 
-  restoreBook(id: number, madrasaId: number) {
+  async restoreBook(id: number, madrasaId: number) {
+    const row = await prisma.madrasaBook.findFirst({
+      where: { id, madrasaId },
+      select: { book: { select: { classId: true } } },
+    });
+    const last = row
+      ? await prisma.madrasaBook.findFirst({
+          where: { madrasaId, isActive: 1, book: { classId: row.book.classId } },
+          orderBy: { sortOrder: "desc" },
+          select: { sortOrder: true },
+        })
+      : null;
     return prisma.madrasaBook.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
-      data: { deletedAt: null, isActive: 1 },
+      data: { deletedAt: null, isActive: 1, sortOrder: (last?.sortOrder ?? -1) + 1 },
     });
   }
 

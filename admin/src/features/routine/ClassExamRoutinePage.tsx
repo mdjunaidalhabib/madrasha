@@ -25,11 +25,18 @@ import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { ReportBackground, ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
+import { examScopeLabel, examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
 type Teacher = { id: number; name_bn: string };
-type Exam = { id: number; name: string; year: string | number };
+type Exam = {
+  id: number;
+  name: string;
+  year: string | number;
+  division_ids?: number[];
+  divisions?: { division_id: number; division_name_bn: string | null }[];
+};
 
 type ClassRoutineRow = {
   id: number;
@@ -222,6 +229,9 @@ const ClassExamRoutinePage = () => {
       setTeachers([]);
     }
   }, []);
+
+  // বিভাগভিত্তিক পরীক্ষা: switching to a division the exam isn't held for drops it.
+  useClearMismatchedExam(exams, selectedExamId, division, () => setSelectedExamId(""));
 
   const loadExams = useCallback(async () => {
     try {
@@ -836,9 +846,10 @@ const ClassExamRoutinePage = () => {
                   className={inputClass}
                 >
                   <option value="">{classId ? "পরীক্ষা নির্বাচন করুন" : "প্রথমে শ্রেণি নির্বাচন করুন"}</option>
-                  {exams.map((exam) => (
+                  {examsForDivision(exams, division).map((exam) => (
                     <option key={exam.id} value={exam.id}>
                       {exam.name} — {exam.year}
+                      {exam.division_ids?.length ? ` (${examScopeLabel(exam)})` : ""}
                     </option>
                   ))}
                 </select>

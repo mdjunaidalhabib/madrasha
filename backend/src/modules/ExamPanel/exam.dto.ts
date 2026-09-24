@@ -4,6 +4,8 @@ export interface CreateExamRequestDto {
   start_date?: string;
   end_date?: string;
   description?: string;
+  /** বিভাগভিত্তিক scope; empty/omitted = সকল বিভাগ. */
+  division_ids?: number[];
 }
 
 export interface UpdateExamRequestDto {
@@ -13,10 +15,8 @@ export interface UpdateExamRequestDto {
   start_date?: string;
   end_date?: string;
   description?: string;
-}
-
-export interface UpdateExamStatusRequestDto {
-  status: string;
+  /** Omitted = keep the current scope; [] = সকল বিভাগ. */
+  division_ids?: number[];
 }
 
 export interface SaveGradeRequestDto {

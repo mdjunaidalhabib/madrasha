@@ -86,6 +86,54 @@ export class ClassPanelRepository {
     );
   }
 
+  /* ---- student registration-number blocks (see MadrasaClass.regNoStart) ---- */
+
+  findActiveClassRegistrationBlocks(madrasaId: number) {
+    return prisma.madrasaClass.findMany({
+      where: { madrasaId, isActive: 1 },
+      select: {
+        id: true,
+        classId: true,
+        sortOrder: true,
+        regNoStart: true,
+        regNoEnd: true,
+        regNoLastIssued: true,
+        class: { select: { nameBn: true, divisionId: true } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  /** Numbers already held inside a block - trashed students included, since
+   * they still hold theirs. */
+  getRegistrationUsageInRange(madrasaId: number, start: number, end: number) {
+    return prisma.student.aggregate({
+      where: { madrasaId, registrationNo: { gte: start, lte: end } },
+      _count: { registrationNo: true },
+      _max: { registrationNo: true },
+    });
+  }
+
+  findOverlappingRegistrationBlock(madrasaId: number, classId: number, start: number, end: number) {
+    return prisma.madrasaClass.findFirst({
+      where: {
+        madrasaId,
+        isActive: 1,
+        classId: { not: classId },
+        regNoStart: { not: null, lte: end },
+        regNoEnd: { not: null, gte: start },
+      },
+      select: { regNoStart: true, regNoEnd: true, class: { select: { nameBn: true } } },
+    });
+  }
+
+  updateClassRegistrationBlock(madrasaId: number, classId: number, start: number | null, end: number | null) {
+    return prisma.madrasaClass.updateMany({
+      where: { madrasaId, classId, isActive: 1 },
+      data: { regNoStart: start, regNoEnd: end },
+    });
+  }
+
   findActiveSubjectsByClass(madrasaId: number, classId: number) {
     return prisma.madrasaBook.findMany({
       where: { madrasaId, isActive: 1, book: { classId } },

@@ -153,8 +153,28 @@ model Plan {
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
 
   subscriptions MadrasaSubscription[]
+  regBlocks     PlanDivisionRegBlock[]
 
   @@map("plans")
+}
+
+/// Per-বিভাগ student registration-number block size a plan gives each class
+/// (e.g. Basic: নূরানী 30, নাযেরা/হিফজ 40, কিতাব 20 per class). Used only to
+/// lay out a madrasa's class blocks automatically - on creation, plan change
+/// and when a class is added (see assignMissingRegistrationBlocksOnTx). The
+/// madrasa admin can change any block afterwards; those edits are kept.
+model PlanDivisionRegBlock {
+  planId     Int      @map("plan_id")
+  divisionId Int      @map("division_id")
+  blockSize  Int      @map("block_size")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  plan     Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+
+  @@id([planId, divisionId])
+  @@map("plan_division_reg_blocks")
 }
 
 model ModuleDef {

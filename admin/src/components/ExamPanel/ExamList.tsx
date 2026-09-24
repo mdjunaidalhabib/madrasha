@@ -9,12 +9,9 @@ import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
-import {
-  EXAM_STATUS_VALUES,
-  EXAM_STATUS_LABELS_BN,
-  examStatusApi,
-  type ExamStatus,
-} from "../../services/examCandidateApi";
+import { examStatusApi } from "../../services/examCandidateApi";
+import DivisionScopePicker from "./DivisionScopePicker";
+import { examCoversDivision, type ExamDivisionRef } from "./examDivisionScope";
 
 type ExamItem = {
   id: string | number;
@@ -23,17 +20,21 @@ type ExamItem = {
   examType?: string | null;
   startDate?: string | null;
   endDate?: string | null;
-  status?: ExamStatus | null;
   description?: string | null;
   /** Whether a পরীক্ষার ফি FeeStructure is linked to this exam - see
    * backend ExamRepository.findExams. Drives the "এখনই ফি চালু করুন" action
    * for a dormant (isActive: false) exam. */
   has_fee_link?: boolean;
+  /** বিভাগভিত্তিক scope - empty = সকল বিভাগ. */
+  division_ids?: number[];
+  divisions?: ExamDivisionRef[];
 };
 
 interface ExamListProps {
   exams: ExamItem[];
   reload: () => void;
+  /** This madrasa's active divisions (GET /madrasa-divisions). */
+  divisions?: ExamDivisionRef[];
   /** True while the parent's initial (or a full re-) fetch of the exam list
    * is in flight. Only used to render skeleton rows before the first list
    * ever arrives - once `exams` has data, a later reload() no longer blanks
@@ -52,8 +53,11 @@ const formatDateBn = (v?: string | null) => {
   return d.toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
 };
 
-export default function ExamList({ exams, reload, loading = false }: ExamListProps) {
+export default function ExamList({ exams, reload, divisions = [], loading = false }: ExamListProps) {
   const [name, setName] = useState("");
+  const [divisionIds, setDivisionIds] = useState<number[]>([]);
+  /** List filter: "" = সব পরীক্ষা, otherwise a division id. */
+  const [filterDivision, setFilterDivision] = useState("");
   const [examType, setExamType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -75,8 +79,8 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editDivisionIds, setEditDivisionIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
-  const [statusBusyId, setStatusBusyId] = useState<string | number | null>(null);
   const [activatingFeeId, setActivatingFeeId] = useState<string | number | null>(null);
 
   useEffect(() => {
@@ -96,8 +100,10 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
         start_date: startDate || undefined,
         end_date: endDate || undefined,
         description: description.trim() || undefined,
+        division_ids: divisionIds,
       });
       setName("");
+      setDivisionIds([]);
       setExamType("");
       setStartDate("");
       setEndDate("");
@@ -114,6 +120,11 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
   };
 
   const toggleActive = async (exam: ExamItem) => {
+    // Switching on an exam with a linked fee also starts that fee (backend
+    // ExamService.updateExam -> activateExamFee): bills students and texts
+    // guardians - so it goes through the same confirmation as the button.
+    if (!exam.isActive && exam.has_fee_link) return activateFee(exam);
+
     const nextActive = !exam.isActive;
     setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, isActive: nextActive } : it)));
 
@@ -122,25 +133,6 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
     } catch {
       useToastStore.getState().show("পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
       reload();
-    }
-  };
-
-  const changeExamStatus = async (exam: ExamItem, status: ExamStatus) => {
-    if (status === exam.status) return;
-    const prevStatus = exam.status;
-    setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, status } : it)));
-
-    try {
-      setStatusBusyId(exam.id);
-      await examStatusApi.setStatus(exam.id, status);
-      useToastStore.getState().show("পরীক্ষার অবস্থা আপডেট হয়েছে", "success");
-    } catch (err: any) {
-      setItems((prev) => prev.map((it) => (it.id === exam.id ? { ...it, status: prevStatus } : it)));
-      useToastStore
-        .getState()
-        .show(err?.response?.data?.message || "পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
-    } finally {
-      setStatusBusyId(null);
     }
   };
 
@@ -193,6 +185,7 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
     setEditStartDate(toDateInputValue(exam.startDate));
     setEditEndDate(toDateInputValue(exam.endDate));
     setEditDescription(exam.description || "");
+    setEditDivisionIds(exam.division_ids ?? []);
   };
 
   const cancelEdit = () => {
@@ -202,6 +195,7 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
     setEditStartDate("");
     setEditEndDate("");
     setEditDescription("");
+    setEditDivisionIds([]);
   };
 
   const saveEdit = async (id: string | number) => {
@@ -217,6 +211,7 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
         start_date: editStartDate || undefined,
         end_date: editEndDate || undefined,
         description: editDescription.trim() || undefined,
+        division_ids: editDivisionIds,
       });
       useToastStore.getState().show("পরীক্ষা আপডেট হয়েছে", "success");
       cancelEdit();
@@ -268,6 +263,15 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
     persistOrder(items);
   };
 
+  // Reordering a filtered subset would renumber only part of the list, so
+  // drag-to-reorder is available on the unfiltered view only.
+  const visibleItems = filterDivision ? items.filter((it) => examCoversDivision(it, filterDivision)) : items;
+  const canReorder = !filterDivision && items.length > 1;
+  const filterOptions = [
+    { id: "", label: "সব" },
+    ...divisions.map((d) => ({ id: String(d.division_id), label: d.division_name_bn || "" })),
+  ];
+
   const dateInputClass =
     "h-9 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
@@ -284,12 +288,19 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
             placeholder="পরীক্ষার নাম (যেমনঃ প্রথম সাময়িক পরীক্ষা)"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !adding) addExam();
+            }}
           />
           <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
             <Plus size={16} />
             {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
           </Button>
         </div>
+
+        {divisions.length > 0 && (
+          <DivisionScopePicker divisions={divisions} value={divisionIds} onChange={setDivisionIds} disabled={adding} />
+        )}
 
         <button
           type="button"
@@ -344,17 +355,48 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
         <EmptyState title="কোনো পরীক্ষা যোগ করা হয়নি" hint="উপরে থেকে নতুন পরীক্ষা যোগ করুন" />
       ) : (
         <div className="space-y-2">
-          {items.length > 1 && (
+          {divisions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+              <span className="mr-1 text-xs text-slate-500 dark:text-slate-400">বিভাগ অনুযায়ী দেখুন:</span>
+              {filterOptions.map((opt) => {
+                const on = filterDivision === opt.id;
+                const count = opt.id ? items.filter((it) => examCoversDivision(it, opt.id)).length : items.length;
+                return (
+                  <button
+                    key={opt.id || "all"}
+                    type="button"
+                    onClick={() => setFilterDivision(opt.id)}
+                    aria-pressed={on}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                      on
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {opt.label}
+                    <span className={on ? "opacity-70" : "text-slate-400"}>({count.toLocaleString("bn-BD")})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {canReorder && (
             <p className="text-xs text-slate-400 dark:text-slate-500">টেনে (drag) ক্রম পরিবর্তন করা যাবে</p>
           )}
 
-          {items.map((e) => {
+          {visibleItems.length === 0 && (
+            <EmptyState title="এই বিভাগের কোনো পরীক্ষা নেই" hint="উপরে বিভাগ নির্বাচন করে নতুন পরীক্ষা যোগ করুন" />
+          )}
+
+          {visibleItems.map((e) => {
             const isEditing = editingId === e.id;
+            const scopedDivisions = e.divisions ?? [];
 
             return (
               <div
                 key={e.id}
-                draggable={!isEditing}
+                draggable={canReorder && !isEditing}
                 onDragStart={() => handleDragStart(e.id)}
                 onDragOver={(ev) => handleDragOver(ev, e.id)}
                 onDrop={(ev) => ev.preventDefault()}
@@ -405,15 +447,37 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
                   ) : (
                     <>
                       <div className="flex items-center gap-2.5">
-                        <span
-                          className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
-                          title="টেনে সরান"
-                        >
-                          <GripVertical size={18} />
+                        {canReorder && (
+                          <span
+                            className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
+                            title="টেনে সরান"
+                          >
+                            <GripVertical size={18} />
+                          </span>
+                        )}
+
+                        {/* ক্রমিক নম্বর = the exam's madrasa-wide serial (position in
+                            the full sortOrder list), so it stays the same under a
+                            division filter. */}
+                        <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 px-1 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {(items.indexOf(e) + 1).toLocaleString("bn-BD")}
                         </span>
 
                         <div>
                           <p className="font-semibold text-slate-800 dark:text-slate-100">{e.name}</p>
+                          {divisions.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {scopedDivisions.length === 0 ? (
+                                <Badge tone="slate">সকল বিভাগ</Badge>
+                              ) : (
+                                scopedDivisions.map((d) => (
+                                  <Badge key={d.division_id} tone="blue">
+                                    {d.division_name_bn}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                          )}
                           {(e.examType || e.startDate || e.endDate || e.description) && (
                             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                               {[
@@ -481,6 +545,15 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
                   )}
                 </div>
 
+                {isEditing && divisions.length > 0 && (
+                  <DivisionScopePicker
+                    divisions={divisions}
+                    value={editDivisionIds}
+                    onChange={setEditDivisionIds}
+                    disabled={saving}
+                  />
+                )}
+
                 {isEditing && (
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Input
@@ -514,23 +587,6 @@ export default function ExamList({ exams, reload, loading = false }: ExamListPro
                   </div>
                 )}
 
-                {!isEditing && e.status && (
-                  <div className="flex items-center gap-2 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">অবস্থা:</span>
-                    <select
-                      value={e.status}
-                      disabled={statusBusyId === e.id}
-                      onChange={(ev) => changeExamStatus(e, ev.target.value as ExamStatus)}
-                      className="h-7 rounded-md border border-slate-300 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    >
-                      {EXAM_STATUS_VALUES.map((status) => (
-                        <option key={status} value={status}>
-                          {EXAM_STATUS_LABELS_BN[status]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
             );
           })}

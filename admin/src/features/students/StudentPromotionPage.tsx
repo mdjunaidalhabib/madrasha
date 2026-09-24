@@ -5,6 +5,7 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
 
 type Division = {
   division_id: number;
@@ -20,6 +21,7 @@ type Exam = {
   id: number;
   name: string;
   year: string | number;
+  division_ids?: number[];
 };
 
 type DecisionStatus = "PROMOTED" | "RETAINED" | "TRANSFERRED";
@@ -57,6 +59,8 @@ const StudentPromotionPage = () => {
   const [fromYear, setFromYear] = useState(currentYear);
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState("");
+
+  useClearMismatchedExam(exams, examId, fromDivision, () => setExamId(""));
 
   // TO side
   const [toDivision, setToDivision] = useState("");
@@ -262,7 +266,7 @@ const StudentPromotionPage = () => {
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
             >
               <option value="">ফলাফল যাচাই (ঐচ্ছিক - সর্বশেষ পরীক্ষা)</option>
-              {exams.map((exam) => (
+              {examsForDivision(exams, fromDivision).map((exam) => (
                 <option key={exam.id} value={exam.id}>
                   {exam.name} — {exam.year}
                 </option>

@@ -377,12 +377,12 @@ export class FeeService {
     if (!name) throw new BadRequestError("নাম দিন");
 
     try {
-      const count = await this.repository.countCategories(madrasaId);
+      const sortOrder = await this.repository.nextCategorySortOrder(madrasaId);
       await this.repository.createCategory({
         madrasaId,
         name,
         isAdmissionType: Boolean(dto.is_admission_type),
-        sortOrder: count,
+        sortOrder,
       });
     } catch (err) {
       return friendlyFailure("createFeeCategory error:", err, "Failed to create fee category");
@@ -612,6 +612,11 @@ export class FeeService {
 
   /** Step 2 of activating an exam's fee - flips every FeeStructure linked to
    * this exam active. Returns how many structures were touched. */
+  /** Whether any of this exam's fee rows is already billing. */
+  async isExamFeeLive(madrasaId: number, examId: number) {
+    return (await this.repository.countLiveStructuresByExam(madrasaId, examId)) > 0;
+  }
+
   async activateExamLinkedFee(madrasaId: number, examId: number) {
     const result = await this.repository.activateStructuresByExam(madrasaId, examId);
     return result.count;

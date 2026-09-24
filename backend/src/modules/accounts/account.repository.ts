@@ -97,6 +97,13 @@ export class AccountRepository {
     return prisma.accountFund.count({ where: { madrasaId } });
   }
 
+  /** Next serial for a new fund = after the current last one (not the row
+   * count, which repeats a serial once any fund has been deleted). */
+  async nextFundSortOrder(madrasaId: number) {
+    const agg = await prisma.accountFund.aggregate({ where: { madrasaId }, _max: { sortOrder: true } });
+    return (agg._max.sortOrder ?? -1) + 1;
+  }
+
   findFunds(madrasaId: number, type?: AccountType) {
     return prisma.accountFund.findMany({
       where: { madrasaId, isActive: true, ...(type ? { type } : {}) },
@@ -121,8 +128,9 @@ export class AccountRepository {
     return prisma.accountFund.delete({ where: { id } });
   }
 
-  countCategories(fundId: number) {
-    return prisma.accountCategory.count({ where: { fundId } });
+  async nextCategorySortOrder(fundId: number) {
+    const agg = await prisma.accountCategory.aggregate({ where: { fundId }, _max: { sortOrder: true } });
+    return (agg._max.sortOrder ?? -1) + 1;
   }
 
   findCategoryForTenant(id: number, madrasaId: number) {

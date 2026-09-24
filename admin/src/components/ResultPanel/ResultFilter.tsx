@@ -1,3 +1,4 @@
+import { examsForDivision, useClearMismatchedExam } from "../ExamPanel/examDivisionScope";
 interface Division {
   division_id: number;
   division_name_bn: string;
@@ -6,6 +7,7 @@ interface Division {
 interface Exam {
   id: number;
   name: string;
+  division_ids?: number[];
 }
 
 interface ClassItem {
@@ -38,6 +40,9 @@ export default function ResultFilter({
   setExamId,
   setClassId,
 }: Props) {
+  // বিভাগভিত্তিক পরীক্ষা: an exam not held for the picked division is dropped.
+  useClearMismatchedExam(exams, examId, divisionId, () => setExamId(""));
+
   return (
     <div className="bg-white shadow-md rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 dark:bg-slate-900">
       {/* DIVISION */}
@@ -64,7 +69,7 @@ export default function ResultFilter({
         className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       >
         <option value="">পরীক্ষা</option>
-        {exams.map((e) => (
+        {examsForDivision(exams, divisionId).map((e) => (
           <option key={e.id} value={e.id}>
             {e.name}
           </option>

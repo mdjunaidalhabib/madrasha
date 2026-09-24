@@ -14,6 +14,7 @@ import { withSubjectColumns } from "../../components/Report/academic/AcademicRes
 import { useColumnVisibility } from "../../hooks/useColumnVisibility";
 import { useAuthStore } from "../../store/authStore";
 import { ClassItem, Division, ExamItem, ReportColumn, ReportShellProps } from "./types";
+import { examCoversDivision, examsForDivision } from "../../components/ExamPanel/examDivisionScope";
 import { getRowClassId, getRowDivisionId } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { filterPeopleBySearch } from "../../utils/personSearch";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
@@ -834,7 +835,7 @@ const ReportShell = ({
               subjectOptions={subjectOptions}
               divisions={divisions}
               classes={classes}
-              exams={exams}
+              exams={examsForDivision(exams, selectedDivision)}
               activeReport={activeReport}
               divisionRequired={divisionRequired}
               exportColumns={exportColumns}
@@ -843,6 +844,13 @@ const ReportShell = ({
               onDivisionChange={(value) => {
                 setSelectedDivision(value);
                 loadClassesByDivision(value);
+                // বিভাগভিত্তিক পরীক্ষা: keep the picked exam only if it's held
+                // for the new division, else move to that division's first one.
+                const current = exams.find((e) => String(e.id) === selectedExam);
+                if (current && !examCoversDivision(current, value)) {
+                  const fallback = examsForDivision(exams, value)[0];
+                  setSelectedExam(fallback ? String(fallback.id) : "");
+                }
                 setSelectedSubject("");
                 setPage(1);
               }}

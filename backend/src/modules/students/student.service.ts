@@ -280,6 +280,13 @@ export class StudentService {
         data.roll = null;
       }
 
+      // Each class has its own registration-number block - a returning student
+      // applying into a different class gives up the old class's number and
+      // gets the next one of the new class's block on approval (see approveAdmission).
+      if (existing && existing.classId !== classId) {
+        data.registrationNo = null;
+      }
+
       if (existing) {
         const updateData = { ...data } as Record<string, any>;
         delete updateData.madrasaId;
@@ -290,7 +297,7 @@ export class StudentService {
           action: "re_admitted" as const,
           previousAcademicYear: existing.academicYear,
           roll: data.roll as number | null,
-          registrationNo: existing.registrationNo,
+          registrationNo: "registrationNo" in data ? null : existing.registrationNo,
         };
       }
 
@@ -298,7 +305,7 @@ export class StudentService {
       // a PENDING (or later REJECTED) application must not occupy one. A
       // registration number is only assigned once a Muhtamim approves this
       // admission (see approveAdmission), which is also where it's
-      // actually allocated via getMaxRegistrationNoOnTx.
+      // actually allocated via allocateRegistrationNoOnTx.
       const created = await this.repository.createOnTx(tx, {
         ...data,
         registrationNo: null,
@@ -434,7 +441,11 @@ export class StudentService {
       let inserted = 0;
       let updated = 0;
       const preview: BulkAdmissionRow[] = [];
-      let nextRegistrationNo = await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId);
+      // Each number comes from the row's class block (see
+      // registration-no.allocator.ts); the allocator sees rows created
+      // earlier in this same transaction, so no local counter is needed.
+      const nextRegistrationNo = (scopeClassId: number) =>
+        this.repository.allocateRegistrationNoOnTx(tx, madrasaId, scopeClassId);
       const rollCounters = new Map<string, number>();
 
       for (let index = 0; index < prepared.length; index++) {
@@ -471,9 +482,12 @@ export class StudentService {
         // no PENDING state of its own, so backfill one now (and approve the
         // record) instead of leaving it permanently null and stuck PENDING.
         if (existing && !existing.registrationNo) {
-          nextRegistrationNo += 1;
-          data.registrationNo = nextRegistrationNo;
+          data.registrationNo = await nextRegistrationNo(classId);
           data.admissionStatus = "APPROVED";
+        } else if (existing && existing.classId !== classId) {
+          // Moving into another class - the old class's number doesn't
+          // carry over; take the next one in the new class.
+          data.registrationNo = await nextRegistrationNo(classId);
         }
 
         if (existing) {
@@ -504,10 +518,9 @@ export class StudentService {
             existingByNid.set(nid, { ...existing, ...updateData });
           }
         } else {
-          nextRegistrationNo += 1;
           const created = await this.repository.createOnTx(tx, {
             ...data,
-            registrationNo: nextRegistrationNo,
+            registrationNo: await nextRegistrationNo(classId),
           } as Prisma.StudentUncheckedCreateInput);
           inserted++;
           preview.push({
@@ -856,6 +869,14 @@ export class StudentService {
         );
       }
 
+      // Each class has its own registration-number block - a class change
+      // hands out the next number of the new class's block. A still-PENDING
+      // applicant has none yet and gets it on approval instead.
+      if (targetClassId !== existing.classId && existing.registrationNo) {
+        await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+        data.registrationNo = await this.repository.allocateRegistrationNoOnTx(tx, madrasaId, targetClassId);
+      }
+
       if (!Object.keys(data).length) {
         throw new BadRequestError("No valid data to update");
       }
@@ -1089,7 +1110,7 @@ export class StudentService {
       let registrationNo = locked.registrationNo;
       if (!registrationNo) {
         await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-        registrationNo = (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
+        registrationNo = await this.repository.allocateRegistrationNoOnTx(tx, madrasaId, locked.classId);
       }
 
       const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, {

@@ -14,6 +14,7 @@ import {
   restorePlan,
   permanentDeletePlan,
 } from "../../../services/superAdminApi";
+import { catalogDivisionApi, type CatalogDivisionDto } from "../../../services/superAdminCatalogApi";
 
 type Plan = {
   id: number;
@@ -24,6 +25,7 @@ type Plan = {
   price: number;
   isActive: number | boolean;
   deletedAt?: string | null;
+  regBlocks?: { divisionId: number; blockSize: number }[];
 };
 
 type PlanForm = {
@@ -34,6 +36,9 @@ type PlanForm = {
   price: number;
   is_active: 0 | 1;
 };
+
+/** divisionId -> block size text, as typed (empty = no automatic block). */
+type RegBlockDraft = Record<number, string>;
 
 const emptyForm: PlanForm = {
   name: "",
@@ -72,6 +77,26 @@ function sanitizePriceText(input: string) {
   if (parts.length === 1) return intPart || "0";
   const dec = (parts[1] || "").replace(/[^\d]/g, "").slice(0, 2);
   return `${intPart || "0"}.${dec}`;
+}
+
+/** Plan's per-বিভাগ registration-number block size per class, in the
+ * catalog's বিভাগ order - e.g. "নূরানী ৩০ · নাযেরা/হিফজ ৪০ · কিতাব ২০". */
+function RegBlockSizes({ plan, divisions }: { plan: Plan; divisions: CatalogDivisionDto[] }) {
+  const sizes = new Map((plan.regBlocks || []).map((b) => [b.divisionId, b.blockSize]));
+  const items = divisions.filter((d) => sizes.get(d.id));
+  if (!items.length) return <span className="text-xs text-gray-400 dark:text-slate-500">সেট করা নেই</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {items.map((d) => (
+        <span
+          key={d.id}
+          className="whitespace-nowrap rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+        >
+          {d.label || d.name} {sizes.get(d.id)!.toLocaleString("bn-BD")}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function IconButton({
@@ -119,6 +144,8 @@ export default function SuperAdminPlansPage() {
 
   // price input as text (for formatting/sanitize)
   const [priceText, setPriceText] = useState("0");
+  const [divisions, setDivisions] = useState<CatalogDivisionDto[]>([]);
+  const [regBlocks, setRegBlocks] = useState<RegBlockDraft>({});
 
   // confirm modal
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -161,6 +188,13 @@ export default function SuperAdminPlansPage() {
   }
 
   useEffect(() => {
+    catalogDivisionApi
+      .list()
+      .then((res) => setDivisions(res?.data?.data || []))
+      .catch(() => setDivisions([]));
+  }, []);
+
+  useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
@@ -175,6 +209,7 @@ export default function SuperAdminPlansPage() {
     setEditing(null);
     setForm(emptyForm);
     setPriceText("0");
+    setRegBlocks({});
     setOpen(true);
   }
 
@@ -189,6 +224,7 @@ export default function SuperAdminPlansPage() {
       is_active: p.isActive ? 1 : 0,
     });
     setPriceText(String(Number(p.price ?? 0)));
+    setRegBlocks(Object.fromEntries((p.regBlocks || []).map((b) => [b.divisionId, String(b.blockSize)])));
     setOpen(true);
   }
 
@@ -200,6 +236,10 @@ export default function SuperAdminPlansPage() {
     if (form.user_limit < 0) return "User limit 0 বা তার বেশি হতে হবে";
     if (form.duration_days <= 0) return "Duration days 1 বা তার বেশি হতে হবে";
     if (Number.isNaN(priceNum) || priceNum < 0) return "Price 0 বা তার বেশি হতে পারবে না";
+    for (const d of divisions) {
+      const v = (regBlocks[d.id] || "").trim();
+      if (v && (!/^d+$/.test(v) || Number(v) > 100000)) return "রেজি. ব্লকের সাইজ 0 থেকে 100000 এর মধ্যে পূর্ণসংখ্যা দিন";
+    }
 
     return null;
   }
@@ -218,12 +258,16 @@ export default function SuperAdminPlansPage() {
         ...form,
         price: Number(priceText || 0),
       };
+      const reg_block_sizes = divisions.map((d) => ({
+        division_id: d.id,
+        block_size: Number((regBlocks[d.id] || "").trim() || 0),
+      }));
 
       if (editing) {
-        await updatePlan(editing.id, payload);
+        await updatePlan(editing.id, { ...payload, reg_block_sizes });
         show("Plan আপডেট হয়েছে", "success");
       } else {
-        await createPlan(payload);
+        await createPlan({ ...payload, reg_block_sizes });
         show("Plan তৈরি হয়েছে", "success");
       }
 
@@ -445,6 +489,11 @@ export default function SuperAdminPlansPage() {
                 </div>
               </div>
 
+              <div className="mt-3">
+                <div className="mb-1 text-xs text-gray-500 dark:text-slate-400">রেজি. ব্লক (প্রতি শ্রেণি)</div>
+                <RegBlockSizes plan={p} divisions={divisions} />
+              </div>
+
               <div className="mt-3 flex flex-wrap gap-2">
                 <IconButton title="Edit" onClick={() => openEdit(p)}>
                   ✏️ Edit
@@ -519,7 +568,7 @@ export default function SuperAdminPlansPage() {
       {/* Desktop table (hidden below md) */}
       <div className="mt-5 hidden overflow-hidden rounded-2xl border bg-white md:block">
         {loading ? (
-          <SkeletonTable rows={6} columns={8} className="rounded-none" bordered={false} shadowed={false} />
+          <SkeletonTable rows={6} columns={9} className="rounded-none" bordered={false} shadowed={false} />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -528,6 +577,7 @@ export default function SuperAdminPlansPage() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Students</th>
+                <th className="px-4 py-3">রেজি. ব্লক / শ্রেণি</th>
                 <th className="px-4 py-3">Users</th>
                 <th className="px-4 py-3">Days</th>
                 <th className="px-4 py-3">Price</th>
@@ -546,6 +596,9 @@ export default function SuperAdminPlansPage() {
                       <div className="text-xs text-gray-500">Duration: {p.durationDays} days</div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
+                    <td className="px-4 py-3">
+                      <RegBlockSizes plan={p} divisions={divisions} />
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
                     <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
@@ -585,6 +638,9 @@ export default function SuperAdminPlansPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
+                    <td className="px-4 py-3">
+                      <RegBlockSizes plan={p} divisions={divisions} />
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
                     <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
@@ -697,6 +753,35 @@ export default function SuperAdminPlansPage() {
               />
             </div>
           </div>
+
+          {divisions.length > 0 && (
+            <div className="grid gap-2 rounded-xl border p-3 dark:border-slate-700">
+              <div>
+                <div className="text-sm font-medium text-gray-800 dark:text-slate-200">রেজি. নম্বর ব্লক (প্রতি শ্রেণি)</div>
+                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">
+                  নতুন মাদ্রাসা তৈরির সময় প্রতিটি শ্রেণি এই সাইজের ব্লক পাবে (যেমন নূরানী ৩০ হলে ১–৩০, ৩১–৬০…)।
+                  খালি বা 0 রাখলে ওই বিভাগে অটো ব্লক হবে না। পরে মাদ্রাসার অ্যাডমিন ব্লক কম-বেশি করতে পারবেন;
+                  এখানে বদলালে আগের মাদ্রাসার ব্লক বদলাবে না।
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {divisions.map((d) => (
+                  <div key={d.id} className="grid gap-1">
+                    <label className="truncate text-xs text-gray-600 dark:text-slate-400">{d.label || d.name}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                      value={regBlocks[d.id] ?? ""}
+                      onChange={(e) => setRegBlocks({ ...regBlocks, [d.id]: e.target.value })}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center gap-2 text-sm">
             <input

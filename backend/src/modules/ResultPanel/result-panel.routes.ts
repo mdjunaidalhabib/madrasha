@@ -27,6 +27,7 @@ import {
   getClassStatus,
   getResultOverview,
   getResultDashboardSummary,
+  getResultDashboardExamFee,
 } from "./result-panel.controller";
 
 const router = express.Router();
@@ -111,6 +112,7 @@ router.get(
 
 /* ================= DASHBOARD SUMMARY (তালিমাত module dashboard) ================= */
 router.get("/dashboard-summary", rbacMiddleware("result.read"), getResultDashboardSummary);
+router.get("/dashboard-exam-fee", rbacMiddleware("result.read"), getResultDashboardExamFee);
 
 /* ================= PUBLISH ================= */
 router.post(

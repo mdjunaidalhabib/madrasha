@@ -91,6 +91,8 @@ export type ExamItem = {
   id: number;
   name: string;
   year?: string;
+  /** বিভাগভিত্তিক scope - empty/missing = সকল বিভাগ. */
+  division_ids?: number[];
 };
 
 export type ReportShellProps = {

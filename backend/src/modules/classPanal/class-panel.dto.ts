@@ -7,6 +7,12 @@ export interface UpdateClassRequestDto {
   name_bn: string;
 }
 
+/** Both empty/null clears the class's registration-number block. */
+export interface UpdateClassRegistrationBlockRequestDto {
+  reg_no_start: number | string | null;
+  reg_no_end: number | string | null;
+}
+
 export interface AddSubjectRequestDto {
   class_id: number | string;
   name_bn: string;

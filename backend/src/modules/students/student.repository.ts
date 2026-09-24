@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import {
+  allocateStudentRegistrationNoOnTx,
+  lockStudentRegistrationScopeOnTx,
+} from "./registration-no.allocator";
 
 /** Smallest positive integer missing from a sorted (ascending) list of used
  * roll numbers - i.e. the first reusable gap, or one past the current max
@@ -98,16 +102,6 @@ export class StudentRepository {
       orderBy: { roll: "asc" },
     });
     return firstAvailableRoll(rows.map((row) => row.roll));
-  }
-
-  /** Highest registration number currently assigned within a madrasa, used
-   * to compute the next one for a brand-new admission. */
-  async getMaxRegistrationNo(madrasaId: number): Promise<number> {
-    const result = await prisma.student.aggregate({
-      where: { madrasaId },
-      _max: { registrationNo: true },
-    });
-    return result._max.registrationNo ?? 0;
   }
 
   updateManyForTenant(id: number, madrasaId: number, data: Record<string, unknown>) {
@@ -312,21 +306,20 @@ export class StudentRepository {
     return this.lockKeyOnTx(tx, `student-roll:${madrasaId}:${classId}:${academicYear}`);
   }
 
-  /** Serialises permanent registration-number allocation per madrasa. */
+  /** Serialises registration-number allocation per madrasa - see
+   * registration-no.allocator.ts. */
   lockRegistrationScopeOnTx(tx: TransactionClient, madrasaId: number) {
-    return this.lockKeyOnTx(tx, `student-registration:${madrasaId}`);
+    return lockStudentRegistrationScopeOnTx(tx, madrasaId);
+  }
+
+  /** Next number from the class's registration block - see
+   * allocateStudentRegistrationNoOnTx. Needs lockRegistrationScopeOnTx. */
+  allocateRegistrationNoOnTx(tx: TransactionClient, madrasaId: number, classId: number) {
+    return allocateStudentRegistrationNoOnTx(tx, madrasaId, classId);
   }
 
   createOnTx(tx: TransactionClient, data: Prisma.StudentUncheckedCreateInput) {
     return tx.student.create({ data });
-  }
-
-  async getMaxRegistrationNoOnTx(tx: TransactionClient, madrasaId: number): Promise<number> {
-    const result = await tx.student.aggregate({
-      where: { madrasaId },
-      _max: { registrationNo: true },
-    });
-    return result._max.registrationNo ?? 0;
   }
 
   /** @deprecated for "assign a brand-new roll" call sites - see getMaxRoll's

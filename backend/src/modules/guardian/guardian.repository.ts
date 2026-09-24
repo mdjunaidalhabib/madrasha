@@ -152,12 +152,22 @@ export class GuardianRepository {
 
   /** Per-subject marks for one student within one result session - joined
    * with the book/subject's display name for the marksheet's subject table. */
-  findMarksForResult(resultMasterId: number, studentId: number) {
-    return prisma.mark.findMany({
+  async findMarksForResult(resultMasterId: number, studentId: number) {
+    const marks = await prisma.mark.findMany({
       where: { resultMasterId, studentId },
       include: { book: { select: { nameBn: true, name: true } } },
       orderBy: { bookId: "asc" },
     });
+    if (!marks.length) return marks;
+    // Subject rows follow the madrasa's own কিতাব serial (MadrasaBook.sortOrder).
+    const links = await prisma.madrasaBook.findMany({
+      where: { madrasaId: marks[0].madrasaId, bookId: { in: marks.map((m) => m.bookId) } },
+      select: { bookId: true, sortOrder: true },
+    });
+    const serial = new Map(links.map((l) => [l.bookId, l.sortOrder]));
+    return marks.sort(
+      (a, b) => (serial.get(a.bookId) ?? Number.MAX_SAFE_INTEGER) - (serial.get(b.bookId) ?? Number.MAX_SAFE_INTEGER),
+    );
   }
 }
 

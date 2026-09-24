@@ -63,6 +63,7 @@ export class SuperAdminRepository {
         durationDays: true,
         price: true,
         isActive: true,
+        regBlocks: { select: { divisionId: true, blockSize: true } },
       },
       orderBy: { id: "asc" },
     });
@@ -281,8 +282,14 @@ export class SuperAdminRepository {
     return tx.user.create({ data });
   }
 
+  /** Catalogue order (Division.sortOrder) so a new madrasa's divisions start
+   * out numbered the way the Super Admin catalogue lists them. */
   findAllDivisionIdsOnTx(tx: TransactionClient) {
-    return tx.division.findMany({ select: { id: true } });
+    return tx.division.findMany({ select: { id: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] });
+  }
+
+  findMadrasaDivisionSerialsOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaDivision.findMany({ where: { madrasaId }, select: { divisionId: true, sortOrder: true } });
   }
 
   seedMadrasaDivisionsOnTx(tx: TransactionClient, rows: Prisma.MadrasaDivisionCreateManyInput[]) {
@@ -320,7 +327,17 @@ export class SuperAdminRepository {
   }
 
   findAllClassIdsOnTx(tx: TransactionClient) {
-    return tx.class.findMany({ select: { id: true } });
+    return tx.class.findMany({
+      select: { id: true, divisionId: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findMadrasaClassSerialsOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaClass.findMany({
+      where: { madrasaId },
+      select: { classId: true, sortOrder: true, class: { select: { divisionId: true } } },
+    });
   }
 
   seedMadrasaClassesOnTx(tx: TransactionClient, rows: Prisma.MadrasaClassCreateManyInput[]) {
@@ -342,9 +359,18 @@ export class SuperAdminRepository {
     return tx.book.findMany({
       select: {
         id: true,
+        classId: true,
         name: true,
         class: { select: { name: true, division: { select: { keyName: true } } } },
       },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  }
+
+  findMadrasaBookSerialsOnTx(tx: TransactionClient, madrasaId: number) {
+    return tx.madrasaBook.findMany({
+      where: { madrasaId },
+      select: { bookId: true, sortOrder: true, book: { select: { classId: true } } },
     });
   }
 
@@ -418,7 +444,9 @@ export class SuperAdminRepository {
   // and exam.hooks.ts's autoActivateExamFeeForRoutine).
   createDefaultExamsOnTx(tx: TransactionClient, madrasaId: number, names: string[], year: string) {
     return tx.exam.createMany({
-      data: names.map((name) => ({ madrasaId, name, year, isActive: false })),
+      // `names` arrive in DefaultExam order - that order becomes the exams'
+      // serial (প্রথম সাময়িক = 1, দ্বিতীয় সাময়িক = 2, ...).
+      data: names.map((name, index) => ({ madrasaId, name, year, isActive: false, sortOrder: index })),
       skipDuplicates: true,
     });
   }

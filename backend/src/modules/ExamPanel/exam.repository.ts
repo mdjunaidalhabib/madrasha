@@ -1,41 +1,92 @@
 import { prisma } from "../../shared/database/prisma";
 import { FAIL_MARK_SETTING_NAME } from "./exam.constants";
 
+/** Division scope joined onto every exam row that leaves this repository -
+ * no rows = "সকল বিভাগ" (see Exam.divisions in exam.prisma). */
+const examDivisionsInclude = {
+  select: { divisionId: true, division: { select: { nameBn: true } } },
+  orderBy: { divisionId: "asc" as const },
+};
+
 export class ExamRepository {
-  findExams(madrasaId: number, activeOnly = false) {
+  /** `divisionId` narrows to exams held for that division, i.e. ones scoped
+   * to it plus সকল বিভাগ exams (no ExamDivision rows). */
+  findExams(madrasaId: number, activeOnly = false, divisionId: number | null = null) {
     return prisma.exam.findMany({
-      where: { madrasaId, deletedAt: null, ...(activeOnly ? { isActive: true } : {}) },
+      where: {
+        madrasaId,
+        deletedAt: null,
+        ...(activeOnly ? { isActive: true } : {}),
+        ...(divisionId ? { OR: [{ divisions: { none: {} } }, { divisions: { some: { divisionId } } }] } : {}),
+      },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-      include: { _count: { select: { feeStructures: { where: { isActive: true } } } } },
+      include: {
+        // Any linked fee row counts - a dormant exam's fee rows are
+        // themselves inactive until activateExamFee flips them on.
+        _count: { select: { feeStructures: true } },
+        divisions: examDivisionsInclude,
+      },
     });
   }
 
   findExamById(id: number, madrasaId: number) {
-    return prisma.exam.findFirst({ where: { id, madrasaId, deletedAt: null } });
+    return prisma.exam.findFirst({
+      where: { id, madrasaId, deletedAt: null },
+      include: { divisions: { select: { divisionId: true } } },
+    });
   }
 
-  async createExam(madrasaId: number, name: string, year: string, extra: Record<string, unknown> = {}) {
+  /** Live exams with this exact name + year (and their division scope), for
+   * ExamService's overlap-aware duplicate check. */
+  findExamsByNameAndYear(madrasaId: number, name: string, year: string) {
+    return prisma.exam.findMany({
+      where: { madrasaId, name, year, deletedAt: null },
+      select: { id: true, divisions: { select: { divisionId: true } } },
+    });
+  }
+
+  async createExam(
+    madrasaId: number,
+    name: string,
+    year: string,
+    extra: Record<string, unknown> = {},
+    divisionIds: number[] = [],
+  ) {
+    // Only live exams count: a trashed exam gets a fresh last serial if it
+    // is ever restored (see TrashRepository.restoreExam).
     const last = await prisma.exam.findFirst({
-      where: { madrasaId },
+      where: { madrasaId, deletedAt: null },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
     return prisma.exam.create({
-      data: { name, year, madrasaId, sortOrder: (last?.sortOrder ?? -1) + 1, ...extra },
+      data: {
+        name,
+        year,
+        madrasaId,
+        sortOrder: (last?.sortOrder ?? -1) + 1,
+        ...extra,
+        ...(divisionIds.length ? { divisions: { create: divisionIds.map((divisionId) => ({ divisionId })) } } : {}),
+      },
     });
   }
 
-  updateExam(id: number, madrasaId: number, data: Record<string, unknown>) {
-    return prisma.exam.updateMany({
-      where: { id, madrasaId, deletedAt: null },
-      data,
-    });
-  }
-
-  updateExamStatus(id: number, madrasaId: number, status: string) {
-    return prisma.exam.updateMany({
-      where: { id, madrasaId, deletedAt: null },
-      data: { status: status as any },
+  /** `divisionIds` undefined = leave the division scope untouched; an array
+   * (possibly empty = সকল বিভাগ) replaces it, atomically with `data`. */
+  async updateExam(id: number, madrasaId: number, data: Record<string, unknown>, divisionIds?: number[]) {
+    if (divisionIds === undefined) {
+      return prisma.exam.updateMany({ where: { id, madrasaId, deletedAt: null }, data });
+    }
+    return prisma.$transaction(async (tx) => {
+      const result = Object.keys(data).length
+        ? await tx.exam.updateMany({ where: { id, madrasaId, deletedAt: null }, data })
+        : { count: await tx.exam.count({ where: { id, madrasaId, deletedAt: null } }) };
+      if (!result.count) return result;
+      await tx.examDivision.deleteMany({ where: { examId: id } });
+      if (divisionIds.length) {
+        await tx.examDivision.createMany({ data: divisionIds.map((divisionId) => ({ examId: id, divisionId })) });
+      }
+      return result;
     });
   }
 

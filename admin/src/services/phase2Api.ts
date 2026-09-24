@@ -37,6 +37,45 @@ export const feeStructureApi = {
   remove: (id: number) => api.delete(`/fee-structures/${id}`),
 };
 
+/* ================= পরীক্ষার ফি (exam × class table) ================= */
+// পরীক্ষার ফি আর হাতে পরীক্ষা বাছাই করে তৈরি করতে হয় না - প্রতিটি পরীক্ষা তার
+// বিভাগের প্রতিটি শ্রেণির জন্য নিজে থেকেই একটা করে ফি সারি পায় (দেখুন backend
+// ExamFeeService); এখান থেকে শুধু পরিমাণ বসানো/বদলানো হয়।
+
+export interface ExamFeeCell {
+  class_id: number;
+  structure_id: number | null;
+  amount: number | null;
+  is_active: boolean;
+  invoice_count: number;
+}
+
+export interface ExamFeeExam {
+  id: number;
+  name: string;
+  year: string;
+  is_active: boolean;
+  fee_active: boolean;
+  division_ids: number[];
+  legacy_all_classes_amount: number | null;
+  cells: ExamFeeCell[];
+}
+
+export interface ExamFeeOverview {
+  classes: { class_id: number; class_name_bn: string | null; division_id: number; division_name_bn: string | null }[];
+  exams: ExamFeeExam[];
+}
+
+export const examFeeApi = {
+  overview: () => api.get<{ success: boolean; data: ExamFeeOverview }>("/fee-structures/exam-fees"),
+  /** amount null/0 = remove that class's fee for the exam. */
+  setAmounts: (examId: number, amounts: { class_id: number; amount: number | null }[]) =>
+    api.put<{
+      success: boolean;
+      data: { created: number; updated: number; removed: number; invoicesCreated: number };
+    }>(`/fee-structures/exam-fees/${examId}`, { amounts }),
+};
+
 /* ================= FEE CATEGORY SETTINGS (ফি ধরণ সেটিংস) ================= */
 // ফি স্ট্রাকচারের "ফি ধরণ" এখন আর হার্ডকোডেড enum নয় - ট্যানেন্ট নিজে যোগ/এডিট/
 // ডিলিট করতে পারে, ফান্ড ও খাত সেটিংসের মতোই (তবে flat, কোনো nesting ছাড়া)।

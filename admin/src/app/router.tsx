@@ -96,6 +96,9 @@ const ClassBookSettingsPage = lazy(
   () => import("../features/talimat/settings/ClassBookSettingsPage"),
 );
 const ExamSettingsPage = lazy(() => import("../features/talimat/settings/ExamSettingsPage"));
+const RegistrationBlockSettingsPage = lazy(
+  () => import("../features/talimat/settings/RegistrationBlockSettingsPage"),
+);
 const GradeSettingsPage = lazy(() => import("../features/talimat/settings/GradeSettingsPage"));
 
 const ActivityPage = lazy(() => import("../features/activity/ActivityPage"));
@@ -297,6 +300,7 @@ const madrasaAdminChildren = [
         ),
       },
       { path: "sessions", element: withSuspense(<SessionPage />) },
+      { path: "registration", element: withSuspense(<RegistrationBlockSettingsPage />) },
     ],
   },
   {

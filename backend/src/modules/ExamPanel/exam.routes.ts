@@ -8,7 +8,6 @@ import {
   updateExamSchema,
   deleteExamSchema,
   reorderExamsSchema,
-  updateExamStatusSchema,
   activateExamFeeSchema,
   saveGeneralGradeSchema,
   updateGeneralGradeSchema,
@@ -25,7 +24,6 @@ import {
   updateExam,
   deleteExam,
   reorderExams,
-  updateExamStatus,
   activateExamFee,
   getGeneralGrades,
   saveGeneralGrade,
@@ -53,7 +51,6 @@ router.get("/exams", rbacMiddleware("exam.read"), getExams);
 router.post("/exams", rbacMiddleware("exam.manage"), validate(createExamSchema), createExam);
 router.put("/exams/reorder", rbacMiddleware("exam.manage"), validate(reorderExamsSchema), reorderExams);
 router.put("/exams/:id", rbacMiddleware("exam.manage"), validate(updateExamSchema), updateExam);
-router.put("/exams/:id/status", rbacMiddleware("exam.manage"), validate(updateExamStatusSchema), updateExamStatus);
 router.delete("/exams/:id", rbacMiddleware("exam.manage"), validate(deleteExamSchema), deleteExam);
 router.post(
   "/exams/:id/activate-fee",

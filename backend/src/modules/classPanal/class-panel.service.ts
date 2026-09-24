@@ -2,6 +2,10 @@ import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { resultPanelService, ResultPanelService } from "../ResultPanel/result-panel.service";
 import { classPanelRepository, ClassPanelRepository } from "./class-panel.repository";
 import { TenantNotFoundInPanelError } from "./class-panel.types";
+import { examFeeService } from "../fee/exam-fee.service";
+import { logger } from "../../shared/logger/logger";
+import { withTransaction } from "../../shared/database/transaction";
+import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import {
   AddClassRequestDto,
   AddSubjectRequestDto,
@@ -12,6 +16,7 @@ import {
   ReorderClassesRequestDto,
   UpdateDivisionRequestDto,
   ReorderDivisionsRequestDto,
+  UpdateClassRegistrationBlockRequestDto,
 } from "./class-panel.dto";
 
 export class ClassPanelService {
@@ -47,6 +52,23 @@ export class ClassPanelService {
 
     const created = await this.repository.createClass(dto.name_bn, Number(dto.division_id));
     await this.repository.linkClassToMadrasa(madrasaId, created.id, Number(dto.division_id));
+
+    // Give the new class its registration-number block from the plan's
+    // size for this বিভাগ, after every existing block. Never fails the class
+    // creation itself - the admin can still set a block by hand.
+    try {
+      await withTransaction((tx) => assignMissingRegistrationBlocksOnTx(tx, madrasaId));
+    } catch (err) {
+      logger.error("addClass registration block assign failed:", err);
+    }
+
+    // The new class joins every exam held for its বিভাগ - give it its
+    // পরীক্ষার ফি rows too. Never fails the class creation itself.
+    try {
+      await examFeeService.syncAllExams(madrasaId);
+    } catch (err) {
+      logger.error("addClass exam fee sync failed:", err);
+    }
   }
 
   async updateClass(id: number, dto: UpdateClassRequestDto) {
@@ -116,6 +138,90 @@ export class ClassPanelService {
     await this.repository.reorderClasses(madrasaId, orderedClassIds);
 
     return { message: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে" };
+  }
+
+  /** Every active class's registration-number block, grouped by বিভাগ in
+   * this madrasa's own order, with how much of each block is used. */
+  async listRegistrationBlocks(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+
+    const [divisions, blocks] = await Promise.all([
+      this.repository.findActiveDivisions(madrasaId),
+      this.repository.findActiveClassRegistrationBlocks(madrasaId),
+    ]);
+
+    const classes = await Promise.all(
+      blocks.map(async (row) => {
+        const start = row.regNoStart;
+        const end = row.regNoEnd;
+        let usedCount = 0;
+        let nextRegNo: number | null = null;
+        if (start != null && end != null) {
+          const usage = await this.repository.getRegistrationUsageInRange(madrasaId, start, end);
+          usedCount = usage._count.registrationNo;
+          // Same rule as allocateStudentRegistrationNoOnTx.
+          const lastIssued =
+            row.regNoLastIssued != null && row.regNoLastIssued >= start && row.regNoLastIssued <= end
+              ? row.regNoLastIssued
+              : start - 1;
+          const next = Math.max(start - 1, lastIssued, usage._max.registrationNo ?? 0) + 1;
+          nextRegNo = next > end ? null : next;
+        }
+        return {
+          class_id: row.classId,
+          class_name_bn: row.class.nameBn,
+          division_id: row.class.divisionId,
+          reg_no_start: start,
+          reg_no_end: end,
+          used_count: usedCount,
+          next_reg_no: nextRegNo,
+        };
+      }),
+    );
+
+    return divisions.map((d) => ({
+      division_id: d.division.id,
+      division_name_bn: d.division.nameBn,
+      classes: classes.filter((c) => c.division_id === d.division.id),
+    }));
+  }
+
+  async updateRegistrationBlock(
+    madrasaId: number | undefined,
+    classId: number,
+    dto: UpdateClassRegistrationBlockRequestDto,
+  ) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    if (!classId) throw new BadRequestError("class_id is required");
+
+    const parse = (value: unknown) =>
+      value === null || value === undefined || String(value).trim() === "" ? null : Number(value);
+    const start = parse(dto.reg_no_start);
+    const end = parse(dto.reg_no_end);
+
+    if ((start === null) !== (end === null)) {
+      throw new BadRequestError("শুরু ও শেষ দুটো নম্বরই দিন, অথবা ব্লক মুছতে দুটোই খালি রাখুন");
+    }
+    if (start !== null && end !== null) {
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 999_999_999) {
+        throw new BadRequestError("রেজি. নম্বর ১ বা তার বেশি পূর্ণসংখ্যা হতে হবে");
+      }
+      if (start > end) {
+        throw new BadRequestError("শুরুর নম্বর শেষের নম্বরের চেয়ে বড় হতে পারবে না");
+      }
+      const overlap = await this.repository.findOverlappingRegistrationBlock(madrasaId, classId, start, end);
+      if (overlap) {
+        throw new BadRequestError(
+          `এই ব্লকটি "${overlap.class.nameBn}" শ্রেণির ব্লকের (${overlap.regNoStart}–${overlap.regNoEnd}) সাথে মিলে যাচ্ছে`,
+        );
+      }
+    }
+
+    const linkedClass = await this.repository.findActiveClassForMadrasa(madrasaId, classId);
+    if (!linkedClass) throw new NotFoundError("Class not found in this madrasa");
+
+    await this.repository.updateClassRegistrationBlock(madrasaId, classId, start, end);
+    return { message: start === null ? "রেজি. নম্বরের ব্লক মুছে ফেলা হয়েছে" : "রেজি. নম্বরের ব্লক সংরক্ষণ করা হয়েছে" };
   }
 
   async listSubjects(madrasaId: number | undefined, classId: number) {

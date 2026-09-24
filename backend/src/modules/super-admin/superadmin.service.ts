@@ -17,6 +17,8 @@ import {
 import { DEFAULT_ROLE_PERMISSION_KEYS } from "../../shared/permissions/baseline-role-permissions";
 import { isMuhtamimRole } from "../../shared/permissions";
 import { EXAM_FEE_CATEGORY_NAME } from "../fee/fee.constants";
+import { appendSerials } from "../../shared/utils/serial.util";
+import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import {
   CustomDomainConflictError,
   DefaultUserProtectedError,
@@ -160,6 +162,9 @@ export class SuperAdminService {
 
       await this.repository.createSubscriptionOnTx(tx, madrasaId, plan.id, startDate, endDate);
       await this.repository.updateMadrasaLimitsOnTx(tx, madrasaId, plan.studentLimit, plan.userLimit);
+      // Classes still without a registration-number block get one sized by
+      // the new plan; existing (possibly admin-edited) blocks stay as they are.
+      await assignMissingRegistrationBlocksOnTx(tx, madrasaId, plan.id);
     });
   }
 
@@ -287,21 +292,31 @@ export class SuperAdminService {
          this madrasa actually activated (classIds); generic ones
          (classId null) always copy.
 
-         পরীক্ষার ফি structures get one dormant row (isActive: false) per
-         created exam, each linked to its own Exam.id - a new student is
-         never billed for an exam that hasn't been scheduled yet, and each
-         exam's fee activates independently of the others. They're activated
-         later, either by an admin (POST /exams/:id/activate-fee) or
-         automatically once that exam's first routine is created (see
-         exam.hooks.ts). */
+         পরীক্ষার ফি is laid out exactly like ExamFeeService keeps it later
+         (dynamic, বিভাগভিত্তিক): one dormant row (isActive: false) per
+         created exam x activated class, each linked to its own Exam.id and
+         class - the class's own template amount, else the generic one. A
+         new student is never billed for an exam that hasn't been scheduled
+         yet, and each exam's fee activates independently of the others,
+         either by an admin (POST /exams/:id/activate-fee, or switching the
+         exam on) or automatically once that exam's first routine is created
+         (see exam.hooks.ts). Default exams cover সকল বিভাগ, so every
+         activated class gets a row. */
       const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
-      const relevantFeeStructures = defaultFeeStructures
-        .filter((s) => s.classId === null || classIds.includes(s.classId))
-        .flatMap((s) =>
-          s.feeType === EXAM_FEE_CATEGORY_NAME
-            ? createdExams.map((exam) => ({ ...s, examId: exam.id, isActive: false }))
-            : [s],
-        );
+      const examFeeTemplates = defaultFeeStructures.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);
+      const examFeeRows = createdExams.flatMap((exam) =>
+        classIds.flatMap((classId) => {
+          const template =
+            examFeeTemplates.find((t) => t.classId === classId) ?? examFeeTemplates.find((t) => t.classId === null);
+          return template ? [{ ...template, classId, examId: exam.id, isActive: false }] : [];
+        }),
+      );
+      const relevantFeeStructures = [
+        ...defaultFeeStructures.filter(
+          (s) => s.feeType !== EXAM_FEE_CATEGORY_NAME && (s.classId === null || classIds.includes(s.classId)),
+        ),
+        ...examFeeRows,
+      ];
       if (relevantFeeStructures.length) {
         await this.repository.createDefaultFeeStructuresOnTx(
           tx,
@@ -386,6 +401,11 @@ export class SuperAdminService {
 
         await this.repository.createSubscriptionOnTx(tx, madrasaId, plan.id, startDate, endDate);
         await this.repository.updateMadrasaLimitsOnTx(tx, madrasaId, plan.studentLimit, plan.userLimit);
+
+        // Every activated class gets its registration-number block from the
+        // plan (e.g. নূরানী 30 / হিফজ 40 / কিতাব 20 per class), one after
+        // another - the madrasa admin can change them later.
+        await assignMissingRegistrationBlocksOnTx(tx, madrasaId, plan.id);
       }
 
       /* ========================= LOG ========================= */
@@ -422,11 +442,22 @@ export class SuperAdminService {
     }
 
     /* ========================= DIVISIONS ========================= */
+    // Link rows get a per-madrasa serial: a fresh madrasa follows the
+    // catalogue order, and a catalogue item added later (editing an existing
+    // madrasa) goes after that madrasa's current last one in the same parent -
+    // never into the middle of a list the tenant has already arranged.
     const allDivisions = await this.repository.findAllDivisionIdsOnTx(tx);
-    if (allDivisions.length) {
+    const divisionLinks = await this.repository.findMadrasaDivisionSerialsOnTx(tx, madrasaId);
+    const linkedDivisionIds = new Set(divisionLinks.map((l) => l.divisionId));
+    const newDivisions = appendSerials(
+      allDivisions.filter((d) => !linkedDivisionIds.has(d.id)),
+      () => null,
+      divisionLinks.map((l) => ({ parentId: null, sortOrder: l.sortOrder })),
+    );
+    if (newDivisions.length) {
       await this.repository.seedMadrasaDivisionsOnTx(
         tx,
-        allDivisions.map((d) => ({ madrasaId, divisionId: d.id, isActive: 0 })),
+        newDivisions.map(({ item, sortOrder }) => ({ madrasaId, divisionId: item.id, isActive: 0, sortOrder })),
       );
     }
     await this.repository.activateMadrasaDivisionsOnTx(tx, madrasaId, divisionIds);
@@ -443,24 +474,39 @@ export class SuperAdminService {
 
     /* ========================= CLASSES ========================= */
     const allClasses = await this.repository.findAllClassIdsOnTx(tx);
-    if (allClasses.length) {
+    const classLinks = await this.repository.findMadrasaClassSerialsOnTx(tx, madrasaId);
+    const linkedClassIds = new Set(classLinks.map((l) => l.classId));
+    const newClasses = appendSerials(
+      allClasses.filter((c) => !linkedClassIds.has(c.id)),
+      (c) => c.divisionId,
+      classLinks.map((l) => ({ parentId: l.class.divisionId, sortOrder: l.sortOrder })),
+    );
+    if (newClasses.length) {
       await this.repository.seedMadrasaClassesOnTx(
         tx,
-        allClasses.map((c) => ({ madrasaId, classId: c.id, isActive: 0 })),
+        newClasses.map(({ item, sortOrder }) => ({ madrasaId, classId: item.id, isActive: 0, sortOrder })),
       );
     }
     await this.repository.activateMadrasaClassesOnTx(tx, madrasaId, classIds);
 
     /* ========================= BOOKS ========================= */
     const allBooks = await this.repository.findAllBookIdsOnTx(tx);
-    if (allBooks.length) {
+    const bookLinks = await this.repository.findMadrasaBookSerialsOnTx(tx, madrasaId);
+    const linkedBookIds = new Set(bookLinks.map((l) => l.bookId));
+    const newBooks = appendSerials(
+      allBooks.filter((b) => !linkedBookIds.has(b.id)),
+      (b) => b.classId,
+      bookLinks.map((l) => ({ parentId: l.book.classId, sortOrder: l.sortOrder })),
+    );
+    if (newBooks.length) {
       await this.repository.seedMadrasaBooksOnTx(
         tx,
-        allBooks.map((b) => ({
+        newBooks.map(({ item, sortOrder }) => ({
           madrasaId,
-          bookId: b.id,
+          bookId: item.id,
           isActive: 0,
-          fullMark: getDefaultFullMark(b),
+          fullMark: getDefaultFullMark(item),
+          sortOrder,
         })),
       );
     }
@@ -536,6 +582,10 @@ export class SuperAdminService {
           { resetFirst: true },
         );
       }
+
+      // Newly activated classes (or a new plan) - fill in any missing
+      // registration-number blocks from the current plan.
+      await assignMissingRegistrationBlocksOnTx(tx, id);
 
       await this.repository.createActivityLogOnTx(tx, {
         madrasaId: id,

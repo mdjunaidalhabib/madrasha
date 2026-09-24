@@ -17,7 +17,15 @@ export class FeeRepository {
       },
       orderBy: { id: "desc" },
       include: {
-        class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } },
+        class: {
+          select: {
+            nameBn: true,
+            name: true,
+            sortOrder: true,
+            divisionId: true,
+            division: { select: { id: true, nameBn: true } },
+          },
+        },
         sessionRef: { select: { name: true, startDate: true, endDate: true } },
         exam: { select: { id: true, name: true, year: true, sortOrder: true } },
       },
@@ -82,13 +90,19 @@ export class FeeRepository {
    * sessions to backfill invoices for). */
   findStructuresByExam(madrasaId: number, examId: number) {
     return prisma.feeStructure.findMany({
-      where: { madrasaId, examId },
+      // Active rows only: after activation, a row still off belongs to a
+      // class outside the exam's বিভাগ scope (see ExamFeeService.syncExam).
+      where: { madrasaId, examId, isActive: true },
       select: { id: true, classId: true, sessionId: true, amount: true, name: true },
     });
   }
 
   /** Flips every FeeStructure linked to this Exam active - see
    * ExamService.activateExamFee. */
+  countLiveStructuresByExam(madrasaId: number, examId: number) {
+    return prisma.feeStructure.count({ where: { madrasaId, examId, isActive: true } });
+  }
+
   activateStructuresByExam(madrasaId: number, examId: number) {
     return prisma.feeStructure.updateMany({ where: { madrasaId, examId }, data: { isActive: true } });
   }
@@ -154,7 +168,19 @@ export class FeeRepository {
         madrasaId,
         sessionId,
         isActive: true,
-        OR: [{ classId }, { classId: null }],
+        AND: [
+          { OR: [{ classId }, { classId: null }] },
+          // বিভাগভিত্তিক পরীক্ষা: an exam-linked fee bills only students whose
+          // class belongs to a division the (live) exam is held for - no
+          // ExamDivision rows = সকল বিভাগ.
+          {
+            OR: [
+              { examId: null },
+              { exam: { deletedAt: null, divisions: { none: {} } } },
+              { exam: { deletedAt: null, divisions: { some: { division: { classes: { some: { id: classId } } } } } } },
+            ],
+          },
+        ],
         ...(feeTypes && feeTypes.length ? { feeType: { in: feeTypes as any } } : {}),
       },
     });
@@ -184,6 +210,13 @@ export class FeeRepository {
 
   countCategories(madrasaId: number) {
     return prisma.feeCategory.count({ where: { madrasaId } });
+  }
+
+  /** Next serial for a new ফি ধরণ = after the current last one (the row count
+   * would repeat a serial once any category has been deleted). */
+  async nextCategorySortOrder(madrasaId: number) {
+    const agg = await prisma.feeCategory.aggregate({ where: { madrasaId }, _max: { sortOrder: true } });
+    return (agg._max.sortOrder ?? -1) + 1;
   }
 
   findCategories(madrasaId: number, activeOnly = false) {

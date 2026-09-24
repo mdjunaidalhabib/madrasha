@@ -5,6 +5,8 @@ import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   getFeeStructures,
   getFeeStructureExams,
+  getExamFees,
+  setExamFees,
   createFeeStructure,
   updateFeeStructure,
   deleteFeeStructure,
@@ -39,6 +41,10 @@ router.get("/fee-structures", rbacMiddleware("fee.read"), getFeeStructures);
 // Registered as its own literal path (not GET /fee-structures/:id) - backs
 // the "যুক্ত পরীক্ষা" picker without requiring exam.read (see fee.controller.ts).
 router.get("/fee-structures/exams", rbacMiddleware("fee.read"), getFeeStructureExams);
+// পরীক্ষার ফি: one live exam × class table (see ExamFeeService) - literal
+// paths, registered before /fee-structures/:id.
+router.get("/fee-structures/exam-fees", rbacMiddleware("fee.read"), getExamFees);
+router.put("/fee-structures/exam-fees/:examId", rbacMiddleware("fee.manage"), setExamFees);
 router.post("/fee-structures", rbacMiddleware("fee.manage"), createFeeStructure);
 router.put("/fee-structures/:id", rbacMiddleware("fee.manage"), updateFeeStructure);
 router.delete("/fee-structures/:id", rbacMiddleware("fee.manage"), deleteFeeStructure);

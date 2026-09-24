@@ -130,6 +130,19 @@ function buildRosterFilterSql(madrasaId: number, filters: RosterFilters, alias =
   return { conditions: clauses.join("\n        "), params };
 }
 
+/** ORDER BY keys that follow this madrasa's own serials (তালিমাত সেটিংসে
+ * সাজানো বিভাগ/শ্রেণি/কিতাবের ক্রম) instead of the global catalogue ids. Every
+ * report query here binds $1 = madrasaId. */
+const divisionSerialSql = (col: string) =>
+  `(SELECT md_o.sort_order FROM madrasa_divisions md_o WHERE md_o.madrasa_id = $1 AND md_o.division_id = ${col})`;
+const classSerialSql = (col: string) =>
+  `(SELECT mc_o.sort_order FROM madrasa_classes mc_o WHERE mc_o.madrasa_id = $1 AND mc_o.class_id = ${col})`;
+const bookSerialSql = (col: string) =>
+  `(SELECT mb_o.sort_order FROM madrasa_books mb_o WHERE mb_o.madrasa_id = $1 AND mb_o.book_id = ${col})`;
+/** Division serial, then class serial (ids only break ties / legacy rows). */
+const classOrderSql = (divisionCol: string, classCol: string) =>
+  `${divisionSerialSql(divisionCol)} ASC NULLS LAST, ${divisionCol} ASC, ${classSerialSql(classCol)} ASC NULLS LAST, ${classCol} ASC`;
+
 const isMissingTableOrColumn = (error: any) => {
   const codes = [error?.code, error?.meta?.code, error?.meta?.dbCode].filter(Boolean);
   return codes.some((code) => MISSING_TABLE_OR_COLUMN_CODES.includes(String(code)));
@@ -193,7 +206,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         ${conditions}
-      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       params,
     );
@@ -317,7 +330,7 @@ export class ReportsRepository {
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )
-            ORDER BY b.id
+            ORDER BY COALESCE(mb.sort_order, 0), b.id
           ) FILTER (WHERE b.id IS NOT NULL),
           '[]'::jsonb
         ) AS subjects
@@ -534,7 +547,7 @@ export class ReportsRepository {
         AND t.deleted_at IS NULL
         AND COALESCE(t.is_active, 1) = 1
         ${assignmentConditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, b.id ASC, t.name_bn ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, ${bookSerialSql("b.id")} ASC NULLS LAST, b.id ASC, t.name_bn ASC
       `,
       assignmentParams,
     );
@@ -603,7 +616,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         ${conditions}
-      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       params,
     );
@@ -689,7 +702,7 @@ export class ReportsRepository {
           LIMIT 1
         ))
         ${conditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, rs.rank_no ASC
       `,
       params,
     );
@@ -736,7 +749,7 @@ export class ReportsRepository {
         COALESCE(
           jsonb_agg(
             jsonb_build_object('book_id', b.id, 'subject_name', COALESCE(b.name_bn, b.name))
-            ORDER BY b.id
+            ORDER BY COALESCE(mb.sort_order, 0), b.id
           ) FILTER (WHERE b.id IS NOT NULL),
           '[]'::jsonb
         ) AS subjects
@@ -772,7 +785,7 @@ export class ReportsRepository {
         e.id,
         e.name,
         e.year
-      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, s.name_bn ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       params,
     );
@@ -830,7 +843,7 @@ export class ReportsRepository {
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )
-            ORDER BY b.id
+            ORDER BY COALESCE(mb.sort_order, 0), b.id
           ) FILTER (WHERE b.id IS NOT NULL),
           '[]'::jsonb
         ) AS subjects
@@ -881,7 +894,7 @@ export class ReportsRepository {
         rs.general_grade,
         rs.madrasa_grade,
         rs.status
-      ORDER BY s.division_id ASC, s.class_id ASC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
+      ORDER BY ${classOrderSql("s.division_id", "s.class_id")}, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
       `,
       params,
     );
@@ -911,8 +924,8 @@ export class ReportsRepository {
     }
 
     const orderBySql = orderByRoom
-      ? "ORDER BY er.room_no ASC NULLS LAST, er.exam_date ASC, er.start_time ASC, c.id ASC"
-      : "ORDER BY er.exam_date ASC, er.start_time ASC, c.id ASC";
+      ? `ORDER BY er.room_no ASC NULLS LAST, er.exam_date ASC, er.start_time ASC, ${classOrderSql("c.division_id", "c.id")}`
+      : `ORDER BY er.exam_date ASC, er.start_time ASC, ${classOrderSql("c.division_id", "c.id")}`;
 
     return this.runQuery(
       `
@@ -1220,7 +1233,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND ec.status != 'CANCELLED'
         ${conditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, COALESCE(s.roll, 0) ASC, s.name_bn ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, COALESCE(s.roll, 0) ASC, s.name_bn ASC
       `,
       params,
     );
@@ -1301,7 +1314,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND ($2::int IS NULL OR m.exam_id = $2::int)
         ${conditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, s.roll ASC NULLS LAST, b.id ASC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, s.roll ASC NULLS LAST, ${bookSerialSql("b.id")} ASC NULLS LAST, b.id ASC
       `,
       params,
     );
@@ -1365,7 +1378,7 @@ export class ReportsRepository {
         AND rm.status = 'PUBLISHED'
         AND rs.status = $2
         ${conditions.join("\n        ")}
-      ORDER BY d.id ASC, c.id ASC, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
+      ORDER BY ${classOrderSql("d.id", "c.id")}, rs.rank_no ASC NULLS LAST, COALESCE(rs.roll, s.roll) ASC NULLS LAST
       `,
       params,
     );
@@ -1411,8 +1424,8 @@ export class ReportsRepository {
         AND COALESCE(mb.is_active, 1) = 1
       WHERE m.madrasa_id = $1
         ${conditions.join("\n        ")}
-      GROUP BY b.id, b.name_bn, b.name, mb.full_mark
-      ORDER BY b.id ASC
+      GROUP BY b.id, b.name_bn, b.name, mb.full_mark, mb.sort_order
+      ORDER BY COALESCE(mb.sort_order, 0), b.id ASC
       `,
       params,
     );
@@ -1476,7 +1489,7 @@ export class ReportsRepository {
       GROUP BY
         rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
         d.name_bn, d.name, e.name, e.year, topper.student_name, topper.total
-      ORDER BY c.id ASC
+      ORDER BY ${classOrderSql("c.division_id", "rm.class_id")}
       `,
       params,
     );

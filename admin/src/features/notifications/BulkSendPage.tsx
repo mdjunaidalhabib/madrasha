@@ -12,12 +12,13 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import NotificationComposeForm from "./NotificationComposeForm";
 import MessageCreditNotice from "../billing/MessageCreditNotice";
+import { examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
 
 type AudienceMode = "all_students" | "class_students" | "all_teachers" | "results";
 
 type Division = { id: number; nameBn: string };
 type ClassRow = { id: number; nameBn: string };
-type Exam = { id: number; name: string };
+type Exam = { id: number; name: string; division_ids?: number[] };
 
 type Recipient = { to: string; vars: Record<string, string | number> };
 
@@ -50,6 +51,8 @@ const BulkSendPage = () => {
 
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loadingAudience, setLoadingAudience] = useState(false);
+
+  useClearMismatchedExam(exams, examId, divisionId, () => setExamId(""));
 
   useEffect(() => {
     if (mode === "class_students" || mode === "results") {
@@ -227,7 +230,7 @@ const BulkSendPage = () => {
                     className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   >
                     <option value="">পরীক্ষা বাছুন</option>
-                    {exams.map((e) => (
+                    {examsForDivision(exams, divisionId).map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.name}
                       </option>

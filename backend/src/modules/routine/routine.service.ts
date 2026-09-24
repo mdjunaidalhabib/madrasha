@@ -12,6 +12,7 @@ import { MIN_DAY_OF_WEEK, MAX_DAY_OF_WEEK, TIME_FORMAT_REGEX, EXAM_ROUTINE_STATU
 import { timeRangesOverlap } from "../../shared/utils/time-range.util";
 import { autoRegisterForRoutine } from "../exam-candidate/exam-candidate.hooks";
 import { autoActivateExamFeeForRoutine } from "../ExamPanel/exam.hooks";
+import { assertExamCoversClass } from "../ExamPanel/exam-scope";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -184,6 +185,7 @@ export class RoutineService {
     const maxCapacity = dto.max_capacity !== undefined && dto.max_capacity !== "" ? Number(dto.max_capacity) : null;
     const status = dto.status !== undefined ? this.validateStatus(dto.status) : "DRAFT";
 
+    await assertExamCoversClass(madrasaId, examId, classId);
     await this.assertNoClassSubjectDuplicate(madrasaId, examId, classId, subject);
     await this.assertNoRoomConflict(madrasaId, examDate, startStr, endStr, roomId);
 
@@ -268,6 +270,13 @@ export class RoutineService {
     const needsSubjectCheck = ["examId", "classId", "subject"].some((k) => k in data);
     const needsRoomCheck = ["examDate", "startTime", "endTime", "roomId"].some((k) => k in data);
 
+    if ("examId" in data || "classId" in data) {
+      await assertExamCoversClass(
+        madrasaId,
+        (data.examId as number) ?? existing.examId,
+        (data.classId as number) ?? existing.classId,
+      );
+    }
     if (needsSubjectCheck) {
       await this.assertNoClassSubjectDuplicate(
         madrasaId,

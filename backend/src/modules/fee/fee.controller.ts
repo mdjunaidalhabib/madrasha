@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { feeService } from "./fee.service";
+import { examFeeService } from "./exam-fee.service";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -140,4 +141,16 @@ export const updatePaymentMethodSetting = asyncHandler(async (req: Request, res:
 export const deletePaymentMethodSetting = asyncHandler(async (req: Request, res: Response) => {
   await feeService.deletePaymentMethodSetting(Number(req.params.id), getMadrasaId(req));
   return ApiResponse.message(res, "Payment method deleted successfully");
+});
+
+/* ================= পরীক্ষার ফি (exam × class table) ================= */
+
+export const getExamFees = asyncHandler(async (req: Request, res: Response) => {
+  const data = await examFeeService.getOverview(getMadrasaId(req));
+  res.json({ success: true, data });
+});
+
+export const setExamFees = asyncHandler(async (req: Request, res: Response) => {
+  const data = await examFeeService.setAmounts(getMadrasaId(req), Number(req.params.examId), req.body?.amounts);
+  return ApiResponse.success(res, { data, message: "Exam fee updated successfully" });
 });

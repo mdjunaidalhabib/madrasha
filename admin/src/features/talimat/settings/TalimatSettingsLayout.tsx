@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Settings2, Layers, ClipboardCheck, BarChart3, FileBadge2, CalendarRange, Megaphone } from "lucide-react";
+import { Settings2, Layers, ClipboardCheck, BarChart3, FileBadge2, CalendarRange, Megaphone, Hash } from "lucide-react";
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
 
 const SETTINGS_NAV_ITEMS = [
@@ -9,6 +9,7 @@ const SETTINGS_NAV_ITEMS = [
   { key: "documents", label: "ডকুমেন্টস টেমপ্লেট", icon: FileBadge2 },
   { key: "notices", label: "নোটিশ বোর্ড", icon: Megaphone },
   { key: "sessions", label: "সেশন সেটআপ", icon: CalendarRange },
+  { key: "registration", label: "রেজি. নম্বর ব্লক", icon: Hash },
 ];
 
 function navPillClass(isActive: boolean) {

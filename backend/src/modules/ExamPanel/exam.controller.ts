@@ -14,7 +14,8 @@ const getMadrasaId = (req: Request): number => {
 
 export const getExams = asyncHandler(async (req: Request, res: Response) => {
   const activeOnly = req.query.active_only === "true";
-  const data = await examService.listExams(getMadrasaId(req), activeOnly);
+  // Optional বিভাগ filter: that division's exams + সকল বিভাগ exams.
+  const data = await examService.listExams(getMadrasaId(req), activeOnly, req.query.division_id);
   res.json(data);
 });
 
@@ -24,8 +25,11 @@ export const createExam = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const updateExam = asyncHandler(async (req: Request, res: Response) => {
-  await examService.updateExam(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Exam updated successfully");
+  // Switching a dormant exam on also activates its fee - those counts come back as data.
+  const data = await examService.updateExam(Number(req.params.id), getMadrasaId(req), req.body);
+  return data
+    ? ApiResponse.success(res, { data, message: "Exam updated successfully" })
+    : ApiResponse.message(res, "Exam updated successfully");
 });
 
 export const deleteExam = asyncHandler(async (req: Request, res: Response) => {
@@ -36,11 +40,6 @@ export const deleteExam = asyncHandler(async (req: Request, res: Response) => {
 export const reorderExams = asyncHandler(async (req: Request, res: Response) => {
   await examService.reorderExams(getMadrasaId(req), req.body?.ids);
   return ApiResponse.message(res, "Exam order updated successfully");
-});
-
-export const updateExamStatus = asyncHandler(async (req: Request, res: Response) => {
-  await examService.updateExamStatus(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Exam status updated successfully");
 });
 
 export const activateExamFee = asyncHandler(async (req: Request, res: Response) => {

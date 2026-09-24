@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { EXAM_STATUSES } from "./exam.constants";
 
 const idParamsSchema = z.object({ id: z.coerce.number().int().positive() });
 
@@ -13,6 +12,7 @@ export const createExamSchema = z.object({
     start_date: z.string().trim().min(1).optional(),
     end_date: z.string().trim().min(1).optional(),
     description: z.string().trim().max(500).optional(),
+    division_ids: z.array(z.coerce.number().int().positive()).max(100).optional(),
   }),
 });
 
@@ -25,6 +25,7 @@ export const updateExamSchema = z.object({
     start_date: z.string().trim().min(1).optional(),
     end_date: z.string().trim().min(1).optional(),
     description: z.string().trim().max(500).optional(),
+    division_ids: z.array(z.coerce.number().int().positive()).max(100).optional(),
   }),
 });
 
@@ -39,13 +40,6 @@ export const activateExamFeeSchema = z.object({
 export const reorderExamsSchema = z.object({
   body: z.object({
     ids: z.array(z.coerce.number().int().positive()).min(1),
-  }),
-});
-
-export const updateExamStatusSchema = z.object({
-  params: idParamsSchema,
-  body: z.object({
-    status: z.enum(EXAM_STATUSES),
   }),
 });
 

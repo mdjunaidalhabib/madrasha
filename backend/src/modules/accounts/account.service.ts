@@ -101,8 +101,8 @@ export class AccountService {
     const name = clean(body.name);
     if (!name || (body.type !== "income" && body.type !== "expense")) throw new FundValidationError();
 
-    const fundCount = await this.repository.countFunds(madrasaId);
-    const created = await this.repository.createFund({ madrasaId, type: body.type, name, sortOrder: fundCount });
+    const sortOrder = await this.repository.nextFundSortOrder(madrasaId);
+    const created = await this.repository.createFund({ madrasaId, type: body.type, name, sortOrder });
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -173,12 +173,8 @@ export class AccountService {
     const name = clean(body.name);
     if (!name) throw new FundValidationError();
 
-    const categoryCount = await this.repository.countCategories(fundId);
-    const created = await this.repository.createCategory({
-      fundId,
-      name,
-      sortOrder: categoryCount,
-    });
+    const sortOrder = await this.repository.nextCategorySortOrder(fundId);
+    const created = await this.repository.createCategory({ fundId, name, sortOrder });
 
     await logActivity({
       madrasa_id: madrasaId,

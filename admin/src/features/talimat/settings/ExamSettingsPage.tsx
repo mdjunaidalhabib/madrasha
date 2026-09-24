@@ -6,14 +6,16 @@ import ExamList from "../../../components/ExamPanel/ExamList";
 
 export default function ExamSettingsPage() {
   const [exams, setExams] = useState([]);
+  const [divisions, setDivisions] = useState<{ division_id: number; division_name_bn: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const e = await cachedGet("/exams");
+      const [e, d] = await Promise.all([cachedGet("/exams"), cachedGet("/madrasa-divisions")]);
       setExams(e.data);
+      setDivisions(Array.isArray(d.data) ? d.data : []);
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -28,7 +30,7 @@ export default function ExamSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="পরীক্ষা ব্যবস্থাপনা" subtitle="পরীক্ষার তালিকা তৈরি ও ব্যবস্থাপনা করুন" />
+      <PageHeader title="পরীক্ষা ব্যবস্থাপনা" subtitle="বিভাগভিত্তিক পরীক্ষার তালিকা তৈরি ও ব্যবস্থাপনা করুন" />
       {loadError && exams.length === 0 ? (
         <ErrorState
           title="তথ্য লোড করা যায়নি"
@@ -37,7 +39,7 @@ export default function ExamSettingsPage() {
           retryText="আবার চেষ্টা করুন"
         />
       ) : (
-        <ExamList exams={exams} reload={loadAll} loading={loading} />
+        <ExamList exams={exams} divisions={divisions} reload={loadAll} loading={loading} />
       )}
     </div>
   );

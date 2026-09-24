@@ -201,8 +201,11 @@ export class DashboardRepository {
 
   async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {
     const rows = await prisma.examRoutine.findMany({
-      where: { madrasaId, examDate: { gte: startOfTodayUTC() }, exam: { deletedAt: null } },
-      orderBy: { examDate: "asc" },
+      // Active exams only - dormant (demo / not yet started) exams keep
+      // their routines but aren't really "upcoming". Same-day slots follow
+      // start time, then শ্রেণি order, so the list reads like the routine.
+      where: { madrasaId, examDate: { gte: startOfTodayUTC() }, exam: { deletedAt: null, isActive: true } },
+      orderBy: [{ examDate: "asc" }, { startTime: "asc" }, { class: { sortOrder: "asc" } }, { id: "asc" }],
       take: DASHBOARD_UPCOMING_EXAMS_LIMIT,
       include: {
         exam: { select: { name: true } },

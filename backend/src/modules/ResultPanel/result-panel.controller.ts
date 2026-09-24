@@ -128,6 +128,17 @@ export const getResultDashboardSummary = async (req: Request, res: Response) => 
   }
 };
 
+/* ================= DASHBOARD: পরীক্ষার ফি (paid / unpaid) ================= */
+export const getResultDashboardExamFee = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const data = await resultPanelService.getDashboardExamFee(madrasa_id, toNumber(req.query.exam_id) || undefined);
+    res.json({ success: true, data });
+  } catch (error) {
+    respondError(res, error, "getResultDashboardExamFee error:", "Failed to fetch exam fee status");
+  }
+};
+
 /* ================= GET SUMMARY ================= */
 export const getSummary = async (req: Request, res: Response) => {
   try {

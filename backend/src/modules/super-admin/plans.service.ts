@@ -19,6 +19,22 @@ const validatePlanFields = (name: string, student_limit: number, user_limit: num
   if (price < 0) throw new BadRequestError("Price 0 বা তার বেশি হতে হবে");
 };
 
+/** null = not sent (leave unchanged). Sizes of 0/empty are dropped. */
+const parseRegBlockSizes = (dto: CreatePlanRequestDto) => {
+  if (!Array.isArray(dto.reg_block_sizes)) return null;
+  const rows: { divisionId: number; blockSize: number }[] = [];
+  for (const item of dto.reg_block_sizes) {
+    const divisionId = Number(item?.division_id);
+    const blockSize = num(item?.block_size);
+    if (!divisionId) continue;
+    if (!Number.isInteger(blockSize) || blockSize < 0 || blockSize > 100_000) {
+      throw new BadRequestError("রেজি. ব্লকের সাইজ 0 থেকে 100000 এর মধ্যে পূর্ণসংখ্যা হতে হবে");
+    }
+    if (blockSize > 0) rows.push({ divisionId, blockSize });
+  }
+  return rows;
+};
+
 export class PlansService {
   constructor(private readonly repository: PlansRepository = plansRepository) {}
 
@@ -46,6 +62,7 @@ export class PlansService {
     const is_active = bool01(dto.is_active ?? 1);
 
     validatePlanFields(name, student_limit, user_limit, duration_days, price);
+    const regBlocks = parseRegBlockSizes(dto);
 
     const exist = await this.repository.findActiveByName(name);
     if (exist) throw new PlanConflictError("এই নামে plan ইতিমধ্যে আছে");
@@ -59,6 +76,8 @@ export class PlansService {
         price,
         isActive: is_active,
       });
+
+      if (regBlocks) await this.repository.replaceRegBlocks(created.id, regBlocks);
 
       return created.id;
     } catch (err) {
@@ -80,6 +99,7 @@ export class PlansService {
     const is_active = bool01(dto.is_active ?? 1);
 
     validatePlanFields(name, student_limit, user_limit, duration_days, price);
+    const regBlocks = parseRegBlockSizes(dto);
 
     const exist = await this.repository.findActiveByNameExcludingId(name, id);
     if (exist) throw new PlanConflictError("এই নামে plan ইতিমধ্যে আছে");
@@ -102,6 +122,10 @@ export class PlansService {
     }
 
     if (result.count === 0) throw new PlanNotFoundError("Plan পাওয়া যায়নি / trash এ আছে");
+
+    // Only affects blocks laid out from now on - madrasas' existing blocks
+    // are never resized by a plan edit.
+    if (regBlocks) await this.repository.replaceRegBlocks(id, regBlocks);
   }
 
   async togglePlan(id: number) {

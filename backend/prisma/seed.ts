@@ -325,6 +325,23 @@ async function main() {
     divisionIds[d.keyName] = row.id;
   }
 
+  /* ============== PLAN REGISTRATION-BLOCK SIZES ==============
+     Per-বিভাগ block size each class gets automatically (see
+     assignMissingRegistrationBlocksOnTx). Create-only - a size the super
+     admin edited on the Plans page is never overwritten by a re-seed. */
+  const planRegBlockSizes: Record<string, Record<string, number>> = {
+    Basic: { nurani: 30, nazera_hifz: 40, kitab: 20, takhassus: 10 },
+    Standard: { nurani: 60, nazera_hifz: 80, kitab: 40, takhassus: 20 },
+    Premium: { nurani: 150, nazera_hifz: 200, kitab: 100, takhassus: 50 },
+  };
+  for (let index = 0; index < plans.length; index++) {
+    const sizes = planRegBlockSizes[plans[index].name] ?? {};
+    const data = Object.entries(sizes)
+      .filter(([key]) => divisionIds[key])
+      .map(([key, blockSize]) => ({ planId: planIds[index], divisionId: divisionIds[key], blockSize }));
+    if (data.length) await prisma.planDivisionRegBlock.createMany({ data, skipDuplicates: true });
+  }
+
   /* ============== CLASSES ============== */
   const classesByDivision: Record<string, { name: string; nameBn: string }[]> = {
     nurani: [

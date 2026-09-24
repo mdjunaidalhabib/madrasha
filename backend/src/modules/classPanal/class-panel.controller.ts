@@ -16,6 +16,31 @@ const respondError = (res: Response, error: unknown, logTag: string, fallbackMes
 };
 
 /* =========================================================
+   STUDENT REGISTRATION-NUMBER BLOCKS (per class)
+========================================================= */
+export const getRegistrationBlocks = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.listRegistrationBlocks(req.tenant?.madrasa_id);
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Registration block fetch error:", "Failed to load registration blocks");
+  }
+};
+
+export const updateRegistrationBlock = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.updateRegistrationBlock(
+      req.tenant?.madrasa_id,
+      Number(req.params.classId),
+      req.body,
+    );
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Registration block update error:", "Failed to save registration block");
+  }
+};
+
+/* =========================================================
    DIVISIONS
 ========================================================= */
 export const getDivisions = async (req: Request, res: Response) => {

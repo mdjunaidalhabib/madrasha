@@ -49,6 +49,9 @@ export async function listTrashPlans() {
   return res.data;
 }
 
+/** Per-বিভাগ student registration-number block size for each class. */
+export type PlanRegBlockSizePayload = { division_id: number; block_size: number };
+
 export async function createPlan(payload: {
   name: string;
   student_limit: number;
@@ -56,6 +59,7 @@ export async function createPlan(payload: {
   duration_days: number;
   price: number;
   is_active?: 0 | 1;
+  reg_block_sizes?: PlanRegBlockSizePayload[];
 }) {
   const res = await api.post("/super/plans", payload);
   return res.data;
@@ -70,6 +74,7 @@ export async function updatePlan(
     duration_days: number;
     price: number;
     is_active?: 0 | 1;
+    reg_block_sizes?: PlanRegBlockSizePayload[];
   },
 ) {
   const res = await api.put(`/super/plans/${planId}`, payload);

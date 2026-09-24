@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import BasicInfoSection from "./BasicInfoSection";
-import PlanSection from "./PlanSection";
+import PlanSection, { RegBlockPreviewRow } from "./PlanSection";
 import DefaultUsersSection from "./DefaultUsersSection";
 import { CreateMadrasaPayload } from "./types";
 import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdminMadrasasPage";
@@ -212,6 +212,34 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
     [plans]
   );
 
+  /* Preview of the registration-number blocks the backend will lay out on
+     creation (assignMissingRegistrationBlocksOnTx): selected বিভাগ in catalog
+     order, each class a block of the plan's size, back to back from 1. */
+  const regBlockPreview = useMemo<RegBlockPreviewRow[]>(() => {
+    const plan = plans.find((p) => String(p.id) === planId);
+    const sizes = new Map((plan?.regBlocks || []).map((b) => [String(b.divisionId), b.blockSize]));
+    const selectedClasses = new Set(classes);
+    let cursor = 0;
+    return divisionItems
+      .filter((d) => divisions.includes(d.key))
+      .map((d) => {
+        const classCount = allClasses.filter(
+          (c) => String(c.division_id) === d.key && selectedClasses.has(String(c.id)),
+        ).length;
+        const size = sizes.get(d.key) ?? 0;
+        const total = size * classCount;
+        const row = {
+          label: d.label,
+          classCount,
+          size,
+          start: total ? cursor + 1 : null,
+          end: total ? cursor + total : null,
+        };
+        cursor += total;
+        return row;
+      });
+  }, [plans, planId, divisionItems, divisions, allClasses, classes]);
+
   useEffect(() => {
     if (plans.length && !planId) {
       handlePlanChange(String(plans[0].id));
@@ -307,6 +335,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           locked={!!planId}
           onPlanChange={handlePlanChange}
           onStartDateChange={setStartDate}
+          regBlockPreview={regBlockPreview}
         />
 
         <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />

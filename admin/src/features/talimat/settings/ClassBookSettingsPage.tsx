@@ -10,6 +10,18 @@ import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 
+/** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
+ * already sorted by sortOrder and are re-spliced locally on drag), so it
+ * always matches what reports/dropdowns elsewhere show. */
+const SerialBadge = ({ index }: { index: number }) => (
+  <span
+    aria-label={`ক্রম ${(index + 1).toLocaleString("bn-BD")}`}
+    className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1 text-[11px] font-semibold tabular-nums text-gray-500 dark:bg-slate-800 dark:text-slate-400"
+  >
+    {(index + 1).toLocaleString("bn-BD")}
+  </span>
+);
+
 export default function ClassBookSettingsPage() {
   const [divisions, setDivisions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -458,7 +470,7 @@ export default function ClassBookSettingsPage() {
       <div className="grid gap-4 lg:grid-cols-3">
       <SectionCard title="বিভাগ" badge={`${divisions.length}টি`}>
         <div className="flex flex-col gap-1.5">
-          {divisions.map((division) => {
+          {divisions.map((division, index) => {
             const isActiveDivision = divisionId === String(division.division_id);
             const isEditingThis = editingDivisionId === division.division_id;
             return (
@@ -513,6 +525,7 @@ export default function ClassBookSettingsPage() {
                     >
                       <GripVertical size={14} />
                     </span>
+                    <SerialBadge index={index} />
                     <button
                       onClick={() => setDivisionId(String(division.division_id))}
                       className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
@@ -572,7 +585,7 @@ export default function ClassBookSettingsPage() {
               </div>
             )}
 
-          {classes.map((classItem) => {
+          {classes.map((classItem, index) => {
             const isEditingThis = editingClassId === classItem.class_id;
             return (
               <div
@@ -626,6 +639,7 @@ export default function ClassBookSettingsPage() {
                     >
                       <GripVertical size={14} />
                     </span>
+                    <SerialBadge index={index} />
                     <button
                       onClick={() => setClassId(String(classItem.class_id))}
                       className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
@@ -699,7 +713,7 @@ export default function ClassBookSettingsPage() {
           <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
         ) : (
           <div className="flex flex-col gap-2">
-            {books.map((book) => {
+            {books.map((book, index) => {
               const isMiyari = miyariBookIds.includes(Number(book.book_id));
               return (
                 <div
@@ -785,6 +799,9 @@ export default function ClassBookSettingsPage() {
                         aria-label="কিতাব সরান"
                       >
                         <GripVertical size={15} />
+                      </span>
+                      <span className="mt-1">
+                        <SerialBadge index={index} />
                       </span>
                       <span className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900 dark:text-slate-100">
                         {book.book_name_bn}

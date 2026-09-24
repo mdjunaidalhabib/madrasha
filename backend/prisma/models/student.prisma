@@ -103,11 +103,14 @@ model Student {
   /// non-null rolls as "taken".
   roll Int?
 
-  /// Permanent, per-madrasa admission/registration number. Null while the
-  /// admission is PENDING (or REJECTED) - assigned only once a Muhtamim
-  /// approves the admission (see StudentService.approveAdmission), same as
-  /// `roll`. Once assigned it never changes on re-admission/promotion,
-  /// unlike `roll` which changes every academic year. Distinct from `id`,
+  /// Madrasa-wide unique admission/registration number, taken from the
+  /// student's class's number block (MadrasaClass.regNoStart/regNoEnd, e.g.
+  /// one class 1-50, the next 51-100). Null while the admission is PENDING
+  /// (or REJECTED) - assigned only once a Muhtamim approves the admission
+  /// (see StudentService.approveAdmission), same as `roll`. Unlike `roll` it
+  /// does not change with the academic year - only when the student moves
+  /// to a different class (promotion / class change), where they get the
+  /// next number of the new class's block. Distinct from `id`,
   /// which is an internal, tenant-agnostic primary key and should never be
   /// shown to users as a registration number.
   registrationNo Int? @map("registration_no")

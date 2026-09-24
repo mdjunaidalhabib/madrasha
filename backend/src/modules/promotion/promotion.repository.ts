@@ -1,5 +1,9 @@
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import {
+  allocateStudentRegistrationNoOnTx,
+  lockStudentRegistrationScopeOnTx,
+} from "../students/registration-no.allocator";
 
 export class PromotionRepository {
   findStudentsInClass(madrasaId: number, classId: number, academicYear: string) {
@@ -25,6 +29,17 @@ export class PromotionRepository {
       _max: { roll: true },
     });
     return result._max.roll ?? 0;
+  }
+
+  /** A promoted student takes the next number of the destination class's
+   * registration block (see registration-no.allocator.ts) - same lock as
+   * admission approval, so the two can't hand out the same number. */
+  lockRegistrationScopeOnTx(tx: TransactionClient, madrasaId: number) {
+    return lockStudentRegistrationScopeOnTx(tx, madrasaId);
+  }
+
+  allocateRegistrationNoOnTx(tx: TransactionClient, madrasaId: number, classId: number) {
+    return allocateStudentRegistrationNoOnTx(tx, madrasaId, classId);
   }
 
   /** The destination class's বিভাগ, needed to resolve the right (now
@@ -63,7 +78,14 @@ export class PromotionRepository {
   promoteStudentOnTx(
     tx: TransactionClient,
     studentId: number,
-    data: { classId: number; previousClassId: number; academicYear: string; roll: number; sessionId?: number },
+    data: {
+      classId: number;
+      previousClassId: number;
+      academicYear: string;
+      roll: number;
+      registrationNo?: number;
+      sessionId?: number;
+    },
   ) {
     return tx.student.update({ where: { id: studentId }, data });
   }
