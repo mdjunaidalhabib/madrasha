@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowRight,
   Bell,
@@ -21,14 +21,20 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { getPublicWebsite } from "../../services/publicWebsiteApi";
+import { getResolvedDomainSlugSync } from "../../services/domainResolve";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
+import { setTenantManifestName } from "../../utils/pwaManifest";
 import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
+import ContactSection from "./ContactSection";
+import MapPreview from "./MapPreview";
 import NoticeMarquee from "./NoticeMarquee";
 import { resolveTheme, type ThemeTokens } from "./themes";
+import { cldImg } from "../../utils/cloudImage";
 
 const NAV_LABELS: Record<string, string> = {
+  home: "হোম",
   about: "পরিচিতি",
   muhtamim: "মুহতামিমের বাণী",
   sovapoti: "সভাপতির বাণী",
@@ -42,6 +48,25 @@ const NAV_LABELS: Record<string, string> = {
 };
 
 /** YouTube লিংক থেকে ভিডিও আইডি বের করে - এম্বেড প্লেয়ার ও থাম্বনেইল দুটোতেই লাগে। */
+// Menu entry. হোম goes to the top of the home page. যোগাযোগ has no section on the home page — it routes to the
+// contact page. Other entries scroll in-page on home; from the contact page
+// (homeTo set) they route back home with the section hash. All client-side.
+function NavItem({
+  sectionKey,
+  contactTo,
+  homeTo,
+  ...rest
+}: { sectionKey: string; contactTo: string; homeTo?: string } & Omit<ComponentProps<"a">, "href">) {
+  if (sectionKey === "contact") return <Link to={contactTo} {...rest} />;
+  if (sectionKey === "home") return homeTo ? <Link to={homeTo} {...rest} /> : <a href="#page-top" {...rest} />;
+  if (homeTo) return <Link to={{ pathname: homeTo, hash: `#${sectionKey}` }} {...rest} />;
+  return <a href={`#${sectionKey}`} {...rest} />;
+}
+
+// Last fetched website per slug, so moving between home and যোগাযোগ renders
+// instantly (navbar/notice bar/footer never flash a loader).
+const websiteCache = new Map<string, any>();
+
 function youtubeId(url?: string | null): string | null {
   if (!url) return null;
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
@@ -233,7 +258,7 @@ function PersonCard({
       <div className="-mt-10 px-5 pb-6">
         {photo ? (
           <img
-            src={photo}
+            src={cldImg(photo, 320)}
             alt={name}
             loading="lazy"
             decoding="async"
@@ -259,11 +284,15 @@ function PersonCard({
   );
 }
 
-export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } = {}) {
+export default function PublicWebsitePage({
+  slug: slugProp,
+  view = "home",
+}: { slug?: string; view?: "home" | "contact" } = {}) {
   const params = useParams();
-  const slug = slugProp || params.madrasaSlug || params.slug || "";
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { pathname, hash } = useLocation();
+  const slug = slugProp || params.madrasaSlug || params.slug || getResolvedDomainSlugSync();
+  const [data, setData] = useState<any>(() => websiteCache.get(slug) ?? null);
+  const [loading, setLoading] = useState(() => !websiteCache.has(slug));
   const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -275,17 +304,23 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   const galleryGridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setData(null);
+    const cached = websiteCache.get(slug);
+    setLoading(!cached);
+    setData(cached ?? null);
     setError("");
     getPublicWebsite(slug)
-      .then(setData)
+      .then((res) => {
+        websiteCache.set(slug, res);
+        setData(res);
+      })
       .catch((err) => setError(err?.response?.data?.message || "Website unavailable"))
       .finally(() => setLoading(false));
   }, [slug]);
 
   const madrasa = data?.madrasa;
   useCustomDomainRedirect(madrasa?.custom_domain);
+  // Installed app (PWA) should carry this madrasa's name, not a generic one.
+  useEffect(() => setTenantManifestName(madrasa?.name), [madrasa?.name]);
   const settings = data?.settings || {};
   const notices = data?.notices || [];
   const teachers = data?.teachers || [];
@@ -316,8 +351,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
   // Theme color lifted for use as an icon tint on the near-black top bar/footer.
   const accentLabelOnDark = useMemo(() => mixHex(accentSolid, "#ffffff", 0.4), [accentSolid]);
   const guardianLoginUrl = `${getTenantGuardianBase(slug)}/login`;
-  const admissionUrl = "admission";
-  const contactUrl = "contact";
+  // Site root for this tenant ("/slug", "/m/slug" or "/" on a custom domain);
+  // every internal link is built from it so it resolves the same on any view.
+  const homePath =
+    (view === "contact" ? pathname.replace(/\/contact\/?$/, "") : pathname.replace(/\/$/, "")) || "/";
+  const sitePath = (sub: string) => (homePath === "/" ? `/${sub}` : `${homePath}/${sub}`);
+  const admissionUrl = sitePath("admission");
+  const contactUrl = sitePath("contact");
+  const navProps = { contactTo: contactUrl, homeTo: view === "home" ? undefined : homePath };
 
   const visibleSections = useMemo(() => {
     const s = data?.settings || {};
@@ -334,6 +375,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     if (s.show_contact !== 0) list.push("contact");
     return list;
   }, [data, pageMap, committee.length, settings.muhtamim_message, settings.sovapoti_message, videos.length, teachers.length]);
+  const navKeys = useMemo(() => ["home", ...visibleSections], [visibleSections]);
 
   // Left column (main reading flow) vs. right sidebar (notices + বাণী + committee),
   // in the fixed order the sidebar was designed around: notices on top, then
@@ -347,7 +389,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     return order.filter((key) => visibleSections.includes(key));
   }, [visibleSections]);
   const tailFlowKeys = useMemo(
-    () => visibleSections.filter((key) => key === "admission" || key === "contact"),
+    () => visibleSections.filter((key) => key === "admission"),
     [visibleSections],
   );
 
@@ -355,7 +397,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     const onScroll = () => {
       setScrolled(window.scrollY > 8);
       setShowTop(window.scrollY > 560);
-      let current = "";
+      let current = view === "contact" ? "contact" : "home";
       for (const key of visibleSections) {
         const el = document.getElementById(key);
         if (el && el.getBoundingClientRect().top - 140 <= 0) current = key;
@@ -365,7 +407,21 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [visibleSections]);
+  }, [visibleSections, view]);
+
+  // Route changes keep the scroll position, so on every navigation jump to the
+  // "#section" the menu asked for (home), or to the top (contact / plain home).
+  // Keyed on hasData, not data, so a background refresh never moves the page.
+  const hasData = Boolean(data);
+  useEffect(() => {
+    if (!hasData) return;
+    const id = requestAnimationFrame(() => {
+      const target = view === "home" && hash ? document.getElementById(hash.slice(1)) : null;
+      if (target) target.scrollIntoView();
+      else window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [hasData, view, pathname, hash]);
 
   useEffect(() => {
     if (!lightbox && !videoLightbox) return;
@@ -400,7 +456,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [gallery.length, galleryInView]);
+  }, [gallery.length, galleryInView, view]);
 
   // Scroll-reveal: fade/slide sections in as they enter the viewport.
   useEffect(() => {
@@ -424,7 +480,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     );
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [data, visibleSections]);
+  }, [data, visibleSections, view]);
 
   // Smooth in-page anchor scrolling, scoped to this page only.
   useEffect(() => {
@@ -486,12 +542,11 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
     );
   }
 
-  const mapsUrl = madrasa?.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
-    : "";
-  const mapEmbedUrl = madrasa?.address
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(madrasa.address)}&output=embed`
-    : "";
+  const mapsUrl =
+    settings.map_url ||
+    (madrasa?.address
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
+      : "");
 
   const socials = [
     settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={15} /> },
@@ -566,10 +621,18 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             scrolled ? "py-2" : "py-3"
           }`}
         >
-          <a href="#page-top" className="flex min-w-0 items-center gap-3">
+          <Link
+            to={homePath}
+            onClick={(e) => {
+              if (view !== "home") return;
+              e.preventDefault();
+              window.scrollTo({ top: 0 });
+            }}
+            className="flex min-w-0 items-center gap-3"
+          >
             {madrasa?.logo_url ? (
               <img
-                src={madrasa?.logo_url}
+                src={cldImg(madrasa?.logo_url, 200)}
                 alt="Logo"
                 className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
               />
@@ -587,25 +650,25 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               </div>
               <div className="text-[11px] font-semibold tracking-wide text-slate-400">Official Website</div>
             </div>
-          </a>
+          </Link>
 
           {/* Inline nav (modern): links share the brand row instead of a separate band */}
           {theme.nav === "inline" && (
             <nav className="no-scrollbar hidden min-w-0 flex-1 overflow-x-auto lg:block">
               <div className="mx-auto flex w-max items-center gap-0.5">
-                {visibleSections.map((key) => {
+                {navKeys.map((key) => {
                   const active = activeId === key;
                   return (
-                    <a
+                    <NavItem
                       key={key}
-                      href={`#${key}`}
+                      sectionKey={key} {...navProps}
                       className={`whitespace-nowrap ${theme.round} px-3 py-1.5 text-[13px] font-semibold transition ${
                         active ? "" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                       style={active ? { backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel } : undefined}
                     >
                       {NAV_LABELS[key]}
-                    </a>
+                    </NavItem>
                   );
                 })}
               </div>
@@ -645,10 +708,10 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         {theme.nav !== "inline" && (
           <nav className="no-scrollbar hidden overflow-x-auto lg:block" style={{ backgroundColor: navBg }}>
             <div className="mx-auto flex max-w-[1200px] items-center justify-center gap-1 px-4">
-              {visibleSections.map((key) => (
-                <a
+              {navKeys.map((key) => (
+                <NavItem
                   key={key}
-                  href={`#${key}`}
+                  sectionKey={key} {...navProps}
                   className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
                   style={{ color: navFg, opacity: activeId === key ? 1 : 0.78 }}
                 >
@@ -657,7 +720,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                     className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
                     style={{ backgroundColor: navUnderline, opacity: activeId === key ? 1 : 0 }}
                   />
-                </a>
+                </NavItem>
               ))}
             </div>
           </nav>
@@ -685,7 +748,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
           <div className="flex min-w-0 items-center gap-2">
             {madrasa?.logo_url ? (
               <img
-                src={madrasa?.logo_url}
+                src={cldImg(madrasa?.logo_url, 200)}
                 alt="Logo"
                 className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
@@ -712,15 +775,15 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {visibleSections.map((key) => (
-            <a
+          {navKeys.map((key) => (
+            <NavItem
               key={key}
-              href={`#${key}`}
+              sectionKey={key} {...navProps}
               onClick={() => setMenuOpen(false)}
               className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               {NAV_LABELS[key]}
-            </a>
+            </NavItem>
           ))}
         </nav>
 
@@ -753,6 +816,17 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         </div>
       </aside>
 
+      {view === "contact" ? (
+        <ContactSection
+          madrasa={madrasa}
+          settings={settings}
+          pageMap={pageMap}
+          theme={theme}
+          accentSolid={accentSolid}
+          onAccent={onAccent}
+        />
+      ) : (
+      <>
       {/* Hero / Slider */}
       <HeroSlider
         slides={settings.show_slider !== 0 ? slides : []}
@@ -762,23 +836,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
         variant={theme.hero}
         websiteStatus={madrasa?.website_status}
         actions={
-          <>
-            <Link
-              to={admissionUrl}
-              className={`inline-flex items-center gap-2 ${theme.button} bg-white px-6 py-3 text-sm font-bold text-slate-900 ${theme.shadowLg} transition hover:bg-slate-100`}
+          visibleSections.includes("about") && (
+            <a
+              href="#about"
+              className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20`}
             >
-              অনলাইনে ভর্তি
-              <ArrowRight size={16} />
-            </Link>
-            {visibleSections.includes("about") && (
-              <a
-                href="#about"
-                className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20`}
-              >
-                আমাদের সম্পর্কে জানুন
-              </a>
-            )}
-          </>
+              আমাদের সম্পর্কে জানুন
+            </a>
+          )
         }
       />
 
@@ -820,7 +885,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                             <div className="flex items-center gap-3">
                               {madrasa?.logo_url ? (
                                 <img
-                                  src={madrasa.logo_url}
+                                  src={cldImg(madrasa.logo_url, 200)}
                                   alt="Logo"
                                   className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
                                 />
@@ -887,7 +952,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                                 aria-label={item.title || "Gallery"}
                               >
                                 <img
-                                  src={item.image_url}
+                                  src={cldImg(item.image_url, 600)}
                                   alt={item.title || "Gallery"}
                                   loading="lazy"
                                   decoding="async"
@@ -1065,7 +1130,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                             <div className="flex items-center gap-3">
                               {settings.muhtamim_photo ? (
                                 <img
-                                  src={settings.muhtamim_photo}
+                                  src={cldImg(settings.muhtamim_photo, 400)}
                                   alt={settings.muhtamim_name || "Muhtamim"}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
@@ -1106,7 +1171,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                             <div className="flex items-center gap-3">
                               {settings.sovapoti_photo ? (
                                 <img
-                                  src={settings.sovapoti_photo}
+                                  src={cldImg(settings.sovapoti_photo, 400)}
                                   alt={settings.sovapoti_name || "Sovapoti"}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
@@ -1150,7 +1215,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                                 <li key={member.id} className="flex items-center gap-3">
                                   {member.photo_url ? (
                                     <img
-                                      src={member.photo_url}
+                                      src={cldImg(member.photo_url, 200)}
                                       alt={member.name}
                                       className={`h-10 w-10 shrink-0 ${theme.round} object-cover`}
                                     />
@@ -1232,12 +1297,12 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                       <ArrowRight size={16} />
                     </Link>
                     {settings.show_contact !== 0 && (
-                      <a
-                        href="#contact"
+                      <Link
+                        to={contactUrl}
                         className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10`}
                       >
                         যোগাযোগ করুন
-                      </a>
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -1246,72 +1311,10 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
           );
         }
 
-        if (key === "contact") {
-          const quickRows = [
-            madrasa?.phone && { icon: <Phone size={16} />, value: madrasa.phone, href: `tel:${madrasa.phone}` },
-            madrasa?.phone && {
-              icon: <WhatsAppIcon size={16} />,
-              value: "হোয়াটসঅ্যাপ",
-              href: waLink(madrasa.phone),
-              external: true,
-            },
-            madrasa?.email && { icon: <Mail size={16} />, value: madrasa.email, href: `mailto:${madrasa.email}` },
-          ].filter(Boolean) as { icon: ReactNode; value: string; href: string; external?: boolean }[];
-
-          return (
-            <section key="contact" id="contact" className={bandClass} style={bandStyle}>
-              <div className="mx-auto max-w-3xl px-4">
-                <SectionHeader
-                  eyebrow="যোগাযোগ"
-                  title={pageMap.contact?.title || "যোগাযোগ"}
-                  accentSolid={accentSolid}
-                  accentLabel={accentLabel}
-                  theme={theme}
-                />
-                <div
-                  className={`reveal mt-10 ${theme.panel} ${theme.panelSurface} p-6 text-center md:p-10`}
-                  style={{ borderColor: withAlpha(accentSolid, 0.18) }}
-                >
-                  {pageMap.contact?.content && (
-                    <p className="mx-auto max-w-xl whitespace-pre-line text-sm leading-7 text-slate-600 md:text-base">
-                      {pageMap.contact.content}
-                    </p>
-                  )}
-
-                  {quickRows.length > 0 && (
-                    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                      {quickRows.map((row) => (
-                        <a
-                          key={row.value}
-                          href={row.href}
-                          target={row.external ? "_blank" : undefined}
-                          rel={row.external ? "noreferrer" : undefined}
-                          className={`inline-flex items-center gap-2 ${theme.round} px-4 py-2 text-sm font-semibold`}
-                          style={{ backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel }}
-                        >
-                          {row.icon}
-                          {row.value}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-
-                  <Link
-                    to={contactUrl}
-                    className={`mt-8 inline-flex items-center gap-2 ${theme.button} px-6 py-3 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
-                    style={{ backgroundColor: accentSolid, color: onAccent }}
-                  >
-                    সম্পূর্ণ যোগাযোগ তথ্য ও মানচিত্র দেখুন
-                    <ArrowRight size={16} />
-                  </Link>
-                </div>
-              </div>
-            </section>
-          );
-        }
-
         return null;
       })}
+      </>
+      )}
 
       {/* Footer */}
       <footer className="relative bg-slate-950 text-slate-300">
@@ -1324,7 +1327,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               <div className="flex items-center gap-3">
                 {madrasa?.logo_url ? (
                   <img
-                    src={madrasa?.logo_url}
+                    src={cldImg(madrasa?.logo_url, 200)}
                     alt="Logo"
                     className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
                   />
@@ -1364,15 +1367,15 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             </div>
 
             {/* Quick links */}
-            {visibleSections.length > 0 && (
+            {navKeys.length > 0 && (
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-wide text-white">প্রয়োজনীয় লিংক</h3>
                 <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
                 <nav className="mt-4 flex flex-col gap-2.5 text-sm text-slate-400">
-                  {visibleSections.map((key) => (
-                    <a key={key} href={`#${key}`} className="w-fit transition hover:text-white">
+                  {navKeys.map((key) => (
+                    <NavItem key={key} sectionKey={key} {...navProps} className="w-fit transition hover:text-white">
                       {NAV_LABELS[key]}
-                    </a>
+                    </NavItem>
                   ))}
                 </nav>
               </div>
@@ -1421,6 +1424,14 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
                   </a>
                 )}
               </div>
+
+              {mapsUrl && (
+                <MapPreview
+                  href={mapsUrl}
+                  compact
+                  className="mt-4 h-28 w-full max-w-[260px] rounded-xl ring-1 ring-white/10 transition hover:ring-white/30"
+                />
+              )}
             </div>
 
             {/* CTA */}
@@ -1444,18 +1455,6 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
               </div>
             </div>
           </div>
-
-          {mapEmbedUrl && (
-            <div className="mt-10 overflow-hidden rounded-2xl ring-1 ring-white/10">
-              <iframe
-                title="Location map"
-                src={mapEmbedUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block h-56 w-full border-0 grayscale-[0.3]"
-              />
-            </div>
-          )}
         </div>
 
         <div className="border-t border-white/10">
@@ -1509,7 +1508,7 @@ export default function PublicWebsitePage({ slug: slugProp }: { slug?: string } 
             <X size={22} />
           </button>
           <img
-            src={lightbox.url}
+            src={cldImg(lightbox.url, 1600)}
             alt={lightbox.title}
             className={`animate-lightboxImage max-h-[85vh] max-w-full ${theme.media} object-contain shadow-2xl`}
             onClick={(e) => e.stopPropagation()}

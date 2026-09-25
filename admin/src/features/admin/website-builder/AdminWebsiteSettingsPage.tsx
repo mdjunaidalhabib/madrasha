@@ -8,6 +8,7 @@ import {
   GalleryHorizontalEnd,
   Globe,
   Images,
+  Link2,
   Megaphone,
   Palette,
   Pencil,
@@ -104,6 +105,7 @@ const defaultSettings: WebsiteSettingsPayload = {
   youtube_url: "",
   instagram_url: "",
   whatsapp_channel_url: "",
+  map_url: "",
 };
 
 /**
@@ -129,8 +131,6 @@ function reorderBySortOrder<T extends { id?: number; sort_order?: number }>(
 const emptyNotice: WebsiteNoticePayload = { title: "", content: "", is_published: 1 };
 const emptyGallery: WebsiteGalleryPayload = { title: "", image_url: "", is_published: 1, sort_order: 0 };
 const emptySlide: WebsiteSlidePayload = {
-  title: "",
-  subtitle: "",
   image_url: "",
   is_published: 1,
   sort_order: 0,
@@ -183,6 +183,7 @@ type TabKey =
   | "pages";
 
 const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-slate-400";
+const slideLinkHintClass = "mt-1 text-xs text-gray-400 dark:text-slate-500";
 
 const selectFieldClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -927,7 +928,7 @@ export default function AdminWebsiteSettingsPage() {
     if (!item.id) return;
     useConfirmStore.getState().show({
       title: "স্লাইড মুছুন",
-      message: `"${item.title || "এই স্লাইডটি"}" স্থায়ীভাবে মুছে ফেলতে চান?`,
+      message: "এই স্লাইডটি স্থায়ীভাবে মুছে ফেলতে চান?",
       confirmText: "মুছুন",
       danger: true,
       onConfirm: async () => {
@@ -1435,6 +1436,18 @@ export default function AdminWebsiteSettingsPage() {
                 onSave={(v) => saveSettingsField("whatsapp_channel_url", v)}
               />
             </div>
+          </SectionCard>
+
+          <SectionCard
+            title="লোকেশন ম্যাপ"
+            hint="Google Maps-এ মাদরাসার লোকেশন খুলে Share → Copy link করে এখানে দিন। ফুটারের যোগাযোগ কলামে ছোট ম্যাপে ক্লিক করলে এই লিংকে যাবে। খালি রাখলে ঠিকানা দিয়ে ম্যাপ খুঁজবে।"
+          >
+            <InlineTextField
+              label="Google Maps লিংক"
+              value={form.map_url || ""}
+              placeholder="https://maps.app.goo.gl/..."
+              onSave={(v) => saveSettingsField("map_url", v)}
+            />
           </SectionCard>
         </div>
       )}
@@ -1980,10 +1993,11 @@ export default function AdminWebsiteSettingsPage() {
                 <div className="max-w-xs">
                   <BrandImageBox
                     label="স্লাইড ছবি"
-                    hint="সাইজ: 1600 × 900px (১৬:৯) — অন্য সাইজ দিলেও স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
+                    hint="সাইজ: 2100 × 900px (২১:৯) — অন্য সাইজ দিলেও মাঝখান থেকে কেটে স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
+                    ratioLabel="অনুপাত ২১:৯"
                     folder="gallery"
                     shape="wide"
-                    resizeTo={{ width: 1600, height: 900 }}
+                    resizeTo={{ width: 2100, height: 900 }}
                     value={slideDraft.image_url}
                     onChange={(url) => setSlideDraft((prev) => ({ ...prev, image_url: url }))}
                     onRemove={() => setSlideDraft((prev) => ({ ...prev, image_url: "" }))}
@@ -1991,18 +2005,13 @@ export default function AdminWebsiteSettingsPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass}>শিরোনাম</label>
+                    <label className={fieldLabelClass}>লিংক (ঐচ্ছিক)</label>
                     <Input
-                      value={slideDraft.title || ""}
-                      onChange={(e) => setSlideDraft((prev) => ({ ...prev, title: e.target.value }))}
+                      value={slideDraft.button_link || ""}
+                      placeholder="https://... অথবা /admission"
+                      onChange={(e) => setSlideDraft((prev) => ({ ...prev, button_link: e.target.value }))}
                     />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>সাব-টাইটেল</label>
-                    <Input
-                      value={slideDraft.subtitle || ""}
-                      onChange={(e) => setSlideDraft((prev) => ({ ...prev, subtitle: e.target.value }))}
-                    />
+                    <p className={slideLinkHintClass}>দিলে স্লাইডে ক্লিক করলে এই লিংকে চলে যাবে।</p>
                   </div>
                   <div>
                     <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
@@ -2047,10 +2056,11 @@ export default function AdminWebsiteSettingsPage() {
                       <div className="max-w-xs">
                         <BrandImageBox
                           label="স্লাইড ছবি"
-                          hint="সাইজ: 1600 × 900px (১৬:৯) — অন্য সাইজ দিলেও স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
+                          hint="সাইজ: 2100 × 900px (২১:৯) — অন্য সাইজ দিলেও মাঝখান থেকে কেটে স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
+                          ratioLabel="অনুপাত ২১:৯"
                           folder="gallery"
                           shape="wide"
-                          resizeTo={{ width: 1600, height: 900 }}
+                          resizeTo={{ width: 2100, height: 900 }}
                           value={slideEditDraft.image_url}
                           onChange={(url) =>
                             setSlideEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))
@@ -2062,22 +2072,15 @@ export default function AdminWebsiteSettingsPage() {
                       </div>
                       <div className="mt-3 space-y-3">
                         <div>
-                          <label className={fieldLabelClass}>শিরোনাম</label>
+                          <label className={fieldLabelClass}>লিংক (ঐচ্ছিক)</label>
                           <Input
-                            value={slideEditDraft.title || ""}
+                            value={slideEditDraft.button_link || ""}
+                            placeholder="https://... অথবা /admission"
                             onChange={(e) =>
-                              setSlideEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+                              setSlideEditDraft((prev) => (prev ? { ...prev, button_link: e.target.value } : prev))
                             }
                           />
-                        </div>
-                        <div>
-                          <label className={fieldLabelClass}>সাব-টাইটেল</label>
-                          <Input
-                            value={slideEditDraft.subtitle || ""}
-                            onChange={(e) =>
-                              setSlideEditDraft((prev) => (prev ? { ...prev, subtitle: e.target.value } : prev))
-                            }
-                          />
+                          <p className={slideLinkHintClass}>দিলে স্লাইডে ক্লিক করলে এই লিংকে চলে যাবে।</p>
                         </div>
                         <div>
                           <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
@@ -2115,15 +2118,15 @@ export default function AdminWebsiteSettingsPage() {
                     >
                       <img
                         src={item.image_url}
-                        alt={item.title || "Slide"}
+                        alt="Slide"
                         className="h-32 w-full rounded-lg object-cover"
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
-                            {item.title || "শিরোনামহীন স্লাইড"}
+                          <p className="flex items-center gap-1 truncate text-sm font-medium text-gray-700 dark:text-slate-300">
+                            <Link2 size={13} className="shrink-0 text-gray-400 dark:text-slate-500" />
+                            <span className="truncate">{item.button_link || "লিংক নেই"}</span>
                           </p>
-                          {item.subtitle && <p className="truncate text-xs text-gray-500 dark:text-slate-400">{item.subtitle}</p>}
                           {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">

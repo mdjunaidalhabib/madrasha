@@ -95,10 +95,7 @@ export class WebsiteRepository {
       where: { madrasaId, isPublished: 1 },
       select: {
         id: true,
-        title: true,
-        subtitle: true,
         imageUrl: true,
-        buttonText: true,
         buttonLink: true,
         isPublished: true,
         sortOrder: true,

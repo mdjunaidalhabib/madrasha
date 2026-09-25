@@ -9,7 +9,6 @@ const RootRoute = lazy(() => import("../features/landing/RootRoute"));
 const CustomDomainTenantGate = lazy(() => import("../features/landing/CustomDomainTenantGate"));
 const PublicWebsitePage = lazy(() => import("../features/website/PublicWebsitePage"));
 const AdmissionApplyPage = lazy(() => import("../features/website/AdmissionApplyPage"));
-const ContactPage = lazy(() => import("../features/website/ContactPage"));
 const AttendanceKioskPage = lazy(() => import("../features/kiosk/AttendanceKioskPage"));
 
 const GuardianLoginPage = lazy(() => import("../features/guardian/GuardianLoginPage"));
@@ -39,7 +38,7 @@ export const router = createBrowserRouter([
 
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
   { path: "/m/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
-  { path: "/m/:madrasaSlug/contact", element: withSuspense(<ContactPage />) },
+  { path: "/m/:madrasaSlug/contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
 
   { path: "/:madrasaSlug/guardian/login", element: withSuspense(<GuardianLoginPage />) },
   {
@@ -68,7 +67,7 @@ export const router = createBrowserRouter([
   },
 
   { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
-  { path: "/:madrasaSlug/contact", element: withSuspense(<ContactPage />) },
+  { path: "/:madrasaSlug/contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
   { path: "/:madrasaSlug/kiosk", element: withSuspense(<AttendanceKioskPage />) },
 
   // Bare (no-slug) equivalents of the routes above, reachable only on a
@@ -84,7 +83,7 @@ export const router = createBrowserRouter([
     element: withSuspense(<CustomDomainTenantGate />),
     children: [
       { path: "admission", element: withSuspense(<AdmissionApplyPage />) },
-      { path: "contact", element: withSuspense(<ContactPage />) },
+      { path: "contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
       { path: "guardian/login", element: withSuspense(<GuardianLoginPage />) },
       {
         path: "guardian",

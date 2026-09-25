@@ -14,6 +14,7 @@ import {
   IdCardBackData,
   MarksheetFieldItem,
   AdmitCardFieldItem,
+  SocialLinkItem,
   MyPlanData,
   SectionTogglesData,
 } from "./settings.types";
@@ -36,6 +37,10 @@ import {
   MAX_BRANDING_PHONE_LENGTH,
   MAX_BRANDING_EMAIL_LENGTH,
   MAX_BRANDING_CONTACT_ITEMS,
+  SOCIAL_LINK_TYPES,
+  MAX_SOCIAL_LINKS,
+  MAX_SOCIAL_LINK_VALUE_LENGTH,
+  MAX_SOCIAL_LINK_LABEL_LENGTH,
   BRANDING_IMAGE_FIELDS,
   DOCUMENT_DESIGNS,
   DEFAULT_DOCUMENT_DESIGN,
@@ -336,7 +341,63 @@ function sanitizeContactList(value: unknown, maxLength: number): string[] | null
   return cleaned;
 }
 
-const ISO_DATE_RE = /^d{4}-d{2}-d{2}$/;
+const WHATSAPP_NUMBER_RE = /^\+?[0-9০-৯][0-9০-৯\s-]{5,19}$/;
+const HTTP_URL_RE = /^https?:\/\/[^\s]+$/i;
+
+/** Validates + normalizes a full social_links replacement list. WhatsApp
+ * entries hold a phone number, every other type an http(s) URL (a bare
+ * "facebook.com/..." gets https:// prepended). Blank rows are dropped;
+ * anything else malformed throws. Returns undefined when nothing was sent. */
+function sanitizeSocialLinks(value: UpdateBrandingRequestDto["social_links"]): SocialLinkItem[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new BadRequestError("Invalid social_links");
+  if (value.length > MAX_SOCIAL_LINKS) throw new BadRequestError(`At most ${MAX_SOCIAL_LINKS} social links allowed`);
+
+  const cleaned: SocialLinkItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") throw new BadRequestError("Invalid social link");
+    const { type, label, value: raw } = item;
+    if (typeof type !== "string" || !(SOCIAL_LINK_TYPES as readonly string[]).includes(type)) {
+      throw new BadRequestError("Invalid social link type");
+    }
+    if (raw !== undefined && raw !== null && typeof raw !== "string") throw new BadRequestError("Invalid social link");
+    if (label !== undefined && label !== null && typeof label !== "string") {
+      throw new BadRequestError("Invalid social link label");
+    }
+
+    let link = (raw ?? "").trim();
+    if (!link) continue;
+    if (link.length > MAX_SOCIAL_LINK_VALUE_LENGTH) throw new BadRequestError("Social link is too long");
+
+    if (type === "whatsapp") {
+      if (!WHATSAPP_NUMBER_RE.test(link)) throw new BadRequestError("Invalid WhatsApp number");
+    } else {
+      if (!/^https?:\/\//i.test(link)) link = `https://${link}`;
+      if (!HTTP_URL_RE.test(link)) throw new BadRequestError("Invalid social link URL");
+    }
+
+    const cleanLabel = (label ?? "").trim();
+    if (cleanLabel.length > MAX_SOCIAL_LINK_LABEL_LENGTH) throw new BadRequestError("Social link label is too long");
+    cleaned.push({ type, label: cleanLabel || null, value: link });
+  }
+  return cleaned;
+}
+
+/** Read-side counterpart: silently drops anything malformed in stored data. */
+function fillSocialLinks(stored: unknown): SocialLinkItem[] {
+  if (!Array.isArray(stored)) return [];
+  return (stored as Partial<SocialLinkItem>[])
+    .filter(
+      (item) =>
+        typeof item?.type === "string" &&
+        (SOCIAL_LINK_TYPES as readonly string[]).includes(item.type) &&
+        typeof item.value === "string" &&
+        item.value.trim() !== "",
+    )
+    .map((item) => ({ type: item.type!, label: item.label ?? null, value: item.value! }));
+}
+
+const ISO_DATE_RE =/^d{4}-d{2}-d{2}$/;
 
 const EMPTY_ID_CARD_BACK: IdCardBackData = {
   issue_date: null,
@@ -374,6 +435,7 @@ export class SettingsService {
       address: madrasa.address,
       phones: madrasa.brandingPhones,
       emails: madrasa.brandingEmails,
+      social_links: fillSocialLinks(madrasa.brandingSocialLinks),
       report_logo: madrasa.reportLogo,
       report_banner: madrasa.reportBanner,
       report_watermark: madrasa.reportWatermark,
@@ -397,6 +459,7 @@ export class SettingsService {
       address,
       phones,
       emails,
+      social_links,
       report_logo,
       report_banner,
       report_watermark,
@@ -445,6 +508,8 @@ export class SettingsService {
       cleanedEmails = sanitizeContactList(emails, MAX_BRANDING_EMAIL_LENGTH) ?? undefined;
       if (!cleanedEmails) throw new BadRequestError("Invalid email addresses");
     }
+
+    const cleanedSocialLinks = sanitizeSocialLinks(social_links);
 
     let opacity: number | undefined;
     if (report_watermark_opacity !== undefined && report_watermark_opacity !== null) {
@@ -495,6 +560,12 @@ export class SettingsService {
       const after = cleanedEmails.join(", ") || "—";
       if (before !== after) changes.push(`ইমেইল: ${before} → ${after}`);
     }
+    if (cleanedSocialLinks !== undefined && current) {
+      const fmt = (list: SocialLinkItem[]) => list.map((l) => `${l.type}: ${l.value}`).join(", ") || "—";
+      const before = fmt(fillSocialLinks(current.brandingSocialLinks));
+      const after = fmt(cleanedSocialLinks);
+      if (before !== after) changes.push(`সোশ্যাল লিংক: ${before} → ${after}`);
+    }
     const imageLabels: Record<string, string> = {
       report_logo: "লোগো",
       report_banner: "ব্যানার",
@@ -531,6 +602,9 @@ export class SettingsService {
       ...(address !== undefined ? { address } : {}),
       ...(cleanedPhones !== undefined ? { brandingPhones: { set: cleanedPhones } } : {}),
       ...(cleanedEmails !== undefined ? { brandingEmails: { set: cleanedEmails } } : {}),
+      ...(cleanedSocialLinks !== undefined
+        ? { brandingSocialLinks: cleanedSocialLinks as unknown as Prisma.InputJsonValue }
+        : {}),
       ...(report_logo !== undefined && report_logo !== null
         ? { reportLogo: storageProvider.persistImage(report_logo) }
         : {}),

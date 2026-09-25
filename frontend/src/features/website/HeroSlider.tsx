@@ -1,13 +1,30 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { withAlpha } from "./colorUtils";
 import type { HeroVariant } from "./themes";
+import { cldImg } from "../../utils/cloudImage";
 
 export type PublicSlide = {
   id?: number;
-  title?: string | null;
-  subtitle?: string | null;
   image_url: string;
+  button_link?: string | null;
+};
+
+type SlideTarget = { internal: string } | { href: string; external: boolean };
+
+// Where a click on the slide goes. The backend already normalizes the link
+// (website.service normalizeSlideLink); this re-checks it before it becomes
+// an href. "/admission" is a path inside this madrasa's own site, so it's
+// routed relative to the current page (works under /:slug and on a custom
+// domain alike) rather than to the domain root.
+const slideTarget = (link?: string | null): SlideTarget | null => {
+  const value = link?.trim();
+  if (!value) return null;
+  if (value.startsWith("#")) return { href: value, external: false };
+  if (value.startsWith("/") && !value.startsWith("//")) return { internal: value.slice(1) };
+  if (/^https?:\/\//i.test(value)) return { href: value, external: true };
+  return null;
 };
 
 const AUTOPLAY_MS = 5500;
@@ -15,19 +32,17 @@ const TRANSITION_MS = 1000;
 
 // Aspect-ratio driven (not a fixed-pixel ladder) so the box always keeps a
 // clean, professional proportion as it scales with the 1200px-capped width
-// below. Base ratio matches the recommended slide upload size (1600x900,
-// 16:9) so an image fits edge-to-edge with no letterbox padding on phones
-// and tablets; it only opens up to a wide 21:9 banner on desktop. Paired
-// with object-contain (the full photo always visible, never cropped)
-// rather than object-cover.
-const HERO_ASPECT = "aspect-[16/9] lg:aspect-[21/9]";
+// below. One 21:9 ratio on every screen, matching the slide upload size
+// (2100x900 - the admin uploader center-crops to exactly this), so a slide
+// fills the box with nothing cropped and no blurred bars on any device.
+const HERO_ASPECT = "aspect-[21/9]";
 
 // Per-theme hero shape. "classic" is the original; "rounded" (modern) softens
-// the bottom corners; "flat" (minimal) is a touch shorter with square edges.
+// the bottom corners; "flat" (minimal) has square edges.
 const HERO_VARIANT_CLASS: Record<HeroVariant, string> = {
   classic: HERO_ASPECT,
   rounded: `${HERO_ASPECT} rounded-b-[1.75rem] md:rounded-b-[3rem]`,
-  flat: "aspect-[16/9] lg:aspect-[24/9]",
+  flat: HERO_ASPECT,
 };
 
 // One consistent crossfade + gentle scale-in every time a slide changes —
@@ -42,7 +57,6 @@ type SliderState = {
 export default function HeroSlider({
   slides,
   fallbackTitle,
-  fallbackSubtitle,
   accentSolid,
   variant = "classic",
   websiteStatus,
@@ -127,8 +141,11 @@ export default function HeroSlider({
   };
 
   const current = hasSlides ? slides[state.active] : null;
-  const title = current?.title || fallbackTitle;
-  const subtitle = current?.subtitle || fallbackSubtitle;
+  const target = slideTarget(current?.button_link);
+  // Full-slide click area; sits under the dots/buttons (they're positioned
+  // later in the DOM) so those stay clickable.
+  const linkClass = "absolute inset-0 cursor-pointer";
+  const linkLabel = "স্লাইডের লিংক খুলুন";
 
   return (
     <section
@@ -162,39 +179,23 @@ export default function HeroSlider({
                 className="absolute inset-0 ease-out"
                 style={{ opacity, transform, transitionProperty: "opacity, transform", transitionDuration }}
               >
-                {/* Blurred, cropped copy fills the box edge-to-edge behind the
-                    real photo — so object-contain below can show the whole
-                    image, on any device, without ever leaving bare gaps. */}
+                {/* Uploads are already 21:9, so cover is a no-op for them; it
+                    only trims slides uploaded at the old 16:9 size (instead
+                    of showing blurred side bars). */}
                 {loadedIndices.has(index) && (
-                  <>
-                    <img
-                      src={slide.image_url}
-                      alt=""
-                      aria-hidden="true"
-                      fetchPriority={index === 0 ? "high" : "auto"}
-                      className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
-                      style={{
-                        animation:
-                          isEntering && !atStart
-                            ? "heroKenBurns 9s ease-in-out infinite alternate"
-                            : undefined,
-                      }}
-                    />
-                    <img
-                      src={slide.image_url}
-                      alt={slide.title || "Slide"}
-                      fetchPriority={index === 0 ? "high" : "auto"}
-                      className="absolute inset-0 h-full w-full object-contain"
-                    />
-                  </>
+                  <img
+                    src={cldImg(slide.image_url, 1920)}
+                    alt=""
+                    fetchPriority={index === 0 ? "high" : "auto"}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
                 )}
               </div>
             );
           })}
-          {/* Vertical scrim — darkest where the headline sits (bottom) and
-              faintly at the top, so text stays readable on any photo while
-              the middle of the image stays clear. */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
+          {/* Light bottom scrim - just enough to keep the dots visible;
+              there's no headline to protect any more. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       )}
 
@@ -220,30 +221,26 @@ export default function HeroSlider({
       )}
 
       <div className="relative flex h-full flex-col items-center justify-center px-4 pb-10 text-center md:pb-14">
-        <h1
-          key={`title-${state.active}`}
-          className="line-clamp-2 max-w-4xl animate-heroFadeUp text-3xl font-extrabold leading-tight tracking-tight md:text-5xl lg:text-6xl"
-          style={{ textShadow: "0 2px 18px rgba(0,0,0,0.55)" }}
-        >
-          {title}
-        </h1>
-        <span
-          aria-hidden="true"
-          className="mt-4 hidden h-1 w-16 rounded-full md:block"
-          style={{ backgroundColor: withAlpha("#ffffff", 0.85) }}
-        />
-        <p
-          key={`subtitle-${state.active}`}
-          className="mx-auto mt-4 line-clamp-2 max-w-2xl animate-heroFadeUp text-sm leading-relaxed text-white/90 md:text-lg"
-          style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
-        >
-          {subtitle}
-        </p>
+        {/* No visible text over the slides - the photo speaks for itself.
+            The heading stays for screen readers / SEO only. */}
+        <h1 className="sr-only">{fallbackTitle}</h1>
 
-        {actions && <div className="mt-8 hidden flex-wrap items-center justify-center gap-3 md:flex">{actions}</div>}
+        {target &&
+          ("internal" in target ? (
+            <Link to={target.internal} className={linkClass} aria-label={linkLabel} />
+          ) : (
+            <a
+              href={target.href}
+              className={linkClass}
+              aria-label={linkLabel}
+              {...(target.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            />
+          ))}
+
+        {actions && <div className="relative hidden flex-wrap items-center justify-center gap-3 md:flex">{actions}</div>}
 
         {websiteStatus === "limited" && (
-          <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
+          <div className="relative mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
             Limited mode enabled by Super Admin.
           </div>
         )}

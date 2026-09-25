@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { TeacherFullRecord } from "../../types/teacher";
+import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
 
 export interface BulkUpdateExcelRow {
   id?: string | number;
@@ -201,7 +202,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
     const ws = XLSX.utils.aoa_to_sheet([
       [
-        "ধূসর রঙের কলামগুলো (id, registration_no, academic_division_name) সম্পাদনাযোগ্য নয় - এডিট করলেও তা উপেক্ষা করা হবে। শুধু name_bn আবশ্যক (*), বাকি ঘর খালি রাখলে সেই তথ্য মুছে যাবে (division_id ব্যতিক্রম - খালি রাখলে অপরিবর্তিত থাকবে)।",
+        "ধূসর রঙের কলামগুলো (id, registration_no, academic_division_name) লক করা - এগুলোতে লেখা যাবে না। শুধু name_bn আবশ্যক (*), বাকি ঘর খালি রাখলে সেই তথ্য মুছে যাবে (division_id ব্যতিক্রম - খালি রাখলে অপরিবর্তিত থাকবে)।",
       ],
       [],
       headerRow,
@@ -243,7 +244,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
     });
 
     const guideRows = [
-      ["লক করা কলাম (এডিট করলে উপেক্ষা হবে)"],
+      ["লক করা কলাম (এগুলোতে লেখা যাবে না)"],
       ["id", "registration_no", "academic_division_name"],
       [],
       ["Gender Guide"],
@@ -262,7 +263,13 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bulk Update");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
-    XLSX.writeFile(wb, "teacher-bulk-update.xlsx");
+    // Locked columns (grey) and the title/header rows can't be typed into -
+    // only the editable columns' data cells take input.
+    downloadLockedWorkbook(XLSX, wb, "teacher-bulk-update.xlsx", {
+      sheetName: "Bulk Update",
+      editableCols: columns.flatMap((col, i) => (col.type === "locked" ? [] : [i])),
+      firstRow: 4,
+    });
   };
 
   const handleDataUpload = (data: BulkUpdateExcelRow[]) => {

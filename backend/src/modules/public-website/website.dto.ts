@@ -35,14 +35,12 @@ export interface UpsertWebsiteSettingsRequestDto {
   youtube_url?: string;
   instagram_url?: string;
   whatsapp_channel_url?: string;
+  map_url?: string;
 }
 
 export interface SaveWebsiteSlideRequestDto {
   id?: number;
-  title?: string;
-  subtitle?: string;
   image_url: string;
-  button_text?: string;
   button_link?: string;
   is_published?: unknown;
   sort_order?: number | string;

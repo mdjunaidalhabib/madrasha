@@ -115,11 +115,49 @@ export const ADMIT_CARD_FIELD_LABELS_BN: Record<string, string> = {
   academic_year: "শিক্ষাবর্ষ",
 };
 
+// backend/src/modules/settings/settings.constants.ts-এর SOCIAL_LINK_TYPES মিরর করে।
+// "whatsapp"-এ value হলো নম্বর, বাকি সবগুলোতে পূর্ণ লিংক (URL)।
+export const SOCIAL_LINK_TYPES = [
+  "whatsapp",
+  "facebook_page",
+  "facebook_profile",
+  "facebook_group",
+  "youtube",
+  "instagram",
+  "telegram",
+  "tiktok",
+  "x",
+  "linkedin",
+  "website",
+  "other",
+] as const;
+export type SocialLinkType = (typeof SOCIAL_LINK_TYPES)[number];
+
+export const SOCIAL_LINK_TYPE_LABELS_BN: Record<SocialLinkType, string> = {
+  whatsapp: "WhatsApp নম্বর",
+  facebook_page: "Facebook পেজ",
+  facebook_profile: "Facebook প্রোফাইল",
+  facebook_group: "Facebook গ্রুপ",
+  youtube: "YouTube চ্যানেল",
+  instagram: "Instagram",
+  telegram: "Telegram",
+  tiktok: "TikTok",
+  x: "X (Twitter)",
+  linkedin: "LinkedIn",
+  website: "ওয়েবসাইট",
+  other: "অন্যান্য",
+};
+
+export const MAX_SOCIAL_LINKS = 20;
+
+export type SocialLinkItem = { type: SocialLinkType; label: string | null; value: string };
+
 export type BrandingPayload = {
   name?: string | null;
   address?: string | null;
   phones?: string[];
   emails?: string[];
+  social_links?: SocialLinkItem[];
   report_logo?: string | null;
   report_banner?: string | null;
   report_watermark?: string | null;

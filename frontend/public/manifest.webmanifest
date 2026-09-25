@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "মাদ্রাসা",
+  "short_name": "মাদ্রাসা",
+  "description": "মাদ্রাসার ওয়েবসাইট ও অভিভাবক পোর্টাল",
+  "lang": "bn",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { StudentFullRecord } from "../../types/student";
+import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
 
 export interface BulkUpdateExcelRow {
   id?: string | number;
@@ -121,11 +122,12 @@ const EDITABLE_FIELDS: { key: string; label: string }[] = [
 ];
 
 const LOCKED_FIELDS: { key: string; label: string }[] = [
-  { key: "class_id", label: "ক্লাস" },
-  { key: "division_id", label: "বিভাগ" },
   { key: "academic_year", label: "শিক্ষাবর্ষ" },
   { key: "roll", label: "রোল" },
 ];
+
+/** Reference columns leading the sheet - shown for identification, locked in Excel. */
+const SHEET_LOCKED_COLUMNS = ["registration_no", "roll", "current_class", "division_name", "academic_year"];
 
 const DATE_FIELDS = new Set(["dob", "admission_date"]);
 
@@ -162,8 +164,17 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
   const previewRows = useMemo<PreviewRow[]>(() => {
     return excelRows.map((row, index) => {
       const rowNumber = index + 1;
-      const id = toNum(row.id);
-      const matched = id !== null ? students.find((s) => Number(s.id) === id) || null : null;
+      // The sheet identifies students by রেজি. নং (madrasa-wide unique);
+      // older exports still carry an id column, which wins when present.
+      const legacyId = toNum(row.id);
+      const regNo = normValue("registration_no", row.registration_no);
+      const matched =
+        (legacyId !== null
+          ? students.find((s) => Number(s.id) === legacyId)
+          : regNo
+            ? students.find((s) => normValue("registration_no", s.registration_no) === regNo)
+            : undefined) || null;
+      const id = matched ? Number(matched.id) : legacyId;
       const name = String(row.name_bn ?? matched?.name_bn ?? "");
 
       if (!matched) {
@@ -175,7 +186,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
           matched: null,
           changes: [],
           lockedTampered: false,
-          willSubmit: true,
+          willSubmit: false,
         };
       }
 
@@ -206,6 +217,12 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
 
   const submitCount = previewRows.filter((r) => r.willSubmit).length;
 
+  const regRoll = (s: StudentFullRecord) => `${s.registration_no ?? "-"} / ${s.roll ?? "-"}`;
+  const regRollById = (id: number | null | undefined) => {
+    const s = id ? students.find((x) => Number(x.id) === Number(id)) : undefined;
+    return s ? regRoll(s) : "-";
+  };
+
   const reset = () => {
     setExcelRows([]);
     setResult(null);
@@ -226,18 +243,13 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
 
     type ColType = "locked" | "required" | "optional";
     const columns: { key: string; type: ColType }[] = [
-      { key: "id", type: "locked" },
-      { key: "registration_no", type: "locked" },
+      ...SHEET_LOCKED_COLUMNS.map((key) => ({ key, type: "locked" as ColType })),
       ...EDITABLE_FIELDS.map(({ key }) => ({
         key: key as string,
         type: (key === "name_bn" ? "required" : "optional") as ColType,
       })),
-      { key: "class_id", type: "locked" },
-      { key: "division_id", type: "locked" },
-      { key: "academic_year", type: "locked" },
-      { key: "roll", type: "locked" },
-      { key: "current_class", type: "locked" },
     ];
+    const divisionName = new Map(divisions.map((d) => [String(d.division_id), d.division_name_bn]));
 
     const headerRow = columns.map((col) => (col.type === "required" ? `${col.key} *` : col.key));
 
@@ -245,13 +257,14 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
       const record = s as unknown as Record<string, unknown>;
       return columns.map((col) => {
         if (DATE_FIELDS.has(col.key)) return toDateCell(record[col.key] as string | null);
+        if (col.key === "division_name") return divisionName.get(String(s.division_id ?? "")) ?? "";
         return record[col.key] ?? "";
       });
     });
 
     const ws = XLSX.utils.aoa_to_sheet([
       [
-        "ধূসর রঙের কলামগুলো (id, registration_no, class_id, division_id, academic_year, roll, current_class) সম্পাদনাযোগ্য নয় - এডিট করলেও তা উপেক্ষা করা হবে। ক্লাস/বিভাগ/সেশন পরিবর্তনের জন্য 'প্রমোশন' ফিচার ব্যবহার করুন। শুধু name_bn আবশ্যক (*), বাকি ঘর খালি রাখলে সেই তথ্য মুছে যাবে।",
+        "ধূসর রঙের কলামগুলো (registration_no, roll, current_class, division_name, academic_year) লক করা - এগুলোতে লেখা যাবে না। ক্লাস/বিভাগ/সেশন পরিবর্তনের জন্য 'প্রমোশন' ফিচার ব্যবহার করুন। শুধু name_bn আবশ্যক (*), বাকি ঘর খালি রাখলে সেই তথ্য মুছে যাবে।",
       ],
       [],
       headerRow,
@@ -293,21 +306,17 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
     });
 
     const guideRows = [
-      ["লক করা কলাম (এডিট করলে উপেক্ষা হবে)"],
-      ["id", "registration_no", "class_id", "division_id", "academic_year", "roll", "current_class"],
+      ["লক করা কলাম (এগুলোতে লেখা যাবে না)"],
+      SHEET_LOCKED_COLUMNS,
       [],
       ["Gender Guide"],
       ["ID", "Name"],
       [1, "ছেলে"],
       [2, "মেয়ে"],
       [],
-      ["Division Guide"],
-      ["ID", "Division Name"],
-      ...divisions.map((d) => [d.division_id, d.division_name_bn]),
-      [],
-      ["Class Guide"],
-      ["ID", "Class Name", "Division ID"],
-      ...classes.map((c) => [c.class_id, c.class_name_bn, c.division_id || ""]),
+      ["Class Guide (previous_class_id এর জন্য)"],
+      ["ID", "Class Name", "বিভাগ"],
+      ...classes.map((c) => [c.class_id, c.class_name_bn, divisionName.get(String(c.division_id ?? "")) ?? ""]),
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
@@ -316,7 +325,13 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bulk Update");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
-    XLSX.writeFile(wb, "student-bulk-update.xlsx");
+    // Locked columns (grey) and the title/header rows can't be typed into -
+    // only the editable columns' data cells take input.
+    downloadLockedWorkbook(XLSX, wb, "student-bulk-update.xlsx", {
+      sheetName: "Bulk Update",
+      editableCols: columns.flatMap((col, i) => (col.type === "locked" ? [] : [i])),
+      firstRow: 4,
+    });
   };
 
   const handleDataUpload = (data: BulkUpdateExcelRow[]) => {
@@ -324,7 +339,8 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
   };
 
   const handleSubmit = async () => {
-    const payload = previewRows.filter((r) => r.willSubmit).map((r) => excelRows[r.index]);
+    // The backend keys rows by id - resolved above from রেজি. নং.
+    const payload = previewRows.filter((r) => r.willSubmit).map((r) => ({ ...excelRows[r.index], id: r.id }));
     if (!payload.length) {
       useToastStore.getState().show("পাঠানোর মতো কোনো পরিবর্তন পাওয়া যায়নি", "error");
       return;
@@ -401,7 +417,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
                       <tr>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">রেজি. / রোল</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
                         <th className="border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তন / নোট</th>
                       </tr>
@@ -411,7 +427,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
                         <tr key={row.row} className="border-b align-top transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
                           <td className="whitespace-nowrap px-3 py-3">{row.row}</td>
                           <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">{row.name || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{row.id || "-"}</td>
+                          <td className="whitespace-nowrap px-3 py-3">{regRollById(row.id)}</td>
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.status === "updated" && (
                               <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -482,7 +498,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
                 buttonText="আপডেট করা Excel আপলোড করুন"
                 onDataUpload={handleDataUpload}
                 disabled={loading}
-                requiredColumns={["id", "name_bn"]}
+                requiredColumns={["registration_no", "name_bn"]}
               />
             </>
           )}
@@ -512,7 +528,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
                     <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">রেজি. / রোল</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
                         <th className="border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তিত ফিল্ড</th>
@@ -527,12 +543,14 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
                           }`}
                         >
                           <td className="whitespace-nowrap px-3 py-3">{row.rowNumber}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{row.id ?? "-"}</td>
+                          <td className="whitespace-nowrap px-3 py-3">
+                            {row.matched ? regRoll(row.matched) : String(excelRows[row.index]?.registration_no ?? "-")}
+                          </td>
                           <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">{row.name || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">
                             {!row.matched ? (
                               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                                id পাওয়া যায়নি (তবুও পাঠানো হবে)
+                                রেজি. নং মেলেনি (বাদ যাবে)
                               </span>
                             ) : row.willSubmit ? (
                               <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-400">

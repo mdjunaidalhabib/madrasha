@@ -413,6 +413,29 @@ export class SidebarService {
             disabled,
           });
         }
+
+        // ছবি আপলোড - dedicated photo manager (students/photos). Same
+        // fallback reasoning: surfaces before the seed is run again.
+        if (!children.some((child) => child.key === "photos")) {
+          children.push({
+            id: -1009,
+            key: "photos",
+            label: "ছবি আপলোড",
+            sort_order: 3,
+            disabled,
+          });
+        }
+
+        // নাম (৩ ভাষা) - বাংলা/আরবি/English name grid (students/names).
+        if (!children.some((child) => child.key === "names")) {
+          children.push({
+            id: -1010,
+            key: "names",
+            label: "নাম (৩ ভাষা)",
+            sort_order: 4,
+            disabled,
+          });
+        }
       }
 
       // Everything attendance-related (manual bulk-mark + the RFID/fingerprint

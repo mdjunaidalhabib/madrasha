@@ -27,6 +27,7 @@ export class SettingsRepository {
         address: true,
         brandingPhones: true,
         brandingEmails: true,
+        brandingSocialLinks: true,
         reportLogo: true,
         reportBanner: true,
         reportWatermark: true,

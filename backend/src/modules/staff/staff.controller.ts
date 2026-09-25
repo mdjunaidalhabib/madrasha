@@ -52,3 +52,10 @@ export const deleteStaff = asyncHandler(async (req: Request, res: Response) => {
     extra: { affectedRows },
   });
 });
+
+/* NAMES BULK (নাম (৩ ভাষা) page) */
+export const updateStaffNamesBulk = asyncHandler(async (req: Request, res: Response) => {
+  const madrasaId = req.tenant?.madrasa_id;
+  const data = await staffService.updateNamesBulk(madrasaId, req.body.items || []);
+  return ApiResponse.success(res, { message: "Staff names updated", data });
+});

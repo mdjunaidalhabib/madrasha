@@ -54,6 +54,24 @@ export class StaffRepository {
     return result._max.registrationNo ?? 0;
   }
 
+  /** Which of `ids` are live staff of this madrasa - tenant guard for the
+   * নাম (৩ ভাষা) bulk save. */
+  findIdsForTenant(madrasaId: number, ids: number[]) {
+    return prisma.staff.findMany({
+      where: { madrasaId, id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  updateManyForTenantOnTx(
+    tx: TransactionClient,
+    id: number,
+    madrasaId: number,
+    data: Record<string, unknown>,
+  ) {
+    return tx.staff.updateMany({ where: { id, madrasaId }, data });
+  }
+
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(fn);
   }

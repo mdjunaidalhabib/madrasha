@@ -1,11 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Facebook, Instagram, Loader2, Mail, MapPin, Phone, Youtube } from "lucide-react";
-import { getPublicWebsite } from "../../services/publicWebsiteApi";
-import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
-import { useTenantSlug } from "../../utils/useTenantSlug";
-import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
-import { resolveTheme } from "./themes";
+import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from "lucide-react";
+import type { ThemeTokens } from "./themes";
+import MapPreview from "./MapPreview";
 
 function waLink(phone?: string | null) {
   const digits = (phone || "").replace(/\D/g, "");
@@ -21,49 +16,47 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-export default function ContactPage() {
-  const slug = useTenantSlug();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    getPublicWebsite(slug)
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [slug]);
-
-  const madrasa = data?.madrasa;
-  useCustomDomainRedirect(madrasa?.custom_domain);
-  const settings = data?.settings || {};
-
-  const pageMap = useMemo(() => {
-    const pages = data?.pages || [];
-    const map: Record<string, any> = {};
-    pages.forEach((page: any) => {
-      map[page.page_key] = page;
-    });
-    return map;
-  }, [data]);
-
-  const themeColor = settings.theme_color || "#2563eb";
-  const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
-  const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
-  const onAccent = useMemo(() => pickTextOn(accentSolid), [accentSolid]);
-  const theme = resolveTheme(settings.theme_key);
-
-  const mapsUrl = madrasa?.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
-    : "";
-  const mapEmbedUrl = madrasa?.address
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(madrasa.address)}&output=embed`
-    : "";
+/**
+ * যোগাযোগ page body. Rendered inside PublicWebsitePage (view="contact") so the
+ * site's navbar, notice bar and footer stay put and only this content swaps.
+ */
+export default function ContactSection({
+  madrasa,
+  settings,
+  pageMap,
+  theme,
+  accentSolid,
+  onAccent,
+}: {
+  madrasa: any;
+  settings: any;
+  pageMap: Record<string, any>;
+  theme: ThemeTokens;
+  accentSolid: string;
+  onAccent: string;
+}) {
+  const mapsUrl =
+    settings.map_url ||
+    (madrasa?.address
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
+      : "");
 
   const socials = [
-    settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={16} /> },
-    settings.youtube_url && { href: settings.youtube_url, label: "YouTube", icon: <Youtube size={16} /> },
-    settings.instagram_url && { href: settings.instagram_url, label: "Instagram", icon: <Instagram size={16} /> },
+    settings.facebook_url && {
+      href: settings.facebook_url,
+      label: "Facebook",
+      icon: <Facebook size={16} />,
+    },
+    settings.youtube_url && {
+      href: settings.youtube_url,
+      label: "YouTube",
+      icon: <Youtube size={16} />,
+    },
+    settings.instagram_url && {
+      href: settings.instagram_url,
+      label: "Instagram",
+      icon: <Instagram size={16} />,
+    },
     settings.whatsapp_channel_url && {
       href: settings.whatsapp_channel_url,
       label: "WhatsApp চ্যানেল",
@@ -93,43 +86,9 @@ export default function ContactPage() {
     },
   ].filter((row) => row.value);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 size={32} className="animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-4">
-          <Link
-            to=".."
-            relative="path"
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800"
-          >
-            <ChevronLeft size={16} />
-            ফিরে যান
-          </Link>
-          <div className="ml-auto flex items-center gap-2">
-            {madrasa?.logo_url ? (
-              <img src={madrasa.logo_url} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
-            ) : (
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
-                style={{ backgroundColor: accentSolid, color: onAccent }}
-              >
-                {initials(madrasa?.name)}
-              </div>
-            )}
-            <span className="text-sm font-bold text-slate-800">{madrasa?.name}</span>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-4 py-10">
+    <main className="bg-slate-50 py-12 md:py-16">
+      <div className="mx-auto max-w-5xl px-4">
         <div className="mb-10 text-center">
           <div
             className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl shadow-md"
@@ -137,7 +96,9 @@ export default function ContactPage() {
           >
             <Phone size={24} />
           </div>
-          <h1 className="mt-4 text-2xl font-extrabold md:text-3xl">{pageMap.contact?.title || "যোগাযোগ"}</h1>
+          <h1 className="mt-4 text-2xl font-extrabold md:text-3xl">
+            {pageMap.contact?.title || "যোগাযোগ"}
+          </h1>
           {pageMap.contact?.content && (
             <p className="mx-auto mt-3 max-w-2xl whitespace-pre-line text-sm leading-7 text-slate-600">
               {pageMap.contact.content}
@@ -145,8 +106,8 @@ export default function ContactPage() {
           )}
         </div>
 
-        <div className={`grid gap-6 ${mapEmbedUrl ? "lg:grid-cols-5" : ""}`}>
-          <div className={`space-y-4 ${mapEmbedUrl ? "lg:col-span-2" : "mx-auto w-full max-w-xl"}`}>
+        <div className={`grid gap-6 ${mapsUrl ? "lg:grid-cols-5" : ""}`}>
+          <div className={`space-y-4 ${mapsUrl ? "lg:col-span-2" : "mx-auto w-full max-w-xl"}`}>
             {rows.map((row) => (
               <a
                 key={row.label}
@@ -165,7 +126,9 @@ export default function ContactPage() {
                   <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
                     {row.label}
                   </span>
-                  <span className="mt-0.5 block break-words text-base font-bold text-slate-800">{row.value}</span>
+                  <span className="mt-0.5 block break-words text-base font-bold text-slate-800">
+                    {row.value}
+                  </span>
                 </span>
               </a>
             ))}
@@ -200,19 +163,17 @@ export default function ContactPage() {
             )}
           </div>
 
-          {mapEmbedUrl && (
-            <div className="overflow-hidden rounded-2xl border border-slate-100 shadow-sm lg:col-span-3">
-              <iframe
-                title="Location map"
-                src={mapEmbedUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block h-80 w-full border-0 lg:h-full lg:min-h-[420px]"
-              />
-            </div>
+          {mapsUrl && (
+            <MapPreview
+              href={mapsUrl}
+              title={madrasa?.name}
+              address={madrasa?.address}
+              label="Google Maps-এ লোকেশন দেখুন"
+              className="h-80 rounded-2xl border border-slate-100 shadow-sm lg:col-span-3 lg:h-full lg:min-h-[420px]"
+            />
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

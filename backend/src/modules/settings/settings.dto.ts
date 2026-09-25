@@ -22,6 +22,8 @@ export interface UpdateBrandingRequestDto {
   address?: string;
   phones?: string[];
   emails?: string[];
+  // Full replacement list (display order), same pattern as marksheet_fields.
+  social_links?: { type?: unknown; label?: unknown; value?: unknown }[];
   report_logo?: string | null;
   report_banner?: string | null;
   report_watermark?: string | null;

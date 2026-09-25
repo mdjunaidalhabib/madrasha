@@ -38,14 +38,12 @@ export type WebsiteSettingsPayload = {
   youtube_url?: string;
   instagram_url?: string;
   whatsapp_channel_url?: string;
+  map_url?: string;
 };
 
 export type WebsiteSlidePayload = {
   id?: number;
-  title?: string;
-  subtitle?: string;
   image_url: string;
-  button_text?: string;
   button_link?: string;
   is_published?: 0 | 1;
   sort_order?: number;

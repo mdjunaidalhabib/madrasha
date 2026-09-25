@@ -75,3 +75,10 @@ export const deleteTeacher = asyncHandler(async (req: Request, res: Response) =>
     extra: { affectedRows },
   });
 });
+
+/* NAMES BULK (নাম (৩ ভাষা) page) */
+export const updateTeacherNamesBulk = asyncHandler(async (req: Request, res: Response) => {
+  const madrasaId = req.tenant?.madrasa_id;
+  const data = await teacherService.updateNamesBulk(madrasaId, req.body.items || []);
+  return ApiResponse.success(res, { message: "Teacher names updated", data });
+});

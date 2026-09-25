@@ -33,6 +33,27 @@ export const MAX_BRANDING_PHONE_LENGTH = 20;
 export const MAX_BRANDING_EMAIL_LENGTH = 120;
 export const MAX_BRANDING_CONTACT_ITEMS = 5;
 
+// Branding social links - "whatsapp" stores a phone number, every other type
+// a full http(s) URL. Keep in sync with admin/src/services/brandingApi.ts's
+// SOCIAL_LINK_TYPES.
+export const SOCIAL_LINK_TYPES = [
+  "whatsapp",
+  "facebook_page",
+  "facebook_profile",
+  "facebook_group",
+  "youtube",
+  "instagram",
+  "telegram",
+  "tiktok",
+  "x",
+  "linkedin",
+  "website",
+  "other",
+] as const;
+export const MAX_SOCIAL_LINKS = 20;
+export const MAX_SOCIAL_LINK_VALUE_LENGTH = 500;
+export const MAX_SOCIAL_LINK_LABEL_LENGTH = 80;
+
 export const BRANDING_IMAGE_FIELDS: Record<
   string,
   "reportLogo" | "reportBanner" | "reportWatermark" | "reportHeaderImage" | "reportFooterImage"

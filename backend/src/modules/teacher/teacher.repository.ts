@@ -112,6 +112,15 @@ export class TeacherRepository {
     return tx.teacher.updateMany({ where: { id, madrasaId }, data });
   }
 
+  /** Which of `ids` are live teachers of this madrasa - tenant guard for the
+   * নাম (৩ ভাষা) bulk save. */
+  findIdsForTenant(madrasaId: number, ids: number[]) {
+    return prisma.teacher.findMany({
+      where: { madrasaId, id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(fn);
   }

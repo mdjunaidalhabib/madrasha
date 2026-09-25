@@ -54,6 +54,25 @@ const noticeBarSpeedValue = (value: unknown) => {
   return Math.min(NOTICE_BAR_SPEED_MAX, Math.max(NOTICE_BAR_SPEED_MIN, Math.round(num)));
 };
 
+// Slide click-through link. Only site-relative paths ("/admission", "#about")
+// and http(s) URLs are kept - anything with another scheme (javascript:,
+// data:, ...) is rejected since it's rendered as an href on the public site.
+// A bare domain ("www.example.com/x") gets https:// prepended.
+export const normalizeSlideLink = (value: unknown): string | null => {
+  const link = typeof value === "string" ? value.trim() : "";
+  if (!link) return null;
+  if (link.length > 255) throw new BadRequestError("Slide link too long");
+  if ((link.startsWith("/") && !link.startsWith("//")) || link.startsWith("#")) return link;
+  if (/^https?:\/\//i.test(link)) return link;
+  // "name:" not followed by a port digit = a URL scheme.
+  if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(link) || link.startsWith("//")) {
+    throw new BadRequestError("Slide link must be an http(s) URL or a site path");
+  }
+  const withScheme = `https://${link}`;
+  if (withScheme.length > 255) throw new BadRequestError("Slide link too long");
+  return withScheme;
+};
+
 export class WebsiteService {
   constructor(private readonly repository: WebsiteRepository = websiteRepository) {}
 
@@ -65,12 +84,20 @@ export class WebsiteService {
       throw new ForbiddenError("This website is currently disabled");
     }
 
-    const settings = await this.repository.findSettings(madrasa.id);
-    if (settings?.isPublished === 0) {
-      throw new ForbiddenError("This website is not published yet");
-    }
-
-    const [pages, notices, teachers, gallery, slides, committee, videos, divisions] = await Promise.all([
+    // Everything is fetched in one parallel round - the DB is remote, so each
+    // sequential await used to add a full network round-trip to page load.
+    const [
+      settings,
+      pages,
+      notices,
+      teachers,
+      gallery,
+      slides,
+      committee,
+      videos,
+      divisionsWithClasses,
+    ] = await Promise.all([
+      this.repository.findSettings(madrasa.id),
       this.repository.findPublishedPages(madrasa.id),
       this.repository.findPublishedNotices(madrasa.id),
       this.repository.findTeachersOptional(madrasa.id),
@@ -80,13 +107,22 @@ export class WebsiteService {
       this.repository.findPublishedVideos(madrasa.id),
       // Reused as-is from the admin class panel - madrasaId is passed
       // directly so no tenant-header auth is needed for this public route.
-      classPanelService.listDivisions(madrasa.id),
+      classPanelService.listDivisions(madrasa.id).then(async (divisions) => ({
+        divisions,
+        classes: (
+          await Promise.all(
+            divisions.map((division) =>
+              classPanelService.listClasses(madrasa.id, division.division_id),
+            ),
+          )
+        ).flat(),
+      })),
     ]);
 
-    const classesByDivision = await Promise.all(
-      divisions.map((division) => classPanelService.listClasses(madrasa.id, division.division_id)),
-    );
-    const classes = classesByDivision.flat();
+    if (settings?.isPublished === 0) {
+      throw new ForbiddenError("This website is not published yet");
+    }
+    const { divisions, classes } = divisionsWithClasses;
 
     return {
       madrasa: toMadrasaApiDto(madrasa),
@@ -113,17 +149,18 @@ export class WebsiteService {
   }
 
   async getWebsiteSettings(madrasaId: number) {
-    const [madrasa, settings, pages, notices, gallery, slides, committee, videos, admissions] = await Promise.all([
-      this.repository.findMadrasaForAdmin(madrasaId),
-      this.repository.findSettings(madrasaId),
-      this.repository.findAllPages(madrasaId),
-      this.repository.findAllNotices(madrasaId),
-      this.repository.findAllGallery(madrasaId),
-      this.repository.findAllSlides(madrasaId),
-      this.repository.findAllCommittee(madrasaId),
-      this.repository.findAllVideos(madrasaId),
-      this.repository.findAllAdmissionApplications(madrasaId),
-    ]);
+    const [madrasa, settings, pages, notices, gallery, slides, committee, videos, admissions] =
+      await Promise.all([
+        this.repository.findMadrasaForAdmin(madrasaId),
+        this.repository.findSettings(madrasaId),
+        this.repository.findAllPages(madrasaId),
+        this.repository.findAllNotices(madrasaId),
+        this.repository.findAllGallery(madrasaId),
+        this.repository.findAllSlides(madrasaId),
+        this.repository.findAllCommittee(madrasaId),
+        this.repository.findAllVideos(madrasaId),
+        this.repository.findAllAdmissionApplications(madrasaId),
+      ]);
 
     return {
       madrasa: toMadrasaApiDto(madrasa),
@@ -176,11 +213,17 @@ export class WebsiteService {
       youtube_url,
       instagram_url,
       whatsapp_channel_url,
+      map_url,
     } = body;
 
     const themeKey =
-      theme_key === undefined || theme_key === null || theme_key === "" ? DEFAULT_WEBSITE_THEME : theme_key;
-    if (typeof themeKey !== "string" || !(WEBSITE_THEME_KEYS as readonly string[]).includes(themeKey)) {
+      theme_key === undefined || theme_key === null || theme_key === ""
+        ? DEFAULT_WEBSITE_THEME
+        : theme_key;
+    if (
+      typeof themeKey !== "string" ||
+      !(WEBSITE_THEME_KEYS as readonly string[]).includes(themeKey)
+    ) {
       throw new BadRequestError("Invalid theme");
     }
 
@@ -224,6 +267,7 @@ export class WebsiteService {
       youtubeUrl: youtube_url || null,
       instagramUrl: instagram_url || null,
       whatsappChannelUrl: whatsapp_channel_url || null,
+      mapUrl: map_url || null,
     };
 
     await this.repository.upsertSettings(madrasaId, shared, { madrasaId, ...shared });
@@ -329,15 +373,12 @@ export class WebsiteService {
   }
 
   async saveWebsiteSlide(madrasaId: number, body: SaveWebsiteSlideRequestDto) {
-    const { id, title, subtitle, image_url, button_text, button_link, is_published = 1, sort_order = 0 } = body;
+    const { id, image_url, button_link, is_published = 1, sort_order = 0 } = body;
     if (!image_url) throw new BadRequestError("Slide image URL required");
 
     const shared = {
-      title: title || null,
-      subtitle: subtitle || null,
       imageUrl: image_url,
-      buttonText: button_text || null,
-      buttonLink: button_link || null,
+      buttonLink: normalizeSlideLink(button_link),
       isPublished: boolValue(is_published),
       sortOrder: Number(sort_order) || 0,
     };
@@ -387,7 +428,10 @@ export class WebsiteService {
     await this.repository.deleteCommitteeMember(id, madrasaId);
   }
 
-  async submitAdmissionApplication(slug: string, body: SubmitWebsiteAdmissionApplicationRequestDto) {
+  async submitAdmissionApplication(
+    slug: string,
+    body: SubmitWebsiteAdmissionApplicationRequestDto,
+  ) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
     if (!madrasa) throw new NotFoundError("Madrasa not found");
     if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
@@ -446,7 +490,11 @@ export class WebsiteService {
     if (!(VALID_ADMISSION_STATUSES as readonly string[]).includes(status)) {
       throw new BadRequestError("Invalid admission status");
     }
-    await this.repository.updateAdmissionApplicationStatus(id, madrasaId, status as WebsiteAdmissionStatus);
+    await this.repository.updateAdmissionApplicationStatus(
+      id,
+      madrasaId,
+      status as WebsiteAdmissionStatus,
+    );
     return status;
   }
 

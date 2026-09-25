@@ -760,6 +760,8 @@ async function main() {
     students: [
       { keyName: "new_admission", name: "New Admission", nameBn: "নতুন ভর্তি", sortOrder: 1 },
       { keyName: "list", name: "list", nameBn: "শিক্ষার্থী সমূহ", sortOrder: 2 },
+      { keyName: "photos", name: "Photo Upload", nameBn: "ছবি আপলোড", sortOrder: 3 },
+      { keyName: "names", name: "Names (3 languages)", nameBn: "নাম (৩ ভাষা)", sortOrder: 4 },
     ],
     // "ফি গ্রহণ" (search-by-student invoice/payment/waive) and "ভর্তি ফি
     // পেন্ডিং" (the admission-fee follow-up queue, moved here from হিসাব

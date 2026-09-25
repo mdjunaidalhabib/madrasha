@@ -129,6 +129,16 @@ const normalizeTeacherPayload = (rawBody: Record<string, unknown>, madrasaId: nu
   return data;
 };
 
+/** API key -> Prisma column for the নাম (৩ ভাষা) bulk save; nothing outside
+ * this map is ever written by updateNamesBulk. */
+const TEACHER_NAME_FIELDS = {
+  name_bn: "nameBn",
+  name_ar: "nameAr",
+  name_en: "nameEn",
+} as const;
+
+export type TeacherNamesItem = { id: number } & Partial<Record<keyof typeof TEACHER_NAME_FIELDS, string | null>>;
+
 export class TeacherService {
   constructor(private readonly repository: TeacherRepository = teacherRepository) {}
 
@@ -547,6 +557,43 @@ export class TeacherService {
         .map((row) => ({ period: row.period, count: Number(row.count || 0) }))
         .reverse(),
     };
+  }
+
+  /** নাম (৩ ভাষা) page: saves many teachers' name trios in one transaction.
+   * Only nameBn/nameAr/nameEn are ever written; every id must belong to this
+   * madrasa or nothing is saved. Mirrors StudentService.updateNamesBulk. */
+  async updateNamesBulk(madrasaId: number | undefined, items: TeacherNamesItem[]) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    if (!items.length) throw new BadRequestError("items is required");
+
+    const ids = items.map((i) => Number(i.id));
+    const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
+    const missing = ids.filter((id) => !found.has(id));
+    if (missing.length) throw new BadRequestError(`Teacher(s) not found: ${missing.join(", ")}`);
+
+    const updates = items.map((item) => {
+      const data: Record<string, string | null> = {};
+      for (const [key, column] of Object.entries(TEACHER_NAME_FIELDS)) {
+        const raw = (item as Record<string, unknown>)[key];
+        if (raw === undefined) continue;
+        const value = typeof raw === "string" ? raw.trim() : null;
+        if (key === "name_bn" && !value) throw new BadRequestError("বাংলা নাম আবশ্যক");
+        data[column] = value || null;
+      }
+      return { id: Number(item.id), data };
+    });
+
+    const updated = await this.repository.runTransaction(async (tx) => {
+      let count = 0;
+      for (const { id, data } of updates) {
+        if (!Object.keys(data).length) continue;
+        const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, data);
+        count += result.count;
+      }
+      return count;
+    });
+
+    return { updated };
   }
 }
 

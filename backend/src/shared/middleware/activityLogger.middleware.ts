@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { logActivity } from "../utils/activity.util";
 import { logger } from "../logger/logger";
 import { prisma } from "../database/prisma";
+import { ActivitySnapshot, buildSnapshotDetails, findSnapshotLoader, studentHeadline } from "../utils/activityDetails";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -31,6 +32,9 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "students/admission",
   "students/approve",
   "students/reject",
+  // StudentController.updateStudentsBulk logs the result itself - every
+  // updated student with its field-by-field changes.
+  "students/bulk-update",
   // Marks/Result workflow (result-panel/result-workflow/result-correction/
   // mark-component services) - each of these calls logActivity() itself
   // with a richer, action-specific detail payload (see each service file),
@@ -103,18 +107,18 @@ function deriveBodyDetails(body: unknown): string | null {
 }
 
 // The raw DB primary key means nothing to madrasa staff reading the log -
-// for a student row it's the roll/registration number they actually
-// recognize, so this looks those up instead of falling back to a bare
+// for a student row it's the name, class, roll and registration number they
+// actually recognize, so this looks those up instead of falling back to a bare
 // "আইডি: <id>" line for any student sub-route without a name-bearing body
 // (expel, transfer-session, delete, etc - see student.routes.ts).
 async function deriveStudentDetails(entityId: number, madrasaId: number): Promise<string | null> {
   try {
     const student = await prisma.student.findFirst({
       where: { id: entityId, madrasaId },
-      select: { nameBn: true, roll: true, registrationNo: true },
+      select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true, name: true } } },
     });
     if (!student) return null;
-    return `নাম: ${student.nameBn}, রোল: ${student.roll ?? "—"}, রেজিস্ট্রেশন নম্বর: ${student.registrationNo ?? "—"}`;
+    return studentHeadline({ ...student, className: student.classRef.nameBn || student.classRef.name });
   } catch (error) {
     logger.error("Activity log student detail lookup failed", error);
     return null;
@@ -138,6 +142,22 @@ async function deriveDetails(
   return entityId !== null ? `আইডি: ${entityId}` : null;
 }
 
+// Snapshot of the record (see utils/activityDetails.ts) so the log can say
+// "field: old → new" instead of a bare id. Taken before the handler runs, when
+// the request isn't tenant-resolved yet - so the lookup is by id alone and the
+// snapshot's own madrasaId is checked against the tenant on "finish".
+async function loadSnapshot(entity: string, entityId: number | null): Promise<ActivitySnapshot | null> {
+  if (entityId === null) return null;
+  const loader = findSnapshotLoader(entity);
+  if (!loader) return null;
+  try {
+    return await loader(entityId);
+  } catch (error) {
+    logger.error("Activity log snapshot failed", error);
+    return null;
+  }
+}
+
 /**
  * Auto-records every successful create/update/delete request as an activity
  * log row, so the audit trail covers the whole app instead of only the
@@ -147,30 +167,39 @@ async function deriveDetails(
  * already populated if the matched route set them.
  */
 export const activityLoggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (!MUTATING_METHODS.has(req.method)) return next();
+
+  const { entity, entityId } = deriveEntity(req.originalUrl);
+  if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return next();
+
+  const beforePromise = loadSnapshot(entity, entityId);
+
   res.on("finish", () => {
-    if (!MUTATING_METHODS.has(req.method)) return;
     if (res.statusCode < 200 || res.statusCode >= 300) return;
 
     const madrasaId = req.tenant?.madrasa_id;
     const userId = req.user?.id;
     if (!madrasaId || !userId) return;
 
-    const { entity, entityId } = deriveEntity(req.originalUrl);
-    if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return;
+    (async () => {
+      const own = (s: ActivitySnapshot | null) => (s && s.madrasaId === madrasaId ? s : null);
+      const before = own(await beforePromise);
+      const after = req.method === "DELETE" ? null : own(await loadSnapshot(entity, entityId));
+      const details =
+        buildSnapshotDetails(before, after) ?? (await deriveDetails(req.body, entity, entityId, madrasaId));
 
-    deriveDetails(req.body, entity, entityId, madrasaId)
-      .then((details) =>
-        logActivity({
-          madrasa_id: madrasaId,
-          user_id: userId,
-          action: ACTION_BY_METHOD[req.method] ?? req.method,
-          entity,
-          entity_id: entityId,
-          details,
-        }),
-      )
-      .catch((error) => logger.error("Auto activity log failed", error));
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: userId,
+        action: ACTION_BY_METHOD[req.method] ?? req.method,
+        entity,
+        entity_id: entityId,
+        details,
+      });
+    })().catch((error) => logger.error("Auto activity log failed", error));
   });
 
-  next();
+  // Hold the handler until the "before" snapshot is read - otherwise the
+  // update could land first and the diff would show no change.
+  beforePromise.finally(() => next());
 };

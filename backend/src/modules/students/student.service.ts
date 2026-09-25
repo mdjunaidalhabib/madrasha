@@ -25,7 +25,22 @@ import { notificationService } from "../notifications/notification.service";
 import { logger } from "../../shared/logger/logger";
 import { logActivity } from "../../shared/utils/activity.util";
 
-const validateRequiredFields = (body: Record<string, unknown>): string[] => {
+/** API key -> Prisma column for every name the নাম (৩ ভাষা) page may edit. */
+const STUDENT_NAME_FIELDS = {
+  name_bn: "nameBn",
+  arabic_name: "arabicName",
+  name_en: "nameEn",
+  father_name: "fatherName",
+  father_arabic_name: "fatherArabicName",
+  father_name_en: "fatherNameEn",
+  mother_name: "motherName",
+  mother_arabic_name: "motherArabicName",
+  mother_name_en: "motherNameEn",
+} as const;
+
+export type StudentNamesItem = { id: number } & Partial<Record<keyof typeof STUDENT_NAME_FIELDS, string | null>>;
+
+const validateRequiredFields =(body: Record<string, unknown>): string[] => {
   return STUDENT_REQUIRED_FIELDS.filter((field) => {
     const value = body[field];
     if (typeof value === "string") return value.trim() === "";
@@ -1035,6 +1050,54 @@ export class StudentService {
     const result = await this.repository.setActiveStatus(id, madrasaId, inactive ? 2 : 1);
     if (result.count === 0) throw new StudentNotFoundError();
     return result.count;
+  }
+
+  /** Sets (or clears, with null/"") only the student's photo - used by the
+   * ছবি আপলোড page, so no other field is ever re-validated or overwritten. */
+  async setPhoto(id: number, madrasaId: number | undefined, image: string | null) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+
+    const value = image && image.trim() ? image.trim() : null;
+    const result = await this.repository.setImage(id, madrasaId, value);
+    if (result.count === 0) throw new StudentNotFoundError();
+    return { id, image: value };
+  }
+
+  /** নাম (৩ ভাষা) page: saves many students' name trios in one transaction.
+   * Only the columns in STUDENT_NAME_FIELDS are ever written; every id must
+   * belong to this madrasa or nothing is saved. */
+  async updateNamesBulk(madrasaId: number | undefined, items: StudentNamesItem[]) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    if (!items.length) throw new BadRequestError("items is required");
+
+    const ids = items.map((i) => Number(i.id));
+    const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
+    const missing = ids.filter((id) => !found.has(id));
+    if (missing.length) throw new BadRequestError(`Student(s) not found: ${missing.join(", ")}`);
+
+    const updates = items.map((item) => {
+      const data: Record<string, string | null> = {};
+      for (const [key, column] of Object.entries(STUDENT_NAME_FIELDS)) {
+        const raw = (item as Record<string, unknown>)[key];
+        if (raw === undefined) continue;
+        const value = typeof raw === "string" ? raw.trim() : null;
+        if (key === "name_bn" && !value) throw new BadRequestError("বাংলা নাম আবশ্যক");
+        data[column] = value || null;
+      }
+      return { id: Number(item.id), data };
+    });
+
+    const updated = await this.repository.runTransaction(async (tx) => {
+      let count = 0;
+      for (const { id, data } of updates) {
+        if (!Object.keys(data).length) continue;
+        const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, data);
+        count += result.count;
+      }
+      return count;
+    });
+
+    return { updated };
   }
 
   /* ================= ADMISSION APPROVAL WORKFLOW ================= */

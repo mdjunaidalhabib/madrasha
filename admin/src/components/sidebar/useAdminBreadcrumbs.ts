@@ -15,7 +15,9 @@ import type { BreadcrumbItem } from "@madrasha/shared-ui/src/components/ui/Bread
 const FALLBACK_LABELS: { test: RegExp; labels: string[] }[] = [
   { test: /^students\/[^/]+\/edit$/, labels: ["শিক্ষার্থী প্রোফাইল", "এডিট"] },
   // /students/:id and /students/:id/:tab (profile tabs)
-  { test: /^students\/(?!admissions\/)[^/]+(\/[^/]+)?$/, labels:["শিক্ষার্থী প্রোফাইল"] },
+  { test: /^students\/photos$/, labels: ["শিক্ষার্থী", "ছবি আপলোড"] },
+  { test: /^students\/names$/, labels: ["শিক্ষার্থী", "নাম (৩ ভাষা)"] },
+  { test: /^students\/(?!admissions\/|photos$|names$)[^/]+(\/[^/]+)?$/, labels:["শিক্ষার্থী প্রোফাইল"] },
   { test: /^teacher_staff\/teacher\/[^/]+$/, labels: ["শিক্ষক প্রোফাইল"] },
   { test: /^teacher_staff\/staff\/[^/]+$/, labels: ["স্টাফ প্রোফাইল"] },
   { test: /^talimat\/settings\/documents\/[^/]+\/[^/]+\/edit$/, labels: ["ডকুমেন্ট ডিজাইনার"] },

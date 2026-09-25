@@ -68,6 +68,7 @@ export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefi
     youtube_url: row.youtubeUrl ?? null,
     instagram_url: row.instagramUrl ?? null,
     whatsapp_channel_url: row.whatsappChannelUrl ?? null,
+    map_url: row.mapUrl ?? null,
   };
 };
 
@@ -97,10 +98,7 @@ export const toWebsiteGalleryApiDto = (row: Record<string, any>) => ({
 
 export const toWebsiteSlideApiDto = (row: Record<string, any>) => ({
   id: row.id,
-  title: row.title ?? null,
-  subtitle: row.subtitle ?? null,
   image_url: row.imageUrl,
-  button_text: row.buttonText ?? null,
   button_link: row.buttonLink ?? null,
   is_published: row.isPublished ?? 1,
   sort_order: row.sortOrder ?? 0,

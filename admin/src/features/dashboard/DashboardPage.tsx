@@ -226,6 +226,51 @@ export default function DashboardPage() {
     .map((c) => ({ name: c.channel, value: c.income + c.expense }))
     .filter((c) => c.value > 0);
 
+  // Rendered twice: right after the stat tiles on mobile, in the sidebar on xl.
+  const quickActions = (
+    <Card>
+      <CardHeader
+        title="দ্রুত কাজ"
+        subtitle="প্রায়ই ব্যবহৃত কাজ"
+        nowrap
+        actions={
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-sky-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-600/30"
+          >
+            <ExternalLink size={13} />
+            ওয়েবসাইট দেখুন
+          </a>
+        }
+      />
+      <div className="space-y-2">
+        <Link
+          className="flex items-center gap-3 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-md"
+          to={`/accounts/income`}
+        >
+          <Wallet className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+          আয় এন্ট্রি
+        </Link>
+        <Link
+          className="flex items-center gap-3 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-500 hover:shadow-md"
+          to={`/accounts/expense`}
+        >
+          <ReceiptText className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+          ব্যয় এন্ট্রি
+        </Link>
+        <Link
+          className="flex items-center gap-3 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-md"
+          to={`/students/new`}
+        >
+          <UserPlus className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+          নতুন ভর্তি
+        </Link>
+      </div>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div className="grid items-start gap-6 xl:grid-cols-4">
@@ -284,6 +329,8 @@ export default function DashboardPage() {
               </>
             )}
           </div>
+
+          <div className="xl:hidden">{quickActions}</div>
 
           <Card>
             <CardHeader title="আসন্ন পরীক্ষা" subtitle="রুটিন অনুযায়ী আসন্ন পরীক্ষাসমূহ" />
@@ -588,47 +635,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="min-w-0 space-y-6 xl:col-span-1">
-          <Card>
-            <CardHeader
-              title="দ্রুত কাজ"
-              subtitle="প্রায়ই ব্যবহৃত কাজ"
-              nowrap
-              actions={
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-sky-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-600/30"
-                >
-                  <ExternalLink size={13} />
-                  ওয়েবসাইট দেখুন
-                </a>
-              }
-            />
-            <div className="space-y-2">
-              <Link
-                className="flex items-center gap-3 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-md"
-                to={`/accounts/income`}
-              >
-                <Wallet className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-                আয় এন্ট্রি
-              </Link>
-              <Link
-                className="flex items-center gap-3 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-500 hover:shadow-md"
-                to={`/accounts/expense`}
-              >
-                <ReceiptText className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-                ব্যয় এন্ট্রি
-              </Link>
-              <Link
-                className="flex items-center gap-3 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-md"
-                to={`/students/new`}
-              >
-                <UserPlus className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-                নতুন ভর্তি
-              </Link>
-            </div>
-          </Card>
+          <div className="hidden xl:block">{quickActions}</div>
 
           <Card>
             <CardHeader title="গুরুত্বপূর্ণ লিংক" subtitle="বোর্ড ও কর্তৃপক্ষ" />

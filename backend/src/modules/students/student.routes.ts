@@ -20,6 +20,8 @@ import {
   bulkDeleteStudents,
   expelStudent,
   setStudentInactive,
+  setStudentPhoto,
+  updateStudentNamesBulk,
   transferStudentSession,
   getStudentsDashboardSummary,
 } from "./student.controller";
@@ -35,6 +37,8 @@ import {
   studentBulkDeleteSchema,
   studentExpelSchema,
   studentInactiveSchema,
+  studentPhotoSchema,
+  studentNamesBulkSchema,
   studentTransferSessionSchema,
 } from "./student.validation";
 
@@ -67,6 +71,17 @@ router.post(
   authMiddleware,
   rbacMiddleware("students.update"),
   updateStudentsBulk,
+);
+
+// BULK NAMES - নাম (৩ ভাষা) page; only the বাংলা/আরবি/English name trios of
+// student/father/mother. Registered before "/:id" like "/lookup" below.
+router.patch(
+  "/names",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.update"),
+  validate(studentNamesBulkSchema),
+  updateStudentNamesBulk,
 );
 
 // LOOKUP BY NID (returning-student / re-admission check) - must be
@@ -175,6 +190,16 @@ router.patch(
   rbacMiddleware("students.update"),
   validate(studentInactiveSchema),
   setStudentInactive,
+);
+
+// PHOTO ONLY - ছবি আপলোড page; updates just the image column.
+router.patch(
+  "/:id/photo",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.update"),
+  validate(studentPhotoSchema),
+  setStudentPhoto,
 );
 
 // SESSION TRANSFER - direct reassignment into a different session.

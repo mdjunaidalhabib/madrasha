@@ -20,6 +20,7 @@ import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
+import InlineSocialLinksField from "../../../components/settings/InlineSocialLinksField";
 import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
 import {
   deleteBrandingImage,
@@ -30,6 +31,7 @@ import {
   type BrandLayoutPatch,
   type BrandLogoPosition,
   type ReportPrintMode,
+  type SocialLinkItem,
 } from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { MarksheetControlsPanel } from "../../../components/Report/student/MarksheetSignatureControls";
@@ -129,6 +131,7 @@ export default function BrandingSettingsPage() {
   const [address, setAddress] = useState("");
   const [phones, setPhones] = useState<string[]>([]);
   const [emails, setEmails] = useState<string[]>([]);
+  const [socialLinks, setSocialLinks] = useState<SocialLinkItem[]>([]);
   const [logo, setLogo] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
   const [watermark, setWatermark] = useState<string | null>(null);
@@ -156,6 +159,7 @@ export default function BrandingSettingsPage() {
     setAddress(branding.address ?? "");
     setPhones(branding.phones ?? []);
     setEmails(branding.emails ?? []);
+    setSocialLinks(branding.social_links ?? []);
     setLogo(branding.report_logo ?? null);
     setBackground(branding.report_banner ?? null);
     setWatermark(branding.report_watermark ?? null);
@@ -177,6 +181,7 @@ export default function BrandingSettingsPage() {
   const patchBranding = async (patch: BrandingPayload) => {
     try {
       await saveBranding(patch);
+      if (patch.social_links !== undefined) setSocialLinks(patch.social_links);
       if (patch.name !== undefined) setName(patch.name || "");
       if (patch.address !== undefined) setAddress(patch.address || "");
       if (patch.phones !== undefined) setPhones(patch.phones);
@@ -199,6 +204,7 @@ export default function BrandingSettingsPage() {
         address,
         phones,
         emails,
+        social_links: socialLinks,
         report_logo: logo,
         report_banner: background,
         report_watermark: watermark,
@@ -348,6 +354,13 @@ export default function BrandingSettingsPage() {
             onSave={(v) => patchBranding({ emails: v })}
           />
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="সোশ্যাল লিংক"
+        hint="WhatsApp নম্বর, Facebook পেজ/প্রোফাইল/গ্রুপ, YouTube চ্যানেল সহ যেকোনো লিংক — একই ধরনের একাধিকও দেওয়া যাবে"
+      >
+        <InlineSocialLinksField values={socialLinks} onSave={(v) => patchBranding({ social_links: v })} />
       </SectionCard>
 
       <SectionCard title="লোগো ও ব্যাকগ্রাউন্ড">

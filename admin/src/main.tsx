@@ -7,9 +7,12 @@ import ConfirmDialog from "@madrasha/shared-ui/src/components/ui/ConfirmDialog";
 import ErrorBoundary from "@madrasha/shared-ui/src/components/ui/ErrorBoundary";
 import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/chunkReload";
 import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
+import InstallPrompt from "@madrasha/shared-ui/src/pwa/InstallPrompt";
+import { setupPwa } from "@madrasha/shared-ui/src/pwa/pwa";
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
+setupPwa();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -17,6 +20,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <App />
       <Toaster />
       <ConfirmDialog />
+      <InstallPrompt
+        appName="QMS Admin"
+        storageKey="qms-admin:pwa-dismissed-at"
+        hideOnPaths={/\/print\//}
+      />
     </ErrorBoundary>
   </React.StrictMode>,
 );

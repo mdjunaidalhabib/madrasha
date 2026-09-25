@@ -23,6 +23,8 @@ export type ActivityLogText = {
   prevPage: string;
   nextPage: string;
   retentionNote: (days: string) => string;
+  showMore: (n: string) => string;
+  showLess: string;
   dayOption: (n: number) => string;
 };
 
@@ -50,6 +52,8 @@ export const activityLogText: Record<Lang, ActivityLogText> = {
     prevPage: "পূর্ববর্তী",
     nextPage: "পরবর্তী",
     retentionNote: (days) => `${days} দিনের পুরনো লগ স্বয়ংক্রিয়ভাবে মুছে যায়`,
+    showMore: (n) => `আরও ${n} টি দেখুন`,
+    showLess: "কম দেখুন",
     dayOption: (n) => `${n} দিন`,
   },
   en: {
@@ -75,6 +79,8 @@ export const activityLogText: Record<Lang, ActivityLogText> = {
     prevPage: "Previous",
     nextPage: "Next",
     retentionNote: (days) => `Logs older than ${days} days are deleted automatically`,
+    showMore: (n) => `Show ${n} more`,
+    showLess: "Show less",
     dayOption: (n) => `${n} days`,
   },
   ar: {
@@ -100,6 +106,8 @@ export const activityLogText: Record<Lang, ActivityLogText> = {
     prevPage: "السابق",
     nextPage: "التالي",
     retentionNote: (days) => `يتم حذف السجلات الأقدم من ${days} يومًا تلقائيًا`,
+    showMore: (n) => `عرض ${n} أخرى`,
+    showLess: "عرض أقل",
     dayOption: (n) => `${n} يوم`,
   },
 };
@@ -265,6 +273,18 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
     ar: "تم إنشاء الفواتير القديمة",
   },
   { key: "exams/reorder|UPDATE", bn: "পরীক্ষার ক্রম পরিবর্তন করা হয়েছে", en: "Exam order changed", ar: "تم تغيير ترتيب الامتحانات" },
+  {
+    key: "fee-structures/exam-fees|UPDATE",
+    bn: "পরীক্ষার ফি-এর পরিমাণ হালনাগাদ করা হয়েছে",
+    en: "Exam fee amounts updated",
+    ar: "تم تحديث مبالغ رسوم الامتحان",
+  },
+  {
+    key: "fee-structures/exam-fees/status|UPDATE",
+    bn: "পরীক্ষার ফি চালু/বন্ধ করা হয়েছে",
+    en: "Exam fee switched on/off",
+    ar: "تم تشغيل/إيقاف رسوم الامتحان",
+  },
   {
     key: "madrasa-divisions/reorder|UPDATE",
     bn: "বিভাগের ক্রম পরিবর্তন করা হয়েছে",

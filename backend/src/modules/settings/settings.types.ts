@@ -43,11 +43,18 @@ export interface AdmitCardFieldItem {
   visible: boolean;
 }
 
+export interface SocialLinkItem {
+  type: string;
+  label: string | null;
+  value: string;
+}
+
 export interface BrandingData {
   name: string | null;
   address: string | null;
   phones: string[];
   emails: string[];
+  social_links: SocialLinkItem[];
   report_logo: string | null;
   report_banner: string | null;
   report_watermark: string | null;

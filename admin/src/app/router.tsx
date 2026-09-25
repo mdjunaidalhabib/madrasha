@@ -31,6 +31,8 @@ const DeviceMappingPage = lazy(() => import("../features/attendance-device/Devic
 const DeviceTodayPage = lazy(() => import("../features/attendance-device/DeviceTodayPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
+const StudentPhotoManagerPage = lazy(() => import("../features/students/StudentPhotoManagerPage"));
+const StudentNamesManagerPage = lazy(() => import("../features/students/StudentNamesManagerPage"));
 const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const ExamRoomsPage = lazy(() => import("../features/exam-operations/ExamRoomsPage"));
@@ -351,6 +353,16 @@ const madrasaAdminChildren = [
   {
     path: "students/new",
     element: <ModuleGuard module="students">{withSuspense(<AdmissionPage />)}</ModuleGuard>,
+  },
+  // ছবি আপলোড (photo manager) - static, so it's matched ahead of students/:id.
+  {
+    path: "students/photos",
+    element: <ModuleGuard module="students">{withSuspense(<StudentPhotoManagerPage />)}</ModuleGuard>,
+  },
+  // নাম (৩ ভাষা) - same reasoning as students/photos above.
+  {
+    path: "students/names",
+    element: <ModuleGuard module="students">{withSuspense(<StudentNamesManagerPage />)}</ModuleGuard>,
   },
   {
     path: "students/admissions/pending",

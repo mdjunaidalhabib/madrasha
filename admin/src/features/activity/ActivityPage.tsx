@@ -8,6 +8,7 @@ import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { useLanguageStore } from "../../store/languageStore";
 import { LOCALE_MAP, formatNumber } from "../../utils/i18nFormat";
 import {
+  type ActivityLogText,
   activityLogText,
   QUICK_DAY_OPTIONS,
   translateActivityAction,
@@ -29,6 +30,65 @@ type ActivityRow = {
 };
 
 type FilterMode = "days" | "custom";
+
+const COLLAPSED_LINES = 4;
+
+/**
+ * Backend details are multi-line: a headline (whose record it was), then one
+ * line per change ("field: old → new") or bulk-update student. Long ones
+ * collapse behind a "show more" toggle so one bulk import can't flood the table.
+ */
+function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
+  const lang = useLanguageStore((s) => s.lang);
+  const [expanded, setExpanded] = useState(false);
+  const [headline, ...lines] = text.split("\n").filter((line) => line.trim());
+  const hidden = lines.length - COLLAPSED_LINES;
+  const visible = expanded || hidden <= 0 ? lines : lines.slice(0, COLLAPSED_LINES);
+
+  return (
+    <div className="min-w-[260px] max-w-[640px]">
+      <div className="font-medium text-slate-800 dark:text-slate-100">{headline}</div>
+      {visible.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-[13px] text-slate-600 dark:text-slate-400">
+          {visible.map((raw, i) => {
+            // Leading spaces = a sub-line of the previous line (bulk update).
+            const nested = /^\s/.test(raw);
+            const line = raw.trim();
+            const itemClass = nested ? "pl-4" : undefined;
+            const arrow = line.indexOf(" → ");
+            if (arrow === -1 || line.indexOf(" → ", arrow + 1) !== -1) {
+              return (
+                <li key={i} className={itemClass}>
+                  {line}
+                </li>
+              );
+            }
+            const colon = line.lastIndexOf(": ", arrow);
+            return (
+              <li key={i} className={itemClass}>
+                {colon > -1 && <span className="text-slate-500 dark:text-slate-400">{line.slice(0, colon + 1)} </span>}
+                <span className="text-rose-600 line-through decoration-rose-300 dark:text-rose-400">
+                  {line.slice(colon > -1 ? colon + 2 : 0, arrow)}
+                </span>
+                <span className="mx-1 text-slate-400">→</span>
+                <span className="font-medium text-emerald-700 dark:text-emerald-400">{line.slice(arrow + 3)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          {expanded ? t.showLess : t.showMore(formatNumber(hidden, lang))}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function ActivityPage() {
   const lang = useLanguageStore((s) => s.lang);
@@ -160,7 +220,9 @@ export default function ActivityPage() {
                   <td className="px-4 py-3">{r.name || t.systemUser}</td>
                   <td className="px-4 py-3">{translateActivityAction(r.entity, r.action, lang)}</td>
                   <td className="px-4 py-3">{translateEntityName(r.entity, lang)}</td>
-                  <td className="px-4 py-3">{r.details || t.noDetails}</td>
+                  <td className="px-4 py-3 align-top">
+                    {r.details ? <ActivityDetails text={r.details} t={t} /> : t.noDetails}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {new Date(r.created_at).toLocaleString(LOCALE_MAP[lang])}
                   </td>

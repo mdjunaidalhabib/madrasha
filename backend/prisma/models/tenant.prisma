@@ -55,6 +55,11 @@ model Madrasa {
   // contact info) - a madrasa commonly lists more than one number.
   brandingPhones String[] @default([]) @map("branding_phones")
   brandingEmails String[] @default([]) @map("branding_emails")
+  // সোশ্যাল লিংক (একাধিক WhatsApp নম্বর, Facebook পেজ/প্রোফাইল, YouTube
+  // ইত্যাদি) - JSON array of { type, label, value } in display order (see
+  // SocialLinkItem in settings.types.ts). WhatsApp-এর value হলো নম্বর, বাকিগুলোর
+  // value হলো পূর্ণ URL।
+  brandingSocialLinks Json? @map("branding_social_links")
 
   // Custom report header/footer IMAGE, shown on every printed report/document
   // INSTEAD of the default logo+name+address header when enabled - not text,
@@ -458,6 +463,7 @@ model WebsiteSettings {
   youtubeUrl         String? @map("youtube_url") @db.VarChar(255)
   instagramUrl       String? @map("instagram_url") @db.VarChar(255)
   whatsappChannelUrl String? @map("whatsapp_channel_url") @db.VarChar(255)
+  mapUrl             String? @map("map_url") @db.VarChar(500)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -539,14 +545,11 @@ model WebsiteGallery {
 }
 
 /// Homepage hero slider images (distinct from the WebsiteGallery photo grid) —
-/// each slide can carry its own caption + CTA button.
+/// image-only; buttonLink is an optional click-through for the whole slide.
 model WebsiteSlide {
   id          Int      @id @default(autoincrement())
   madrasaId   Int      @map("madrasa_id")
-  title       String?  @db.VarChar(190)
-  subtitle    String?  @db.VarChar(255)
   imageUrl    String   @map("image_url") @db.VarChar(255)
-  buttonText  String?  @map("button_text") @db.VarChar(60)
   buttonLink  String?  @map("button_link") @db.VarChar(255)
   isPublished Int?     @default(1) @map("is_published")
   sortOrder   Int?     @default(0) @map("sort_order")

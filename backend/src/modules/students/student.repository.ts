@@ -229,6 +229,22 @@ export class StudentRepository {
     });
   }
 
+  /** Photo manager: touches only the image column. */
+  setImage(id: number, madrasaId: number, image: string | null) {
+    return prisma.student.updateMany({
+      where: { id, madrasaId, deletedAt: null },
+      data: { image },
+    });
+  }
+
+  /** Which of `ids` actually belong to this madrasa (and aren't in Trash). */
+  findIdsForTenant(madrasaId: number, ids: number[]) {
+    return prisma.student.findMany({
+      where: { madrasaId, id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
   /* ---- transaction-scoped helpers used by the bulk-admission flow ---- */
 
   findByIdForTenantOnTx(tx: TransactionClient, id: number, madrasaId: number) {

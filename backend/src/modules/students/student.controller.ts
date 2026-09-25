@@ -5,6 +5,8 @@ import { logger } from "../../shared/logger/logger";
 import { studentService } from "./student.service";
 import { MissingFieldsError } from "./student.types";
 import { feeService } from "../fee/fee.service";
+import { logActivity } from "../../shared/utils/activity.util";
+import { describeStudentBulkUpdate } from "../../shared/utils/activityDetails";
 
 /**
  * Translates a thrown error into the exact `{ success: false, message, ... }`
@@ -197,6 +199,20 @@ export const updateStudentsBulk = async (req: Request, res: Response) => {
     const students = Array.isArray(req.body?.students) ? req.body.students : [];
     const result = await studentService.updateStudentsBulk(students, madrasaId);
 
+    // Self-logged (see SELF_LOGGED_ENTITY_PATHS) so the log lists who changed
+    // and how, not just "students updated". Never fails the request.
+    describeStudentBulkUpdate(result)
+      .then((details) =>
+        logActivity({
+          madrasa_id: madrasaId ?? null,
+          user_id: req.user?.id ?? null,
+          action: "CREATE",
+          entity: "students/bulk-update",
+          details,
+        }),
+      )
+      .catch((error) => logger.error("Bulk update activity log failed", error));
+
     return res.json({
       success: true,
       message: "Bulk update processed",
@@ -299,6 +315,38 @@ export const setStudentInactive = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return respondWithError(res, error, "SET STUDENT INACTIVE ERROR:");
+  }
+};
+
+/* =========================================================
+   PHOTO ONLY (ছবি আপলোড page)
+========================================================= */
+export const setStudentPhoto = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.setPhoto(Number(req.params.id), madrasaId, req.body.image ?? null);
+
+    return res.json({
+      success: true,
+      message: data.image ? "Student photo updated" : "Student photo removed",
+      data,
+    });
+  } catch (error) {
+    return respondWithError(res, error, "SET STUDENT PHOTO ERROR:");
+  }
+};
+
+/* =========================================================
+   NAMES BULK (নাম (৩ ভাষা) page)
+========================================================= */
+export const updateStudentNamesBulk = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.updateNamesBulk(madrasaId, req.body.items || []);
+
+    return res.json({ success: true, message: "Student names updated", data });
+  } catch (error) {
+    return respondWithError(res, error, "UPDATE STUDENT NAMES ERROR:");
   }
 };
 
