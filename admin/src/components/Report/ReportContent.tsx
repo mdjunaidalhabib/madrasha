@@ -40,6 +40,8 @@ type ReportContentProps = {
   bodyTextOverride?: string;
   // academic-result only: repeat the column heading on every page (see AcademicResultPrint.repeatHeader).
   repeatTableHeader?: boolean;
+  // exam-signature-number-sheet-2col only: drop the bottom signature line (user toggle).
+  hideSignature?: boolean;
   // academic-result only: the whole class's rows, so every page shares one subject-column set.
   subjectSourceRows?: Record<string, any>[];
   // academic-result only: pass/fail/absent counts for the whole class/exam
@@ -72,6 +74,7 @@ const ReportContent = ({
   selectedDivisionId = null,
   selectedClassName = "",
   repeatTableHeader = false,
+  hideSignature = false,
   subjectSourceRows,
   startIndex = 0,
   isLastPage = true,
@@ -318,6 +321,7 @@ const ReportContent = ({
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
         hideRegistrationColumn={report.printable === "exam-signature-number-sheet-2col"}
+        hideSignature={report.printable === "exam-signature-number-sheet-2col" && hideSignature}
       />
     );
   }

@@ -71,6 +71,8 @@ type Props<T> = {
    * paperSize অনুযায়ী ডিফল্ট (a5=7mm, a4=10mm, চার পাশে সমান) ব্যবহৃত হয়। */
   margins?: PageMargins;
   onMarginsChange?: (value: PageMargins) => void;
+  /** "ডিফল্ট সেট" বাটনে যে মার্জিনে ফিরবে - না দিলে paperSize অনুযায়ী সাধারণ ডিফল্ট। */
+  defaultMargins?: PageMargins;
   /** A4/A5, Portrait/Landscape ও প্রিন্ট বাটন লুকিয়ে শুধু Excel/CSV এক্সপোর্ট দেখাতে চাইলে true। */
   hidePrintOptions?: boolean;
   serverPdfExport?: ServerPdfExportConfig;
@@ -93,6 +95,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   onOrientationChange,
   margins: controlledMargins,
   onMarginsChange,
+  defaultMargins,
   hidePrintOptions = false,
   serverPdfExport,
   layout = "inline",
@@ -138,7 +141,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   };
 
   const resetMarginsToDefault = () => {
-    const defaults = getDefaultMargins(paperSize);
+    const defaults = defaultMargins ?? getDefaultMargins(paperSize);
     if (onMarginsChange) onMarginsChange(defaults);
     else setInternalMargins(defaults);
   };

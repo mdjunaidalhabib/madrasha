@@ -8,6 +8,7 @@ import DataExportPrintActions, {
   ServerPdfExportConfig,
 } from "../common/DataExportPrintActions";
 import FilterSelect from "../common/FilterSelect";
+import { getReportDefaultMargins } from "./pagination/pageGeometry";
 import {
   ClassItem,
   Division,
@@ -408,6 +409,7 @@ const ReportFilterBar = ({
           onOrientationChange={onOrientationChange}
           margins={margins}
           onMarginsChange={onMarginsChange}
+          defaultMargins={getReportDefaultMargins(paperSize, activeReport.printable)}
           serverPdfExport={serverPdfExport}
         />
       </div>

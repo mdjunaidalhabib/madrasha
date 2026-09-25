@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
 import { Orientation, PaperSize, PageMargins } from "../../components/common/DataExportPrintActions";
-import { getDefaultPageMargins } from "../../components/Report/pagination/pageGeometry";
+import { getReportDefaultMargins } from "../../components/Report/pagination/pageGeometry";
 import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import { MarksheetSettingsPanel } from "../../components/Report/student/MarksheetSignatureControls";
 import { AdmitCardSettingsPanel } from "../../components/Report/documents/AdmitCardFieldControls";
@@ -59,6 +59,18 @@ const repeatHeaderStorageKey = (madrasaSlug: string) => `report-repeat-header:${
 const readRepeatHeaderPref = (madrasaSlug: string) => {
   try {
     return localStorage.getItem(repeatHeaderStorageKey(madrasaSlug)) === "1";
+  } catch {
+    return false;
+  }
+};
+
+// স্বাক্ষর ও নম্বরপত্র (২ কলাম): নিচের "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" দেখাবে কি না - ডিফল্ট দেখায়।
+// জায়গা কম হলে বন্ধ করা যায়; একই নিয়মে localStorage-এ থাকে ও সার্ভার PDF-এ ?hide_signature=1 যায়।
+const hideSignatureStorageKey = (madrasaSlug: string) => `report-hide-signature:${madrasaSlug}`;
+
+const readHideSignaturePref = (madrasaSlug: string) => {
+  try {
+    return localStorage.getItem(hideSignatureStorageKey(madrasaSlug)) === "1";
   } catch {
     return false;
   }
@@ -120,7 +132,7 @@ const ReportShell = ({
   const [selectedSubject, setSelectedSubject] = useState("");
   const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
-  const [margins, setMargins] = useState<PageMargins>(() => getDefaultPageMargins("a4"));
+  const [margins, setMargins] = useState<PageMargins>(() => getReportDefaultMargins("a4"));
   const [page, setPage] = useState(1);
   // Marksheet report only: docked settings panel next to the preview.
   const [marksheetPanelOpen, setMarksheetPanelOpen] = useState(false);
@@ -168,6 +180,20 @@ const ReportShell = ({
     setRepeatHeaderPref(next);
     try {
       localStorage.setItem(repeatHeaderStorageKey(madrasaSlug), next ? "1" : "0");
+    } catch {
+      // storage unavailable - the choice just lasts for this session
+    }
+  };
+  const supportsSignatureToggle = activeReport.printable === "exam-signature-number-sheet-2col";
+  const [hideSignaturePref, setHideSignaturePref] = useState<boolean>(() =>
+    printMode ? searchParams.get("hide_signature") === "1" : readHideSignaturePref(madrasaSlug),
+  );
+  const hideSignature = supportsSignatureToggle && hideSignaturePref;
+  const toggleSignature = () => {
+    const next = !hideSignaturePref;
+    setHideSignaturePref(next);
+    try {
+      localStorage.setItem(hideSignatureStorageKey(madrasaSlug), next ? "1" : "0");
     } catch {
       // storage unavailable - the choice just lasts for this session
     }
@@ -443,9 +469,9 @@ const ReportShell = ({
   });
 
   useEffect(() => {
-    setMargins(printMargins ?? getDefaultPageMargins(paperSize));
+    setMargins(printMargins ?? getReportDefaultMargins(paperSize, activeReport.printable));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paperSize]);
+  }, [paperSize, activeReport.printable]);
 
   // Print-mode only, runs once on mount: hydrates the filter state a headless
   // browser can't set by clicking through the UI, straight from the URL
@@ -763,6 +789,7 @@ const ReportShell = ({
           : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
+      hide_signature: hideSignature ? "1" : undefined,
       search: search.trim() || undefined,
       student_id: studentFilter || undefined,
       page: isPaginatedAcademicResult ? String(page) : undefined,
@@ -789,6 +816,7 @@ const ReportShell = ({
         selectedDivisionId={selectedDivisionId}
         selectedClassName={selectedClassName}
         repeatTableHeader={repeatTableHeader}
+        hideSignature={hideSignature}
         hideBrandHeader={hideBrandHeader}
         paperSize={paperSize}
         orientation={orientation}
@@ -945,6 +973,30 @@ const ReportShell = ({
                       প্রতি পেজে বিষয়ের নাম
                     </button>
                   )}
+                  {supportsSignatureToggle && (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!hideSignaturePref}
+                      onClick={toggleSignature}
+                      title="জায়গা কম হলে বন্ধ করুন - প্রতিটি শ্রেণির নিচের পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর বাদ যাবে"
+                      className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`relative inline-block h-4 w-7 rounded-full transition-colors ${
+                          !hideSignaturePref ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                            !hideSignaturePref ? "left-3.5" : "left-0.5"
+                          }`}
+                        />
+                      </span>
+                      নিচে স্বাক্ষর
+                    </button>
+                  )}
                   {columnOptions && (
                     <ColumnVisibilityMenu
                       columns={columnMenuOptions}
@@ -1044,6 +1096,7 @@ const ReportShell = ({
                   selectedDivisionId={selectedDivisionId}
                   selectedClassName={selectedClassName}
                   repeatTableHeader={repeatTableHeader}
+                  hideSignature={hideSignature}
                   hideBrandHeader={hideBrandHeader}
                   paperSize={paperSize}
                   orientation={orientation}

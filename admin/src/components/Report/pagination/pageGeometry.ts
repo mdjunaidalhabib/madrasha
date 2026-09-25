@@ -26,3 +26,13 @@ export const getDefaultPageMargins = (paperSize: PaperSize): PageMargins => {
   const value = paperSize === "a5" ? 7 : 10;
   return { top: value, right: value, bottom: value, left: value };
 };
+
+// ২ কলামের স্বাক্ষর ও নম্বরপত্র: উপরে ১৬মিমি; বাকি তিন পাশ কাগজের ডিফল্ট।
+const TWO_COL_SHEET_TOP_MARGIN_MM = 16;
+
+// Per-report default margins (what ReportShell starts with and "ডিফল্ট সেট" resets to).
+export const getReportDefaultMargins = (paperSize: PaperSize, printable?: string): PageMargins => {
+  const margins = getDefaultPageMargins(paperSize);
+  if (printable === "exam-signature-number-sheet-2col") margins.top = TWO_COL_SHEET_TOP_MARGIN_MM;
+  return margins;
+};

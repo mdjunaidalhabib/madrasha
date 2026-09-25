@@ -32,6 +32,8 @@ type PaginatedReportPreviewProps = {
   selectedClassName?: string;
   /** academic-result only: repeat the column heading (subject names) on every page, not just the first. */
   repeatTableHeader?: boolean;
+  /** exam-signature-number-sheet-2col only: drop the "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" line to save space. */
+  hideSignature?: boolean;
   hideBrandHeader?: boolean;
   paperSize: PaperSize;
   orientation: Orientation;
@@ -592,6 +594,7 @@ const PaginatedReportPreview = ({
   selectedDivisionId = null,
   selectedClassName = "",
   repeatTableHeader = false,
+  hideSignature = false,
   hideBrandHeader = false,
   paperSize: sheetPaperSize,
   orientation: sheetOrientation,
@@ -620,9 +623,18 @@ const PaginatedReportPreview = ({
     report.printable !== "admit-card" &&
     report.printable !== "admit-card-with-rules" &&
     report.printable !== "id-card" &&
-    report.printable !== "book-label";
+    report.printable !== "book-label" &&
+    report.printable !== "exam-signature-number-sheet-2col";
   const paperSize: PaperSize = marksheetTwoUp ? "a5" : sheetPaperSize;
   const orientation: Orientation = marksheetTwoUp ? "portrait" : sheetOrientation;
+  // টাইপোগ্রাফি প্রোফাইল (data-paper-size/data-orientation + density): ফন্ট সাইজের CSS এগুলো
+  // দেখেই বসে, ভৌত পাতার মাপ নয় (সেটা html[data-print-size]-এ)। ২ কলামের স্বাক্ষর ও নম্বরপত্রে
+  // A5 ল্যান্ডস্কেপের প্রস্থ (২১০মিমি) A4 পোর্ট্রেটের সমান - তাই প্রতিটি কলাম হুবহু A4 পোর্ট্রেটের
+  // মাপের ফন্টে ছাপা হয়; শুধু পাতার উচ্চতা (পেজিনেশন) আসল A5 ল্যান্ডস্কেপের।
+  const twoColA4Type =
+    report.printable === "exam-signature-number-sheet-2col" && paperSize === "a5" && orientation === "landscape";
+  const typePaperSize: PaperSize = twoColA4Type ? "a4" : paperSize;
+  const typeOrientation: Orientation = twoColA4Type ? "portrait" : orientation;
   // ২-আপ মোডে প্রতিটি অর্ধেকের চার পাশে A5-এর সমান মার্জিন (৭মিমি) - মাঝখানে কাটলে দুই টুকরোর
   // চার পাশেই সমান জায়গা থাকে, তাই ব্যবহারকারীর মার্জিন এখানে প্রযোজ্য নয়।
   const margins = useMemo(
@@ -806,7 +818,7 @@ const PaginatedReportPreview = ({
         key: `table-${i}`,
         rows: groupRowsData,
         showBrand: showBrandAtAll,
-        density: getDensity(report, groupRowsData, paperSize, orientation),
+        density: getDensity(report, groupRowsData, typePaperSize, typeOrientation),
         resultStats:
           report.printable === "academic-result" ? getResultStats(groupRowsData) : undefined,
         subjectSourceRows: groupRowsData,
@@ -829,7 +841,7 @@ const PaginatedReportPreview = ({
             key: `${CONTINUATION_PROBE_KEY}-${i}`,
             rows: [groupRowsData[0]],
             showBrand: false,
-            density: getDensity(report, groupRowsData, paperSize, orientation),
+            density: getDensity(report, groupRowsData, typePaperSize, typeOrientation),
             isFirstPage: false,
             isLastPage: false,
             subjectSourceRows: groupRowsData,
@@ -843,7 +855,7 @@ const PaginatedReportPreview = ({
           key: CONTINUATION_PROBE_KEY,
           rows: [rows[0]],
           showBrand: false,
-          density: getDensity(report, groups[0] ?? rows, paperSize, orientation),
+          density: getDensity(report, groups[0] ?? rows, typePaperSize, typeOrientation),
           isFirstPage: false,
           isLastPage: false,
         },
@@ -934,7 +946,7 @@ const PaginatedReportPreview = ({
                 isFirstPageOfGroup: chunk.isFirstChunkOfGroup,
                 isFirstPage: chunk.isFirstChunkOfGroup,
                 isLastPage: chunk.isLastChunkOfGroup,
-                density: getDensity(report, groupRowsData, paperSize, orientation),
+                density: getDensity(report, groupRowsData, typePaperSize, typeOrientation),
                 resultStats,
                 groupRows: groupRowsData,
                 startsNewColumn: chunk.startsNewColumn,
@@ -966,7 +978,7 @@ const PaginatedReportPreview = ({
                 isFirstPageOfGroup: pageIndexInGroup === 0,
                 isFirstPage: pageIndexInGroup === 0,
                 isLastPage: pageIndexInGroup === producedPages.length - 1,
-                density: getDensity(report, groupRowsData, paperSize, orientation),
+                density: getDensity(report, groupRowsData, typePaperSize, typeOrientation),
                 resultStats,
                 groupRows: groupRowsData,
               });
@@ -1113,6 +1125,7 @@ const PaginatedReportPreview = ({
     idCardBackId,
     branding,
     repeatTableHeader,
+    hideSignature,
   ]);
 
   useLayoutEffect(() => {
@@ -1177,7 +1190,7 @@ const PaginatedReportPreview = ({
           isFirstPageOfGroup: true,
           isFirstPage: true,
           isLastPage: true,
-          density: getDensity(report, rows, paperSize, orientation),
+          density: getDensity(report, rows, typePaperSize, typeOrientation),
           resultStats: report.printable === "academic-result" ? getResultStats(rows) : undefined,
           groupRows: rows,
         },
@@ -1224,8 +1237,8 @@ const PaginatedReportPreview = ({
         key={page.key}
         className={className}
         data-report={report.printable || "table"}
-        data-paper-size={paperSize}
-        data-orientation={orientation}
+        data-paper-size={typePaperSize}
+        data-orientation={typeOrientation}
         data-density={page.density}
         style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
       >
@@ -1253,6 +1266,7 @@ const PaginatedReportPreview = ({
             selectedDivisionName={selectedDivisionName}
             selectedDivisionId={selectedDivisionId}
             repeatTableHeader={repeatTableHeader}
+            hideSignature={hideSignature}
             selectedClassName={selectedClassName}
             startIndex={page.startIndex}
             isFirstPage={page.isFirstPage}
@@ -1281,8 +1295,8 @@ const PaginatedReportPreview = ({
               }}
               className="print-page-preview report-print-page bg-white"
               data-report={report.printable || "table"}
-              data-paper-size={paperSize}
-              data-orientation={orientation}
+              data-paper-size={typePaperSize}
+              data-orientation={typeOrientation}
               data-density={target.density}
               style={{
                 width: `${measurementWidthPx}px`,
@@ -1305,6 +1319,7 @@ const PaginatedReportPreview = ({
                   selectedDivisionName={selectedDivisionName}
                   selectedDivisionId={selectedDivisionId}
                   repeatTableHeader={repeatTableHeader}
+                  hideSignature={hideSignature}
                   selectedClassName={selectedClassName}
                   startIndex={0}
                   isFirstPage={target.isFirstPage ?? true}
@@ -1341,8 +1356,8 @@ const PaginatedReportPreview = ({
                     key={left?.[0]?.key ?? `${report.key}-2col-${physicalIndex}`}
                     className="print-page-preview report-print-page bg-white"
                     data-report={report.printable || "table"}
-                    data-paper-size={paperSize}
-                    data-orientation={orientation}
+                    data-paper-size={typePaperSize}
+                    data-orientation={typeOrientation}
                     data-density={left?.[0]?.density ?? right?.[0]?.density ?? "comfortable"}
                     style={{ padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm` }}
                   >
@@ -1383,6 +1398,7 @@ const PaginatedReportPreview = ({
                               selectedDivisionName={selectedDivisionName}
                               selectedDivisionId={selectedDivisionId}
                               repeatTableHeader={repeatTableHeader}
+                              hideSignature={hideSignature}
                               selectedClassName={selectedClassName}
                               startIndex={chunk.startIndex}
                               isFirstPage={chunk.isFirstPage}
@@ -1422,6 +1438,7 @@ const PaginatedReportPreview = ({
                               selectedDivisionName={selectedDivisionName}
                               selectedDivisionId={selectedDivisionId}
                               repeatTableHeader={repeatTableHeader}
+                              hideSignature={hideSignature}
                               selectedClassName={selectedClassName}
                               startIndex={chunk.startIndex}
                               isFirstPage={chunk.isFirstPage}

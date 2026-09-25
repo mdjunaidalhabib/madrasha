@@ -10,6 +10,9 @@ type ExamSignatureNumberSheetProps = {
   // exam-signature-number-sheet-2col only: dropped there to leave more room
   // in the already-narrow column.
   hideRegistrationColumn?: boolean;
+  // exam-signature-number-sheet-2col only: the user can drop the bottom
+  // "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" line when space is tight.
+  hideSignature?: boolean;
 };
 
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
@@ -51,6 +54,7 @@ const ExamSignatureNumberSheet = ({
   isFirstPage = true,
   isLastPage = true,
   hideRegistrationColumn = false,
+  hideSignature = false,
 }: ExamSignatureNumberSheetProps) => {
   const firstRow = rows[0] || {};
   const examName = value(firstRow, ["exam_name"], "........................");
@@ -129,7 +133,7 @@ const ExamSignatureNumberSheet = ({
         </tbody>
       </table>
 
-      {isLastPage && (
+      {isLastPage && !hideSignature && (
       <div className="exam-report-signature report-block-signature mt-8 flex justify-end">
         <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
           পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর

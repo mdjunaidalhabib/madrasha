@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pencil, Images } from "lucide-react";
+import { Pencil, Images, ZoomIn } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import BrandImageBox from "./BrandImageBox";
+import ImageLightbox from "./ImageLightbox";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { CLOUD_NOT_CONFIGURED_MSG, getCloudinaryPublicId } from "../../utils/cloudUpload";
@@ -28,6 +29,7 @@ export default function InlineImageField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || "");
   const [saving, setSaving] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   const startEdit = () => {
     setDraft(value || "");
@@ -92,13 +94,19 @@ export default function InlineImageField({
     return (
       <div className="group flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
         {value ? (
-          <img
-            src={value}
-            alt={label}
-            className={`shrink-0 rounded-lg border border-gray-200 bg-white object-contain dark:border-slate-700 ${
+          <button
+            type="button"
+            onClick={() => setViewing(true)}
+            className={`group/thumb relative shrink-0 cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 ${
               shape === "wide" ? "h-14 w-24" : "h-14 w-14"
             }`}
-          />
+            title="বড় করে দেখুন"
+          >
+            <img src={value} alt={label} className="h-full w-full object-contain" />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition group-hover/thumb:opacity-100">
+              <ZoomIn size={18} />
+            </span>
+          </button>
         ) : (
           <div
             className={`flex shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-300 dark:bg-slate-800 dark:text-slate-600 ${
@@ -122,6 +130,9 @@ export default function InlineImageField({
         >
           <Pencil size={14} />
         </button>
+        {viewing && value && (
+          <ImageLightbox src={value} alt={label} onClose={() => setViewing(false)} />
+        )}
       </div>
     );
   }
