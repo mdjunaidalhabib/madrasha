@@ -68,7 +68,8 @@ const describeChanges = (
     const after = format ? format(data[key]) : data[key];
     if (String(before) !== String(after)) parts.push(`${label}: ${before ?? "—"} → ${after}`);
   }
-  return parts.length ? parts.join(", ") : "কোনো পরিবর্তন নেই";
+  // One change per line - the activity page colours each "old → new" line.
+  return parts.length ? `\n${parts.join("\n")}` : " — কোনো পরিবর্তন নেই";
 };
 
 export class AccountService {
@@ -142,7 +143,7 @@ export class AccountService {
       action: "UPDATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.FUND,
       entity_id: updated.id,
-      details: `ফান্ড/বিভাগ আপডেট করা হয়েছে (${existing.name}) — ${changeSummary}`,
+      details: `ফান্ড/বিভাগ আপডেট করা হয়েছে (${existing.name})${changeSummary}`,
     });
 
     return { message: FUND_UPDATE_SUCCESS_MESSAGE, id: updated.id };
@@ -214,7 +215,7 @@ export class AccountService {
       action: "UPDATE",
       entity: ACCOUNT_ACTIVITY_ENTITY.CATEGORY,
       entity_id: updated.id,
-      details: `খাত আপডেট করা হয়েছে (${existing.name}, ফান্ড: ${existing.fund.name}) — ${changeSummary}`,
+      details: `খাত আপডেট করা হয়েছে (${existing.name}, ফান্ড: ${existing.fund.name})${changeSummary}`,
     });
 
     return { message: CATEGORY_UPDATE_SUCCESS_MESSAGE, id: updated.id };

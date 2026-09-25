@@ -109,7 +109,7 @@ const TWO_UP_TILE_A5 = { widthMm: 105, heightMm: 148, scale: 148 / 210 };
 // look far heavier. Pages stay hidden until it's loaded (see fontReady) so
 // that heavier fallback text is never shown. Weight 500 = the page's base
 // weight; the face is declared 400-700, so this single probe covers them all.
-const REPORT_FONT_FAMILY = "Kalpurush";
+const REPORT_FONT_FAMILY = "Kalpurush Report";
 const REPORT_FONT_PROBE = `500 16px "${REPORT_FONT_FAMILY}"`;
 const REPORT_FONT_SAMPLE = "অআকখ";
 // Upper bound on the wait when the font request hangs (a failed/blocked

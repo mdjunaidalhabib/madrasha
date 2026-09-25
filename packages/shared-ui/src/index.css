@@ -17,19 +17,21 @@
    দেয়। */
 
 :root {
-  --font-ui-bn: "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
-  /* Report/document fonts use "Kalpurush" (SIL OFL licensed, self-hosted at
+  /* পুরো সাইট Kalpurush-এ - দুটো face-ই utils/reportFontFace.ts-এ। */
+  --font-ui-bn: "Kalpurush", "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
+  /* Report/document fonts use "Kalpurush Report" (same file; SIL OFL licensed, self-hosted at
      public/fonts/Kalpurush.ttf) for the traditional printed-document look
      requested for official paperwork. Modern, correctly-shaped fonts stay
      as fallbacks in case the file fails to load. Previously this led with
      the legacy "SolaimanLipi" (2003-era build) whose GSUB/GPOS tables
      predate modern complex-script shaping and rendered Bengali conjuncts
      (যুক্তাক্ষর) broken/disconnected in report printouts. */
-  --font-report-heading: "Kalpurush", "Noto Serif Bengali", "Hind Siliguri", serif;
-  --font-report-body: "Kalpurush", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+  --font-report-heading: "Kalpurush Report", "Noto Serif Bengali", "Hind Siliguri", serif;
+  --font-report-body: "Kalpurush Report", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
 }
 
 html {
+  font-family: var(--font-ui-bn);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

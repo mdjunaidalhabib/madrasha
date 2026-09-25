@@ -158,7 +158,7 @@ export default function QmsLandingPage() {
   return (
     <div
       className="min-h-screen bg-white text-slate-900 antialiased"
-      style={{ fontFamily: "'Hind Siliguri', 'Manrope', ui-sans-serif, system-ui, sans-serif" }}
+      style={{ fontFamily: "var(--font-ui-bn)" }}
     >
       {/* ---------------- Header ---------------- */}
       <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur">

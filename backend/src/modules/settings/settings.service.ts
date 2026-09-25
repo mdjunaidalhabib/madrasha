@@ -644,7 +644,7 @@ export class SettingsService {
       user_id: userId,
       action: "UPDATE",
       entity: "settings/branding",
-      details: `ব্র্যান্ডিং সেটিংস আপডেট করা হয়েছে — ${changes.length ? changes.join(", ") : "কোনো পরিবর্তন নেই"}`,
+      details: `ব্র্যান্ডিং সেটিংস আপডেট করা হয়েছে${changes.length ? `\n${changes.join("\n")}` : " — কোনো পরিবর্তন নেই"}`,
     });
   }
 

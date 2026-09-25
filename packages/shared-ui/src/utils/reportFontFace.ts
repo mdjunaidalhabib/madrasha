@@ -1,4 +1,4 @@
-// রিপোর্ট/ডকুমেন্টের "Kalpurush" @font-face এখানে, index.css-এ নয় - ইচ্ছা করেই।
+// রিপোর্ট/ডকুমেন্টের "Kalpurush Report" @font-face এখানে, index.css-এ নয় - ইচ্ছা করেই।
 //
 // index.css একটা বিশাল Tailwind স্টাইলশিট যাতে অনেক @media নিয়ম আছে
 // (@media print সহ)। Chrome print মোডে ঢুকলে মিডিয়া-নির্ভর স্টাইলশিটের
@@ -22,11 +22,24 @@ const STYLE_ID = "report-font-face";
 
 const REPORT_FONT_FACE_CSS = `
 @font-face {
-  font-family: "Kalpurush";
+  font-family: "Kalpurush Report";
   src: url("/fonts/Kalpurush.ttf") format("truetype");
   font-weight: 400 700;
   font-style: normal;
   font-display: block;
+}
+
+/* পুরো ওয়েবসাইটের UI ফন্ট (--font-ui-bn)। একই ফাইল (ব্রাউজারে একবারই নামে),
+   কিন্তু আলাদা family: শুধু 400 weight ঘোষণা করা, তাই font-semibold/bold-এ
+   ব্রাউজার নিজে মোটা করে দেয় - UI-র heading/বাটন বোল্ড দেখায়। রিপোর্টের
+   "Kalpurush Report" (400-700, synthetic bold বন্ধ) এতে বদলায় না। swap - ফন্ট
+   নামার আগে UI-র লেখা অদৃশ্য থাকবে না। */
+@font-face {
+  font-family: "Kalpurush";
+  src: url("/fonts/Kalpurush.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 `;
 

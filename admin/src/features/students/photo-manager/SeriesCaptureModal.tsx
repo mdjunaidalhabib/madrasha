@@ -34,7 +34,7 @@ type Props = {
 export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [hasMultipleCams, setHasMultipleCams] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);

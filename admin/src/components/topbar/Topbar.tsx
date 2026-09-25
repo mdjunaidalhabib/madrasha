@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useBrandingStore } from "../../store/brandingStore";
 import { useNowLabels } from "../../hooks/useNowLabels";
 import LockButton from "../lock/LockButton";
@@ -20,11 +20,17 @@ export default function Topbar({ openSidebar }: TopbarProps) {
     fetchBranding();
   }, [fetchBranding]);
 
-  const logo = branding?.report_logo && (
+  // লোগো ফাইল ভাঙা হলে alt-এ মাদরাসার নাম আবার লেখা হয়ে দুবার নাম দেখাত -
+  // তাই লোড ব্যর্থ হলে লোগোটাই লুকিয়ে ফেলি।
+  const [logoFailed, setLogoFailed] = useState(false);
+  useEffect(() => setLogoFailed(false), [branding?.report_logo]);
+
+  const logo = branding?.report_logo && !logoFailed && (
     <img
       src={branding.report_logo}
-      alt={branding.name || "Logo"}
-      className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover md:h-11 md:w-11 dark:border-slate-700"
+      alt=""
+      onError={() => setLogoFailed(true)}
+      className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
     />
   );
 
@@ -37,7 +43,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
       <div className="md:hidden">
         <div className="flex items-center gap-2 px-3 py-2.5">
           {logo}
-          <div className="min-w-0 flex-1 break-words text-center text-sm font-bold leading-tight text-slate-800 dark:text-slate-100">
+          <div className="min-w-0 flex-1 break-words text-center text-lg font-bold leading-tight text-slate-800 dark:text-slate-100">
             {branding?.name}
           </div>
           <button
@@ -68,12 +74,12 @@ export default function Topbar({ openSidebar }: TopbarProps) {
         {logo}
         <div className="min-w-0 flex-1 truncate">
           {branding?.name && (
-            <span className="text-xl font-bold text-slate-800 dark:text-slate-100">
+            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">
               {branding.name}
             </span>
           )}
           {branding?.address && (
-            <span className="ml-2 text-xl font-bold text-slate-800 dark:text-slate-100">
+            <span className="ml-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
               {branding?.name && "• "}
               {branding.address}
             </span>
