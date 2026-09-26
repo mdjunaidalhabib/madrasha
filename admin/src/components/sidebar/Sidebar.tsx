@@ -91,12 +91,16 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   // Which module (with a submenu) the current route belongs to - used both
   // to auto-expand its accordion and to highlight its header, independent of
   // the open/closed accordion state so it stays visible even collapsed.
-  const activeModuleKey = useMemo(() => {
+  // The matched child is also the only one highlighted - NavLink's own
+  // prefix matching would light up "/students" on every /students/* page.
+  const { activeModuleKey, activeChildKey } = useMemo(() => {
     const prefix = `/`;
-    if (!location.pathname.startsWith(prefix)) return null;
+    if (!location.pathname.startsWith(prefix)) return { activeModuleKey: null, activeChildKey: null };
     const subpath = location.pathname.slice(prefix.length).replace(/\/+$/, "");
     const match = matchSidebarPath(sidebar, subpath);
-    return match?.child ? match.module.key : null;
+    return match?.child
+      ? { activeModuleKey: match.module.key, activeChildKey: match.child.key }
+      : { activeModuleKey: null, activeChildKey: null };
   }, [location.pathname, sidebar]);
 
   // Accordion: only one module's submenu open at a time, click its header to
@@ -306,7 +310,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                       onClick={handleClick}
                       onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}
                       onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
-                      className={({ isActive }) => childItemClass(isActive)}
+                      className={() => childItemClass(isActiveModule && activeChildKey === child.key)}
                     >
                       <span>{child.label}</span>
                       {Boolean(child.count) && (

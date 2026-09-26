@@ -150,7 +150,7 @@ export default function HeroSlider({
   return (
     <section
       id="top"
-      className={`relative mx-auto mt-1.5 overflow-hidden rounded-xl text-white max-w-[1200px] md:mt-2 ${HERO_VARIANT_CLASS[variant] ?? HERO_ASPECT}`}
+      className={`group relative mx-auto mt-1.5 overflow-hidden rounded-xl text-white max-w-[1200px] md:mt-2 ${HERO_VARIANT_CLASS[variant] ?? HERO_ASPECT}`}
       style={{ background: `linear-gradient(135deg, ${accentSolid} 0%, #05070d 85%)` }}
     >
       {hasSlides && (
@@ -193,9 +193,8 @@ export default function HeroSlider({
               </div>
             );
           })}
-          {/* Light bottom scrim - just enough to keep the dots visible;
-              there's no headline to protect any more. */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          {/* Thin bottom scrim - only behind the dots, the photo stays clean. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
         </div>
       )}
 
@@ -220,7 +219,7 @@ export default function HeroSlider({
         </>
       )}
 
-      <div className="relative flex h-full flex-col items-center justify-center px-4 pb-10 text-center md:pb-14">
+      <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
         {/* No visible text over the slides - the photo speaks for itself.
             The heading stays for screen readers / SEO only. */}
         <h1 className="sr-only">{fallbackTitle}</h1>
@@ -237,7 +236,9 @@ export default function HeroSlider({
             />
           ))}
 
-        {actions && <div className="relative hidden flex-wrap items-center justify-center gap-3 md:flex">{actions}</div>}
+        {/* The CTA only shows on the plain (no-slide) hero - over a photo it
+            sat in the middle of the image and cluttered it. */}
+        {actions && !hasSlides && <div className="relative hidden flex-wrap items-center justify-center gap-3 md:flex">{actions}</div>}
 
         {websiteStatus === "limited" && (
           <div className="relative mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
@@ -246,17 +247,19 @@ export default function HeroSlider({
         )}
 
         {hasSlides && slides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-14 flex items-center justify-center gap-2 md:bottom-16">
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center md:bottom-3">
             {slides.map((slide, index) => (
               <button
                 key={slide.id ?? slide.image_url}
                 type="button"
                 onClick={() => goTo(index)}
                 aria-label={`Slide ${index + 1}`}
-                className="h-2 rounded-full transition-all"
+                // Dot that stretches into a pill when active; px-1 py-2 +
+                // bg-clip-content keeps a finger-sized tap area.
+                className="box-content h-2 rounded-full bg-clip-content px-1 py-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] transition-all duration-500 ease-out"
                 style={{
                   width: index === state.active ? 24 : 8,
-                  backgroundColor: index === state.active ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  backgroundColor: index === state.active ? "#ffffff" : "rgba(255,255,255,0.55)",
                 }}
               />
             ))}
@@ -270,17 +273,17 @@ export default function HeroSlider({
             type="button"
             onClick={() => goTo(state.active - 1)}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2 text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 md:flex"
+            className="absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
           <button
             type="button"
             onClick={() => goTo(state.active + 1)}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2 text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 md:flex"
+            className="absolute right-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} />
           </button>
         </>
       )}

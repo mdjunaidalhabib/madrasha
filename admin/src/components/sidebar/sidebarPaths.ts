@@ -84,27 +84,41 @@ export function childPath(moduleKey: string, childKey: string) {
  * the module that should show as active. Checking each child's real,
  * resolved path (via childPath) instead of the module's own prefix is what
  * makes this correct for those remapped children too.
+ *
+ * When several children match (e.g. "students/admissions" and
+ * "students/admissions/pending"), the longest - most specific - path wins, so
+ * exactly one sidebar entry is ever active.
  */
 export function matchSidebarPath(
   modules: SidebarItem[],
   subpath: string,
 ): { module: SidebarItem; child: SidebarChildItem | null } | null {
+  let best: { module: SidebarItem; child: SidebarChildItem | null } | null = null;
+  let bestLen = -1;
+
   for (const module of modules) {
     if (module.disabled) continue;
 
     if (!module.children || module.children.length === 0) {
-      if (subpath === modulePath(module.key)) return { module, child: null };
+      const mPath = modulePath(module.key);
+      if (subpath === mPath && mPath.length > bestLen) {
+        best = { module, child: null };
+        bestLen = mPath.length;
+      }
       continue;
     }
 
     for (const child of module.children) {
       if (child.disabled) continue;
       const cPath = childPath(module.key, child.key);
-      if (subpath === cPath || (!EXACT_MATCH_CHILD_PATHS.has(cPath) && subpath.startsWith(`${cPath}/`))) {
-        return { module, child };
+      const matches =
+        subpath === cPath || (!EXACT_MATCH_CHILD_PATHS.has(cPath) && subpath.startsWith(`${cPath}/`));
+      if (matches && cPath.length > bestLen) {
+        best = { module, child };
+        bestLen = cPath.length;
       }
     }
   }
 
-  return null;
+  return best;
 }

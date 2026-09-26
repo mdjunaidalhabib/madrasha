@@ -18,7 +18,7 @@ export default function SuperAdminLayout() {
   if (!token) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
         <SuperAdminSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((v) => !v)} />

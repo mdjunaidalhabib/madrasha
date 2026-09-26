@@ -87,7 +87,7 @@ export default function DashboardLayout() {
   }, [setAccess, updateUser]);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden dark:bg-slate-950">
+    <div className="flex h-screen supports-[height:100dvh]:h-dvh bg-slate-50 overflow-hidden dark:bg-slate-950">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />

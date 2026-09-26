@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
-import { AlertCircle, CheckCircle2, FileDown, FileUp, Keyboard, Languages, Loader2, Save, Undo2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, FileDown, FileUp, Keyboard, Languages, Loader2, Pencil, Save, Undo2 } from "lucide-react";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -126,6 +126,21 @@ const NameRow = memo(function NameRow({
 }: RowProps) {
   const inputs = NAME_LANGS.map((lang, col) => {
     const isAr = lang === "ar";
+    // Read mode: plain text - the grid only becomes inputs after "এডিট করুন".
+    if (!canEdit)
+      return (
+        <div
+          key={lang}
+          dir={isAr ? "rtl" : "ltr"}
+          lang={isAr ? "ar" : lang === "en" ? "en" : "bn"}
+          style={isAr ? { fontFamily: ARABIC_FONT_STACK, fontSize: "1rem" } : undefined}
+          className={`flex items-center break-words text-sm ${layout === "table" ? "min-h-10 px-3" : "min-h-8"} ${
+            values[col] ? "text-slate-800 dark:text-slate-100" : "text-slate-300 dark:text-slate-600"
+          }`}
+        >
+          {values[col] || "—"}
+        </div>
+      );
     return (
       <input
         key={lang}
@@ -255,6 +270,9 @@ export default function StudentNamesManagerPage() {
   const [drafts, setDrafts] = useState<Drafts>({});
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
   const [saving, setSaving] = useState(false);
+  // Opens read-only; the pencil button switches the whole grid to inputs.
+  const [editing, setEditing] = useState(false);
+  const editable = tabCanEdit && editing;
   const [visibleCount, setVisibleCount] = useState(CHUNK);
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
   const savedTimers = useRef<Record<string, number>>({});
@@ -359,6 +377,7 @@ export default function StudentNamesManagerPage() {
         }
       }
       applyEdits(edits);
+      if (edits.length) setEditing(true); // imported drafts must be reviewable
       const people = new Set(edits.map((x) => x.person.id)).size;
       const extra = [
         unknown ? `${toBanglaDigits(unknown)} টি সারি মেলেনি` : "",
@@ -652,7 +671,7 @@ export default function StudentNamesManagerPage() {
         dirty={dirty}
         bnError={owner === "self" && dirty[0] && cleanName(values[0]) === ""}
         status={statuses[key]}
-        canEdit={tabCanEdit}
+        canEdit={editable}
         handlers={handlers}
         layout={layout}
         idLabel={idLabelOf(p)}
@@ -702,6 +721,27 @@ export default function StudentNamesManagerPage() {
                 Excel আপলোড
               </button>
             </div>
+            {tabCanEdit &&
+              (editing ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  disabled={dirtyCount > 0 || saving}
+                  title={dirtyCount > 0 ? "আগে পরিবর্তন সেভ বা বাতিল করুন" : "এডিট বন্ধ করুন"}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Check className="h-4 w-4 text-emerald-600" /> সম্পন্ন
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  disabled={loading}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <Pencil className="h-4 w-4" /> এডিট করুন
+                </button>
+              ))}
             <input ref={excelInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={importExcel} />
           </div>
         </div>
@@ -733,7 +773,7 @@ export default function StudentNamesManagerPage() {
 
         <PeopleNotices dir={dir} readOnlyText="নাম পরিবর্তনের অনুমতি আপনার নেই — শুধু দেখতে পারবেন।" />
 
-        {!narrow && tabCanEdit && !loading && filtered.length > 0 && (
+        {!narrow && editable && !loading && filtered.length > 0 && (
           <div className="-mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               <Keyboard className="h-3.5 w-3.5" /> Enter/↓ = নিচের ঘর · Tab = পাশের ঘর · Ctrl+S = সব সেভ

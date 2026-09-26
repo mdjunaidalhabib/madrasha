@@ -32,14 +32,17 @@ const REPORT_FONT_FACE_CSS = `
 /* পুরো ওয়েবসাইটের UI ফন্ট (--font-ui-bn)। একই ফাইল (ব্রাউজারে একবারই নামে),
    কিন্তু আলাদা family: শুধু 400 weight ঘোষণা করা, তাই font-semibold/bold-এ
    ব্রাউজার নিজে মোটা করে দেয় - UI-র heading/বাটন বোল্ড দেখায়। রিপোর্টের
-   "Kalpurush Report" (400-700, synthetic bold বন্ধ) এতে বদলায় না। swap - ফন্ট
-   নামার আগে UI-র লেখা অদৃশ্য থাকবে না। */
+   "Kalpurush Report" (400-700, synthetic bold বন্ধ) এতে বদলায় না।
+   font-display: block - swap দিলে লোডের সময় আগে সাধারণ (fallback) ফন্ট দেখিয়ে
+   পরে হঠাৎ Kalpurush-এ লাফ দিত, যা প্রফেশনাল দেখায় না। index.html-এ preload
+   থাকায় ফন্ট সাধারণত প্রথম render-এর আগেই নেমে যায়; খুব ধীর নেটে সর্বোচ্চ
+   ~৩ সেকেন্ড লেখা লুকানো থাকে, তারপর fallback। swap-এ ফিরিয়ে নেবেন না। */
 @font-face {
   font-family: "Kalpurush";
   src: url("/fonts/Kalpurush.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 `;
 
