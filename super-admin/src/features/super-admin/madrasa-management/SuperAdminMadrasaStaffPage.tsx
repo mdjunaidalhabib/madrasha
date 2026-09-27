@@ -76,7 +76,7 @@ function ToggleSwitch({
     >
       <span
         className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0"
+          checked ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0"
         }`}
       />
     </button>
@@ -384,12 +384,12 @@ function StaffTab({ madrasaId, toast }: { madrasaId: number; toast: (msg: string
                 placeholder="কমপক্ষে ৬ অক্ষর"
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                className="h-10 pr-9"
+                className="h-10 pe-9"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -526,12 +526,12 @@ function StaffTab({ madrasaId, toast }: { madrasaId: number; toast: (msg: string
                           placeholder="নতুন Password (ঐচ্ছিক)"
                           value={editPassword}
                           onChange={(e) => setEditPassword(e.target.value)}
-                          className="h-9 w-48 pr-9 text-xs"
+                          className="h-9 w-48 pe-9 text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => setEditPasswordVisible((v) => !v)}
-                          className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                          className="absolute inset-y-0 end-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                           tabIndex={-1}
                         >
                           {editPasswordVisible ? <EyeOff size={14} /> : <Eye size={14} />}

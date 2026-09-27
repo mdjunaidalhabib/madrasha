@@ -205,7 +205,7 @@ const SingleSendPage = () => {
                           key={s.id}
                           type="button"
                           onClick={() => pick(`${s.name} (রোল ${s.roll})`, channel === "SMS" ? s.phone : null)}
-                          className="block w-full border-b border-gray-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                          className="block w-full border-b border-gray-100 px-3 py-2 text-start text-sm last:border-0 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-800"
                         >
                           {s.name} <span className="text-xs text-gray-400">রোল {s.roll} · {s.phone}</span>
                         </button>
@@ -219,7 +219,7 @@ const SingleSendPage = () => {
                         key={t.id}
                         type="button"
                         onClick={() => pick(t.name, channel === "SMS" ? t.phone : t.email)}
-                        className="block w-full border-b border-gray-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                        className="block w-full border-b border-gray-100 px-3 py-2 text-start text-sm last:border-0 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-800"
                       >
                         {t.name} <span className="text-xs text-gray-400">{channel === "SMS" ? t.phone : t.email}</span>
                       </button>

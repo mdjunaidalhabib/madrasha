@@ -54,7 +54,7 @@ function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
             // Leading spaces = a sub-line of the previous line (bulk update).
             const nested = /^\s/.test(raw);
             const line = raw.trim();
-            const itemClass = nested ? "pl-4" : undefined;
+            const itemClass = nested ? "ps-4" : undefined;
             const arrow = line.indexOf(" → ");
             if (arrow === -1 || line.indexOf(" → ", arrow + 1) !== -1) {
               return (
@@ -192,7 +192,7 @@ export default function ActivityPage() {
           <Button variant="secondary" onClick={resetFilters}>
             {t.clearLabel}
           </Button>
-          <div className="ml-auto text-xs text-slate-400 dark:text-slate-500">
+          <div className="ms-auto text-xs text-slate-400 dark:text-slate-500">
             {t.retentionNote(formatNumber(RETENTION_DAYS, lang))}
           </div>
         </div>
@@ -206,7 +206,7 @@ export default function ActivityPage() {
         <div className="bg-white rounded shadow overflow-x-auto dark:bg-slate-900">
           <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 dark:bg-slate-800">
-              <tr className="text-left text-sm text-gray-600 dark:text-slate-400">
+              <tr className="text-start text-sm text-gray-600 dark:text-slate-400">
                 <th className="px-4 py-3">{t.colUser}</th>
                 <th className="px-4 py-3">{t.colAction}</th>
                 <th className="px-4 py-3">{t.colEntity}</th>

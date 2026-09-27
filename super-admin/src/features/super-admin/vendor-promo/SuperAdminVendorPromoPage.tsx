@@ -143,7 +143,7 @@ function ConfigForm() {
           >
             <span
               className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
-                form.is_enabled ? "left-6" : "left-1"
+                form.is_enabled ? "start-6" : "start-1"
               }`}
             />
           </button>
@@ -468,7 +468,7 @@ function ServicesList() {
                 <div className="truncate font-medium text-gray-800 dark:text-slate-200">
                   {item.label}
                   {item.is_current && (
-                    <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <span className="ms-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                       বর্তমান
                     </span>
                   )}

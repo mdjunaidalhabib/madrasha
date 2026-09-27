@@ -155,7 +155,7 @@ export default function DeviceTodayPage() {
               আজকের তারিখে ফিরুন
             </Button>
           )}
-          <p className="text-xs text-slate-400 sm:ml-auto">
+          <p className="text-xs text-slate-400 sm:ms-auto">
             {updatedAt ? `সর্বশেষ আপডেট: ${formatTime(new Date(updatedAt).toISOString())}` : ""}
           </p>
         </div>
@@ -184,14 +184,14 @@ export default function DeviceTodayPage() {
             <div className={`overflow-x-auto ${loading ? "opacity-60 transition" : "transition"}`}>
               <table className="w-full min-w-[820px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    <th className="py-2 pr-3 font-medium">শিক্ষার্থী</th>
-                    <th className="py-2 pr-3 font-medium">আইডি</th>
-                    <th className="py-2 pr-3 font-medium">শ্রেণি</th>
-                    <th className="py-2 pr-3 font-medium">চেক-ইন</th>
-                    <th className="py-2 pr-3 font-medium">ডিভাইস</th>
-                    <th className="py-2 pr-3 font-medium">সিঙ্ক</th>
-                    <th className="py-2 pr-3 font-medium">SMS</th>
+                  <tr className="border-b border-slate-200 text-start text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    <th className="py-2 pe-3 font-medium">শিক্ষার্থী</th>
+                    <th className="py-2 pe-3 font-medium">আইডি</th>
+                    <th className="py-2 pe-3 font-medium">শ্রেণি</th>
+                    <th className="py-2 pe-3 font-medium">চেক-ইন</th>
+                    <th className="py-2 pe-3 font-medium">ডিভাইস</th>
+                    <th className="py-2 pe-3 font-medium">সিঙ্ক</th>
+                    <th className="py-2 pe-3 font-medium">SMS</th>
                     <th className="py-2 font-medium">সিঙ্কের সময়</th>
                   </tr>
                 </thead>
@@ -201,28 +201,28 @@ export default function DeviceTodayPage() {
                       key={`${r.student_id}-${r.check_in_at ?? i}`}
                       className="border-b border-slate-100 last:border-0 dark:border-slate-800"
                     >
-                      <td className="py-2.5 pr-3 font-medium text-slate-900 dark:text-slate-100">
+                      <td className="py-2.5 pe-3 font-medium text-slate-900 dark:text-slate-100">
                         {r.name_bn}
                       </td>
-                      <td className="py-2.5 pr-3 text-slate-600 dark:text-slate-300">
+                      <td className="py-2.5 pe-3 text-slate-600 dark:text-slate-300">
                         {r.student_id}
                       </td>
-                      <td className="py-2.5 pr-3 text-slate-700 dark:text-slate-300">
+                      <td className="py-2.5 pe-3 text-slate-700 dark:text-slate-300">
                         {r.class_name || "—"}
                       </td>
                       <td
-                        className="py-2.5 pr-3 font-semibold tabular-nums text-slate-900 dark:text-slate-100"
+                        className="py-2.5 pe-3 font-semibold tabular-nums text-slate-900 dark:text-slate-100"
                         title={formatDateTime(r.check_in_at)}
                       >
                         {formatTime(r.check_in_at)}
                       </td>
-                      <td className="py-2.5 pr-3 text-slate-700 dark:text-slate-300">
+                      <td className="py-2.5 pe-3 text-slate-700 dark:text-slate-300">
                         {r.device_name || "—"}
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="py-2.5 pe-3">
                         <SyncStatusBadge status={r.sync_status} />
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="py-2.5 pe-3">
                         <SmsStatusBadge status={r.sms_status} />
                       </td>
                       <td className="py-2.5 text-xs text-slate-500 dark:text-slate-400">

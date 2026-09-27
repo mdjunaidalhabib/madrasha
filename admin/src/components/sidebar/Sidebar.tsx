@@ -8,6 +8,7 @@ import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
+import { LanguageSwitcher } from "@madrasha/shared-ui/src/i18n";
 import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
 import PlanBadge from "../topbar/PlanBadge";
 import LockButton from "../lock/LockButton";
@@ -56,7 +57,7 @@ const ICONS: Record<string, any> = {
 };
 
 function navItemClass(isActive: boolean) {
-  return `flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 text-base font-medium transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`;
+  return `flex items-center gap-2 rounded-lg border-s-2 px-3 py-2 text-base font-medium transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`;
 }
 function childItemClass(isActive: boolean) {
   return `flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[15px] transition ${
@@ -159,7 +160,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   <UserRound size={20} />
                 </span>
               )}
-              <span className="min-w-0 flex-1 text-left leading-tight">
+              <span className="min-w-0 flex-1 text-start leading-tight">
                 <span className="block break-words text-base font-semibold text-slate-800 dark:text-slate-100">
                   {user?.name || "Madrasa"}
                 </span>
@@ -170,7 +171,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             </button>
 
             {accountMenuOpen && (
-              <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+              <div className="absolute start-0 top-full z-10 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 <NavLink
                   to={`/settings/profile`}
                   onClick={() => {
@@ -188,7 +189,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                     setAccountMenuOpen(false);
                     await handleLogout();
                   }}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-start text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 >
                   <LogOut size={16} />
                   লগআউট
@@ -225,6 +226,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   const footer = closeSidebar && (
     <div className="flex items-center justify-center gap-2 border-t border-slate-100 px-2 py-2.5 dark:border-slate-800 md:hidden">
       <PlanBadge />
+      <LanguageSwitcher dropUp />
       <ThemeToggle />
       <LockButton />
       <button
@@ -289,7 +291,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 className={moduleHeaderClass(isActiveModule)}
               >
                 <Icon size={18} />
-                {!collapsed && <span className="flex-1 text-left">{module.label}</span>}
+                {!collapsed && <span className="flex-1 text-start">{module.label}</span>}
                 {!collapsed && (
                   <ChevronDown
                     size={16}
@@ -302,7 +304,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                <div className="ml-6 space-y-1 overflow-hidden border-l border-slate-200 pl-3 dark:border-slate-700">
+                <div className="ms-6 space-y-1 overflow-hidden border-s border-slate-200 ps-3 dark:border-slate-700">
                   {visibleChildren.map((child) => (
                     <NavLink
                       key={child.key}

@@ -110,7 +110,7 @@ export default function InvoicePrintModal({ invoice, studentLabel, onClose }: Pr
           বন্ধ করুন
         </Button>
         <Button onClick={() => window.print()}>
-          <Printer size={16} className="mr-1 inline" /> প্রিন্ট করুন
+          <Printer size={16} className="me-1 inline" /> প্রিন্ট করুন
         </Button>
       </div>
     </Modal>

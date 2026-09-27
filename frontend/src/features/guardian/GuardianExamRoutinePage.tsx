@@ -43,7 +43,7 @@ export default function GuardianExamRoutinePage() {
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500">
+              <thead className="bg-slate-50 text-start text-slate-500">
                 <tr>
                   <th className="px-5 py-3">পরীক্ষা</th>
                   <th className="px-5 py-3">বিষয়</th>

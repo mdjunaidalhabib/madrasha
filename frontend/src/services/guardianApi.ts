@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
 import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
@@ -10,6 +11,7 @@ import { getTenantSlugFromPath, getTenantGuardianBase } from "../utils/tenantSlu
 // guardian-side 401 would wipe the admin session and redirect to the admin
 // login page instead of the guardian one.
 const guardianApi = axios.create({ baseURL: API_BASE_URL });
+attachLanguageHeader(guardianApi);
 
 guardianApi.interceptors.request.use((config) => {
   const token = useGuardianAuthStore.getState().token;

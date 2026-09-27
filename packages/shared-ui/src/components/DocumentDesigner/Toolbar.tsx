@@ -177,11 +177,11 @@ const Toolbar = ({
       <Button type="button" variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploadingBg}>
         {uploadingBg ? (
           <>
-            <Loader2 size={15} className="mr-1.5 animate-spin" /> আপলোড হচ্ছে...
+            <Loader2 size={15} className="me-1.5 animate-spin" /> আপলোড হচ্ছে...
           </>
         ) : (
           <>
-            <ImageIcon size={15} className="mr-1.5" /> ব্যাকগ্রাউন্ড আপলোড
+            <ImageIcon size={15} className="me-1.5" /> ব্যাকগ্রাউন্ড আপলোড
           </>
         )}
       </Button>
@@ -203,7 +203,7 @@ const Toolbar = ({
         className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700"
       />
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ms-auto flex items-center gap-2">
         {saveError && <span className="text-xs text-rose-600 dark:text-rose-400">{saveError}</span>}
         <Button type="button" variant="secondary" onClick={onSaveDraft} disabled={saving}>
           {saving ? "সেভ হচ্ছে..." : "খসড়া সেভ করুন"}

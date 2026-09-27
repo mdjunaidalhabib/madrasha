@@ -10,7 +10,7 @@ type Props = {
 const Field = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between gap-2 border-b border-dotted border-[#cdb96f] pb-1">
     <span className="font-bold text-[#6b5a2e]">{label}</span>
-    <span className="text-right text-[#3c4f42]">{value}</span>
+    <span className="text-end text-[#3c4f42]">{value}</span>
   </div>
 );
 

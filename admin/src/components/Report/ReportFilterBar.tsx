@@ -31,10 +31,10 @@ import NoticeBoardPicker from "./documents/NoticeBoardPicker";
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
 // Selects use FilterSelect (custom animated chevron) instead of the native
-// arrow - appearance-none hides that, pr-5 keeps text clear of the icon.
-const selectFieldClass = `${fieldClass} appearance-none pr-5`;
+// arrow - appearance-none hides that, pe-5 keeps text clear of the icon.
+const selectFieldClass = `${fieldClass} appearance-none pe-5`;
 const selectIconClass =
-  "pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500";
+  "pointer-events-none absolute end-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500";
 
 type ReportFilterBarProps = {
   showSearch?: boolean;
@@ -161,13 +161,13 @@ const ReportFilterBar = ({
       <div className="flex flex-wrap items-center gap-1.5">
         {showSearch && (
           <div className="relative w-full min-w-[150px] flex-1 sm:w-auto sm:flex-none sm:basis-[170px]">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute start-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="ID / নাম / মোবাইল"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              className={`${fieldClass} pl-6`}
+              className={`${fieldClass} ps-6`}
             />
           </div>
         )}

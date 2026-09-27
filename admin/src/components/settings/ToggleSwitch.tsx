@@ -15,7 +15,7 @@ export function ToggleSwitch({
 }) {
   const track = size === "sm" ? "h-4 w-7 p-0.5" : "h-6 w-11 p-1";
   const thumb = size === "sm" ? "h-3 w-3" : "h-4 w-4";
-  const thumbOn = size === "sm" ? "translate-x-3" : "translate-x-5";
+  const thumbOn = size === "sm" ? "translate-x-3 rtl:-translate-x-3" : "translate-x-5 rtl:-translate-x-5";
 
   return (
     <button

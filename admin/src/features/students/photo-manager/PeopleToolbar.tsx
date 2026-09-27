@@ -124,19 +124,19 @@ export function PeopleFilterBar({
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <div className="relative col-span-2 sm:w-[240px]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={dir.search}
             onChange={(e) => dir.setSearch(e.target.value)}
             placeholder={tab === "students" ? "নাম, রোল বা রেজি. নং" : "নাম বা রেজি. নং"}
-            className="h-9 w-full rounded-md border border-gray-300 pl-8 pr-8 text-sm outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-8 text-sm outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
           {dir.search && (
             <button
               type="button"
               onClick={() => dir.setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
+              className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
               aria-label="সার্চ মুছুন"
             >
               <X className="h-3.5 w-3.5" />

@@ -75,7 +75,7 @@ export default function ProfileMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40"
+          className="absolute end-0 top-full z-30 mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40"
         >
           <div className="flex flex-col items-center gap-2">
             {user.photo_url ? (

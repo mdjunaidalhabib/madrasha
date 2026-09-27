@@ -528,7 +528,7 @@ export default function ClassBookSettingsPage() {
                     <SerialBadge index={index} />
                     <button
                       onClick={() => setDivisionId(String(division.division_id))}
-                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
+                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
                         isActiveDivision ? "text-blue-800 dark:text-blue-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     >
@@ -642,7 +642,7 @@ export default function ClassBookSettingsPage() {
                     <SerialBadge index={index} />
                     <button
                       onClick={() => setClassId(String(classItem.class_id))}
-                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-left text-sm font-medium transition ${
+                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
                         classId === String(classItem.class_id) ? "text-emerald-800 dark:text-emerald-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     >

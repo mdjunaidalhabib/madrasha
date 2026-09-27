@@ -715,7 +715,7 @@ export default function StudentNamesManagerPage() {
                 type="button"
                 onClick={() => excelInput.current?.click()}
                 disabled={excelBusy || loading || !tabCanEdit || saving}
-                className="inline-flex h-10 items-center gap-1.5 border-l border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-10 items-center gap-1.5 border-s border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {excelBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 text-blue-600" />}
                 Excel আপলোড
@@ -805,7 +805,7 @@ export default function StudentNamesManagerPage() {
           <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <table className="w-full min-w-[760px] border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                <tr className="bg-slate-50 text-start text-xs font-semibold text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                   <th className="w-60 px-4 py-2.5">
                     {TAB_LABEL_SELF[tab]}
                     <span className="font-normal text-slate-400">
@@ -817,7 +817,7 @@ export default function StudentNamesManagerPage() {
                     {LANG_LABEL.bn}
                     {owner === "self" && <span className="text-rose-500"> *</span>}
                   </th>
-                  <th className="px-3 py-2.5 text-right" dir="rtl">
+                  <th className="px-3 py-2.5 text-end" dir="rtl">
                     {LANG_LABEL.ar} <span style={{ fontFamily: ARABIC_FONT_STACK }}>(الاسم)</span>
                   </th>
                   <th className="px-3 py-2.5">{LANG_LABEL.en}</th>

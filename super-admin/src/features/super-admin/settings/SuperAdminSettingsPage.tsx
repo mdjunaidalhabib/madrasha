@@ -876,12 +876,12 @@ function SuperAdminAccountsCard() {
               autoComplete="new-password"
               value={newAdmin.password}
               onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))}
-              className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded border px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
             <button
               type="button"
               onClick={() => setPasswordVisible((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+              className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
               aria-label={passwordVisible ? "Hide password" : "Show password"}
               tabIndex={-1}
             >

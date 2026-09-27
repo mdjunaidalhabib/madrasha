@@ -179,7 +179,7 @@ export default function SuperAdminBillingRequestsPage() {
           <SkeletonTable rows={6} columns={8} className="rounded-none" bordered={false} shadowed={false} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-start text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
                   <th className="px-4 py-3">Madrasa</th>
@@ -189,7 +189,7 @@ export default function SuperAdminBillingRequestsPage() {
                   <th className="px-4 py-3">Payment</th>
                   <th className="px-4 py-3">Submitted</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-end">Actions</th>
                 </tr>
               </thead>
 
@@ -222,7 +222,7 @@ export default function SuperAdminBillingRequestsPage() {
                           </IconButton>
                         </div>
                       ) : (
-                        <div className="text-right text-xs text-gray-400">
+                        <div className="text-end text-xs text-gray-400">
                           {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : ""}
                         </div>
                       )}

@@ -169,7 +169,7 @@ const LETTER_CONFIG: Record<
     heading: "প্রত্যয়ন পত্র",
     headingClassName: "mb-8 text-center text-2xl font-bold",
     bodyClassName: "whitespace-pre-line text-lg leading-9 text-slate-800",
-    footer: <div className="mt-16 text-right text-sm font-semibold">প্রধান শিক্ষকের স্বাক্ষর</div>,
+    footer: <div className="mt-16 text-end text-sm font-semibold">প্রধান শিক্ষকের স্বাক্ষর</div>,
   },
   transfer: {
     heading: "ছাড়পত্র",
@@ -557,7 +557,7 @@ export default function TalimatDocumentsPage() {
               key={item.key}
               type="button"
               onClick={() => setActiveKey(item.key)}
-              className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
+              className={`rounded-2xl border p-4 text-start transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
             >
               <span className="block font-bold">{item.title}</span>
               <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>
@@ -634,7 +634,7 @@ export default function TalimatDocumentsPage() {
             key={item.key}
             type="button"
             onClick={() => setActiveKey(item.key)}
-            className={`rounded-2xl border p-4 text-left transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
+            className={`rounded-2xl border p-4 text-start transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
           >
             <span className="block font-bold">{item.title}</span>
             <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>

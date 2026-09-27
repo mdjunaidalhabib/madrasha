@@ -52,7 +52,7 @@ const DigitalAttendancePrint = ({
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
               {cellValue(row, "registration_no")}
             </td>
-            <td className="border border-slate-600 py-2 pl-3 pr-2 text-left text-base font-semibold">
+            <td className="border border-slate-600 py-2 ps-3 pe-2 text-start text-base font-semibold">
               {cellValue(row, "student_name")}
             </td>
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">

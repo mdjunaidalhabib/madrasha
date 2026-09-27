@@ -93,7 +93,7 @@ const PremiumStat = ({
     <div
       className={`group relative overflow-hidden rounded-2xl border ${t.border} bg-gradient-to-br ${t.bg} via-white to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${t.glow} dark:via-slate-900 dark:to-slate-900`}
     >
-      <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full ${t.blob} blur-2xl transition-transform duration-300 group-hover:scale-110`} />
+      <div className={`pointer-events-none absolute -end-8 -top-8 h-28 w-28 rounded-full ${t.blob} blur-2xl transition-transform duration-300 group-hover:scale-110`} />
       <span className={`relative inline-flex rounded-2xl bg-gradient-to-br ${t.icon} p-3 text-white shadow-lg`}>{icon}</span>
       <p className="relative mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
       <p className="relative mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>
@@ -128,7 +128,7 @@ const MethodCard = ({
     <div
       className={`relative overflow-hidden rounded-xl border ${t.border} bg-gradient-to-br ${t.bg} to-white p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:to-slate-900`}
     >
-      <div className={`pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full ${t.blob} blur-xl`} />
+      <div className={`pointer-events-none absolute -end-6 -top-6 h-16 w-16 rounded-full ${t.blob} blur-xl`} />
       <div className="relative flex items-center justify-between">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
           <span className={`inline-flex rounded-lg bg-gradient-to-br ${t.icon} p-1.5 text-white shadow`}>{icon}</span>
@@ -402,14 +402,14 @@ export default function AccountDashboardPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 <th className="px-5 py-3">তারিখ</th>
                 <th className="px-5 py-3">ধরন</th>
                 <th className="px-5 py-3">ফান্ড / খাত</th>
                 <th className="px-5 py-3">নাম</th>
                 <th className="px-5 py-3">পরিমাণ</th>
-                <th className="px-5 py-3 text-right">অ্যাকশন</th>
+                <th className="px-5 py-3 text-end">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody>

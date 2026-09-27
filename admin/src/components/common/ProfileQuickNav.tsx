@@ -235,13 +235,13 @@ const ProfileQuickNav = ({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          className="peer h-8 w-full rounded-full border border-gray-200 bg-gray-50/80 pl-8 pr-8 text-[13px] text-gray-800 outline-none transition-all duration-200 ease-out placeholder:text-gray-400 hover:border-gray-300 hover:bg-white focus:border-blue-400 focus:bg-white focus:shadow-sm focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:focus:border-blue-500/60 dark:focus:bg-slate-800 dark:focus:ring-blue-500/15"
+          className="peer h-8 w-full rounded-full border border-gray-200 bg-gray-50/80 ps-8 pe-8 text-[13px] text-gray-800 outline-none transition-all duration-200 ease-out placeholder:text-gray-400 hover:border-gray-300 hover:bg-white focus:border-blue-400 focus:bg-white focus:shadow-sm focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:focus:border-blue-500/60 dark:focus:bg-slate-800 dark:focus:ring-blue-500/15"
         />
 
         {/* input-এর পরে বসানো, যাতে peer-focus দিয়ে ফোকাসে আইকনটাও রঙ বদলায় */}
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 peer-focus:text-blue-500 dark:text-slate-500 dark:peer-focus:text-blue-400"
+          className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 peer-focus:text-blue-500 dark:text-slate-500 dark:peer-focus:text-blue-400"
         />
 
         {query !== "" && (
@@ -252,7 +252,7 @@ const ProfileQuickNav = ({
               setQuery("");
               inputRef.current?.focus();
             }}
-            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-700 active:scale-90 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="absolute end-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-700 active:scale-90 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
             <X size={12} />
           </button>
@@ -282,7 +282,7 @@ const ProfileQuickNav = ({
                       }}
                       onMouseEnter={() => setHighlight(index)}
                       onClick={() => goToRecord(record)}
-                      className={`group relative flex w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-all duration-200 ease-out ${
+                      className={`group relative flex w-full items-center gap-3 py-2 ps-4 pe-3 text-start transition-all duration-200 ease-out ${
                         active
                           ? "bg-gradient-to-r from-blue-50 via-blue-50/50 to-transparent dark:from-blue-500/10 dark:via-blue-500/5"
                           : "hover:bg-gray-50/70 dark:hover:bg-slate-700/30"
@@ -290,7 +290,7 @@ const ProfileQuickNav = ({
                     >
                       {/* বাঁ পাশের অ্যাকসেন্ট বার — হাইলাইট হলে উপর-নিচে খুলে আসে */}
                       <span
-                        className={`absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-blue-500 transition-transform duration-200 ease-out dark:bg-blue-400 ${
+                        className={`absolute start-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-e-full bg-blue-500 transition-transform duration-200 ease-out dark:bg-blue-400 ${
                           active ? "scale-y-100" : "scale-y-0"
                         }`}
                       />
@@ -299,12 +299,12 @@ const ProfileQuickNav = ({
                         <p className="truncate text-[13px] font-medium text-gray-800 dark:text-slate-100">
                           {recordName(record)}
                           {Number(record.is_active) === 0 && (
-                            <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-px text-[11px] font-normal text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                            <span className="ms-1.5 rounded-full bg-red-50 px-1.5 py-px text-[11px] font-normal text-red-600 dark:bg-red-950/40 dark:text-red-400">
                               বহিষ্কৃত
                             </span>
                           )}
                           {Number(record.is_active) === 2 && (
-                            <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-px text-[11px] font-normal text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <span className="ms-1.5 rounded-full bg-slate-100 px-1.5 py-px text-[11px] font-normal text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               নিষ্ক্রিয়
                             </span>
                           )}

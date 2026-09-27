@@ -121,7 +121,7 @@ export default function MyChildProfile() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
+                <thead className="bg-slate-50 text-start text-slate-500">
                   <tr>
                     <th className="px-5 py-3">পরীক্ষা</th>
                     <th className="px-5 py-3">শ্রেণি</th>
@@ -160,7 +160,7 @@ export default function MyChildProfile() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[480px] text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
+                <thead className="bg-slate-50 text-start text-slate-500">
                   <tr>
                     <th className="px-5 py-3">শিক্ষাবর্ষ</th>
                     <th className="px-5 py-3">রোল পরিবর্তন</th>
@@ -216,7 +216,7 @@ export default function MyChildProfile() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
+                <thead className="bg-slate-50 text-start text-slate-500">
                   <tr>
                     <th className="px-5 py-3">তারিখ</th>
                     <th className="px-5 py-3">অবস্থা</th>
@@ -257,7 +257,7 @@ export default function MyChildProfile() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
+                <thead className="bg-slate-50 text-start text-slate-500">
                   <tr>
                     <th className="px-5 py-3">খাত</th>
                     <th className="px-5 py-3">নির্ধারিত তারিখ</th>
@@ -301,7 +301,7 @@ export default function MyChildProfile() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500">
+              <thead className="bg-slate-50 text-start text-slate-500">
                 <tr>
                   <th className="px-5 py-3">বইয়ের নাম</th>
                   <th className="px-5 py-3">নেওয়ার তারিখ</th>

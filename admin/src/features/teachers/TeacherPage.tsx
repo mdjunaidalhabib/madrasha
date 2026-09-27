@@ -418,7 +418,7 @@ const TeacherPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setBulkModalOpen(true)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+          className="absolute end-0 top-1/2 -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
         >
           Bulk Upload
         </button>

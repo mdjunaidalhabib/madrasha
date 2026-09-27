@@ -52,6 +52,42 @@ textarea {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ভাষাভিত্তিক ফন্ট (shared-ui/src/i18n) - <html lang> UI ভাষা থেকে, আর
+   প্রিন্ট/রিপোর্ট কন্টেইনারের নিজস্ব lang প্রতিষ্ঠানের ডিফল্ট ভাষা থেকে আসে।
+   Custom property inherit হয়, তাই var() ব্যবহারকারী সব নিয়ম (body, report-*)
+   আপনা থেকেই নতুন ফন্ট পায়। Kalpurush fallback-এ থাকে যাতে ইংরেজি/আরবি UI-তে
+   বাংলা নাম-ঠিকানাও ঠিকঠাক দেখায়। */
+[lang="en"] {
+  --font-ui-bn: "Inter", "Kalpurush", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+  --font-report-heading: "Noto Serif", "Kalpurush Report", "Noto Serif Bengali", serif;
+  --font-report-body: "Inter", "Kalpurush Report", "Hind Siliguri", sans-serif;
+}
+
+[lang="ar"] {
+  --font-ui-bn: "Noto Naskh Arabic", "Kalpurush", "Hind Siliguri", sans-serif;
+  --font-report-heading: "Noto Naskh Arabic", "Kalpurush Report", serif;
+  --font-report-body: "Noto Naskh Arabic", "Kalpurush Report", sans-serif;
+}
+
+[lang="bn"] {
+  --font-ui-bn: "Kalpurush", "Hind Siliguri", "Noto Sans Bengali", "Manrope", sans-serif;
+  --font-report-heading: "Kalpurush Report", "Noto Serif Bengali", "Hind Siliguri", serif;
+  --font-report-body: "Kalpurush Report", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+}
+
+/* A nested lang subtree (e.g. a print preview in the institution language
+   inside an English UI) must re-resolve the font itself - plain inheritance
+   would carry the parent's already-computed family. :where() keeps this at
+   zero specificity so every report-* class rule still wins. */
+:where([lang]:not(html)) {
+  font-family: var(--font-ui-bn);
+}
+
+/* Arabic script needs more line height than Bangla/Latin at the same size. */
+:where([lang="ar"]) {
+  line-height: 1.7;
+}
+
 /* Chrome/Edge reserve ~20px inside every <input type="number"> for the
    native up/down spin buttons. In the narrow marks/amount/limit fields used
    across the app (e.g. w-14/w-20), that steals room from the digits

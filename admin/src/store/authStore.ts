@@ -8,6 +8,7 @@ import { useAdmitCardDesignStore } from "./admitCardDesignStore";
 import { useDocumentTemplateStore } from "./documentTemplateStore";
 import { useDocumentTemplateDefaultStore } from "./documentTemplateDefaultStore";
 import { useSectionTogglesStore } from "./sectionTogglesStore";
+import { useLanguageStore, type InstitutionInfo } from "@madrasha/shared-ui/src/i18n";
 
 export type AuthUser = {
   id: number;
@@ -30,6 +31,8 @@ export type AuthPayload = {
    * anymore, so this is now the only record of which tenant this session
    * belongs to (sent as the X-Madrasa-Slug header on every request). */
   madrasaSlug?: string;
+  /** Institution type + language policy (see shared-ui i18n). */
+  institution?: InstitutionInfo;
 };
 
 type AuthState = {
@@ -58,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
       madrasaSlug: null,
 
       setAuth: (data) => {
+        useLanguageStore.getState().setInstitution(data.institution);
         set({
           token: data.token,
           user: {

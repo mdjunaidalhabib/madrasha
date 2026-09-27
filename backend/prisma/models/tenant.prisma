@@ -22,6 +22,15 @@ enum PlanStatus {
   suspended
 }
 
+/// প্রতিষ্ঠানের ধরন - পরিভাষা (মাদ্রাসা/বিদ্যালয়/কলেজ), ডিফল্ট ভাষা, কোন catalog
+/// বিভাগ/শ্রেণি দেখাবে এবং কোন মডিউল প্রাসঙ্গিক তা এটি থেকেই ঠিক হয়।
+enum InstitutionType {
+  MADRASA
+  SCHOOL
+  COLLEGE
+  KINDERGARTEN
+}
+
 enum PaymentStatus {
   pending
   paid
@@ -40,6 +49,11 @@ model Madrasa {
   websiteStatus WebsiteStatus @default(active) @map("website_status")
   customDomain  String?       @unique @map("custom_domain") @db.VarChar(190)
   planStatus    PlanStatus    @default(active) @map("plan_status")
+  institutionType InstitutionType @default(MADRASA) @map("institution_type")
+  /// Admin panel/website/print default language ("bn" | "en" | "ar"), set by
+  /// super admin. NULL = the institution type's default (MADRASA -> bn,
+  /// everything else -> en). Each user can still switch their own UI language.
+  defaultLanguage String?     @map("default_language") @db.VarChar(5)
   isActive      Int?          @default(1) @map("is_active")
   deletedAt     DateTime?     @map("deleted_at")
   createdAt     DateTime      @default(now()) @map("created_at")

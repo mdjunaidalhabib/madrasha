@@ -96,7 +96,7 @@ const OverdueFeesPage = () => {
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
               বকেয়া ফী
               {students.length > 0 && (
-                <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+                <span className="ms-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                   {toBanglaDigits(students.length)}
                 </span>
               )}
@@ -144,7 +144,7 @@ const OverdueFeesPage = () => {
                         <button
                           type="button"
                           onClick={() => setExpandedId(expanded ? null : row.studentId)}
-                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                          className="flex min-w-0 flex-1 items-center gap-2 text-start"
                         >
                           {expanded ? (
                             <ChevronUp className="h-4 w-4 shrink-0 text-gray-400" />
@@ -154,7 +154,7 @@ const OverdueFeesPage = () => {
                           <div className="min-w-0">
                             <div className="truncate font-medium text-gray-800 dark:text-slate-200">
                               {row.studentName}
-                              <span className="ml-1.5 font-normal text-gray-500 dark:text-slate-400">
+                              <span className="ms-1.5 font-normal text-gray-500 dark:text-slate-400">
                                 ({row.className ? `${row.className} · ` : ""}রোল{" "}
                                 {row.roll != null ? toBanglaDigits(row.roll) : "-"} · রেজি.{" "}
                                 {row.registrationNo != null ? toBanglaDigits(row.registrationNo) : "-"})

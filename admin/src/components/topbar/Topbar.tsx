@@ -3,6 +3,7 @@ import { useBrandingStore } from "../../store/brandingStore";
 import { useNowLabels } from "../../hooks/useNowLabels";
 import LockButton from "../lock/LockButton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
+import { LanguageSwitcher } from "@madrasha/shared-ui/src/i18n";
 import PlanBadge from "./PlanBadge";
 import ProfileMenu from "./ProfileMenu";
 import { Calendar, Clock, Menu } from "lucide-react";
@@ -70,7 +71,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
       {/* ডেস্কটপ: বাম পাশে লোগো+নাম (ঠিকানাসহ একই লাইনে), ডান পাশে অ্যাকশন -
           কোনো সেন্টারিং নেই, বাম থেকে সহজভাবে শুরু */}
-      <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:pl-32 md:pr-4">
+      <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:ps-32 md:pe-4">
         {logo}
         <div className="min-w-0 flex-1 truncate">
           {branding?.name && (
@@ -79,7 +80,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
             </span>
           )}
           {branding?.address && (
-            <span className="ml-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
+            <span className="ms-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
               {branding?.name && "• "}
               {branding.address}
             </span>
@@ -88,6 +89,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
         <div className="flex shrink-0 items-center gap-2">
           <PlanBadge />
+          <LanguageSwitcher />
           <ThemeToggle />
           <LockButton />
           <ProfileMenu />

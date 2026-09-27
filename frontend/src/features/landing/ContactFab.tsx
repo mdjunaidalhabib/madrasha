@@ -18,14 +18,14 @@ export default function ContactFab({ phoneDisplay, phoneIntl }: ContactFabProps)
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-8 right-3 lg:bottom-20 lg:right-24 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-8 end-3 lg:bottom-20 lg:end-24 z-50 flex flex-col items-end gap-3">
       {/* Call / WhatsApp options — staggered pop-in when open */}
       <div className="flex flex-col items-end gap-3">
         <a
           href={`https://wa.me/${phoneIntl}`}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex items-center gap-2.5 rounded-full bg-[#25D366] py-3 pl-4 pr-5 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-all duration-300 ease-out hover:brightness-95 ${
+          className={`flex items-center gap-2.5 rounded-full bg-[#25D366] py-3 ps-4 pe-5 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-all duration-300 ease-out hover:brightness-95 ${
             open
               ? "translate-y-0 scale-100 opacity-100 delay-100"
               : "pointer-events-none translate-y-3 scale-75 opacity-0"
@@ -36,7 +36,7 @@ export default function ContactFab({ phoneDisplay, phoneIntl }: ContactFabProps)
         </a>
         <a
           href={`tel:${phoneDisplay}`}
-          className={`flex items-center gap-2.5 rounded-full bg-emerald-600 py-3 pl-4 pr-5 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-all duration-300 ease-out hover:bg-emerald-700 ${
+          className={`flex items-center gap-2.5 rounded-full bg-emerald-600 py-3 ps-4 pe-5 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-all duration-300 ease-out hover:bg-emerald-700 ${
             open
               ? "translate-y-0 scale-100 opacity-100 delay-0"
               : "pointer-events-none translate-y-3 scale-75 opacity-0"

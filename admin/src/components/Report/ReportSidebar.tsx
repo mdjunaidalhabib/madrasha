@@ -44,8 +44,8 @@ const ReportSidebar = ({ reports, activeKey, onChange }: ReportSidebarProps) => 
                     key={item.key}
                     type="button"
                     onClick={() => onChange(item.key)}
-                    className={`flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-left text-base transition ${
-                      section.title ? "pl-4" : ""
+                    className={`flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-start text-base transition ${
+                      section.title ? "ps-4" : ""
                     } ${
                       active
                         ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"

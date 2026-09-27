@@ -151,10 +151,10 @@ function SectionHeader({
   const line = light ? "rgba(255,255,255,0.5)" : withAlpha(accentSolid, 0.45);
   const titleColor = light ? "text-white" : "text-slate-900";
 
-  // Modern: left-aligned, eyebrow as an accent pill, accent bar beside the title.
-  if (theme.sectionHeader === "left-bar") {
+  // Modern: start-aligned, eyebrow as an accent pill, accent bar beside the title.
+  if (theme.sectionHeader === "start-bar") {
     return (
-      <div className="reveal flex flex-col items-start text-left">
+      <div className="reveal flex flex-col items-start text-start">
         <span
           className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] ${theme.round}`}
           style={{
@@ -179,7 +179,7 @@ function SectionHeader({
   // Minimal: plain uppercase title with a thin full-width underline.
   if (theme.sectionHeader === "underline") {
     return (
-      <div className="reveal text-left">
+      <div className="reveal text-start">
         <p
           className="text-[11px] font-bold uppercase tracking-[0.24em]"
           style={{ color: light ? "rgba(255,255,255,0.75)" : accentLabel }}
@@ -193,7 +193,7 @@ function SectionHeader({
           aria-hidden="true"
         >
           <span
-            className="absolute left-0 top-[-1px] h-[3px] w-16"
+            className="absolute start-0 top-[-1px] h-[3px] w-16"
             style={{ backgroundColor: light ? "#ffffff" : accentSolid }}
           />
         </div>
@@ -731,7 +731,7 @@ export default function PublicWebsitePage({
         <NoticeMarquee text={settings.notice_bar_text} speed={settings.notice_bar_speed} />
       )}
 
-      {/* Mobile menu: left-side sliding drawer */}
+      {/* Mobile menu: start-side sliding drawer */}
       <div
         className={`fixed inset-0 z-[55] bg-black/40 transition-opacity duration-300 lg:hidden ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
@@ -740,8 +740,8 @@ export default function PublicWebsitePage({
         aria-hidden="true"
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-[60] flex w-72 max-w-[80%] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 start-0 z-[60] flex w-72 max-w-[80%] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
+          menuOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4">
@@ -865,7 +865,7 @@ export default function PublicWebsitePage({
                           theme={theme}
                         />
                         <div
-                          className="reveal mt-8 border-l-4 pl-5 md:pl-6"
+                          className="reveal mt-8 border-s-4 ps-5 md:ps-6"
                           style={{ borderColor: accentSolid }}
                         >
                           <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
@@ -878,7 +878,7 @@ export default function PublicWebsitePage({
                           style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
                         >
                           <div
-                            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl"
+                            className="pointer-events-none absolute -end-16 -top-16 h-56 w-56 rounded-full blur-3xl"
                             style={{ backgroundColor: withAlpha(accentSolid, 0.55) }}
                           />
                           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -998,7 +998,7 @@ export default function PublicWebsitePage({
                                     ? setVideoLightbox({ url: embed, title: item.title || "Video" })
                                     : window.open(item.video_url, "_blank", "noopener,noreferrer")
                                 }
-                                className={`group relative aspect-video overflow-hidden text-left ${theme.media} ${theme.gallery}`}
+                                className={`group relative aspect-video overflow-hidden text-start ${theme.media} ${theme.gallery}`}
                                 aria-label={item.title || "Video"}
                               >
                                 {thumb ? (
@@ -1081,7 +1081,7 @@ export default function PublicWebsitePage({
                               <h3 className="text-base font-bold text-slate-900">নোটিশ বোর্ড</h3>
                             </div>
                             {notices.length ? (
-                              <ul className="mt-3 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                              <ul className="mt-3 max-h-[420px] space-y-3 overflow-y-auto pe-1">
                                 {notices.map((notice: any) => {
                                   const parts = dateParts(notice.published_at);
                                   return (
@@ -1272,7 +1272,7 @@ export default function PublicWebsitePage({
                 }}
               />
               <div
-                className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full blur-3xl"
+                className="pointer-events-none absolute -bottom-32 -start-20 h-80 w-80 rounded-full blur-3xl"
                 style={{ backgroundColor: withAlpha(accentSolid, 0.5) }}
               />
               <div className="relative mx-auto max-w-3xl px-4">
@@ -1458,7 +1458,7 @@ export default function PublicWebsitePage({
         </div>
 
         <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-left">
+          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-start">
             <p className="text-xs text-slate-500">
               &copy; {new Date().getFullYear()} {madrasa?.name}. সর্বস্বত্ব সংরক্ষিত।
             </p>
@@ -1471,7 +1471,7 @@ export default function PublicWebsitePage({
       {showTop && (
         <a
           href="#page-top"
-          className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition hover:opacity-90"
+          className="fixed bottom-6 end-6 z-40 flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition hover:opacity-90"
           style={{ backgroundColor: accentSolid, color: onAccent }}
           aria-label="Back to top"
         >
@@ -1486,7 +1486,7 @@ export default function PublicWebsitePage({
           target="_blank"
           rel="noreferrer"
           aria-label="WhatsApp এ চ্যাট করুন"
-          className="fixed bottom-6 left-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:scale-110"
+          className="fixed bottom-6 start-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:scale-110"
         >
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366] opacity-75" />
           <WhatsAppIcon size={28} />
@@ -1502,7 +1502,7 @@ export default function PublicWebsitePage({
           <button
             type="button"
             onClick={() => setLightbox(null)}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            className="absolute end-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
             aria-label="Close"
           >
             <X size={22} />
@@ -1525,7 +1525,7 @@ export default function PublicWebsitePage({
           <button
             type="button"
             onClick={() => setVideoLightbox(null)}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            className="absolute end-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
             aria-label="Close"
           >
             <X size={22} />

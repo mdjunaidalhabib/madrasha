@@ -49,8 +49,8 @@ const ResidentialAttendancePrint = ({
             <div
               className={
                 isFirstPage
-                  ? "flex h-8 items-center border border-slate-900 px-1 text-left"
-                  : "inline-flex h-7 items-center border border-slate-900 px-2 text-left whitespace-nowrap"
+                  ? "flex h-8 items-center border border-slate-900 px-1 text-start"
+                  : "inline-flex h-7 items-center border border-slate-900 px-2 text-start whitespace-nowrap"
               }
             >
               বিভাগ: {divisionName}
@@ -59,8 +59,8 @@ const ResidentialAttendancePrint = ({
             <div
               className={
                 isFirstPage
-                  ? "flex h-8 items-center border border-slate-900 px-1 text-left"
-                  : "inline-flex h-7 items-center border border-slate-900 px-2 text-left whitespace-nowrap"
+                  ? "flex h-8 items-center border border-slate-900 px-1 text-start"
+                  : "inline-flex h-7 items-center border border-slate-900 px-2 text-start whitespace-nowrap"
               }
             >
               শ্রেণি: {className}
@@ -68,11 +68,11 @@ const ResidentialAttendancePrint = ({
 
             {isFirstPage && (
               <>
-                <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+                <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                   বছর: ........................
                 </div>
 
-                <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+                <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                   মাস: ........................
                 </div>
               </>
@@ -116,7 +116,7 @@ const ResidentialAttendancePrint = ({
                   {cellValue(row, "registration_no")}
                 </td>
 
-                <td className="h-7 w-32 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
+                <td className="h-7 w-32 border border-slate-900 ps-3 pe-2 text-start text-base font-semibold">
                   {cellValue(row, "student_name")}
                 </td>
 

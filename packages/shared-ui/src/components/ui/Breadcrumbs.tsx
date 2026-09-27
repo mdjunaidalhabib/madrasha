@@ -35,7 +35,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
                 }
                 aria-current={isLast ? "page" : undefined}
               >
-                {index === 0 && <Home size={13} className="mr-1 inline -mt-0.5" />}
+                {index === 0 && <Home size={13} className="me-1 inline -mt-0.5" />}
                 {item.label}
               </span>
             ) : (

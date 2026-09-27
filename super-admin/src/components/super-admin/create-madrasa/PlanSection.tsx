@@ -90,7 +90,7 @@ export default function PlanSection({
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-start text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2 font-medium">বিভাগ</th>

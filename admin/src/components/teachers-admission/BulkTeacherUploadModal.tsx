@@ -189,7 +189,7 @@ const BulkTeacherUploadModal = ({
                         {previewColumns.map((head) => (
                           <th
                             key={head}
-                            className="whitespace-nowrap border-b px-3 py-3 text-left font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                            className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
                           >
                             {head}
                           </th>

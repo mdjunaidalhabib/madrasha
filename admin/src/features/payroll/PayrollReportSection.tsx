@@ -214,7 +214,7 @@ const PayrollReportSection = () => {
             <table className="w-full min-w-max border-collapse text-center text-xs">
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-800">
-                  <th className="sticky left-0 z-10 border border-slate-200 bg-slate-100 px-3 py-2 text-left font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <th className="sticky start-0 z-10 border border-slate-200 bg-slate-100 px-3 py-2 text-start font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                     শিক্ষক
                   </th>
                   {monthKeys.map((m) => (
@@ -233,7 +233,7 @@ const PayrollReportSection = () => {
               <tbody>
                 {displayedMatrix.map((t) => (
                   <tr key={t.teacherId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="sticky left-0 z-10 border border-slate-200 bg-white px-3 py-2 text-left dark:border-slate-700 dark:bg-slate-900">
+                    <td className="sticky start-0 z-10 border border-slate-200 bg-white px-3 py-2 text-start dark:border-slate-700 dark:bg-slate-900">
                       <div className="font-medium text-slate-800 dark:text-slate-100">{t.name}</div>
                       {t.designation && (
                         <div className="text-[11px] text-slate-500 dark:text-slate-400">{t.designation}</div>
@@ -269,7 +269,7 @@ const PayrollReportSection = () => {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 font-medium dark:bg-slate-800/60">
-                  <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-3 py-2 text-left dark:border-slate-700 dark:bg-slate-800/60">
+                  <td className="sticky start-0 z-10 border border-slate-200 bg-slate-50 px-3 py-2 text-start dark:border-slate-700 dark:bg-slate-800/60">
                     মাসিক মোট
                   </td>
                   {monthKeys.map((m) => (

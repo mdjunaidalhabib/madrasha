@@ -204,7 +204,7 @@ export default function CleanMadrasaModal({
           <div className="relative">
             <input
               type={passwordVisible ? "text" : "password"}
-              className="w-full rounded border border-gray-300 px-3 py-2 pr-10 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded border border-gray-300 px-3 py-2 pe-10 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={busy}
@@ -217,7 +217,7 @@ export default function CleanMadrasaModal({
             <button
               type="button"
               onClick={() => setPasswordVisible((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+              className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
               aria-label={passwordVisible ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
               tabIndex={-1}
             >

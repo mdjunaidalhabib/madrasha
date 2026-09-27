@@ -288,13 +288,13 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       autoComplete="new-password"
                       value={credPassword}
                       onChange={(e) => setCredPassword(e.target.value)}
-                      className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      className="w-full rounded border px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                     />
 
                     <button
                       type="button"
                       onClick={() => setCredVisible((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                       aria-label={credVisible ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >
@@ -340,13 +340,13 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => updateForm(role.id, "password", e.target.value)}
-                      className="w-full rounded border px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-full rounded border px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
 
                     <button
                       type="button"
                       onClick={() => toggleVisible(role.id)}
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                       aria-label={visiblePasswords[role.id] ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >

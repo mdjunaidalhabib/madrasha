@@ -135,7 +135,7 @@ const ResultNoticeList = ({
                   key={`result-notice-value-${row.student_id || row.id || index}-${column.key}`}
                   className={`border border-slate-500 px-2 py-2 text-base ${
                     column.key === "student_name"
-                      ? "result-notice-student-name text-left font-semibold"
+                      ? "result-notice-student-name text-start font-semibold"
                       : "text-center"
                   } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
                 >

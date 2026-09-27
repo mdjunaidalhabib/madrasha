@@ -51,7 +51,7 @@ export default function GuardianAttendancePage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-sm">
-            <thead className="bg-slate-50 text-left text-slate-500">
+            <thead className="bg-slate-50 text-start text-slate-500">
               <tr>
                 <th className="px-5 py-3">তারিখ</th>
                 <th className="px-5 py-3">অবস্থা</th>

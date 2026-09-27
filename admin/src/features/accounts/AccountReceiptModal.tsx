@@ -110,7 +110,7 @@ export default function AccountReceiptModal({ row, onClose }: Props) {
           বন্ধ করুন
         </Button>
         <Button onClick={printAsA5}>
-          <Printer size={16} className="mr-1 inline" /> প্রিন্ট করুন
+          <Printer size={16} className="me-1 inline" /> প্রিন্ট করুন
         </Button>
       </div>
     </Modal>

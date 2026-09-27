@@ -296,7 +296,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
           <SkeletonTable rows={6} columns={7} className="rounded-none" bordered={false} shadowed={false} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-start text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
                   <th className="px-4 py-3">ID</th>
@@ -306,7 +306,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                   <th className="px-4 py-3">Validity</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-end">Actions</th>
                 </tr>
               </thead>
 

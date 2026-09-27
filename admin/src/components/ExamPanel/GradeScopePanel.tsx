@@ -7,7 +7,7 @@ import DivisionStatusChip from "./DivisionStatusChip";
 export type GradeScope = number | null;
 
 const itemClass = (active: boolean) =>
-  `w-full rounded-xl border px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+  `w-full rounded-xl border px-3 py-2.5 text-start transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
     active
       ? "border-blue-500 bg-blue-50 shadow-sm dark:border-blue-500 dark:bg-blue-950/30"
       : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"

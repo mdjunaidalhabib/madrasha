@@ -2,6 +2,7 @@ import { Prisma, WebsiteStatus } from "@prisma/client";
 import { hashPassword } from "../../shared/utils/hash.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { normalizeHost } from "../../shared/utils/host.util";
+import { parseInstitutionType, parseLanguage, resolveDefaultLanguage } from "../../shared/utils/institution.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
@@ -128,6 +129,8 @@ export class SuperAdminService {
         user_limit: m.userLimit,
         is_active: m.isActive,
         website_status: m.websiteStatus,
+        institution_type: m.institutionType,
+        default_language: resolveDefaultLanguage(m.institutionType, m.defaultLanguage),
         custom_domain: m.customDomain,
         plan_id: sub?.planId ?? null,
         plan_name: sub?.plan.name ?? null,
@@ -189,6 +192,8 @@ export class SuperAdminService {
         slug: finalSlug,
         studentLimit: Number(dto.student_limit) || DEFAULT_STUDENT_LIMIT,
         userLimit: Number(dto.user_limit) || DEFAULT_USER_LIMIT,
+        institutionType: parseInstitutionType(dto.institution_type) ?? "MADRASA",
+        defaultLanguage: parseLanguage(dto.default_language) ?? null,
         isActive: 1,
       });
       const madrasaId = madrasa.id;
@@ -561,6 +566,8 @@ export class SuperAdminService {
         ...(dto.is_active === undefined ? {} : { isActive: Number(dto.is_active) }),
         ...(dto.website_status ? { websiteStatus: dto.website_status as WebsiteStatus } : {}),
         ...(normalizedCustomDomain === undefined ? {} : { customDomain: normalizedCustomDomain }),
+        ...(parseInstitutionType(dto.institution_type) ? { institutionType: parseInstitutionType(dto.institution_type) } : {}),
+        ...(parseLanguage(dto.default_language) === undefined ? {} : { defaultLanguage: parseLanguage(dto.default_language) }),
       });
 
       if (dto.plan_id) {
@@ -624,6 +631,8 @@ export class SuperAdminService {
       user_limit: madrasa.userLimit,
       is_active: madrasa.isActive,
       website_status: madrasa.websiteStatus,
+      institution_type: madrasa.institutionType,
+      default_language: madrasa.defaultLanguage ?? null,
       custom_domain: madrasa.customDomain,
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
       start_date: madrasa.subscriptions[0]?.startDate ?? null,

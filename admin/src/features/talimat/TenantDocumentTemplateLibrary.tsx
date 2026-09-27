@@ -241,7 +241,7 @@ export default function TenantDocumentTemplateLibrary({
               setCreateOpen(true);
             }}
           >
-            <Plus size={15} className="mr-1.5" /> নতুন টেমপ্লেট
+            <Plus size={15} className="me-1.5" /> নতুন টেমপ্লেট
           </Button>
         )}
       </div>
@@ -470,7 +470,7 @@ function VersionHistoryModal({
               <div className="text-sm">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">v{v.version_no}</span>{" "}
                 <span
-                  className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  className={`ms-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     v.status === "PUBLISHED"
                       ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
                       : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"

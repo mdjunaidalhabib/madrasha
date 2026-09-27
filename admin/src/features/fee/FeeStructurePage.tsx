@@ -479,7 +479,7 @@ const FeeStructurePage = () => {
               {FEE_SETUP_MENU.map((item) => {
                 const Icon = item.icon;
                 const active = !item.link && item.key === activeTab;
-                const itemClass = `flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
+                const itemClass = `flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-start text-sm transition ${
                   active
                     ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
                     : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"

@@ -1,3 +1,4 @@
+import { buildInstitutionInfo } from "../../shared/utils/institution.util";
 /**
  * Prisma returns website module rows in camelCase (themeColor, heroTitle,
  * isPublished, websiteStatus, ...), but every consumer - PublicWebsitePage
@@ -30,6 +31,7 @@ export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => 
     // not the old website-settings logo_url field - see BrandingSettingsPage.
     logo_url: row.reportLogo ?? null,
     custom_domain: row.customDomain ?? null,
+    institution: buildInstitutionInfo(row),
   };
 };
 

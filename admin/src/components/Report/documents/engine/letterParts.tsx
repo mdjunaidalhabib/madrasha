@@ -6,11 +6,11 @@ export const LETTER_HEADING_CLASS = "mb-8 text-center text-2xl font-bold";
 export const LETTER_BODY_CLASS = "whitespace-pre-line text-lg leading-9 text-slate-800";
 
 export const LetterDateLine = () => (
-  <p className="mb-4 text-right text-sm font-semibold">তারিখ: ........................</p>
+  <p className="mb-4 text-end text-sm font-semibold">তারিখ: ........................</p>
 );
 
 export const LetterSignatureFooter = ({ label }: { label: string }) => (
-  <div className="mt-16 flex justify-end pr-12 text-sm font-semibold">
+  <div className="mt-16 flex justify-end pe-12 text-sm font-semibold">
     <span>{label}</span>
   </div>
 );

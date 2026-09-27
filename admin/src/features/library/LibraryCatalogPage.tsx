@@ -229,7 +229,7 @@ const LibraryCatalogPage = () => {
               <button
                 type="button"
                 onClick={() => setCategoryFilter("")}
-                className={`rounded-md px-2 py-1.5 text-left text-xs font-medium transition ${
+                className={`rounded-md px-2 py-1.5 text-start text-xs font-medium transition ${
                   !categoryFilter ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" : "text-gray-600 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-slate-800"
                 }`}
               >
@@ -265,7 +265,7 @@ const LibraryCatalogPage = () => {
                       <button
                         type="button"
                         onClick={() => setCategoryFilter(String(cat.id))}
-                        className="flex-1 truncate text-left font-medium"
+                        className="flex-1 truncate text-start font-medium"
                       >
                         {cat.name}
                       </button>
@@ -301,13 +301,13 @@ const LibraryCatalogPage = () => {
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="relative w-full sm:w-64">
-                <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                <Search size={14} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="নাম, লেখক বা ISBN দিয়ে খুঁজুন"
-                  className="h-9 w-full rounded-md border border-gray-300 pl-8 pr-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
               <button

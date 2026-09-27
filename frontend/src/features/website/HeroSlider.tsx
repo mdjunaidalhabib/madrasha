@@ -209,11 +209,11 @@ export default function HeroSlider({
           />
           <div className="pointer-events-none absolute inset-0 bg-black/15" />
           <div
-            className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl"
+            className="pointer-events-none absolute -top-24 -start-24 h-72 w-72 rounded-full blur-3xl"
             style={{ backgroundColor: withAlpha("#ffffff", 0.08) }}
           />
           <div
-            className="pointer-events-none absolute -bottom-32 -right-16 h-96 w-96 rounded-full blur-3xl"
+            className="pointer-events-none absolute -bottom-32 -end-16 h-96 w-96 rounded-full blur-3xl"
             style={{ backgroundColor: withAlpha(accentSolid, 0.45) }}
           />
         </>
@@ -273,7 +273,7 @@ export default function HeroSlider({
             type="button"
             onClick={() => goTo(state.active - 1)}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
+            className="absolute start-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
             <ChevronLeft size={18} />
           </button>
@@ -281,7 +281,7 @@ export default function HeroSlider({
             type="button"
             onClick={() => goTo(state.active + 1)}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
+            className="absolute end-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
             <ChevronRight size={18} />
           </button>

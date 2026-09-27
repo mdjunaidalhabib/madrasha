@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
+import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
 import { useAuthStore } from "../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
@@ -19,6 +20,7 @@ const baseURL = API_BASE_URL;
 // refresh/logout calls below - it's never readable from JS, only the
 // browser attaches it automatically.
 const api = axios.create({ baseURL, timeout: 20_000, withCredentials: true });
+attachLanguageHeader(api);
 
 const GET_CACHE_TTL_MS = 20_000;
 const GET_CACHE_MAX_ENTRIES = 80;

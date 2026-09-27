@@ -534,7 +534,7 @@ const FeeInvoicesPage = () => {
             </div>
           )}
           <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <Search size={15} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <input
               type="text"
               value={studentQuery}
@@ -544,10 +544,10 @@ const FeeInvoicesPage = () => {
               }}
               onFocus={() => setShowSuggestions(true)}
               placeholder="ছাত্রের নাম, রোল বা রেজি নং দিয়ে খুঁজুন"
-              className="h-11 w-full rounded-md border border-gray-300 pl-8 pr-3 text-base outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="h-11 w-full rounded-md border border-gray-300 ps-8 pe-3 text-base outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
             {showSuggestions && studentQuery.trim() && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+              <div className="absolute start-0 end-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 {studentSuggestions.length === 0 ? (
                   <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">কোনো ছাত্র পাওয়া যায়নি</div>
                 ) : (
@@ -556,7 +556,7 @@ const FeeInvoicesPage = () => {
                       key={s.id}
                       type="button"
                       onClick={() => selectStudent(s)}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
+                      className="flex w-full items-center justify-between px-3 py-2 text-start text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
                       <span className="text-gray-800 dark:text-slate-200">
                         {s.name_bn || `ছাত্র #${s.id}`}
@@ -647,7 +647,7 @@ const FeeInvoicesPage = () => {
             <table className="w-full min-w-[620px] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                  <th className="sticky start-0 z-10 border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                     বিষয়সমূহ
                   </th>
                   {displayMonths.map((m) => (
@@ -705,7 +705,7 @@ const FeeInvoicesPage = () => {
                     const rowActiveAmount = rowCheckedItems.reduce((sum, inv) => sum + effectiveAmount(inv), 0);
                     return (
                       <tr key={group.title} className="odd:bg-white even:bg-gray-50/60 dark:odd:bg-slate-900 dark:even:bg-slate-800/40">
-                        <td className="sticky left-0 z-10 border border-gray-300 bg-inherit px-3 py-2 dark:border-slate-700">
+                        <td className="sticky start-0 z-10 border border-gray-300 bg-inherit px-3 py-2 dark:border-slate-700">
                           <label className="flex items-start gap-2">
                             {rowUnpaidIds.length > 0 ? (
                               <input
@@ -859,7 +859,7 @@ const FeeInvoicesPage = () => {
                         key={`other-${invoice.id}`}
                         className="odd:bg-white even:bg-gray-50/60 dark:odd:bg-slate-900 dark:even:bg-slate-800/40"
                       >
-                        <td className="sticky left-0 z-10 border border-gray-300 bg-inherit px-3 py-2 dark:border-slate-700">
+                        <td className="sticky start-0 z-10 border border-gray-300 bg-inherit px-3 py-2 dark:border-slate-700">
                           <label className="flex items-start gap-2">
                             {invoice.status === "PAID" ? (
                               <button
@@ -955,7 +955,7 @@ const FeeInvoicesPage = () => {
                   <tr className="bg-blue-50 dark:bg-blue-950/30">
                     <td
                       colSpan={displayMonths.length + 1}
-                      className="border border-gray-300 px-3 py-2.5 text-right text-sm font-bold text-gray-800 dark:border-slate-700 dark:text-slate-100"
+                      className="border border-gray-300 px-3 py-2.5 text-end text-sm font-bold text-gray-800 dark:border-slate-700 dark:text-slate-100"
                     >
                       সর্বমোট
                     </td>
@@ -1024,7 +1024,7 @@ const FeeInvoicesPage = () => {
                         {invoice.title} <span className="text-gray-400 dark:text-slate-500">(বাকি ৳{remaining})</span>
                       </span>
                     </label>
-                    <div className="flex shrink-0 items-center gap-1.5 pl-6 sm:pl-0">
+                    <div className="flex shrink-0 items-center gap-1.5 ps-6 sm:ps-0">
                       <input
                         type="number"
                         value={line.amount}

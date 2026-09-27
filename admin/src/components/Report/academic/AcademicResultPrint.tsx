@@ -368,7 +368,7 @@ const AcademicResultPrint = ({
                 block. Both boxes sit side by side inside it (not stacked),
                 so together they're wide but short. */}
             {(hasStats || hasGrades) && (
-              <div className="academic-result-info-box-group flex items-stretch border border-black text-left text-black">
+              <div className="academic-result-info-box-group flex items-stretch border border-black text-start text-black">
                 {hasStats && (
                   <div
                     className={`academic-result-info-box ${hasGrades ? "academic-result-info-box-divider" : ""}`}
@@ -530,7 +530,7 @@ const AcademicResultPrint = ({
                     const numericColumn = isNumericColumn(column);
                     const columnClass = [
                       column.key === "student_name" || column.key === "father_name"
-                        ? "academic-result-student-name text-left font-semibold"
+                        ? "academic-result-student-name text-start font-semibold"
                         : "",
                       column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
                       column.key === "total"

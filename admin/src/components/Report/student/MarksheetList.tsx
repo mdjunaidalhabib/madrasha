@@ -143,7 +143,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
             </p>
           </div>
 
-          <div className="marksheet-info mt-4 grid grid-cols-3 gap-x-6 gap-y-2 px-6 py-3 text-left text-lg text-black">
+          <div className="marksheet-info mt-4 grid grid-cols-3 gap-x-6 gap-y-2 px-6 py-3 text-start text-lg text-black">
             {getInfoFields(row, marksheetFields).map((field) => (
               <p key={field.label}>
                 <b>{field.label}:</b> {field.value}
@@ -156,7 +156,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
               <thead>
                 <tr className="bg-emerald-100 text-emerald-950">
                   <th className="w-12 border border-emerald-400 px-2 py-2 text-center font-bold">ক্রম</th>
-                  <th className="border border-emerald-400 px-3 py-2 text-left font-bold">বিষয়ের নাম</th>
+                  <th className="border border-emerald-400 px-3 py-2 text-start font-bold">বিষয়ের নাম</th>
                   <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">প্রাপ্ত নম্বর</th>
                   <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">পূর্ণমান</th>
                 </tr>

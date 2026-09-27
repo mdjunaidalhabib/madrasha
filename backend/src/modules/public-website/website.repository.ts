@@ -28,6 +28,8 @@ export class WebsiteRepository {
         address: true,
         isActive: true,
         websiteStatus: true,
+        institutionType: true,
+        defaultLanguage: true,
         reportLogo: true,
         customDomain: true,
       },

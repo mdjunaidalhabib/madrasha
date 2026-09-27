@@ -169,7 +169,7 @@ export default function BrandImageBox({
 
         {value && !uploading && (
           <>
-            <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            <span className="pointer-events-none absolute start-1.5 top-1.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white">
               {ratioLabel}
             </span>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
@@ -182,7 +182,7 @@ export default function BrandImageBox({
                 e.stopPropagation();
                 onRemove();
               }}
-              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 dark:bg-slate-800/90 dark:hover:bg-red-950/40 sm:opacity-0 sm:group-hover:opacity-100"
+              className="absolute end-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 dark:bg-slate-800/90 dark:hover:bg-red-950/40 sm:opacity-0 sm:group-hover:opacity-100"
               title="মুছুন"
             >
               <X size={14} />

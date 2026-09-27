@@ -314,12 +314,12 @@ export default function ProfileSettingsPage() {
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="pr-10"
+                className="pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={showCurrentPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                 tabIndex={-1}
               >
@@ -335,12 +335,12 @@ export default function ProfileSettingsPage() {
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="pr-10"
+                className="pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={showNewPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                 tabIndex={-1}
               >
@@ -358,12 +358,12 @@ export default function ProfileSettingsPage() {
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pr-10"
+                className="pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={showConfirmPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                 tabIndex={-1}
               >
@@ -503,13 +503,13 @@ export default function ProfileSettingsPage() {
                   value={logoutPassword}
                   onChange={(e) => setLogoutPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && confirmLogout()}
-                  className="pr-10"
+                  className="pe-10"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowLogoutPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                   aria-label={showLogoutPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                   tabIndex={-1}
                 >

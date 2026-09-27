@@ -71,7 +71,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" variant="secondary" onClick={() => window.print()} disabled={!rows.length}>
-            <Printer size={16} className="mr-1 inline" /> প্রিন্ট
+            <Printer size={16} className="me-1 inline" /> প্রিন্ট
           </Button>
           <Link
             className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
@@ -92,7 +92,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3">তারিখ</th>
                   <th className="px-4 py-3">নং</th>
@@ -100,7 +100,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
                   <th className="px-4 py-3">খাত</th>
                   <th className="px-4 py-3">পরিমাণ</th>
                   <th className="px-4 py-3">মাধ্যম</th>
-                  <th className="px-4 py-3 text-right no-print">অ্যাকশন</th>
+                  <th className="px-4 py-3 text-end no-print">অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody>

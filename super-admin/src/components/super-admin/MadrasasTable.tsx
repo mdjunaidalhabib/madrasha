@@ -181,7 +181,7 @@ export default function MadrasasTable({
           <table className="min-w-[1150px] w-full text-sm">
             <thead className="bg-gray-100 dark:bg-slate-800">
               <tr>
-                <th className="w-10 p-3 text-left dark:text-slate-200">
+                <th className="w-10 p-3 text-start dark:text-slate-200">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
@@ -190,14 +190,14 @@ export default function MadrasasTable({
                     aria-label="Select all"
                   />
                 </th>
-                <th className="p-3 text-left dark:text-slate-200">Name</th>
-                <th className="p-3 text-left dark:text-slate-200">Slug</th>
-                <th className="p-3 text-left dark:text-slate-200">Website</th>
-                <th className="p-3 text-left dark:text-slate-200">Plan</th>
-                <th className="p-3 text-left dark:text-slate-200">Student Limit</th>
-                <th className="p-3 text-left dark:text-slate-200">User Limit</th>
-                <th className="p-3 text-left dark:text-slate-200">Status</th>
-                <th className="p-3 text-left dark:text-slate-200">Actions</th>
+                <th className="p-3 text-start dark:text-slate-200">Name</th>
+                <th className="p-3 text-start dark:text-slate-200">Slug</th>
+                <th className="p-3 text-start dark:text-slate-200">Website</th>
+                <th className="p-3 text-start dark:text-slate-200">Plan</th>
+                <th className="p-3 text-start dark:text-slate-200">Student Limit</th>
+                <th className="p-3 text-start dark:text-slate-200">User Limit</th>
+                <th className="p-3 text-start dark:text-slate-200">Status</th>
+                <th className="p-3 text-start dark:text-slate-200">Actions</th>
               </tr>
             </thead>
             <tbody>

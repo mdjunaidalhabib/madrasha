@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { metaRepository, MetaRepository } from "./meta.repository";
+import { parseInstitutionType } from "../../shared/utils/institution.util";
 import {
   CreateBookRequestDto,
   CreateClassRequestDto,
@@ -22,7 +23,13 @@ export class MetaService {
 
   async listDivisions() {
     const rows = await this.repository.findDivisions();
-    return rows.map((r) => ({ id: r.id, key_name: r.keyName, name: r.name, label: r.nameBn }));
+    return rows.map((r) => ({
+      id: r.id,
+      key_name: r.keyName,
+      name: r.name,
+      label: r.nameBn,
+      institution_type: r.institutionType,
+    }));
   }
 
   async createDivision(dto: CreateDivisionRequestDto) {
@@ -37,6 +44,7 @@ export class MetaService {
       name: dto.name?.trim() || null,
       nameBn,
       sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
+      institutionType: parseInstitutionType(dto.institution_type) ?? "MADRASA",
     });
   }
 
@@ -54,7 +62,7 @@ export class MetaService {
     if (!nameBn) throw new BadRequestError("name_bn is required");
 
     try {
-      await this.repository.updateDivision(id, nameBn);
+      await this.repository.updateDivision(id, nameBn, parseInstitutionType(dto.institution_type));
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
         throw new NotFoundError("বিভাগ পাওয়া যায়নি");

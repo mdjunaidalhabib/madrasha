@@ -1,4 +1,5 @@
-const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
+import { getPrintLang } from "../i18n/languageStore";
+import { localizeDigits } from "../i18n/format";
 
 // Sentinel stored in a marks-entry cell's local state to mean "student is
 // absent for this subject" — typed as a plain `number` (not a separate
@@ -19,11 +20,14 @@ const REPORT_TEXT_MAP: Record<string, string> = {
   INCOMPLETE: "অসম্পূর্ণ",
 };
 
-export const toBanglaDigits = (value: string | number) =>
-  String(value).replace(/\d/g, (digit) => BANGLA_DIGITS[Number(digit)]);
+/** Digits in the PRINT language (the institution default - bn: ০১২, en: 012,
+ * ar: ٠١٢). Historically Bangla-only, hence the name; every report/document
+ * call site now follows the institution language automatically. For on-screen
+ * (non-print) UI use localizeDigits(value, lang) with the user UI language. */
+export const toBanglaDigits = (value: string | number) => localizeDigits(value, getPrintLang());
 
-export const normalizeBanglaDigits = (value: string) =>
-  value.replace(/[০-৯]/g, (digit) => String(BANGLA_DIGITS.indexOf(digit)));
+/** Any Bangla/Arabic numerals -> ASCII. */
+export const normalizeBanglaDigits = (value: string) => localizeDigits(value, "en");
 
 export const formatReportValue = (value: unknown, key = "") => {
   if (value === null || value === undefined || value === "") return "—";

@@ -342,7 +342,7 @@ export default function MarksTable({
             <tr>
               <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রোল</th>
               <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রেজি. নং</th>
-              <th className="border px-2 sm:px-3 py-2 text-left sticky left-0 z-20 bg-gray-100 min-w-[96px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <th className="border px-2 sm:px-3 py-2 text-start sticky start-0 z-20 bg-gray-100 min-w-[96px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 শিক্ষার্থীর নাম
               </th>
 
@@ -472,7 +472,7 @@ export default function MarksTable({
                   <td className="border px-2 sm:px-3 py-2 text-center text-gray-600 whitespace-nowrap dark:border-slate-700 dark:text-slate-400">
                     {displayNumber(s.registration_no)}
                   </td>
-                  <td className="border px-2 sm:px-3 py-2 font-medium text-gray-700 whitespace-nowrap sticky left-0 z-10 bg-white dark:border-slate-700 dark:text-slate-200 dark:bg-slate-900">
+                  <td className="border px-2 sm:px-3 py-2 font-medium text-gray-700 whitespace-nowrap sticky start-0 z-10 bg-white dark:border-slate-700 dark:text-slate-200 dark:bg-slate-900">
                     {s.name_bn}
                   </td>
 
@@ -529,7 +529,7 @@ export default function MarksTable({
                             type="button"
                             onClick={() => openNotePopover(s.id, b.book_id)}
                             title={notes?.[s.id]?.[b.book_id] || "নোট যোগ করুন"}
-                            className={`absolute top-0 right-0 leading-none text-[10px] px-0.5 ${
+                            className={`absolute top-0 end-0 leading-none text-[10px] px-0.5 ${
                               hasNote
                                 ? "text-blue-600 dark:text-blue-400"
                                 : "text-gray-300 opacity-0 hover:opacity-100 focus:opacity-100 dark:text-slate-600"

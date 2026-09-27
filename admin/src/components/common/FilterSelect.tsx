@@ -2,10 +2,10 @@ import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 const DEFAULT_SELECT_CLASS =
-  "h-9 w-full appearance-none rounded-md border border-gray-300 px-3 pr-7 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
+  "h-9 w-full appearance-none rounded-md border border-gray-300 px-3 pe-7 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
 
 const DEFAULT_ICON_CLASS =
-  "pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-transform duration-200 dark:text-slate-500";
+  "pointer-events-none absolute end-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-transform duration-200 dark:text-slate-500";
 
 /** A native <select> with a custom chevron that actually tracks the
  * dropdown's open/closed state (native `:focus` alone can't - clicking an

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
 
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 
@@ -11,6 +12,7 @@ import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
  * হিসেবে পাস করা হয়।
  */
 const kioskClient = axios.create({ baseURL: API_BASE_URL });
+attachLanguageHeader(kioskClient);
 
 export type KioskScanResponse = {
   success: true;

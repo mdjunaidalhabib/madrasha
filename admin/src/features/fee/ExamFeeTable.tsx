@@ -295,7 +295,7 @@ export default function ExamFeeTable() {
               }))
             }
             onKeyDown={(e) => e.key === "Enter" && fillCells(exam, cells, bulkKey)}
-            className={`bg-transparent px-2 text-right tabular-nums outline-none dark:text-slate-100 ${
+            className={`bg-transparent px-2 text-end tabular-nums outline-none dark:text-slate-100 ${
               compact ? "w-16 text-xs" : "w-24 text-sm"
             }`}
             aria-label={label}
@@ -305,7 +305,7 @@ export default function ExamFeeTable() {
             onClick={() => fillCells(exam, cells, bulkKey)}
             disabled={!(bulkValue[bulkKey] ?? "").trim()}
             title={label}
-            className="border-l border-gray-300 bg-gray-50 px-2.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="border-s border-gray-300 bg-gray-50 px-2.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             প্রয়োগ
           </button>
@@ -571,7 +571,7 @@ export default function ExamFeeTable() {
                                   )}
                                   {!editing ? (
                                     <span
-                                      className={`shrink-0 text-right tabular-nums ${
+                                      className={`shrink-0 text-end tabular-nums ${
                                         cell.amount !== null
                                           ? feeState === "locked"
                                             ? "font-medium text-gray-500 dark:text-slate-400"
@@ -586,7 +586,7 @@ export default function ExamFeeTable() {
                                     </span>
                                   ) : (
                                     <span className="relative shrink-0">
-                                      <span className="pointer-events-none absolute inset-y-0 left-2 flex items-center text-xs text-gray-400 dark:text-slate-500">
+                                      <span className="pointer-events-none absolute inset-y-0 start-2 flex items-center text-xs text-gray-400 dark:text-slate-500">
                                         ৳
                                       </span>
                                       <input
@@ -606,7 +606,7 @@ export default function ExamFeeTable() {
                                           else if (e.key === "Escape") cancelEdit(exam);
                                         }}
                                         disabled={saving}
-                                        className={`h-7 w-[4.5rem] rounded-md border bg-white pl-5 pr-2 text-right text-sm tabular-nums outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-blue-950 dark:disabled:bg-slate-900 ${
+                                        className={`h-7 w-[4.5rem] rounded-md border bg-white ps-5 pe-2 text-end text-sm tabular-nums outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-blue-950 dark:disabled:bg-slate-900 ${
                                           changed
                                             ? "border-amber-400 dark:border-amber-700"
                                             : "border-gray-200 dark:border-slate-700"
@@ -640,7 +640,7 @@ export default function ExamFeeTable() {
                       "সব শ্রেণির",
                       true,
                     )}
-                    <div className="ml-auto flex items-center gap-1.5">
+                    <div className="ms-auto flex items-center gap-1.5">
                       <button
                         type="button"
                         disabled={saving}

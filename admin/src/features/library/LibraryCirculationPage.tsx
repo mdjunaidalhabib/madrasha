@@ -283,7 +283,7 @@ const LibraryCirculationPage = () => {
               </div>
             ) : (
               <div className="relative">
-                <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                <Search size={14} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={borrowerQuery}
@@ -293,10 +293,10 @@ const LibraryCirculationPage = () => {
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   placeholder="নাম, রোল বা আইডি দিয়ে খুঁজুন"
-                  className="h-9 w-full rounded-md border border-gray-300 pl-8 pr-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
                 {showSuggestions && borrowerQuery.trim() && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  <div className="absolute start-0 end-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                     {borrowerSuggestions.length === 0 ? (
                       <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">কেউ পাওয়া যায়নি</div>
                     ) : (
@@ -309,7 +309,7 @@ const LibraryCirculationPage = () => {
                             setBorrowerQuery("");
                             setShowSuggestions(false);
                           }}
-                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
+                          className="flex w-full items-center justify-between px-3 py-2 text-start text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                           <span className="text-gray-800 dark:text-slate-200">{p.name_bn}</span>
                           <span className="text-xs text-gray-400 dark:text-slate-500">{p.roll ? `রোল ${p.roll}` : p.registration_no ? `রেজি ${p.registration_no}` : ""}</span>

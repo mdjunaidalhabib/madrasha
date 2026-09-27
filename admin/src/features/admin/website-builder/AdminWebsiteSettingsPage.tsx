@@ -284,7 +284,7 @@ function ThemeMiniPreview({ themeKey, accent }: { themeKey: WebsiteThemeKey; acc
       <div className="relative flex h-full flex-col bg-white dark:bg-slate-900">
         <div className="flex h-4 items-center gap-1 px-1.5">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
-          <span className="ml-auto h-1 w-3 rounded-full bg-slate-300" />
+          <span className="ms-auto h-1 w-3 rounded-full bg-slate-300" />
           <span className="h-1 w-3 rounded-full bg-slate-300" />
           <span className="h-1 w-3 rounded-full bg-slate-300" />
         </div>
@@ -1065,7 +1065,7 @@ export default function AdminWebsiteSettingsPage() {
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition ${
+                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-start text-sm transition ${
                     active
                       ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
                       : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"

@@ -708,7 +708,7 @@ const ClassExamRoutinePage = () => {
                             key={row.classId}
                             type="button"
                             onClick={() => jumpToClass(row)}
-                            className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
+                            className={`flex flex-col gap-1 rounded-lg border p-2.5 text-start transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
                               isActive
                                 ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
                                 : "border-gray-200 dark:border-slate-700"
@@ -743,7 +743,7 @@ const ClassExamRoutinePage = () => {
                   <p className="mb-2 text-sm font-semibold text-gray-500 dark:text-slate-400">
                     📝 {group.examName} — {group.examYear}
                   </p>
-                  <div className="flex flex-col gap-3 pl-1">
+                  <div className="flex flex-col gap-3 ps-1">
                     {group.divisionGroups.map((divGroup) => (
                       <div key={divGroup.divisionId}>
                         <h3 className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-gray-600 dark:text-slate-400">
@@ -760,7 +760,7 @@ const ClassExamRoutinePage = () => {
                                 key={`${row.examId}-${row.classId}`}
                                 type="button"
                                 onClick={() => jumpToExamClass(row)}
-                                className={`flex flex-col gap-1 rounded-lg border p-2.5 text-left transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
+                                className={`flex flex-col gap-1 rounded-lg border p-2.5 text-start transition hover:border-blue-300 hover:shadow-sm dark:hover:border-blue-700 ${
                                   isActive
                                     ? "border-blue-400 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/20"
                                     : "border-gray-200 dark:border-slate-700"
@@ -1218,16 +1218,16 @@ const ClassExamRoutinePage = () => {
                     <table className="w-full min-w-[700px] border-collapse text-base">
                       <thead>
                         <tr>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             বার
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             তারিখ ও সময়
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             বিষয়
                           </th>
-                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-left text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                          <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                             রুম / ধারণক্ষমতা
                           </th>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-center text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
@@ -1344,10 +1344,10 @@ const ClassExamRoutinePage = () => {
 
             <div className="mb-3 grid grid-cols-2 text-base">
               <div className="flex min-h-9 items-center border border-black px-2">
-                <b className="mr-1">বিভাগ:</b> {selectedDivisionName || "—"}
+                <b className="me-1">বিভাগ:</b> {selectedDivisionName || "—"}
               </div>
-              <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-                <b className="mr-1">শ্রেণি:</b> {selectedClassName || "—"}
+              <div className="flex min-h-9 items-center border border-s-0 border-black px-2">
+                <b className="me-1">শ্রেণি:</b> {selectedClassName || "—"}
               </div>
             </div>
 
@@ -1379,10 +1379,10 @@ const ClassExamRoutinePage = () => {
                     )}
                     <td className="border border-black px-1 py-1.5 text-base">{row.startTime}</td>
                     <td className="border border-black px-1 py-1.5 text-base">{row.endTime}</td>
-                    <td className="border border-black px-1 py-1.5 text-left text-base font-semibold">
+                    <td className="border border-black px-1 py-1.5 text-start text-base font-semibold">
                       {row.subject}
                     </td>
-                    <td className="border border-black px-1 py-1.5 text-left text-base">
+                    <td className="border border-black px-1 py-1.5 text-start text-base">
                       {tab === "class" ? row.teacher?.nameBn || "—" : row.room?.name || row.roomNo || "—"}
                     </td>
                   </tr>
@@ -1397,7 +1397,7 @@ const ClassExamRoutinePage = () => {
             বন্ধ করুন
           </Button>
           <Button onClick={() => window.print()}>
-            <Printer size={16} className="mr-1 inline" />
+            <Printer size={16} className="me-1 inline" />
             প্রিন্ট করুন
           </Button>
         </div>

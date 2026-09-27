@@ -73,7 +73,7 @@ function groupNavItems(items: NavItem[]) {
 }
 
 function navItemClass(isActive: boolean) {
-  return `flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 text-base font-medium transition ${
+  return `flex items-center gap-2 rounded-lg border-s-2 px-3 py-2 text-base font-medium transition ${
     isActive
       ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300"
       : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
@@ -235,7 +235,7 @@ export default function SuperAdminSidebar({
               className={groupHeaderClass(isActive)}
             >
               {GROUP_ICONS[group] || <Layers size={18} />}
-              {!collapsed && <span className="flex-1 text-left">{group}</span>}
+              {!collapsed && <span className="flex-1 text-start">{group}</span>}
               {!collapsed && (
                 <ChevronDown
                   size={16}
@@ -248,7 +248,7 @@ export default function SuperAdminSidebar({
                 isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
               }`}
             >
-              <div className="ml-6 space-y-1 overflow-hidden border-l border-slate-200 pl-3 dark:border-slate-700">
+              <div className="ms-6 space-y-1 overflow-hidden border-s border-slate-200 ps-3 dark:border-slate-700">
                 {items.map((item) => (
                   <NavLink
                     key={item.to}

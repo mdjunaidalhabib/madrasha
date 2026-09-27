@@ -105,7 +105,7 @@ export default function OverviewGrid({
                         <button
                           key={c.class_id}
                           onClick={() => onSelect(exam.id, c.class_id)}
-                          className="text-left border border-gray-200 rounded-lg p-3 transition hover:shadow-md hover:border-blue-300 dark:border-slate-700 dark:hover:border-blue-700"
+                          className="text-start border border-gray-200 rounded-lg p-3 transition hover:shadow-md hover:border-blue-300 dark:border-slate-700 dark:hover:border-blue-700"
                         >
                           <div className="font-medium text-gray-800 dark:text-slate-100">{c.class_name_bn}</div>
                           <span

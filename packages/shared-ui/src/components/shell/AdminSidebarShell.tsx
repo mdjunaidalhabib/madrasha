@@ -17,7 +17,7 @@ export default function AdminSidebarShell({
   // ফলে ফুটার (প্ল্যান/থিম/লগআউট) স্ক্রিনের বাইরে চলে যায় - তাই dvh ব্যবহার।
   return (
     <div
-      className={`flex h-screen supports-[height:100dvh]:h-dvh flex-col border-r border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-900 ${
+      className={`flex h-screen supports-[height:100dvh]:h-dvh flex-col border-e border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-900 ${
         collapsed ? "w-16" : "w-56"
       }`}
     >

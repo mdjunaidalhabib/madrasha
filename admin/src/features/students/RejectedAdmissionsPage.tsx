@@ -378,7 +378,7 @@ const RejectedAdmissionsPage = () => {
 
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-full text-start text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="px-3 py-2 w-8">
@@ -394,7 +394,7 @@ const RejectedAdmissionsPage = () => {
                       <th className="px-3 py-2">ফোন</th>
                       <th className="px-3 py-2">শ্রেণি</th>
                       <th className="px-3 py-2">বাতিলের কারণ</th>
-                      <th className="px-3 py-2 text-right">অ্যাকশন</th>
+                      <th className="px-3 py-2 text-end">অ্যাকশন</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -528,7 +528,7 @@ const RejectedAdmissionsPage = () => {
                           {row.examLinked && (
                             <span
                               title="নির্দিষ্ট একটি পরীক্ষার সাথে যুক্ত - ভর্তি অনুমোদনের সাথে সাথে এখনই বিল হবে না"
-                              className="ml-1 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
+                              className="ms-1 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
                             >
                               পরীক্ষা এলে বিল হবে
                             </span>

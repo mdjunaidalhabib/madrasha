@@ -1,3 +1,4 @@
+import type { InstitutionInfo } from "../../shared/utils/institution.util";
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -35,6 +36,7 @@ export interface LoginResult {
    * device login" switcher show the institution's real name instead of just
    * the slug/code the user typed in. */
   madrasa_name: string;
+  institution: InstitutionInfo;
 }
 
 export interface RefreshTokenResult {
@@ -60,6 +62,7 @@ export interface MyProfile {
   role_label: string;
   permissions: string[];
   modules: string[];
+  institution: InstitutionInfo;
 }
 
 export interface UpdateMyProfileInput {

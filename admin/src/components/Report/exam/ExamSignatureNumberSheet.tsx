@@ -123,7 +123,7 @@ const ExamSignatureNumberSheet = ({
               {!hideRegistrationColumn && (
                 <td className="h-9 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
               )}
-              <td className="h-9 border border-black px-2 text-left text-base font-semibold">
+              <td className="h-9 border border-black px-2 text-start text-base font-semibold">
                 {cellValue(row, "student_name")}
               </td>
               <td className="h-9 border border-black px-1" />

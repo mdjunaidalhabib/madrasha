@@ -136,7 +136,7 @@ export default function SuperAdminDocumentTemplatesPage() {
               setCreateOpen(true);
             }}
           >
-            <Plus size={15} className="mr-1.5" /> New Template
+            <Plus size={15} className="me-1.5" /> New Template
           </Button>
         }
       />

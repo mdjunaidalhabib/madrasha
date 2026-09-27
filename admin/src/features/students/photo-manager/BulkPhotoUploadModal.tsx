@@ -237,7 +237,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
                       {person ? (
                         <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {person.name}
-                          <span className="ml-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">
+                          <span className="ms-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">
                             {person.subtitle}
                             {person.roll && ` · রোল ${toBanglaDigits(person.roll)}`}
                             {person.regNo && ` · রেজি. ${toBanglaDigits(person.regNo)}`}

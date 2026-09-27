@@ -32,16 +32,16 @@ const DailyAttendancePrint = ({
           <div className="report-block-heading mb-3 text-center">
             <h1 className="mb-3 text-xl font-bold">দৈনন্দিন হাজিরা খাতা</h1>
             <div className="grid grid-cols-4 gap-1 text-[13px]">
-              <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+              <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                 বিভাগ: {divisionName}
               </div>
-              <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+              <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                 শ্রেণি: {className}
               </div>
-              <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+              <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                 বছর: ........................
               </div>
-              <div className="flex h-8 items-center border border-slate-900 px-1 text-left">
+              <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
                 মাস: ........................
               </div>
             </div>
@@ -79,7 +79,7 @@ const DailyAttendancePrint = ({
                 <td className="h-7 border border-slate-900 p-0 text-base">
                   {cellValue(row, "registration_no")}
                 </td>
-                <td className="h-7 border border-slate-900 pl-3 pr-2 text-left text-base font-semibold">
+                <td className="h-7 border border-slate-900 ps-3 pe-2 text-start text-base font-semibold">
                   {cellValue(row, "student_name")}
                 </td>
                 {days.map((day) => (

@@ -8,7 +8,7 @@ export interface DocumentDesignerProps {
   layout: DocumentLayout;
   /** Sample record used to preview tokens/photos while designing. */
   previewRow?: Record<string, any>;
-  /** Slot for a future left-hand element/layer panel. Not implemented yet. */
+  /** Slot for a future start-hand element/layer panel. Not implemented yet. */
   sidebar?: ReactNode;
   /** Slot for a future toolbar (zoom, add layer, etc). Not implemented yet. */
   toolbar?: ReactNode;

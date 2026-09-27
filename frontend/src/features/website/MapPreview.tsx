@@ -50,7 +50,7 @@ export default function MapPreview({
 
       {/* place card, like the one Google shows on a selected place */}
       {!compact && (title || address) && (
-        <span className="absolute left-3 top-3 max-w-[75%] rounded-lg bg-white px-3.5 py-2.5 text-left shadow-md sm:max-w-[60%]">
+        <span className="absolute start-3 top-3 max-w-[75%] rounded-lg bg-white px-3.5 py-2.5 text-start shadow-md sm:max-w-[60%]">
           {title && <span className="block truncate text-sm font-bold text-slate-900">{title}</span>}
           {address && <span className="mt-0.5 line-clamp-2 block text-xs text-slate-500">{address}</span>}
           <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#1a73e8]">
@@ -62,7 +62,7 @@ export default function MapPreview({
 
       {/* zoom control, purely decorative */}
       {!compact && (
-        <span className="absolute bottom-16 right-3 flex flex-col overflow-hidden rounded-md bg-white text-lg leading-none text-slate-600 shadow-md">
+        <span className="absolute bottom-16 end-3 flex flex-col overflow-hidden rounded-md bg-white text-lg leading-none text-slate-600 shadow-md">
           <span className="flex h-8 w-8 items-center justify-center border-b border-slate-200">+</span>
           <span className="flex h-8 w-8 items-center justify-center">−</span>
         </span>
@@ -70,7 +70,7 @@ export default function MapPreview({
 
       {/* OpenStreetMap's licence (ODbL) requires this credit on the image */}
       <span
-        className={`absolute right-1 rounded bg-white/75 px-1 text-[9px] leading-tight text-slate-600 ${
+        className={`absolute end-1 rounded bg-white/75 px-1 text-[9px] leading-tight text-slate-600 ${
           compact ? "bottom-8" : "bottom-12"
         }`}
       >

@@ -167,7 +167,7 @@ export default function StudentMarksEditModal({
         <table className="w-full border text-sm dark:border-slate-700">
           <thead className="bg-gray-100 dark:bg-slate-800">
             <tr>
-              <th className="border px-3 py-2 text-left dark:border-slate-700">বিষয়</th>
+              <th className="border px-3 py-2 text-start dark:border-slate-700">বিষয়</th>
               <th className="border px-3 py-2 dark:border-slate-700">নাম্বার</th>
             </tr>
           </thead>
@@ -184,7 +184,7 @@ export default function StudentMarksEditModal({
                         {bookLabel(b)}
                         {b.pass_mark != null ? (
                           <span
-                            className="ml-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
+                            className="ms-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
                             title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
                           >
                             (পাস {b.pass_mark})

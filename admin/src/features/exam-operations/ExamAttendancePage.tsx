@@ -280,7 +280,7 @@ const ExamAttendancePage = () => {
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
-                শিক্ষার্থী তালিকা {isLocked && <span className="ml-2 text-xs text-red-600 dark:text-red-400">(লকড)</span>}
+                শিক্ষার্থী তালিকা {isLocked && <span className="ms-2 text-xs text-red-600 dark:text-red-400">(লকড)</span>}
               </h2>
               <div className="flex gap-2">
                 <button

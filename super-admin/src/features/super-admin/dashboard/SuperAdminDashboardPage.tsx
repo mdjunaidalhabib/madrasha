@@ -238,7 +238,7 @@ export default function SuperAdminDashboardPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-5 py-3">সময়</th>
                   <th className="px-5 py-3">মাদরাসা</th>

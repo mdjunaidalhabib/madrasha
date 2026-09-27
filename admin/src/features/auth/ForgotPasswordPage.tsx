@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
                       `/reset-password?token=${devResetToken}&slug=${madrasaCode.trim().toLowerCase()}`,
                     )
                   }
-                  className="break-all text-left text-blue-600 underline dark:text-blue-400"
+                  className="break-all text-start text-blue-600 underline dark:text-blue-400"
                 >
                   রিসেট লিংকে যেতে ক্লিক করুন
                 </button>

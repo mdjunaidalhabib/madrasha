@@ -11,6 +11,7 @@ import { normalizeHost } from "../shared/utils/host.util";
 import { errorHandler, notFoundHandler } from "../shared/middleware/error.middleware";
 import { requestLogger } from "../shared/middleware/requestLogger.middleware";
 import { activityLoggerMiddleware } from "../shared/middleware/activityLogger.middleware";
+import { requestLanguageMiddleware } from "../shared/i18n";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use(
 app.use(express.json({ limit: config.upload.jsonBodyLimit })); // raised to allow branding logo/banner/watermark base64 uploads
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // reads the httpOnly refresh-token cookie into req.cookies
+app.use(requestLanguageMiddleware); // Accept-Language -> t() in services (shared/i18n)
 app.use(requestLogger);
 app.use(activityLoggerMiddleware);
 

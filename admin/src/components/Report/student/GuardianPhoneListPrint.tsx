@@ -77,10 +77,10 @@ const GuardianPhoneListPrint = ({
               <tr key={`guardian-phone-${startIndex + index}-${row.id || row.student_id || index}`}>
                 <td className="h-8 border border-black px-1 text-base">{cellValue(row, "roll")}</td>
                 <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
-                <td className="h-8 border border-black px-1 text-left font-semibold text-base">
+                <td className="h-8 border border-black px-1 text-start font-semibold text-base">
                   {cellValue(row, "student_name")}
                 </td>
-                <td className="h-8 border border-black px-1 text-left text-base">
+                <td className="h-8 border border-black px-1 text-start text-base">
                   {cellValue(row, "father_name")}
                 </td>
                 <td className="h-8 border border-black px-1 font-semibold text-base">

@@ -62,7 +62,7 @@ const ColumnVisibilityMenu = <T extends string>({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute end-0 z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
           <p className="mb-1 px-1 text-xs font-semibold text-gray-500 dark:text-slate-400">কলাম দেখান / লুকান</p>
           {onMove && (
             <p className="mb-1 px-1 text-[11px] text-gray-400 dark:text-slate-500">
@@ -119,7 +119,7 @@ const ColumnVisibilityMenu = <T extends string>({
           <button
             type="button"
             onClick={onReset}
-            className="mt-1 w-full rounded-md border-t border-gray-100 px-2 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-50 dark:border-slate-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
+            className="mt-1 w-full rounded-md border-t border-gray-100 px-2 py-1.5 text-start text-xs text-blue-600 hover:bg-blue-50 dark:border-slate-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
           >
             {resetLabel}
           </button>

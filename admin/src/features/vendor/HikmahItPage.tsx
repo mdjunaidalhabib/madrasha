@@ -142,7 +142,7 @@ export default function HikmahItPage() {
                     }`}
                   >
                     {s.is_current && (
-                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                      <span className="absolute end-3 top-3 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
                         <CheckCircle2 size={11} />
                         আপনি ব্যবহার করছেন
                       </span>

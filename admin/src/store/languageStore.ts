@@ -1,25 +1,4 @@
-import { create } from "zustand";
-
-export type Lang = "bn" | "en" | "ar";
-
-const STORAGE_KEY = "app-language";
-
-function getInitialLang(): Lang {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "bn" || stored === "en" || stored === "ar") return stored;
-  return "bn";
-}
-
-type LanguageState = {
-  lang: Lang;
-  setLang: (lang: Lang) => void;
-};
-
-export const useLanguageStore = create<LanguageState>((set) => ({
-  lang: getInitialLang(),
-
-  setLang: (lang) => {
-    localStorage.setItem(STORAGE_KEY, lang);
-    set({ lang });
-  },
-}));
+// The language store lives in shared-ui so admin, super-admin and the public
+// site share one implementation (see packages/shared-ui/src/i18n).
+export { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
+export type { Lang } from "@madrasha/shared-ui/src/i18n";

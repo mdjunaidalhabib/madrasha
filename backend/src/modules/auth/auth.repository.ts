@@ -64,7 +64,10 @@ export class AuthRepository {
   }
 
   findMadrasaName(madrasaId: number) {
-    return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { name: true } });
+    return prisma.madrasa.findUnique({
+      where: { id: madrasaId },
+      select: { name: true, institutionType: true, defaultLanguage: true },
+    });
   }
 
   /** Invalidates any earlier, still-usable reset tokens for this user

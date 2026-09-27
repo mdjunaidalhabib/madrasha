@@ -102,7 +102,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
     >
       <div
         className={`bg-white w-4 h-4 rounded-full shadow transform transition ${
-          checked ? "translate-x-6" : ""
+          checked ? "translate-x-6 rtl:-translate-x-6" : ""
         }`}
       />
     </button>

@@ -39,10 +39,10 @@ const ClassRoutinePrint = ({
 
           <div className="mb-3 grid grid-cols-2 text-[13px]">
             <div className="flex min-h-9 items-center border border-black px-2">
-              <b className="mr-1">বিভাগ:</b> {divisionName}
+              <b className="me-1">বিভাগ:</b> {divisionName}
             </div>
-            <div className="flex min-h-9 items-center border border-l-0 border-black px-2">
-              <b className="mr-1">শ্রেণি:</b> {className}
+            <div className="flex min-h-9 items-center border border-s-0 border-black px-2">
+              <b className="me-1">শ্রেণি:</b> {className}
             </div>
           </div>
         </div>
@@ -70,10 +70,10 @@ const ClassRoutinePrint = ({
               </td>
               <td className="h-9 border border-black px-1 text-base">{cellValue(row, "start_time")}</td>
               <td className="h-9 border border-black px-1 text-base">{cellValue(row, "end_time")}</td>
-              <td className="h-9 border border-black px-1 text-left font-semibold text-base">
+              <td className="h-9 border border-black px-1 text-start font-semibold text-base">
                 {cellValue(row, "subject_name")}
               </td>
-              <td className="h-9 border border-black px-1 text-left text-base">
+              <td className="h-9 border border-black px-1 text-start text-base">
                 {cellValue(row, "teacher_name")}
               </td>
             </tr>

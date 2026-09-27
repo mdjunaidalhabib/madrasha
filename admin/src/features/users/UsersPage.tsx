@@ -228,12 +228,12 @@ const UsersPage = () => {
                 autoComplete="new-password"
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                className="h-10 pr-9"
+                className="h-10 pe-9"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
                 tabIndex={-1}
               >
@@ -429,13 +429,13 @@ const UsersPage = () => {
                       autoComplete="new-password"
                       value={resetPassword}
                       onChange={(e) => setResetPassword(e.target.value)}
-                      className="h-9 w-56 pr-9 text-xs"
+                      className="h-9 w-56 pe-9 text-xs"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => setResetShowPassword((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="absolute inset-y-0 end-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                       tabIndex={-1}
                     >
                       {resetShowPassword ? <EyeOff size={14} /> : <Eye size={14} />}

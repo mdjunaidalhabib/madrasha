@@ -341,7 +341,7 @@ export default function DashboardPage() {
             )}
             {/* One column, in routine order (date → time → শ্রেণি, see
                 dashboard.repository findUpcomingExams) - a 2-col grid read
-                left-to-right scattered same-day slots. */}
+                start-to-right scattered same-day slots. */}
             <div className="flex flex-col gap-1.5">
               {upcomingExams.map((exam: any) => (
                 <div

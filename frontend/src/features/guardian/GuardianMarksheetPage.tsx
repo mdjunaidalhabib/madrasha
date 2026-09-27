@@ -152,7 +152,7 @@ export default function GuardianMarksheetPage() {
               <thead>
                 <tr className="bg-slate-100">
                   <th className="w-12 border border-black px-2 py-2 text-center">ক্রম</th>
-                  <th className="border border-black px-3 py-2 text-left">বিষয়ের নাম</th>
+                  <th className="border border-black px-3 py-2 text-start">বিষয়ের নাম</th>
                   <th className="w-24 border border-black px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
                   <th className="w-24 border border-black px-3 py-2 text-center">পূর্ণমান</th>
                 </tr>

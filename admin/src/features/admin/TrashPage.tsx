@@ -381,7 +381,7 @@ export default function TrashPage() {
             >
               {tab.label}
               <span
-                className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${
+                className={`ms-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${
                   rowsByTab[tab.key].length > 0
                     ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                     : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
@@ -493,7 +493,7 @@ export default function TrashPage() {
 
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-full text-start text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-800 dark:text-slate-400">
                       <th className="px-3 py-2 w-8">
@@ -527,7 +527,7 @@ export default function TrashPage() {
                       )}
                       <th className="px-3 py-2">মুছে ফেলা হয়েছে</th>
                       <th className="px-3 py-2">মেয়াদ</th>
-                      <th className="px-3 py-2 text-right">অ্যাকশন</th>
+                      <th className="px-3 py-2 text-end">অ্যাকশন</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -113,7 +113,7 @@ export default function PendingRecalculationBanner({ refreshKey }: { refreshKey?
           className="shrink-0"
           title={enabled ? undefined : "এখন কোনো ফলাফল পুনঃগণনার প্রয়োজন নেই"}
         >
-          <RefreshCw size={15} className={`mr-1.5 ${checking ? "animate-spin" : ""}`} /> ফলাফল পুনঃগণনা
+          <RefreshCw size={15} className={`me-1.5 ${checking ? "animate-spin" : ""}`} /> ফলাফল পুনঃগণনা
         </Button>
       </div>
       <RecalculateResultsModal open={open} onClose={() => setOpen(false)} onApplied={check} />

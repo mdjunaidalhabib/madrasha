@@ -1,4 +1,5 @@
 import api from "./api";
+import type { InstitutionInfo } from "@madrasha/shared-ui/src/i18n";
 
 export type MyProfile = {
   id: number;
@@ -10,6 +11,7 @@ export type MyProfile = {
   role_label: string;
   permissions: string[];
   modules: string[];
+  institution?: InstitutionInfo;
 };
 
 export type UpdateMyProfilePayload = {

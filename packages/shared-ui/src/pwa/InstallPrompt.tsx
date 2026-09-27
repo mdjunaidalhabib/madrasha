@@ -77,7 +77,7 @@ export default function InstallPrompt({
     <div
       role="dialog"
       aria-label="অ্যাপ ইনস্টল"
-      className="fixed inset-x-3 bottom-3 z-[9998] animate-heroFadeUp sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[380px] print:hidden"
+      className="fixed inset-x-3 bottom-3 z-[9998] animate-heroFadeUp sm:inset-x-auto sm:bottom-5 sm:end-5 sm:w-[380px] print:hidden"
     >
       <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-white p-4 shadow-2xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
@@ -85,12 +85,12 @@ export default function InstallPrompt({
           type="button"
           onClick={close}
           aria-label="বন্ধ করুন"
-          className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="absolute end-2.5 top-2.5 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>
 
-        <div className="flex items-start gap-3 pr-6">
+        <div className="flex items-start gap-3 pe-6">
           <img
             src="/icons/icon-192.png"
             alt=""

@@ -15,6 +15,10 @@ export interface CreateMadrasaRequestDto {
   modules?: unknown;
   classes?: unknown;
   books?: unknown;
+  /** MADRASA (default) | SCHOOL | COLLEGE | KINDERGARTEN. */
+  institution_type?: string;
+  /** "bn" | "en" | "ar"; null/"" = the institution type default. */
+  default_language?: string | null;
   default_users?: Array<{ role: string; name?: string; email: string; password: string }>;
 }
 
@@ -29,6 +33,8 @@ export interface UpdateMadrasaRequestDto {
   website_status?: string;
   /** Hostname only (no protocol/path), e.g. "www.example.com" - null/"" clears it. */
   custom_domain?: string | null;
+  institution_type?: string;
+  default_language?: string | null;
   plan_id?: number | string;
   /** See CreateMadrasaRequestDto.start_date. */
   start_date?: string;

@@ -228,7 +228,7 @@ export default function AdmissionApplyPage() {
             <ChevronLeft size={16} />
             ফিরে যান
           </Link>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             {madrasa?.logo_url ? (
               <img src={madrasa.logo_url} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
             ) : (
@@ -269,7 +269,7 @@ export default function AdmissionApplyPage() {
             </p>
 
             {submittedInvoices.length > 0 && (
-              <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-green-200 bg-white p-4 text-left shadow-sm">
+              <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-green-200 bg-white p-4 text-start shadow-sm">
                 <h3 className="text-sm font-bold text-slate-700">প্রযোজ্য ভর্তি ফি</h3>
                 <ul className="mt-2 space-y-1 text-sm text-slate-600">
                   {submittedInvoices.map((inv, index) => (

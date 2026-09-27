@@ -254,7 +254,7 @@ export default function TeacherAssignmentPanel() {
             className="w-full max-w-[600px] max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-lg p-4 sm:p-6 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <button onClick={closeModal} className="absolute right-3 top-2 text-xl text-gray-600 dark:text-slate-400">
+            <button onClick={closeModal} className="absolute end-3 top-2 text-xl text-gray-600 dark:text-slate-400">
               ✖
             </button>
 

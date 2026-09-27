@@ -17,6 +17,7 @@ import { useAuthStore } from "../store/authStore";
 import { useAdminBreadcrumbs } from "../components/sidebar/useAdminBreadcrumbs";
 import { useNowLabels } from "../hooks/useNowLabels";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 export default function DashboardLayout() {
   const setItems = useSidebarStore((s) => s.setItems);
@@ -71,6 +72,7 @@ export default function DashboardLayout() {
       try {
         const profile = await getMyProfile();
         setAccess(profile.permissions, profile.modules);
+        useLanguageStore.getState().setInstitution(profile.institution);
         updateUser({
           name: profile.name,
           mobile: profile.mobile,
@@ -102,8 +104,8 @@ export default function DashboardLayout() {
         aria-hidden="true"
       />
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-56 max-w-[80%] shadow-xl transition-transform duration-300 ease-out md:hidden ${
-          mobileSidebar ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 start-0 z-50 w-56 max-w-[80%] shadow-xl transition-transform duration-300 ease-out md:hidden ${
+          mobileSidebar ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         }`}
       >
         <Sidebar closeSidebar={() => setMobileSidebar(false)} />
@@ -116,7 +118,7 @@ export default function DashboardLayout() {
         <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
           <div className="flex items-center justify-between gap-2">
             <Breadcrumbs items={breadcrumbs} />
-            <div className="mb-4 mr-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:mr-4 md:flex">
+            <div className="mb-4 me-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:me-4 md:flex">
               <Calendar size={14} className="shrink-0" />
               <span className="truncate">{today}</span>
               <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />

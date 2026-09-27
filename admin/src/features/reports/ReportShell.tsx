@@ -861,7 +861,7 @@ const ReportShell = ({
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {studentFilter && (
-                  <div className="flex w-fit items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 pl-2.5 pr-1 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 sm:text-[13px]">
+                  <div className="flex w-fit items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 ps-2.5 pe-1 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 sm:text-[13px]">
                     <span>
                       শুধু: <b className="font-bold">{filteredRows[0]?.student_name || "নির্বাচিত শিক্ষার্থী"}</b>
                     </span>
@@ -966,7 +966,7 @@ const ReportShell = ({
                       >
                         <span
                           className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
-                            repeatHeaderPref ? "left-3.5" : "left-0.5"
+                            repeatHeaderPref ? "start-3.5" : "start-0.5"
                           }`}
                         />
                       </span>
@@ -990,7 +990,7 @@ const ReportShell = ({
                       >
                         <span
                           className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
-                            !hideSignaturePref ? "left-3.5" : "left-0.5"
+                            !hideSignaturePref ? "start-3.5" : "start-0.5"
                           }`}
                         />
                       </span>
@@ -1020,8 +1020,8 @@ const ReportShell = ({
                         setPageSize(Number(value));
                         setPage(1);
                       }}
-                      selectClassName="h-7 appearance-none rounded border border-slate-200 bg-white px-1.5 pr-5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      iconClassName="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500"
+                      selectClassName="h-7 appearance-none rounded border border-slate-200 bg-white px-1.5 pe-5 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      iconClassName="pointer-events-none absolute end-1 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400 transition-transform duration-200 dark:text-slate-500"
                     >
                       {[50, 100, 200, 500].map((size) => (
                         <option key={size} value={size}>

@@ -86,7 +86,7 @@ export default function ResultStatsCards({
               <p className="text-xs font-medium opacity-80">{label}</p>
               <p className="text-lg font-bold leading-tight">
                 {value}
-                {sub && <span className="ml-1 text-xs font-semibold opacity-80">({sub})</span>}
+                {sub && <span className="ms-1 text-xs font-semibold opacity-80">({sub})</span>}
               </p>
             </div>
           </div>

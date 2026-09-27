@@ -370,7 +370,7 @@ export default function ExamList({
         <div className="space-y-2">
           {divisions.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-              <span className="mr-1 text-xs text-slate-500 dark:text-slate-400">
+              <span className="me-1 text-xs text-slate-500 dark:text-slate-400">
                 বিভাগ অনুযায়ী দেখুন:
               </span>
               {filterOptions.map((opt) => {

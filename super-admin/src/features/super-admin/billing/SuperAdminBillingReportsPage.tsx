@@ -134,7 +134,7 @@ export default function SuperAdminBillingReportsPage() {
 
             <div className="mt-3 overflow-hidden rounded-2xl border bg-white dark:border-slate-700 dark:bg-slate-900">
               <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-full text-start text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                     <tr>
                       <th className="px-4 py-3">Madrasa</th>

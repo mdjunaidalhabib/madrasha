@@ -53,12 +53,12 @@ const TeacherListPrint = ({
           {rows.map((row, index) => (
             <tr key={`teacher-list-${startIndex + index}-${row.id || row.teacher_id || index}`}>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
-              <td className="h-8 border border-black px-1 text-left font-semibold text-base">
+              <td className="h-8 border border-black px-1 text-start font-semibold text-base">
                 {cellValue(row, "teacher_name")}
               </td>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "designation")}</td>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "department")}</td>
-              <td className="h-8 border border-black px-1 text-left text-base">
+              <td className="h-8 border border-black px-1 text-start text-base">
                 {cellValue(row, "qualification")}
               </td>
               <td className="h-8 border border-black px-1 text-base">{cellValue(row, "phone")}</td>

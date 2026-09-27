@@ -172,9 +172,9 @@ function Row({
       >
         <GripVertical size={14} />
       </span>
-      <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate px-1 text-left">
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate px-1 text-start">
         {label}
-        {inactive && <span className="ml-1.5 text-[10px] text-slate-400 dark:text-slate-500">(নিষ্ক্রিয়)</span>}
+        {inactive && <span className="ms-1.5 text-[10px] text-slate-400 dark:text-slate-500">(নিষ্ক্রিয়)</span>}
       </button>
       {trailing}
       <button

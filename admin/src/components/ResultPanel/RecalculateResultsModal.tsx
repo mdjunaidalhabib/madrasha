@@ -156,7 +156,7 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
               <table className="w-full min-w-[420px] text-xs sm:text-sm">
                 <thead className="bg-gray-100 dark:bg-slate-800">
                   <tr>
-                    <th className="px-3 py-2 text-left">পরীক্ষা / শ্রেণি</th>
+                    <th className="px-3 py-2 text-start">পরীক্ষা / শ্রেণি</th>
                     <th className="px-3 py-2 text-center">অবস্থা</th>
                     <th className="px-3 py-2 text-center">বদলাবে</th>
                   </tr>
@@ -200,7 +200,7 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
               </label>
             )}
 
-            <ul className="list-disc space-y-1 pl-5 text-xs text-gray-500 dark:text-slate-400">
+            <ul className="list-disc space-y-1 ps-5 text-xs text-gray-500 dark:text-slate-400">
               {affectedUnpublished.length > 0 && (
                 <li>
                   অপ্রকাশিত ফলাফল সরাসরি হালনাগাদ হবে। যাচাই/অনুমোদিত হয়ে থাকলে আবার "প্রসেসিং" অবস্থায় ফিরবে — প্রকাশের

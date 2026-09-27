@@ -12,7 +12,7 @@
 
 export type ThemeKey = "classic" | "modern" | "minimal";
 
-export type SectionHeaderVariant = "centered-lines" | "left-bar" | "underline";
+export type SectionHeaderVariant = "centered-lines" | "start-bar" | "underline";
 export type NavVariant = "band" | "inline" | "dark";
 export type HeroVariant = "classic" | "rounded" | "flat";
 
@@ -136,7 +136,7 @@ const modern: ThemeTokens = {
   header: "border-b border-slate-100",
   headerScrolled: "shadow-lg shadow-slate-900/5",
 
-  sectionHeader: "left-bar",
+  sectionHeader: "start-bar",
   headerCentered: false,
 
   altBg: "",

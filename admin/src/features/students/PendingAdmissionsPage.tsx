@@ -544,7 +544,7 @@ const PendingAdmissionsPage = () => {
 
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-full text-start text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="px-3 py-2 w-8">
@@ -562,7 +562,7 @@ const PendingAdmissionsPage = () => {
                       <th className="px-3 py-2">শ্রেণি</th>
                       <th className="px-3 py-2">ভর্তির ধরন</th>
                       <th className="px-3 py-2">বিশেষ</th>
-                      <th className="px-3 py-2 text-right">অ্যাকশন</th>
+                      <th className="px-3 py-2 text-end">অ্যাকশন</th>
                     </tr>
                   </thead>
                   <tbody>

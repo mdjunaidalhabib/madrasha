@@ -40,35 +40,35 @@ const IdCardMinimal = ({ row, madrasaName }: Props) => (
         {cellValue(row, "student_name")}
       </h4>
 
-      <div className="mt-[2.5mm] flex w-full flex-col gap-[1.6mm] text-left">
+      <div className="mt-[2.5mm] flex w-full flex-col gap-[1.6mm] text-start">
         <div className="flex justify-between gap-[2mm] border-b border-[#e3ebe8] pb-[1mm] text-[8.5px]">
           <span className="shrink-0 font-semibold text-[#6f8c83]">রেজি. নং</span>
-          <span className="min-w-0 truncate text-right font-medium text-[#1c2a26]">
+          <span className="min-w-0 truncate text-end font-medium text-[#1c2a26]">
             {cellValue(row, "registration_no")}
           </span>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-[#e3ebe8] pb-[1mm] text-[8.5px]">
           <span className="shrink-0 font-semibold text-[#6f8c83]">রোল নং</span>
-          <span className="min-w-0 truncate text-right font-medium text-[#1c2a26]">
+          <span className="min-w-0 truncate text-end font-medium text-[#1c2a26]">
             {cellValue(row, "roll")}
           </span>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-[#e3ebe8] pb-[1mm] text-[8.5px]">
           <span className="shrink-0 font-semibold text-[#6f8c83]">শ্রেণি</span>
-          <span className="min-w-0 truncate text-right font-medium text-[#1c2a26]">
+          <span className="min-w-0 truncate text-end font-medium text-[#1c2a26]">
             {cellValue(row, "class_name")}
             {row.division_name ? ` (${cellValue(row, "division_name")})` : ""}
           </span>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-[#e3ebe8] pb-[1mm] text-[8.5px]">
           <span className="shrink-0 font-semibold text-[#6f8c83]">পিতা</span>
-          <span className="min-w-0 truncate text-right font-medium text-[#1c2a26]">
+          <span className="min-w-0 truncate text-end font-medium text-[#1c2a26]">
             {cellValue(row, "father_name")}
           </span>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-[#e3ebe8] pb-[1mm] text-[8.5px]">
           <span className="shrink-0 font-semibold text-[#6f8c83]">মোবাইল</span>
-          <span className="min-w-0 truncate text-right font-medium text-[#1c2a26]">
+          <span className="min-w-0 truncate text-end font-medium text-[#1c2a26]">
             {cellValue(row, "guardian_phone")}
           </span>
         </div>

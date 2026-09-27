@@ -84,7 +84,7 @@ export default function StatTile({
   if (loading) {
     if (compact) {
       return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 pl-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 ps-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="h-3 w-16 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
           <div className="mt-3 h-6 w-20 animate-pulse rounded bg-slate-200/70 dark:bg-slate-700/70" />
         </div>
@@ -99,13 +99,13 @@ export default function StatTile({
   }
 
   if (compact) {
-    const compactClassName = `group relative flex min-w-0 items-start justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white py-4 pl-5 pr-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 ${
+    const compactClassName = `group relative flex min-w-0 items-start justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white py-4 ps-5 pe-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 ${
       to ? "transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:hover:border-slate-600" : ""
     }`;
 
     const compactContent = (
       <>
-        <span className={`absolute inset-y-0 left-0 w-1 ${accent}`} />
+        <span className={`absolute inset-y-0 start-0 w-1 ${accent}`} />
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
           <p className="mt-1.5 break-words text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">

@@ -81,7 +81,7 @@ const Field = ({
             onChange={handleScriptChange}
             disabled={!isEditMode || !isEditing}
             dir={scriptLang === "ar" ? "rtl" : undefined}
-            className={`border rounded-lg px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
+            className={`border rounded-lg px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
               ${error ? "border-red-500" : ""}
               ${!isEditMode ? "bg-gray-100 dark:bg-slate-800" : ""}
               ${isEditing ? "border-blue-500 bg-white dark:bg-slate-900" : ""}
@@ -91,7 +91,7 @@ const Field = ({
           {/* ✏️ EDIT ICON (ONLY INPUT FIELD) */}
           {isEditMode && (
             <FaEdit
-              className="absolute right-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+              className="absolute end-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
               onClick={() => setEditableField(name)}
             />
           )}

@@ -434,7 +434,7 @@ const AttendanceReportPage = () => {
                 ) : (
                   <div className="max-h-[420px] overflow-y-auto">
                     <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <thead className="sticky top-0 bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <tr>
                           <th className="px-5 py-2.5 font-medium">তারিখ</th>
                           <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">উপস্থিত</th>
@@ -450,7 +450,7 @@ const AttendanceReportPage = () => {
                               {day.PRESENT + day.LATE}
                             </td>
                             <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{day.ABSENT}</td>
-                            <td className="px-3 py-2.5 text-right">
+                            <td className="px-3 py-2.5 text-end">
                               <button
                                 type="button"
                                 onClick={() => openEditForDate(day.date)}
@@ -489,7 +489,7 @@ const AttendanceReportPage = () => {
                 ) : (
                   <div className="max-h-[420px] overflow-y-auto">
                     <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <thead className="sticky top-0 bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <tr>
                           <th className="px-5 py-2.5 font-medium">শ্রেণি</th>
                           <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">উপস্থিত</th>
@@ -513,7 +513,7 @@ const AttendanceReportPage = () => {
                             <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-400">
                               {row.days}
                             </td>
-                            <td className="px-3 py-2.5 text-right">
+                            <td className="px-3 py-2.5 text-end">
                               <button
                                 type="button"
                                 disabled={!row.classItem}
@@ -548,10 +548,10 @@ const AttendanceReportPage = () => {
                   {topAbsentees.map((row) => (
                     <li key={row.studentId} className="flex items-center justify-between gap-2 px-5 py-2.5 text-sm">
                       <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
-                        <span className="mr-2 text-slate-400">{row.info?.roll}</span>
+                        <span className="me-2 text-slate-400">{row.info?.roll}</span>
                         {row.info?.name}
                         {row.className && (
-                          <span className="ml-2 text-xs text-slate-400">({row.className})</span>
+                          <span className="ms-2 text-xs text-slate-400">({row.className})</span>
                         )}
                       </span>
                       <span className="shrink-0 font-semibold text-red-700 dark:text-red-400">

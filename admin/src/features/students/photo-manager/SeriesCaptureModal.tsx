@@ -333,7 +333,7 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
                             title={`${p.name} - আবার তুলতে ক্লিক করুন`}
                           >
                             <img src={s.url} alt="" className="h-full w-full object-cover" />
-                            <span className="absolute bottom-0.5 right-0.5">
+                            <span className="absolute bottom-0.5 end-0.5">
                               {s.status === "saving" ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-white drop-shadow" />
                               ) : s.status === "saved" ? (

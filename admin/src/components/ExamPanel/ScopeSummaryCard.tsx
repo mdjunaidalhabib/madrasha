@@ -175,7 +175,7 @@ export default function ScopeSummaryCard({
                 <button
                   type="button"
                   onClick={startEdit}
-                  className={`${iconBtn} ml-auto border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100`}
+                  className={`${iconBtn} ms-auto border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100`}
                   aria-label="ফেল মার্ক পরিবর্তন করুন"
                   title="ফেল মার্ক পরিবর্তন করুন"
                 >

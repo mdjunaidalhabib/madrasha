@@ -614,7 +614,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         </button>
 
         {marginPanelOpen && (
-          <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <div className="absolute end-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-700">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 পেজ মার্জিন (mm)
@@ -657,7 +657,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
                     >
                       +
                     </button>
-                    <span className="w-5 text-left text-[10px] text-slate-400 dark:text-slate-500">
+                    <span className="w-5 text-start text-[10px] text-slate-400 dark:text-slate-500">
                       mm
                     </span>
                   </div>
@@ -746,7 +746,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           {printOptions}
           {setupExtras}
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto lg:ml-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto lg:ms-auto">
           {summary}
           <div className="flex w-full items-center gap-1.5 sm:w-auto">{exportButtons}</div>
         </div>

@@ -47,7 +47,7 @@ const FONT_OPTIONS: { value: string; label: string }[] = [
 ];
 
 /**
- * The right-hand designer panel: geometry (x/y/w/h/rotation) always shown,
+ * The end-hand designer panel: geometry (x/y/w/h/rotation) always shown,
  * plus a per-LayerType content editor (text/template with a field-binding
  * picker; image-like layers get a static-src field or a field binding;
  * qrcode gets a field binding; shape gets fill/stroke).

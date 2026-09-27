@@ -442,14 +442,14 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
           <div className="relative sm:w-64">
             <Search
               size={14}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+              className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
             />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="নাম বা রোল দিয়ে খুঁজুন"
-              className={`${inputCls} pl-8`}
+              className={`${inputCls} ps-8`}
             />
           </div>
         </div>
@@ -457,7 +457,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         <div className="max-h-[42vh] overflow-auto rounded-lg border border-gray-200 dark:border-slate-700">
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-slate-800">
-              <tr className="text-left text-xs font-semibold text-gray-600 dark:text-slate-300">
+              <tr className="text-start text-xs font-semibold text-gray-600 dark:text-slate-300">
                 <th className="w-10 px-3 py-2.5">
                   <input
                     ref={selectAllRef}
@@ -472,7 +472,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                 </th>
                 <th className="w-16 px-2 py-2.5">রোল</th>
                 <th className="px-2 py-2.5">নাম</th>
-                <th className="px-3 py-2.5 text-right">বাকি</th>
+                <th className="px-3 py-2.5 text-end">বাকি</th>
               </tr>
             </thead>
             <tbody>
@@ -519,7 +519,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                         )}
                       </td>
                       <td
-                        className={`px-3 py-2 text-right font-semibold tabular-nums ${
+                        className={`px-3 py-2 text-end font-semibold tabular-nums ${
                           checked ? "text-gray-900 dark:text-slate-100" : "text-gray-400 dark:text-slate-500"
                         }`}
                       >

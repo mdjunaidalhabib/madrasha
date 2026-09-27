@@ -31,7 +31,7 @@ export default function BookList({
           কোনো বই পাওয়া যায়নি
         </p>
       ) : (
-        <div className="flex max-h-64 flex-wrap content-start gap-2 overflow-y-auto pr-1">
+        <div className="flex max-h-64 flex-wrap content-start gap-2 overflow-y-auto pe-1">
           {books.map((b: any) => {
             const active = selectedBooks.includes(b.book_id);
 
@@ -41,7 +41,7 @@ export default function BookList({
                 key={b.book_id}
                 onClick={() => toggleBook(b.book_id)}
                 title={b.book_name_bn}
-                className={`group relative flex w-auto shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition
+                className={`group relative flex w-auto shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-start text-sm transition
                   ${
                     active
                       ? "border-blue-600 bg-blue-600 text-white shadow-sm"

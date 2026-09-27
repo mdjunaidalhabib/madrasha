@@ -36,16 +36,16 @@ export type LetterDocumentProps = {
   bare?: boolean;
   /** With `bare`: still show the madrasa logo/name/address + underline on the first page (where the page itself doesn't render the brand header). */
   letterhead?: boolean;
-  /** Rendered above the heading, on the record's first physical page only (e.g. a right-aligned date). */
+  /** Rendered above the heading, on the record's first physical page only (e.g. a end-aligned date). */
   beforeHeading?: ReactNode;
 };
 
 const ArchCorners = () => (
   <>
-    <span className="pointer-events-none absolute left-3 top-3 h-6 w-6 border-l-2 border-t-2 border-[#cdb96f]" />
-    <span className="pointer-events-none absolute right-3 top-3 h-6 w-6 border-r-2 border-t-2 border-[#cdb96f]" />
-    <span className="pointer-events-none absolute bottom-3 left-3 h-6 w-6 border-b-2 border-l-2 border-[#cdb96f]" />
-    <span className="pointer-events-none absolute bottom-3 right-3 h-6 w-6 border-b-2 border-r-2 border-[#cdb96f]" />
+    <span className="pointer-events-none absolute start-3 top-3 h-6 w-6 border-s-2 border-t-2 border-[#cdb96f]" />
+    <span className="pointer-events-none absolute end-3 top-3 h-6 w-6 border-e-2 border-t-2 border-[#cdb96f]" />
+    <span className="pointer-events-none absolute bottom-3 start-3 h-6 w-6 border-b-2 border-s-2 border-[#cdb96f]" />
+    <span className="pointer-events-none absolute bottom-3 end-3 h-6 w-6 border-b-2 border-e-2 border-[#cdb96f]" />
   </>
 );
 

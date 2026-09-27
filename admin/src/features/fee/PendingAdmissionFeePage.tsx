@@ -303,7 +303,7 @@ const PendingAdmissionFeePage = () => {
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
               ভর্তি ফি পেন্ডিং
               {rows.length > 0 && (
-                <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+                <span className="ms-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                   {rows.length}
                 </span>
               )}
@@ -389,11 +389,11 @@ const PendingAdmissionFeePage = () => {
                       <button
                         type="button"
                         onClick={() => navigate(studentPath({ id: row.studentId, registrationNo: row.student?.registrationNo }, "/edit"))}
-                        className="min-w-0 text-left"
+                        className="min-w-0 text-start"
                       >
                         <div className="truncate font-medium text-gray-800 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400">
                           {row.student?.nameBn || `ছাত্র #${row.studentId}`}
-                          <span className="ml-1.5 font-normal text-gray-500 dark:text-slate-400">
+                          <span className="ms-1.5 font-normal text-gray-500 dark:text-slate-400">
                             (রোল {row.student?.roll ?? "-"} · রেজি. নং {row.student?.registrationNo ?? "-"}
                             {row.student?.classRef?.nameBn ? ` · ${row.student.classRef.nameBn}` : ""})
                           </span>

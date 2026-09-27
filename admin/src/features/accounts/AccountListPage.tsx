@@ -261,7 +261,7 @@ export default function AccountListPage() {
           <FieldLabel>শেষ তারিখ</FieldLabel>
           <Input type="date" className="h-10 w-40" value={to} onChange={(e) => handleToChange(e.target.value)} />
         </div>
-        <div className="ml-auto flex flex-wrap gap-3 text-sm">
+        <div className="ms-auto flex flex-wrap gap-3 text-sm">
           <span className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
             মোট আয়: {money(totals.income)}
           </span>
@@ -306,7 +306,7 @@ export default function AccountListPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[950px] text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <thead className="bg-slate-50 text-start text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="w-10 px-4 py-3">
                     <input
@@ -323,7 +323,7 @@ export default function AccountListPage() {
                   <th className="px-4 py-3">নাম</th>
                   <th className="px-4 py-3">পরিমাণ</th>
                   <th className="px-4 py-3">মাধ্যম</th>
-                  <th className="px-4 py-3 text-right">অ্যাকশন</th>
+                  <th className="px-4 py-3 text-end">অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody>

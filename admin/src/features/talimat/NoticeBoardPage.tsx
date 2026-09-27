@@ -176,7 +176,7 @@ export default function NoticeBoardPage() {
         subtitle="দেয়ালে টানানোর জন্য একাধিক নোটিশ লিখে সেভ করুন — দরকারমতো যেকোনোটি বেছে প্রিন্ট করুন"
         actions={
           <Button onClick={openNewEditor}>
-            <Plus size={16} className="mr-1 inline" /> নতুন নোটিশ
+            <Plus size={16} className="me-1 inline" /> নতুন নোটিশ
           </Button>
         }
       />
@@ -220,17 +220,17 @@ export default function NoticeBoardPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => setPrintingNotice(notice)}>
-                  <Printer size={14} className="mr-1 inline" /> প্রিভিউ / প্রিন্ট
+                  <Printer size={14} className="me-1 inline" /> প্রিভিউ / প্রিন্ট
                 </Button>
                 <Button variant="secondary" onClick={() => openEditEditor(notice)}>
-                  <Pencil size={14} className="mr-1 inline" /> এডিট
+                  <Pencil size={14} className="me-1 inline" /> এডিট
                 </Button>
                 <Button
                   variant="danger"
                   disabled={deletingId === notice.id}
                   onClick={() => handleDelete(notice)}
                 >
-                  <Trash2 size={14} className="mr-1 inline" />
+                  <Trash2 size={14} className="me-1 inline" />
                   {deletingId === notice.id ? "মুছা হচ্ছে..." : "মুছুন"}
                 </Button>
               </div>
@@ -275,7 +275,7 @@ export default function NoticeBoardPage() {
 
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={closeEditor} disabled={saving}>
-                  <X size={14} className="mr-1 inline" /> বাতিল
+                  <X size={14} className="me-1 inline" /> বাতিল
                 </Button>
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
@@ -312,7 +312,7 @@ export default function NoticeBoardPage() {
                 বন্ধ করুন
               </Button>
               <Button onClick={printNotice}>
-                <Printer size={16} className="mr-1 inline" /> প্রিন্ট করুন
+                <Printer size={16} className="me-1 inline" /> প্রিন্ট করুন
               </Button>
             </div>
           </>

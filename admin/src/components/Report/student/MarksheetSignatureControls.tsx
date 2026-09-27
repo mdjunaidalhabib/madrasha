@@ -218,7 +218,7 @@ export const MarksheetSettingsPanel = ({ onClose }: { onClose: () => void }) => 
     <aside
       role="dialog"
       aria-label="মার্কশিট সেটিং"
-      className="no-print animate-sideDrawer fixed inset-y-0 right-0 z-40 flex w-[min(88vw,340px)] flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:inset-y-auto lg:right-auto lg:top-3 lg:z-auto lg:m-3 lg:ml-0 lg:max-h-[calc(100vh-1.5rem)] lg:w-[320px] lg:shrink-0 lg:animate-none lg:rounded-xl lg:border lg:shadow-sm"
+      className="no-print animate-sideDrawer fixed inset-y-0 end-0 z-40 flex w-[min(88vw,340px)] flex-col overflow-hidden border-s border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:inset-y-auto lg:end-auto lg:top-3 lg:z-auto lg:m-3 lg:ms-0 lg:max-h-[calc(100vh-1.5rem)] lg:w-[320px] lg:shrink-0 lg:animate-none lg:rounded-xl lg:border lg:shadow-sm"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">মার্কশিট সেটিং</h3>

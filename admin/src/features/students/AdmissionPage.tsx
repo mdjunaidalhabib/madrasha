@@ -717,7 +717,7 @@ const AdmissionPage = () => {
         <button
           type="button"
           onClick={() => setBulkModalOpen(true)}
-          className="self-end sm:self-auto sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap"
+          className="self-end sm:self-auto sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap"
         >
           Bulk Upload
         </button>

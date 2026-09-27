@@ -192,11 +192,11 @@ export default function ResultCorrectionsPanel({
           <table className="w-full min-w-[720px] border text-xs sm:text-sm dark:border-slate-800">
             <thead className="bg-gray-100 dark:bg-slate-800">
               <tr>
-                <th className="border px-2 py-2 text-left dark:border-slate-800">শিক্ষার্থী</th>
-                <th className="border px-2 py-2 text-left dark:border-slate-800">বিষয়</th>
-                <th className="border px-2 py-2 text-left dark:border-slate-800">ক্ষেত্র</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">শিক্ষার্থী</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">বিষয়</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">ক্ষেত্র</th>
                 <th className="border px-2 py-2 text-center dark:border-slate-800">আগে → নতুন</th>
-                <th className="border px-2 py-2 text-left dark:border-slate-800">কারণ</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">কারণ</th>
                 <th className="border px-2 py-2 text-center dark:border-slate-800">অবস্থা</th>
                 {canDecide && <th className="border px-2 py-2 text-center dark:border-slate-800">কার্যক্রম</th>}
               </tr>

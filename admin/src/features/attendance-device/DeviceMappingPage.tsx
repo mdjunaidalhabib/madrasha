@@ -188,7 +188,7 @@ export default function DeviceMappingPage() {
             <div className="relative flex-1">
               <Search
                 size={15}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <Input
                 value={searchInput}
@@ -197,7 +197,7 @@ export default function DeviceMappingPage() {
                   setPage(1);
                 }}
                 placeholder="নাম, রোল বা আইডি দিয়ে খুঁজুন"
-                className="pl-9"
+                className="ps-9"
               />
             </div>
             <select
@@ -236,9 +236,9 @@ export default function DeviceMappingPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                      <th className="py-2 pr-3 font-medium">শিক্ষার্থী</th>
-                      <th className="py-2 pr-3 font-medium">শ্রেণি</th>
+                    <tr className="border-b border-slate-200 text-start text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      <th className="py-2 pe-3 font-medium">শিক্ষার্থী</th>
+                      <th className="py-2 pe-3 font-medium">শ্রেণি</th>
                       <th className="py-2 font-medium">K40 ইউজার আইডি</th>
                     </tr>
                   </thead>
@@ -253,7 +253,7 @@ export default function DeviceMappingPage() {
                           key={row.student_id}
                           className="border-b border-slate-100 align-top last:border-0 dark:border-slate-800"
                         >
-                          <td className="py-2.5 pr-3">
+                          <td className="py-2.5 pe-3">
                             <div className="font-medium text-slate-900 dark:text-slate-100">
                               {row.name_bn}
                             </div>
@@ -262,7 +262,7 @@ export default function DeviceMappingPage() {
                               {row.roll != null && row.roll !== "" && ` · রোল: ${row.roll}`}
                             </div>
                           </td>
-                          <td className="py-2.5 pr-3 text-slate-700 dark:text-slate-300">
+                          <td className="py-2.5 pe-3 text-slate-700 dark:text-slate-300">
                             {row.class_name || "—"}
                           </td>
                           <td className="py-2.5">
@@ -491,7 +491,7 @@ function AssignModal({
         <div className="relative">
           <Search
             size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <Input
             value={query}
@@ -501,7 +501,7 @@ function AssignModal({
               setError("");
             }}
             placeholder="শিক্ষার্থীর নাম, রোল বা আইডি"
-            className="pl-9"
+            className="ps-9"
             autoFocus
           />
         </div>
@@ -525,7 +525,7 @@ function AssignModal({
                     setSelected(s);
                     setError("");
                   }}
-                  className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 dark:border-slate-800 ${
+                  className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-start text-sm last:border-0 dark:border-slate-800 ${
                     active
                       ? "bg-indigo-50 dark:bg-indigo-950/40"
                       : "hover:bg-slate-50 dark:hover:bg-slate-800"

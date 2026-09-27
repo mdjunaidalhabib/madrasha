@@ -166,7 +166,7 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
                 type="button"
                 onClick={() => setTab(t.key)}
                 aria-pressed={tab === t.key}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-start transition ${
                   tab === t.key
                     ? t.active
                     : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60"
@@ -197,13 +197,13 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
 
           <div className="flex flex-wrap gap-2 px-5 py-3">
             <div className="relative min-w-[10rem] flex-1">
-              <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="নাম বা রোল খুঁজুন"
-                className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-2.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-200 bg-white ps-8 pe-2.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
             <select
@@ -230,10 +230,10 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="w-16 px-5 py-2 text-left font-semibold">রোল</th>
-                    <th className="px-2 py-2 text-left font-semibold">নাম</th>
-                    <th className="px-2 py-2 text-left font-semibold">শ্রেণি</th>
-                    <th className="px-5 py-2 text-right font-semibold">{tab === "unpaid" ? "বাকি" : "পরিশোধ"}</th>
+                    <th className="w-16 px-5 py-2 text-start font-semibold">রোল</th>
+                    <th className="px-2 py-2 text-start font-semibold">নাম</th>
+                    <th className="px-2 py-2 text-start font-semibold">শ্রেণি</th>
+                    <th className="px-5 py-2 text-end font-semibold">{tab === "unpaid" ? "বাকি" : "পরিশোধ"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -245,13 +245,13 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
                       <td className="px-2 py-2 font-medium text-slate-800 dark:text-slate-100">{r.name_bn}</td>
                       <td className="px-2 py-2 text-slate-600 dark:text-slate-300">{r.class_name}</td>
                       <td
-                        className={`px-5 py-2 text-right font-semibold tabular-nums ${
+                        className={`px-5 py-2 text-end font-semibold tabular-nums ${
                           tab === "unpaid" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                         }`}
                       >
                         ৳{bn(tab === "unpaid" ? r.due : r.paid)}
                         {tab === "unpaid" && r.paid > 0 && (
-                          <span className="ml-1 text-[11px] font-normal text-slate-400">(আংশিক)</span>
+                          <span className="ms-1 text-[11px] font-normal text-slate-400">(আংশিক)</span>
                         )}
                       </td>
                     </tr>

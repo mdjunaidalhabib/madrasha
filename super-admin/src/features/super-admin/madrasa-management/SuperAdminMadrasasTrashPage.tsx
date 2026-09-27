@@ -202,10 +202,10 @@ export default function SuperAdminMadrasasTrashPage() {
                     aria-label="Select all"
                   />
                 </th>
-                <th className="text-left p-2 dark:text-slate-200">Name</th>
-                <th className="text-left p-2 dark:text-slate-200">Slug</th>
-                <th className="text-left p-2 dark:text-slate-200">Deleted At</th>
-                <th className="text-left p-2 dark:text-slate-200">Actions</th>
+                <th className="text-start p-2 dark:text-slate-200">Name</th>
+                <th className="text-start p-2 dark:text-slate-200">Slug</th>
+                <th className="text-start p-2 dark:text-slate-200">Deleted At</th>
+                <th className="text-start p-2 dark:text-slate-200">Actions</th>
               </tr>
             </thead>
 

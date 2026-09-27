@@ -9,6 +9,10 @@ model Division {
   keyName   String?  @unique @map("key_name") @db.VarChar(50)
   name      String?  @db.VarChar(100)
   nameBn    String?  @map("name_bn") @db.VarChar(100)
+  /// Which institution type this catalogue division belongs to - super admin
+  /// only offers a new madrasa/school/college the divisions (and so classes/
+  /// books) of its own type.
+  institutionType InstitutionType @default(MADRASA) @map("institution_type")
   /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
   /// from MadrasaDivision.sortOrder, which is each tenant's own re-ordering
   /// of their activated subset.

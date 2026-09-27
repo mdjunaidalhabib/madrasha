@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
+import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
 import { useAdminAuthStore } from "../store/adminAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
@@ -6,6 +7,7 @@ import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 
 const baseURL = API_BASE_URL;
 const adminApi = axios.create({ baseURL });
+attachLanguageHeader(adminApi);
 
 const GET_CACHE_TTL_MS = 20_000;
 const GET_CACHE_MAX_ENTRIES = 60;

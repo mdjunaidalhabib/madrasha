@@ -1,6 +1,8 @@
 export interface CreateDivisionRequestDto {
   name?: string;
   name_bn: string;
+  /** MADRASA (default) | SCHOOL | COLLEGE | KINDERGARTEN. */
+  institution_type?: string;
 }
 
 export type UpdateDivisionRequestDto = CreateDivisionRequestDto;

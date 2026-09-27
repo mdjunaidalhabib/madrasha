@@ -261,11 +261,11 @@ export default function QmsLandingPage() {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl"
+          className="pointer-events-none absolute -end-40 -top-40 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"
+          className="pointer-events-none absolute -start-32 bottom-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"
         />
 
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-8 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-28">
@@ -344,7 +344,7 @@ export default function QmsLandingPage() {
                 ))}
               </div>
             </div>
-            <div className="absolute -bottom-5 -left-5 hidden rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl sm:block">
+            <div className="absolute -bottom-5 -start-5 hidden rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl sm:block">
               <p className="text-[11px] font-medium text-emerald-100">Result প্রস্তুত</p>
               <p className="text-sm font-bold">এক ক্লিকে রিপোর্ট</p>
             </div>
@@ -418,7 +418,7 @@ export default function QmsLandingPage() {
       <section id="why" className="relative overflow-hidden bg-[#0b1220] py-20">
         <div
           aria-hidden
-          className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl"
+          className="pointer-events-none absolute end-0 top-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl"
         />
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
@@ -557,7 +557,7 @@ export default function QmsLandingPage() {
                 key={s.title}
                 className="relative rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
               >
-                <span className="absolute right-4 top-4 text-2xl font-extrabold text-slate-100">
+                <span className="absolute end-4 top-4 text-2xl font-extrabold text-slate-100">
                   {i + 1}
                 </span>
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">

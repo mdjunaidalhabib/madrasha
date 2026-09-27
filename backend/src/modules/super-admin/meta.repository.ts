@@ -1,9 +1,10 @@
+import type { InstitutionType } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 
 export class MetaRepository {
   findDivisions() {
     return prisma.division.findMany({
-      select: { id: true, keyName: true, name: true, nameBn: true },
+      select: { id: true, keyName: true, name: true, nameBn: true, institutionType: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -16,12 +17,12 @@ export class MetaRepository {
     return prisma.division.aggregate({ _max: { sortOrder: true } });
   }
 
-  createDivision(data: { name: string | null; nameBn: string; sortOrder: number }) {
+  createDivision(data: { name: string | null; nameBn: string; sortOrder: number; institutionType: InstitutionType }) {
     return prisma.division.create({ data });
   }
 
-  updateDivision(id: number, nameBn: string) {
-    return prisma.division.update({ where: { id }, data: { nameBn } });
+  updateDivision(id: number, nameBn: string, institutionType?: InstitutionType) {
+    return prisma.division.update({ where: { id }, data: { nameBn, ...(institutionType ? { institutionType } : {}) } });
   }
 
   deleteDivision(id: number) {

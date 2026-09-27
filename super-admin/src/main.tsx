@@ -7,9 +7,13 @@ import ConfirmDialog from "@madrasha/shared-ui/src/components/ui/ConfirmDialog";
 import ErrorBoundary from "@madrasha/shared-ui/src/components/ui/ErrorBoundary";
 import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/chunkReload";
 import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
+import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
+// Super admin manages every institution type - its own panel is bilingual
+// (bn/en), Bangla by default.
+useLanguageStore.getState().setInstitution({ type: "MADRASA", default_language: "bn", languages: ["bn", "en"] });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

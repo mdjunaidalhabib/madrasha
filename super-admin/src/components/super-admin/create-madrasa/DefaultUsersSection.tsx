@@ -100,14 +100,14 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
                 value={user.password}
                 disabled={!user.enabled}
                 onChange={(e) => updateUser(index, "password", e.target.value)}
-                className="w-full border rounded px-3 py-2 pr-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full border rounded px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
 
               <button
                 type="button"
                 onClick={() => toggleVisible(user.role)}
                 disabled={!user.enabled}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
+                className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
                 aria-label={visibleRoles[user.role] ? "Hide password" : "Show password"}
                 tabIndex={-1}
               >
@@ -145,7 +145,7 @@ function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
     >
       <div
         className={`bg-white w-4 h-4 rounded-full shadow transform transition ${
-          checked ? "translate-x-6" : ""
+          checked ? "translate-x-6 rtl:-translate-x-6" : ""
         }`}
       />
     </button>

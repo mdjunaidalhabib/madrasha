@@ -65,17 +65,17 @@ function PhotoCard({ person, status, canEdit, onFile, onCamera, onRemove }: Prop
         )}
 
         {status === "saved" && (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
+          <span className="absolute end-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
             <CheckCircle2 className="h-3 w-3" /> সংরক্ষিত
           </span>
         )}
         {status === "error" && (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
+          <span className="absolute end-2 top-2 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
             <AlertCircle className="h-3 w-3" /> ব্যর্থ
           </span>
         )}
         {!status && !photo && (
-          <span className="absolute left-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-800" />
+          <span className="absolute start-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-800" />
         )}
       </button>
 

@@ -4,6 +4,7 @@ import { generateToken } from "../../shared/utils/jwt.util";
 import { NotFoundError, BadRequestError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { env } from "../../shared/config/env";
+import { buildInstitutionInfo } from "../../shared/utils/institution.util";
 import { emailService } from "../../shared/notifications/email.service";
 import { authRepository, AuthRepository } from "./auth.repository";
 import {
@@ -101,6 +102,7 @@ export class AuthService {
       permissions,
       modules,
       madrasa_name: madrasa?.name || "",
+      institution: buildInstitutionInfo(madrasa),
     };
   }
 
@@ -347,9 +349,10 @@ export class AuthService {
     if (!user) throw new NotFoundError("User not found");
 
     const roleKey = normalizeRoleKey(user.role?.keyName || user.role?.nameBn);
-    const [permissions, modules] = await Promise.all([
+    const [permissions, modules, madrasa] = await Promise.all([
       this.resolvePermissions(user.roleId, roleKey),
       this.resolveEnabledModules(madrasaId),
+      this.repository.findMadrasaName(madrasaId),
     ]);
 
     return {
@@ -362,6 +365,7 @@ export class AuthService {
       role_label: user.role?.nameBn || "",
       permissions,
       modules,
+      institution: buildInstitutionInfo(madrasa),
     };
   }
 
