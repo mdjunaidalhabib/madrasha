@@ -195,7 +195,7 @@ export class StudentService {
     if (filters.sessionId !== undefined) where.sessionId = filters.sessionId;
     if (filters.gender !== undefined) where.gender = filters.gender;
 
-    const rows = await this.repository.findMany(where);
+    const rows = await this.repository.findMany(madrasaId, where);
 
     return rows.map(toStudentApiDto);
   }
@@ -994,7 +994,7 @@ export class StudentService {
     const classIds = classGroups
       .map((group) => group.classId)
       .filter((id): id is number => id !== null);
-    const classNames = classIds.length ? await this.repository.findClassNames(classIds) : [];
+    const classNames = classIds.length ? await this.repository.findClassNames(madrasaId, classIds) : [];
     const classNameById = new Map(classNames.map((c) => [c.id, c.nameBn]));
     const byClass = classGroups
       .map((group) => ({

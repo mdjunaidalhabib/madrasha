@@ -1139,7 +1139,7 @@ export class FeeService {
     if (!examId || !classId) throw new BadRequestError("পরীক্ষা ও শ্রেণি নির্বাচন করুন");
     const [exam, cls] = await Promise.all([
       this.repository.findExamForTenant(madrasaId, examId),
-      this.repository.findClassName(classId),
+      this.repository.findClassName(madrasaId, classId),
     ]);
     if (!exam) throw new NotFoundError("পরীক্ষাটি পাওয়া যায়নি");
     if (!cls) throw new NotFoundError("শ্রেণিটি পাওয়া যায়নি");

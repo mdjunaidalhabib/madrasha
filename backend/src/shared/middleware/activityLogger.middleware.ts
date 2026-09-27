@@ -3,6 +3,7 @@ import { logActivity } from "../utils/activity.util";
 import { logger } from "../logger/logger";
 import { prisma } from "../database/prisma";
 import { ActivitySnapshot, buildSnapshotDetails, findSnapshotLoader, studentHeadline } from "../utils/activityDetails";
+import { tenantClassNameSelect, tenantClassName } from "../utils/tenant-name.util";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -115,10 +116,10 @@ async function deriveStudentDetails(entityId: number, madrasaId: number): Promis
   try {
     const student = await prisma.student.findFirst({
       where: { id: entityId, madrasaId },
-      select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true, name: true } } },
+      select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: tenantClassNameSelect(madrasaId) } },
     });
     if (!student) return null;
-    return studentHeadline({ ...student, className: student.classRef.nameBn || student.classRef.name });
+    return studentHeadline({ ...student, className: tenantClassName(student.classRef) });
   } catch (error) {
     logger.error("Activity log student detail lookup failed", error);
     return null;

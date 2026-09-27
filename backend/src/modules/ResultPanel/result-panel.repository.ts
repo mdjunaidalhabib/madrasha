@@ -2,6 +2,7 @@ import { MarkComponentConfig, MarkComponentType, Prisma, ResultPublishStatus } f
 import { prisma } from "../../shared/database/prisma";
 import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
 import { ClassStatusRow, OverviewStatusRow } from "./result-panel.types";
+import { tenantClassNameSelect, withTenantClassName } from "../../shared/utils/tenant-name.util";
 
 export class ResultPanelRepository {
   findResultMaster(madrasaId: number, examId: number, classId: number) {
@@ -35,10 +36,12 @@ export class ResultPanelRepository {
    * {exam}/{class} placeholders - kept separate from findResultMasterById
    * (whose scalar-only select is reused in several places that don't need
    * these joins). */
-  findExamAndClassNames(examId: number, classId: number) {
+  findExamAndClassNames(madrasaId: number, examId: number, classId: number) {
     return Promise.all([
       prisma.exam.findUnique({ where: { id: examId }, select: { name: true } }),
-      prisma.class.findUnique({ where: { id: classId }, select: { nameBn: true, name: true } }),
+      prisma.class
+        .findUnique({ where: { id: classId }, select: tenantClassNameSelect(madrasaId) })
+        .then(withTenantClassName),
     ]);
   }
 
@@ -646,8 +649,8 @@ export class ResultPanelRepository {
    * (PROCESSING and later) - the only ones with a summary that config
    * changes can make stale - with exam/class labels for the recalculation
    * review screen. */
-  findProcessedMasters(madrasaId: number, resultMasterId?: number) {
-    return prisma.resultMaster.findMany({
+  async findProcessedMasters(madrasaId: number, resultMasterId?: number) {
+    const rows = await prisma.resultMaster.findMany({
       where: {
         madrasaId,
         deletedAt: null,
@@ -660,10 +663,11 @@ export class ResultPanelRepository {
         classId: true,
         status: true,
         exam: { select: { name: true } },
-        class: { select: { nameBn: true, name: true } },
+        class: { select: tenantClassNameSelect(madrasaId) },
       },
       orderBy: { id: "asc" },
     });
+    return rows.map((r) => ({ ...r, class: withTenantClassName(r.class) }));
   }
 
   /** Atomically swaps in a recalculated summary and applies `masterData`
@@ -704,7 +708,7 @@ export class ResultPanelRepository {
     return prisma.$queryRaw<ClassStatusRow[]>`
       SELECT
         c.id AS class_id,
-        c.name_bn AS class_name_bn,
+        COALESCE(mc.name_bn, c.name_bn) AS class_name_bn,
         rm.id AS result_master_id,
         rm.status AS publish_status,
         (SELECT COUNT(*) FROM students st
@@ -727,7 +731,7 @@ export class ResultPanelRepository {
   findActiveDivisions(madrasaId: number) {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { division: { select: { id: true, nameBn: true } } },
+      select: { nameBn: true, division: { select: { id: true, nameBn: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -743,7 +747,7 @@ export class ResultPanelRepository {
   findActiveClasses(madrasaId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { class: { select: { id: true, nameBn: true, divisionId: true } } },
+      select: { nameBn: true, class: { select: { id: true, nameBn: true, name: true, divisionId: true } } },
       // Per-division serial; the grid groups these under findActiveDivisions'
       // (already serial-ordered) divisions.
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -898,7 +902,7 @@ export class ResultPanelRepository {
             nameBn: true,
             roll: true,
             classId: true,
-            classRef: { select: { nameBn: true, sortOrder: true } },
+            classRef: { select: { ...tenantClassNameSelect(madrasaId), sortOrder: true } },
           },
         },
       },
@@ -925,8 +929,8 @@ export class ResultPanelRepository {
    * (draft and published) for this tenant, newest exam first - powers
    * Student 360's academic tab (admin view; guardians only ever see
    * PUBLISHED rows via GuardianRepository.findPublishedResultsForStudent). */
-  findByStudent(madrasaId: number, studentId: number) {
-    return prisma.resultSummary.findMany({
+  async findByStudent(madrasaId: number, studentId: number) {
+    const rows = await prisma.resultSummary.findMany({
       where: {
         studentId,
         resultMaster: { madrasaId, deletedAt: null },
@@ -937,12 +941,16 @@ export class ResultPanelRepository {
             status: true,
             examId: true,
             exam: { select: { name: true } },
-            class: { select: { nameBn: true, name: true } },
+            class: { select: tenantClassNameSelect(madrasaId) },
           },
         },
       },
       orderBy: { resultMaster: { createdAt: "desc" } },
     });
+    return rows.map((r) => ({
+      ...r,
+      resultMaster: { ...r.resultMaster, class: withTenantClassName(r.resultMaster.class) },
+    }));
   }
 
   /** Every active subject assigned to a class, regardless of whether any

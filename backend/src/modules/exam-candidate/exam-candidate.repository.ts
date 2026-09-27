@@ -1,8 +1,10 @@
 import { Prisma, ExamCandidateStatus, EligibilityStatus } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { tenantClassNameSelect, tenantDivisionNameSelect, withTenantClassName, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
 
-const candidateListInclude = {
+const candidateListInclude = (madrasaId: number) =>
+  ({
   student: {
     select: {
       id: true,
@@ -15,9 +17,19 @@ const candidateListInclude = {
       admissionStatus: true,
     },
   },
-  class: { select: { id: true, name: true, nameBn: true } },
-  division: { select: { id: true, name: true, nameBn: true } },
-} satisfies Prisma.ExamCandidateInclude;
+  class: { select: { id: true, ...tenantClassNameSelect(madrasaId) } },
+  division: { select: { id: true, ...tenantDivisionNameSelect(madrasaId) } },
+}) satisfies Prisma.ExamCandidateInclude;
+
+/** Candidate row with class/division names resolved to this madrasa's own. */
+const withTenantNames = <
+  T extends {
+    class: Parameters<typeof withTenantClassName>[0] & { id: number; name: string | null };
+    division: Parameters<typeof withTenantDivisionName>[0] & { id: number; name: string | null };
+  },
+>(
+  row: T,
+) => ({ ...row, class: withTenantClassName(row.class), division: withTenantDivisionName(row.division) });
 
 export class ExamCandidateRepository {
   findExam(madrasaId: number, examId: number) {
@@ -76,7 +88,7 @@ export class ExamCandidateRepository {
     const [rows, total] = await Promise.all([
       prisma.examCandidate.findMany({
         where,
-        include: candidateListInclude,
+        include: candidateListInclude(madrasaId),
         orderBy: [{ id: "desc" }],
         skip: pagination.skip,
         take: pagination.take,
@@ -84,21 +96,23 @@ export class ExamCandidateRepository {
       prisma.examCandidate.count({ where }),
     ]);
 
-    return { rows, total };
+    return { rows: rows.map(withTenantNames), total };
   }
 
-  findCandidateById(madrasaId: number, id: number) {
-    return prisma.examCandidate.findFirst({
+  async findCandidateById(madrasaId: number, id: number) {
+    const row = await prisma.examCandidate.findFirst({
       where: { id, madrasaId },
-      include: candidateListInclude,
+      include: candidateListInclude(madrasaId),
     });
+    return row ? withTenantNames(row) : null;
   }
 
-  findCandidateByIds(madrasaId: number, ids: number[]) {
-    return prisma.examCandidate.findMany({
+  async findCandidateByIds(madrasaId: number, ids: number[]) {
+    const rows = await prisma.examCandidate.findMany({
       where: { id: { in: ids }, madrasaId },
-      include: candidateListInclude,
+      include: candidateListInclude(madrasaId),
     });
+    return rows.map(withTenantNames);
   }
 
   findCandidateByExamStudent(madrasaId: number, examId: number, studentId: number) {

@@ -326,8 +326,11 @@ export class SuperAdminRepository {
     });
   }
 
+  /** Catalogue classes only - a madrasa's own (ownerMadrasaId) classes are
+   * never linked into another madrasa. */
   findAllClassIdsOnTx(tx: TransactionClient) {
     return tx.class.findMany({
+      where: { ownerMadrasaId: null },
       select: { id: true, divisionId: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
@@ -344,19 +347,30 @@ export class SuperAdminRepository {
     return tx.madrasaClass.createMany({ data: rows, skipDuplicates: true });
   }
 
+  /** Catalogue links only: the madrasa's own classes are its own business,
+   * and a private class of another madrasa must never be switched on here. */
   deactivateAllMadrasaClassesOnTx(tx: TransactionClient, madrasaId: number) {
-    return tx.madrasaClass.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
+    return tx.madrasaClass.updateMany({
+      where: { madrasaId, class: { ownerMadrasaId: null } },
+      data: { isActive: 0 },
+    });
   }
 
   activateMadrasaClassesOnTx(tx: TransactionClient, madrasaId: number, classIds: number[]) {
     return tx.madrasaClass.updateMany({
-      where: classIds.length ? { madrasaId, classId: { in: classIds } } : { madrasaId },
+      where: {
+        madrasaId,
+        class: { ownerMadrasaId: null },
+        ...(classIds.length ? { classId: { in: classIds } } : {}),
+      },
       data: { isActive: 1 },
     });
   }
 
+  /** Catalogue books only - see findAllClassIdsOnTx. */
   findAllBookIdsOnTx(tx: TransactionClient) {
     return tx.book.findMany({
+      where: { ownerMadrasaId: null, class: { ownerMadrasaId: null } },
       select: {
         id: true,
         classId: true,
@@ -378,13 +392,21 @@ export class SuperAdminRepository {
     return tx.madrasaBook.createMany({ data: rows, skipDuplicates: true });
   }
 
+  /** Catalogue links only - see deactivateAllMadrasaClassesOnTx. */
   deactivateAllMadrasaBooksOnTx(tx: TransactionClient, madrasaId: number) {
-    return tx.madrasaBook.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
+    return tx.madrasaBook.updateMany({
+      where: { madrasaId, book: { ownerMadrasaId: null } },
+      data: { isActive: 0 },
+    });
   }
 
   activateMadrasaBooksOnTx(tx: TransactionClient, madrasaId: number, bookIds: number[]) {
     return tx.madrasaBook.updateMany({
-      where: bookIds.length ? { madrasaId, bookId: { in: bookIds } } : { madrasaId },
+      where: {
+        madrasaId,
+        book: { ownerMadrasaId: null },
+        ...(bookIds.length ? { bookId: { in: bookIds } } : {}),
+      },
       data: { isActive: 1 },
     });
   }
@@ -395,7 +417,7 @@ export class SuperAdminRepository {
    * schedule follows the same order admins see in তালিমাত সেটিংস. */
   findBooksForRoutineSeedOnTx(tx: TransactionClient, bookIds: number[]) {
     return tx.book.findMany({
-      where: { id: { in: bookIds } },
+      where: { id: { in: bookIds }, ownerMadrasaId: null },
       select: { id: true, classId: true, name: true, nameBn: true, class: { select: { divisionId: true } } },
       orderBy: [{ classId: "asc" }, { sortOrder: "asc" }],
     });

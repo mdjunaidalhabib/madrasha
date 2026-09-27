@@ -34,6 +34,7 @@ import {
   localTimeString,
   parseIsoWithOffset,
 } from "./time.util";
+import { tenantClassName } from "../../shared/utils/tenant-name.util";
 
 export const isEligibleStudent = (s: Pick<ResolvedStudentRow, "isActive" | "deletedAt" | "admissionStatus">) =>
   s.isActive === 1 && s.deletedAt === null && s.admissionStatus === "APPROVED";
@@ -485,7 +486,7 @@ export class AttendanceDeviceIngestService {
 
       const message = renderTemplate(ctx.template, {
         name: student.nameBn,
-        class: student.classRef?.nameBn || student.classRef?.name || "",
+        class: tenantClassName(student.classRef) || "",
         roll: student.roll ?? "",
         time: localTimeString(punchedAt, this.tz),
         date: displayDate(date),

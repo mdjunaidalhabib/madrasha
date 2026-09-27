@@ -56,6 +56,7 @@ import {
   MAX_ID_CARD_BACK_TITLE_LENGTH,
   MAX_ID_CARD_BACK_LOST_TEXT_LENGTH,
 } from "./settings.constants";
+import { linkName } from "../../shared/utils/tenant-name.util";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -418,12 +419,12 @@ export class SettingsService {
 
   async listDivisions(madrasaId: number) {
     const rows = await this.repository.findActiveDivisions(madrasaId);
-    return rows.map((r) => ({ id: r.division.id, name_bn: r.division.nameBn }));
+    return rows.map((r) => ({ id: r.division.id, name_bn: linkName(r, r.division) }));
   }
 
   async listClassesByDivision(madrasaId: number, divisionId: number) {
     const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
-    return rows.map((r) => ({ id: r.class.id, name_bn: r.class.nameBn }));
+    return rows.map((r) => ({ id: r.class.id, name_bn: linkName(r, r.class) }));
   }
 
   async getBranding(madrasaId: number): Promise<BrandingData> {

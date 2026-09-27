@@ -4,13 +4,14 @@ export class ClassPanelRepository {
   findActiveDivisions(madrasaId: number) {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { id: true, sortOrder: true, division: { select: { id: true, nameBn: true } } },
+      select: { id: true, sortOrder: true, nameBn: true, division: { select: { id: true, nameBn: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
-  updateDivision(id: number, nameBn: string) {
-    return prisma.division.update({ where: { id }, data: { nameBn } });
+  /** Renames only this madrasa's link row - Division is a shared catalogue. */
+  updateDivisionName(madrasaId: number, divisionId: number, nameBn: string) {
+    return prisma.madrasaDivision.updateMany({ where: { madrasaId, divisionId }, data: { nameBn } });
   }
 
   async reorderDivisions(madrasaId: number, orderedDivisionIds: number[]) {
@@ -27,7 +28,7 @@ export class ClassPanelRepository {
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, class: { divisionId } },
-      select: { id: true, sortOrder: true, class: { select: { id: true, nameBn: true, divisionId: true } } },
+      select: { id: true, sortOrder: true, nameBn: true, class: { select: { id: true, nameBn: true, name: true, divisionId: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -39,8 +40,10 @@ export class ClassPanelRepository {
     });
   }
 
-  createClass(nameBn: string, divisionId: number) {
-    return prisma.class.create({ data: { nameBn, divisionId, isActive: true } });
+  /** A madrasa's own class - owned by it, so the Super Admin catalogue and
+   * other madrasas never see it. */
+  createClass(madrasaId: number, nameBn: string, divisionId: number) {
+    return prisma.class.create({ data: { nameBn, divisionId, isActive: true, ownerMadrasaId: madrasaId } });
   }
 
   async linkClassToMadrasa(madrasaId: number, classId: number, divisionId: number) {
@@ -57,8 +60,9 @@ export class ClassPanelRepository {
     });
   }
 
-  updateClass(id: number, nameBn: string) {
-    return prisma.class.update({ where: { id }, data: { nameBn } });
+  /** Renames only this madrasa's link row - Class is a shared catalogue. */
+  updateClassName(madrasaId: number, classId: number, nameBn: string) {
+    return prisma.madrasaClass.updateMany({ where: { madrasaId, classId }, data: { nameBn } });
   }
 
   deactivateMadrasaClass(madrasaId: number, classId: number) {
@@ -98,7 +102,8 @@ export class ClassPanelRepository {
         regNoStart: true,
         regNoEnd: true,
         regNoLastIssued: true,
-        class: { select: { nameBn: true, divisionId: true } },
+        nameBn: true,
+        class: { select: { nameBn: true, name: true, divisionId: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
@@ -123,7 +128,7 @@ export class ClassPanelRepository {
         regNoStart: { not: null, lte: end },
         regNoEnd: { not: null, gte: start },
       },
-      select: { regNoStart: true, regNoEnd: true, class: { select: { nameBn: true } } },
+      select: { regNoStart: true, regNoEnd: true, nameBn: true, class: { select: { nameBn: true, name: true } } },
     });
   }
 
@@ -202,7 +207,7 @@ export class ClassPanelRepository {
         select: { sortOrder: true },
       });
 
-      const book = await tx.book.create({ data: { nameBn, classId } });
+      const book = await tx.book.create({ data: { nameBn, classId, ownerMadrasaId: madrasaId } });
       await tx.madrasaBook.create({
         data: { madrasaId, bookId: book.id, sortOrder: (lastSubject?.sortOrder ?? -1) + 1 },
       });
@@ -227,19 +232,17 @@ export class ClassPanelRepository {
         where: { madrasaId, bookId, isActive: 1 },
         select: {
           id: true,
-          book: { select: { id: true, classId: true, name: true, nameBn: true } },
+          book: { select: { id: true, classId: true, name: true, nameBn: true, ownerMadrasaId: true } },
         },
       });
 
       if (!link?.book) return null;
 
-      const tenantLinkCount = await tx.madrasaBook.count({ where: { bookId } });
-
-      // The seeded Book catalogue may be shared by several madrasas. A
-      // tenant editing a subject must not rename it for every other tenant,
-      // so shared subjects use copy-on-write and the current madrasa's
-      // dependent marks/teacher assignments are moved to the private copy.
-      if (tenantLinkCount > 1) {
+      // Only this madrasa's own book is renamed in place. A catalogue book
+      // (ownerMadrasaId null) is shared by every madrasa - even one linked
+      // nowhere else yet will be linked into the next madrasa created - so it
+      // is copy-on-write'd and this madrasa's dependent rows move to the copy.
+      if (link.book.ownerMadrasaId !== madrasaId) {
         const privateBook = await tx.book.create({
           data: {
             classId: link.book.classId,
@@ -248,6 +251,7 @@ export class ClassPanelRepository {
             // a shared seeded subject cannot collide with the original.
             name: null,
             nameBn,
+            ownerMadrasaId: madrasaId,
           },
         });
 
@@ -260,6 +264,18 @@ export class ClassPanelRepository {
           data: { bookId: privateBook.id },
         });
         await tx.teacherAssignment.updateMany({
+          where: { madrasaId, bookId },
+          data: { bookId: privateBook.id },
+        });
+        await tx.markSubmission.updateMany({
+          where: { madrasaId, bookId },
+          data: { bookId: privateBook.id },
+        });
+        await tx.markComponentConfig.updateMany({
+          where: { madrasaId, bookId },
+          data: { bookId: privateBook.id },
+        });
+        await tx.resultCorrection.updateMany({
           where: { madrasaId, bookId },
           data: { bookId: privateBook.id },
         });

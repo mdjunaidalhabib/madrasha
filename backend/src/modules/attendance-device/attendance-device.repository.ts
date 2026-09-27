@@ -1,22 +1,24 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { MAX_REPROCESS_LOGS, MAX_TODAY_LOGS } from "./attendance-device.constants";
+import { tenantClassNameSelect } from "../../shared/utils/tenant-name.util";
 
 export type Db = Prisma.TransactionClient;
 
 /** Student columns needed to decide eligibility + send the attendance SMS. */
-export const RESOLVE_STUDENT_SELECT = {
-  id: true,
-  nameBn: true,
-  classId: true,
-  guardianPhone: true,
-  roll: true,
-  classRef: { select: { nameBn: true, name: true } },
-  isActive: true,
-  deletedAt: true,
-  admissionStatus: true,
-} as const;
-export type ResolvedStudentRow = Prisma.StudentGetPayload<{ select: typeof RESOLVE_STUDENT_SELECT }>;
+export const resolveStudentSelect = (madrasaId: number) =>
+  ({
+    id: true,
+    nameBn: true,
+    classId: true,
+    guardianPhone: true,
+    roll: true,
+    classRef: { select: tenantClassNameSelect(madrasaId) },
+    isActive: true,
+    deletedAt: true,
+    admissionStatus: true,
+  }) satisfies Prisma.StudentSelect;
+export type ResolvedStudentRow = Prisma.StudentGetPayload<{ select: ReturnType<typeof resolveStudentSelect> }>;
 
 export class AttendanceDeviceRepository {
   /* ================= devices ================= */
@@ -55,14 +57,14 @@ export class AttendanceDeviceRepository {
   findMapsByDeviceUserIds(madrasaId: number, deviceUserIds: string[]) {
     return prisma.attendanceDeviceUserMap.findMany({
       where: { madrasaId, deviceUserId: { in: deviceUserIds } },
-      select: { deviceUserId: true, student: { select: RESOLVE_STUDENT_SELECT } },
+      select: { deviceUserId: true, student: { select: resolveStudentSelect(madrasaId) } },
     });
   }
 
   findStudentsByFingerprintIds(madrasaId: number, fingerprintIds: string[]) {
     return prisma.student.findMany({
       where: { madrasaId, fingerprintId: { in: fingerprintIds } },
-      select: { ...RESOLVE_STUDENT_SELECT, fingerprintId: true },
+      select: { ...resolveStudentSelect(madrasaId), fingerprintId: true },
     });
   }
 
@@ -130,7 +132,7 @@ export class AttendanceDeviceRepository {
   findStudentForMapping(madrasaId: number, studentId: number) {
     return prisma.student.findFirst({
       where: { id: studentId, madrasaId, deletedAt: null },
-      select: RESOLVE_STUDENT_SELECT,
+      select: resolveStudentSelect(madrasaId),
     });
   }
 
@@ -185,7 +187,7 @@ export class AttendanceDeviceRepository {
           nameBn: true,
           roll: true,
           classId: true,
-          classRef: { select: { nameBn: true, name: true } },
+          classRef: { select: tenantClassNameSelect(madrasaId) },
           attendanceDeviceMaps: { select: { deviceUserId: true }, take: 1 },
         },
         orderBy: [{ classId: "asc" }, { roll: "asc" }, { id: "asc" }],
@@ -247,7 +249,7 @@ export class AttendanceDeviceRepository {
         nameBn: true,
         roll: true,
         classId: true,
-        classRef: { select: { nameBn: true, name: true } },
+        classRef: { select: tenantClassNameSelect(madrasaId) },
       },
     });
   }

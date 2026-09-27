@@ -18,6 +18,7 @@ import {
   withoutFailGradeRows,
 } from "../ResultPanel/division-grading";
 import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK } from "./exam.constants";
+import { tenantDivisionName, linkName } from "../../shared/utils/tenant-name.util";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -113,7 +114,7 @@ export class ExamService {
           // বিভাগভিত্তিক scope: empty division_ids = সকল বিভাগ.
           all_divisions: divisions.length === 0,
           division_ids: divisions.map((d) => d.divisionId),
-          divisions: divisions.map((d) => ({ division_id: d.divisionId, division_name_bn: d.division.nameBn })),
+          divisions: divisions.map((d) => ({ division_id: d.divisionId, division_name_bn: tenantDivisionName(d.division) })),
         };
       });
     } catch (err) {
@@ -518,7 +519,7 @@ export class ExamService {
         global,
         divisions: divisions.map((row) => ({
           division_id: row.divisionId,
-          name: row.division.nameBn ?? row.division.name ?? "",
+          name: linkName(row, row.division) ?? "",
           fail_mark: row.failMark ?? null,
           has_custom_grades: withGrades.has(row.divisionId),
         })),

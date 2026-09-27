@@ -1,21 +1,24 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { tenantDivisionNameSelect, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
 
 export class TeacherRepository {
-  findMany(madrasaId: number) {
-    return prisma.teacher.findMany({
+  async findMany(madrasaId: number) {
+    const rows = await prisma.teacher.findMany({
       where: { madrasaId, deletedAt: null },
-      include: { divisionRef: { select: { nameBn: true } } },
+      include: { divisionRef: { select: tenantDivisionNameSelect(madrasaId) } },
       orderBy: [{ registrationNo: "asc" }, { id: "asc" }],
     });
+    return rows.map((r) => ({ ...r, divisionRef: withTenantDivisionName(r.divisionRef) }));
   }
 
-  findFirstForTenant(id: number, madrasaId: number) {
-    return prisma.teacher.findFirst({
+  async findFirstForTenant(id: number, madrasaId: number) {
+    const row = await prisma.teacher.findFirst({
       where: { id, madrasaId, deletedAt: null },
-      include: { divisionRef: { select: { nameBn: true } } },
+      include: { divisionRef: { select: tenantDivisionNameSelect(madrasaId) } },
     });
+    return row && { ...row, divisionRef: withTenantDivisionName(row.divisionRef) };
   }
 
   create(data: Prisma.TeacherUncheckedCreateInput) {

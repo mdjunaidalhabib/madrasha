@@ -16,6 +16,7 @@ import {
 import { GradeRow } from "./result-panel.types";
 import { ClassGradingConfig, MadrasaGradingConfig } from "./result-grading-config";
 import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
+import { linkName, tenantClassName } from "../../shared/utils/tenant-name.util";
 
 const toNumber = (value: any, fallback = 0) => {
   const n = Number(value);
@@ -1151,7 +1152,7 @@ export class ResultPanelService {
     const divisionRows = await this.repository.findActiveDivisions(madrasaId);
     const divisions = divisionRows.map((r) => ({
       division_id: r.division.id,
-      division_name_bn: r.division.nameBn,
+      division_name_bn: linkName(r, r.division),
     }));
 
     // division_ids: বিভাগভিত্তিক scope (empty = সকল বিভাগ) so the overview
@@ -1164,7 +1165,7 @@ export class ResultPanelService {
     const classRows = await this.repository.findActiveClasses(madrasaId);
     const classes = classRows.map((r) => ({
       class_id: r.class.id,
-      class_name_bn: r.class.nameBn,
+      class_name_bn: linkName(r, r.class),
       division_id: r.class.divisionId,
     }));
 
@@ -1329,7 +1330,7 @@ export class ResultPanelService {
         name_bn: inv.student.nameBn,
         roll: inv.student.roll,
         class_id: inv.student.classId,
-        class_name: inv.student.classRef?.nameBn || "",
+        class_name: tenantClassName(inv.student.classRef) || "",
         class_order: inv.student.classRef?.sortOrder ?? 0,
         amount: 0,
         paid: 0,
@@ -1470,7 +1471,7 @@ export class ResultPanelService {
     // ResultMaster status has already committed by this point.
     try {
       const [names, audience] = await Promise.all([
-        this.repository.findExamAndClassNames(master.examId, master.classId),
+        this.repository.findExamAndClassNames(madrasaId, master.examId, master.classId),
         notificationService.getAudienceResults(madrasaId, master.examId, master.classId),
       ]);
       const [exam, classRow] = names;

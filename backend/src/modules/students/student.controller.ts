@@ -201,7 +201,7 @@ export const updateStudentsBulk = async (req: Request, res: Response) => {
 
     // Self-logged (see SELF_LOGGED_ENTITY_PATHS) so the log lists who changed
     // and how, not just "students updated". Never fails the request.
-    describeStudentBulkUpdate(result)
+    describeStudentBulkUpdate(madrasaId ?? 0, result)
       .then((details) =>
         logActivity({
           madrasa_id: madrasaId ?? null,

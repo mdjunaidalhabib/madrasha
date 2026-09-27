@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { EXAM_FEE_CATEGORY_NAME } from "./fee.constants";
+import { linkName } from "../../shared/utils/tenant-name.util";
 
 /**
  * পরীক্ষার ফি (exam fee) data access - the per-exam, per-class FeeStructure
@@ -29,24 +30,24 @@ export class ExamFeeRepository {
     const [divisions, classes] = await Promise.all([
       prisma.madrasaDivision.findMany({
         where: { madrasaId, isActive: 1, deletedAt: null },
-        select: { divisionId: true, sortOrder: true, division: { select: { nameBn: true } } },
+        select: { divisionId: true, sortOrder: true, nameBn: true, division: { select: { nameBn: true, name: true } } },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       }),
       prisma.madrasaClass.findMany({
         where: { madrasaId, isActive: 1, deletedAt: null },
-        select: { classId: true, class: { select: { nameBn: true, divisionId: true } } },
+        select: { classId: true, nameBn: true, class: { select: { nameBn: true, name: true, divisionId: true } } },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       }),
     ]);
 
     const divisionOrder = new Map(divisions.map((d, index) => [d.divisionId, index]));
-    const divisionName = new Map(divisions.map((d) => [d.divisionId, d.division.nameBn]));
+    const divisionName = new Map(divisions.map((d) => [d.divisionId, linkName(d, d.division)]));
 
     return classes
       .filter((c) => c.class.divisionId !== null && divisionOrder.has(c.class.divisionId))
       .map((c, index) => ({
         classId: c.classId,
-        className: c.class.nameBn,
+        className: linkName(c, c.class),
         divisionId: c.class.divisionId as number,
         divisionName: divisionName.get(c.class.divisionId as number) ?? null,
         order: index,

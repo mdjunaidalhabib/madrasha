@@ -1,14 +1,16 @@
 import { prisma } from "../../shared/database/prisma";
+import { tenantClassNameSelect, withTenantClassName, tenantDivisionNameSelect, tenantDivisionName, linkName } from "../../shared/utils/tenant-name.util";
 
 export class RoutineRepository {
   /* ================= CLASS ROUTINE ================= */
 
-  findClassRoutines(madrasaId: number, classId?: number) {
-    return prisma.classRoutine.findMany({
+  async findClassRoutines(madrasaId: number, classId?: number) {
+    const rows = await prisma.classRoutine.findMany({
       where: { madrasaId, ...(classId ? { classId } : {}) },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-      include: { class: { select: { nameBn: true, name: true } }, teacher: { select: { nameBn: true } } },
+      include: { class: { select: tenantClassNameSelect(madrasaId) }, teacher: { select: { nameBn: true } } },
     });
+    return rows.map((r) => ({ ...r, class: withTenantClassName(r.class) }));
   }
 
   createClassRoutine(madrasaId: number, data: Record<string, unknown>) {
@@ -25,8 +27,8 @@ export class RoutineRepository {
 
   /* ================= EXAM ROUTINE ================= */
 
-  findExamRoutines(madrasaId: number, examId?: number, classId?: number) {
-    return prisma.examRoutine.findMany({
+  async findExamRoutines(madrasaId: number, examId?: number, classId?: number) {
+    const rows = await prisma.examRoutine.findMany({
       where: {
         madrasaId,
         exam: { deletedAt: null },
@@ -35,11 +37,12 @@ export class RoutineRepository {
       },
       orderBy: [{ examDate: "asc" }, { startTime: "asc" }],
       include: {
-        class: { select: { nameBn: true, name: true } },
+        class: { select: tenantClassNameSelect(madrasaId) },
         exam: { select: { name: true, year: true } },
         room: { select: { name: true, code: true } },
       },
     });
+    return rows.map((r) => ({ ...r, class: withTenantClassName(r.class) }));
   }
 
   createExamRoutine(madrasaId: number, data: Record<string, unknown>) {
@@ -101,7 +104,7 @@ export class RoutineRepository {
     const [madrasaClasses, counts] = await Promise.all([
       prisma.madrasaClass.findMany({
         where: { madrasaId, deletedAt: null, isActive: 1 },
-        include: { class: { include: { division: { select: { name: true, nameBn: true } } } } },
+        include: { class: { include: { division: { select: tenantDivisionNameSelect(madrasaId) } } } },
         orderBy: [{ sortOrder: "asc" }],
       }),
       prisma.classRoutine.groupBy({ by: ["classId"], where: { madrasaId }, _count: { _all: true } }),
@@ -113,9 +116,9 @@ export class RoutineRepository {
       .filter((mc) => mc.class)
       .map((mc) => ({
         classId: mc.classId,
-        className: mc.class!.nameBn || mc.class!.name,
+        className: linkName(mc, mc.class),
         divisionId: mc.class!.divisionId,
-        divisionName: mc.class!.division?.nameBn || mc.class!.division?.name || null,
+        divisionName: tenantDivisionName(mc.class!.division),
         periodCount: countByClassId.get(mc.classId) || 0,
       }));
   }
@@ -128,7 +131,7 @@ export class RoutineRepository {
     const [madrasaClasses, exams, routines] = await Promise.all([
       prisma.madrasaClass.findMany({
         where: { madrasaId, deletedAt: null, isActive: 1 },
-        include: { class: { include: { division: { select: { name: true, nameBn: true } } } } },
+        include: { class: { include: { division: { select: tenantDivisionNameSelect(madrasaId) } } } },
         orderBy: [{ sortOrder: "asc" }],
       }),
       prisma.exam.findMany({
@@ -177,9 +180,9 @@ export class RoutineRepository {
           examName: exam.name,
           examYear: exam.year,
           classId: mc.classId,
-          className: mc.class!.nameBn || mc.class!.name,
+          className: linkName(mc, mc.class),
           divisionId: mc.class!.divisionId,
-          divisionName: mc.class!.division?.nameBn || mc.class!.division?.name || null,
+          divisionName: tenantDivisionName(mc.class!.division),
           subjectCount: entry?.count || 0,
           status,
         });

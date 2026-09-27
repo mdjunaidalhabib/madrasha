@@ -464,7 +464,7 @@ export default function ClassBookSettingsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা"
-        subtitle="প্রতিটি শ্রেণিতে প্রয়োজন অনুযায়ী এক বা একাধিক মিয়ারি কিতাব নির্ধারণ করুন। চেক/আনচেক করলেই সাথে সাথে সংরক্ষণ হয়ে যাবে — কোনো কিতাবই মিয়ারি না রাখলেও চলবে। টেনে (drag) যেকোনো কলামের ক্রম সাজানো যায়।"
+        subtitle="বিভাগ ও শ্রেণি বেছে নিয়ে কিতাব সাজান। কিতাবের ✎ চাপলে পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন পাওয়া যাবে। টেনে (drag) যেকোনো কলামের ক্রম সাজানো যায়।"
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -675,30 +675,25 @@ export default function ClassBookSettingsPage() {
       </SectionCard>
 
       <SectionCard title="কিতাবসমূহ" badge={`${books.length}টি`}>
-        <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-slate-400">
-          মিয়ারি কিতাবে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। টেনে (drag) কিতাবের ক্রম সাজানো যায়।
-        </p>
-        <div className="mb-3 flex justify-end">
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-            নির্বাচিত মিয়ারি: {miyariBookIds.length}টি
-          </span>
-        </div>
-
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-1.5">
           {!showBookInput ? (
             <button
               onClick={() => setShowBookInput(true)}
-              className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
+              className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
             >
               <Plus size={15} />
               কিতাব যোগ করুন
             </button>
           ) : (
-            <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex w-full gap-2">
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="w-full min-w-0 sm:w-auto"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") addBook();
+                  if (event.key === "Escape") setShowBookInput(false);
+                }}
+                className="w-full min-w-0"
                 placeholder="কিতাবের নাম"
                 autoFocus
               />
@@ -707,29 +702,34 @@ export default function ClassBookSettingsPage() {
               </Button>
             </div>
           )}
-        </div>
 
-        {books.length === 0 ? (
-          <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {books.map((book, index) => {
+          {books.length > 0 && (
+            <p className="px-1 text-[11px] leading-snug text-gray-400 dark:text-slate-500">
+              মিয়ারি {miyariBookIds.length}টি · পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন বদলাতে ✎ চাপুন
+            </p>
+          )}
+
+          {books.length === 0 ? (
+            <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
+          ) : (
+            books.map((book, index) => {
               const isMiyari = miyariBookIds.includes(Number(book.book_id));
+              const isEditingThis = editingId === book.book_id;
               return (
                 <div
                   key={book.book_id}
                   data-book-id={book.book_id}
-                  className={`flex w-full flex-col gap-2 rounded-lg border px-3 py-2.5 transition ${
-                    editingId === book.book_id
-                      ? "border-blue-200 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
+                  className={`rounded-lg border transition ${
+                    isEditingThis
+                      ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
                       : isMiyari
-                        ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+                        ? "border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20"
                         : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                   } ${dragBookId === book.book_id ? "opacity-40" : ""}`}
                 >
-                  {editingId === book.book_id ? (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5">
+                  {isEditingThis ? (
+                    <div className="flex flex-col gap-2.5 p-2">
+                      <div className="flex items-center gap-1">
                         <Input
                           value={editingName}
                           onChange={(event) => setEditingName(event.target.value)}
@@ -737,136 +737,147 @@ export default function ClassBookSettingsPage() {
                             if (event.key === "Enter") saveEdit();
                             if (event.key === "Escape") setEditingId(null);
                           }}
+                          className="h-8 w-full min-w-0"
+                          placeholder="কিতাবের নাম"
                           autoFocus
                         />
                         <button
                           onClick={saveEdit}
                           aria-label="সংরক্ষণ করুন"
-                          className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+                          className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                         >
                           <Check size={14} />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           aria-label="বাতিল"
-                          className="shrink-0 touch-manipulation rounded-md p-2 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                          className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                         >
                           <X size={14} />
                         </button>
                       </div>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400">
-                        পূর্ণমান
-                        <Input
-                          type="number"
-                          min={1}
-                          value={editingFullMarks}
-                          onChange={(event) => setEditingFullMarks(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") saveEdit();
-                            if (event.key === "Escape") setEditingId(null);
-                          }}
-                          className="h-8 w-20"
-                        />
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400">
-                        পাস মার্ক
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="গ্লোবাল"
-                          value={editingPassMark}
-                          onChange={(event) => setEditingPassMark(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") saveEdit();
-                            if (event.key === "Escape") setEditingId(null);
-                          }}
-                          className="h-8 w-20"
-                        />
-                      </label>
-                      <p className="text-[11px] leading-tight text-gray-400 dark:text-slate-500">
-                        খালি রাখলে মাদ্রাসার গ্লোবাল ফেল মার্ক প্রযোজ্য হবে
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                          পূর্ণমান
+                          <Input
+                            type="number"
+                            min={1}
+                            value={editingFullMarks}
+                            onChange={(event) => setEditingFullMarks(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") saveEdit();
+                              if (event.key === "Escape") setEditingId(null);
+                            }}
+                            className="h-8 w-full"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                          পাস মার্ক
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="গ্লোবাল"
+                            value={editingPassMark}
+                            onChange={(event) => setEditingPassMark(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") saveEdit();
+                              if (event.key === "Escape") setEditingId(null);
+                            }}
+                            className="h-8 w-full"
+                          />
+                        </label>
+                      </div>
+                      <p className="-mt-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
+                        পাস মার্ক খালি রাখলে মাদ্রাসার গ্লোবাল ফেল মার্ক প্রযোজ্য হবে
                       </p>
+
+                      <label
+                        className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
+                          isMiyari
+                            ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                            : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isMiyari}
+                          disabled={savingMiyari}
+                          onChange={() => toggleMiyari(Number(book.book_id))}
+                          className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                        />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-gray-700 dark:text-slate-200">মিয়ারি কিতাব</span>
+                          <span className="leading-snug text-gray-500 dark:text-slate-400">
+                            এতে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। চাপলেই সাথে সাথে সংরক্ষণ হয়।
+                          </span>
+                        </span>
+                      </label>
+
+                      <button
+                        onClick={() => setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })}
+                        className="flex touch-manipulation items-center justify-center gap-1.5 rounded-md border border-indigo-200 px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                      >
+                        <SlidersHorizontal size={13} />
+                        নম্বর বিভাজন (লিখিত/এমসিকিউ/...)
+                      </button>
                     </div>
                   ) : (
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1 px-1.5 py-1.5">
                       <span
                         onPointerDown={handleHandlePointerDown(book.book_id)}
                         onPointerMove={handleHandlePointerMove}
                         onPointerUp={handleHandlePointerEnd}
                         onPointerCancel={handleHandlePointerEnd}
-                        className="shrink-0 cursor-grab select-none rounded p-1.5 text-gray-400 active:cursor-grabbing active:bg-gray-100 dark:text-slate-500 dark:active:bg-slate-800"
+                        className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                         style={{ touchAction: "none" }}
                         aria-label="কিতাব সরান"
                       >
-                        <GripVertical size={15} />
+                        <GripVertical size={14} />
                       </span>
-                      <span className="mt-1">
-                        <SerialBadge index={index} />
-                      </span>
-                      <span className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900 dark:text-slate-100">
-                        {book.book_name_bn}
-                      </span>
-
-                      <div className="flex shrink-0 gap-0.5">
-                        <button
-                          onClick={() =>
-                            setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })
-                          }
-                          aria-label="নম্বর বিভাজন"
-                          title="নম্বর বিভাজন (লিখিত/এমসিকিউ/...)"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:text-slate-500 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 dark:active:bg-indigo-950/60"
-                        >
-                          <SlidersHorizontal size={14} />
-                        </button>
-                        <button
-                          onClick={() => startEdit(book)}
-                          aria-label="কিতাব এডিট করুন"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 dark:active:bg-blue-950/60"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => removeBook(book)}
-                          aria-label="কিতাব ডিলিট করুন"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:active:bg-red-950/60"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {editingId !== book.book_id && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-slate-800 dark:text-slate-400">
-                        পূর্ণমান {book.full_marks ?? 100}
-                      </span>
-                      {book.pass_mark != null && (
+                      <SerialBadge index={index} />
+                      <div className="flex min-w-0 flex-1 flex-col px-1.5 py-0.5">
                         <span
-                          className="w-fit rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-                          title="এই কিতাবের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                          className="truncate text-sm font-medium text-gray-800 dark:text-slate-100"
+                          title={book.book_name_bn}
                         >
-                          পাস {book.pass_mark}
+                          {book.book_name_bn}
                         </span>
-                      )}
+                        <span className="flex flex-wrap items-center gap-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
+                          <span>পূর্ণমান {book.full_marks ?? 100}</span>
+                          {book.pass_mark != null && (
+                            <span className="text-sky-600 dark:text-sky-400" title="এই কিতাবের জন্য আলাদা পাস মার্ক">
+                              · পাস {book.pass_mark}
+                            </span>
+                          )}
+                          {isMiyari && (
+                            <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">
+                              মিয়ারি
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => startEdit(book)}
+                        aria-label="কিতাব এডিট করুন"
+                        className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => removeBook(book)}
+                        aria-label="কিতাব ডিলিট করুন"
+                        className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   )}
-
-                  <label className="flex cursor-pointer touch-manipulation items-center gap-2 py-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={isMiyari}
-                      disabled={savingMiyari}
-                      onChange={() => toggleMiyari(Number(book.book_id))}
-                      className="h-5 w-5 disabled:cursor-not-allowed dark:border-slate-600"
-                    />
-                    মিয়ারি কিতাব
-                  </label>
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </SectionCard>
       </div>
 

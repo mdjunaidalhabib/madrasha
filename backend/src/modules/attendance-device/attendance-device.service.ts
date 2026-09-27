@@ -25,6 +25,7 @@ import {
   maskPhone,
 } from "./device-secret.util";
 import { dateOnly, isValidDateString, localDateString, localDayRangeUtc } from "./time.util";
+import { tenantClassName } from "../../shared/utils/tenant-name.util";
 
 /**
  * Effective status shown to admins, derived at read time: a connector that has
@@ -74,8 +75,7 @@ export const toDeviceDto = (d: AttendanceDevice, now: Date) => {
   };
 };
 
-const classLabel = (c: { nameBn: string | null; name: string | null } | null | undefined) =>
-  c?.nameBn || c?.name || null;
+const classLabel = tenantClassName;
 
 const encryptOrFail = (plain: string): string => {
   try {

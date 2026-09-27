@@ -6,6 +6,7 @@ import {
   createRegistrationNoBatchOnTx,
   lockStudentRegistrationScopeOnTx,
 } from "./registration-no.allocator";
+import { tenantClassNameSelect, withTenantClassName, tenantClassName } from "../../shared/utils/tenant-name.util";
 
 /** Smallest positive integer missing from a sorted (ascending) list of used
  * roll numbers - i.e. the first reusable gap, or one past the current max
@@ -20,20 +21,29 @@ const firstAvailableRoll = (rolls: (number | null)[]): number => {
   return expected;
 };
 
+/** Student row with its classRef name resolved to this madrasa's own name. */
+type TenantClassRow = { nameBn: string | null; name: string | null; madrasaClasses: { nameBn: string | null }[] };
+const withTenantClassRef = <T extends { classRef: TenantClassRow | null }>(row: T) => ({
+  ...row,
+  classRef: withTenantClassName(row.classRef),
+});
+
 export class StudentRepository {
-  findMany(where: Prisma.StudentWhereInput) {
-    return prisma.student.findMany({
-      where: { ...where, deletedAt: null },
-      include: { classRef: { select: { nameBn: true } } },
+  async findMany(madrasaId: number, where: Prisma.StudentWhereInput) {
+    const rows = await prisma.student.findMany({
+      where: { ...where, madrasaId, deletedAt: null },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
       orderBy: [{ registrationNo: "asc" }, { id: "asc" }],
     });
+    return rows.map(withTenantClassRef);
   }
 
-  findByIdForTenant(id: number, madrasaId: number) {
-    return prisma.student.findFirst({
+  async findByIdForTenant(id: number, madrasaId: number) {
+    const row = await prisma.student.findFirst({
       where: { id, madrasaId, deletedAt: null },
-      include: { classRef: { select: { nameBn: true } } },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
     });
+    return row ? withTenantClassRef(row) : null;
   }
 
   /** Resolves the madrasa's own registration no (used in admin URLs) to the DB id. */
@@ -50,12 +60,13 @@ export class StudentRepository {
    * returning students at admission time (re-admission / সেশন পরিবর্তন)
    * so a new session doesn't create a duplicate student record.
    */
-  findByNid(madrasaId: number, nid: string) {
-    return prisma.student.findFirst({
+  async findByNid(madrasaId: number, nid: string) {
+    const row = await prisma.student.findFirst({
       where: { madrasaId, nid, deletedAt: null },
-      include: { classRef: { select: { nameBn: true } } },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
       orderBy: { id: "desc" },
     });
+    return row ? withTenantClassRef(row) : null;
   }
 
   findSessionForTenant(madrasaId: number, id: number) {
@@ -121,12 +132,13 @@ export class StudentRepository {
   }
 
   /** Admissions still awaiting admin review (see Admission Approval Workflow). */
-  findPendingForTenant(madrasaId: number) {
-    return prisma.student.findMany({
+  async findPendingForTenant(madrasaId: number) {
+    const rows = await prisma.student.findMany({
       where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
-      include: { classRef: { select: { nameBn: true } } },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
       orderBy: { id: "desc" },
     });
+    return rows.map(withTenantClassRef);
   }
 
   countPendingAdmissions(madrasaId: number) {
@@ -136,12 +148,13 @@ export class StudentRepository {
   /** Rejected admissions - kept as a record (rejectionReason/reviewedBy/
    * reviewedAt) rather than deleted at reject time, but with no page of
    * their own until now (see getRejectedAdmissions). */
-  findRejectedForTenant(madrasaId: number) {
-    return prisma.student.findMany({
+  async findRejectedForTenant(madrasaId: number) {
+    const rows = await prisma.student.findMany({
       where: { madrasaId, admissionStatus: "REJECTED", deletedAt: null },
-      include: { classRef: { select: { nameBn: true } } },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
       orderBy: { reviewedAt: "desc" },
     });
+    return rows.map(withTenantClassRef);
   }
 
   /** Hard delete (not the usual soft-delete-to-Trash) - a rejected
@@ -178,8 +191,12 @@ export class StudentRepository {
     });
   }
 
-  findClassNames(classIds: number[]) {
-    return prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, nameBn: true } });
+  async findClassNames(madrasaId: number, classIds: number[]) {
+    const rows = await prisma.class.findMany({
+      where: { id: { in: classIds } },
+      select: { id: true, ...tenantClassNameSelect(madrasaId) },
+    });
+    return rows.map((c) => ({ id: c.id, nameBn: tenantClassName(c) }));
   }
 
   groupByAdmissionStatus(madrasaId: number) {

@@ -1,12 +1,13 @@
 import { prisma } from "../../shared/database/prisma";
 import { FAIL_MARK_SETTING_NAME } from "./exam.constants";
+import { tenantDivisionNameSelect } from "../../shared/utils/tenant-name.util";
 
 /** Division scope joined onto every exam row that leaves this repository -
  * no rows = "সকল বিভাগ" (see Exam.divisions in exam.prisma). */
-const examDivisionsInclude = {
-  select: { divisionId: true, division: { select: { nameBn: true } } },
+const examDivisionsInclude = (madrasaId: number) => ({
+  select: { divisionId: true, division: { select: tenantDivisionNameSelect(madrasaId) } },
   orderBy: { divisionId: "asc" as const },
-};
+});
 
 export class ExamRepository {
   /** `divisionId` narrows to exams held for that division, i.e. ones scoped
@@ -24,7 +25,7 @@ export class ExamRepository {
         // Any linked fee row counts - a dormant exam's fee rows are
         // themselves inactive until ইহতেমাম switches them on (ExamFeeService.setFeeActive).
         _count: { select: { feeStructures: true } },
-        divisions: examDivisionsInclude,
+        divisions: examDivisionsInclude(madrasaId),
       },
     });
   }
@@ -240,6 +241,7 @@ export class ExamRepository {
       select: {
         divisionId: true,
         failMark: true,
+        nameBn: true,
         division: { select: { name: true, nameBn: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],

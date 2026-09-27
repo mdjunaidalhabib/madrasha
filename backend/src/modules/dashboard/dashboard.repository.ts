@@ -14,6 +14,7 @@ import {
   UpcomingExamRow,
 } from "./dashboard.types";
 import { startOfTodayUTC, endOfTodayUTC } from "../../shared/utils/date.util";
+import { tenantClassNameSelect, tenantClassName } from "../../shared/utils/tenant-name.util";
 
 export class DashboardRepository {
   // A PENDING admission isn't a real enrolled student yet (see
@@ -209,14 +210,14 @@ export class DashboardRepository {
       take: DASHBOARD_UPCOMING_EXAMS_LIMIT,
       include: {
         exam: { select: { name: true } },
-        class: { select: { nameBn: true, name: true } },
+        class: { select: tenantClassNameSelect(madrasaId) },
       },
     });
 
     return rows.map((row) => ({
       id: row.id,
       examName: row.exam.name,
-      className: row.class.nameBn || row.class.name || "",
+      className: tenantClassName(row.class) || "",
       subject: row.subject,
       examDate: row.examDate,
       startTime: row.startTime,

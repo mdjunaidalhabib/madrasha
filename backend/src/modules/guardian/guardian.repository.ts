@@ -1,5 +1,6 @@
 import { prisma } from "../../shared/database/prisma";
 import { GUARDIAN_NOTICES_LIMIT } from "./guardian.constants";
+import { tenantClassNameSelect } from "../../shared/utils/tenant-name.util";
 
 export class GuardianRepository {
   findActiveByPhone(madrasaId: number, phone: string) {
@@ -81,7 +82,7 @@ export class GuardianRepository {
             roll: true,
             registrationNo: true,
             image: true,
-            classRef: { select: { nameBn: true, name: true } },
+            classRef: { select: tenantClassNameSelect(madrasaId) },
           },
         },
       },
@@ -99,7 +100,7 @@ export class GuardianRepository {
       },
       include: {
         resultMaster: {
-          include: { exam: { select: { name: true } }, class: { select: { nameBn: true, name: true } } },
+          include: { exam: { select: { name: true } }, class: { select: tenantClassNameSelect(madrasaId) } },
         },
       },
       orderBy: { resultMaster: { createdAt: "desc" } },
@@ -140,7 +141,7 @@ export class GuardianRepository {
         resultMaster: {
           include: {
             exam: { select: { name: true, year: true } },
-            class: { select: { nameBn: true, name: true } },
+            class: { select: tenantClassNameSelect(madrasaId) },
           },
         },
         student: {

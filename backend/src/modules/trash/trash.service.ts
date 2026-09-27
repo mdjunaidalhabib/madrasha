@@ -2,6 +2,7 @@ import { NotFoundError } from "../../shared/errors";
 import { trashRepository, TrashRepository } from "./trash.repository";
 import { toStudentApiDto } from "../students/student.mapper";
 import { toTeacherApiDto } from "../teacher/teacher.mapper";
+import { linkName, tenantDivisionName, tenantClassName } from "../../shared/utils/tenant-name.util";
 
 /** How long a soft-deleted record sits in Trash before the background
  * sweep (see core/bootstrap.ts) permanently removes it. */
@@ -53,7 +54,7 @@ export class TrashService {
     const rows = await this.repository.findTrashedDivisions(madrasaId);
     return rows.map((row) => ({
       id: row.id,
-      name_bn: row.division.nameBn,
+      name_bn: linkName(row, row.division),
       name: row.division.name,
       deleted_at: row.deletedAt,
       days_remaining: daysRemaining(row.deletedAt),
@@ -64,9 +65,9 @@ export class TrashService {
     const rows = await this.repository.findTrashedClasses(madrasaId);
     return rows.map((row) => ({
       id: row.id,
-      class_name_bn: row.class.nameBn,
+      class_name_bn: linkName(row, row.class),
       class_name: row.class.name,
-      division_name_bn: row.class.division?.nameBn ?? null,
+      division_name_bn: tenantDivisionName(row.class.division),
       deleted_at: row.deletedAt,
       days_remaining: daysRemaining(row.deletedAt),
     }));
@@ -89,7 +90,7 @@ export class TrashService {
       id: row.id,
       exam_name: row.exam.name,
       exam_year: row.exam.year,
-      class_name_bn: row.class.nameBn,
+      class_name_bn: tenantClassName(row.class),
       class_name: row.class.name,
       status: row.status,
       deleted_at: row.deletedAt,

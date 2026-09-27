@@ -5,7 +5,7 @@ export class SettingsRepository {
   findActiveDivisions(madrasaId: number) {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { division: { select: { id: true, nameBn: true } } },
+      select: { nameBn: true, division: { select: { id: true, nameBn: true, name: true } } },
       // This madrasa's own serial (তালিমাত সেটিংসে সাজানো ক্রম), not the global id.
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
@@ -14,7 +14,7 @@ export class SettingsRepository {
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, class: { divisionId } },
-      select: { class: { select: { id: true, nameBn: true } } },
+      select: { nameBn: true, class: { select: { id: true, nameBn: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }

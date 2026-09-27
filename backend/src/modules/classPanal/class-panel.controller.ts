@@ -63,7 +63,7 @@ export const deleteDivision = async (req: Request, res: Response) => {
 
 export const updateDivision = async (req: Request, res: Response) => {
   try {
-    await classPanelService.updateDivision(Number(req.params.id), req.body);
+    await classPanelService.updateDivision(req.tenant?.madrasa_id, Number(req.params.id), req.body);
     res.json({ message: "Division updated successfully" });
   } catch (error) {
     respondError(res, error, "❌ Update division error:", "Failed to update division");
@@ -105,7 +105,7 @@ export const addClass = async (req: Request, res: Response) => {
 
 export const updateClass = async (req: Request, res: Response) => {
   try {
-    await classPanelService.updateClass(Number(req.params.id), req.body);
+    await classPanelService.updateClass(req.tenant?.madrasa_id, Number(req.params.id), req.body);
     res.json({ message: "Class updated successfully" });
   } catch (error) {
     respondError(res, error, "❌ Update class error:", "Failed to update class");

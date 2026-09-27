@@ -41,6 +41,10 @@ model MadrasaDivision {
   /// GeneralGrade/MadrasaGrade rows (divisionId = this division) whose lowest
   /// band is auto-pinned to failMark (pass starts AT the fail mark).
   failMark   Int?      @map("fail_mark")
+  /// This madrasa's own name for the division. NULL = the shared catalogue
+  /// name (Division.nameBn). Renames write here so they never leak into
+  /// other madrasas sharing the same Division row.
+  nameBn     String?   @map("name_bn") @db.VarChar(100)
   sortOrder  Int       @default(0) @map("sort_order")
   deletedAt  DateTime? @map("deleted_at")
   createdAt  DateTime  @default(now()) @map("created_at")
@@ -60,6 +64,11 @@ model Class {
   name       String?  @db.VarChar(100)
   nameBn     String?  @map("name_bn") @db.VarChar(100)
   isActive   Boolean  @default(true) @map("is_active")
+  /// NULL = shared Super Admin catalogue row. Set = a private row that one
+  /// madrasa created itself (তালিমাত সেটিংস > শ্রেণি যোগ); it is never shown in the catalogue or
+  /// linked into any other madrasa.
+  ownerMadrasaId Int?  @map("owner_madrasa_id")
+
   sortOrder  Int      @default(0) @map("sort_order")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
@@ -80,6 +89,7 @@ model Class {
   examCandidates       ExamCandidate[]
 
   @@unique([divisionId, name], map: "uniq_division_class")
+  @@index([ownerMadrasaId], map: "idx_classes_owner")
   @@map("classes")
 }
 
@@ -88,6 +98,10 @@ model Book {
   classId   Int      @map("class_id")
   name      String?  @db.VarChar(150)
   nameBn    String?  @map("name_bn") @db.VarChar(150)
+  /// NULL = shared Super Admin catalogue row. Set = a private row that one
+  /// madrasa created itself (added, or a copy-on-write rename of a catalogue book); it is never shown in the catalogue or
+  /// linked into any other madrasa.
+  ownerMadrasaId Int?  @map("owner_madrasa_id")
   /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
   /// from MadrasaBook.sortOrder, which is each tenant's own re-ordering.
   sortOrder Int      @default(0) @map("sort_order")
@@ -102,6 +116,7 @@ model Book {
   markComponentConfigs MarkComponentConfig[]
 
   @@unique([classId, name], map: "uniq_class_book")
+  @@index([ownerMadrasaId], map: "idx_books_owner")
   @@map("books")
 }
 
@@ -111,6 +126,10 @@ model MadrasaClass {
   classId   Int       @map("class_id")
   isActive  Int?      @default(1) @map("is_active")
   sortOrder Int       @default(0) @map("sort_order")
+  /// This madrasa's own name for the class. NULL = the shared catalogue name
+  /// (Class.nameBn). Renames write here so they never leak into other
+  /// madrasas sharing the same Class row.
+  nameBn    String?   @map("name_bn") @db.VarChar(100)
 
   /// This class's block of student registration numbers (e.g. 1-50, the next
   /// class 51-100). Registration numbers stay unique madrasa-wide - the block

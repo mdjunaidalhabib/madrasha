@@ -47,8 +47,10 @@ export class MetaRepository {
   }
 
   findClasses(divisionId?: number, includeInactive = false) {
+    // Catalogue only - a madrasa's own classes (ownerMadrasaId) are private.
     return prisma.class.findMany({
       where: {
+        ownerMadrasaId: null,
         ...(divisionId ? { divisionId } : {}),
         ...(includeInactive ? {} : { isActive: true }),
       },
@@ -58,7 +60,7 @@ export class MetaRepository {
   }
 
   findMaxClassSortOrder(divisionId: number) {
-    return prisma.class.aggregate({ where: { divisionId }, _max: { sortOrder: true } });
+    return prisma.class.aggregate({ where: { divisionId, ownerMadrasaId: null }, _max: { sortOrder: true } });
   }
 
   createClass(data: { divisionId: number; name: string | null; nameBn: string; sortOrder: number }) {
@@ -78,31 +80,32 @@ export class MetaRepository {
   }
 
   findClassIdsByDivision(divisionId: number) {
-    return prisma.class.findMany({ where: { divisionId }, select: { id: true } });
+    return prisma.class.findMany({ where: { divisionId, ownerMadrasaId: null }, select: { id: true } });
   }
 
   async reorderClasses(divisionId: number, orderedClassIds: number[]) {
     await prisma.$transaction(
       orderedClassIds.map((id, index) =>
-        prisma.class.updateMany({ where: { id, divisionId }, data: { sortOrder: index } }),
+        prisma.class.updateMany({ where: { id, divisionId, ownerMadrasaId: null }, data: { sortOrder: index } }),
       ),
     );
   }
 
   findBooks(classId?: number) {
+    // Catalogue only - a madrasa's own kitab (ownerMadrasaId) is private.
     return prisma.book.findMany({
-      where: classId ? { classId } : undefined,
+      where: { ownerMadrasaId: null, ...(classId ? { classId } : {}) },
       select: { id: true, name: true, nameBn: true, classId: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
   findBookByNameBn(classId: number, nameBn: string) {
-    return prisma.book.findFirst({ where: { classId, nameBn } });
+    return prisma.book.findFirst({ where: { classId, nameBn, ownerMadrasaId: null } });
   }
 
   findMaxBookSortOrder(classId: number) {
-    return prisma.book.aggregate({ where: { classId }, _max: { sortOrder: true } });
+    return prisma.book.aggregate({ where: { classId, ownerMadrasaId: null }, _max: { sortOrder: true } });
   }
 
   createBook(data: { classId: number; name: string | null; nameBn: string; sortOrder: number }) {
@@ -118,7 +121,7 @@ export class MetaRepository {
   }
 
   findBookIdsByClass(classId: number) {
-    return prisma.book.findMany({ where: { classId }, select: { id: true } });
+    return prisma.book.findMany({ where: { classId, ownerMadrasaId: null }, select: { id: true } });
   }
 
   async reorderBooks(classId: number, orderedBookIds: number[]) {

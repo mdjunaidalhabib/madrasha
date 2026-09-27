@@ -143,6 +143,14 @@ const bookSerialSql = (col: string) =>
 const classOrderSql = (divisionCol: string, classCol: string) =>
   `${divisionSerialSql(divisionCol)} ASC NULLS LAST, ${divisionCol} ASC, ${classSerialSql(classCol)} ASC NULLS LAST, ${classCol} ASC`;
 
+/** This madrasa's own name for a class/division (MadrasaClass.nameBn /
+ * MadrasaDivision.nameBn), falling back to the shared catalogue name - a
+ * rename in one madrasa never shows up in another. Binds $1 = madrasaId. */
+const classNameSql = (alias: string) =>
+  `COALESCE((SELECT mc_n.name_bn FROM madrasa_classes mc_n WHERE mc_n.madrasa_id = $1 AND mc_n.class_id = ${alias}.id), ${alias}.name_bn, ${alias}.name)`;
+const divisionNameSql = (alias: string) =>
+  `COALESCE((SELECT md_n.name_bn FROM madrasa_divisions md_n WHERE md_n.madrasa_id = $1 AND md_n.division_id = ${alias}.id), ${alias}.name_bn, ${alias}.name)`;
+
 const isMissingTableOrColumn = (error: any) => {
   const codes = [error?.code, error?.meta?.code, error?.meta?.dbCode].filter(Boolean);
   return codes.some((code) => MISSING_TABLE_OR_COLUMN_CODES.includes(String(code)));
@@ -197,8 +205,8 @@ export class ReportsRepository {
         s.guardian_phone,
         s.dob AS date_of_birth,
         s.image,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
@@ -307,8 +315,8 @@ export class ReportsRepository {
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year,
         rs.total,
@@ -365,8 +373,10 @@ export class ReportsRepository {
         s.name_bn,
         s.father_name,
         s.guardian_phone,
+        c.id,
         c.name_bn,
         c.name,
+        d.id,
         d.name_bn,
         d.name,
         e.name,
@@ -424,8 +434,8 @@ export class ReportsRepository {
         s.class_id,
         s.academic_year,
         s.name_bn AS student_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year,
         rs.total,
@@ -496,8 +506,8 @@ export class ReportsRepository {
         END AS day,
         cr.start_time,
         cr.end_time,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         cr.subject AS subject_name,
         t.name_bn AS teacher_name
       FROM class_routines cr
@@ -534,8 +544,8 @@ export class ReportsRepository {
         'নির্ধারিত নয়'::text AS day,
         '—'::text AS start_time,
         '—'::text AS end_time,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         COALESCE(b.name_bn, b.name) AS subject_name,
         t.name_bn AS teacher_name
       FROM teacher_assignments ta
@@ -574,8 +584,8 @@ export class ReportsRepository {
         s.father_name,
         s.mother_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         s.division,
         s.district,
         s.thana,
@@ -607,8 +617,8 @@ export class ReportsRepository {
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
@@ -659,8 +669,8 @@ export class ReportsRepository {
         s.class_id,
         s.name_bn AS student_name,
         s.father_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
         e.year AS exam_year,
@@ -741,8 +751,8 @@ export class ReportsRepository {
         s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
         e.year AS exam_year,
@@ -824,8 +834,8 @@ export class ReportsRepository {
         s.academic_year,
         s.name_bn AS student_name,
         s.father_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
         e.year AS exam_year,
@@ -881,8 +891,10 @@ export class ReportsRepository {
         s.academic_year,
         s.name_bn,
         s.father_name,
+        c.id,
         c.name_bn,
         c.name,
+        d.id,
         d.name_bn,
         d.name,
         e.id,
@@ -939,8 +951,8 @@ export class ReportsRepository {
         er.start_time,
         er.end_time,
         er.room_no,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year
       FROM exam_routines er
@@ -996,8 +1008,8 @@ export class ReportsRepository {
         s.id AS student_id,
         s.name_bn AS student_name,
         s.roll,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year
       FROM exam_seat_allocations esa
@@ -1116,8 +1128,8 @@ export class ReportsRepository {
         s.id AS student_id,
         s.name_bn AS student_name,
         s.roll,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year
       FROM exam_attendances ea
@@ -1213,8 +1225,8 @@ export class ReportsRepository {
         s.father_name,
         s.mother_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
         e.year AS exam_year,
@@ -1298,8 +1310,8 @@ export class ReportsRepository {
         s.class_id,
         s.name_bn AS student_name,
         s.father_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         COALESCE(b.name_bn, b.name) AS subject_name,
         e.name AS exam_name,
         e.year AS exam_year
@@ -1356,8 +1368,8 @@ export class ReportsRepository {
         s.name_bn AS student_name,
         s.father_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year,
         rs.total,
@@ -1453,8 +1465,8 @@ export class ReportsRepository {
         rm.exam_id,
         rm.class_id,
         c.division_id,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year,
         COUNT(rs.id)::int AS candidate_count,
@@ -1487,8 +1499,8 @@ export class ReportsRepository {
         AND ($2::int IS NULL OR rm.exam_id = $2::int)
         ${conditions.join("\n        ")}
       GROUP BY
-        rm.id, rm.exam_id, rm.class_id, c.division_id, c.name_bn, c.name,
-        d.name_bn, d.name, e.name, e.year, topper.student_name, topper.total
+        rm.id, rm.exam_id, rm.class_id, c.id, c.division_id, c.name_bn, c.name,
+        d.id, d.name_bn, d.name, e.name, e.year, topper.student_name, topper.total
       ORDER BY ${classOrderSql("c.division_id", "rm.class_id")}
       `,
       params,
@@ -1509,8 +1521,8 @@ export class ReportsRepository {
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         a.attendance_date AS date,
         a.status
       FROM student_attendance a
@@ -1540,8 +1552,8 @@ export class ReportsRepository {
         s.division_id,
         s.class_id,
         s.name_bn AS student_name,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         a.attendance_date AS date,
         a.check_in,
         a.check_out,
@@ -1609,8 +1621,8 @@ export class ReportsRepository {
         s.father_name,
         s.guardian_phone,
         s.dob AS date_of_birth,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.name AS exam_name,
         e.year AS exam_year,
         rs.total,
@@ -1673,8 +1685,10 @@ export class ReportsRepository {
         s.father_name,
         s.guardian_phone,
         s.dob,
+        c.id,
         c.name_bn,
         c.name,
+        d.id,
         d.name_bn,
         d.name,
         e.name,
@@ -1716,8 +1730,8 @@ export class ReportsRepository {
         s.father_name,
         s.mother_name,
         s.guardian_phone,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         s.village,
         s.thana,
         s.district
@@ -1802,8 +1816,8 @@ export class ReportsRepository {
         s.father_name,
         s.academic_year,
         s.image,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         e.id AS exam_id,
         e.name AS exam_name,
         e.year AS exam_year,
@@ -1916,8 +1930,8 @@ export class ReportsRepository {
         s.father_name,
         s.mother_name,
         s.academic_year,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name,
         rs.general_grade AS result_summary
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
@@ -1957,8 +1971,8 @@ export class ReportsRepository {
         s.village,
         s.thana,
         s.district,
-        COALESCE(c.name_bn, c.name) AS class_name,
-        COALESCE(d.name_bn, d.name) AS division_name
+        ${classNameSql("c")} AS class_name,
+        ${divisionNameSql("d")} AS division_name
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN divisions d ON d.id = s.division_id
@@ -1996,7 +2010,7 @@ export class ReportsRepository {
         t.qualification,
         t.experience_year,
         t.experience_month,
-        COALESCE(d.name_bn, d.name) AS division_name,
+        ${divisionNameSql("d")} AS division_name,
         t.joining_date
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
@@ -2028,7 +2042,7 @@ export class ReportsRepository {
         t.phone,
         t.parent_phone,
         t.designation,
-        COALESCE(d.name_bn, d.name) AS division_name
+        ${divisionNameSql("d")} AS division_name
       FROM teachers t
       LEFT JOIN divisions d ON d.id = t.division_id
       WHERE t.madrasa_id = $1

@@ -23,6 +23,7 @@ import {
   GuardianNoticeRow,
   GuardianResultRow,
 } from "./guardian.types";
+import { tenantClassName } from "../../shared/utils/tenant-name.util";
 
 const cleanPhone = (value: string | null | undefined) => String(value || "").trim();
 
@@ -134,7 +135,7 @@ export class GuardianService {
       nameBn: student.nameBn,
       roll: student.roll,
       registrationNo: student.registrationNo,
-      className: student.classRef?.nameBn || student.classRef?.name || null,
+      className: tenantClassName(student.classRef),
       image: student.image,
     }));
   }
@@ -163,7 +164,7 @@ export class GuardianService {
     return rows.map((row) => ({
       resultMasterId: row.resultMasterId,
       examName: row.resultMaster.exam.name,
-      className: row.resultMaster.class.nameBn || row.resultMaster.class.name || "",
+      className: tenantClassName(row.resultMaster.class) || "",
       total: row.total,
       average: row.average,
       generalGrade: row.generalGrade,
@@ -198,7 +199,7 @@ export class GuardianService {
     return {
       examName: detail.resultMaster.exam.name,
       examYear: detail.resultMaster.exam.year,
-      className: detail.resultMaster.class.nameBn || detail.resultMaster.class.name || "",
+      className: tenantClassName(detail.resultMaster.class) || "",
       studentName: detail.student.nameBn,
       roll: detail.roll ?? detail.student.roll,
       registrationNo: detail.student.registrationNo,
@@ -239,7 +240,7 @@ export class GuardianService {
       id: row.id,
       examName: row.exam.name,
       examYear: row.exam.year,
-      className: row.class.nameBn || row.class.name || "",
+      className: row.class?.nameBn || row.class?.name || "",
       subject: row.subject,
       examDate: row.examDate,
       startTime: row.startTime,

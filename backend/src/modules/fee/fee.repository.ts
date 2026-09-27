@@ -3,12 +3,13 @@ import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 import { endOfTodayUTC } from "../../shared/utils/date.util";
 import { FEE_CATEGORY_DEFAULTS } from "./fee.constants";
+import { tenantClassNameSelect, tenantDivisionNameSelect, withTenantClassName, withTenantDivisionName, tenantClassName } from "../../shared/utils/tenant-name.util";
 
 export class FeeRepository {
   /* ================= FEE STRUCTURE ================= */
 
-  findStructures(madrasaId: number, classId?: number, sessionId?: number, academicYear?: string) {
-    return prisma.feeStructure.findMany({
+  async findStructures(madrasaId: number, classId?: number, sessionId?: number, academicYear?: string) {
+    const rows = await prisma.feeStructure.findMany({
       where: {
         madrasaId,
         ...(classId ? { classId } : {}),
@@ -19,16 +20,19 @@ export class FeeRepository {
       include: {
         class: {
           select: {
-            nameBn: true,
-            name: true,
+            ...tenantClassNameSelect(madrasaId),
             sortOrder: true,
             divisionId: true,
-            division: { select: { id: true, nameBn: true } },
+            division: { select: { id: true, ...tenantDivisionNameSelect(madrasaId) } },
           },
         },
         sessionRef: { select: { name: true, startDate: true, endDate: true } },
         exam: { select: { id: true, name: true, year: true, sortOrder: true } },
       },
+    });
+    return rows.map((r) => {
+      const cls = withTenantClassName(r.class);
+      return { ...r, class: cls && { ...cls, division: withTenantDivisionName(cls.division) } };
     });
   }
 
@@ -344,12 +348,12 @@ export class FeeRepository {
    * (see endOfTodayUTC), for the dedicated "বকেয়া ফী" management page.
    * Unlike findPendingInvoices (admission fees only), this covers every fee
    * type. Grouped per student in FeeService.listOverdueFees. */
-  findOverdueInvoices(madrasaId: number, classId?: number, search?: string) {
+  async findOverdueInvoices(madrasaId: number, classId?: number, search?: string) {
     const trimmedSearch = search?.trim();
     const numericSearch =
       trimmedSearch && /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : undefined;
 
-    return prisma.invoice.findMany({
+    const rows = await prisma.invoice.findMany({
       where: {
         madrasaId,
         dueDate: { lte: endOfTodayUTC() },
@@ -378,11 +382,12 @@ export class FeeRepository {
             roll: true,
             registrationNo: true,
             guardianPhone: true,
-            classRef: { select: { nameBn: true } },
+            classRef: { select: tenantClassNameSelect(madrasaId) },
           },
         },
       },
     });
+    return rows.map((r) => ({ ...r, student: { ...r.student, classRef: withTenantClassName(r.student.classRef) } }));
   }
 
   findInvoices(madrasaId: number, where: Prisma.InvoiceWhereInput) {
@@ -409,8 +414,8 @@ export class FeeRepository {
    * Fee collection is decoupled from approval itself (Muhtamim doesn't
    * collect payment, only optionally waives), so this list is what actually
    * gates when হিসাব বিভাগ's queue picks a student up. */
-  findPendingInvoices(madrasaId: number, limit: number, offset: number, admissionFeeTypes: string[]) {
-    return prisma.invoice.findMany({
+  async findPendingInvoices(madrasaId: number, limit: number, offset: number, admissionFeeTypes: string[]) {
+    const rows = await prisma.invoice.findMany({
       where: {
         madrasaId,
         status: { in: ["UNPAID", "PARTIALLY_PAID"] },
@@ -423,11 +428,14 @@ export class FeeRepository {
       // immediately instead of waiting behind older due dates.
       orderBy: [{ id: "desc" }],
       include: {
-        student: { select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true } } } },
+        student: {
+          select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: tenantClassNameSelect(madrasaId) } },
+        },
       },
       take: limit,
       skip: offset,
     });
+    return rows.map((r) => ({ ...r, student: { ...r.student, classRef: withTenantClassName(r.student.classRef) } }));
   }
 
   /** "সব ক্লিয়ার করুন" - hides every invoice currently on the pending queue
@@ -472,10 +480,14 @@ export class FeeRepository {
   }
 
   /** Classes are platform-wide rows (tenants opt in via MadrasaClass), so
-   * this is only a display-name lookup - every invoice query below is what
-   * actually carries the tenant scope. */
-  findClassName(classId: number) {
-    return prisma.class.findUnique({ where: { id: classId }, select: { id: true, nameBn: true } });
+   * this is only a display-name lookup (this madrasa's own name) - every
+   * invoice query below is what actually carries the tenant scope. */
+  async findClassName(madrasaId: number, classId: number) {
+    const row = await prisma.class.findUnique({
+      where: { id: classId },
+      select: { id: true, ...tenantClassNameSelect(madrasaId) },
+    });
+    return row && { id: row.id, nameBn: tenantClassName(row) };
   }
 
   /** Every পরীক্ষার ফি invoice of one exam × class (same "fee structure

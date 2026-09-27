@@ -64,7 +64,7 @@ function build(invoices: Inv[]) {
     findExamForTenant: vi.fn(async (_m: number, id: number) =>
       id === EXAM ? { id: EXAM, name: "বার্ষিক পরীক্ষা", year: "2026" } : null,
     ),
-    findClassName: vi.fn(async (id: number) => ({ id, nameBn: "মিজান" })),
+    findClassName: vi.fn(async (_m: number, id: number) => ({ id, nameBn: "মিজান" })),
     findInvoicesWithExamLink: vi.fn(async (_m: number, ids: number[]) =>
       ids.map((id) => store.get(id)).filter(Boolean),
     ),

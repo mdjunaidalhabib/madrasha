@@ -4,6 +4,7 @@ import { classPanelRepository, ClassPanelRepository } from "./class-panel.reposi
 import { TenantNotFoundInPanelError } from "./class-panel.types";
 import { examFeeService } from "../fee/exam-fee.service";
 import { logger } from "../../shared/logger/logger";
+import { linkName } from "../../shared/utils/tenant-name.util";
 import { withTransaction } from "../../shared/database/transaction";
 import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import {
@@ -29,7 +30,7 @@ export class ClassPanelService {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const rows = await this.repository.findActiveDivisions(madrasaId);
-    return rows.map((r) => ({ division_id: r.division.id, division_name_bn: r.division.nameBn }));
+    return rows.map((r) => ({ division_id: r.division.id, division_name_bn: linkName(r, r.division) }));
   }
 
   async listClasses(madrasaId: number | undefined, divisionId: number) {
@@ -39,7 +40,7 @@ export class ClassPanelService {
     const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
     return rows.map((r) => ({
       class_id: r.class.id,
-      class_name_bn: r.class.nameBn,
+      class_name_bn: linkName(r, r.class),
       division_id: r.class.divisionId,
     }));
   }
@@ -50,7 +51,7 @@ export class ClassPanelService {
       throw new BadRequestError("division_id and name_bn required");
     }
 
-    const created = await this.repository.createClass(dto.name_bn, Number(dto.division_id));
+    const created = await this.repository.createClass(madrasaId, dto.name_bn, Number(dto.division_id));
     await this.repository.linkClassToMadrasa(madrasaId, created.id, Number(dto.division_id));
 
     // Give the new class its registration-number block from the plan's
@@ -71,9 +72,11 @@ export class ClassPanelService {
     }
   }
 
-  async updateClass(id: number, dto: UpdateClassRequestDto) {
+  async updateClass(madrasaId: number | undefined, id: number, dto: UpdateClassRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
     if (!dto.name_bn) throw new BadRequestError("name_bn required");
-    await this.repository.updateClass(id, dto.name_bn);
+    const { count } = await this.repository.updateClassName(madrasaId, id, dto.name_bn);
+    if (!count) throw new NotFoundError("Class not found in this madrasa");
   }
 
   async deleteClass(madrasaId: number | undefined, id: number) {
@@ -86,9 +89,11 @@ export class ClassPanelService {
     await this.repository.deactivateMadrasaDivision(madrasaId, id);
   }
 
-  async updateDivision(id: number, dto: UpdateDivisionRequestDto) {
+  async updateDivision(madrasaId: number | undefined, id: number, dto: UpdateDivisionRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
     if (!dto.name_bn) throw new BadRequestError("name_bn required");
-    await this.repository.updateDivision(id, dto.name_bn);
+    const { count } = await this.repository.updateDivisionName(madrasaId, id, dto.name_bn);
+    if (!count) throw new NotFoundError("Division not found in this madrasa");
   }
 
   async reorderDivisions(madrasaId: number | undefined, dto: ReorderDivisionsRequestDto) {
@@ -169,7 +174,7 @@ export class ClassPanelService {
         }
         return {
           class_id: row.classId,
-          class_name_bn: row.class.nameBn,
+          class_name_bn: linkName(row, row.class),
           division_id: row.class.divisionId,
           reg_no_start: start,
           reg_no_end: end,
@@ -181,7 +186,7 @@ export class ClassPanelService {
 
     return divisions.map((d) => ({
       division_id: d.division.id,
-      division_name_bn: d.division.nameBn,
+      division_name_bn: linkName(d, d.division),
       classes: classes.filter((c) => c.division_id === d.division.id),
     }));
   }
@@ -212,7 +217,7 @@ export class ClassPanelService {
       const overlap = await this.repository.findOverlappingRegistrationBlock(madrasaId, classId, start, end);
       if (overlap) {
         throw new BadRequestError(
-          `এই ব্লকটি "${overlap.class.nameBn}" শ্রেণির ব্লকের (${overlap.regNoStart}–${overlap.regNoEnd}) সাথে মিলে যাচ্ছে`,
+          `এই ব্লকটি "${linkName(overlap, overlap.class)}" শ্রেণির ব্লকের (${overlap.regNoStart}–${overlap.regNoEnd}) সাথে মিলে যাচ্ছে`,
         );
       }
     }

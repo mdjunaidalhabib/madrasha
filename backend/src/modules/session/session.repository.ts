@@ -1,24 +1,27 @@
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { tenantDivisionNameSelect, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
 
 export class SessionRepository {
-  findSessions(madrasaId: number, activeOnly = false, divisionId?: number | null) {
-    return prisma.session.findMany({
+  async findSessions(madrasaId: number, activeOnly = false, divisionId?: number | null) {
+    const rows = await prisma.session.findMany({
       where: {
         madrasaId,
         ...(activeOnly ? { isActive: true } : {}),
         ...(divisionId !== undefined ? { divisionId } : {}),
       },
-      include: { division: { select: { id: true, name: true, nameBn: true } } },
+      include: { division: { select: { id: true, ...tenantDivisionNameSelect(madrasaId) } } },
       orderBy: [{ startDate: "desc" }, { id: "desc" }],
     });
+    return rows.map((r) => ({ ...r, division: withTenantDivisionName(r.division) }));
   }
 
-  findSessionForTenant(id: number, madrasaId: number) {
-    return prisma.session.findFirst({
+  async findSessionForTenant(id: number, madrasaId: number) {
+    const row = await prisma.session.findFirst({
       where: { id, madrasaId },
-      include: { division: { select: { id: true, name: true, nameBn: true } } },
+      include: { division: { select: { id: true, ...tenantDivisionNameSelect(madrasaId) } } },
     });
+    return row && { ...row, division: withTenantDivisionName(row.division) };
   }
 
   /** divisionId omitted/undefined -> only the legacy shared (divisionId: null) current session.

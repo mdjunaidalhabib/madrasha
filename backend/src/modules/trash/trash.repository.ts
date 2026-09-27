@@ -1,22 +1,25 @@
 import { prisma } from "../../shared/database/prisma";
+import { tenantClassNameSelect, tenantDivisionNameSelect, withTenantClassName, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
 
 export class TrashRepository {
   /* ================= LIST ================= */
 
-  findTrashedStudents(madrasaId: number) {
-    return prisma.student.findMany({
+  async findTrashedStudents(madrasaId: number) {
+    const rows = await prisma.student.findMany({
       where: { madrasaId, deletedAt: { not: null } },
-      include: { classRef: { select: { nameBn: true } } },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
       orderBy: { deletedAt: "desc" },
     });
+    return rows.map((r) => ({ ...r, classRef: withTenantClassName(r.classRef) }));
   }
 
-  findTrashedTeachers(madrasaId: number) {
-    return prisma.teacher.findMany({
+  async findTrashedTeachers(madrasaId: number) {
+    const rows = await prisma.teacher.findMany({
       where: { madrasaId, deletedAt: { not: null } },
-      include: { divisionRef: { select: { nameBn: true } } },
+      include: { divisionRef: { select: tenantDivisionNameSelect(madrasaId) } },
       orderBy: { deletedAt: "desc" },
     });
+    return rows.map((r) => ({ ...r, divisionRef: withTenantDivisionName(r.divisionRef) }));
   }
 
   findTrashedExams(madrasaId: number) {
@@ -37,7 +40,11 @@ export class TrashRepository {
   findTrashedClasses(madrasaId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, deletedAt: { not: null } },
-      include: { class: { select: { nameBn: true, name: true, division: { select: { nameBn: true } } } } },
+      include: {
+        class: {
+          select: { nameBn: true, name: true, division: { select: tenantDivisionNameSelect(madrasaId) } },
+        },
+      },
       orderBy: { deletedAt: "desc" },
     });
   }
@@ -55,7 +62,7 @@ export class TrashRepository {
       where: { madrasaId, deletedAt: { not: null } },
       include: {
         exam: { select: { name: true, year: true } },
-        class: { select: { nameBn: true, name: true } },
+        class: { select: tenantClassNameSelect(madrasaId) },
       },
       orderBy: { deletedAt: "desc" },
     });

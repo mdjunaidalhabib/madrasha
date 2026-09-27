@@ -172,7 +172,7 @@ export class NotificationService {
     if (query.sessionId) where.sessionId = Number(query.sessionId);
     if (query.classId) where.classId = Number(query.classId);
 
-    const rows = await studentRepository.findMany(where as any);
+    const rows = await studentRepository.findMany(madrasaId, where as any);
     return rows
       .filter((s) => s.guardianPhone)
       .map((s) => ({ id: s.id, name: s.nameBn, roll: s.roll, phone: s.guardianPhone as string }));
@@ -192,7 +192,7 @@ export class NotificationService {
     if (!summaries.length) return [];
 
     const studentIds = [...new Set(summaries.map((s) => s.studentId))];
-    const students = await studentRepository.findMany({ id: { in: studentIds }, madrasaId } as any);
+    const students = await studentRepository.findMany(madrasaId, { id: { in: studentIds } });
     const phoneById = new Map(students.map((s) => [s.id, s.guardianPhone]));
     const rollById = new Map(students.map((s) => [s.id, s.roll]));
 

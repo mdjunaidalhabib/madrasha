@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import { tenantClassNameSelect, tenantDivisionNameSelect, tenantClassName, tenantDivisionName } from "./tenant-name.util";
 
 /**
  * Human-readable "what exactly changed" text for the activity log.
@@ -121,23 +122,26 @@ export const formatStudentValue = (
   }
 };
 
-/** Resolves class/division ids to their Bangla names in two queries. */
-export const loadAcademicNames = async (classIds: number[], divisionIds: number[]) => {
+/** Resolves class/division ids to this madrasa's own Bangla names in two queries. */
+export const loadAcademicNames = async (madrasaId: number, classIds: number[], divisionIds: number[]) => {
   const uniq = (ids: number[]) => [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))];
   const [classes, divisions] = await Promise.all([
     uniq(classIds).length
-      ? prisma.class.findMany({ where: { id: { in: uniq(classIds) } }, select: { id: true, nameBn: true, name: true } })
+      ? prisma.class.findMany({
+          where: { id: { in: uniq(classIds) } },
+          select: { id: true, ...tenantClassNameSelect(madrasaId) },
+        })
       : [],
     uniq(divisionIds).length
       ? prisma.division.findMany({
           where: { id: { in: uniq(divisionIds) } },
-          select: { id: true, nameBn: true, name: true },
+          select: { id: true, ...tenantDivisionNameSelect(madrasaId) },
         })
       : [],
   ]);
   return {
-    classes: new Map(classes.map((c) => [c.id, c.nameBn || c.name || String(c.id)])),
-    divisions: new Map(divisions.map((d) => [d.id, d.nameBn || d.name || String(d.id)])),
+    classes: new Map(classes.map((c) => [c.id, tenantClassName(c) || String(c.id)])),
+    divisions: new Map(divisions.map((d) => [d.id, tenantDivisionName(d) || String(d.id)])),
   };
 };
 
@@ -154,6 +158,7 @@ const loadStudent: SnapshotLoader = async (id) => {
   if (!student) return null;
   const record = student as unknown as Record<string, unknown>;
   const names = await loadAcademicNames(
+    student.madrasaId,
     [student.classId, student.previousClassId ?? 0],
     [student.divisionId],
   );
@@ -171,7 +176,7 @@ const loadStudent: SnapshotLoader = async (id) => {
 
 /** Detail text for an Excel bulk update: the counts, then each updated
  * student with its changed fields, then each skipped row with its reason. */
-export const describeStudentBulkUpdate = async (result: {
+export const describeStudentBulkUpdate = async (madrasaId: number, result: {
   updated: number;
   unchanged: number;
   skipped: number;
@@ -188,12 +193,13 @@ export const describeStudentBulkUpdate = async (result: {
   const changedFields = updatedRows.flatMap((r) => r.changes);
   const classFields = new Set(["classId", "previousClassId"]);
   const names = await loadAcademicNames(
+    madrasaId,
     changedFields.filter((c) => classFields.has(c.field)).flatMap((c) => [Number(c.old), Number(c.new)]),
     changedFields.filter((c) => c.field === "divisionId").flatMap((c) => [Number(c.old), Number(c.new)]),
   );
   const students = await prisma.student.findMany({
     where: { id: { in: updatedRows.map((r) => r.id) } },
-    select: { id: true, roll: true, registrationNo: true, classRef: { select: { nameBn: true, name: true } } },
+    select: { id: true, roll: true, registrationNo: true, classRef: { select: tenantClassNameSelect(madrasaId) } },
   });
   const byId = new Map(students.map((s) => [s.id, s]));
 
@@ -202,7 +208,7 @@ export const describeStudentBulkUpdate = async (result: {
   ];
   for (const row of updatedRows) {
     const student = byId.get(row.id);
-    const className = student?.classRef.nameBn || student?.classRef.name || EMPTY;
+    const className = tenantClassName(student?.classRef) || EMPTY;
     lines.push(
       `• ${row.name} (শ্রেণি: ${className}, রোল: ${student?.roll ?? EMPTY}, রেজি: ${student?.registrationNo ?? EMPTY})`,
     );
@@ -234,11 +240,20 @@ const loadExam: SnapshotLoader = async (id) => {
       endDate: true,
       description: true,
       isActive: true,
-      divisions: { select: { division: { select: { nameBn: true, name: true } } } },
+      divisions: {
+        select: { division: { select: { nameBn: true, name: true, madrasaDivisions: { select: { madrasaId: true, nameBn: true } } } } },
+      },
     },
   });
   if (!exam) return null;
-  const divisionNames = exam.divisions.map((d) => d.division.nameBn || d.division.name).filter(Boolean);
+  const divisionNames = exam.divisions
+    .map(
+      (d) =>
+        d.division.madrasaDivisions.find((l) => l.madrasaId === exam.madrasaId)?.nameBn ||
+        d.division.nameBn ||
+        d.division.name,
+    )
+    .filter(Boolean);
   return {
     madrasaId: exam.madrasaId,
     title: `পরীক্ষা: ${exam.name} (${exam.year})`,
@@ -266,13 +281,13 @@ const loadExamFee: SnapshotLoader = async (examId) => {
   const rows = await prisma.feeStructure.findMany({
     where: { madrasaId: exam.madrasaId, examId },
     orderBy: [{ classId: "asc" }, { id: "asc" }],
-    select: { amount: true, isActive: true, class: { select: { nameBn: true, name: true } } },
+    select: { amount: true, isActive: true, class: { select: tenantClassNameSelect(exam.madrasaId) } },
   });
   const fields: Record<string, string> = {
     "ফি অবস্থা": onOff(exam.isActive && rows.some((r) => r.isActive)),
   };
   for (const row of rows) {
-    const className = row.class ? row.class.nameBn || row.class.name : "সব শ্রেণি";
+    const className = row.class ? tenantClassName(row.class) : "সব শ্রেণি";
     fields[`${className} শ্রেণির ফি`] = formatMoney(row.amount);
   }
   return { madrasaId: exam.madrasaId, title: `পরীক্ষা: ${exam.name} (${exam.year})`, fields };
@@ -293,7 +308,7 @@ const loadFeeStructure: SnapshotLoader = async (id) => {
       frequency: true,
       academicYear: true,
       isActive: true,
-      class: { select: { nameBn: true, name: true } },
+      class: { select: { nameBn: true, name: true, madrasaClasses: { select: { madrasaId: true, nameBn: true } } } },
       exam: { select: { name: true } },
     },
   });
@@ -304,7 +319,13 @@ const loadFeeStructure: SnapshotLoader = async (id) => {
     fields: {
       "ফি-এর নাম": formatValue(fee.name),
       "ফি ধরণ": formatValue(fee.feeType),
-      শ্রেণি: fee.class ? formatValue(fee.class.nameBn || fee.class.name) : "সকল শ্রেণি",
+      শ্রেণি: fee.class
+        ? formatValue(
+            fee.class.madrasaClasses.find((l) => l.madrasaId === fee.madrasaId)?.nameBn ||
+              fee.class.nameBn ||
+              fee.class.name,
+          )
+        : "সকল শ্রেণি",
       পরিমাণ: formatMoney(fee.amount),
       "আদায়ের ধরন": FREQUENCY_LABELS[fee.frequency] ?? fee.frequency,
       শিক্ষাবর্ষ: formatValue(fee.academicYear),
