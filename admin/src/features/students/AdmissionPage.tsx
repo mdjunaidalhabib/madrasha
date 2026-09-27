@@ -604,9 +604,13 @@ const AdmissionPage = () => {
     try {
       setLoading(true);
 
-      const res = await api.post("/students/admission/bulk", {
-        students: makeExcelPayload(),
-      });
+      // Every row also gets a guardian + fee invoices after the insert, so a
+      // few dozen rows easily outlive the client's default 20s timeout.
+      const res = await api.post(
+        "/students/admission/bulk",
+        { students: makeExcelPayload() },
+        { timeout: 300_000 },
+      );
 
       setBulkResult({
         inserted: res.data?.inserted || 0,
@@ -617,7 +621,13 @@ const AdmissionPage = () => {
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "Bulk Admission Failed ❌", "error");
+        .show(
+          err?.response?.data?.message ||
+            (err?.code === "ECONNABORTED"
+              ? "সার্ভার থেকে উত্তর আসতে দেরি হচ্ছে - আবার আপলোডের আগে শিক্ষার্থী তালিকা দেখে নিন, হয়তো ভর্তি হয়ে গেছে।"
+              : "Bulk Admission Failed ❌"),
+          "error",
+        );
     } finally {
       setLoading(false);
     }
