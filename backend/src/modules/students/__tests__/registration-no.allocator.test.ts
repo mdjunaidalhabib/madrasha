@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   allocateStudentRegistrationNoOnTx,
+  createRegistrationNoBatchOnTx,
   RegistrationBlockFullError,
 } from "../registration-no.allocator";
 
@@ -76,5 +77,32 @@ describe("allocateStudentRegistrationNoOnTx", () => {
 
     const noBlocks = makeTx({ block: null, regNos: [5, 40] });
     await expect(allocateStudentRegistrationNoOnTx(noBlocks.tx, 1, 5)).resolves.toBe(41);
+  });
+});
+
+describe("createRegistrationNoBatchOnTx", () => {
+  it("counts up in memory and writes the block once on flush", async () => {
+    const { tx, update } = makeTx({
+      block: { id: 9, regNoStart: 51, regNoEnd: 53, regNoLastIssued: null },
+      regNos: [51],
+    });
+    const batch = createRegistrationNoBatchOnTx(tx, 1);
+    await expect(batch.next(5)).resolves.toBe(52);
+    await expect(batch.next(5)).resolves.toBe(53);
+    await expect(batch.next(5)).rejects.toBeInstanceOf(RegistrationBlockFullError);
+    expect(tx.madrasaClass.findFirst).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
+    await batch.flush();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith({ where: { id: 9 }, data: { regNoLastIssued: 53 } });
+  });
+
+  it("no-block class continues above every block", async () => {
+    const { tx, update } = makeTx({ block: null, regNos: [7], maxBlockEnd: 100 });
+    const batch = createRegistrationNoBatchOnTx(tx, 1);
+    await expect(batch.next(5)).resolves.toBe(101);
+    await expect(batch.next(5)).resolves.toBe(102);
+    await batch.flush();
+    expect(update).not.toHaveBeenCalled();
   });
 });

@@ -26,6 +26,10 @@ import { logger } from "../../shared/logger/logger";
 import { logActivity } from "../../shared/utils/activity.util";
 
 /** API key -> Prisma column for every name the নাম (৩ ভাষা) page may edit. */
+/** Bulk admission writes every row in one all-or-nothing transaction; Prisma's
+ * 5s default is far too short for a few hundred rows against a remote DB. */
+const BULK_ADMISSION_TX_OPTIONS = { maxWait: 10_000, timeout: 120_000 };
+
 const STUDENT_NAME_FIELDS = {
   name_bn: "nameBn",
   arabic_name: "arabicName",
@@ -466,10 +470,11 @@ export class StudentService {
       let updated = 0;
       const preview: BulkAdmissionRow[] = [];
       // Each number comes from the row's class block (see
-      // registration-no.allocator.ts); the allocator sees rows created
-      // earlier in this same transaction, so no local counter is needed.
-      const nextRegistrationNo = (scopeClassId: number) =>
-        this.repository.allocateRegistrationNoOnTx(tx, madrasaId, scopeClassId);
+      // registration-no.allocator.ts). The batch allocator reads each class
+      // once and counts up in memory - per-row queries made a 40+ row upload
+      // outlive the transaction timeout on a remote DB.
+      const registrationNos = this.repository.createRegistrationNoBatchOnTx(tx, madrasaId);
+      const nextRegistrationNo = (scopeClassId: number) => registrationNos.next(scopeClassId);
       const rollCounters = new Map<string, number>();
 
       for (let index = 0; index < prepared.length; index++) {
@@ -566,8 +571,9 @@ export class StudentService {
         }
       }
 
+      await registrationNos.flush();
       return { inserted, updated, preview };
-    });
+    }, BULK_ADMISSION_TX_OPTIONS);
 
     // Outside the transaction, same reasoning as admitStudent(). One
     // guardian-provisioning failure must not affect (or roll back) the

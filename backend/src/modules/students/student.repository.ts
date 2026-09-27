@@ -3,6 +3,7 @@ import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 import {
   allocateStudentRegistrationNoOnTx,
+  createRegistrationNoBatchOnTx,
   lockStudentRegistrationScopeOnTx,
 } from "./registration-no.allocator";
 
@@ -342,6 +343,12 @@ export class StudentRepository {
     return allocateStudentRegistrationNoOnTx(tx, madrasaId, classId);
   }
 
+  /** Many numbers in one transaction - see createRegistrationNoBatchOnTx.
+   * Needs lockRegistrationScopeOnTx; call flush() before commit. */
+  createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: number) {
+    return createRegistrationNoBatchOnTx(tx, madrasaId);
+  }
+
   createOnTx(tx: TransactionClient, data: Prisma.StudentUncheckedCreateInput) {
     return tx.student.create({ data });
   }
@@ -391,8 +398,11 @@ export class StudentRepository {
     return tx.student.updateMany({ where: { id, madrasaId }, data });
   }
 
-  runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
-    return prisma.$transaction(fn);
+  runTransaction<T>(
+    fn: (tx: TransactionClient) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number },
+  ): Promise<T> {
+    return prisma.$transaction(fn, options);
   }
 }
 

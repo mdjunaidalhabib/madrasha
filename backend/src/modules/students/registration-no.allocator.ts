@@ -72,3 +72,71 @@ export async function allocateStudentRegistrationNoOnTx(
   ]);
   return Math.max(used._max.registrationNo ?? 0, blocks._max.regNoEnd ?? 0) + 1;
 }
+
+/**
+ * Batch version of allocateStudentRegistrationNoOnTx for flows that hand
+ * out many numbers in one transaction (bulk admission). Each class is read
+ * from the DB once, later numbers are counted up in memory, and every
+ * block's regNoLastIssued is written once in flush() - instead of 3 queries
+ * per student, which on a remote DB blew Prisma's interactive-transaction
+ * timeout. Same rules and same lock requirement as the single allocator;
+ * call flush() before the transaction commits.
+ */
+export function createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: number) {
+  type BlockState = { id: number; start: number; end: number; last: number };
+  const blocks = new Map<number, BlockState | null>();
+  const dirty = new Set<BlockState>();
+  let fallbackLast: number | null = null;
+
+  const loadBlock = async (classId: number): Promise<BlockState | null> => {
+    if (blocks.has(classId)) return blocks.get(classId)!;
+    const block = await tx.madrasaClass.findFirst({
+      where: { madrasaId, classId },
+      select: { id: true, regNoStart: true, regNoEnd: true, regNoLastIssued: true },
+    });
+    let state: BlockState | null = null;
+    if (block && block.regNoStart != null && block.regNoEnd != null) {
+      const { regNoStart: start, regNoEnd: end } = block;
+      const used = await tx.student.aggregate({
+        where: { madrasaId, registrationNo: { gte: start, lte: end } },
+        _max: { registrationNo: true },
+      });
+      const lastIssued =
+        block.regNoLastIssued != null && block.regNoLastIssued >= start && block.regNoLastIssued <= end
+          ? block.regNoLastIssued
+          : start - 1;
+      state = { id: block.id, start, end, last: Math.max(start - 1, lastIssued, used._max.registrationNo ?? 0) };
+    }
+    blocks.set(classId, state);
+    return state;
+  };
+
+  return {
+    async next(classId: number): Promise<number> {
+      const block = await loadBlock(classId);
+      if (block) {
+        const next = block.last + 1;
+        if (next > block.end) throw new RegistrationBlockFullError(block.start, block.end);
+        block.last = next;
+        dirty.add(block);
+        return next;
+      }
+      // No block: numbers sit above every block, so block allocations made
+      // in this batch (all <= the highest regNoEnd) never collide with these.
+      if (fallbackLast == null) {
+        const [used, ends] = await Promise.all([
+          tx.student.aggregate({ where: { madrasaId }, _max: { registrationNo: true } }),
+          tx.madrasaClass.aggregate({ where: { madrasaId, regNoEnd: { not: null } }, _max: { regNoEnd: true } }),
+        ]);
+        fallbackLast = Math.max(used._max.registrationNo ?? 0, ends._max.regNoEnd ?? 0);
+      }
+      return ++fallbackLast;
+    },
+    async flush() {
+      for (const block of dirty) {
+        await tx.madrasaClass.update({ where: { id: block.id }, data: { regNoLastIssued: block.last } });
+      }
+      dirty.clear();
+    },
+  };
+}
