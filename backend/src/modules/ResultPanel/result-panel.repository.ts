@@ -637,6 +637,7 @@ export class ResultPanelRepository {
         total: true,
         average: true,
         generalGrade: true,
+        gpa: true,
         madrasaGrade: true,
         status: true,
         rankNo: true,
@@ -797,6 +798,7 @@ export class ResultPanelRepository {
         total: true,
         average: true,
         generalGrade: true,
+        gpa: true,
         madrasaGrade: true,
         status: true,
         rankNo: true,
@@ -959,6 +961,20 @@ export class ResultPanelRepository {
    * subject list only from already-saved marks (as getFullResultView used
    * to do) hid any subject with zero entries so far, which made a newly
    * added/renamed subject impossible to enter marks for from that modal. */
+  /** Per-student, per-subject mark rows for GPA grading. */
+  findMarkRowsForGpa(madrasaId: number, examId: number, classId: number, resultMasterId: number) {
+    return prisma.mark.findMany({
+      where: { madrasaId, examId, classId, resultMasterId },
+      select: { studentId: true, bookId: true, mark: true, isAbsent: true, isExempted: true },
+    });
+  }
+
+  findInstitutionType(madrasaId: number) {
+    return prisma.madrasa
+      .findUnique({ where: { id: madrasaId }, select: { institutionType: true } })
+      .then((row) => row?.institutionType ?? null);
+  }
+
   findActiveSubjectsForClass(
     madrasaId: number,
     classId: number,
@@ -967,6 +983,7 @@ export class ResultPanelRepository {
       isMiyari: boolean;
       fullMark: number;
       passMark: number | null;
+      isOptional: boolean;
       book: { id: number; nameBn: string | null; name: string | null } | null;
     }[]
   > {
@@ -976,6 +993,7 @@ export class ResultPanelRepository {
         isMiyari: true,
         fullMark: true,
         passMark: true,
+        isOptional: true,
         book: { select: { id: true, nameBn: true, name: true } },
       },
       // Subject serial within the class - this drives the full-result
@@ -1039,6 +1057,7 @@ export class ResultPanelRepository {
         total: true,
         average: true,
         generalGrade: true,
+        gpa: true,
         madrasaGrade: true,
         status: true,
         rankNo: true,

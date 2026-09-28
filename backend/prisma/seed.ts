@@ -30,12 +30,12 @@ const defaultExams = [
 // Passing bands only. A fail grade (F / রাসিব) is NOT a band: failed students
 // automatically get DEFAULT_*_GRADE_FALLBACK (result-panel.constants.ts).
 const defaultGeneralGrades = [
-  { keyName: "a_plus", name: "A+", minMark: 80, maxMark: 100, sortOrder: 1 },
-  { keyName: "a", name: "A", minMark: 70, maxMark: 79, sortOrder: 2 },
-  { keyName: "a_minus", name: "A-", minMark: 60, maxMark: 69, sortOrder: 3 },
-  { keyName: "b", name: "B", minMark: 50, maxMark: 59, sortOrder: 4 },
-  { keyName: "c", name: "C", minMark: 40, maxMark: 49, sortOrder: 5 },
-  { keyName: "d", name: "D", minMark: 35, maxMark: 39, sortOrder: 6 },
+  { keyName: "a_plus", name: "A+", minMark: 80, maxMark: 100, point: 5, sortOrder: 1 },
+  { keyName: "a", name: "A", minMark: 70, maxMark: 79, point: 4, sortOrder: 2 },
+  { keyName: "a_minus", name: "A-", minMark: 60, maxMark: 69, point: 3.5, sortOrder: 3 },
+  { keyName: "b", name: "B", minMark: 50, maxMark: 59, point: 3, sortOrder: 4 },
+  { keyName: "c", name: "C", minMark: 40, maxMark: 49, point: 2, sortOrder: 5 },
+  { keyName: "d", name: "D", minMark: 35, maxMark: 39, point: 1, sortOrder: 6 },
 ];
 
 const defaultMadrasaGrades = [
@@ -240,6 +240,7 @@ async function main() {
         name: grade.name,
         minMark: grade.minMark,
         maxMark: grade.maxMark,
+        point: grade.point,
         sortOrder: grade.sortOrder,
         isActive: true,
       },

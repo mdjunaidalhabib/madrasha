@@ -163,8 +163,8 @@ describe("updateDivisionFailMark", () => {
 
   it("rejects unknown divisions and out-of-range values", async () => {
     const { service, repository } = makeService({ divisionExists: false });
-    await expect(service.updateDivisionFailMark(MADRASA_ID, DIV, { value: 101 })).rejects.toThrow("between 0 and 100");
-    await expect(service.updateDivisionFailMark(MADRASA_ID, DIV, { value: 40 })).rejects.toThrow("Division not found");
+    await expect(service.updateDivisionFailMark(MADRASA_ID, DIV, { value: 101 })).rejects.toThrow("0 থেকে 100 এর মধ্যে");
+    await expect(service.updateDivisionFailMark(MADRASA_ID, DIV, { value: 40 })).rejects.toThrow("পাওয়া যায়নি");
     expect(repository.setDivisionFailMark).not.toHaveBeenCalled();
   });
 });

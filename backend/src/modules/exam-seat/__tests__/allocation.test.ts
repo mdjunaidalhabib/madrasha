@@ -8,7 +8,7 @@ describe("validateCapacity", () => {
 
   it("throws naming the exact shortfall when capacity is insufficient", () => {
     expect(() => validateCapacity(25, [{ roomId: 1, capacity: 10 }, { roomId: 2, capacity: 10 }])).toThrow(
-      /short by 5/,
+      /25 জন/,
     );
   });
 });
@@ -36,7 +36,7 @@ describe("planSeatAllocation - SEQUENTIAL", () => {
         rooms: [{ roomId: 10, capacity: 1 }],
         strategy: "SEQUENTIAL",
       }),
-    ).toThrow(/Insufficient seating capacity/);
+    ).toThrow(/আসন সংখ্যা যথেষ্ট নয়/);
   });
 });
 

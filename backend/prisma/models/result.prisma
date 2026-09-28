@@ -286,6 +286,9 @@ model ResultSummary {
 
   total   Float @default(0)
   average Float @default(0)
+  /// Board-style GPA (0-5) for school/college tenants; null for madrasas and
+  /// fully-absent students.
+  gpa     Float?
 
   generalGrade String? @map("general_grade") @db.VarChar(20)
   madrasaGrade String? @map("madrasa_grade") @db.VarChar(50)

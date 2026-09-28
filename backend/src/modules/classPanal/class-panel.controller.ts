@@ -156,6 +156,16 @@ export const updateMiyariSubjects = async (req: Request, res: Response) => {
   }
 };
 
+/** School/college 4th (optional) subjects for GPA - same shape as miyari. */
+export const updateOptionalSubjects = async (req: Request, res: Response) => {
+  try {
+    const data = await classPanelService.updateOptionalSubjects(req.tenant?.madrasa_id, req.body);
+    res.json(data);
+  } catch (error) {
+    respondError(res, error, "❌ Optional subject update error:", "Failed to update optional subjects");
+  }
+};
+
 export const reorderSubjects = async (req: Request, res: Response) => {
   try {
     const data = await classPanelService.reorderSubjects(req.tenant?.madrasa_id, req.body);

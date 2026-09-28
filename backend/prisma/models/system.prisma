@@ -247,6 +247,8 @@ model DefaultGeneralGrade {
   name      String   @db.VarChar(10)
   minMark   Int      @map("min_mark")
   maxMark   Int      @map("max_mark")
+  /// Grade point copied into each new tenant (GPA calculation).
+  point     Float?
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")

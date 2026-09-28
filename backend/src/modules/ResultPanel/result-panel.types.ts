@@ -4,6 +4,8 @@ export interface GradeRow {
   name: string;
   minMark: any;
   maxMark: any;
+  /** Grade point (general scale) - drives GPA for school/college tenants. */
+  point?: number | null;
 }
 
 export interface ClassStatusRow {

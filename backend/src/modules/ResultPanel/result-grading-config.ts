@@ -8,6 +8,8 @@ export interface ClassGradingConfig {
   generalGrades: GradeRow[];
   madrasaGrades: GradeRow[];
   failMark: number;
+  /** School/college tenants grade by board-style GPA (see gpa.ts). */
+  gpaMode?: boolean;
 }
 
 type GradeRowWithDivision = GradeRow & { divisionId?: number | null };
@@ -23,6 +25,8 @@ export interface GradingConfigSource {
     madrasaId: number,
     classId: number,
   ): Promise<{ divisionId: number | null; divisionFailMark: number | null }>;
+  /** Tenant institution type (MADRASA/SCHOOL/...); absent = madrasa. */
+  findInstitutionType?(madrasaId: number): Promise<string | null>;
 }
 
 /**
@@ -43,6 +47,17 @@ export class MadrasaGradingConfig {
   >();
   private readonly failMarkByClass = new Map<number, Promise<number>>();
   private readonly configByDivision = new Map<number | null, Promise<ClassGradingConfig>>();
+  private gpaModePromise: Promise<boolean> | null = null;
+
+  private gpaMode() {
+    if (!this.gpaModePromise) {
+      const find = this.source.findInstitutionType?.bind(this.source);
+      this.gpaModePromise = find
+        ? find(this.madrasaId).then((type) => type === "SCHOOL" || type === "COLLEGE")
+        : Promise.resolve(false);
+    }
+    return this.gpaModePromise;
+  }
 
   constructor(
     private readonly source: GradingConfigSource,
@@ -112,6 +127,6 @@ export class MadrasaGradingConfig {
       });
       this.configByDivision.set(scope.divisionId, scales);
     }
-    return scales;
+    return { ...(await scales), gpaMode: await this.gpaMode() };
   }
 }

@@ -27,6 +27,6 @@ describe("normalizeSlideLink", () => {
   });
 
   it("rejects over-long links", () => {
-    expect(() => normalizeSlideLink(`https://x.com/${"a".repeat(260)}`)).toThrow("too long");
+    expect(() => normalizeSlideLink(`https://x.com/${"a".repeat(260)}`)).toThrow("অনেক বড়");
   });
 });

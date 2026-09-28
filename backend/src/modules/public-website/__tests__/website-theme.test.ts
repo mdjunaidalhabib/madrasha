@@ -24,7 +24,7 @@ describe("website theme_key", () => {
 
   it("rejects an unknown theme", async () => {
     const { repo, service } = makeService();
-    await expect(service.upsertWebsiteSettings(1, { theme_key: "neon" })).rejects.toThrow("Invalid theme");
+    await expect(service.upsertWebsiteSettings(1, { theme_key: "neon" })).rejects.toThrow("থিম সঠিক নয়");
     expect(repo.upsertSettings).not.toHaveBeenCalled();
   });
 });

@@ -489,10 +489,10 @@ export class SuperAdminRepository {
   createDefaultGeneralGradesOnTx(
     tx: TransactionClient,
     madrasaId: number,
-    grades: { name: string; minMark: number; maxMark: number }[],
+    grades: { name: string; minMark: number; maxMark: number; point?: number | null }[],
   ) {
     return tx.generalGrade.createMany({
-      data: grades.map((g) => ({ madrasaId, name: g.name, minMark: g.minMark, maxMark: g.maxMark })),
+      data: grades.map((g) => ({ madrasaId, name: g.name, minMark: g.minMark, maxMark: g.maxMark, point: g.point ?? null })),
       skipDuplicates: true,
     });
   }

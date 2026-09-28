@@ -145,6 +145,7 @@ export class ClassPanelRepository {
       select: {
         id: true,
         isMiyari: true,
+        isOptional: true,
         fullMark: true,
         passMark: true,
         sortOrder: true,
@@ -179,6 +180,19 @@ export class ClassPanelRepository {
         }),
       ),
     );
+  }
+
+  setOptionalSubjects(madrasaId: number, classId: number, bookIds: number[]) {
+    return prisma.$transaction([
+      prisma.madrasaBook.updateMany({
+        where: { madrasaId, isActive: 1, book: { classId } },
+        data: { isOptional: false },
+      }),
+      prisma.madrasaBook.updateMany({
+        where: { madrasaId, isActive: 1, bookId: { in: bookIds }, book: { classId } },
+        data: { isOptional: true },
+      }),
+    ]);
   }
 
   setMiyariSubjects(madrasaId: number, classId: number, bookIds: number[]) {

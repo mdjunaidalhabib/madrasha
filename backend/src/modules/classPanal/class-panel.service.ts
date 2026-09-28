@@ -240,6 +240,7 @@ export class ClassPanelService {
       book_name_bn: r.book.nameBn,
       class_id: r.book.classId,
       is_miyari: r.isMiyari,
+      is_optional: r.isOptional,
       full_marks: r.fullMark,
       // null = no override; this subject follows the madrasa's global fail mark.
       pass_mark: r.passMark,
@@ -270,6 +271,30 @@ export class ClassPanelService {
 
     return {
       message: t({ bn: "মিয়ারি বিষয় সংরক্ষণ করা হয়েছে", en: "Standard (mi'yari) subject saved" }),
+      book_ids: bookIds,
+      refreshed_results: resultRefresh.updated,
+      skipped_incomplete_results: resultRefresh.skipped,
+    };
+  }
+
+  /** School/college 4th subject(s): only the grade point above 2 counts
+   * toward GPA and failing it never fails the student (see ResultPanel/gpa.ts). */
+  async updateOptionalSubjects(madrasaId: number | undefined, dto: UpdateMiyariSubjectsRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    const classId = Number(dto.class_id);
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required" }));
+    const bookIds = Array.from(
+      new Set((Array.isArray(dto.book_ids) ? dto.book_ids : []).map(Number).filter(Boolean)),
+    );
+    const subjects = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
+    const activeBookIds = new Set(subjects.map((row) => row.book.id));
+    if (bookIds.some((bookId) => !activeBookIds.has(bookId))) {
+      throw new BadRequestError(t({ bn: "নির্বাচিত বিষয়টি এই শ্রেণির সক্রিয় বিষয় নয়", en: "The selected subject is not an active subject of this class" }));
+    }
+    await this.repository.setOptionalSubjects(madrasaId, classId, bookIds);
+    const resultRefresh = await this.results.reprocessClassResults(madrasaId, classId);
+    return {
+      message: t({ bn: "৪র্থ বিষয় সংরক্ষণ করা হয়েছে", en: "4th subject saved" }),
       book_ids: bookIds,
       refreshed_results: resultRefresh.updated,
       skipped_incomplete_results: resultRefresh.skipped,

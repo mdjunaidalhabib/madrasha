@@ -35,7 +35,7 @@ describe("per-madrasa class/division rename", () => {
 
   it("rejects a class this madrasa is not linked to", async () => {
     const { service } = buildService(false);
-    await expect(service.updateClass(5, 99, { name_bn: "x" })).rejects.toThrow("Class not found");
+    await expect(service.updateClass(5, 99, { name_bn: "x" })).rejects.toThrow("শ্রেণিটি পাওয়া যায়নি");
   });
 
   it("requires a tenant", async () => {

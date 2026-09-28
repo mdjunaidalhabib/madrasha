@@ -13,6 +13,7 @@ import {
   updateRegistrationBlock,
   getSubjects,
   updateMiyariSubjects,
+  updateOptionalSubjects,
   reorderSubjects,
   addSubject,
   updateSubject,
@@ -71,6 +72,7 @@ router.get("/madrasa-books", getSubjects);
 router.post("/madrasa-books", manage, addSubject);
 
 router.put("/madrasa-books/miyari", manage, updateMiyariSubjects);
+router.put("/madrasa-books/optional", manage, updateOptionalSubjects);
 
 router.put("/madrasa-books/reorder", manage, reorderSubjects);
 

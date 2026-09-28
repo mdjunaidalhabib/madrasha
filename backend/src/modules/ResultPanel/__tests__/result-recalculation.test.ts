@@ -252,7 +252,7 @@ describe("ResultPanelService.recalculateResults", () => {
     (service as any).repository.findResultMasterById = async () => null;
 
     await expect(service.recalculateResults(1, 7, { resultMasterId: 999 })).rejects.toThrow(
-      "Result session not found",
+      "ফলাফল সেশন পাওয়া যায়নি",
     );
   });
 });

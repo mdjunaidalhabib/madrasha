@@ -1,4 +1,5 @@
 import { Prisma, ResultPublishStatus } from "@prisma/client";
+import { computeGpa, gradeForGpa, type GpaSubjectMark, type PointBand } from "./gpa";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { notificationService } from "../notifications/notification.service";
@@ -227,12 +228,15 @@ export class ResultPanelService {
     config: ResultCalculationConfig,
     rollOverrides?: Map<number, number | null>,
   ): Promise<Prisma.ResultSummaryCreateManyInput[] | null> {
-    const [marks, activeSubjects, absentCounts, exemptedMarks, withheldStudentRows] = await Promise.all([
+    const [marks, activeSubjects, absentCounts, exemptedMarks, withheldStudentRows, gpaMarkRows] = await Promise.all([
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findActiveSubjectsForClass(madrasaId, classId),
       this.repository.countAbsentMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findExemptedMarksByStudent(madrasaId, examId, classId, resultMasterId),
       this.repository.findWithheldStudentIds(madrasaId, examId, classId, resultMasterId),
+      config.gpaMode
+        ? this.repository.findMarkRowsForGpa(madrasaId, examId, classId, resultMasterId)
+        : Promise.resolve([]),
     ]);
 
     if (!marks.length) return null;
@@ -303,9 +307,37 @@ export class ResultPanelService {
       failedMiyariRows.map((row) => Number(row.studentId)),
     );
 
+    // School/college tenants: board-style GPA per student (see gpa.ts),
+    // computed from each subject mark; madrasas skip this entirely.
+    const gpaByStudent = new Map<number, { gpa: number; failed: boolean }>();
+    if (config.gpaMode) {
+      const subjectByBook = new Map(
+        activeSubjects.filter((sub) => sub.book).map((sub) => [Number(sub.book!.id), sub]),
+      );
+      const rowsByStudent = new Map<number, GpaSubjectMark[]>();
+      for (const row of gpaMarkRows) {
+        const subject = subjectByBook.get(Number(row.bookId));
+        if (!subject) continue;
+        const list = rowsByStudent.get(Number(row.studentId)) ?? [];
+        list.push({
+          mark: Number(row.mark || 0),
+          fullMark: Number(subject.fullMark || 100),
+          passMark: subject.passMark ?? null,
+          isOptional: subject.isOptional,
+          isAbsent: row.isAbsent,
+          isExempted: row.isExempted,
+        });
+        rowsByStudent.set(Number(row.studentId), list);
+      }
+      for (const [studentId, list] of rowsByStudent) {
+        gpaByStudent.set(studentId, computeGpa(list, config.generalGrades as PointBand[], config.failMark));
+      }
+    }
+
     const sorted = [...marks]
       .filter((row) => !withheldStudentIds.has(Number(row.studentId)))
-      .sort((a, b) => Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
+      .sort((a, b) => (gpaByStudent.get(Number(b.studentId))?.gpa ?? 0) - (gpaByStudent.get(Number(a.studentId))?.gpa ?? 0) ||
+          Number(b._sum.mark || 0) - Number(a._sum.mark || 0));
 
     const studentIds = sorted.map((row) => Number(row.studentId));
     const students = await this.repository.findRollsByStudentIds(studentIds);
@@ -338,22 +370,27 @@ export class ResultPanelService {
       const absentSubjectCount = absentCountByStudent.get(studentId) || 0;
       const fullyAbsent = subjectCount > 0 && absentSubjectCount === subjectCount;
 
+      const gpaResult = config.gpaMode ? gpaByStudent.get(studentId) : undefined;
       const passed =
         !fullyAbsent &&
-        average >= config.failMark &&
-        !studentsFailingMiyari.has(studentId);
+        (gpaResult
+          ? !gpaResult.failed
+          : average >= config.failMark && !studentsFailingMiyari.has(studentId));
 
       return {
         resultMasterId,
         studentId,
         total,
         average,
+        gpa: gpaResult && !fullyAbsent ? gpaResult.gpa : null,
         generalGrade: fullyAbsent
           ? null
-          : passed
-            ? getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK)
-            : DEFAULT_GENERAL_GRADE_FALLBACK,
-        madrasaGrade: fullyAbsent
+          : !passed
+            ? DEFAULT_GENERAL_GRADE_FALLBACK
+            : gpaResult
+              ? (gradeForGpa(gpaResult.gpa, config.generalGrades as PointBand[]) ?? DEFAULT_GENERAL_GRADE_FALLBACK)
+              : getGradeFast(average, config.generalGrades, DEFAULT_GENERAL_GRADE_FALLBACK),
+        madrasaGrade: fullyAbsent || config.gpaMode
           ? null
           : passed
             ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
@@ -1378,6 +1415,7 @@ export class ResultPanelService {
       total: r.total,
       average: r.average,
       general_grade: r.generalGrade,
+      gpa: r.gpa ?? null,
       madrasa_grade: r.madrasaGrade,
       status: r.status,
       rank_no: r.rankNo,
