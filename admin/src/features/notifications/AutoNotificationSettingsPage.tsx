@@ -5,6 +5,8 @@ import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { notificationsText } from "./notifications.text";
 
 const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; placeholders: string }> = {
   ADMISSION: {
@@ -45,6 +47,9 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
 };
 
 const AutoNotificationSettingsPage = () => {
+  const t = useText(notificationsText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [settings, setSettings] = useState<NotificationSettingItem[]>([]);
   const [masterEnabled, setMasterEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -90,7 +95,7 @@ const AutoNotificationSettingsPage = () => {
       await notificationApi.updateSetting(item.eventKey, { isEnabled: next });
     } catch (err: any) {
       patch(item.eventKey, { isEnabled: !next });
-      const msg = err?.response?.data?.message || "সেভ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setTogglingKey(null);
@@ -110,9 +115,9 @@ const AutoNotificationSettingsPage = () => {
       await notificationApi.updateSetting(item.eventKey, { template: draftTemplate });
       patch(item.eventKey, { template: draftTemplate });
       setEditingKey(null);
-      useToastStore.getState().show("বার্তা সেভ হয়েছে", "success");
+      useToastStore.getState().show(t.messageSaved, "success");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সেভ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSavingTemplateKey(null);
@@ -132,9 +137,9 @@ const AutoNotificationSettingsPage = () => {
 
     try {
       await notificationApi.updateMasterSetting(next);
-      useToastStore.getState().show(next ? "সবগুলো চালু হয়েছে" : "সবগুলো বন্ধ হয়েছে", "success");
+      useToastStore.getState().show(next ? t.allOn : t.allOff, "success");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সেভ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.saveFailed;
       useToastStore.getState().show(msg, "error");
       setMasterEnabled(!next);
     } finally {
@@ -146,9 +151,9 @@ const AutoNotificationSettingsPage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">অটো নোটিফিকেশন</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.autoTitle}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            নির্দিষ্ট কাজের পর স্বয়ংক্রিয়ভাবে SMS পাঠানো চালু/বন্ধ করুন ও বার্তা কাস্টমাইজ করুন
+            {t.autoSubtitle}
           </p>
         </div>
 
@@ -159,16 +164,16 @@ const AutoNotificationSettingsPage = () => {
             {settings.length > 0 && (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3 shadow-sm dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-4">
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-200">সবগুলো নোটিফিকেশন</h2>
+                  <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-200">{t.allNotifications}</h2>
                   <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                    বন্ধ করলে নিচের সবগুলো অটো SMS সাময়িকভাবে বন্ধ থাকবে (কোনটার সেটিংস বদলাবে না); আবার চালু করলে যার যার আগের অবস্থায় ফিরে যাবে
+                    {t.masterHint}
                   </p>
                 </div>
                 <ToggleSwitch checked={masterEnabled} onChange={toggleMaster} disabled={savingAll} />
               </div>
             )}
             {settings.map((item) => {
-              const meta = EVENT_LABELS[item.eventKey];
+              const meta = { ...EVENT_LABELS[item.eventKey], ...t.events[item.eventKey] };
               // Master switch off => every lower card is fully locked (toggle,
               // template, edit - none of it does anything) and visibly dimmed,
               // regardless of that item's own on/off state, so it's obvious at
@@ -191,7 +196,7 @@ const AutoNotificationSettingsPage = () => {
                         {meta.title}
                         {locked && (
                           <span className="rounded-full bg-gray-400 px-2 py-0.5 text-[10px] font-bold text-white dark:bg-slate-600">
-                            বন্ধ
+                            {t.off}
                           </span>
                         )}
                       </h2>
@@ -201,7 +206,7 @@ const AutoNotificationSettingsPage = () => {
                       checked={item.isEnabled}
                       onChange={() => toggleItemEnabled(item)}
                       disabled={locked || togglingKey === item.eventKey}
-                      title={locked ? "আগে উপরের 'সবগুলো নোটিফিকেশন' চালু করুন" : undefined}
+                      title={locked ? t.turnOnMasterFirst : undefined}
                     />
                   </div>
 
@@ -214,7 +219,7 @@ const AutoNotificationSettingsPage = () => {
                         autoFocus
                         className="w-full rounded-md border border-blue-300 p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-blue-800 dark:bg-slate-800 dark:text-slate-100"
                       />
-                      <p className="text-xs text-gray-400 dark:text-slate-500">প্লেসহোল্ডার: {meta.placeholders}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500">{t.placeholders(meta.placeholders)}</p>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -223,7 +228,7 @@ const AutoNotificationSettingsPage = () => {
                           className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Check size={14} />
-                          {savingTemplateKey === item.eventKey ? "সেভ হচ্ছে..." : "সংরক্ষণ করুন"}
+                          {savingTemplateKey === item.eventKey ? t.saving : c.save}
                         </button>
                         <button
                           type="button"
@@ -232,7 +237,7 @@ const AutoNotificationSettingsPage = () => {
                           className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-400 dark:hover:bg-slate-800"
                         >
                           <X size={14} />
-                          বাতিল
+                          {c.cancel}
                         </button>
                       </div>
                     </div>
@@ -244,7 +249,7 @@ const AutoNotificationSettingsPage = () => {
                       <button
                         type="button"
                         disabled={locked || !item.isEnabled}
-                        title="সম্পাদনা"
+                        title={c.edit}
                         onClick={() => startEditTemplate(item)}
                         className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
                       >

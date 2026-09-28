@@ -6,6 +6,8 @@ import { cachedGet } from "../../services/api";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
+import { commonText, formatNumber, getLang, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { notificationsText } from "./notifications.text";
 
 type ChannelStats = { sent: number; failed: number; pending: number };
 type CommunicationDashboardData = {
@@ -84,9 +86,12 @@ const PremiumStatSkeleton = () => (
   </div>
 );
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
+const bn = (value: number) => formatNumber(value || 0, getLang());
 
 export default function CommunicationDashboardPage() {
+  const t = useText(notificationsText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [data, setData] = useState<CommunicationDashboardData | null>(null);
   const isDark = useThemeStore((s) => s.theme) === "dark";
   const gridColor = isDark ? "#334155" : "#e2e8f0";
@@ -116,7 +121,7 @@ export default function CommunicationDashboardPage() {
   const channelChartData = data
     ? [
         { label: "SMS", পাঠানো: data.byChannel.SMS.sent, ব্যর্থ: data.byChannel.SMS.failed, পেন্ডিং: data.byChannel.SMS.pending },
-        { label: "ইমেইল", পাঠানো: data.byChannel.EMAIL.sent, ব্যর্থ: data.byChannel.EMAIL.failed, পেন্ডিং: data.byChannel.EMAIL.pending },
+        { label: t.email, পাঠানো: data.byChannel.EMAIL.sent, ব্যর্থ: data.byChannel.EMAIL.failed, পেন্ডিং: data.byChannel.EMAIL.pending },
       ]
     : [];
 
@@ -128,13 +133,13 @@ export default function CommunicationDashboardPage() {
             Array.from({ length: 4 }).map((_, i) => <PremiumStatSkeleton key={i} />)
           ) : (
             <>
-              <PremiumStat label="মোট পাঠানো" value={bn(data.totalSent)} tone="emerald" icon={<CheckCircle2 size={20} />} />
-              <PremiumStat label="ব্যর্থ" value={bn(data.totalFailed)} tone="rose" icon={<XCircle size={20} />} />
-              <PremiumStat label="পেন্ডিং" value={bn(data.totalPending)} tone="amber" icon={<Clock size={20} />} />
+              <PremiumStat label={t.totalSent} value={bn(data.totalSent)} tone="emerald" icon={<CheckCircle2 size={20} />} />
+              <PremiumStat label={t.failed} value={bn(data.totalFailed)} tone="rose" icon={<XCircle size={20} />} />
+              <PremiumStat label={t.pending} value={bn(data.totalPending)} tone="amber" icon={<Clock size={20} />} />
               <PremiumStat
-                label="SMS পাঠানো"
+                label={t.smsSent}
                 value={bn(data.byChannel.SMS.sent)}
-                subLabel={`ইমেইল: ${bn(data.byChannel.EMAIL.sent)}`}
+                subLabel={t.emailSub(bn(data.byChannel.EMAIL.sent))}
                 tone="indigo"
                 icon={<MessageSquare size={20} />}
               />
@@ -144,39 +149,39 @@ export default function CommunicationDashboardPage() {
 
         <Card className="flex flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
             to="/communication/single-send"
           >
-            <Send size={16} /> একক পাঠান
+            <Send size={16} /> {t.singleSend}
           </Link>
           <Link
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to="/communication/bulk-send"
           >
-            বাল্ক পাঠান
+            {t.bulkTitle}
           </Link>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/communication/history"
           >
-            <History size={16} /> পাঠানোর ইতিহাস
+            <History size={16} /> {t.sendHistory}
           </Link>
           <Link
             className="rounded-xl bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
             to="/communication/auto-settings"
           >
-            অটো নোটিফিকেশন
+            {t.autoTitle}
           </Link>
         </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <ChartCard
-          title="পাঠানোর প্রবণতা"
-          subtitle="গত ১৪ দিন"
+          title={t.sendTrend}
+          subtitle={t.last14Days}
           loading={loading}
           empty={!loading && !data?.trend?.length}
           className="xl:col-span-2"
@@ -188,13 +193,13 @@ export default function CommunicationDashboardPage() {
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <Line type="monotone" dataKey="sent" name="পাঠানো" stroke="#059669" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="failed" name="ব্যর্থ" stroke="#e11d48" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="sent" name={t.sent} stroke="#059669" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="failed" name={t.failed} stroke="#e11d48" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="চ্যানেল অনুযায়ী" subtitle="SMS বনাম ইমেইল" loading={loading} empty={!loading && channelChartData.length === 0}>
+        <ChartCard title={t.byChannel} subtitle={t.smsVsEmail} loading={loading} empty={!loading && channelChartData.length === 0}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={channelChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -202,9 +207,9 @@ export default function CommunicationDashboardPage() {
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="পাঠানো" fill="#059669" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="ব্যর্থ" fill="#e11d48" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="পেন্ডিং" fill="#d97706" radius={[6, 6, 0, 0]} />
+              <Bar dataKey={t.sent} name={t.sent} fill="#059669" radius={[6, 6, 0, 0]} />
+              <Bar dataKey={t.failed} name={t.failed} fill="#e11d48" radius={[6, 6, 0, 0]} />
+              <Bar dataKey={t.pending} name={t.pending} fill="#d97706" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

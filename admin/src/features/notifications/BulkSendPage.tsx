@@ -1,3 +1,5 @@
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { notificationsText } from "./notifications.text";
 import { useEffect, useMemo, useState } from "react";
 import { cachedGet } from "../../services/api";
 import {
@@ -35,6 +37,9 @@ const normalizeArray = (payload: any) => {
 };
 
 const BulkSendPage = () => {
+  const t = useText(notificationsText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [mode, setMode] = useState<AudienceMode>("all_students");
   const [channel, setChannel] = useState<NotificationChannel>("SMS");
   const [subject, setSubject] = useState("");
@@ -111,19 +116,19 @@ const BulkSendPage = () => {
   }, [mode, classId, examId, channel]);
 
   const messageHint = useMemo(() => {
-    if (mode === "results") return "প্লেসহোল্ডার: {name} {roll} {gpa} {grade}";
-    if (mode === "all_teachers") return "প্লেসহোল্ডার: {name}";
-    return "প্লেসহোল্ডার: {name} {roll}";
+    if (mode === "results") return t.placeholders("{name} {roll} {gpa} {grade}");
+    if (mode === "all_teachers") return t.placeholders("{name}");
+    return t.placeholders("{name} {roll}");
   }, [mode]);
 
   const handleSend = async () => {
     if (recipients.length === 0) return;
     if (!message.trim()) {
-      useToastStore.getState().show("মেসেজ লিখুন", "error");
+      useToastStore.getState().show(t.writeMessage, "error");
       return;
     }
     if (channel === "EMAIL" && !subject.trim()) {
-      useToastStore.getState().show("ইমেইলের জন্য সাবজেক্ট দিন", "error");
+      useToastStore.getState().show(t.enterSubject, "error");
       return;
     }
 
@@ -142,11 +147,11 @@ const BulkSendPage = () => {
       const data = (res.data as any)?.data;
       useToastStore
         .getState()
-        .show(`পাঠানো হয়েছে: ${data?.sent ?? 0} জন, ব্যর্থ: ${data?.failed ?? 0} জন`, "success");
+        .show(t.sentSummary(localizeDigits(data?.sent ?? 0, lang), localizeDigits(data?.failed ?? 0, lang)), "success");
       setMessage("");
       setSubject("");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "পাঠাতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.sendFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSending(false);
@@ -157,9 +162,9 @@ const BulkSendPage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">বাল্ক পাঠান</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.bulkTitle}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            একসাথে অনেকজনকে SMS/ইমেইল পাঠান — প্রতিজনের নাম/রোল/নম্বর মেসেজে বসিয়ে দেওয়া যাবে
+            {t.bulkSubtitle}
           </p>
         </div>
 
@@ -174,7 +179,7 @@ const BulkSendPage = () => {
           recipientCount={recipients.length}
           sending={sending}
           onSend={handleSend}
-          sendLabel="সবাইকে পাঠান"
+          sendLabel={t.sendToAll}
           sendDisabled={creditBlocked}
           creditNotice={
             <MessageCreditNotice channel={channel} message={message} onDisabledChange={setCreditBlocked} />
@@ -203,7 +208,7 @@ const BulkSendPage = () => {
                   onChange={(e) => setDivisionId(e.target.value)}
                   className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  <option value="">বিভাগ বাছুন</option>
+                  <option value="">{t.chooseDivision}</option>
                   {divisions.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.nameBn}
@@ -216,7 +221,7 @@ const BulkSendPage = () => {
                   disabled={!divisionId}
                   className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  <option value="">ক্লাস বাছুন</option>
+                  <option value="">{t.chooseDivision}</option>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nameBn}
@@ -229,7 +234,7 @@ const BulkSendPage = () => {
                     onChange={(e) => setExamId(e.target.value)}
                     className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   >
-                    <option value="">পরীক্ষা বাছুন</option>
+                    <option value="">{t.chooseDivision}</option>
                     {examsForDivision(exams, divisionId).map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.name}
@@ -241,11 +246,11 @@ const BulkSendPage = () => {
             )}
 
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              {loadingAudience ? "লোড হচ্ছে..." : `${recipients.length} জন প্রাপক নির্বাচিত`}
+              {loadingAudience ? t.loading : t.recipientsSelected(localizeDigits(recipients.length, lang))}
             </p>
             {!loadingAudience && recipients.length === 0 && channel === "EMAIL" && mode !== "all_teachers" && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                শিক্ষার্থীদের কোনো ইমেইল ঠিকানা নেই — এই তালিকার জন্য শুধু SMS ব্যবহার করুন
+                {t.noStudentEmails}
               </p>
             )}
           </div>

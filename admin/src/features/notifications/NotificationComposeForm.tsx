@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
 import { type NotificationChannel } from "../../services/phase4Api";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { notificationsText } from "./notifications.text";
 
 interface NotificationComposeFormProps {
   channel: NotificationChannel;
@@ -29,16 +31,19 @@ const NotificationComposeForm = ({
   onSubjectChange,
   message,
   onMessageChange,
-  messageLabel = "মেসেজ",
+  messageLabel,
   messageHint,
   recipientCount,
   sending,
   onSend,
-  sendLabel = "পাঠান",
+  sendLabel,
   children,
   creditNotice,
   sendDisabled = false,
 }: NotificationComposeFormProps) => {
+  const t = useText(notificationsText);
+  const c = useText(commonText);
+  const lang = useLang();
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
       <div className="mb-3 flex gap-2">
@@ -58,7 +63,7 @@ const NotificationComposeForm = ({
             channel === "EMAIL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
           }`}
         >
-          ইমেইল
+          {t.email}
         </button>
       </div>
 
@@ -67,7 +72,7 @@ const NotificationComposeForm = ({
 
         {channel === "EMAIL" && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সাবজেক্ট</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.subject}</label>
             <input
               type="text"
               value={subject}
@@ -79,7 +84,7 @@ const NotificationComposeForm = ({
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-            {messageLabel}
+            {messageLabel ?? t.message}
           </label>
           <textarea
             value={message}
@@ -98,7 +103,7 @@ const NotificationComposeForm = ({
           onClick={onSend}
           className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto sm:px-6"
         >
-          {sending ? "পাঠানো হচ্ছে..." : `${sendLabel} (${recipientCount} জন)`}
+          {sending ? t.sending : `${t.sendWithCount(sendLabel ?? t.send, localizeDigits(recipientCount, lang))}`}
         </button>
       </div>
     </div>
