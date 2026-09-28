@@ -62,7 +62,13 @@ export const formatMeritRank = (value: unknown) => {
 };
 
 export const cellValue = (row: Record<string, any>, key: string) =>
-  formatReportValue(row?.[key], key);
+  formatReportValue(
+    // School/college results carry a board GPA - show it beside the letter grade.
+    key === "general_grade" && row?.general_grade && typeof row?.gpa === "number"
+      ? `${row.general_grade} (${row.gpa.toFixed(2)})`
+      : row?.[key],
+    key,
+  );
 
 export const getRowDivisionId = (row: Record<string, any>) =>
   row.division_id ||

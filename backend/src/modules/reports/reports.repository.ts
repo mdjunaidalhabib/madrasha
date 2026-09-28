@@ -233,6 +233,7 @@ export class ReportsRepository {
         total: null,
         average: null,
         general_grade: null,
+        gpa: null,
         madrasa_grade: null,
         rank_no: null,
         status: "ফলাফল প্রকাশ হয়নি",
@@ -322,6 +323,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
@@ -385,6 +387,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
@@ -441,6 +444,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
@@ -678,6 +682,7 @@ export class ReportsRepository {
         rs.average,
         rs.madrasa_grade,
         rs.general_grade,
+        rs.gpa,
         rs.rank_no
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
@@ -842,6 +847,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         COALESCE(
@@ -904,6 +910,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status
       ORDER BY ${classOrderSql("s.division_id", "s.class_id")}, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.name_bn ASC
@@ -1376,6 +1383,7 @@ export class ReportsRepository {
         rs.average,
         rs.madrasa_grade,
         rs.general_grade,
+        rs.gpa,
         rs.status,
         rs.rank_no
       FROM results_summary rs
@@ -1628,6 +1636,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
@@ -1697,6 +1706,7 @@ export class ReportsRepository {
         rs.total,
         rs.average,
         rs.general_grade,
+        rs.gpa,
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,

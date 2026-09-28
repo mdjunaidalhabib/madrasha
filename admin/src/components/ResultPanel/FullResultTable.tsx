@@ -22,6 +22,8 @@ interface Summary {
   total: number;
   average: number;
   general_grade?: string;
+  /** Board GPA (school/college only). */
+  gpa?: number | null;
   madrasa_grade?: string;
   status: string;
   rank_no: number;
@@ -345,6 +347,7 @@ export default function FullResultTable({
                 </td>
                 <td className="border px-2 py-2 text-center break-words">
                   {s.general_grade || "-"}
+                  {typeof s.gpa === "number" && s.general_grade ? ` (${num(s.gpa.toFixed(2))})` : ""}
                 </td>
                 {isMadrasa && (
                   <td className="border px-2 py-2 text-center break-words">

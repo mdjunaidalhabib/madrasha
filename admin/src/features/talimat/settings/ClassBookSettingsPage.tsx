@@ -9,7 +9,7 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { commonText, formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { commonText, formatNumber, getText, useLang, useText, useInstitutionType } from "@madrasha/shared-ui/src/i18n";
 import { talimatSettingsText } from "./talimatSettings.text";
 
 /** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
@@ -42,6 +42,12 @@ export default function ClassBookSettingsPage() {
   const [classId, setClassId] = useState<string>("");
   const [miyariBookIds, setMiyariBookIds] = useState<number[]>([]);
   const [savingMiyari, setSavingMiyari] = useState(false);
+  const [optionalBookIds, setOptionalBookIds] = useState<number[]>([]);
+  const [savingOptional, setSavingOptional] = useState(false);
+  // School/college grade by board GPA: every compulsory subject must pass, so
+  // miyari is replaced by the 4th (optional) subject flag there.
+  const institutionType = useInstitutionType();
+  const gpaMode = institutionType === "SCHOOL" || institutionType === "COLLEGE";
 
   // DIVISION
   const [editingDivisionId, setEditingDivisionId] = useState<number | null>(null);
@@ -181,6 +187,7 @@ export default function ClassBookSettingsPage() {
       setClassId("");
       setBooks([]);
       setMiyariBookIds([]);
+      setOptionalBookIds([]);
     }
   }, [divisionId]);
 
@@ -195,6 +202,9 @@ export default function ClassBookSettingsPage() {
     setBooks(data);
     setMiyariBookIds(
       data.filter((book: any) => Boolean(book.is_miyari)).map((book: any) => Number(book.book_id)),
+    );
+    setOptionalBookIds(
+      data.filter((book: any) => Boolean(book.is_optional)).map((book: any) => Number(book.book_id)),
     );
   }, [classId]);
 
@@ -447,6 +457,22 @@ export default function ClassBookSettingsPage() {
 
   // Checking/unchecking a book saves immediately - no separate "Save" step,
   // and zero miyari books is a valid state (a class doesn't have to have one).
+  const toggleOptional = async (bookId: number) => {
+    const previous = optionalBookIds;
+    const next = previous.includes(bookId) ? previous.filter((id) => id !== bookId) : [...previous, bookId];
+    setOptionalBookIds(next);
+    setSavingOptional(true);
+    try {
+      const res = await api.put("/madrasa-books/optional", { class_id: Number(classId), book_ids: next });
+      useToastStore.getState().push("success", res.data?.message || getText(talimatSettingsText).optionalSaved);
+    } catch (err: any) {
+      setOptionalBookIds(previous);
+      useToastStore.getState().push("error", err?.response?.data?.message || getText(commonText).saveFailed);
+    } finally {
+      setSavingOptional(false);
+    }
+  };
+
   const toggleMiyari = async (bookId: number) => {
     const previous = miyariBookIds;
     const next = previous.includes(bookId)
@@ -803,6 +829,27 @@ export default function ClassBookSettingsPage() {
                         {t.passMarkHint}
                       </p>
 
+                      {gpaMode ? (
+                        <label
+                          className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
+                            optionalBookIds.includes(Number(book.book_id))
+                              ? "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30"
+                              : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={optionalBookIds.includes(Number(book.book_id))}
+                            disabled={savingOptional}
+                            onChange={() => toggleOptional(Number(book.book_id))}
+                            className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                          />
+                          <span className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-gray-700 dark:text-slate-200">{t.optionalBook}</span>
+                            <span className="leading-snug text-gray-500 dark:text-slate-400">{t.optionalHint}</span>
+                          </span>
+                        </label>
+                      ) : (
                       <label
                         className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
                           isMiyari
@@ -824,6 +871,7 @@ export default function ClassBookSettingsPage() {
                           </span>
                         </span>
                       </label>
+                      )}
 
                       <button
                         onClick={() => setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })}

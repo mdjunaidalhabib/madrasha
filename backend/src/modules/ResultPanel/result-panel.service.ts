@@ -1732,6 +1732,7 @@ export class ResultPanelService {
         total: Number(row.total || 0),
         average: Number(row.average || 0),
         general_grade: row.generalGrade || "",
+        gpa: row.gpa ?? null,
         madrasa_grade: row.madrasaGrade || "",
         status: row.status || "",
         rank_no: row.rankNo || 0,
