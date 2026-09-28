@@ -1,4 +1,8 @@
-export const toBnNumber = (n: number) => n.toLocaleString("bn-BD");
+import { LOCALE_MAP, formatNumber, getLang, getText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
+
+/** Number in the current UI language (name kept from when it was Bangla-only). */
+export const toBnNumber = (n: number) => formatNumber(n, getLang());
 
 export const todayIso = () => {
   // Local calendar date (not UTC) so "today" is right around midnight in BD.
@@ -16,39 +20,40 @@ const parse = (value: string | null | undefined) => {
 export const formatDateTime = (value: string | null | undefined, fallback = "—") => {
   const d = parse(value);
   if (!d) return fallback;
-  return d.toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString(LOCALE_MAP[getLang()], { dateStyle: "medium", timeStyle: "short" });
 };
 
 export const formatTime = (value: string | null | undefined, fallback = "—") => {
   const d = parse(value);
   if (!d) return fallback;
-  return d.toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString(LOCALE_MAP[getLang()], { hour: "2-digit", minute: "2-digit", hour12: true });
 };
 
-/** "৩ মিনিট আগে" style label. `now` is passed in so callers re-render on a tick. */
+/** "3 min ago" style label (current UI language). `now` is passed in so callers re-render on a tick. */
 export const relativeTime = (
   value: string | null | undefined,
   now: number = Date.now(),
-  fallback = "কখনো নয়",
+  fallback?: string,
 ) => {
+  const t = getText(attendanceDeviceText).time;
   const d = parse(value);
-  if (!d) return fallback;
+  if (!d) return fallback ?? t.never;
 
   const diffSec = Math.round((now - d.getTime()) / 1000);
-  if (diffSec < 10) return "এইমাত্র";
-  if (diffSec < 60) return `${toBnNumber(diffSec)} সেকেন্ড আগে`;
+  if (diffSec < 10) return t.justNow;
+  if (diffSec < 60) return t.seconds(toBnNumber(diffSec));
 
   const min = Math.floor(diffSec / 60);
-  if (min < 60) return `${toBnNumber(min)} মিনিট আগে`;
+  if (min < 60) return t.minutes(toBnNumber(min));
 
   const hour = Math.floor(min / 60);
-  if (hour < 24) return `${toBnNumber(hour)} ঘণ্টা আগে`;
+  if (hour < 24) return t.hours(toBnNumber(hour));
 
   const day = Math.floor(hour / 24);
-  if (day < 30) return `${toBnNumber(day)} দিন আগে`;
+  if (day < 30) return t.days(toBnNumber(day));
 
   const month = Math.floor(day / 30);
-  if (month < 12) return `${toBnNumber(month)} মাস আগে`;
+  if (month < 12) return t.months(toBnNumber(month));
 
-  return `${toBnNumber(Math.floor(month / 12))} বছর আগে`;
+  return t.years(toBnNumber(Math.floor(month / 12)));
 };

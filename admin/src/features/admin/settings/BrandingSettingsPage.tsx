@@ -36,6 +36,8 @@ import {
 import { useBrandingStore } from "../../../store/brandingStore";
 import { MarksheetControlsPanel } from "../../../components/Report/student/MarksheetSignatureControls";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { brandingText } from "./branding.text";
 
 // Small shared row: label + live value chip + range slider. Used for every
 // font-size/logo-size/height knob below - only fires onCommit (a save) on
@@ -123,6 +125,7 @@ function ColorPickerRow({
 }
 
 export default function BrandingSettingsPage() {
+  const t = useText(brandingText);
   const branding = useBrandingStore((s) => s.branding);
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const setBranding = useBrandingStore((s) => s.setBranding);
@@ -216,9 +219,9 @@ export default function BrandingSettingsPage() {
         ...patch,
         report_brand_layout: nextBrandLayout,
       });
-      useToastStore.getState().show("সংরক্ষণ হয়েছে।", "success");
+      useToastStore.getState().show(getText(brandingText).saved, "success");
     } catch {
-      useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(getText(brandingText).saveFailed, "error");
       throw new Error("save failed");
     }
   };
@@ -235,7 +238,7 @@ export default function BrandingSettingsPage() {
       if (field === "report_header_image") setHeaderImage(null);
       if (field === "report_footer_image") setFooterImage(null);
       await fetchBranding(true);
-      useToastStore.getState().show("ছবি মুছে ফেলা হয়েছে।", "success");
+      useToastStore.getState().show(getText(brandingText).imageDeleted, "success");
       return;
     }
     await patchBranding({ [field]: value });
@@ -293,10 +296,10 @@ export default function BrandingSettingsPage() {
   // explicit confirmation since it overwrites everything at once.
   const resetBrandLayoutToDefault = () => {
     useConfirmStore.getState().show({
-      title: "ডিফল্টে ফিরিয়ে আনুন",
+      title: t.resetDefault,
       message:
-        "নাম-ঠিকানার সাইজ/রঙ, লোগোর সাইজ-অবস্থান, হেডারের জায়গা এবং ফুটার — এই সেকশনের সব সেটিং ডিফল্ট মানে ফিরে যাবে। এগিয়ে যেতে চান?",
-      confirmText: "ডিফল্টে ফিরিয়ে আনুন",
+        t.resetDefaultConfirm,
+      confirmText: t.resetDefault,
       danger: true,
       onConfirm: async () => {
         await patchBranding({ report_brand_layout: BRAND_LAYOUT_DEFAULTS });
@@ -307,7 +310,7 @@ export default function BrandingSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title="প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস" />
+        <PageHeader title={t.title} />
         <SkeletonCard lines={2} />
         <SkeletonCard lines={2} />
       </div>
@@ -317,64 +320,64 @@ export default function BrandingSettingsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস"
-        subtitle="মাদ্রাসার নাম, ঠিকানা, মোবাইল নম্বর, ইমেইল, লোগো ও ওয়াটারমার্ক দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
       <SectionCard
-        title="মূল তথ্য"
-        hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে"
+        title={t.basicInfo}
+        hint={t.basicInfoHint}
       >
         <div className="space-y-2">
           <InlineTextField
-            label="মাদ্রাসার নাম"
+            label={t.institutionName}
             value={name}
-            placeholder="যেমন: জামিয়া ইসলামিয়া মাদ্রাসা"
+            placeholder={t.namePlaceholder}
             required
             onSave={(v) => patchBranding({ name: v })}
           />
           <InlineTextField
-            label="ঠিকানা"
+            label={t.address}
             value={address}
-            placeholder="যেমন: গ্রাম/মহল্লা, উপজেলা, জেলা"
+            placeholder={t.addressPlaceholder}
             onSave={(v) => patchBranding({ address: v })}
           />
           <InlineListField
-            label="মোবাইল নম্বর"
+            label={t.mobileNumber}
             values={phones}
             type="tel"
-            placeholder="যেমন: ০১৭xxxxxxxx"
+            placeholder={t.mobilePlaceholder}
             onSave={(v) => patchBranding({ phones: v })}
           />
           <InlineListField
-            label="ইমেইল"
+            label={t.email}
             values={emails}
             type="email"
-            placeholder="যেমন: info@example.com"
+            placeholder={t.emailPlaceholder}
             onSave={(v) => patchBranding({ emails: v })}
           />
         </div>
       </SectionCard>
 
       <SectionCard
-        title="সোশ্যাল লিংক"
-        hint="WhatsApp নম্বর, Facebook পেজ/প্রোফাইল/গ্রুপ, YouTube চ্যানেল সহ যেকোনো লিংক — একই ধরনের একাধিকও দেওয়া যাবে"
+        title={t.socialLinks}
+        hint={t.socialLinksHint}
       >
         <InlineSocialLinksField values={socialLinks} onSave={(v) => patchBranding({ social_links: v })} />
       </SectionCard>
 
-      <SectionCard title="লোগো ও ব্যাকগ্রাউন্ড">
+      <SectionCard title={t.logoAndBackground}>
         <div className="space-y-2">
           <InlineImageField
-            label="লোগো"
-            hint="বর্গাকার ছবি ভালো দেখায় (স্বচ্ছ পটভূমি সহ PNG সবচেয়ে ভালো)"
+            label={t.logo}
+            hint={t.logoHint}
             value={logo}
             folder="branding"
             onSave={(v) => saveImageField("report_logo", v)}
           />
           <InlineImageField
-            label="ব্যাকগ্রাউন্ড"
-            hint="রিপোর্ট পেজের পুরো পটভূমি জুড়ে দেখাবে (PNG, JPG বা JPEG) — ফিল্ডের তথ্য অপরিবর্তিত থাকবে"
+            label={t.background}
+            hint={t.backgroundHint}
             value={background}
             folder="branding"
             shape="wide"
@@ -384,8 +387,8 @@ export default function BrandingSettingsPage() {
       </SectionCard>
 
       <SectionCard
-        title="ডিফল্ট হেডার-ফুটার ডিজাইন"
-        hint="উপরের 'কাস্টম হেডার-ফুটার' বন্ধ থাকলে এই সেটিং অনুযায়ী লোগো-নাম-ঠিকানা হেডার এবং (ঐচ্ছিক) ফুটার দেখাবে — চালু থাকলে এই সেটিং প্রযোজ্য হবে না"
+        title={t.defaultHeaderFooter}
+        hint={t.defaultHeaderFooterHint}
         actions={
           <button
             type="button"
@@ -393,7 +396,7 @@ export default function BrandingSettingsPage() {
             className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
           >
             <RotateCcw size={13} />
-            ডিফল্টে ফিরিয়ে আনুন
+            {t.resetDefault}
           </button>
         }
       >
@@ -402,11 +405,11 @@ export default function BrandingSettingsPage() {
           <div className="rounded-xl border border-gray-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
               <Type size={14} className="text-gray-400 dark:text-slate-500" />
-              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">মাদ্রাসার নাম</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{t.institutionName}</p>
             </div>
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
               <LayoutSliderRow
-                label="নামের সাইজ"
+                label={t.nameSize}
                 value={brandLayout.name_font_size}
                 unit="px"
                 min={12}
@@ -415,7 +418,7 @@ export default function BrandingSettingsPage() {
                 onCommit={(v) => patchBrandLayout({ name_font_size: v })}
               />
               <ColorPickerRow
-                label="নামের রঙ"
+                label={t.nameColor}
                 value={brandLayout.name_color}
                 onChange={(v) => {
                   setLayoutDraft("name_color", v);
@@ -429,11 +432,11 @@ export default function BrandingSettingsPage() {
           <div className="rounded-xl border border-gray-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
               <MapPin size={14} className="text-gray-400 dark:text-slate-500" />
-              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">ঠিকানা</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{t.address}</p>
             </div>
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
               <LayoutSliderRow
-                label="ঠিকানার সাইজ"
+                label={t.addressSize}
                 value={brandLayout.address_font_size}
                 unit="px"
                 min={10}
@@ -442,7 +445,7 @@ export default function BrandingSettingsPage() {
                 onCommit={(v) => patchBrandLayout({ address_font_size: v })}
               />
               <ColorPickerRow
-                label="ঠিকানার রঙ"
+                label={t.addressColor}
                 value={brandLayout.address_color}
                 onChange={(v) => {
                   setLayoutDraft("address_color", v);
@@ -456,12 +459,12 @@ export default function BrandingSettingsPage() {
           <div className="rounded-xl border border-gray-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
               <ImageIcon size={14} className="text-gray-400 dark:text-slate-500" />
-              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">লোগো</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{t.logo}</p>
             </div>
             <div className="space-y-3 p-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <LayoutSliderRow
-                  label="লোগোর সাইজ"
+                  label={t.logoSize}
                   value={brandLayout.logo_size}
                   unit="px"
                   min={40}
@@ -470,13 +473,13 @@ export default function BrandingSettingsPage() {
                   onCommit={(v) => patchBrandLayout({ logo_size: v })}
                 />
                 <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
-                  <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">মূল অবস্থান</p>
+                  <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">{t.basePosition}</p>
                   <div className="flex flex-wrap gap-2">
                     {(
                       [
-                        { key: "left", label: "বামে" },
-                        { key: "center", label: "মাঝে" },
-                        { key: "right", label: "ডানে" },
+                        { key: "left", label: t.posLeft },
+                        { key: "center", label: t.posCenter },
+                        { key: "right", label: t.posRight },
                       ] as { key: BrandLogoPosition; label: string }[]
                     ).map((opt) => (
                       <button
@@ -503,7 +506,7 @@ export default function BrandingSettingsPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <p className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
                     <Move size={14} className="text-gray-400 dark:text-slate-500" />
-                    সূক্ষ্মভাবে সরান
+                    {t.fineMove}
                   </p>
                   {(brandLayout.logo_offset_x !== 0 || brandLayout.logo_offset_y !== 0) && (
                     <button
@@ -512,7 +515,7 @@ export default function BrandingSettingsPage() {
                       className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                     >
                       <RotateCcw size={12} />
-                      মূল জায়গায় ফিরুন
+                      {t.backToBase}
                     </button>
                   )}
                 </div>
@@ -522,7 +525,7 @@ export default function BrandingSettingsPage() {
                     <button
                       type="button"
                       onClick={() => nudgeLogo(0, -LOGO_NUDGE_STEP)}
-                      aria-label="লোগো উপরে সরান"
+                      aria-label={t.moveLogoUp}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
                     >
                       <ArrowUp size={15} />
@@ -531,7 +534,7 @@ export default function BrandingSettingsPage() {
                     <button
                       type="button"
                       onClick={() => nudgeLogo(-LOGO_NUDGE_STEP, 0)}
-                      aria-label="লোগো বামে সরান"
+                      aria-label={t.moveLogoLeft}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
                     >
                       <ArrowLeft size={15} />
@@ -542,7 +545,7 @@ export default function BrandingSettingsPage() {
                     <button
                       type="button"
                       onClick={() => nudgeLogo(LOGO_NUDGE_STEP, 0)}
-                      aria-label="লোগো ডানে সরান"
+                      aria-label={t.moveLogoRight}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
                     >
                       <ArrowRight size={15} />
@@ -551,7 +554,7 @@ export default function BrandingSettingsPage() {
                     <button
                       type="button"
                       onClick={() => nudgeLogo(0, LOGO_NUDGE_STEP)}
-                      aria-label="লোগো নিচে সরান"
+                      aria-label={t.moveLogoDown}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60"
                     >
                       <ArrowDown size={15} />
@@ -559,14 +562,13 @@ export default function BrandingSettingsPage() {
                     <span />
                   </div>
                   <p className="text-xs leading-5 text-gray-500 dark:text-slate-400">
-                    বামে/ডানে: {brandLayout.logo_offset_x}px
+                    {t.offsetX(String(brandLayout.logo_offset_x))}
                     <br />
-                    উপরে/নিচে: {brandLayout.logo_offset_y}px
+                    {t.offsetY(String(brandLayout.logo_offset_y))}
                   </p>
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-                  উপরে বেছে নেওয়া মূল অবস্থান থেকে সামান্য সরিয়ে (চাপ দিলেই কয়েক পিক্সেল করে) ঠিক জায়গায় বসাতে
-                  ব্যবহার করুন।
+                  {t.fineMoveHint}
                 </p>
               </div>
             </div>
@@ -577,10 +579,10 @@ export default function BrandingSettingsPage() {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
               <LayoutTemplate size={14} className="text-gray-400 dark:text-slate-500" />
-              হেডারের মোট জায়গা
+              {t.headerTotalSpace}
             </label>
             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
-              {brandLayout.header_height === null ? "স্বয়ংক্রিয়" : `${brandLayout.header_height}mm`}
+              {brandLayout.header_height === null ? t.auto : `${brandLayout.header_height}mm`}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-2">
@@ -597,7 +599,7 @@ export default function BrandingSettingsPage() {
                   : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
               }`}
             >
-              {brandLayout.header_height === null ? "স্বয়ংক্রিয় (কনটেন্ট অনুযায়ী)" : "স্বয়ংক্রিয়তে ফিরুন"}
+              {brandLayout.header_height === null ? t.autoByContent : t.backToAuto}
             </button>
             {brandLayout.header_height !== null && (
               <input
@@ -614,28 +616,27 @@ export default function BrandingSettingsPage() {
             )}
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-            স্বয়ংক্রিয় থাকলে হেডার যতটুকু লাগে ততটুকু জায়গা নেবে। নির্দিষ্ট মান দিলে হেডার কমপক্ষে ওই জায়গা নেবে (নিচের
-            কনটেন্ট প্রয়োজনে নিচে নেমে যাবে)।
+            {t.headerHeightHint}
           </p>
         </div>
 
         <div className="mt-4 rounded-xl border border-gray-100 p-4 dark:border-slate-800">
-          <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">ডিফল্ট ফুটার (ঐচ্ছিক)</p>
+          <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">{t.defaultFooter}</p>
           <textarea
             rows={2}
             value={brandLayout.footer_text ?? ""}
-            placeholder="যেমন: মাদ্রাসার নাম, ঠিকানা, ফোন — প্রতিটি পেজের নিচে ছোট করে দেখাবে"
+            placeholder={t.footerPlaceholder}
             onChange={(e) => setLayoutDraft("footer_text", e.target.value)}
             onBlur={(e) => patchBrandLayout({ footer_text: e.target.value || null })}
             className="w-full rounded-lg border border-gray-200 p-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           />
           <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-            ফাঁকা রাখলে ফুটারে কিছু দেখাবে না (শুধু পৃষ্ঠা নম্বর থাকবে)।
+            {t.footerEmptyHint}
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <LayoutSliderRow
-              label="ফুটার টেক্সটের সাইজ"
+              label={t.footerTextSize}
               value={brandLayout.footer_font_size}
               unit="px"
               min={8}
@@ -644,7 +645,7 @@ export default function BrandingSettingsPage() {
               onCommit={(v) => patchBrandLayout({ footer_font_size: v })}
             />
             <LayoutSliderRow
-              label="ফুটারের জায়গা"
+              label={t.footerSpace}
               value={brandLayout.footer_height}
               unit="mm"
               min={8}
@@ -653,7 +654,7 @@ export default function BrandingSettingsPage() {
               onCommit={(v) => patchBrandLayout({ footer_height: v })}
             />
             <ColorPickerRow
-              label="ফুটার টেক্সটের রঙ"
+              label={t.footerTextColor}
               value={brandLayout.footer_color}
               onChange={(v) => {
                 setLayoutDraft("footer_color", v);
@@ -664,10 +665,10 @@ export default function BrandingSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="ওয়াটারমার্ক" hint="রিপোর্টের পেছনে হালকাভাবে ছাপা হয়">
+      <SectionCard title={t.watermark} hint={t.watermarkHint}>
         <InlineImageField
-          label="ওয়াটারমার্ক ছবি"
-          hint="রিপোর্টের পেছনে হালকাভাবে দেখাবে (স্বচ্ছ ব্যাকগ্রাউন্ড সহ PNG ব্যবহার করুন)"
+          label={t.watermarkImage}
+          hint={t.watermarkImageHint}
           value={watermark}
           folder="branding"
           onSave={(v) => saveImageField("report_watermark", v)}
@@ -677,7 +678,7 @@ export default function BrandingSettingsPage() {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
               <Droplets size={14} className="text-gray-400 dark:text-slate-500" />
-              স্বচ্ছতা (Opacity)
+              {t.opacity}
             </label>
             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
               {Math.round(opacity * 100)}%
@@ -698,14 +699,14 @@ export default function BrandingSettingsPage() {
       </SectionCard>
 
       <SectionCard
-        title="রিপোর্ট হেডার-ফুটার"
-        hint="চালু না থাকলে রিপোর্টে আগের মতোই মাদ্রাসার নাম-ঠিকানা দিয়ে ডিফল্ট হেডার দেখাবে"
+        title={t.reportHeaderFooter}
+        hint={t.reportHeaderFooterHint}
       >
         <div className="mb-4 flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <FileText size={14} className="text-gray-400 dark:text-slate-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-              কাস্টম হেডার-ফুটার চালু করুন
+              {t.enableCustomHeaderFooter}
             </span>
           </div>
           <ToggleSwitch checked={headerFooterEnabled} onChange={toggleHeaderFooterEnabled} />
@@ -713,7 +714,7 @@ export default function BrandingSettingsPage() {
 
         {headerFooterEnabled && (
           <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
-            চালু থাকায় ডিফল্ট লোগো-নাম-ঠিকানা হেডার আর দেখাবে না — নিচে ছবি না দিলে ওই জায়গা ফাঁকা থাকবে।
+            {t.customEnabledWarning}
           </p>
         )}
 
@@ -723,7 +724,7 @@ export default function BrandingSettingsPage() {
           }
         >
           <div className="rounded-xl border border-gray-100 p-4 dark:border-slate-800">
-            <p className="mb-2 text-xs font-medium text-gray-500 dark:text-slate-400">প্রিন্ট মোড</p>
+            <p className="mb-2 text-xs font-medium text-gray-500 dark:text-slate-400">{t.printMode}</p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -734,7 +735,7 @@ export default function BrandingSettingsPage() {
                     : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
                 }`}
               >
-                সাধারণ পেজ
+                {t.normalPage}
               </button>
               <button
                 type="button"
@@ -745,49 +746,46 @@ export default function BrandingSettingsPage() {
                     : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
                 }`}
               >
-                প্রেস পেপার (লেটারহেড)
+                {t.pressPaper}
               </button>
             </div>
             <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-              প্রেস পেপার মোডে লোগো, ব্যাকগ্রাউন্ড, ওয়াটারমার্ক ও হেডার-ফুটার ছবি — কিছুই প্রিন্ট হবে না, শুধু মূল
-              লেখাগুলো প্রিন্ট হবে (আগে থেকে ছাপানো লেটারহেড কাগজে প্রিন্টের জন্য)। উপরে-নিচে হেডার-ফুটার ছবির
-              সমান জায়গা তবুও ফাঁকা রাখা হবে, যাতে লেখা গিয়ে ছাপানো লেটারহেডের উপর না পড়ে।
+              {t.pressPaperHint}
             </p>
           </div>
 
           {printMode === "normal" ? (
             <>
               <InlineImageField
-                label="হেডার ছবি"
-                hint="প্রস্তাবিত সাইজ: ১৬০০×৩২০ পিক্সেল (৫:১ অনুপাত) — এই সাইজে দিলে A4 ও A5, দুই পেজেই ঠিকভাবে বসবে। অন্য অনুপাতেও দেওয়া যাবে (ছবি কখনো বিকৃত/কাটা হবে না), শুধু আশেপাশে কিছুটা ফাঁকা জায়গা থাকতে পারে।"
+                label={t.headerImage}
+                hint={t.headerImageHint}
                 value={headerImage}
                 folder="branding"
                 shape="wide"
-                ratioLabel="৫:১ (১৬০০×৩২০px)"
+                ratioLabel={t.headerRatio}
                 onSave={(v) => saveImageField("report_header_image", v)}
               />
               <InlineImageField
-                label="ফুটার ছবি"
-                hint="প্রস্তাবিত সাইজ: ১৬০০×১৬০ পিক্সেল (১০:১ অনুপাত) — এই সাইজে দিলে A4 ও A5, দুই পেজেই ঠিকভাবে বসবে।"
+                label={t.footerImage}
+                hint={t.footerImageHint}
                 value={footerImage}
                 folder="branding"
                 shape="wide"
-                ratioLabel="১০:১ (১৬০০×১৬০px)"
+                ratioLabel={t.footerRatio}
                 onSave={(v) => saveImageField("report_footer_image", v)}
               />
             </>
           ) : (
             <p className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-              প্রেস পেপার মোডে হেডার/ফুটার ছবি আপলোডের দরকার নেই — যেহেতু এটা প্রিন্ট হবেই না। আগে আপলোড করা ছবি
-              থাকলেও সেটা মুছে যাবে না, শুধু এই মোডে থাকা অবস্থায় প্রিন্ট হবে না।
+              {t.pressPaperNoUpload}
             </p>
           )}
         </div>
       </SectionCard>
 
       <SectionCard
-        title="মার্কশিট তথ্য ফিল্ড"
-        hint="মার্কশিটে যেসব তথ্য (রোল, রেজিস্ট্রেশন নম্বর, নাম ইত্যাদি) দেখানো হয় — কোনটা দেখাবেন আর কোন ক্রমে দেখাবেন তা এখান থেকে ঠিক করুন"
+        title={t.marksheetFields}
+        hint={t.marksheetFieldsHint}
       >
         <MarksheetControlsPanel />
       </SectionCard>

@@ -6,6 +6,8 @@ import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
 import { getVendorPromo, VendorPromoPayload } from "../../services/vendorPromoApi";
 import { VendorIcon } from "./vendorIcons";
 import { FounderRow } from "./VendorPromoCard";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { vendorText } from "./vendor.text";
 
 // ড্যাশবোর্ডের VendorPromoCard-এর রো-স্টাইলের সাথে মিলিয়ে
 const rowClass =
@@ -17,6 +19,8 @@ const displayHost = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/
 
 export default function HikmahItPage() {
   const [promo, setPromo] = useState<VendorPromoPayload | null>(null);
+  const t = useText(vendorText);
+  const c = useText(commonText);
 
   useEffect(() => {
     getVendorPromo()
@@ -29,7 +33,7 @@ export default function HikmahItPage() {
       <div className="space-y-6">
         <PageHeader title="Hikmah IT"/>
         <Card>
-          <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">লোড হচ্ছে...</p>
+          <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">{c.loading}</p>
         </Card>
       </div>
     );
@@ -41,7 +45,7 @@ export default function HikmahItPage() {
         <PageHeader title="Hikmah IT"/>
         <Card>
           <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
-            এই পেজটি এই মুহূর্তে উপলব্ধ নেই
+            {t.notAvailable}
           </p>
         </Card>
       </div>
@@ -51,11 +55,11 @@ export default function HikmahItPage() {
   const { contact, services } = promo;
 
   const contactRows = [
-    { key: "phone", href: `tel:${contact.phone_display}`, icon: <Phone className="h-4 w-4" strokeWidth={1.75} />, label: "ফোন", value: contact.phone_display, ltr: true },
-    { key: "whatsapp", href: `https://wa.me/${contact.phone_intl}`, external: true, icon: <FaWhatsapp size={16} />, label: "হোয়াটসঅ্যাপ", value: contact.phone_display, ltr: true },
-    { key: "email", href: `mailto:${contact.email}`, icon: <Mail className="h-4 w-4" strokeWidth={1.75} />, label: "ইমেইল", value: contact.email },
-    promo.founder.facebook_url && { key: "facebook", href: promo.founder.facebook_url, external: true, icon: <FaFacebook size={15} />, label: "ফেসবুক", value: "প্রোফাইল দেখুন" },
-    { key: "website", href: contact.website, external: true, icon: <ExternalLink className="h-4 w-4" strokeWidth={1.75} />, label: "ওয়েবসাইট", value: displayHost(contact.website) },
+    { key: "phone", href: `tel:${contact.phone_display}`, icon: <Phone className="h-4 w-4" strokeWidth={1.75} />, label: t.phone, value: contact.phone_display, ltr: true },
+    { key: "whatsapp", href: `https://wa.me/${contact.phone_intl}`, external: true, icon: <FaWhatsapp size={16} />, label: t.whatsapp, value: contact.phone_display, ltr: true },
+    { key: "email", href: `mailto:${contact.email}`, icon: <Mail className="h-4 w-4" strokeWidth={1.75} />, label: t.email, value: contact.email },
+    promo.founder.facebook_url && { key: "facebook", href: promo.founder.facebook_url, external: true, icon: <FaFacebook size={15} />, label: t.facebook, value: t.viewProfile },
+    { key: "website", href: contact.website, external: true, icon: <ExternalLink className="h-4 w-4" strokeWidth={1.75} />, label: t.website, value: displayHost(contact.website) },
   ].filter(Boolean) as {
     key: string;
     href: string;
@@ -70,19 +74,19 @@ export default function HikmahItPage() {
     <div className="space-y-6">
       <PageHeader
         title={promo.company_name}
-        subtitle="আপনার QMS সিস্টেমটি যারা তৈরি ও রক্ষণাবেক্ষণ করছে"
+        subtitle={t.subtitle}
       />
 
       {/* মোবাইলে পাশের কলাম (ফাউন্ডার + যোগাযোগ) উপরে আসে, বড় স্ক্রিনে ডানে */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <aside className="space-y-4 xl:order-2 xl:sticky xl:top-4 xl:self-start">
           <Card>
-            <CardHeader title="প্রতিষ্ঠাতা" />
+            <CardHeader title={t.founder} />
             <FounderRow promo={promo} fallbackTo={null} />
           </Card>
 
           <Card>
-            <CardHeader title="যোগাযোগ" />
+            <CardHeader title={t.contact} />
             <div className="space-y-2">
               {contactRows.map((row) => (
                 <a
@@ -109,7 +113,7 @@ export default function HikmahItPage() {
                     <MapPin className="h-4 w-4" strokeWidth={1.75} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] text-slate-400 dark:text-slate-500">ঠিকানা</span>
+                    <span className="block text-[11px] text-slate-400 dark:text-slate-500">{t.address}</span>
                     <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
                       {contact.address}
                     </span>
@@ -130,7 +134,7 @@ export default function HikmahItPage() {
 
           {services.length > 0 && (
             <Card>
-              <CardHeader title="আমাদের সেবাসমূহ" subtitle="QMS ছাড়াও আমরা যা তৈরি করে দিই" />
+              <CardHeader title={t.ourServices} subtitle={t.ourServicesHint} />
               <div className="grid gap-3 sm:grid-cols-2">
                 {services.map((s) => (
                   <div
@@ -144,7 +148,7 @@ export default function HikmahItPage() {
                     {s.is_current && (
                       <span className="absolute end-3 top-3 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
                         <CheckCircle2 size={11} />
-                        আপনি ব্যবহার করছেন
+                        {t.youAreUsing}
                       </span>
                     )}
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">

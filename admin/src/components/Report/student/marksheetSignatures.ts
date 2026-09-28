@@ -3,21 +3,16 @@ import {
   type MarksheetFieldItem,
   type MarksheetSignaturePosition,
 } from "../../../services/brandingApi";
+import type { ReportText } from "../report.text";
 
 export type SignatureKey = "sig_teacher" | "sig_principal";
 
 export const SIGNATURE_KEYS: SignatureKey[] = ["sig_teacher", "sig_principal"];
 
-export const SIGNATURE_LABELS: Record<SignatureKey, string> = {
-  sig_teacher: "শ্রেণি শিক্ষকের স্বাক্ষর",
-  sig_principal: "মুহতামিমের স্বাক্ষর",
-};
-
-export const SIGNATURE_POSITION_LABELS: Record<MarksheetSignaturePosition, string> = {
-  left: "বাম",
-  center: "মাঝ",
-  right: "ডান",
-};
+/** Printed caption of a marksheet signature, from the report dictionary
+ * (print language on the marksheet, UI language in the settings panel). */
+export const signatureLabel = (t: ReportText, key: SignatureKey) =>
+  key === "sig_teacher" ? t.sign.classTeacher : t.sign.head;
 
 export const SIGNATURE_POSITIONS: MarksheetSignaturePosition[] = ["left", "center", "right"];
 

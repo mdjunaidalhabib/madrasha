@@ -6,6 +6,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, formatCurrency, formatDate, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { libraryText } from "./library.text";
 
 type PersonOption = { id: number; name_bn?: string; roll?: number; registration_no?: number | string | null };
 
@@ -32,11 +34,17 @@ const normalizeArray = (payload: any) => {
 };
 
 const borrowerLabel = (record: BorrowRecord) =>
-  record.student ? `${record.student.nameBn}${record.student.roll ? ` (রোল ${record.student.roll})` : ""}` : record.teacher?.nameBn || "-";
+  record.student
+    ? `${record.student.nameBn}${record.student.roll ? ` (${getText(libraryText).common.roll(formatNumber(record.student.roll, getLang()))})` : ""}`
+    : record.teacher?.nameBn || "-";
 
 const emptyIssueForm = { book_id: "", due_date: "", notes: "" };
 
 const LibraryCirculationPage = () => {
+  const lang = useLang();
+  const lt = useText(libraryText);
+  const t = lt.circulation;
+  const c = useText(commonText);
   const [allStudents, setAllStudents] = useState<PersonOption[]>([]);
   const [allTeachers, setAllTeachers] = useState<PersonOption[]>([]);
   const [books, setBooks] = useState<LibraryBookOption[]>([]);
@@ -129,11 +137,11 @@ const LibraryCirculationPage = () => {
 
   const handleIssue = async () => {
     if (!selectedBorrower) {
-      useToastStore.getState().show("প্রথমে একজন ছাত্র/শিক্ষক নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.selectBorrower, "error");
       return;
     }
     if (!issueForm.book_id) {
-      useToastStore.getState().show("বই নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.selectBook, "error");
       return;
     }
     try {
@@ -144,7 +152,7 @@ const LibraryCirculationPage = () => {
         due_date: issueForm.due_date || undefined,
         notes: issueForm.notes.trim() || undefined,
       });
-      useToastStore.getState().show("বই ইস্যু করা হয়েছে", "success");
+      useToastStore.getState().show(t.issued, "success");
       setIssueModalOpen(false);
       loadRecords();
     } finally {
@@ -157,7 +165,7 @@ const LibraryCirculationPage = () => {
     try {
       setReturning(true);
       await libraryBorrowApi.return(returnTarget.id);
-      useToastStore.getState().show("বই ফেরত নেওয়া হয়েছে", "success");
+      useToastStore.getState().show(t.returned, "success");
       setReturnTarget(null);
       loadRecords();
     } finally {
@@ -170,8 +178,8 @@ const LibraryCirculationPage = () => {
       <div className="mx-auto max-w-4xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ইস্যু ও ফেরত</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">বই ইস্যু করুন এবং বর্তমান ধারকৃত বই ফেরত নিন</p>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t.subtitle}</p>
           </div>
           <button
             type="button"
@@ -179,7 +187,7 @@ const LibraryCirculationPage = () => {
             className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             <BookPlus size={15} />
-            বই ইস্যু করুন
+            {t.issueBook}
           </button>
         </div>
 
@@ -188,7 +196,7 @@ const LibraryCirculationPage = () => {
             <SkeletonList items={4} />
           ) : records.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-              বর্তমানে কোনো বই ধারে দেওয়া নেই
+              {t.noLoans}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
@@ -208,14 +216,14 @@ const LibraryCirculationPage = () => {
                         {overdue && (
                           <span className="flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                             <AlertTriangle size={10} />
-                            {record.daysOverdue} দিন বিলম্বিত
+                            {lt.common.daysOverdue(formatNumber(record.daysOverdue, lang))}
                           </span>
                         )}
                       </div>
                       <div className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">
-                        ফেরতের তারিখ: {new Date(record.dueDate).toLocaleDateString("bn-BD")}
+                        {lt.common.dueDate(formatDate(record.dueDate, lang))}
                         {overdue && (
-                          <span className="font-medium text-rose-600 dark:text-rose-400"> · আনুমানিক জরিমানা ৳{record.estimatedFine}</span>
+                          <span className="font-medium text-rose-600 dark:text-rose-400"> · {lt.common.estimatedFine(formatCurrency(record.estimatedFine, lang))}</span>
                         )}
                       </div>
                     </div>
@@ -225,7 +233,7 @@ const LibraryCirculationPage = () => {
                       className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-emerald-200 px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                     >
                       <Undo2 size={13} />
-                      ফেরত নিন
+                      {t.takeReturn}
                     </button>
                   </div>
                 );
@@ -236,7 +244,7 @@ const LibraryCirculationPage = () => {
       </div>
 
       {/* Issue modal */}
-      <Modal open={issueModalOpen} title="বই ইস্যু করুন" onClose={() => setIssueModalOpen(false)} maxWidthClassName="max-w-lg">
+      <Modal open={issueModalOpen} title={t.issueBook} onClose={() => setIssueModalOpen(false)} maxWidthClassName="max-w-lg">
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
             <button
@@ -250,7 +258,7 @@ const LibraryCirculationPage = () => {
                 borrowerType === "student" ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" : "border-gray-300 text-gray-600 dark:border-slate-700 dark:text-slate-300"
               }`}
             >
-              ছাত্র
+              {t.student}
             </button>
             <button
               type="button"
@@ -263,19 +271,19 @@ const LibraryCirculationPage = () => {
                 borrowerType === "teacher" ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" : "border-gray-300 text-gray-600 dark:border-slate-700 dark:text-slate-300"
               }`}
             >
-              শিক্ষক
+              {t.teacher}
             </button>
           </div>
 
           <div ref={searchBoxRef} className="relative">
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              {borrowerType === "student" ? "ছাত্র" : "শিক্ষক"} নির্বাচন করুন *
+              {t.selectPerson(borrowerType === "student" ? t.student : t.teacher)}
             </label>
             {selectedBorrower ? (
               <div className="flex items-center justify-between rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-slate-700">
                 <span className="text-gray-800 dark:text-slate-100">
                   {selectedBorrower.name_bn}
-                  {selectedBorrower.roll ? ` (রোল ${selectedBorrower.roll})` : ""}
+                  {selectedBorrower.roll ? ` (${lt.common.roll(formatNumber(selectedBorrower.roll, lang))})` : ""}
                 </span>
                 <button type="button" onClick={() => setSelectedBorrower(null)} className="text-gray-400 hover:text-gray-700">
                   <X size={14} />
@@ -292,13 +300,13 @@ const LibraryCirculationPage = () => {
                     setShowSuggestions(true);
                   }}
                   onFocus={() => setShowSuggestions(true)}
-                  placeholder="নাম, রোল বা আইডি দিয়ে খুঁজুন"
+                  placeholder={t.searchPlaceholder}
                   className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
                 {showSuggestions && borrowerQuery.trim() && (
                   <div className="absolute start-0 end-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                     {borrowerSuggestions.length === 0 ? (
-                      <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">কেউ পাওয়া যায়নি</div>
+                      <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">{t.nobodyFound}</div>
                     ) : (
                       borrowerSuggestions.map((p) => (
                         <button
@@ -312,7 +320,7 @@ const LibraryCirculationPage = () => {
                           className="flex w-full items-center justify-between px-3 py-2 text-start text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                           <span className="text-gray-800 dark:text-slate-200">{p.name_bn}</span>
-                          <span className="text-xs text-gray-400 dark:text-slate-500">{p.roll ? `রোল ${p.roll}` : p.registration_no ? `রেজি ${p.registration_no}` : ""}</span>
+                          <span className="text-xs text-gray-400 dark:text-slate-500">{p.roll ? lt.common.roll(formatNumber(p.roll, lang)) : p.registration_no ? t.reg(String(p.registration_no)) : ""}</span>
                         </button>
                       ))
                     )}
@@ -323,16 +331,16 @@ const LibraryCirculationPage = () => {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">বই নির্বাচন করুন *</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.selectBookLabel}</label>
             <select
               value={issueForm.book_id}
               onChange={(e) => setIssueForm((f) => ({ ...f, book_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {books.map((book) => (
                 <option key={book.id} value={book.id}>
-                  {book.title} {book.author ? `— ${book.author}` : ""} ({book.copiesAvailable} কপি আছে)
+                  {book.title} {book.author ? `— ${book.author}` : ""} {t.copiesLeft(formatNumber(book.copiesAvailable, lang))}
                 </option>
               ))}
             </select>
@@ -340,7 +348,7 @@ const LibraryCirculationPage = () => {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              ফেরতের শেষ তারিখ (ঐচ্ছিক, না দিলে ডিফল্ট ব্যবহৃত হবে)
+              {t.dueDateLabel}
             </label>
             <input
               type="date"
@@ -351,7 +359,7 @@ const LibraryCirculationPage = () => {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নোট (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.notesLabel}</label>
             <textarea
               value={issueForm.notes}
               onChange={(e) => setIssueForm((f) => ({ ...f, notes: e.target.value }))}
@@ -366,7 +374,7 @@ const LibraryCirculationPage = () => {
             onClick={() => setIssueModalOpen(false)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -374,13 +382,13 @@ const LibraryCirculationPage = () => {
             onClick={handleIssue}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {issuing ? "সংরক্ষণ হচ্ছে..." : "ইস্যু নিশ্চিত করুন"}
+            {issuing ? c.saving : t.confirmIssue}
           </button>
         </div>
       </Modal>
 
       {/* Return confirm modal */}
-      <Modal open={!!returnTarget} title="বই ফেরত নিন" onClose={() => setReturnTarget(null)}>
+      <Modal open={!!returnTarget} title={t.returnTitle} onClose={() => setReturnTarget(null)}>
         {returnTarget && (
           <div className="flex flex-col gap-2 text-sm">
             <p className="text-gray-700 dark:text-slate-300">
@@ -390,11 +398,12 @@ const LibraryCirculationPage = () => {
               <div className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">
                 <ShieldAlert size={16} />
                 <span>
-                  {returnTarget.daysOverdue} দিন বিলম্বিত — আনুমানিক জরিমানা <strong>৳{returnTarget.estimatedFine}</strong>
+                  {t.overdueFine(formatNumber(returnTarget.daysOverdue, lang))}{" "}
+                  <strong>{formatCurrency(returnTarget.estimatedFine, lang)}</strong>
                 </span>
               </div>
             ) : (
-              <p className="text-emerald-600 dark:text-emerald-400">সময়মতো ফেরত — কোনো জরিমানা নেই</p>
+              <p className="text-emerald-600 dark:text-emerald-400">{t.onTime}</p>
             )}
           </div>
         )}
@@ -404,7 +413,7 @@ const LibraryCirculationPage = () => {
             onClick={() => setReturnTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -412,7 +421,7 @@ const LibraryCirculationPage = () => {
             onClick={handleReturn}
             className="h-9 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
           >
-            {returning ? "সংরক্ষণ হচ্ছে..." : "ফেরত নিশ্চিত করুন"}
+            {returning ? c.saving : t.confirmReturn}
           </button>
         </div>
       </Modal>

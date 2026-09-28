@@ -13,6 +13,8 @@ import {
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
 import { useAuthStore } from "../../../store/authStore";
 import { hasPermission } from "../../../utils/permissions";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { sidebarText } from "../../../components/sidebar/sidebar.text";
 
 // Same module/permission gates as this menu's own routes in router.tsx -
 // keeps a tab from showing here only to redirect away the moment it's
@@ -20,27 +22,28 @@ import { hasPermission } from "../../../utils/permissions";
 // reach, via its own `disabled` flag from sidebar.service.ts).
 const SETTINGS_NAV_ITEMS: {
   key: string;
-  label: string;
+  label: "profileSettings" | "branding" | "paymentMethods" | "staffManagement" | "rolesPermissions" | "plan" | "trash" | "about";
   icon: typeof Settings2;
   module?: string;
   permission?: string;
   // Absolute override for entries that don't live under /settings/*.
   path?: string;
 }[] = [
-  { key: "profile", label: "প্রোফাইল সেটিংস", icon: UserCog },
-  { key: "branding", label: "প্রতিষ্ঠান ব্র্যান্ডিং", icon: Paintbrush, module: "settings", permission: "settings.manage" },
-  { key: "payment-methods", label: "পেমেন্ট পদ্ধতি", icon: CreditCard, module: "settings" },
-  { key: "users", label: "স্টাফ ব্যবস্থাপনা", icon: Users, module: "settings", permission: "users.read" },
-  { key: "roles", label: "রোল ও পারমিশন", icon: ShieldCheck, module: "settings", permission: "roles.manage" },
-  { key: "plan", label: "প্ল্যান", icon: Package },
-  { key: "trash", label: "ট্র্যাশ", icon: Trash2, module: "settings" },
-  { key: "about", label: "সফটওয়্যার সম্পর্কে", icon: Info },
+  { key: "profile", label: "profileSettings", icon: UserCog },
+  { key: "branding", label: "branding", icon: Paintbrush, module: "settings", permission: "settings.manage" },
+  { key: "payment-methods", label: "paymentMethods", icon: CreditCard, module: "settings" },
+  { key: "users", label: "staffManagement", icon: Users, module: "settings", permission: "users.read" },
+  { key: "roles", label: "rolesPermissions", icon: ShieldCheck, module: "settings", permission: "roles.manage" },
+  { key: "plan", label: "plan", icon: Package },
+  { key: "trash", label: "trash", icon: Trash2, module: "settings" },
+  { key: "about", label: "about", icon: Info },
 ];
 
 export default function SettingsLayout() {
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
   const modules = useAuthStore((s) => s.modules);
+  const t = useText(sidebarText);
 
   const visibleItems = SETTINGS_NAV_ITEMS.filter((item) => {
     if (item.module && !modules.includes(item.module)) return false;
@@ -54,7 +57,7 @@ export default function SettingsLayout() {
           UI ধারাবাহিকতা রাখতে (দেখুন AdminWebsiteSettingsPage.tsx)। */}
       <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
         <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-          <h2 className="text-base font-bold">সেটিংস মেনু</h2>
+          <h2 className="text-base font-bold">{t.settingsMenu}</h2>
         </div>
         <div className="space-y-1">
           {visibleItems.map((item) => {
@@ -78,9 +81,9 @@ export default function SettingsLayout() {
                   <>
                     <span className="flex min-w-0 items-center gap-2 truncate font-medium">
                       <Icon size={15} className="shrink-0" />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{t[item.label]}</span>
                     </span>
-                    <span className={isActive ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}>
+                    <span className={`inline-block rtl:-scale-x-100 ${isActive ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}`}>
                       ›
                     </span>
                   </>

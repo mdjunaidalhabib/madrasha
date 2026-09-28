@@ -1,8 +1,9 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 export class InvalidPlanIdError extends BadRequestError {
   constructor() {
-    super("Invalid plan id");
+    super(t({ bn: "প্ল্যান id সঠিক নয়", en: "Invalid plan id" }));
   }
 }
 

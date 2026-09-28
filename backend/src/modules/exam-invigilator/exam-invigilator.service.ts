@@ -6,6 +6,7 @@ import { timeRangesOverlap } from "../../shared/utils/time-range.util";
 import { examInvigilatorRepository, ExamInvigilatorRepository } from "./exam-invigilator.repository";
 import { AssignInvigilatorRequestDto } from "./exam-invigilator.dto";
 import { INVIGILATOR_TYPES, INVIGILATOR_ROLES, INVIGILATOR_ASSIGNMENT_STATUSES } from "./exam-invigilator.constants";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -32,31 +33,31 @@ export class ExamInvigilatorService {
     try {
       return await this.repository.findByRoutine(madrasaId, examRoutineId);
     } catch (err) {
-      return friendlyFailure("listByRoutine error:", err, "Failed to load invigilator assignments");
+      return friendlyFailure("listByRoutine error:", err, t({ bn: "পরিদর্শক নিয়োগের তালিকা লোড করা যায়নি", en: "Failed to load invigilator assignments", ar: "تعذر تحميل تعيينات المراقبين" }));
     }
   }
 
   async assign(madrasaId: number, dto: AssignInvigilatorRequestDto) {
     if (isEmpty(dto.exam_routine_id) || isEmpty(dto.invigilator_type) || isEmpty(dto.invigilator_id)) {
-      throw new BadRequestError("exam_routine_id, invigilator_type and invigilator_id are required");
+      throw new BadRequestError(t({ bn: "exam_routine_id, invigilator_type ও invigilator_id আবশ্যক", en: "exam_routine_id, invigilator_type and invigilator_id are required", ar: "exam_routine_id و invigilator_type و invigilator_id مطلوبة" }));
     }
     const invigilatorType = String(dto.invigilator_type).toUpperCase();
     if (!INVIGILATOR_TYPES.includes(invigilatorType as (typeof INVIGILATOR_TYPES)[number])) {
-      throw new BadRequestError(`invigilator_type must be one of ${INVIGILATOR_TYPES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `invigilator_type অবশ্যই এগুলোর একটি হতে হবে: ${INVIGILATOR_TYPES.join(", ")}`, en: `invigilator_type must be one of ${INVIGILATOR_TYPES.join(", ")}`, ar: `يجب أن يكون invigilator_type إحدى القيم: ${INVIGILATOR_TYPES.join(", ")}` }));
     }
     const role = dto.role ? String(dto.role).toUpperCase() : "ASSISTANT";
     if (!INVIGILATOR_ROLES.includes(role as (typeof INVIGILATOR_ROLES)[number])) {
-      throw new BadRequestError(`role must be one of ${INVIGILATOR_ROLES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `role অবশ্যই এগুলোর একটি হতে হবে: ${INVIGILATOR_ROLES.join(", ")}`, en: `role must be one of ${INVIGILATOR_ROLES.join(", ")}`, ar: `يجب أن يكون الدور إحدى القيم: ${INVIGILATOR_ROLES.join(", ")}` }));
     }
 
     const examRoutineId = Number(dto.exam_routine_id);
     const invigilatorId = Number(dto.invigilator_id);
 
     const routine = await this.repository.findRoutineDateTime(examRoutineId, madrasaId);
-    if (!routine) throw new NotFoundError("Exam routine not found");
+    if (!routine) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
 
     const invigilatorExists = await this.repository.invigilatorExists(madrasaId, invigilatorType, invigilatorId);
-    if (!invigilatorExists) throw new NotFoundError(`${invigilatorType.toLowerCase()} not found`);
+    if (!invigilatorExists) throw new NotFoundError(t({ bn: `${invigilatorType.toLowerCase()} পাওয়া যায়নি`, en: `${invigilatorType.toLowerCase()} not found`, ar: `لم يتم العثور على ${invigilatorType.toLowerCase()}` }));
 
     // The overlap check (a read) and the create (a write) run inside one
     // SERIALIZABLE transaction, re-checking overlap against the
@@ -84,38 +85,38 @@ export class ExamInvigilatorService {
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (err) {
-      if (isDuplicateError(err)) throw new ConflictError("This person is already assigned to this exam slot");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই ব্যক্তি ইতিমধ্যে এই পরীক্ষার স্লটে নিয়োগপ্রাপ্ত", en: "This person is already assigned to this exam slot", ar: "هذا الشخص معيّن بالفعل لفترة الامتحان هذه" }));
       if (err instanceof ConflictError) throw err;
       if (isSerializationFailure(err)) {
         throw new ConflictError(
-          "একই সময়ে অন্য একটি অনুরোধের সাথে সংঘর্ষ হয়েছে — আবার চেষ্টা করুন।",
+          t({ bn: "একই সময়ে অন্য একটি অনুরোধের সাথে সংঘর্ষ হয়েছে — আবার চেষ্টা করুন।", en: "This conflicted with another request made at the same time — please try again.", ar: "حدث تعارض مع طلب آخر في الوقت نفسه — يرجى المحاولة مرة أخرى." }),
         );
       }
-      return friendlyFailure("assign error:", err, "Failed to assign invigilator");
+      return friendlyFailure("assign error:", err, t({ bn: "পরিদর্শক নিয়োগ করা যায়নি", en: "Failed to assign invigilator", ar: "تعذر تعيين المراقب" }));
     }
   }
 
   async updateStatus(id: number, madrasaId: number, status: unknown) {
     const value = String(status).toUpperCase();
     if (!INVIGILATOR_ASSIGNMENT_STATUSES.includes(value as (typeof INVIGILATOR_ASSIGNMENT_STATUSES)[number])) {
-      throw new BadRequestError(`status must be one of ${INVIGILATOR_ASSIGNMENT_STATUSES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `status অবশ্যই এগুলোর একটি হতে হবে: ${INVIGILATOR_ASSIGNMENT_STATUSES.join(", ")}`, en: `status must be one of ${INVIGILATOR_ASSIGNMENT_STATUSES.join(", ")}`, ar: `يجب أن تكون الحالة إحدى القيم: ${INVIGILATOR_ASSIGNMENT_STATUSES.join(", ")}` }));
     }
     try {
       const result = await this.repository.updateStatus(id, madrasaId, { status: value });
-      if (!result.count) throw new NotFoundError("Invigilator assignment not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরিদর্শক নিয়োগ পাওয়া যায়নি", en: "Invigilator assignment not found", ar: "لم يتم العثور على تعيين المراقب" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateStatus error:", err, "Failed to update invigilator assignment");
+      return friendlyFailure("updateStatus error:", err, t({ bn: "পরিদর্শক নিয়োগ আপডেট করা যায়নি", en: "Failed to update invigilator assignment", ar: "تعذر تحديث تعيين المراقب" }));
     }
   }
 
   async remove(id: number, madrasaId: number) {
     try {
       const result = await this.repository.remove(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Invigilator assignment not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরিদর্শক নিয়োগ পাওয়া যায়নি", en: "Invigilator assignment not found", ar: "لم يتم العثور على تعيين المراقب" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("remove error:", err, "Failed to remove invigilator assignment");
+      return friendlyFailure("remove error:", err, t({ bn: "পরিদর্শক নিয়োগ বাতিল করা যায়নি", en: "Failed to remove invigilator assignment", ar: "تعذر إزالة تعيين المراقب" }));
     }
   }
 
@@ -144,7 +145,7 @@ export class ExamInvigilatorService {
     );
     if (clash) {
       throw new ConflictError(
-        `This person is already assigned as an invigilator to another exam routine (#${clash.examRoutine.id}) at an overlapping time`,
+        t({ bn: `এই ব্যক্তি একই সময়ে অন্য একটি পরীক্ষার রুটিনে (#${clash.examRoutine.id}) পরিদর্শক হিসেবে নিয়োগপ্রাপ্ত`, en: `This person is already assigned as an invigilator to another exam routine (#${clash.examRoutine.id}) at an overlapping time`, ar: `هذا الشخص معيّن بالفعل مراقبًا في جدول امتحان آخر (#${clash.examRoutine.id}) في وقت متداخل` }),
       );
     }
   }

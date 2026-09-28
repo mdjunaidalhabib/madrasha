@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { BadgeCheck, ChevronRight, ExternalLink, GraduationCap, Sparkles } from "lucide-react";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import { getVendorPromo, VendorPromoPayload } from "../../services/vendorPromoApi";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { vendorText } from "./vendor.text";
 
 const initials = (name: string) =>
   name
@@ -27,6 +29,7 @@ const rowTrailIconClass = "h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600";
  * page: the services/detail overview, and the founder/CEO profile. */
 export default function VendorPromoCard() {
   const [promo, setPromo] = useState<VendorPromoPayload | null>(null);
+  const t = useText(vendorText);
 
   useEffect(() => {
     getVendorPromo()
@@ -56,10 +59,10 @@ export default function VendorPromoCard() {
             <Sparkles className="h-5 w-5" strokeWidth={1.75} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className={rowTitleClass}>সকল সেবা ও বিস্তারিত</span>
+            <span className={rowTitleClass}>{t.allServices}</span>
             <span className={rowSubtitleClass}>{promo.teaser_text}</span>
           </span>
-          <ChevronRight className={rowTrailIconClass} strokeWidth={1.75} />
+          <ChevronRight className={`${rowTrailIconClass} rtl:rotate-180`} strokeWidth={1.75} />
         </Link>
 
         <FounderRow promo={promo} />
@@ -116,7 +119,7 @@ export function FounderRow({
     return (
       <Link to={fallbackTo} className={founderRowClass}>
         {content}
-        <ChevronRight className={rowTrailIconClass} strokeWidth={1.75} />
+        <ChevronRight className={`${rowTrailIconClass} rtl:rotate-180`} strokeWidth={1.75} />
       </Link>
     );
   }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ExternalLink } from "lucide-react";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 
 // Full-screen preview of a brand image. The image sits on a checkerboard so
 // transparent PNG logos stay clearly visible; a toggle flips to a plain dark
@@ -15,6 +17,7 @@ export default function ImageLightbox({
   onClose: () => void;
 }) {
   const [checker, setChecker] = useState(true);
+  const t = useText(settingsUiText);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
@@ -55,16 +58,16 @@ export default function ImageLightbox({
             type="button"
             onClick={() => setChecker((v) => !v)}
             className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            title="পটভূমি পরিবর্তন"
+            title={t.changeBackground}
           >
-            {checker ? "গাঢ় পটভূমি" : "চেক পটভূমি"}
+            {checker ? t.darkBackground : t.checkerBackground}
           </button>
           <a
             href={src}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
-            title="নতুন ট্যাবে মূল ছবি খুলুন"
+            title={t.openOriginal}
           >
             <ExternalLink size={18} />
           </a>
@@ -72,7 +75,7 @@ export default function ImageLightbox({
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
-            title="বন্ধ করুন (Esc)"
+            title={t.closeEsc}
           >
             <X size={20} />
           </button>

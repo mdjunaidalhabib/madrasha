@@ -8,6 +8,8 @@ import {
   type ChannelPricing,
 } from "../../../services/superAdminBillingApi";
 import { fmtMoney, sanitizeDecimalText } from "./billingHelpers";
+import { commonText, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 type PricingForm = {
   sellingPriceText: string;
@@ -19,11 +21,6 @@ const emptyForm: PricingForm = {
   sellingPriceText: "0.5",
   providerCostText: "0",
   lowCreditThreshold: 100,
-};
-
-const channelMeta: Record<BillingChannel, { title: string; unit: string }> = {
-  SMS: { title: "SMS Pricing", unit: "প্রতি সেগমেন্ট" },
-  EMAIL: { title: "Email Pricing", unit: "প্রতি ইমেইল" },
 };
 
 function PricingCard({
@@ -39,17 +36,23 @@ function PricingCard({
   onChange: (form: PricingForm) => void;
   onSave: () => void;
 }) {
+  const t = useText(billingText);
+  const c = useText(commonText);
+  const channelMeta: Record<BillingChannel, { title: string; unit: string }> = {
+    SMS: { title: t.smsPricing, unit: t.perSegment },
+    EMAIL: { title: t.emailPricing, unit: t.perEmail },
+  };
   const meta = channelMeta[channel];
 
   return (
     <div className="rounded-2xl border bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{meta.title}</h2>
-      <p className="text-xs text-gray-500 dark:text-slate-400">{meta.unit} pricing (৳)</p>
+      <p className="text-xs text-gray-500 dark:text-slate-400">{t.unitPricing(meta.unit)}</p>
 
       <div className="mt-4 grid gap-4">
         <div className="grid gap-2">
           <label className="text-xs text-gray-600 dark:text-slate-400">
-            Selling Price (৳) <span className="text-[11px] text-gray-400">(৳ {fmtMoney(form.sellingPriceText)})</span>
+            {t.sellingPrice} <span className="text-[11px] text-gray-400">(৳ {fmtMoney(form.sellingPriceText)})</span>
           </label>
           <input
             inputMode="decimal"
@@ -61,12 +64,12 @@ function PricingCard({
               onChange({ ...form, sellingPriceText: String(Number.isNaN(n) ? 0 : n) });
             }}
           />
-          <p className="text-[11px] text-gray-400">মাদরাসাগুলোর কাছে বিক্রয়মূল্য — {meta.unit}।</p>
+          <p className="text-[11px] text-gray-400">{t.sellingPriceHint(meta.unit)}</p>
         </div>
 
         <div className="grid gap-2">
           <label className="text-xs text-gray-600 dark:text-slate-400">
-            Provider Cost (৳) <span className="text-[11px] text-gray-400">(৳ {fmtMoney(form.providerCostText)})</span>
+            {t.providerCost} <span className="text-[11px] text-gray-400">(৳ {fmtMoney(form.providerCostText)})</span>
           </label>
           <input
             inputMode="decimal"
@@ -78,11 +81,11 @@ function PricingCard({
               onChange({ ...form, providerCostText: String(Number.isNaN(n) ? 0 : n) });
             }}
           />
-          <p className="text-[11px] text-gray-400">Gateway/provider এর প্রকৃত খরচ — শুধু Super Admin দেখবে (profit report)।</p>
+          <p className="text-[11px] text-gray-400">{t.providerCostHint}</p>
         </div>
 
         <div className="grid gap-2">
-          <label className="text-xs text-gray-600 dark:text-slate-400">Low Credit Threshold</label>
+          <label className="text-xs text-gray-600 dark:text-slate-400">{t.lowCreditThreshold}</label>
           <input
             type="number"
             min={0}
@@ -90,7 +93,7 @@ function PricingCard({
             value={form.lowCreditThreshold}
             onChange={(e) => onChange({ ...form, lowCreditThreshold: Number(e.target.value) })}
           />
-          <p className="text-[11px] text-gray-400">এর নিচে remaining credit নামলে মাদরাসা "low credit" list এ দেখাবে।</p>
+          <p className="text-[11px] text-gray-400">{t.lowCreditHint}</p>
         </div>
 
         <div className="flex justify-end">
@@ -100,7 +103,7 @@ function PricingCard({
             disabled={saving}
             className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? c.saving : c.save}
           </button>
         </div>
       </div>
@@ -110,6 +113,7 @@ function PricingCard({
 
 export default function SuperAdminBillingPricingPage() {
   const { show } = useToastStore();
+  const t = useText(billingText);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<BillingChannel | null>(null);
@@ -133,7 +137,7 @@ export default function SuperAdminBillingPricingPage() {
       }
       setForms(next);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Load failed", "error");
+      show(e?.response?.data?.message || getText(billingText).loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -145,20 +149,21 @@ export default function SuperAdminBillingPricingPage() {
   }, []);
 
   async function onSave(channel: BillingChannel) {
+    const tx = getText(billingText);
     const form = forms[channel];
     const sellingPrice = Number(form.sellingPriceText || 0);
     const providerCost = Number(form.providerCostText || 0);
 
     if (Number.isNaN(sellingPrice) || sellingPrice < 0) {
-      show("Selling price 0 বা তার বেশি হতে হবে", "error");
+      show(tx.errSellingPrice, "error");
       return;
     }
     if (Number.isNaN(providerCost) || providerCost < 0) {
-      show("Provider cost 0 বা তার বেশি হতে হবে", "error");
+      show(tx.errProviderCost, "error");
       return;
     }
     if (!Number.isFinite(form.lowCreditThreshold) || form.lowCreditThreshold < 0) {
-      show("Low credit threshold 0 বা তার বেশি হতে হবে", "error");
+      show(tx.errThreshold, "error");
       return;
     }
 
@@ -169,10 +174,10 @@ export default function SuperAdminBillingPricingPage() {
         providerCost,
         lowCreditThreshold: Math.round(form.lowCreditThreshold),
       });
-      show("Pricing আপডেট হয়েছে", "success");
+      show(tx.pricingUpdated, "success");
       await load();
     } catch (e: any) {
-      show(e?.response?.data?.message || "Save failed", "error");
+      show(e?.response?.data?.message || tx.saveFailed, "error");
     } finally {
       setSaving(null);
     }
@@ -181,9 +186,9 @@ export default function SuperAdminBillingPricingPage() {
   return (
     <div className="p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-semibold dark:text-slate-100">Billing Pricing</h1>
+        <h1 className="text-2xl font-semibold dark:text-slate-100">{t.pricingTitle}</h1>
         <p className="text-sm text-gray-600 dark:text-slate-400">
-          SMS ও Email এর global selling price, provider cost ও low-credit threshold সেট করুন।
+          {t.pricingSubtitle}
         </p>
       </div>
 

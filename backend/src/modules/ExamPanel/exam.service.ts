@@ -19,6 +19,7 @@ import {
 } from "../ResultPanel/division-grading";
 import { DEFAULT_FAIL_MARK, MIN_MARK, MAX_MARK } from "./exam.constants";
 import { tenantDivisionName, linkName } from "../../shared/utils/tenant-name.util";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -33,17 +34,17 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 
 const validateMarkRange = (min_mark: unknown, max_mark: unknown) => {
   if (min_mark === undefined || max_mark === undefined) {
-    throw new BadRequestError("Name, min_mark and max_mark are required");
+    throw new BadRequestError(t({ bn: "নাম, min_mark ও max_mark আবশ্যক", en: "Name, min_mark and max_mark are required", ar: "الاسم و min_mark و max_mark مطلوبة" }));
   }
 
   const min = Number(min_mark);
   const max = Number(max_mark);
 
   if (Number.isNaN(min) || Number.isNaN(max)) {
-    throw new BadRequestError("Marks must be numbers");
+    throw new BadRequestError(t({ bn: "নম্বর অবশ্যই সংখ্যা হতে হবে", en: "Marks must be numbers", ar: "يجب أن تكون الدرجات أرقامًا" }));
   }
   if (min < MIN_MARK || max > MAX_MARK || min > max) {
-    throw new BadRequestError("Invalid mark range");
+    throw new BadRequestError(t({ bn: "নম্বরের সীমা সঠিক নয়", en: "Invalid mark range", ar: "نطاق الدرجات غير صالح" }));
   }
 
   return { min, max };
@@ -53,7 +54,7 @@ const parsePoint = (point: unknown): number | null => {
   if (isEmpty(point)) return null;
   const value = Number(point);
   if (!Number.isFinite(value) || value < 0) {
-    throw new BadRequestError("Point must be a non-negative number");
+    throw new BadRequestError(t({ bn: "পয়েন্ট অবশ্যই ঋণাত্মক নয় এমন সংখ্যা হতে হবে", en: "Point must be a non-negative number", ar: "يجب أن تكون النقطة عددًا غير سالب" }));
   }
   return value;
 };
@@ -62,7 +63,7 @@ const parsePoint = (point: unknown): number | null => {
 const parseOptionalId = (value: unknown, label: string): number | null => {
   if (isEmpty(value)) return null;
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(`${label} must be a positive integer`);
+  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(t({ bn: `${label} অবশ্যই ধনাত্মক পূর্ণসংখ্যা হতে হবে`, en: `${label} must be a positive integer`, ar: `يجب أن يكون ${label} عددًا صحيحًا موجبًا` }));
   return id;
 };
 
@@ -78,18 +79,18 @@ const withDivisionId = <T extends { divisionId: number | null }>(row: T) => ({
 /** A fail grade is automatic (failed students get it as a fallback label), never a band. */
 const assertNotFailGrade = (name: unknown, kind: "general" | "madrasa") => {
   if (kind === "general" && isGeneralFailGradeName(name)) {
-    throw new BadRequestError("F স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না");
+    throw new BadRequestError(t({ bn: "F স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না", en: "F is the automatic fail grade — it cannot be added as a separate grade", ar: "F هو تقدير الرسوب التلقائي — لا يمكن إضافته كتقدير منفصل" }));
   }
   if (kind === "madrasa" && isMadrasaFailGradeName(name)) {
-    throw new BadRequestError("রাসিব স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না");
+    throw new BadRequestError(t({ bn: "রাসিব স্বয়ংক্রিয় ফেল গ্রেড — আলাদা গ্রেড হিসেবে যোগ করা যাবে না", en: "Rasib is the automatic fail grade — it cannot be added as a separate grade", ar: "راسب هو تقدير الرسوب التلقائي — لا يمكن إضافته كتقدير منفصل" }));
   }
 };
 
 const parseFailMarkValue = (value: unknown): number => {
-  if (value === undefined || value === null || value === "") throw new BadRequestError("Value is required");
+  if (value === undefined || value === null || value === "") throw new BadRequestError(t({ bn: "মান আবশ্যক", en: "Value is required", ar: "القيمة مطلوبة" }));
   const failValue = Number(value);
   if (Number.isNaN(failValue) || failValue < MIN_MARK || failValue > MAX_MARK) {
-    throw new BadRequestError("Fail mark must be a number between 0 and 100");
+    throw new BadRequestError(t({ bn: "ফেল মার্ক অবশ্যই 0 থেকে 100 এর মধ্যে একটি সংখ্যা হতে হবে", en: "Fail mark must be a number between 0 and 100", ar: "يجب أن تكون درجة الرسوب عددًا بين 0 و 100" }));
   }
   return failValue;
 };
@@ -118,18 +119,18 @@ export class ExamService {
         };
       });
     } catch (err) {
-      return friendlyFailure("getExams error:", err, "Failed to load exams");
+      return friendlyFailure("getExams error:", err, t({ bn: "পরীক্ষার তালিকা লোড করা যায়নি", en: "Failed to load exams", ar: "تعذر تحميل الامتحانات" }));
     }
   }
 
   async createExam(madrasaId: number, dto: CreateExamRequestDto) {
     if (isEmpty(dto.name)) {
-      throw new BadRequestError("Name is required");
+      throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "Name is required", ar: "الاسم مطلوب" }));
     }
 
     const currentSession = await this.sessions.findCurrentSession(madrasaId);
     if (!currentSession) {
-      throw new BadRequestError("No current session found. Please set a current session first.");
+      throw new BadRequestError(t({ bn: "কোনো চলতি সেশন পাওয়া যায়নি। আগে একটি চলতি সেশন নির্ধারণ করুন।", en: "No current session found. Please set a current session first.", ar: "لم يتم العثور على عام دراسي حالي. يرجى تعيين العام الدراسي الحالي أولًا." }));
     }
 
     const extra = this.buildExamMasterFields(dto);
@@ -142,8 +143,8 @@ export class ExamService {
       const exam = await this.repository.createExam(madrasaId, name, currentSession.name, extra, divisionIds);
       examId = exam.id;
     } catch (err) {
-      if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
-      return friendlyFailure("createExam error:", err, "Failed to create exam");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই পরীক্ষাটি ইতিমধ্যে আছে", en: "This exam already exists", ar: "هذا الامتحان موجود بالفعل" }));
+      return friendlyFailure("createExam error:", err, t({ bn: "পরীক্ষা তৈরি করা যায়নি", en: "Failed to create exam", ar: "تعذر إنشاء الامتحان" }));
     }
 
     // পরীক্ষার ফি rows for every class this exam covers (dormant until the
@@ -162,7 +163,7 @@ export class ExamService {
   async updateExam(id: number, madrasaId: number, dto: UpdateExamRequestDto) {
     const data: Record<string, unknown> = this.buildExamMasterFields(dto);
     if (dto.name !== undefined) {
-      if (isEmpty(dto.name)) throw new BadRequestError("Name cannot be empty");
+      if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম খালি রাখা যাবে না", en: "Name cannot be empty", ar: "لا يمكن أن يكون الاسم فارغًا" }));
       data.name = String(dto.name).trim();
     }
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
@@ -171,7 +172,7 @@ export class ExamService {
       dto.division_ids === undefined ? undefined : await this.parseDivisionIds(madrasaId, dto.division_ids);
 
     if (!Object.keys(data).length && divisionIds === undefined) {
-      throw new BadRequestError("No valid data to update");
+      throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
     }
 
     const current =
@@ -182,7 +183,7 @@ export class ExamService {
     // Name or scope changing -> re-run the overlap-aware duplicate check
     // against the exam's resulting (name, year, divisions).
     if (data.name !== undefined || divisionIds !== undefined) {
-      if (!current) throw new NotFoundError("Exam not found");
+      if (!current) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
       await this.assertNoOverlappingExam(
         madrasaId,
         (data.name as string | undefined) ?? current.name,
@@ -194,11 +195,11 @@ export class ExamService {
 
     try {
       const result = await this.repository.updateExam(id, madrasaId, data, divisionIds);
-      if (!result.count) throw new NotFoundError("Exam not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      if (isDuplicateError(err)) throw new ConflictError("This exam already exists");
-      return friendlyFailure("updateExam error:", err, "Failed to update exam");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই পরীক্ষাটি ইতিমধ্যে আছে", en: "This exam already exists", ar: "هذا الامتحان موجود بالفعل" }));
+      return friendlyFailure("updateExam error:", err, t({ bn: "পরীক্ষা আপডেট করা যায়নি", en: "Failed to update exam", ar: "تعذر تحديث الامتحان" }));
     }
 
     // বিভাগ scope changed -> its পরীক্ষার ফি follows (classes added/removed).
@@ -226,14 +227,14 @@ export class ExamService {
   private async parseDivisionIds(madrasaId: number, raw: unknown[]): Promise<number[]> {
     const ids = [...new Set(raw.map((v) => Number(v)))];
     if (ids.some((id) => !Number.isInteger(id) || id <= 0)) {
-      throw new BadRequestError("division_ids must be positive integers");
+      throw new BadRequestError(t({ bn: "division_ids অবশ্যই ধনাত্মক পূর্ণসংখ্যা হতে হবে", en: "division_ids must be positive integers", ar: "يجب أن تكون division_ids أعدادًا صحيحة موجبة" }));
     }
     if (!ids.length) return [];
 
     const active = await this.repository.findActiveDivisions(madrasaId);
     const activeIds = new Set(active.map((d) => d.divisionId));
     if (ids.some((id) => !activeIds.has(id))) {
-      throw new BadRequestError("নির্বাচিত বিভাগটি এই মাদরাসায় সক্রিয় নেই");
+      throw new BadRequestError(t({ bn: "নির্বাচিত বিভাগটি এই প্রতিষ্ঠানে সক্রিয় নেই", en: "The selected division is not active in this institution", ar: "القسم المختار غير نشط في هذه المؤسسة" }));
     }
     if (ids.length === activeIds.size) return [];
     return ids.sort((a, b) => a - b);
@@ -258,7 +259,7 @@ export class ExamService {
         ),
     );
     if (clash) {
-      throw new ConflictError("এই নামে এই বিভাগের জন্য চলতি সেশনে ইতিমধ্যে একটি পরীক্ষা আছে");
+      throw new ConflictError(t({ bn: "এই নামে এই বিভাগের জন্য চলতি সেশনে ইতিমধ্যে একটি পরীক্ষা আছে", en: "An exam with this name already exists for this division in the current session", ar: "يوجد بالفعل امتحان بهذا الاسم لهذا القسم في العام الدراسي الحالي" }));
     }
   }
 
@@ -284,7 +285,7 @@ export class ExamService {
     if (dto.end_date !== undefined) data.endDate = this.parseDateOrNull(dto.end_date, "end_date");
 
     if (data.startDate && data.endDate && data.startDate > data.endDate) {
-      throw new BadRequestError("start_date cannot be after end_date");
+      throw new BadRequestError(t({ bn: "start_date, end_date-এর পরে হতে পারবে না", en: "start_date cannot be after end_date", ar: "لا يمكن أن يكون تاريخ البداية بعد تاريخ النهاية" }));
     }
     return data;
   }
@@ -292,17 +293,17 @@ export class ExamService {
   private parseDateOrNull(value: string, label: string): Date | null {
     if (isEmpty(value)) return null;
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) throw new BadRequestError(`Invalid ${label}`);
+    if (Number.isNaN(date.getTime())) throw new BadRequestError(t({ bn: `${label} সঠিক নয়`, en: `Invalid ${label}`, ar: `${label} غير صالح` }));
     return date;
   }
 
   async deleteExam(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteExam(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Exam not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteExam error:", err, "Failed to delete exam");
+      return friendlyFailure("deleteExam error:", err, t({ bn: "পরীক্ষা মুছে ফেলা যায়নি", en: "Failed to delete exam", ar: "تعذر حذف الامتحان" }));
     }
   }
 
@@ -319,17 +320,17 @@ export class ExamService {
 
   async reorderExams(madrasaId: number, ids: unknown) {
     if (!Array.isArray(ids) || ids.length === 0) {
-      throw new BadRequestError("ids must be a non-empty array");
+      throw new BadRequestError(t({ bn: "ids একটি খালি নয় এমন তালিকা হতে হবে", en: "ids must be a non-empty array", ar: "يجب أن تكون ids مصفوفة غير فارغة" }));
     }
     const parsedIds = ids.map((id) => Number(id));
     if (parsedIds.some((id) => !Number.isInteger(id))) {
-      throw new BadRequestError("ids must all be integers");
+      throw new BadRequestError(t({ bn: "সব ids অবশ্যই পূর্ণসংখ্যা হতে হবে", en: "ids must all be integers", ar: "يجب أن تكون جميع المعرفات أعدادًا صحيحة" }));
     }
 
     try {
       await this.repository.reorderExams(madrasaId, parsedIds);
     } catch (err) {
-      return friendlyFailure("reorderExams error:", err, "Failed to reorder exams");
+      return friendlyFailure("reorderExams error:", err, t({ bn: "পরীক্ষার ক্রম পরিবর্তন করা যায়নি", en: "Failed to reorder exams", ar: "تعذر إعادة ترتيب الامتحانات" }));
     }
   }
 
@@ -341,12 +342,12 @@ export class ExamService {
     try {
       return (await this.repository.findGeneralGrades(madrasaId, scope)).map(withDivisionId);
     } catch (err) {
-      return friendlyFailure("getGeneralGrades error:", err, "Failed to load general grades");
+      return friendlyFailure("getGeneralGrades error:", err, t({ bn: "সাধারণ গ্রেড লোড করা যায়নি", en: "Failed to load general grades", ar: "تعذر تحميل التقديرات العامة" }));
     }
   }
 
   async saveGeneralGrade(madrasaId: number, dto: SaveGradeRequestDto) {
-    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম, min_mark ও max_mark আবশ্যক", en: "Name, min_mark and max_mark are required", ar: "الاسم و min_mark و max_mark مطلوبة" }));
     assertNotFailGrade(dto.name, "general");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
@@ -355,13 +356,13 @@ export class ExamService {
     try {
       await this.repository.createGeneralGrade(madrasaId, String(dto.name).trim(), min, max, point, scope);
     } catch (err) {
-      if (isDuplicateError(err)) throw new ConflictError("This general grade already exists");
-      return friendlyFailure("saveGeneralGrade error:", err, "Failed to save general grade");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই সাধারণ গ্রেডটি ইতিমধ্যে আছে", en: "This general grade already exists", ar: "هذا التقدير العام موجود بالفعل" }));
+      return friendlyFailure("saveGeneralGrade error:", err, t({ bn: "সাধারণ গ্রেড সংরক্ষণ করা যায়নি", en: "Failed to save general grade", ar: "تعذر حفظ التقدير العام" }));
     }
   }
 
   async updateGeneralGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
-    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম, min_mark ও max_mark আবশ্যক", en: "Name, min_mark and max_mark are required", ar: "الاسم و min_mark و max_mark مطلوبة" }));
     assertNotFailGrade(dto.name, "general");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
@@ -375,21 +376,21 @@ export class ExamService {
         max,
         point,
       );
-      if (!result.count) throw new NotFoundError("General grade not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "সাধারণ গ্রেড পাওয়া যায়নি", en: "General grade not found", ar: "لم يتم العثور على التقدير العام" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      if (isDuplicateError(err)) throw new ConflictError("This general grade already exists");
-      return friendlyFailure("updateGeneralGrade error:", err, "Failed to update general grade");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই সাধারণ গ্রেডটি ইতিমধ্যে আছে", en: "This general grade already exists", ar: "هذا التقدير العام موجود بالفعل" }));
+      return friendlyFailure("updateGeneralGrade error:", err, t({ bn: "সাধারণ গ্রেড আপডেট করা যায়নি", en: "Failed to update general grade", ar: "تعذر تحديث التقدير العام" }));
     }
   }
 
   async deleteGeneralGrade(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteGeneralGrade(id, madrasaId);
-      if (!result.count) throw new NotFoundError("General grade not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "সাধারণ গ্রেড পাওয়া যায়নি", en: "General grade not found", ar: "لم يتم العثور على التقدير العام" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteGeneralGrade error:", err, "Failed to delete general grade");
+      return friendlyFailure("deleteGeneralGrade error:", err, t({ bn: "সাধারণ গ্রেড মুছে ফেলা যায়নি", en: "Failed to delete general grade", ar: "تعذر حذف التقدير العام" }));
     }
   }
 
@@ -401,12 +402,12 @@ export class ExamService {
     try {
       return (await this.repository.findMadrasaGrades(madrasaId, scope)).map(withDivisionId);
     } catch (err) {
-      return friendlyFailure("getMadrasaGrades error:", err, "Failed to load madrasa grades");
+      return friendlyFailure("getMadrasaGrades error:", err, t({ bn: "মাদ্রাসা গ্রেড লোড করা যায়নি", en: "Failed to load madrasa grades", ar: "تعذر تحميل تقديرات المدرسة الدينية" }));
     }
   }
 
   async saveMadrasaGrade(madrasaId: number, dto: SaveGradeRequestDto) {
-    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম, min_mark ও max_mark আবশ্যক", en: "Name, min_mark and max_mark are required", ar: "الاسم و min_mark و max_mark مطلوبة" }));
     assertNotFailGrade(dto.name, "madrasa");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
@@ -415,13 +416,13 @@ export class ExamService {
     try {
       await this.repository.createMadrasaGrade(madrasaId, String(dto.name).trim(), min, max, point, scope);
     } catch (err) {
-      if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
-      return friendlyFailure("saveMadrasaGrade error:", err, "Failed to save madrasa grade");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই মাদ্রাসা গ্রেডটি ইতিমধ্যে আছে", en: "This madrasa grade already exists", ar: "تقدير المدرسة الدينية هذا موجود بالفعل" }));
+      return friendlyFailure("saveMadrasaGrade error:", err, t({ bn: "মাদ্রাসা গ্রেড সংরক্ষণ করা যায়নি", en: "Failed to save madrasa grade", ar: "تعذر حفظ تقدير المدرسة الدينية" }));
     }
   }
 
   async updateMadrasaGrade(id: number, madrasaId: number, dto: SaveGradeRequestDto) {
-    if (isEmpty(dto.name)) throw new BadRequestError("Name, min_mark and max_mark are required");
+    if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম, min_mark ও max_mark আবশ্যক", en: "Name, min_mark and max_mark are required", ar: "الاسم و min_mark و max_mark مطلوبة" }));
     assertNotFailGrade(dto.name, "madrasa");
     const { min, max } = validateMarkRange(dto.min_mark, dto.max_mark);
     const point = parsePoint(dto.point);
@@ -435,21 +436,21 @@ export class ExamService {
         max,
         point,
       );
-      if (!result.count) throw new NotFoundError("Madrasa grade not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "মাদ্রাসা গ্রেড পাওয়া যায়নি", en: "Madrasa grade not found", ar: "لم يتم العثور على تقدير المدرسة الدينية" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      if (isDuplicateError(err)) throw new ConflictError("This madrasa grade already exists");
-      return friendlyFailure("updateMadrasaGrade error:", err, "Failed to update madrasa grade");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই মাদ্রাসা গ্রেডটি ইতিমধ্যে আছে", en: "This madrasa grade already exists", ar: "تقدير المدرسة الدينية هذا موجود بالفعل" }));
+      return friendlyFailure("updateMadrasaGrade error:", err, t({ bn: "মাদ্রাসা গ্রেড আপডেট করা যায়নি", en: "Failed to update madrasa grade", ar: "تعذر تحديث تقدير المدرسة الدينية" }));
     }
   }
 
   async deleteMadrasaGrade(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteMadrasaGrade(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Madrasa grade not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "মাদ্রাসা গ্রেড পাওয়া যায়নি", en: "Madrasa grade not found", ar: "لم يتم العثور على تقدير المدرسة الدينية" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteMadrasaGrade error:", err, "Failed to delete madrasa grade");
+      return friendlyFailure("deleteMadrasaGrade error:", err, t({ bn: "মাদ্রাসা গ্রেড মুছে ফেলা যায়নি", en: "Failed to delete madrasa grade", ar: "تعذر حذف تقدير المدرسة الدينية" }));
     }
   }
 
@@ -461,10 +462,10 @@ export class ExamService {
     if (divisionId === null) return null;
 
     const division = await this.repository.findActiveDivision(madrasaId, divisionId);
-    if (!division) throw new BadRequestError("বিভাগটি পাওয়া যায়নি");
+    if (!division) throw new BadRequestError(t({ bn: "বিভাগটি পাওয়া যায়নি", en: "Division not found", ar: "لم يتم العثور على القسم" }));
     if (division.failMark === null || division.failMark === undefined) {
       throw new BadRequestError(
-        "এই বিভাগের নিজস্ব ফেইল মার্ক সেট করা নেই, তাই আলাদা গ্রেড যোগ করা যাবে না। আগে বিভাগের ফেইল মার্ক নির্ধারণ করুন",
+        t({ bn: "এই বিভাগের নিজস্ব ফেইল মার্ক সেট করা নেই, তাই আলাদা গ্রেড যোগ করা যাবে না। আগে বিভাগের ফেইল মার্ক নির্ধারণ করুন", en: "This division has no fail mark of its own, so separate grades cannot be added. Set the division's fail mark first", ar: "لا توجد درجة رسوب خاصة بهذا القسم، لذا لا يمكن إضافة تقديرات منفصلة. حدد درجة رسوب القسم أولًا" }),
       );
     }
     return divisionId;
@@ -477,7 +478,7 @@ export class ExamService {
       const setting = await this.repository.findFailMarkSetting(madrasaId);
       return setting?.value || DEFAULT_FAIL_MARK;
     } catch (err) {
-      return friendlyFailure("getFailMark error:", err, "Failed to load fail mark");
+      return friendlyFailure("getFailMark error:", err, t({ bn: "ফেল মার্ক লোড করা যায়নি", en: "Failed to load fail mark", ar: "تعذر تحميل درجة الرسوب" }));
     }
   }
 
@@ -503,7 +504,7 @@ export class ExamService {
       const division = await this.repository.findActiveDivision(madrasaId, divisionId);
       return resolveFailMark(division?.failMark, global);
     } catch (err) {
-      return friendlyFailure("getEffectiveFailMark error:", err, "Failed to load fail mark");
+      return friendlyFailure("getEffectiveFailMark error:", err, t({ bn: "ফেল মার্ক লোড করা যায়নি", en: "Failed to load fail mark", ar: "تعذر تحميل درجة الرسوب" }));
     }
   }
 
@@ -525,7 +526,7 @@ export class ExamService {
         })),
       };
     } catch (err) {
-      return friendlyFailure("listDivisionFailMarks error:", err, "Failed to load division fail marks");
+      return friendlyFailure("listDivisionFailMarks error:", err, t({ bn: "বিভাগের ফেল মার্ক লোড করা যায়নি", en: "Failed to load division fail marks", ar: "تعذر تحميل درجات الرسوب للأقسام" }));
     }
   }
 
@@ -541,14 +542,14 @@ export class ExamService {
     divisionId: number,
     dto: UpdateDivisionFailMarkRequestDto,
   ) {
-    if (dto.value === undefined) throw new BadRequestError("Value is required");
+    if (dto.value === undefined) throw new BadRequestError(t({ bn: "মান আবশ্যক", en: "Value is required", ar: "القيمة مطلوبة" }));
     const failValue = dto.value === null ? null : parseFailMarkValue(dto.value);
     if (failValue !== null && !Number.isInteger(failValue)) {
-      throw new BadRequestError("Fail mark must be a whole number between 0 and 100");
+      throw new BadRequestError(t({ bn: "ফেল মার্ক অবশ্যই 0 থেকে 100 এর মধ্যে একটি পূর্ণসংখ্যা হতে হবে", en: "Fail mark must be a whole number between 0 and 100", ar: "يجب أن تكون درجة الرسوب عددًا صحيحًا بين 0 و 100" }));
     }
 
     const division = await this.repository.findActiveDivision(madrasaId, divisionId);
-    if (!division) throw new NotFoundError("Division not found");
+    if (!division) throw new NotFoundError(t({ bn: "বিভাগ পাওয়া যায়নি", en: "Division not found", ar: "لم يتم العثور على القسم" }));
 
     try {
       if (failValue === null) {
@@ -559,7 +560,7 @@ export class ExamService {
         await this.repinLowestGradeBands(madrasaId, failValue, divisionId);
       }
     } catch (err) {
-      return friendlyFailure("updateDivisionFailMark error:", err, "Failed to update division fail mark");
+      return friendlyFailure("updateDivisionFailMark error:", err, t({ bn: "বিভাগের ফেল মার্ক আপডেট করা যায়নি", en: "Failed to update division fail mark", ar: "تعذر تحديث درجة الرسوب للقسم" }));
     }
 
     return {};
@@ -599,7 +600,7 @@ export class ExamService {
       // to their own override and must not move with the global value.
       await this.repinLowestGradeBands(madrasaId, failValue, null);
     } catch (err) {
-      return friendlyFailure("updateFailMark error:", err, "Failed to update fail mark");
+      return friendlyFailure("updateFailMark error:", err, t({ bn: "ফেল মার্ক আপডেট করা যায়নি", en: "Failed to update fail mark", ar: "تعذر تحديث درجة الرسوب" }));
     }
 
     return {};

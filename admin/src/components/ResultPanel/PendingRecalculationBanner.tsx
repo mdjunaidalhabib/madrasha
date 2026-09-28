@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import api from "../../services/api";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
@@ -18,6 +19,8 @@ type Pending = { sessions: number; students: number; published: number };
  * setting changes to re-check. Renders nothing for a user who couldn't
  * recalculate. */
 export default function PendingRecalculationBanner({ refreshKey }: { refreshKey?: unknown }) {
+  const lang = useLang();
+  const t = useText(resultPanelText).banner;
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
   const allowed =
@@ -90,19 +93,21 @@ export default function PendingRecalculationBanner({ refreshKey }: { refreshKey?
         <p className="min-w-0 flex-1">
           {active ? (
             <>
-              <span className="font-semibold">ফলাফল হালনাগাদ করা দরকার:</span> বর্তমান ফেল মার্ক ও গ্রেড সেটিং অনুযায়ী{" "}
-              {toBanglaDigits(pending.sessions)}টি ফলাফলে {toBanglaDigits(pending.students)} জন শিক্ষার্থীর ফলাফল বদলাবে
-              {pending.published > 0 ? ` (${toBanglaDigits(pending.published)}টি প্রকাশিত)` : ""}। কী বদলাবে আগেই দেখাবে, আপনি
-              নিশ্চিত করলে তবেই প্রয়োগ হবে।
+              <span className="font-semibold">{t.needUpdate}</span>
+              {t.willChange(
+                localizeDigits(pending.sessions, lang),
+                localizeDigits(pending.students, lang),
+                pending.published > 0 ? localizeDigits(pending.published, lang) : null,
+              )}
             </>
           ) : checking ? (
-            "ফলাফল যাচাই করা হচ্ছে..."
+            t.checking
           ) : checkFailed ? (
-            "ফলাফল হালনাগাদ আছে কি না যাচাই করা যায়নি। চাইলে পুনঃগণনা খুলে নিজে দেখে নিতে পারেন।"
+            t.checkFailed
           ) : (
             <>
-              <span className="font-semibold">সব ফলাফল হালনাগাদ আছে।</span> গ্রেড সীমা বা ফেল মার্ক বদলালে এবং কোনো ফলাফলে
-              পরিবর্তন প্রয়োজন হলে এখানে পুনঃগণনার বাটন চালু হবে।
+              <span className="font-semibold">{t.allUpToDate}</span>
+              {t.allUpToDateHint}
             </>
           )}
         </p>
@@ -111,9 +116,9 @@ export default function PendingRecalculationBanner({ refreshKey }: { refreshKey?
           onClick={() => setOpen(true)}
           disabled={!enabled}
           className="shrink-0"
-          title={enabled ? undefined : "এখন কোনো ফলাফল পুনঃগণনার প্রয়োজন নেই"}
+          title={enabled ? undefined : t.noNeed}
         >
-          <RefreshCw size={15} className={`me-1.5 ${checking ? "animate-spin" : ""}`} /> ফলাফল পুনঃগণনা
+          <RefreshCw size={15} className={`me-1.5 ${checking ? "animate-spin" : ""}`} /> {t.button}
         </Button>
       </div>
       <RecalculateResultsModal open={open} onClose={() => setOpen(false)} onApplied={check} />

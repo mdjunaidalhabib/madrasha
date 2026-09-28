@@ -1,21 +1,22 @@
 import ReportShell, { ReportMenuItem } from "./ReportShell";
+import { useLocalizedReports, type ReportBuilder } from "./useLocalizedReports";
+import type { ReportText } from "../../components/Report/report.text";
 
-const PRIZE_BOOK_LABEL_COLUMNS = [
-  { header: "মেধাক্রম", key: "rank_no" },
-  { header: "শিক্ষার্থীর নাম", key: "student_name" },
-  { header: "রোল", key: "roll" },
-  { header: "শ্রেণি", key: "class_name" },
-  { header: "বিভাগ", key: "division_name" },
-  { header: "গ্রেড", key: "madrasa_grade" },
-  { header: "পরীক্ষা", key: "exam_name" },
-  { header: "সেশন", key: "exam_year" },
+const prizeBookLabelColumns = (col: ReportText["col"]) => [
+  { header: col.rank, key: "rank_no" },
+  { header: col.studentName, key: "student_name" },
+  { header: col.roll, key: "roll" },
+  { header: col.class, key: "class_name" },
+  { header: col.division, key: "division_name" },
+  { header: col.grade, key: "madrasa_grade" },
+  { header: col.exam, key: "exam_name" },
+  { header: col.sessionShort, key: "exam_year" },
 ];
 
-const reports: ReportMenuItem[] = [
+const buildReports: ReportBuilder = (t, col, isMadrasa): ReportMenuItem[] => [
   {
     key: "student-marksheets",
-    title: "মার্কশিট",
-    subtitle: "শিক্ষার্থীর ফলাফল ও মার্কশিট রিপোর্ট",
+    ...t.r["student-marksheets"],
     endpoint: "/reports/student/marksheets",
     printable: "marksheet",
     documentType: "MARKSHEET",
@@ -25,59 +26,57 @@ const reports: ReportMenuItem[] = [
     requiresExam: true,
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "পরীক্ষা", key: "exam_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "মোট", key: "total" },
-      { header: "গড়", key: "average" },
-      { header: "গ্রেড", key: "general_grade" },
-      { header: "মাদরাসা গ্রেড", key: "madrasa_grade" },
-      { header: "মেধাক্রম", key: "rank_no" },
-      { header: "স্ট্যাটাস", key: "status" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.exam, key: "exam_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.total, key: "total" },
+      { header: col.average, key: "average" },
+      { header: col.grade, key: "general_grade" },
+      // মাদরাসা গ্রেড (মুমতাজ...) কলাম শুধু মাদরাসায় দেখানো হয় - ডাটা যেমন ছিল তেমনই।
+      ...(isMadrasa ? [{ header: col.madrasaGrade, key: "madrasa_grade" }] : []),
+      { header: col.rank, key: "rank_no" },
+      { header: col.status, key: "status" },
     ],
   },
   {
     key: "student-id-cards",
-    title: "আইডি কার্ড",
-    subtitle: "শিক্ষার্থীদের আইডি কার্ড রিপোর্ট ও প্রিন্ট",
+    ...t.r["student-id-cards"],
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
     documentType: "ID_CARD",
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "পিতা", key: "father_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "মোবাইল", key: "guardian_phone" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.father, key: "father_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.mobile, key: "guardian_phone" },
     ],
   },
   {
     key: "student-id-card-backs",
-    title: "আইডি কার্ড ব্যাক",
-    subtitle: "আইডি কার্ডের পিছনের পাতা (ইস্যু/মেয়াদ, অধ্যক্ষের স্বাক্ষর, ফেরতের ঠিকানা) আলাদা প্রিন্ট",
+    ...t.r["student-id-card-backs"],
     endpoint: "/reports/student/id-cards",
     printable: "id-card",
     documentType: "ID_CARD",
     backOnly: true,
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "মোবাইল", key: "guardian_phone" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.mobile, key: "guardian_phone" },
     ],
   },
   {
     key: "student-admit-cards",
-    title: "প্রবেশপত্র",
-    subtitle: "শিক্ষার্থীদের পরীক্ষার প্রবেশপত্র তৈরি ও প্রিন্ট",
+    ...t.r["student-admit-cards"],
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card",
     documentType: "ADMIT_CARD",
@@ -92,13 +91,13 @@ const reports: ReportMenuItem[] = [
     requiresExam: true,
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "পরীক্ষা", key: "exam_name" },
-      { header: "সেশন", key: "academic_year" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.exam, key: "exam_name" },
+      { header: col.sessionShort, key: "academic_year" },
     ],
   },
   {
@@ -110,8 +109,7 @@ const reports: ReportMenuItem[] = [
     // friction with no payload saved. See "student-admit-cards" above for
     // the actual per-candidate admit-card report, which DOES require one.
     key: "student-admit-cards-with-rules",
-    title: "পরীক্ষার নিয়মাবলী",
-    subtitle: "প্রবেশপত্রের সাথে দেওয়ার জন্য পরীক্ষার নিয়মাবলীর একটি মাত্র নোটিশ পৃষ্ঠা তৈরি ও প্রিন্ট",
+    ...t.r["student-admit-cards-with-rules"],
     endpoint: "/reports/student/admit-cards",
     printable: "admit-card-with-rules",
     documentType: "ADMIT_CARD",
@@ -119,13 +117,13 @@ const reports: ReportMenuItem[] = [
     defaultPaperSize: "a5",
     defaultOrientation: "portrait",
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "পরীক্ষা", key: "exam_name" },
-      { header: "সেশন", key: "academic_year" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.exam, key: "exam_name" },
+      { header: col.sessionShort, key: "academic_year" },
     ],
   },
   // Custom wall-notices moved to their own "নোটিশ বোর্ড" management page
@@ -141,105 +139,109 @@ const reports: ReportMenuItem[] = [
   // see NoticeBoardReportView and printableConfig's "single" kind for it.
   {
     key: "notice-board",
-    title: "নোটিশ বোর্ড",
-    subtitle: "দেয়ালে টানানোর নোটিশ লিখুন, সেভ রাখুন ও যেকোনোটি প্রিন্ট করুন",
+    ...t.r["notice-board"],
     // rows are unused (see NoticeBoardReportView) - this endpoint is only
     // reused so the "single" pagination kind has something to resolve
     // against, same trick admit-card-with-rules relies on.
     endpoint: "/reports/student/admit-cards",
     printable: "notice-board",
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.studentName, key: "student_name" },
     ],
   },
   {
     key: "student-sanads",
-    title: "সনদ / সার্টিফিকেট",
-    subtitle: "শিক্ষার্থীদের শিক্ষাগত সনদ তৈরি ও প্রিন্ট",
+    // "সনদ" শব্দ শুধু মাদরাসার জন্য; অন্য প্রতিষ্ঠানে সার্টিফিকেট।
+    ...(isMadrasa ? t.r["student-sanads"] : t.r["student-certificates"]),
     endpoint: "/reports/student/sanads",
     printable: "certificate",
     documentType: "CERTIFICATE",
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "পিতা", key: "father_name" },
-      { header: "মাতা", key: "mother_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "সেশন", key: "academic_year" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.father, key: "father_name" },
+      { header: col.mother, key: "mother_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.sessionShort, key: "academic_year" },
     ],
   },
   {
     key: "student-testimonials",
-    title: "প্রত্যয়ন পত্র",
-    subtitle: "শিক্ষার্থীদের প্রত্যয়ন পত্র তৈরি ও প্রিন্ট",
+    ...t.r["student-testimonials"],
     endpoint: "/reports/student/certificates",
     printable: "testimonial",
     documentType: "TESTIMONIAL",
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "পিতা", key: "father_name" },
-      { header: "মাতা", key: "mother_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "মোবাইল", key: "guardian_phone" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.father, key: "father_name" },
+      { header: col.mother, key: "mother_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.mobile, key: "guardian_phone" },
     ],
   },
   {
     key: "student-transfer-letters",
-    title: "ছাড়পত্র",
-    subtitle: "শিক্ষার্থীদের ছাড়পত্র তৈরি ও প্রিন্ট",
+    ...t.r["student-transfer-letters"],
     endpoint: "/reports/student/transfer-letters",
     printable: "transfer-letter",
     documentType: "CLEARANCE_CERTIFICATE",
     requiresDivision: true,
     columns: [
-      { header: "রোল নম্বর", key: "roll" },
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষার্থীর নাম", key: "student_name" },
-      { header: "পিতা", key: "father_name" },
-      { header: "শ্রেণি", key: "class_name" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "সেশন", key: "academic_year" },
+      { header: col.rollNo, key: "roll" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.father, key: "father_name" },
+      { header: col.class, key: "class_name" },
+      { header: col.division, key: "division_name" },
+      { header: col.sessionShort, key: "academic_year" },
     ],
   },
   {
     key: "prize-book-labels-rank",
-    title: "পুরস্কার বই-লেবেল (মেধাক্রম ১-৩)",
-    subtitle: "নির্বাচিত পরীক্ষায় ১ম, ২য়, ৩য় স্থান অধিকারীদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
+    ...t.r["prize-book-labels-rank"],
     endpoint: "/reports/academic/prize-book-labels",
     printable: "book-label",
     documentType: "BOOK_LABEL",
     requiresExam: true,
-    columns: PRIZE_BOOK_LABEL_COLUMNS,
+    columns: prizeBookLabelColumns(col),
   },
-  {
-    key: "prize-book-labels-mumtaz",
-    title: "পুরস্কার বই-লেবেল (১-৩ + মুমতাজ)",
-    subtitle: "নির্বাচিত পরীক্ষায় মেধাক্রম ১ম-৩য় এবং মুমতাজ গ্রেডপ্রাপ্তদের জন্য বইয়ের প্রচ্ছদ-লেবেল",
-    endpoint: "/reports/academic/prize-book-labels",
-    printable: "book-label",
-    documentType: "BOOK_LABEL",
-    requiresExam: true,
-    extraParams: { mumtaz_only: "true" },
-    columns: PRIZE_BOOK_LABEL_COLUMNS,
-  },
+  // মুমতাজ (মাদরাসা গ্রেড) ভিত্তিক বই-লেবেল শুধু মাদরাসায় দেখানো হয়।
+  ...(isMadrasa
+    ? [
+        {
+          key: "prize-book-labels-mumtaz",
+          ...t.r["prize-book-labels-mumtaz"],
+          endpoint: "/reports/academic/prize-book-labels",
+          printable: "book-label" as const,
+          documentType: "BOOK_LABEL" as const,
+          requiresExam: true,
+          extraParams: { mumtaz_only: "true" },
+          columns: prizeBookLabelColumns(col),
+        },
+      ]
+    : []),
 ];
 
-const DocumentsReportPage = ({ printMode }: { printMode?: boolean }) => (
-  <ReportShell
-    reports={reports}
-    reportsPageKey="documents"
-    printMode={printMode}
-    hideBrandHeader
-    showSearch
-  />
-);
+const DocumentsReportPage = ({ printMode }: { printMode?: boolean }) => {
+  const { reports, printReports } = useLocalizedReports(buildReports);
+  return (
+    <ReportShell
+      reports={reports}
+      printReports={printReports}
+      reportsPageKey="documents"
+      printMode={printMode}
+      hideBrandHeader
+      showSearch
+    />
+  );
+};
 
 export default DocumentsReportPage;

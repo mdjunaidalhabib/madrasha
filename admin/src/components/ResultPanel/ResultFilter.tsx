@@ -1,4 +1,6 @@
 import { examsForDivision, useClearMismatchedExam } from "../ExamPanel/examDivisionScope";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 interface Division {
   division_id: number;
   division_name_bn: string;
@@ -41,6 +43,7 @@ export default function ResultFilter({
   setClassId,
 }: Props) {
   // বিভাগভিত্তিক পরীক্ষা: an exam not held for the picked division is dropped.
+  const t = useText(resultPanelText).filter;
   useClearMismatchedExam(exams, examId, divisionId, () => setExamId(""));
 
   return (
@@ -54,7 +57,7 @@ export default function ResultFilter({
         }}
         className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       >
-        <option value="">বিভাগ</option>
+        <option value="">{t.division}</option>
         {divisions.map((d) => (
           <option key={d.division_id} value={d.division_id}>
             {d.division_name_bn}
@@ -68,7 +71,7 @@ export default function ResultFilter({
         onChange={(e) => setExamId(e.target.value)}
         className="w-full border p-2.5 sm:p-2 rounded text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       >
-        <option value="">পরীক্ষা</option>
+        <option value="">{t.exam}</option>
         {examsForDivision(exams, divisionId).map((e) => (
           <option key={e.id} value={e.id}>
             {e.name}
@@ -83,7 +86,7 @@ export default function ResultFilter({
         disabled={!divisionId}
         className="w-full border p-2.5 sm:p-2 rounded disabled:bg-gray-100 text-base sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800"
       >
-        <option value="">শ্রেণি</option>
+        <option value="">{t.class}</option>
         {classes.map((c) => (
           <option key={c.class_id} value={c.class_id}>
             {c.class_name_bn}

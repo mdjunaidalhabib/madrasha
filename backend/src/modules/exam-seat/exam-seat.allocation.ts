@@ -1,4 +1,5 @@
 import { BadRequestError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 /**
  * Pure seat-allocation planning logic - no DB access, so it's cheaply
@@ -17,7 +18,7 @@ export function validateCapacity(candidateCount: number, rooms: SeatRoomInput[])
   if (totalCapacity < candidateCount) {
     const shortfall = candidateCount - totalCapacity;
     throw new BadRequestError(
-      `Insufficient seating capacity: ${candidateCount} candidate(s) but only ${totalCapacity} seat(s) across the selected rooms (short by ${shortfall})`,
+      t({ bn: `আসন সংখ্যা যথেষ্ট নয়: ${candidateCount} জন পরীক্ষার্থী কিন্তু নির্বাচিত কক্ষগুলোতে মাত্র ${totalCapacity}টি আসন (${shortfall}টি কম)`, en: `Insufficient seating capacity: ${candidateCount} candidate(s) but only ${totalCapacity} seat(s) across the selected rooms (short by ${shortfall})`, ar: `سعة المقاعد غير كافية: ${candidateCount} مرشح بينما لا يوجد سوى ${totalCapacity} مقعد في القاعات المختارة (نقص ${shortfall})` }),
     );
   }
 }
@@ -77,7 +78,7 @@ export function planSeatAllocation(input: {
     // validateCapacity already guarantees enough total seats, so this
     // should be unreachable - guarded defensively rather than assumed.
     if (roomIdx >= rooms.length) {
-      throw new BadRequestError("Insufficient seating capacity while allocating seats");
+      throw new BadRequestError(t({ bn: "আসন বরাদ্দের সময় আসন সংখ্যা যথেষ্ট হয়নি", en: "Insufficient seating capacity while allocating seats", ar: "سعة المقاعد غير كافية أثناء توزيع المقاعد" }));
     }
     seatInRoom += 1;
     plan.push({ examCandidateId: candidate.examCandidateId, roomId: rooms[roomIdx].roomId, seatNo: String(seatInRoom) });

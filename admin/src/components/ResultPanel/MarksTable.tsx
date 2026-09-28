@@ -1,14 +1,11 @@
 import React, { useMemo, useRef, useState } from "react";
 import {
-  toBanglaDigits,
   normalizeBanglaDigits,
   ABSENT_MARK,
-  ABSENT_MARK_LABEL,
 } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { submissionStatusBadge, type SubmissionStatus } from "./resultStatus";
-
-const displayNumber = (value: number | string | null | undefined) =>
-  value === null || value === undefined || value === "" ? "-" : toBanglaDigits(value);
+import { resultPanelText } from "./resultPanel.text";
 
 interface Student {
   id: number;
@@ -103,6 +100,13 @@ export default function MarksTable({
   onRequestRejectBook,
   lockOverride = false,
 }: Props) {
+  const lang = useLang();
+  const rt = useText(resultPanelText);
+  const t = rt.marks;
+  const c = useText(commonText);
+  const num = (value: number | string) => localizeDigits(value, lang);
+  const displayNumber = (value: number | string | null | undefined) =>
+    value === null || value === undefined || value === "" ? "-" : num(value);
   // 2D grid of input refs so Enter / Arrow keys can jump straight to the
   // next cell without the user reaching for the mouse.
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -281,14 +285,14 @@ export default function MarksTable({
   };
 
   const cellDisplayValue = (value: number | null | undefined) => {
-    if (value === ABSENT_MARK) return ABSENT_MARK_LABEL;
-    return value != null ? toBanglaDigits(value) : "";
+    if (value === ABSENT_MARK) return rt.absentShort;
+    return value != null ? num(value) : "";
   };
 
   return (
     <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-700 dark:text-slate-200">📊 নম্বর এন্ট্রি</h2>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-700 dark:text-slate-200">{t.title}</h2>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {autosaveStatus !== "idle" && (
@@ -301,9 +305,9 @@ export default function MarksTable({
                     : "text-red-500 dark:text-red-400"
               }`}
             >
-              {autosaveStatus === "saving" && "⏳ সংরক্ষণ হচ্ছে..."}
-              {autosaveStatus === "saved" && "✓ সংরক্ষিত"}
-              {autosaveStatus === "error" && "⚠ সংরক্ষণ ব্যর্থ"}
+              {autosaveStatus === "saving" && t.autosaving}
+              {autosaveStatus === "saved" && t.autosaved}
+              {autosaveStatus === "error" && t.autosaveFailed}
             </span>
           )}
 
@@ -316,7 +320,7 @@ export default function MarksTable({
                 />
               </div>
               <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
-                {toBanglaDigits(filled)}/{toBanglaDigits(total)}
+                {num(filled)}/{num(total)}
               </span>
             </div>
           )}
@@ -325,9 +329,9 @@ export default function MarksTable({
 
       {books.length > 0 && students.length > 0 && (
         <p className="hidden sm:block text-xs text-gray-400 mb-2 dark:text-slate-500">
-          ⌨️ নাম্বার লিখে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">⏎</kbd> চাপুন
-          একই বিষয়ের নিচের শিক্ষার্থীর ঘরে যেতে — তীর চিহ্ন (↑ ↓ ← →) কী দিয়েও ঘরে ঘরে যাওয়া যাবে।
-          কেউ পরীক্ষা না দিলে <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd> চাপুন।
+          {t.hintType} <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">⏎</kbd> {t.hintPress}{" "}
+          {t.hintMove}{" "}
+          {t.hintAbsentPre} <kbd className="px-1 py-0.5 border rounded bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">-</kbd>{t.hintAbsentPost}
         </p>
       )}
 
@@ -340,10 +344,10 @@ export default function MarksTable({
           {/* HEADER */}
           <thead className="bg-gray-100 sticky top-0 z-10 dark:bg-slate-800">
             <tr>
-              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রোল</th>
-              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">রেজি. নং</th>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">{t.roll}</th>
+              <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-slate-700 dark:text-slate-200">{t.regNo}</th>
               <th className="border px-2 sm:px-3 py-2 text-start sticky start-0 z-20 bg-gray-100 min-w-[96px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                শিক্ষার্থীর নাম
+                {t.studentName}
               </th>
 
               {books.length > 0 ? (
@@ -359,28 +363,28 @@ export default function MarksTable({
                       }`}
                     >
                       <div className="flex flex-col items-center gap-0.5">
-                        <span>{b.book_name_bn || b.name_bn || `বই ${toBanglaDigits(b.book_id)}`}</span>
+                        <span>{b.book_name_bn || b.name_bn || t.bookFallback(num(b.book_id))}</span>
                         {b.is_miyari ? (
                           <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                            মিয়ারি
+                            {t.miyari}
                           </span>
                         ) : null}
                         {b.pass_mark != null && (
                           <span
                             className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-                            title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                            title={t.passMarkTitle}
                           >
-                            পাস {toBanglaDigits(b.pass_mark)}
+                            {t.pass(num(b.pass_mark))}
                           </span>
                         )}
-                        <span className="text-xs text-gray-400 dark:text-slate-500">/ {toBanglaDigits(b.full_marks ?? 100)}</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">/ {num(b.full_marks ?? 100)}</span>
 
                         {badgeInfo && (
                           <span
                             className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${badgeInfo.className}`}
                             title={
                               submission?.submitted_at
-                                ? `জমা: ${submission.submitted_by ?? ""} ${submission.submitted_at ?? ""}`
+                                ? t.submittedBy(submission.submitted_by ?? "", submission.submitted_at ?? "")
                                 : undefined
                             }
                           >
@@ -395,7 +399,7 @@ export default function MarksTable({
                             disabled={submittingBookId === b.book_id}
                             className="mt-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-400"
                           >
-                            {submittingBookId === b.book_id ? "…" : "জমা দিন"}
+                            {submittingBookId === b.book_id ? "…" : t.submit}
                           </button>
                         )}
 
@@ -408,7 +412,7 @@ export default function MarksTable({
                                   onClick={() => onVerifyBook(b.book_id)}
                                   className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-700"
                                 >
-                                  যাচাই
+                                  {t.verify}
                                 </button>
                               )}
                               {/* Backend allows reject from SUBMITTED or VERIFIED alike (see
@@ -422,7 +426,7 @@ export default function MarksTable({
                                   onClick={() => onRequestRejectBook(b.book_id)}
                                   className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700"
                                 >
-                                  {submission?.status === "VERIFIED" ? "সম্পাদনার জন্য খুলুন" : "বাতিল"}
+                                  {submission?.status === "VERIFIED" ? t.openForEdit : t.reject}
                                 </button>
                               )}
                             </div>
@@ -432,7 +436,7 @@ export default function MarksTable({
                   );
                 })
               ) : (
-                <th className="border px-3 py-2 text-gray-400 dark:border-slate-700 dark:text-slate-500">বিষয়সমূহ এখানে দেখাবে</th>
+                <th className="border px-3 py-2 text-gray-400 dark:border-slate-700 dark:text-slate-500">{t.subjectsHere}</th>
               )}
             </tr>
           </thead>
@@ -448,17 +452,17 @@ export default function MarksTable({
                   {disabled ? (
                     <div className="flex flex-col items-center gap-2">
                       <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400" />
-                      <p className="text-sm">লোড হচ্ছে...</p>
+                      <p className="text-sm">{c.loading}</p>
                     </div>
                   ) : students.length === 0 ? (
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-2xl">🧑‍🎓</span>
-                      <p className="font-medium">এই শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি</p>
+                      <p className="font-medium">{t.noStudents}</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-2xl">📘</span>
-                      <p className="font-medium">এই শ্রেণির জন্য কোনো বই যুক্ত করা হয়নি</p>
+                      <p className="font-medium">{t.noBooks}</p>
                     </div>
                   )}
                 </td>
@@ -508,9 +512,9 @@ export default function MarksTable({
                           enterKeyHint={
                             rowIndex + 1 < rowCount || colIndex + 1 < colCount ? "next" : "done"
                           }
-                          placeholder="০"
+                          placeholder={num(0)}
                           disabled={cellIsDisabled}
-                          title={locked ? "এই বিষয়টি জমা দেয়া হয়েছে — সম্পাদনা বন্ধ" : undefined}
+                          title={locked ? t.lockedTitle : undefined}
                           style={{ fontFamily: '"Noto Sans Bengali", "Hind Siliguri", sans-serif' }}
                           className={`w-16 sm:w-20 border rounded px-1 sm:px-2 py-1.5 sm:py-1 text-center font-medium outline-none transition focus:ring-2 ${
                             cellIsDisabled
@@ -528,7 +532,7 @@ export default function MarksTable({
                           <button
                             type="button"
                             onClick={() => openNotePopover(s.id, b.book_id)}
-                            title={notes?.[s.id]?.[b.book_id] || "নোট যোগ করুন"}
+                            title={notes?.[s.id]?.[b.book_id] || t.addNote}
                             className={`absolute top-0 end-0 leading-none text-[10px] px-0.5 ${
                               hasNote
                                 ? "text-blue-600 dark:text-blue-400"
@@ -547,7 +551,7 @@ export default function MarksTable({
                               onChange={(e) => setNoteDraft(e.target.value)}
                               rows={2}
                               className="w-full resize-none rounded border border-gray-200 p-1 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                              placeholder="নোট লিখুন..."
+                              placeholder={t.notePlaceholder}
                             />
                             <div className="mt-1 flex justify-end gap-1">
                               <button
@@ -555,14 +559,14 @@ export default function MarksTable({
                                 onClick={() => setOpenNoteKey(null)}
                                 className="rounded px-1.5 py-0.5 text-[11px] text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700"
                               >
-                                বাতিল
+                                {c.cancel}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => saveNote(s.id, b.book_id)}
                                 className="rounded bg-blue-600 px-1.5 py-0.5 text-[11px] text-white hover:bg-blue-700"
                               >
-                                সংরক্ষণ
+                                {t.save}
                               </button>
                             </div>
                           </div>
@@ -580,15 +584,15 @@ export default function MarksTable({
       {books.length > 0 && students.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> ফেল
+            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> {t.legendFail}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block dark:bg-green-950/40 dark:border-green-700" />{" "}
-            পাশ
+            {t.legendPass}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
-            অনুপস্থিত (-)
+            {t.legendAbsent}
           </span>
         </div>
       )}

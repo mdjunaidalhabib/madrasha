@@ -3,6 +3,8 @@ import { X } from "lucide-react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { getSavedAccounts, removeSavedAccount, type SavedAccount } from "../../services/savedAccounts";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { authText } from "./auth.text";
 
 /** Small circular avatar for a saved account - its photo when there is one,
  * otherwise a letter badge (Facebook-style). */
@@ -45,6 +47,8 @@ export default function SavedAccountsList({
   onSelect,
 }: SavedAccountsListProps) {
   const [pendingRemove, setPendingRemove] = useState<SavedAccount | null>(null);
+  const t = useText(authText);
+  const c = useText(commonText);
 
   const confirmRemove = () => {
     if (!pendingRemove) return;
@@ -88,8 +92,8 @@ export default function SavedAccountsList({
               type="button"
               onClick={() => setPendingRemove(account)}
               className="shrink-0 rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-rose-600 dark:hover:bg-slate-800"
-              aria-label="সংরক্ষিত তালিকা থেকে সরান"
-              title="সংরক্ষিত তালিকা থেকে সরান"
+              aria-label={t.removeFromSaved}
+              title={t.removeFromSaved}
             >
               <X size={14} />
             </button>
@@ -99,7 +103,7 @@ export default function SavedAccountsList({
 
       <Modal
         open={pendingRemove !== null}
-        title="সংরক্ষিত লগইন সরাবেন?"
+        title={t.removeSavedTitle}
         onClose={() => setPendingRemove(null)}
         maxWidthClassName="max-w-sm"
       >
@@ -109,15 +113,14 @@ export default function SavedAccountsList({
               <span className="font-medium text-gray-900 dark:text-slate-100">
                 {pendingRemove.name}
               </span>{" "}
-              ({madrasaLabel(pendingRemove)}) এই ডিভাইসের সংরক্ষিত লগইন তালিকা থেকে সরে যাবে। পরের বার
-              এই অ্যাকাউন্টে লগইন করতে আবার মাদরাসা কোড ও ইমেইল দিতে হবে।
+              {t.removeSavedBody(madrasaLabel(pendingRemove))}
             </p>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setPendingRemove(null)}>
-                বাতিল
+                {c.cancel}
               </Button>
               <Button type="button" variant="danger" onClick={confirmRemove}>
-                সরিয়ে দিন
+                {t.remove}
               </Button>
             </div>
           </div>

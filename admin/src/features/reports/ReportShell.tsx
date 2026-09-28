@@ -25,6 +25,9 @@ import {
   DEFAULT_ID_CARD_BACK_ID,
   getBuiltinDesign,
 } from "@madrasha/shared-ui/src/components/DocumentDesigner/builtin/registry";
+import { getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportsText } from "./reports.text";
+import { reportText } from "../../components/Report/report.text";
 
 export type { ReportColumn, ReportMenuItem } from "./types";
 
@@ -81,12 +84,15 @@ const ReportShell = ({
   pageSubtitle,
   accentTitle,
   reports,
+  printReports,
   hideBrandHeader = false,
   showSearch = false,
   reportsPageKey,
   printMode = false,
 }: ReportShellProps) => {
   const [searchParams] = useSearchParams();
+  const ui = useText(reportsText).shell;
+  const lang = useLang();
   // In print mode the active report comes from the URL (?key=...) rather
   // than defaulting to the first menu item - set directly in initial state
   // (not an effect) so it's correct on the very first render and the
@@ -236,6 +242,25 @@ const ReportShell = ({
     return picked.length ? { ...activeReport, columns: picked } : activeReport;
   }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys]);
 
+  // What the printed page shows: same report/columns (the user's pick included) but
+  // title, subtitle and column headers in the institution print language.
+  const printReport = useMemo(() => {
+    const source = printReports?.find((item) => item.key === effectiveReport.key);
+    if (!source) return effectiveReport;
+    const headers = new Map(
+      [...source.columns, ...(source.columnOptions ?? [])].map((column) => [column.key, column.header]),
+    );
+    return {
+      ...effectiveReport,
+      title: source.title,
+      subtitle: source.subtitle,
+      columns: effectiveReport.columns.map((column) => ({
+        ...column,
+        header: headers.get(column.key) ?? column.header,
+      })),
+    };
+  }, [effectiveReport, printReports]);
+
   const showMarksheetPanel = effectiveReport.printable === "marksheet" && marksheetPanelOpen;
   const showAdmitCardPanel = effectiveReport.printable === "admit-card" && admitCardPanelOpen;
 
@@ -289,7 +314,7 @@ const ReportShell = ({
         if (isCurrent()) {
           setRows([]);
           setTotalCount(0);
-          setWarning("পরীক্ষা নির্বাচন করুন");
+          setWarning(getText(reportsText).shell.selectExam);
         }
         return;
       }
@@ -298,7 +323,7 @@ const ReportShell = ({
         if (isCurrent()) {
           setRows([]);
           setTotalCount(0);
-          setWarning("বিভাগ নির্বাচন করুন");
+          setWarning(getText(reportsText).shell.selectDivision);
         }
         return;
       }
@@ -307,7 +332,7 @@ const ReportShell = ({
         if (isCurrent()) {
           setRows([]);
           setTotalCount(0);
-          setWarning("শ্রেণি নির্বাচন করুন");
+          setWarning(getText(reportsText).shell.selectClass);
         }
         return;
       }
@@ -342,7 +367,7 @@ const ReportShell = ({
       if (isCurrent()) {
         setRows([]);
         setTotalCount(0);
-        setWarning(error?.response?.data?.message || "রিপোর্ট লোড করা যায়নি");
+        setWarning(error?.response?.data?.message || getText(reportsText).shell.loadFailed);
       }
     } finally {
       if (isCurrent()) setLoading(false);
@@ -627,11 +652,11 @@ const ReportShell = ({
       .forEach((row) => {
         getReportSubjects(row).forEach((subject, index) => {
           const key = String(subject.book_id ?? subject.subject_name ?? index);
-          if (!map.has(key)) map.set(key, subject.subject_name || `বিষয় ${index + 1}`);
+          if (!map.has(key)) map.set(key, subject.subject_name || getText(reportText).subjectN(localizeDigits(index + 1, lang)));
         });
       });
     return Array.from(map.entries()).map(([key, name]) => ({ key, name }));
-  }, [rows, activeReport.hasSubjectFilter, selectedClass]);
+  }, [rows, activeReport.hasSubjectFilter, selectedClass, lang]);
 
   const searchedRows = filterPeopleBySearch(rows, search, (row) => ({
     text: [
@@ -709,7 +734,7 @@ const ReportShell = ({
         if (!subjectMap.has(subjectId)) {
           subjectMap.set(subjectId, {
             key,
-            name: subject.subject_name || `বিষয় ${index + 1}`,
+            name: subject.subject_name || getText(reportText).subjectN(localizeDigits(index + 1, lang)),
           });
         }
       });
@@ -747,11 +772,11 @@ const ReportShell = ({
   // with no rows renders, rather than flashing the generic "কোনো ডাটা পাওয়া
   // যায়নি" text until the fetch effect catches up.
   const previewEmptyMessage = activeReport.requiresExam && !selectedExam
-    ? "রিপোর্ট দেখতে উপর থেকে পরীক্ষা নির্বাচন করুন"
+    ? ui.emptyPickExam
     : divisionRequired && !selectedDivision && !hasSearchQuery
-      ? "রিপোর্ট দেখতে বিভাগ ও শ্রেণি নির্বাচন করুন"
+      ? ui.emptyPickDivision
       : classRequired
-        ? "রিপোর্ট দেখতে শ্রেণি নির্বাচন করুন"
+        ? ui.emptyPickClass
         : warning || undefined;
 
   const totalRecords = isPaginatedAcademicResult ? totalCount : filteredRows.length;
@@ -810,7 +835,7 @@ const ReportShell = ({
     return (
       <PaginatedReportPreview
         loading={loading}
-        report={effectiveReport}
+        report={printReport}
         rows={displayRows}
         selectedDivisionName={selectedDivisionName}
         selectedDivisionId={selectedDivisionId}
@@ -863,20 +888,19 @@ const ReportShell = ({
                 {studentFilter && (
                   <div className="flex w-fit items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 ps-2.5 pe-1 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 sm:text-[13px]">
                     <span>
-                      শুধু: <b className="font-bold">{filteredRows[0]?.student_name || "নির্বাচিত শিক্ষার্থী"}</b>
+                      {ui.onlyLabel} <b className="font-bold">{filteredRows[0]?.student_name || ui.selectedStudent}</b>
                     </span>
                     <button
                       type="button"
                       onClick={() => setStudentFilter("")}
                       className="rounded px-1.5 py-0.5 font-medium hover:bg-blue-100 dark:hover:bg-blue-900/60"
                     >
-                      সবাই দেখুন
+                      {ui.showAll}
                     </button>
                   </div>
                 )}
                 <div className="w-fit rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 sm:text-[13px]">
-                  মোট <span className="font-bold text-slate-900 dark:text-slate-100">{totalRecords}</span> টি
-                  রেকর্ড
+                  {ui.totalRecords(localizeDigits(totalRecords, lang))}
                 </div>
               </div>
             </div>
@@ -955,7 +979,7 @@ const ReportShell = ({
                       role="switch"
                       aria-checked={repeatHeaderPref}
                       onClick={toggleRepeatHeader}
-                      title="চালু থাকলে বিষয়ের নামসহ হেডার প্রতিটি পেজের উপরে ছাপা হবে"
+                      title={ui.repeatHeaderHint}
                       className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <span
@@ -970,7 +994,7 @@ const ReportShell = ({
                           }`}
                         />
                       </span>
-                      প্রতি পেজে বিষয়ের নাম
+                      {ui.repeatHeader}
                     </button>
                   )}
                   {supportsSignatureToggle && (
@@ -979,7 +1003,7 @@ const ReportShell = ({
                       role="switch"
                       aria-checked={!hideSignaturePref}
                       onClick={toggleSignature}
-                      title="জায়গা কম হলে বন্ধ করুন - প্রতিটি শ্রেণির নিচের পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর বাদ যাবে"
+                      title={ui.signatureHint}
                       className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <span
@@ -994,7 +1018,7 @@ const ReportShell = ({
                           }`}
                         />
                       </span>
-                      নিচে স্বাক্ষর
+                      {ui.signatureToggle}
                     </button>
                   )}
                   {columnOptions && (
@@ -1005,7 +1029,7 @@ const ReportShell = ({
                       onReset={columnPrefs.reset}
                       order={columnPrefs.order}
                       onMove={columnPrefs.move}
-                      resetLabel="ডিফল্ট কলাম ফিরিয়ে আনুন"
+                      resetLabel={ui.resetColumns}
                       buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     />
                   )}
@@ -1025,7 +1049,7 @@ const ReportShell = ({
                     >
                       {[50, 100, 200, 500].map((size) => (
                         <option key={size} value={size}>
-                          {size} জন/পেজ
+                          {ui.perPage(localizeDigits(size, lang))}
                         </option>
                       ))}
                     </FilterSelect>
@@ -1040,7 +1064,7 @@ const ReportShell = ({
                       disabled={!hasPrevPage}
                       className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
                     >
-                      আগের
+                      {ui.prev}
                     </button>
                     <button
                       type="button"
@@ -1048,7 +1072,7 @@ const ReportShell = ({
                       disabled={!hasNextPage}
                       className="h-7 rounded border border-slate-200 px-2 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
                     >
-                      পরের
+                      {ui.next}
                     </button>
                   </div>
                 )
@@ -1069,7 +1093,7 @@ const ReportShell = ({
                     to="/routine"
                     className="shrink-0 whitespace-nowrap rounded-md border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60"
                   >
-                    পরীক্ষার রুটিন যোগ করুন →
+                    {ui.addExamRoutine}
                   </Link>
                 )}
               </div>
@@ -1090,7 +1114,7 @@ const ReportShell = ({
               <div className="print-preview-wrap">
                 <PaginatedReportPreview
                   loading={loading}
-                  report={effectiveReport}
+                  report={printReport}
                   rows={displayRows}
                   selectedDivisionName={selectedDivisionName}
                   selectedDivisionId={selectedDivisionId}

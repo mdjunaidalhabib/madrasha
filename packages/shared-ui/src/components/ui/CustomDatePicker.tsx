@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { LOCALE_MAP, localizeDigits, useLang, useText } from "../../i18n";
+import { uiText } from "./ui.text";
 
 interface Props {
   label: string;
@@ -17,20 +19,16 @@ const CustomDatePicker: React.FC<Props> = ({
   const [openField, setOpenField] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  const lang = useLang();
+  const t = useText(uiText);
+  const locale = LOCALE_MAP[lang];
+
+  // Short month names in the current UI language (index 0 = January).
+  const months = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+    return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(Date.UTC(2000, i, 1))));
+  }, [locale]);
+  const num = (n: number) => localizeDigits(n, lang);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
@@ -81,7 +79,7 @@ const CustomDatePicker: React.FC<Props> = ({
      FORMAT DISPLAY DATE
   ========================= */
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-GB", {
+    return new Date(date).toLocaleDateString(locale, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -102,8 +100,8 @@ const CustomDatePicker: React.FC<Props> = ({
               className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500 dark:text-slate-400">Day</p>
-                <p className="text-sm font-semibold">{selectedDay}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{t.day}</p>
+                <p className="text-sm font-semibold">{num(selectedDay)}</p>
               </div>
               <ChevronDown
                 size={18}
@@ -126,7 +124,7 @@ const CustomDatePicker: React.FC<Props> = ({
                         : "hover:bg-green-50 dark:hover:bg-slate-800"
                     }`}
                   >
-                    {d}
+                    {num(d)}
                   </div>
                 ))}
               </div>
@@ -142,7 +140,7 @@ const CustomDatePicker: React.FC<Props> = ({
               className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500 dark:text-slate-400">Month</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{t.month}</p>
                 <p className="text-sm font-semibold">
                   {months[selectedMonth - 1]}
                 </p>
@@ -182,8 +180,8 @@ const CustomDatePicker: React.FC<Props> = ({
               className="border rounded-lg px-3 py-2 bg-white cursor-pointer hover:ring-2 hover:ring-green-400 flex justify-between dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <div>
-                <p className="text-xs text-gray-500 dark:text-slate-400">Year</p>
-                <p className="text-sm font-semibold">{selectedYear}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{t.year}</p>
+                <p className="text-sm font-semibold">{num(selectedYear)}</p>
               </div>
               <ChevronDown
                 size={18}
@@ -206,7 +204,7 @@ const CustomDatePicker: React.FC<Props> = ({
                         : "hover:bg-green-50 dark:hover:bg-slate-800"
                     }`}
                   >
-                    {y}
+                    {num(y)}
                   </div>
                 ))}
               </div>
@@ -215,7 +213,7 @@ const CustomDatePicker: React.FC<Props> = ({
         </div>
       ) : (
         <div className="border rounded-lg px-3 py-2 bg-gray-100 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-          {value ? formatDate(value) : "N/A"}
+          {value ? formatDate(value) : t.notAvailable}
         </div>
       )}
     </div>

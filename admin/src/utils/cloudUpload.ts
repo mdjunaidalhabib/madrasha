@@ -1,3 +1,6 @@
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { servicesText } from "../services/services.text";
+
 // Image URL columns across the schema (website logo/gallery/slide/committee
 // photo, report branding logo/banner/watermark, etc.) only ever expect a
 // cloud storage URL. Until the super admin configures this tenant's cloud
@@ -7,8 +10,13 @@
 // Block that save client-side instead, with a message that explains why
 // (without naming the storage vendor - that's an implementation detail
 // tenant staff don't need to know).
+
+/** Bangla original, kept for any caller that still imports the constant -
+ * prefer cloudNotConfiguredMsg(), which follows the UI language. */
 export const CLOUD_NOT_CONFIGURED_MSG =
   "ক্লাউড স্টোরেজ এখনো কনফিগার করা হয়নি, তাই ছবিটি স্থায়ীভাবে সংরক্ষণ করা যাচ্ছে না। এডমিনের সাথে যোগাযোগ করুন।";
+
+export const cloudNotConfiguredMsg = () => getText(servicesText).cloudNotConfigured;
 
 export const isPendingCloudUpload = (value?: string | null) =>
   typeof value === "string" && value.startsWith("data:image/");

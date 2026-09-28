@@ -2,6 +2,8 @@ import api, { clearGetCache } from "../../../services/api";
 import type { UploadFolder } from "../../../services/phase4Api";
 import { uploadPhoto } from "../../../components/photo/PhotoPicker";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { peopleToolsText } from "./peopleTools.text";
 
 export type PhotoTab = "students" | "teachers" | "staff";
 /** Same tabs on every people tool (ছবি আপলোড, নাম (৩ ভাষা)). */
@@ -28,11 +30,11 @@ export type CardStatus = "saving" | "saved" | "error";
 
 export const TAB_META: Record<
   PhotoTab,
-  { label: string; unit: string; folder: UploadFolder; listUrl: string; permission: string }
+  { folder: UploadFolder; listUrl: string; permission: string }
 > = {
-  students: { label: "শিক্ষার্থী", unit: "জন", folder: "students", listUrl: "/students", permission: "students.update" },
-  teachers: { label: "শিক্ষক", unit: "জন", folder: "teachers", listUrl: "/teachers", permission: "teachers.update" },
-  staff: { label: "স্টাফ", unit: "জন", folder: "staff", listUrl: "/staff", permission: "staff.update" },
+  students: { folder: "students", listUrl: "/students", permission: "students.update" },
+  teachers: { folder: "teachers", listUrl: "/teachers", permission: "teachers.update" },
+  staff: { folder: "staff", listUrl: "/staff", permission: "staff.update" },
 };
 
 export const hasPhoto = (p: PhotoPerson) => Boolean(p.image && p.image.trim());
@@ -46,7 +48,7 @@ export const unwrapList = (payload: any): any[] => {
 
 export const toStudentPerson = (s: any): PhotoPerson => ({
   id: Number(s.id),
-  name: s.name_bn || s.name_en || "নামহীন",
+  name: s.name_bn || s.name_en || getText(peopleToolsText).unnamed,
   image: s.image || null,
   regNo: str(s.registration_no),
   roll: str(s.roll),
@@ -58,7 +60,7 @@ export const toStudentPerson = (s: any): PhotoPerson => ({
 
 export const toStaffPerson = (t: any): PhotoPerson => ({
   id: Number(t.id),
-  name: t.name_bn || t.name_en || "নামহীন",
+  name: t.name_bn || t.name_en || getText(peopleToolsText).unnamed,
   image: t.image || null,
   regNo: str(t.registration_no),
   roll: null,

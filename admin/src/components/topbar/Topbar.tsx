@@ -3,7 +3,8 @@ import { useBrandingStore } from "../../store/brandingStore";
 import { useNowLabels } from "../../hooks/useNowLabels";
 import LockButton from "../lock/LockButton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
-import { LanguageSwitcher } from "@madrasha/shared-ui/src/i18n";
+import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+import { shellText } from "./shell.text";
 import PlanBadge from "./PlanBadge";
 import ProfileMenu from "./ProfileMenu";
 import { Calendar, Clock, Menu } from "lucide-react";
@@ -16,6 +17,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const branding = useBrandingStore((s) => s.branding);
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const { date: today, time: nowTime } = useNowLabels();
+  const t = useText(shellText);
 
   useEffect(() => {
     fetchBranding();
@@ -50,7 +52,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
           <button
             onClick={openSidebar}
             className={iconButtonClass}
-            aria-label="মেনু খুলুন"
+            aria-label={t.openMenu}
           >
             <Menu size={17} />
           </button>

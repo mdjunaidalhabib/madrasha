@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { defaultFeeStructureService } from "./default-fee-structure.service";
+import { t } from "../../shared/i18n";
 
 const respondError = (res: Response, error: unknown, logTag: string, fallbackMessage: string) => {
   if (error instanceof ApiError) {
@@ -25,7 +26,7 @@ export const listDefaultFeeStructures = async (req: Request, res: Response) => {
 export const createDefaultFeeStructure = async (req: Request, res: Response) => {
   try {
     const row = await defaultFeeStructureService.create(req.body);
-    res.status(HttpStatus.CREATED).json({ message: "ফি টেমপ্লেট তৈরি হয়েছে", id: row.id });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "ফি টেমপ্লেট তৈরি হয়েছে", en: "Fee template created" }), id: row.id });
   } catch (err) {
     respondError(res, err, "createDefaultFeeStructure ERROR:", "Failed to create fee structure template");
   }
@@ -34,7 +35,7 @@ export const createDefaultFeeStructure = async (req: Request, res: Response) => 
 export const updateDefaultFeeStructure = async (req: Request, res: Response) => {
   try {
     await defaultFeeStructureService.update(Number(req.params.id), req.body);
-    res.json({ message: "ফি টেমপ্লেট আপডেট হয়েছে" });
+    res.json({ message: t({ bn: "ফি টেমপ্লেট আপডেট হয়েছে", en: "Fee template updated" }) });
   } catch (err) {
     respondError(res, err, "updateDefaultFeeStructure ERROR:", "Failed to update fee structure template");
   }
@@ -43,7 +44,7 @@ export const updateDefaultFeeStructure = async (req: Request, res: Response) => 
 export const deleteDefaultFeeStructure = async (req: Request, res: Response) => {
   try {
     await defaultFeeStructureService.delete(Number(req.params.id));
-    res.json({ message: "ফি টেমপ্লেট মুছে ফেলা হয়েছে" });
+    res.json({ message: t({ bn: "ফি টেমপ্লেট মুছে ফেলা হয়েছে", en: "Fee template deleted" }) });
   } catch (err) {
     respondError(res, err, "deleteDefaultFeeStructure ERROR:", "Failed to delete fee structure template");
   }

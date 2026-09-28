@@ -1,16 +1,18 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Settings2, Layers, ClipboardCheck, BarChart3, FileBadge2, CalendarRange, Megaphone, Hash } from "lucide-react";
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { talimatSettingsText } from "./talimatSettings.text";
 
 const SETTINGS_NAV_ITEMS = [
-  { key: "class-book", label: "বিভাগ শ্রেণী কিতাব", icon: Layers },
-  { key: "exam", label: "পরীক্ষা", icon: ClipboardCheck },
-  { key: "grade", label: "গ্রেডিং সিস্টেম", icon: BarChart3 },
-  { key: "documents", label: "ডকুমেন্টস টেমপ্লেট", icon: FileBadge2 },
-  { key: "notices", label: "নোটিশ বোর্ড", icon: Megaphone },
-  { key: "sessions", label: "সেশন সেটআপ", icon: CalendarRange },
-  { key: "registration", label: "রেজি. নম্বর ব্লক", icon: Hash },
-];
+  { key: "class-book", labelKey: "navClassBook", icon: Layers },
+  { key: "exam", labelKey: "navExam", icon: ClipboardCheck },
+  { key: "grade", labelKey: "navGrade", icon: BarChart3 },
+  { key: "documents", labelKey: "navDocuments", icon: FileBadge2 },
+  { key: "notices", labelKey: "navNotices", icon: Megaphone },
+  { key: "sessions", labelKey: "navSessions", icon: CalendarRange },
+  { key: "registration", labelKey: "navRegistration", icon: Hash },
+] as const;
 
 function navPillClass(isActive: boolean) {
   return `group relative flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition sm:w-full ${
@@ -29,17 +31,18 @@ function iconChipClass(isActive: boolean) {
 }
 
 export default function TalimatSettingsLayout() {
+  const t = useText(talimatSettingsText);
 
   return (
     <div className="max-w-6xl space-y-2">
       <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
         <Settings2 size={16} />
-        সেটিং
+        {t.settings}
       </div>
 
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <nav
-          aria-label="সেটিং মেনু"
+          aria-label={t.settingsMenu}
           className="flex shrink-0 gap-2 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:w-64 sm:flex-col sm:overflow-visible"
         >
           {SETTINGS_NAV_ITEMS.map((item) => {
@@ -57,7 +60,7 @@ export default function TalimatSettingsLayout() {
                     <span aria-hidden="true" className={iconChipClass(isActive)}>
                       <Icon size={15} />
                     </span>
-                    <span className="whitespace-nowrap sm:whitespace-normal">{item.label}</span>
+                    <span className="whitespace-nowrap sm:whitespace-normal">{t[item.labelKey]}</span>
                   </>
                 )}
               </NavLink>

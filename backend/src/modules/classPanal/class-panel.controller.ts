@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { classPanelService } from "./class-panel.service";
+import { t } from "../../shared/i18n";
 
 const respondError = (res: Response, error: unknown, logTag: string, fallbackMessage: string) => {
   if (error instanceof ApiError) {
@@ -55,7 +56,7 @@ export const getDivisions = async (req: Request, res: Response) => {
 export const deleteDivision = async (req: Request, res: Response) => {
   try {
     await classPanelService.deleteDivision(req.tenant?.madrasa_id, Number(req.params.id));
-    res.json({ message: "Division removed from madrasa" });
+    res.json({ message: t({ bn: "বিভাগ প্রতিষ্ঠান থেকে সরানো হয়েছে", en: "Division removed from institution", ar: "تمت إزالة القسم من المؤسسة" }) });
   } catch (error) {
     respondError(res, error, "❌ Delete division error:", "Failed to delete division");
   }
@@ -64,7 +65,7 @@ export const deleteDivision = async (req: Request, res: Response) => {
 export const updateDivision = async (req: Request, res: Response) => {
   try {
     await classPanelService.updateDivision(req.tenant?.madrasa_id, Number(req.params.id), req.body);
-    res.json({ message: "Division updated successfully" });
+    res.json({ message: t({ bn: "বিভাগ আপডেট হয়েছে", en: "Division updated successfully", ar: "تم تحديث القسم بنجاح" }) });
   } catch (error) {
     respondError(res, error, "❌ Update division error:", "Failed to update division");
   }
@@ -97,7 +98,7 @@ export const getClasses = async (req: Request, res: Response) => {
 export const addClass = async (req: Request, res: Response) => {
   try {
     await classPanelService.addClass(req.tenant?.madrasa_id, req.body);
-    res.json({ message: "Class added successfully" });
+    res.json({ message: t({ bn: "শ্রেণি যোগ করা হয়েছে", en: "Class added successfully", ar: "تمت إضافة الصف بنجاح" }) });
   } catch (error) {
     respondError(res, error, "❌ Add class error:", "Failed to add class");
   }
@@ -106,7 +107,7 @@ export const addClass = async (req: Request, res: Response) => {
 export const updateClass = async (req: Request, res: Response) => {
   try {
     await classPanelService.updateClass(req.tenant?.madrasa_id, Number(req.params.id), req.body);
-    res.json({ message: "Class updated successfully" });
+    res.json({ message: t({ bn: "শ্রেণি আপডেট হয়েছে", en: "Class updated successfully", ar: "تم تحديث الصف بنجاح" }) });
   } catch (error) {
     respondError(res, error, "❌ Update class error:", "Failed to update class");
   }
@@ -115,7 +116,7 @@ export const updateClass = async (req: Request, res: Response) => {
 export const deleteClass = async (req: Request, res: Response) => {
   try {
     await classPanelService.deleteClass(req.tenant?.madrasa_id, Number(req.params.id));
-    res.json({ message: "Class removed from madrasa" });
+    res.json({ message: t({ bn: "শ্রেণি প্রতিষ্ঠান থেকে সরানো হয়েছে", en: "Class removed from institution", ar: "تمت إزالة الصف من المؤسسة" }) });
   } catch (error) {
     respondError(res, error, "❌ Delete class error:", "Failed to delete class");
   }
@@ -167,7 +168,7 @@ export const reorderSubjects = async (req: Request, res: Response) => {
 export const addSubject = async (req: Request, res: Response) => {
   try {
     await classPanelService.addSubject(req.tenant?.madrasa_id, req.body);
-    res.json({ message: "Subject added and affected results refreshed" });
+    res.json({ message: t({ bn: "বিষয় যোগ করা হয়েছে এবং সংশ্লিষ্ট ফলাফল হালনাগাদ হয়েছে", en: "Subject added and affected results refreshed", ar: "تمت إضافة المادة وتحديث النتائج المتأثرة" }) });
   } catch (error) {
     respondError(res, error, "❌ Add subject error:", "Failed to add subject");
   }
@@ -176,7 +177,7 @@ export const addSubject = async (req: Request, res: Response) => {
 export const updateSubject = async (req: Request, res: Response) => {
   try {
     await classPanelService.updateSubject(req.tenant?.madrasa_id, Number(req.params.id), req.body);
-    res.json({ message: "Subject name updated successfully" });
+    res.json({ message: t({ bn: "বিষয়ের নাম আপডেট হয়েছে", en: "Subject name updated successfully", ar: "تم تحديث اسم المادة بنجاح" }) });
   } catch (error) {
     respondError(res, error, "❌ Update subject error:", "Failed to update subject");
   }
@@ -197,7 +198,7 @@ export const getSubjectDeleteInfo = async (req: Request, res: Response) => {
 export const deleteSubject = async (req: Request, res: Response) => {
   try {
     await classPanelService.deleteSubject(req.tenant?.madrasa_id, Number(req.params.id));
-    res.json({ message: "Subject removed and affected results recalculated" });
+    res.json({ message: t({ bn: "বিষয় সরানো হয়েছে এবং সংশ্লিষ্ট ফলাফল পুনঃগণনা হয়েছে", en: "Subject removed and affected results recalculated", ar: "تمت إزالة المادة وإعادة حساب النتائج المتأثرة" }) });
   } catch (error) {
     respondError(res, error, "❌ Delete subject error:", "Failed to delete subject");
   }

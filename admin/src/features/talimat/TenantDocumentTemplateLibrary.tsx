@@ -32,6 +32,8 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { hasPermission } from "../../utils/permissions";
+import { formatDate, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { documentTemplatesText } from "./documentTemplates.text";
 
 // Previews are fit into this box (aspect-ratio preserved) instead of a fixed
 // scale, so every document type — a tiny ID card or a full A4 page — reads
@@ -104,6 +106,7 @@ export default function TenantDocumentTemplateLibrary({
   type: BackendDocumentType;
   title: string;
 }) {
+  const t = useText(documentTemplatesText);
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
@@ -141,7 +144,7 @@ export default function TenantDocumentTemplateLibrary({
         setPreviewRow(row);
       }
     } catch {
-      setError("টেমপ্লেট তালিকা লোড করা যায়নি");
+      setError(t.listLoadFailed);
     } finally {
       setLoading(false);
     }
@@ -161,9 +164,9 @@ export default function TenantDocumentTemplateLibrary({
       const detail = await createTemplate({ type, name });
       openInDesigner(detail.id);
       setCreateOpen(false);
-      useToastStore.getState().show("নতুন টেমপ্লেট তৈরি হয়েছে", "success");
+      useToastStore.getState().show(t.created, "success");
     } catch {
-      setCreateError("নতুন টেমপ্লেট তৈরি করা যায়নি, আবার চেষ্টা করুন");
+      setCreateError(t.createFailed);
     } finally {
       setBusyId(null);
     }
@@ -173,11 +176,11 @@ export default function TenantDocumentTemplateLibrary({
     setBusyId(item.id);
     setBusyAction("clone");
     try {
-      const detail = await cloneTemplate(item.id, { name: `${item.name} (কপি)` });
+      const detail = await cloneTemplate(item.id, { name: t.copyName(item.name) });
       openInDesigner(detail.id);
     } catch {
-      setError("কপি করা যায়নি");
-      useToastStore.getState().show("কপি করা যায়নি, আবার চেষ্টা করুন", "error");
+      setError(t.copyFailed);
+      useToastStore.getState().show(t.copyFailedRetry, "error");
     } finally {
       setBusyId(null);
       setBusyAction(null);
@@ -190,10 +193,10 @@ export default function TenantDocumentTemplateLibrary({
     try {
       await setTenantDefault(type, item.id);
       await load();
-      useToastStore.getState().show("ডিফল্ট নির্ধারণ করা হয়েছে", "success");
+      useToastStore.getState().show(t.defaultSet, "success");
     } catch {
-      setError("ডিফল্ট নির্ধারণ করা যায়নি");
-      useToastStore.getState().show("ডিফল্ট নির্ধারণ করা যায়নি, আবার চেষ্টা করুন", "error");
+      setError(t.defaultSetFailed);
+      useToastStore.getState().show(t.defaultSetFailedRetry, "error");
     } finally {
       setBusyId(null);
       setBusyAction(null);
@@ -202,9 +205,9 @@ export default function TenantDocumentTemplateLibrary({
 
   const handleDelete = (item: TemplateListItemDto) => {
     showConfirm({
-      title: "টেমপ্লেট মুছে ফেলবেন?",
-      message: `"${item.name}" টেমপ্লেটটি স্থায়ীভাবে মুছে যাবে — এই কাজটি ফিরিয়ে নেওয়া যাবে না।`,
-      confirmText: "মুছে ফেলুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(item.name),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         setBusyId(item.id);
@@ -212,10 +215,10 @@ export default function TenantDocumentTemplateLibrary({
         try {
           await deleteTemplate(item.id);
           await load();
-          useToastStore.getState().show("টেমপ্লেট মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(t.deleted, "success");
         } catch {
-          setError("মুছে ফেলা যায়নি — এটি সম্ভবত বর্তমান ডিফল্ট হিসেবে ব্যবহৃত হচ্ছে");
-          useToastStore.getState().show("মুছে ফেলা যায়নি — এটি সম্ভবত বর্তমান ডিফল্ট হিসেবে ব্যবহৃত হচ্ছে", "error");
+          setError(t.deleteFailed);
+          useToastStore.getState().show(t.deleteFailed, "error");
         } finally {
           setBusyId(null);
           setBusyAction(null);
@@ -230,8 +233,8 @@ export default function TenantDocumentTemplateLibrary({
     <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title} — টেমপ্লেট লাইব্রেরি</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">সিস্টেম টেমপ্লেট ব্যবহার করুন, কপি করে নিজের মতো সাজান, অথবা নিজের টেমপ্লেট তৈরি করুন</p>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.libraryTitle(title)}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t.librarySubtitle}</p>
         </div>
         {canManage && (
           <Button
@@ -241,7 +244,7 @@ export default function TenantDocumentTemplateLibrary({
               setCreateOpen(true);
             }}
           >
-            <Plus size={15} className="me-1.5" /> নতুন টেমপ্লেট
+            <Plus size={15} className="me-1.5" /> {t.newTemplate}
           </Button>
         )}
       </div>
@@ -249,7 +252,7 @@ export default function TenantDocumentTemplateLibrary({
       {canManage && (
         <CreateTemplateModal
           open={createOpen}
-          defaultName={`নতুন ${title}`}
+          defaultName={t.newNamed(title)}
           busy={busyId === -1}
           error={createError}
           onClose={() => setCreateOpen(false)}
@@ -261,7 +264,7 @@ export default function TenantDocumentTemplateLibrary({
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
-          কোনো টেমপ্লেট পাওয়া যায়নি। একটি নতুন টেমপ্লেট তৈরি করুন।
+          {t.noTemplates}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -285,7 +288,7 @@ export default function TenantDocumentTemplateLibrary({
                 <div className="mb-2 flex items-center gap-1.5">
                   <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
                   {item.is_tenant_default && (
-                    <span title="আপনার ডিফল্ট" className="text-amber-500">
+                    <span title={t.yourDefault} className="text-amber-500">
                       <CheckCircle2 size={14} />
                     </span>
                   )}
@@ -298,16 +301,16 @@ export default function TenantDocumentTemplateLibrary({
                         : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
                     }`}
                   >
-                    {item.scope === "SYSTEM" ? "সিস্টেম" : "আমার টেমপ্লেট"}
+                    {item.scope === "SYSTEM" ? t.system : t.myTemplate}
                   </span>
                   {!item.is_published && (
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                      খসড়া
+                      {t.draft}
                     </span>
                   )}
                   {item.is_system_default && (
                     <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-                      সিস্টেম ডিফল্ট
+                      {t.systemDefault}
                     </span>
                   )}
                 </div>
@@ -319,7 +322,7 @@ export default function TenantDocumentTemplateLibrary({
                       onClick={() => openInDesigner(item.id)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
-                      <Pencil size={12} /> এডিট
+                      <Pencil size={12} /> {t.edit}
                     </button>
                   )}
                   {isTenantOwned && (
@@ -328,7 +331,7 @@ export default function TenantDocumentTemplateLibrary({
                       onClick={() => setHistoryFor(item)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
-                      <History size={12} /> সংস্করণ ইতিহাস
+                      <History size={12} /> {t.versionHistory}
                     </button>
                   )}
                   {canManage && !isTenantOwned && (
@@ -343,7 +346,7 @@ export default function TenantDocumentTemplateLibrary({
                       ) : (
                         <Copy size={12} />
                       )}{" "}
-                      {busyId === item.id && busyAction === "clone" ? "কপি হচ্ছে..." : "কপি করুন"}
+                      {busyId === item.id && busyAction === "clone" ? t.copying : t.copy}
                     </button>
                   )}
                   {canManage && !item.is_tenant_default && (
@@ -358,7 +361,7 @@ export default function TenantDocumentTemplateLibrary({
                       ) : (
                         <Star size={12} />
                       )}{" "}
-                      {busyId === item.id && busyAction === "default" ? "সেট হচ্ছে..." : "ডিফল্ট করুন"}
+                      {busyId === item.id && busyAction === "default" ? t.setting : t.makeDefault}
                     </button>
                   )}
                   {canManage && isTenantOwned && !item.is_tenant_default && (
@@ -373,7 +376,7 @@ export default function TenantDocumentTemplateLibrary({
                       ) : (
                         <Trash2 size={12} />
                       )}{" "}
-                      {busyId === item.id && busyAction === "delete" ? "মুছে ফেলা হচ্ছে..." : "মুছুন"}
+                      {busyId === item.id && busyAction === "delete" ? t.deleting : t.delete}
                     </button>
                   )}
                 </div>
@@ -410,6 +413,8 @@ function VersionHistoryModal({
   onClose: () => void;
   onRestored: () => void;
 }) {
+  const t = useText(documentTemplatesText);
+  const lang = useLang();
   const [loading, setLoading] = useState(true);
   const [versions, setVersions] = useState<TemplateVersionListItemDto[]>([]);
   const [error, setError] = useState("");
@@ -423,7 +428,7 @@ function VersionHistoryModal({
       try {
         setVersions(await listTemplateVersions(template.id));
       } catch {
-        setError("সংস্করণ তালিকা লোড করা যায়নি");
+        setError(t.versionsLoadFailed);
       } finally {
         setLoading(false);
       }
@@ -432,19 +437,19 @@ function VersionHistoryModal({
 
   const handleRestore = (version: TemplateVersionListItemDto) => {
     showConfirm({
-      title: "সংস্করণ পুনরুদ্ধার করুন?",
-      message: `সংস্করণ ${version.version_no} এর বিষয়বস্তু বর্তমান খসড়ায় কপি হবে। প্রকাশিত সংস্করণ অপরিবর্তিত থাকবে — পরিবর্তন কার্যকর করতে আবার "প্রকাশ করুন" চাপতে হবে।`,
-      confirmText: "পুনরুদ্ধার করুন",
+      title: t.restoreTitle,
+      message: t.restoreMessage(String(version.version_no)),
+      confirmText: t.restoreConfirm,
       onConfirm: async () => {
         setRestoringId(version.id);
         try {
           await restoreTemplateVersion(template.id, version.id);
           onRestored();
           onClose();
-          useToastStore.getState().show("সংস্করণ খসড়ায় পুনরুদ্ধার হয়েছে", "success");
+          useToastStore.getState().show(t.restored, "success");
         } catch {
-          setError("পুনরুদ্ধার করা যায়নি, আবার চেষ্টা করুন");
-          useToastStore.getState().show("পুনরুদ্ধার করা যায়নি, আবার চেষ্টা করুন", "error");
+          setError(t.restoreFailed);
+          useToastStore.getState().show(t.restoreFailed, "error");
         } finally {
           setRestoringId(null);
         }
@@ -453,13 +458,13 @@ function VersionHistoryModal({
   };
 
   return (
-    <Modal open title={`সংস্করণ ইতিহাস — ${template.name}`} onClose={onClose} maxWidthClassName="max-w-lg">
+    <Modal open title={t.historyTitle(template.name)} onClose={onClose} maxWidthClassName="max-w-lg">
       {loading ? (
         <SkeletonCard lines={4} />
       ) : error ? (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>
       ) : versions.length === 0 ? (
-        <div className="text-sm text-slate-500 dark:text-slate-400">কোনো সংস্করণ পাওয়া যায়নি</div>
+        <div className="text-sm text-slate-500 dark:text-slate-400">{t.noVersions}</div>
       ) : (
         <ul className="space-y-2">
           {versions.map((v) => (
@@ -476,12 +481,12 @@ function VersionHistoryModal({
                       : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                   }`}
                 >
-                  {v.status === "PUBLISHED" ? "প্রকাশিত" : "খসড়া"}
+                  {v.status === "PUBLISHED" ? t.publishedLabel : t.draft}
                 </span>
                 <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   {v.published_at
-                    ? `প্রকাশ: ${new Date(v.published_at).toLocaleDateString("bn-BD")}`
-                    : `তৈরি: ${new Date(v.created_at).toLocaleDateString("bn-BD")}`}
+                    ? t.publishedOn(formatDate(v.published_at, lang))
+                    : t.createdOn(formatDate(v.created_at, lang))}
                 </div>
               </div>
               {canManage && v.status === "PUBLISHED" && (
@@ -496,7 +501,7 @@ function VersionHistoryModal({
                   ) : (
                     <RotateCcw size={12} />
                   )}{" "}
-                  {restoringId === v.id ? "পুনরুদ্ধার হচ্ছে..." : "পুনরুদ্ধার"}
+                  {restoringId === v.id ? t.restoring : t.restore}
                 </button>
               )}
             </li>

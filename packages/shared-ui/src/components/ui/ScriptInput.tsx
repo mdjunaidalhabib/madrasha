@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useText } from "../../i18n";
+import { uiText } from "./ui.text";
 
 export type ScriptLang = "bn" | "ar" | "en";
 
@@ -8,11 +10,11 @@ const SCRIPT_PATTERNS: Record<ScriptLang, RegExp> = {
   en: /[^A-Za-z\s.'-]/g,
 };
 
-const SCRIPT_HINTS: Record<ScriptLang, string> = {
-  bn: "শুধু বাংলায় লিখুন",
-  ar: "শুধু আরবিতে লিখুন",
-  en: "Write in English only",
-};
+const SCRIPT_HINT_KEYS = {
+  bn: "onlyBangla",
+  ar: "onlyArabic",
+  en: "onlyEnglish",
+} as const satisfies Record<ScriptLang, string>;
 
 export function filterByScript(value: string, lang: ScriptLang): string {
   return value.replace(SCRIPT_PATTERNS[lang], "");
@@ -27,6 +29,7 @@ interface ScriptInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
 const ScriptInput = React.forwardRef<HTMLInputElement, ScriptInputProps>(
   ({ scriptLang, hint = true, hintClassName, onChange, ...props }, ref) => {
     const [showHint, setShowHint] = useState(false);
+    const t = useText(uiText);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const filtered = filterByScript(e.target.value, scriptLang);
@@ -52,7 +55,7 @@ const ScriptInput = React.forwardRef<HTMLInputElement, ScriptInputProps>(
               "text-[11px] text-gray-400 mt-0.5 dark:text-slate-500"
             }
           >
-            {SCRIPT_HINTS[scriptLang]}
+            {t[SCRIPT_HINT_KEYS[scriptLang]]}
           </span>
         )}
       </>

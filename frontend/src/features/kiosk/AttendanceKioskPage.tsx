@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { scanCard } from "../../services/attendanceKioskApi";
 import { useTenantSlug } from "../../utils/useTenantSlug";
+import { LOCALE_MAP, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { kioskText } from "./kiosk.text";
 
 type ScanResult =
   | { type: "success"; name: string; roll: string | number }
@@ -18,6 +20,8 @@ const OVERLAY_DURATION_MS = 4000;
 const SCAN_KEY_GAP_RESET_MS = 100;
 
 export default function AttendanceKioskPage() {
+  const t = useText(kioskText);
+  const lang = useLang();
   const madrasaSlug = useTenantSlug();
   const storageKey = `kiosk_key_${madrasaSlug}`;
 
@@ -141,13 +145,13 @@ export default function AttendanceKioskPage() {
     bufferRef.current = "";
   };
 
-  const dateStr = now.toLocaleDateString("bn-BD", {
+  const dateStr = now.toLocaleDateString(LOCALE_MAP[lang], {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const timeStr = now.toLocaleTimeString("bn-BD", {
+  const timeStr = now.toLocaleTimeString(LOCALE_MAP[lang], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -159,10 +163,10 @@ export default function AttendanceKioskPage() {
       <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 dark:bg-slate-950">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900">
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            কিওস্ক সেটআপ
+            {t.setupTitle}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            এডমিন থেকে তৈরি করা কিওস্ক ডিভাইস কী পেস্ট করুন
+            {t.setupHint}
           </p>
           <input
             type="text"
@@ -171,7 +175,7 @@ export default function AttendanceKioskPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") saveKey();
             }}
-            placeholder="ডিভাইস কী"
+            placeholder={t.deviceKey}
             className="mt-4 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             autoFocus
           />
@@ -181,7 +185,7 @@ export default function AttendanceKioskPage() {
             disabled={!keyInput.trim()}
             className="mt-4 h-11 w-full rounded-lg bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            সংরক্ষণ করুন
+            {t.save}
           </button>
         </div>
       </div>
@@ -199,7 +203,7 @@ export default function AttendanceKioskPage() {
   return (
     <div className="relative flex min-h-screen flex-col bg-slate-900 text-white">
       <header className="flex flex-col items-center gap-1 border-b border-white/10 px-4 py-6 text-center">
-        <h1 className="text-2xl font-bold sm:text-3xl">{madrasaSlug || "কিওস্ক অ্যাটেন্ডেন্স"}</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">{madrasaSlug || t.fallbackTitle}</h1>
         <p className="text-lg text-white/80">{dateStr}</p>
         <p className="font-mono text-3xl font-bold tracking-wider sm:text-4xl">{timeStr}</p>
       </header>
@@ -208,18 +212,18 @@ export default function AttendanceKioskPage() {
         <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white/10 text-6xl">
           💳
         </div>
-        <p className="text-2xl font-semibold sm:text-3xl">কার্ড স্ক্যান করুন</p>
-        <p className="text-white/60">কার্ডটি কিওস্ক রিডারের কাছে ধরুন</p>
+        <p className="text-2xl font-semibold sm:text-3xl">{t.scanCard}</p>
+        <p className="text-white/60">{t.holdCard}</p>
       </main>
 
       <footer className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-3 text-sm text-white/50">
-        <span>ফিঙ্গারপ্রিন্ট: ডিভাইস সংযুক্ত নেই</span>
+        <span>{t.fingerprintNotConnected}</span>
         <button
           type="button"
           onClick={resetSetup}
           className="rounded-md px-2 py-1 text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
         >
-          সেটআপ রিসেট
+          {t.resetSetup}
         </button>
       </footer>
 
@@ -231,24 +235,24 @@ export default function AttendanceKioskPage() {
             <>
               <div className="text-7xl">✓</div>
               <p className="text-3xl font-bold sm:text-4xl">{result.name}</p>
-              <p className="text-xl">রোল: {result.roll}</p>
-              <p className="text-lg text-white/90">উপস্থিতি সফল হয়েছে</p>
+              <p className="text-xl">{t.roll} {localizeDigits(result.roll, lang)}</p>
+              <p className="text-lg text-white/90">{t.success}</p>
             </>
           )}
           {result.type === "already" && (
             <>
               <div className="text-7xl">ℹ️</div>
               <p className="text-3xl font-bold sm:text-4xl">{result.name}</p>
-              <p className="text-lg text-white/90">আজকের উপস্থিতি আগেই নেওয়া হয়েছে</p>
+              <p className="text-lg text-white/90">{t.already}</p>
             </>
           )}
           {result.type === "notfound" && (
             <p className="text-2xl font-bold sm:text-3xl">
-              ❌ কার্ড শনাক্ত হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন
+              {t.notFound}
             </p>
           )}
           {result.type === "error" && (
-            <p className="text-2xl font-bold sm:text-3xl">ত্রুটি হয়েছে, আবার চেষ্টা করুন</p>
+            <p className="text-2xl font-bold sm:text-3xl">{t.error}</p>
           )}
         </div>
       )}

@@ -11,6 +11,8 @@ import {
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examOpsText } from "./examOperations.text";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
 import { divisionsForExam, examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
@@ -32,14 +34,17 @@ const normalizeArray = (payload: any) => {
   return Array.isArray(data) ? data : [];
 };
 
-const STRATEGY_LABELS: Record<SeatAllocationStrategy, string> = {
-  SEQUENTIAL: "ক্রমিক",
-  ROLL_BASED: "রোল অনুসারে",
-  ALTERNATING: "পর্যায়ক্রমিক (মিশ্র)",
-  MANUAL: "ম্যানুয়াল",
-};
+const strategyLabels = (t: typeof examOpsText.bn): Record<SeatAllocationStrategy, string> => ({
+  SEQUENTIAL: t.strategySequential,
+  ROLL_BASED: t.strategyRoll,
+  ALTERNATING: t.strategyAlternating,
+  MANUAL: t.strategyManual,
+});
 
 const SeatPlanPage = () => {
+  const t = useText(examOpsText);
+  const lang = useLang();
+  const STRATEGY_LABELS = strategyLabels(t);
   // Route-level guard now accepts exam.seat.read OR exam.seat.manage (see
   // router.tsx) so a view-only role can open this page - hide/disable the
   // allocate/clear/manual-adjust controls for anyone without .manage, since
@@ -85,7 +90,7 @@ const SeatPlanPage = () => {
         setRooms(normalizeArray(roomRes));
       } catch (err) {
         logger.error("SEAT PLAN INIT LOAD ERROR:", err);
-        useToastStore.getState().show("পরীক্ষা/বিভাগ/রুমের তালিকা লোড করতে সমস্যা হয়েছে", "error");
+        useToastStore.getState().show(t.listLoadFailed, "error");
       }
     })();
   }, []);
@@ -151,7 +156,7 @@ const SeatPlanPage = () => {
 
   const handleAutoAllocate = async () => {
     if (!routineId || !selectedRoomIds.length) {
-      useToastStore.getState().show("পরীক্ষার সময়সূচি ও অন্তত একটি রুম নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.pickScheduleRoom, "error");
       return;
     }
     try {
@@ -162,10 +167,10 @@ const SeatPlanPage = () => {
         strategy,
         preserve_manual_overrides: preserveManual,
       });
-      useToastStore.getState().show(`${res?.data?.data?.allocated ?? 0}টি আসন বণ্টন করা হয়েছে`, "success");
+      useToastStore.getState().show(t.seatsAllocated(localizeDigits(res?.data?.data?.allocated ?? 0, lang)), "success");
       loadSeats();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আসন বণ্টন করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.allocateFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setAllocating(false);
@@ -177,10 +182,10 @@ const SeatPlanPage = () => {
     try {
       setClearing(true);
       await examSeatApi.clear(Number(routineId));
-      useToastStore.getState().show("আসন বণ্টন মুছে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(t.allocationCleared, "success");
       loadSeats();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.deleteFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setClearing(false);
@@ -190,10 +195,10 @@ const SeatPlanPage = () => {
   const handleManualUpdate = async (seat: SeatAllocationRow, roomId: number, seatNo: string) => {
     try {
       await examSeatApi.manualAdjust(seat.id, { room_id: roomId, seat_no: seatNo });
-      useToastStore.getState().show("আসন আপডেট করা হয়েছে", "success");
+      useToastStore.getState().show(t.seatUpdated, "success");
       loadSeats();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.updateFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -212,8 +217,8 @@ const SeatPlanPage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">সিট প্ল্যান</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">পরীক্ষার আসন বিন্যাস স্বয়ংক্রিয়ভাবে বণ্টন করুন বা ম্যানুয়ালি সমন্বয় করুন</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.seatPlanTitle}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t.seatPlanSubtitle}</p>
         </div>
 
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
@@ -223,7 +228,7 @@ const SeatPlanPage = () => {
               onChange={(e) => setExamId(e.target.value)}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[180px]"
             >
-              <option value="">পরীক্ষা নির্বাচন করুন</option>
+              <option value="">{t.selectExam}</option>
               {examsForDivision(exams, division).map((exam) => (
                 <option key={exam.id} value={exam.id}>
                   {exam.name} — {exam.year}
@@ -238,7 +243,7 @@ const SeatPlanPage = () => {
               }}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
-              <option value="">বিভাগ নির্বাচন করুন</option>
+              <option value="">{t.selectDivision}</option>
               {divisionsForExam(
                 divisions,
                 exams.find((e) => String(e.id) === examId),
@@ -254,7 +259,7 @@ const SeatPlanPage = () => {
               disabled={!division}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
-              <option value="">শ্রেণি নির্বাচন করুন</option>
+              <option value="">{t.selectClass}</option>
               {classes.map((c) => (
                 <option key={c.class_id} value={c.class_id}>
                   {c.class_name_bn}
@@ -267,7 +272,7 @@ const SeatPlanPage = () => {
               disabled={!routines.length}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[220px]"
             >
-              <option value="">সময়সূচি (বিষয়/তারিখ) নির্বাচন করুন</option>
+              <option value="">{t.selectSchedule}</option>
               {routines.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.subject} — {String(r.examDate).slice(0, 10)} ({r.startTime}-{r.endTime})
@@ -279,7 +284,7 @@ const SeatPlanPage = () => {
 
         {routineId && canManage && (
           <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">স্বয়ংক্রিয় বণ্টন</h2>
+            <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">{t.autoAllocation}</h2>
             <div className="mb-3 flex flex-wrap gap-3">
               {rooms.map((room) => (
                 <label key={room.id} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
@@ -304,7 +309,7 @@ const SeatPlanPage = () => {
               </select>
               <label className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
                 <input type="checkbox" checked={preserveManual} onChange={(e) => setPreserveManual(e.target.checked)} />
-                ম্যানুয়াল পরিবর্তনগুলো রাখুন
+                {t.keepManual}
               </label>
               <button
                 type="button"
@@ -312,7 +317,7 @@ const SeatPlanPage = () => {
                 onClick={handleAutoAllocate}
                 className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
               >
-                স্বয়ংক্রিয় বণ্টন করুন
+                {t.autoAllocate}
               </button>
               <button
                 type="button"
@@ -320,7 +325,7 @@ const SeatPlanPage = () => {
                 onClick={handleClear}
                 className="h-9 w-full rounded-md border border-red-300 bg-red-50 px-4 text-sm font-medium text-red-700 disabled:opacity-60 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 sm:w-auto"
               >
-                সব মুছুন
+                {t.clearAll}
               </button>
             </div>
           </div>
@@ -328,17 +333,17 @@ const SeatPlanPage = () => {
 
         {routineId && (
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">বর্তমান আসন বিন্যাস</h2>
+            <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">{t.currentLayout}</h2>
             {loadingSeats ? (
               <SkeletonList items={6} />
             ) : seats.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">এখনো কোনো আসন বণ্টন করা হয়নি</div>
+              <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">{t.noAllocation}</div>
             ) : (
               <div className="flex flex-col gap-4">
                 {Array.from(seatsByRoom.entries()).map(([roomId, roomSeats]) => (
                   <div key={roomId}>
                     <h3 className="mb-2 text-xs font-semibold text-gray-600 dark:text-slate-400">
-                      {roomSeats[0]?.room?.name || `রুম #${roomId}`}
+                      {roomSeats[0]?.room?.name || t.roomN(String(roomId))}
                     </h3>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6">
                       {roomSeats
@@ -353,20 +358,20 @@ const SeatPlanPage = () => {
                                 : "border-gray-200 dark:border-slate-700"
                             }`}
                           >
-                            <div className="font-semibold text-gray-800 dark:text-slate-100">আসন {seat.seatNo}</div>
-                            <div className="text-gray-500 dark:text-slate-400">প্রার্থী #{seat.examCandidateId}</div>
+                            <div className="font-semibold text-gray-800 dark:text-slate-100">{t.seatLabel(localizeDigits(seat.seatNo, lang))}</div>
+                            <div className="text-gray-500 dark:text-slate-400">{t.candidateN(String(seat.examCandidateId))}</div>
                             {canManage && (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const newSeatNo = window.prompt("নতুন আসন নম্বর দিন", seat.seatNo);
+                                  const newSeatNo = window.prompt(t.newSeatPrompt, seat.seatNo);
                                   if (newSeatNo && newSeatNo.trim() && newSeatNo !== seat.seatNo) {
                                     handleManualUpdate(seat, seat.roomId, newSeatNo.trim());
                                   }
                                 }}
                                 className="mt-1 text-blue-600 hover:underline dark:text-blue-400"
                               >
-                                পরিবর্তন
+                                {t.change}
                               </button>
                             )}
                           </div>

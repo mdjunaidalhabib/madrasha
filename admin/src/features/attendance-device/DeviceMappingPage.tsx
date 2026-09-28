@@ -16,6 +16,8 @@ import { selectClass } from "./components";
 import { useClassOptions, useTick } from "./hooks";
 import type { StudentMapping, UnmappedDeviceUser } from "./types";
 import { formatDateTime, relativeTime, toBnNumber } from "./utils";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const PAGE_SIZE = 20;
 
@@ -32,6 +34,7 @@ const mappedValue = (m: StudentMapping) =>
   m.device_user_id == null ? "" : String(m.device_user_id);
 
 export default function DeviceMappingPage() {
+  const t = useText(attendanceDeviceText).mapping;
   const classes = useClassOptions();
   const now = useTick(30_000);
 
@@ -114,11 +117,11 @@ export default function DeviceMappingPage() {
   const save = async (row: StudentMapping) => {
     const value = (drafts[row.student_id] ?? mappedValue(row)).trim();
     if (!value) {
-      setRowError((p) => ({ ...p, [row.student_id]: "K40 ইউজার আইডি দিন (মুছতে ✕ চাপুন)" }));
+      setRowError((p) => ({ ...p, [row.student_id]: t.userIdRequired }));
       return;
     }
     if (!/^\d+$/.test(value)) {
-      setRowError((p) => ({ ...p, [row.student_id]: "শুধু সংখ্যা দেওয়া যাবে" }));
+      setRowError((p) => ({ ...p, [row.student_id]: t.digitsOnly }));
       return;
     }
     setSavingId(row.student_id);
@@ -132,12 +135,12 @@ export default function DeviceMappingPage() {
         delete n[row.student_id];
         return n;
       });
-      useToastStore.getState().show(`${row.name_bn} - ম্যাপিং সেভ হয়েছে`, "success");
+      useToastStore.getState().show(t.saved(row.name_bn), "success");
       void loadUnmapped();
     } catch (err) {
       setRowError((p) => ({
         ...p,
-        [row.student_id]: getApiErrorMessage(err, "সেভ করা যায়নি, আবার চেষ্টা করুন"),
+        [row.student_id]: getApiErrorMessage(err, t.saveFailed),
       }));
     } finally {
       setSavingId(null);
@@ -161,12 +164,12 @@ export default function DeviceMappingPage() {
         delete n[row.student_id];
         return n;
       });
-      useToastStore.getState().show(`${row.name_bn} - ম্যাপিং মুছে ফেলা হয়েছে`, "success");
+      useToastStore.getState().show(t.cleared(row.name_bn), "success");
       void loadUnmapped();
     } catch (err) {
       setRowError((p) => ({
         ...p,
-        [row.student_id]: getApiErrorMessage(err, "মুছতে সমস্যা হয়েছে"),
+        [row.student_id]: getApiErrorMessage(err, t.clearFailed),
       }));
     } finally {
       setSavingId(null);
@@ -178,12 +181,12 @@ export default function DeviceMappingPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="স্টুডেন্ট ↔ K40 ইউজার ম্যাপিং"
-        subtitle="K40 ডিভাইসে নথিভুক্ত প্রতিটি ইউজার আইডি কোন শিক্ষার্থীর, তা এখানে ঠিক করুন। ম্যাপ না হলে পাঞ্চ থেকে উপস্থিতি গণনা হবে না।"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <SectionCard title="শিক্ষার্থী তালিকা" badge={`${toBnNumber(total)} জন`}>
+        <SectionCard title={t.studentList} badge={t.count(toBnNumber(total))}>
           <div className="mb-4 flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <Search
@@ -196,7 +199,7 @@ export default function DeviceMappingPage() {
                   setSearchInput(e.target.value);
                   setPage(1);
                 }}
-                placeholder="নাম, রোল বা আইডি দিয়ে খুঁজুন"
+                placeholder={t.searchPlaceholder}
                 className="ps-9"
               />
             </div>
@@ -208,7 +211,7 @@ export default function DeviceMappingPage() {
                 setPage(1);
               }}
             >
-              <option value="">সব শ্রেণি</option>
+              <option value="">{t.allClasses}</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -221,15 +224,15 @@ export default function DeviceMappingPage() {
             <SkeletonList items={5} />
           ) : loadError ? (
             <ErrorState
-              title="শিক্ষার্থী তালিকা লোড করা যায়নি"
-              message="আবার চেষ্টা করুন।"
+              title={t.listLoadFailed}
+              message={t.tryAgainDot}
               onRetry={loadStudents}
-              retryText="আবার চেষ্টা করুন"
+              retryText={t.retry}
             />
           ) : items.length === 0 ? (
             <EmptyState
-              title="কোনো শিক্ষার্থী পাওয়া যায়নি"
-              hint="সার্চ বা শ্রেণি ফিল্টার বদলে দেখুন।"
+              title={t.noStudents}
+              hint={t.changeFilter}
             />
           ) : (
             <div className={loading ? "opacity-60 transition" : "transition"}>
@@ -237,9 +240,9 @@ export default function DeviceMappingPage() {
                 <table className="w-full min-w-[560px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-start text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                      <th className="py-2 pe-3 font-medium">শিক্ষার্থী</th>
-                      <th className="py-2 pe-3 font-medium">শ্রেণি</th>
-                      <th className="py-2 font-medium">K40 ইউজার আইডি</th>
+                      <th className="py-2 pe-3 font-medium">{t.student}</th>
+                      <th className="py-2 pe-3 font-medium">{t.class}</th>
+                      <th className="py-2 font-medium">{t.k40UserId}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -258,8 +261,10 @@ export default function DeviceMappingPage() {
                               {row.name_bn}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
-                              আইডি: {row.student_id}
-                              {row.roll != null && row.roll !== "" && ` · রোল: ${row.roll}`}
+                              {t.idRoll(
+                                String(row.student_id),
+                                row.roll != null && row.roll !== "" ? String(row.roll) : null,
+                              )}
                             </div>
                           </td>
                           <td className="py-2.5 pe-3 text-slate-700 dark:text-slate-300">
@@ -276,14 +281,14 @@ export default function DeviceMappingPage() {
                                   if (e.key === "Enter" && dirty && !busy) void save(row);
                                 }}
                                 inputMode="numeric"
-                                placeholder="যেমন: 12"
+                                placeholder={t.userIdPlaceholder}
                                 invalid={!!err}
                                 disabled={busy}
                                 className="!w-28 !py-1.5"
                               />
                               <button
                                 type="button"
-                                title="সেভ করুন"
+                                title={t.save}
                                 disabled={!dirty || busy}
                                 onClick={() => save(row)}
                                 className="rounded-lg bg-indigo-600 p-2 text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
@@ -292,7 +297,7 @@ export default function DeviceMappingPage() {
                               </button>
                               <button
                                 type="button"
-                                title="ম্যাপিং মুছুন"
+                                title={t.clearMapping}
                                 disabled={busy || (row.device_user_id == null && !dirty)}
                                 onClick={() => clear(row)}
                                 className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-rose-950/30"
@@ -315,7 +320,7 @@ export default function DeviceMappingPage() {
 
               <div className="mt-4 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span>
-                  পৃষ্ঠা {toBnNumber(page)} / {toBnNumber(pageCount)}
+                  {t.page(toBnNumber(page), toBnNumber(pageCount))}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -324,8 +329,8 @@ export default function DeviceMappingPage() {
                     disabled={page <= 1 || loading}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
-                    <ChevronLeft size={14} />
-                    আগের
+                    <ChevronLeft size={14} className="rtl:rotate-180" />
+                    {t.prev}
                   </Button>
                   <Button
                     variant="secondary"
@@ -333,8 +338,8 @@ export default function DeviceMappingPage() {
                     disabled={page >= pageCount || loading}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    পরের
-                    <ChevronRight size={14} />
+                    {t.next}
+                    <ChevronRight size={14} className="rtl:rotate-180" />
                   </Button>
                 </div>
               </div>
@@ -343,12 +348,12 @@ export default function DeviceMappingPage() {
         </SectionCard>
 
         <SectionCard
-          title="ম্যাপ না হওয়া ডিভাইস ইউজার"
-          hint="ডিভাইস থেকে পাঞ্চ এসেছে, কিন্তু কোনো শিক্ষার্থীর সাথে যুক্ত নয়"
+          title={t.unmappedTitle}
+          hint={t.unmappedHint}
           actions={
             <button
               type="button"
-              title="রিফ্রেশ"
+              title={t.refresh}
               onClick={loadUnmapped}
               className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
@@ -359,10 +364,10 @@ export default function DeviceMappingPage() {
           {unmappedLoading && unmapped.length === 0 ? (
             <SkeletonList items={3} />
           ) : unmappedError ? (
-            <p className="text-sm text-rose-600 dark:text-rose-400">তালিকা লোড করা যায়নি।</p>
+            <p className="text-sm text-rose-600 dark:text-rose-400">{t.unmappedLoadFailed}</p>
           ) : unmapped.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              সব ডিভাইস ইউজার ম্যাপ করা আছে।
+              {t.allMapped}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -373,16 +378,16 @@ export default function DeviceMappingPage() {
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      ইউজার আইডি: {u.device_user_id}
+                      {t.userId(String(u.device_user_id))}
                     </div>
                     <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                      {u.device_name || "অজানা ডিভাইস"} · {toBnNumber(u.punch_count)}টি পাঞ্চ
+                      {u.device_name || t.unknownDevice} · {t.punches(toBnNumber(u.punch_count))}
                     </div>
                     <div
                       className="text-[11px] text-slate-400"
                       title={formatDateTime(u.last_punch_at)}
                     >
-                      সর্বশেষ: {relativeTime(u.last_punch_at, now, "—")}
+                      {t.lastPunch(relativeTime(u.last_punch_at, now, "—"))}
                     </div>
                   </div>
                   <Button
@@ -391,7 +396,7 @@ export default function DeviceMappingPage() {
                     onClick={() => setAssignUser(u)}
                   >
                     <Link2 size={13} />
-                    যুক্ত করুন
+                    {t.link}
                   </Button>
                 </li>
               ))}
@@ -424,6 +429,8 @@ function AssignModal({
   onClose: () => void;
   onAssigned: () => void;
 }) {
+  const t = useText(attendanceDeviceText).mapping;
+  const c = useText(commonText);
   const [query, setQuery] = useState("");
   const debounced = useDebounced(query.trim(), 350);
   const [results, setResults] = useState<StudentMapping[]>([]);
@@ -472,10 +479,10 @@ function AssignModal({
       await attendanceDeviceApi.setMapping(selected.student_id, String(user.device_user_id));
       useToastStore
         .getState()
-        .show(`ইউজার ${user.device_user_id} → ${selected.name_bn} যুক্ত হয়েছে`, "success");
+        .show(t.assigned(String(user.device_user_id), selected.name_bn), "success");
       onAssigned();
     } catch (err) {
-      setError(getApiErrorMessage(err, "যুক্ত করা যায়নি"));
+      setError(getApiErrorMessage(err, t.assignFailed));
     } finally {
       setSaving(false);
     }
@@ -484,7 +491,7 @@ function AssignModal({
   return (
     <Modal
       open={!!user}
-      title={`ইউজার ${user?.device_user_id ?? ""} কে শিক্ষার্থীর সাথে যুক্ত করুন`}
+      title={t.assignTitle(String(user?.device_user_id ?? ""))}
       onClose={onClose}
     >
       <div className="flex flex-col gap-3">
@@ -500,7 +507,7 @@ function AssignModal({
               setSelected(null);
               setError("");
             }}
-            placeholder="শিক্ষার্থীর নাম, রোল বা আইডি"
+            placeholder={t.assignSearch}
             className="ps-9"
             autoFocus
           />
@@ -508,10 +515,10 @@ function AssignModal({
 
         <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800">
           {searching ? (
-            <p className="p-3 text-sm text-slate-500">খোঁজা হচ্ছে...</p>
+            <p className="p-3 text-sm text-slate-500">{t.searching}</p>
           ) : results.length === 0 ? (
             <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
-              {debounced ? "কোনো শিক্ষার্থী পাওয়া যায়নি" : "খুঁজতে নাম লিখুন"}
+              {debounced ? t.noStudents : t.typeToSearch}
             </p>
           ) : (
             results.map((s) => {
@@ -537,12 +544,12 @@ function AssignModal({
                     </span>
                     <span className="block text-xs text-slate-500 dark:text-slate-400">
                       {s.class_name || "—"}
-                      {s.roll != null && s.roll !== "" && ` · রোল ${s.roll}`}
+                      {s.roll != null && s.roll !== "" && t.roll(String(s.roll))}
                     </span>
                   </span>
                   {taken && (
                     <span className="shrink-0 text-[11px] text-amber-600 dark:text-amber-400">
-                      আগে থেকে ইউজার {s.device_user_id}
+                      {t.alreadyUser(String(s.device_user_id))}
                     </span>
                   )}
                 </button>
@@ -553,17 +560,17 @@ function AssignModal({
 
         {selected?.device_user_id != null && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            এই শিক্ষার্থীর আগের ইউজার আইডি ({selected.device_user_id}) বদলে যাবে।
+            {t.willReplace(String(selected.device_user_id))}
           </p>
         )}
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button type="button" disabled={!selected || saving} onClick={assign}>
-            {saving ? "যুক্ত হচ্ছে..." : "যুক্ত করুন"}
+            {saving ? t.linking : t.link}
           </Button>
         </div>
       </div>

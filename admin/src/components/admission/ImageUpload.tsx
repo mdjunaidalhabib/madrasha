@@ -1,4 +1,6 @@
 import { AdmissionFormData } from "../../features/students/AdmissionPage";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
 import PhotoFieldCard from "../photo/PhotoFieldCard";
 
 interface Props {
@@ -8,13 +10,16 @@ interface Props {
 
 // Form reset clears formData.image, and PhotoPicker is fully controlled by
 // that value, so the preview resets with the form automatically.
-const ImageUpload: React.FC<Props> = ({ formData, setFormData }) => (
+const ImageUpload: React.FC<Props> = ({ formData, setFormData }) => {
+  const t = useText(admissionText);
+  return (
   <PhotoFieldCard
-    label="ছাত্রের ছবি"
+    label={t.studentPhoto}
     folder="students"
     value={formData.image}
     onChange={(image) => setFormData((prev) => ({ ...prev, image }))}
   />
-);
+  );
+};
 
 export default ImageUpload;

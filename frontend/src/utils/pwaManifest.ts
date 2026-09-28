@@ -1,5 +1,7 @@
 import { setPwaManifest } from "@madrasha/shared-ui/src/pwa/pwa";
 import { isPlatformRootHost } from "./platformHost";
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { appText } from "../app/app.text";
 
 const RESERVED = new Set(["", "admin", "api", "assets", "login", "super-admin", "guardian", "kiosk", "admission", "contact"]);
 
@@ -16,7 +18,9 @@ export function getTenantStartUrl(pathname = window.location.pathname) {
   return RESERVED.has(first) ? "/" : `/${first}`;
 }
 
-let currentName = "মাদ্রাসা";
+// null until the tenant's own name is known - then the translated
+// institution word ("মাদ্রাসা" / "School" ...) stands in.
+let currentName: string | null = null;
 
 /** Call as soon as the madrasa's name is known to label the installed app with it. */
 export function setTenantManifestName(name?: string | null) {
@@ -29,5 +33,7 @@ export function setupTenantManifest() {
   const startUrl = getTenantStartUrl();
   // Platform landing page itself - keep the static manifest.
   if (startUrl === "/" && isPlatformRootHost()) return;
-  setPwaManifest({ name: currentName, startUrl, description: `${currentName} — ওয়েবসাইট ও অভিভাবক পোর্টাল` });
+  const text = getText(appText);
+  const name = currentName || text.appName;
+  setPwaManifest({ name, startUrl, description: text.pwaDescription(name) });
 }

@@ -14,6 +14,7 @@ export const PAGE_SIZE_MM: Record<Exclude<PageSizeId, "CUSTOM">, { width: number
   A5: { width: 148, height: 210 },
 };
 
+/** @deprecated Bangla-only - the toolbar uses designerText.customSize. */
 export const PAGE_SIZE_LABELS_BN: Record<PageSizeId, string> = {
   A4: "A4",
   A5: "A5",

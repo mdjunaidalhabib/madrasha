@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { Crown } from "lucide-react";
 import { usePlanStore } from "../../store/planStore";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { shellText } from "./shell.text";
 
 const TONE_CLASSES: Record<"green" | "yellow" | "red", string> = {
   green:
@@ -14,6 +16,8 @@ const TONE_CLASSES: Record<"green" | "yellow" | "red", string> = {
 // দেখানো হয় না, ক্লিক করলে প্ল্যান পেজে যায়।
 export default function PlanBadge() {
   const plan = usePlanStore((s) => s.plan);
+  const t = useText(shellText);
+  const lang = useLang();
   if (!plan) return null;
 
   const expired = plan.plan_status === "expired" || plan.plan_status === "suspended" || !plan.has_active_subscription;
@@ -24,18 +28,18 @@ export default function PlanBadge() {
     plan.days_remaining === null
       ? ""
       : plan.days_remaining < 0
-        ? "মেয়াদ শেষ"
+        ? t.expired
         : plan.days_remaining === 0
-          ? "আজই শেষ"
-          : `${plan.days_remaining} দিন বাকি`;
+          ? t.endsToday
+          : t.daysLeft(localizeDigits(plan.days_remaining, lang));
 
-  const statusLabel = plan.plan_status === "suspended" ? "স্থগিত" : !plan.has_active_subscription ? "সাবস্ক্রিপশন নেই" : "";
+  const statusLabel = plan.plan_status === "suspended" ? t.suspended : !plan.has_active_subscription ? t.noSubscription : "";
 
   return (
     <Link
       to={`/settings/plan`}
-      title={`প্ল্যান: ${plan.plan_name || ""} ${statusLabel || daysLabel}`.trim()}
-      aria-label="প্ল্যান স্ট্যাটাস"
+      title={`${t.planTitle(plan.plan_name || "")} ${statusLabel || daysLabel}`.trim()}
+      aria-label={t.planStatus}
       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition hover:opacity-80 ${TONE_CLASSES[tone]}`}
     >
       <Crown size={15} className="shrink-0" />

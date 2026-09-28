@@ -13,7 +13,8 @@ import {
   User,
   X,
 } from "lucide-react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import { peopleToolsText } from "./peopleTools.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { captureVideoFrame, type CardStatus, type PhotoPerson } from "./photoManager";
 
@@ -32,6 +33,10 @@ type Props = {
  * Space/Enter = capture, → = skip, ← = previous, Esc = close.
  */
 export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: Props) {
+  const pt = useText(peopleToolsText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
@@ -63,7 +68,7 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
     (async () => {
       setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError("এই ব্রাউজারে ক্যামেরা সাপোর্ট নেই (HTTPS বা localhost প্রয়োজন)।");
+        setError(getText(peopleToolsText).noCameraSupport);
         return;
       }
       setStarting(true);
@@ -87,12 +92,13 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
       } catch (err: any) {
         logger.error("SERIES CAMERA ERROR:", err);
         if (!cancelled) {
+          const msg = getText(peopleToolsText);
           setError(
             err?.name === "NotAllowedError"
-              ? "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি। ব্রাউজারের ঠিকানা-বারের পাশ থেকে অনুমতি দিন।"
+              ? msg.cameraDenied
               : err?.name === "NotFoundError"
-                ? "কোনো ক্যামেরা পাওয়া যায়নি।"
-                : "ক্যামেরা চালু করা যায়নি।",
+                ? msg.noCamera
+                : msg.cameraFailed,
           );
         }
       } finally {
@@ -163,19 +169,19 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
             <Camera className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">ক্যামেরা সিরিজ মোড</div>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{pt.seriesTitle}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {toBanglaDigits(Math.min(index + 1, queue.length))} / {toBanglaDigits(queue.length)} · সংরক্ষিত{" "}
+              {toBanglaDigits(Math.min(index + 1, queue.length))} / {toBanglaDigits(queue.length)} · {pt.savedCount}{" "}
               {toBanglaDigits(savedCount)}
-              {pendingCount > 0 && ` · চলছে ${toBanglaDigits(pendingCount)}`}
-              {failedCount > 0 && ` · ব্যর্থ ${toBanglaDigits(failedCount)}`}
+              {pendingCount > 0 && pt.running(toBanglaDigits(pendingCount))}
+              {failedCount > 0 && pt.failedCount(toBanglaDigits(failedCount))}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="বন্ধ করুন"
+            aria-label={c.close}
           >
             <X className="h-5 w-5" />
           </button>
@@ -190,23 +196,23 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                 <PartyPopper className="h-8 w-8" />
               </div>
-              <div className="text-lg font-bold text-slate-800 dark:text-slate-100">সিরিজ শেষ হয়েছে</div>
+              <div className="text-lg font-bold text-slate-800 dark:text-slate-100">{pt.seriesFinished}</div>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {toBanglaDigits(savedCount)} টি ছবি সংরক্ষিত
-                {pendingCount > 0 && `, ${toBanglaDigits(pendingCount)} টি সংরক্ষণ হচ্ছে`}
-                {failedCount > 0 && `, ${toBanglaDigits(failedCount)} টি ব্যর্থ`}
-                {queue.length - shotList.length > 0 && `, ${toBanglaDigits(queue.length - shotList.length)} জন বাদ গেছে`}
+                {pt.seriesSaved(toBanglaDigits(savedCount))}
+                {pendingCount > 0 && pt.seriesPending(toBanglaDigits(pendingCount))}
+                {failedCount > 0 && pt.seriesFailed(toBanglaDigits(failedCount))}
+                {queue.length - shotList.length > 0 && pt.seriesSkipped(toBanglaDigits(queue.length - shotList.length))}
               </p>
               <div className="mt-2 flex gap-2">
                 <button type="button" onClick={prev} className={ghostBtn}>
-                  <ChevronLeft className="h-4 w-4" /> পেছনে যান
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" /> {pt.goBack}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   className="inline-flex h-10 items-center rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
                 >
-                  সম্পন্ন
+                  {pt.done}
                 </button>
               </div>
             </div>
@@ -247,7 +253,7 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
               <div className="flex min-w-0 flex-col gap-4">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                    এখন যার ছবি তুলবেন
+                    {pt.nowCapturing}
                   </div>
                   <div className="mt-1 flex items-start gap-3">
                     <div className="h-20 w-[60px] shrink-0 overflow-hidden rounded-lg border border-emerald-200 bg-white dark:border-emerald-900 dark:bg-slate-800">
@@ -267,12 +273,12 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
                       <div className="mt-2 flex flex-wrap gap-2">
                         {current.roll && (
                           <span className="rounded-lg bg-emerald-600 px-2.5 py-1 text-sm font-bold text-white">
-                            রোল {toBanglaDigits(current.roll)}
+                            {pt.roll(toBanglaDigits(current.roll))}
                           </span>
                         )}
                         {current.regNo && (
                           <span className="rounded-lg bg-white px-2.5 py-1 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                            রেজি. {toBanglaDigits(current.regNo)}
+                            {pt.reg(toBanglaDigits(current.regNo))}
                           </span>
                         )}
                       </div>
@@ -280,26 +286,26 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
                   </div>
                   {queue[index + 1] && (
                     <div className="mt-3 truncate border-t border-emerald-200/70 pt-2 text-xs text-slate-500 dark:border-emerald-900/50 dark:text-slate-400">
-                      পরবর্তী: <span className="font-medium text-slate-700 dark:text-slate-200">{queue[index + 1].name}</span>
-                      {queue[index + 1].roll && ` · রোল ${toBanglaDigits(queue[index + 1].roll!)}`}
+                      {pt.nextLabel} <span className="font-medium text-slate-700 dark:text-slate-200">{queue[index + 1].name}</span>
+                      {queue[index + 1].roll && pt.rollSuffix(toBanglaDigits(queue[index + 1].roll!))}
                     </div>
                   )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={prev} disabled={index === 0} className={ghostBtn} title="পূর্ববর্তী (←)">
-                    <ChevronLeft className="h-4 w-4" /> পূর্ববর্তী
+                  <button type="button" onClick={prev} disabled={index === 0} className={ghostBtn} title={pt.previousKey}>
+                    <ChevronLeft className="h-4 w-4 rtl:rotate-180" /> {pt.previous}
                   </button>
-                  <button type="button" onClick={skip} className={ghostBtn} title="এড়িয়ে যান (→)">
-                    <SkipForward className="h-4 w-4" /> এড়িয়ে যান
+                  <button type="button" onClick={skip} className={ghostBtn} title={pt.skipKey}>
+                    <SkipForward className="h-4 w-4 rtl:rotate-180" /> {pt.skip}
                   </button>
                   <button
                     type="button"
                     onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
                     disabled={!hasMultipleCams}
                     className={ghostBtn}
-                    title="ক্যামেরা বদলান"
-                    aria-label="ক্যামেরা বদলান"
+                    title={pt.switchCamera}
+                    aria-label={pt.switchCamera}
                   >
                     <SwitchCamera className="h-4 w-4" />
                   </button>
@@ -311,16 +317,16 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
                   disabled={!!error || starting}
                   className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-50"
                 >
-                  <Camera className="h-5 w-5" /> ছবি তুলুন ও পরবর্তী
-                  <ChevronRight className="h-5 w-5" />
+                  <Camera className="h-5 w-5" /> {pt.captureNext}
+                  <ChevronRight className="h-5 w-5 rtl:rotate-180" />
                 </button>
                 <p className="-mt-2 hidden text-center text-xs text-slate-400 sm:block">
-                  কিবোর্ড: Space = ছবি তুলুন · → = এড়িয়ে যান · ← = পূর্ববর্তী
+                  {pt.keyboardHint}
                 </p>
 
                 {recent.length > 0 && (
                   <div>
-                    <div className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">সাম্প্রতিক</div>
+                    <div className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{pt.recent}</div>
                     <div className="flex gap-2 overflow-x-auto pb-1">
                       {recent.map((p) => {
                         const s = shots[p.id];
@@ -330,7 +336,7 @@ export default function SeriesCaptureModal({ open, queue, onClose, onCapture }: 
                             key={p.id}
                             onClick={() => setIndex(queue.indexOf(p))}
                             className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
-                            title={`${p.name} - আবার তুলতে ক্লিক করুন`}
+                            title={pt.retakeHint(p.name)}
                           >
                             <img src={s.url} alt="" className="h-full w-full object-cover" />
                             <span className="absolute bottom-0.5 end-0.5">

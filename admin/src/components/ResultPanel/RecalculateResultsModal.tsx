@@ -3,7 +3,8 @@ import api from "../../services/api";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { resultStatusBadge } from "./resultStatus";
 
@@ -47,6 +48,10 @@ interface Props {
  * user picked that session on purpose. */
 export default function RecalculateResultsModal({ open, onClose, resultMasterId, onApplied }: Props) {
   const push = useToastStore((state) => state.push);
+  const lang = useLang();
+  const t = useText(resultPanelText).recalc;
+  const c = useText(commonText);
+  const num = (value: number | string) => localizeDigits(value, lang);
   const single = Boolean(resultMasterId);
 
   const [loading, setLoading] = useState(false);
@@ -70,7 +75,7 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
     } catch (err: any) {
       logger.error("Recalculate review error:", err);
       setLoadError(true);
-      push("error", err?.response?.data?.message || "পুনঃগণনার তথ্য আনা যায়নি");
+      push("error", err?.response?.data?.message || getText(resultPanelText).recalc.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -105,14 +110,14 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
       push(
         failed > 0 ? "error" : "success",
         failed > 0
-          ? `${toBanglaDigits(applied?.updated ?? 0)}টি ফলাফল হালনাগাদ হয়েছে, ${toBanglaDigits(failed)}টি ব্যর্থ হয়েছে`
-          : `${toBanglaDigits(applied?.updated ?? 0)}টি ফলাফল পুনঃগণনা হয়েছে (${toBanglaDigits(applied?.changed_students ?? 0)} জন শিক্ষার্থীর ফলাফল বদলেছে)`,
+          ? t.partialFail(num(applied?.updated ?? 0), num(failed))
+          : t.done(num(applied?.updated ?? 0), num(applied?.changed_students ?? 0)),
       );
       onApplied?.();
       onClose();
     } catch (err: any) {
       logger.error("Recalculate apply error:", err);
-      push("error", err?.response?.data?.message || "পুনঃগণনা করা যায়নি");
+      push("error", err?.response?.data?.message || t.failed);
     } finally {
       setApplying(false);
     }
@@ -123,30 +128,29 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
   return (
     <Modal
       open={open}
-      title={single ? "🔄 ফলাফল পুনঃগণনা" : "🔄 সব ফলাফল পুনঃগণনা"}
+      title={single ? t.titleOne : t.titleAll}
       onClose={applying ? () => undefined : onClose}
       maxWidthClassName="max-w-2xl"
     >
       <div className="space-y-4 text-sm text-gray-700 dark:text-slate-300">
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          বর্তমান ফেল মার্ক, গ্রেড সীমা ও বিষয়ের সেটিং অনুযায়ী ফলাফল নতুন করে হিসাব করা হবে। নম্বর নিজে বদলাবে না — শুধু
-          মোট, গড়, গ্রেড, পাস/ফেল ও মেধাক্রম হালনাগাদ হবে।
+          {t.intro}
         </p>
 
-        {loading && <p className="py-6 text-center text-gray-400 dark:text-slate-500">যাচাই করা হচ্ছে...</p>}
+        {loading && <p className="py-6 text-center text-gray-400 dark:text-slate-500">{t.checking}</p>}
 
         {loadError && !loading && (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-red-50 p-3 text-red-700 dark:bg-red-950/40 dark:text-red-400">
-            <span>তথ্য আনা যায়নি।</span>
+            <span>{t.fetchFailed}</span>
             <Button variant="secondary" onClick={review}>
-              আবার চেষ্টা করুন
+              {t.retry}
             </Button>
           </div>
         )}
 
         {nothingToDo && (
           <div className="rounded-lg bg-emerald-50 p-4 text-center text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-            ✅ {single ? "এই ফলাফল" : "সব ফলাফল"} বর্তমান সেটিং অনুযায়ী ইতিমধ্যে হালনাগাদ আছে — কিছু বদলানোর নেই।
+            {single ? t.nothingOne : t.nothingAll}
           </div>
         )}
 
@@ -156,9 +160,9 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
               <table className="w-full min-w-[420px] text-xs sm:text-sm">
                 <thead className="bg-gray-100 dark:bg-slate-800">
                   <tr>
-                    <th className="px-3 py-2 text-start">পরীক্ষা / শ্রেণি</th>
-                    <th className="px-3 py-2 text-center">অবস্থা</th>
-                    <th className="px-3 py-2 text-center">বদলাবে</th>
+                    <th className="px-3 py-2 text-start">{t.examClass}</th>
+                    <th className="px-3 py-2 text-center">{t.state}</th>
+                    <th className="px-3 py-2 text-center">{t.willChange}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,7 +179,7 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
                           </span>
                         </td>
                         <td className="px-3 py-2 text-center">
-                          {toBanglaDigits(r.changed_students)} / {toBanglaDigits(r.total_students)} জন
+                          {t.people(num(r.changed_students), num(r.total_students))}
                         </td>
                       </tr>
                     );
@@ -193,9 +197,8 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
                   onChange={(e) => setIncludePublished(e.target.checked)}
                 />
                 <span>
-                  <b>প্রকাশিত/লকড ফলাফলেও প্রয়োগ করুন</b> ({toBanglaDigits(affectedPublished.length)}টি)। এগুলো
-                  অভিভাবকরা আগেই দেখেছেন — শুধু নতুন নিয়ম আগের পরীক্ষাতেও কার্যকর করতে চাইলে টিক দিন। প্রয়োগ করলে প্রকাশিত
-                  অবস্থা থাকবে এবং আগের/পরের রেকর্ড অডিটের জন্য সংরক্ষিত থাকবে।
+                  <b>{t.includePublished}</b>
+                  {t.includePublishedHint(num(affectedPublished.length))}
                 </span>
               </label>
             )}
@@ -203,12 +206,11 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
             <ul className="list-disc space-y-1 ps-5 text-xs text-gray-500 dark:text-slate-400">
               {affectedUnpublished.length > 0 && (
                 <li>
-                  অপ্রকাশিত ফলাফল সরাসরি হালনাগাদ হবে। যাচাই/অনুমোদিত হয়ে থাকলে আবার "প্রসেসিং" অবস্থায় ফিরবে — প্রকাশের
-                  সময় আপনার অধিকারে যাচাই ও অনুমোদন একসাথেই হয়ে যাবে।
+                  {t.unpublishedNote}
                 </li>
               )}
               {single && affectedPublished.length > 0 && (
-                <li>এটি প্রকাশিত ফলাফল — আপনি নিজে এটি বেছে নিয়েছেন বলে প্রয়োগ হবে; প্রকাশিত অবস্থা বজায় থাকবে।</li>
+                <li>{t.singlePublishedNote}</li>
               )}
             </ul>
           </>
@@ -216,26 +218,26 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
 
         {skippedIncomplete.length > 0 && (
           <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-400">
-            ⚠️ {toBanglaDigits(skippedIncomplete.length)}টি ফলাফলে সব নম্বর পূর্ণ নেই বলে বাদ দেওয়া হয়েছে:{" "}
+            {t.skipped(num(skippedIncomplete.length))}
             {skippedIncomplete.map((r) => `${r.exam_name} — ${r.class_name}`).join("; ")}
           </p>
         )}
 
         {totals && totals.failed > 0 && (
           <p className="text-xs text-red-600 dark:text-red-400">
-            {toBanglaDigits(totals.failed)}টি ফলাফল যাচাই করা যায়নি।
+            {t.totalsFailed(num(totals.failed))}
           </p>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose} disabled={applying}>
-            {nothingToDo ? "বন্ধ করুন" : "বাতিল"}
+            {nothingToDo ? c.close : c.cancel}
           </Button>
           {affected.length > 0 && (
             <Button onClick={handleApply} disabled={applying || loading || willApply.length === 0}>
               {applying
-                ? "হচ্ছে..."
-                : `প্রয়োগ করুন (${toBanglaDigits(willApply.length)}টি ফলাফল, ${toBanglaDigits(studentsToChange)} জন)`}
+                ? t.applying
+                : t.apply(num(willApply.length), num(studentsToChange))}
             </Button>
           )}
         </div>

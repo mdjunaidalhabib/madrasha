@@ -31,6 +31,7 @@ import {
   logoutSchema,
   logoutAllSchema,
 } from "./auth.validation";
+import { t } from "../../shared/i18n";
 
 const router = Router();
 
@@ -43,7 +44,8 @@ const loginLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many login attempts. Please try again later." },
+  // A function so the text follows the request language (Accept-Language).
+  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later.", ar: "محاولات تسجيل دخول كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
 });
 
 router.post("/login", loginLimiter, tenantMiddleware, validate(loginSchema), login);
@@ -58,7 +60,7 @@ const passwordResetLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many attempts. Please try again later." },
+  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later.", ar: "محاولات كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
 });
 
 router.post(
@@ -83,7 +85,7 @@ const refreshLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many attempts. Please try again later." },
+  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later.", ar: "محاولات كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
 });
 
 router.post(

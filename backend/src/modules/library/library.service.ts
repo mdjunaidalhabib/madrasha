@@ -16,6 +16,7 @@ import {
   UpdateFinePerDayRequestDto,
 } from "./library.dto";
 import { DEFAULT_BORROW_DAYS, DEFAULT_FINE_PER_DAY } from "./library.constants";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -27,16 +28,16 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 const toPositiveInt = (value: unknown, label: string, fallback?: number): number => {
   if (isEmpty(value)) {
     if (fallback !== undefined) return fallback;
-    throw new BadRequestError(`${label} must be a positive whole number`);
+    throw new BadRequestError(t({ bn: `${label} অবশ্যই ধনাত্মক পূর্ণসংখ্যা হতে হবে`, en: `${label} must be a positive whole number`, ar: `يجب أن يكون ${label} عددًا صحيحًا موجبًا` }));
   }
   const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) throw new BadRequestError(`${label} must be a positive whole number`);
+  if (!Number.isInteger(n) || n <= 0) throw new BadRequestError(t({ bn: `${label} অবশ্যই ধনাত্মক পূর্ণসংখ্যা হতে হবে`, en: `${label} must be a positive whole number`, ar: `يجب أن يكون ${label} عددًا صحيحًا موجبًا` }));
   return n;
 };
 
 const toNonNegativeNumber = (value: unknown, label: string): number => {
   const n = Number(value);
-  if (Number.isNaN(n) || n < 0) throw new BadRequestError(`${label} must be a non-negative number`);
+  if (Number.isNaN(n) || n < 0) throw new BadRequestError(t({ bn: `${label} অবশ্যই ঋণাত্মক নয় এমন সংখ্যা হতে হবে`, en: `${label} must be a non-negative number`, ar: `يجب أن يكون ${label} عددًا غير سالب` }));
   return n;
 };
 
@@ -57,47 +58,47 @@ export class LibraryService {
     try {
       return await this.repository.findCategories(madrasaId);
     } catch (err) {
-      return friendlyFailure("listCategories error:", err, "Failed to load categories");
+      return friendlyFailure("listCategories error:", err, t({ bn: "ক্যাটাগরি লোড করা যায়নি", en: "Failed to load categories", ar: "تعذر تحميل التصنيفات" }));
     }
   }
 
   async createCategory(madrasaId: number, dto: CreateCategoryRequestDto) {
-    if (isEmpty(dto.name)) throw new BadRequestError("name is required");
+    if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "name is required", ar: "الاسم مطلوب" }));
     try {
       await this.repository.createCategory(madrasaId, { name: dto.name.trim() });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new BadRequestError("A category with this name already exists");
+        throw new BadRequestError(t({ bn: "এই নামে একটি ক্যাটাগরি ইতিমধ্যে আছে", en: "A category with this name already exists", ar: "يوجد تصنيف بهذا الاسم بالفعل" }));
       }
-      return friendlyFailure("createCategory error:", err, "Failed to create category");
+      return friendlyFailure("createCategory error:", err, t({ bn: "ক্যাটাগরি তৈরি করা যায়নি", en: "Failed to create category", ar: "تعذر إنشاء التصنيف" }));
     }
   }
 
   async updateCategory(id: number, madrasaId: number, dto: UpdateCategoryRequestDto) {
-    if (dto.name !== undefined && isEmpty(dto.name)) throw new BadRequestError("name cannot be empty");
+    if (dto.name !== undefined && isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম খালি রাখা যাবে না", en: "name cannot be empty", ar: "لا يمكن أن يكون الاسم فارغًا" }));
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     try {
       const result = await this.repository.updateCategory(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Category not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ক্যাটাগরি পাওয়া যায়নি", en: "Category not found", ar: "لم يتم العثور على التصنيف" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new BadRequestError("A category with this name already exists");
+        throw new BadRequestError(t({ bn: "এই নামে একটি ক্যাটাগরি ইতিমধ্যে আছে", en: "A category with this name already exists", ar: "يوجد تصنيف بهذا الاسم بالفعل" }));
       }
-      return friendlyFailure("updateCategory error:", err, "Failed to update category");
+      return friendlyFailure("updateCategory error:", err, t({ bn: "ক্যাটাগরি আপডেট করা যায়নি", en: "Failed to update category", ar: "تعذر تحديث التصنيف" }));
     }
   }
 
   async deleteCategory(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteCategory(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Category not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ক্যাটাগরি পাওয়া যায়নি", en: "Category not found", ar: "لم يتم العثور على التصنيف" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteCategory error:", err, "Failed to delete category");
+      return friendlyFailure("deleteCategory error:", err, t({ bn: "ক্যাটাগরি মুছে ফেলা যায়নি", en: "Failed to delete category", ar: "تعذر حذف التصنيف" }));
     }
   }
 
@@ -119,23 +120,23 @@ export class LibraryService {
     try {
       return await this.repository.findBooks(madrasaId, where);
     } catch (err) {
-      return friendlyFailure("listBooks error:", err, "Failed to load books");
+      return friendlyFailure("listBooks error:", err, t({ bn: "বইয়ের তালিকা লোড করা যায়নি", en: "Failed to load books", ar: "تعذر تحميل الكتب" }));
     }
   }
 
   async getBook(id: number, madrasaId: number) {
     const book = await this.repository.findBookForTenant(id, madrasaId);
-    if (!book) throw new NotFoundError("Book not found");
+    if (!book) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
     return book;
   }
 
   async createBook(madrasaId: number, dto: CreateBookRequestDto) {
-    if (isEmpty(dto.title)) throw new BadRequestError("title is required");
+    if (isEmpty(dto.title)) throw new BadRequestError(t({ bn: "শিরোনাম আবশ্যক", en: "title is required", ar: "العنوان مطلوب" }));
     const copiesTotal = toPositiveInt(dto.copies_total, "copies_total", 1);
 
     if (dto.category_id) {
       const category = await this.repository.findCategoryForTenant(Number(dto.category_id), madrasaId);
-      if (!category) throw new BadRequestError("Selected category not found");
+      if (!category) throw new BadRequestError(t({ bn: "নির্বাচিত ক্যাটাগরি পাওয়া যায়নি", en: "Selected category not found", ar: "لم يتم العثور على التصنيف المختار" }));
     }
 
     try {
@@ -150,17 +151,17 @@ export class LibraryService {
         copiesAvailable: copiesTotal,
       });
     } catch (err) {
-      return friendlyFailure("createBook error:", err, "Failed to create book");
+      return friendlyFailure("createBook error:", err, t({ bn: "বই যোগ করা যায়নি", en: "Failed to create book", ar: "تعذر إضافة الكتاب" }));
     }
   }
 
   async updateBook(id: number, madrasaId: number, dto: UpdateBookRequestDto) {
     const existing = await this.repository.findBookForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError("Book not found");
+    if (!existing) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
 
     const data: Record<string, unknown> = {};
     if (dto.title !== undefined) {
-      if (isEmpty(dto.title)) throw new BadRequestError("title cannot be empty");
+      if (isEmpty(dto.title)) throw new BadRequestError(t({ bn: "শিরোনাম খালি রাখা যাবে না", en: "title cannot be empty", ar: "لا يمكن أن يكون العنوان فارغًا" }));
       data.title = dto.title.trim();
     }
     if (dto.author !== undefined) data.author = dto.author?.trim() || null;
@@ -171,7 +172,7 @@ export class LibraryService {
     if (dto.category_id !== undefined) {
       if (dto.category_id) {
         const category = await this.repository.findCategoryForTenant(Number(dto.category_id), madrasaId);
-        if (!category) throw new BadRequestError("Selected category not found");
+        if (!category) throw new BadRequestError(t({ bn: "নির্বাচিত ক্যাটাগরি পাওয়া যায়নি", en: "Selected category not found", ar: "لم يتم العثور على التصنيف المختار" }));
         data.categoryId = Number(dto.category_id);
       } else {
         data.categoryId = null;
@@ -183,20 +184,20 @@ export class LibraryService {
       const newAvailable = existing.copiesAvailable + delta;
       if (newAvailable < 0) {
         throw new BadRequestError(
-          `copies_total can't be reduced below the number currently on loan (${existing.copiesTotal - existing.copiesAvailable} on loan)`,
+          t({ bn: `মোট কপি বর্তমানে ধার দেওয়া কপির (${existing.copiesTotal - existing.copiesAvailable}টি ধার দেওয়া) চেয়ে কম করা যাবে না`, en: `copies_total can't be reduced below the number currently on loan (${existing.copiesTotal - existing.copiesAvailable} on loan)`, ar: `لا يمكن تقليل إجمالي النسخ إلى أقل من عدد النسخ المعارة حاليًا (${existing.copiesTotal - existing.copiesAvailable} معارة)` }),
         );
       }
       data.copiesTotal = newTotal;
       data.copiesAvailable = newAvailable;
     }
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     try {
       const result = await this.repository.updateBook(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Book not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateBook error:", err, "Failed to update book");
+      return friendlyFailure("updateBook error:", err, t({ bn: "বই আপডেট করা যায়নি", en: "Failed to update book", ar: "تعذر تحديث الكتاب" }));
     }
   }
 
@@ -204,21 +205,21 @@ export class LibraryService {
    * returned) - deactivate via is_active=false instead. */
   async deleteBook(id: number, madrasaId: number) {
     const existing = await this.repository.findBookForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError("Book not found");
+    if (!existing) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
 
     const activeBorrows = await this.repository.countActiveBorrowsForBook(id, madrasaId);
     if (activeBorrows > 0) {
       throw new BadRequestError(
-        "This book has loan history and can't be deleted - deactivate it instead (is_active=false)",
+        t({ bn: "এই বইয়ের ধারের ইতিহাস আছে, তাই মুছে ফেলা যাবে না - পরিবর্তে নিষ্ক্রিয় করুন", en: "This book has loan history and can't be deleted - deactivate it instead (is_active=false)", ar: "لهذا الكتاب سجل إعارات ولا يمكن حذفه - قم بتعطيله بدلًا من ذلك" }),
       );
     }
 
     try {
       const result = await this.repository.deleteBook(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Book not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteBook error:", err, "Failed to delete book");
+      return friendlyFailure("deleteBook error:", err, t({ bn: "বই মুছে ফেলা যায়নি", en: "Failed to delete book", ar: "تعذر حذف الكتاب" }));
     }
   }
 
@@ -228,22 +229,22 @@ export class LibraryService {
     const hasStudent = !isEmpty(dto.student_id);
     const hasTeacher = !isEmpty(dto.teacher_id);
     if (hasStudent === hasTeacher) {
-      throw new BadRequestError("Provide exactly one of student_id or teacher_id");
+      throw new BadRequestError(t({ bn: "student_id অথবা teacher_id-এর যেকোনো একটি দিন", en: "Provide exactly one of student_id or teacher_id", ar: "أدخل واحدًا فقط من student_id أو teacher_id" }));
     }
 
     if (hasStudent) {
       const student = await studentRepository.findByIdForTenant(Number(dto.student_id), madrasaId);
-      if (!student) throw new BadRequestError("Selected student not found");
+      if (!student) throw new BadRequestError(t({ bn: "নির্বাচিত শিক্ষার্থী পাওয়া যায়নি", en: "Selected student not found", ar: "لم يتم العثور على الطالب المختار" }));
       return { studentId: student.id, teacherId: null as number | null };
     }
 
     const teacher = await teacherRepository.findFirstForTenant(Number(dto.teacher_id), madrasaId);
-    if (!teacher) throw new BadRequestError("Selected teacher not found");
+    if (!teacher) throw new BadRequestError(t({ bn: "নির্বাচিত শিক্ষক পাওয়া যায়নি", en: "Selected teacher not found", ar: "لم يتم العثور على المعلم المختار" }));
     return { studentId: null as number | null, teacherId: teacher.id };
   }
 
   async issueBook(madrasaId: number, issuedById: number | undefined, dto: IssueBookRequestDto) {
-    if (isEmpty(dto.book_id)) throw new BadRequestError("book_id is required");
+    if (isEmpty(dto.book_id)) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required", ar: "book_id مطلوب" }));
     const bookId = Number(dto.book_id);
 
     const borrower = await this.resolveBorrower(madrasaId, dto);
@@ -251,7 +252,7 @@ export class LibraryService {
     let dueDate: Date;
     if (!isEmpty(dto.due_date)) {
       dueDate = new Date(String(dto.due_date));
-      if (Number.isNaN(dueDate.getTime())) throw new BadRequestError("due_date is invalid");
+      if (Number.isNaN(dueDate.getTime())) throw new BadRequestError(t({ bn: "ফেরতের তারিখ সঠিক নয়", en: "due_date is invalid", ar: "تاريخ الإرجاع غير صالح" }));
     } else {
       dueDate = new Date(Date.now() + DEFAULT_BORROW_DAYS * 24 * 60 * 60 * 1000);
     }
@@ -259,9 +260,9 @@ export class LibraryService {
     try {
       return await this.repository.runTransaction(async (tx) => {
         const book = await this.repository.findBookForTenantOnTx(tx, bookId, madrasaId);
-        if (!book) throw new NotFoundError("Book not found");
-        if (!book.isActive) throw new BadRequestError("This book is inactive");
-        if (book.copiesAvailable <= 0) throw new BadRequestError("No copies of this book are currently available");
+        if (!book) throw new NotFoundError(t({ bn: "বই পাওয়া যায়নি", en: "Book not found", ar: "لم يتم العثور على الكتاب" }));
+        if (!book.isActive) throw new BadRequestError(t({ bn: "এই বইটি নিষ্ক্রিয়", en: "This book is inactive", ar: "هذا الكتاب غير نشط" }));
+        if (book.copiesAvailable <= 0) throw new BadRequestError(t({ bn: "এই বইয়ের কোনো কপি বর্তমানে পাওয়া যাচ্ছে না", en: "No copies of this book are currently available", ar: "لا توجد نسخ متاحة من هذا الكتاب حاليًا" }));
 
         await this.repository.decrementBookCopiesOnTx(tx, bookId);
 
@@ -279,7 +280,7 @@ export class LibraryService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("issueBook error:", err, "Failed to issue book");
+      return friendlyFailure("issueBook error:", err, t({ bn: "বই ইস্যু করা যায়নি", en: "Failed to issue book", ar: "تعذر إعارة الكتاب" }));
     }
   }
 
@@ -289,8 +290,8 @@ export class LibraryService {
     try {
       return await this.repository.runTransaction(async (tx) => {
         const record = await this.repository.findBorrowRecordForTenantOnTx(tx, id, madrasaId);
-        if (!record) throw new NotFoundError("Borrow record not found");
-        if (record.status !== "BORROWED") throw new BadRequestError("This book has already been returned or marked lost");
+        if (!record) throw new NotFoundError(t({ bn: "ধারের রেকর্ড পাওয়া যায়নি", en: "Borrow record not found", ar: "لم يتم العثور على سجل الإعارة" }));
+        if (record.status !== "BORROWED") throw new BadRequestError(t({ bn: "এই বইটি ইতিমধ্যে ফেরত দেওয়া হয়েছে বা হারানো হিসেবে চিহ্নিত", en: "This book has already been returned or marked lost", ar: "تمت إعادة هذا الكتاب بالفعل أو تسجيله كمفقود" }));
 
         const now = new Date();
         const late = daysLate(record.dueDate, now);
@@ -310,7 +311,7 @@ export class LibraryService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("returnBook error:", err, "Failed to return book");
+      return friendlyFailure("returnBook error:", err, t({ bn: "বই ফেরত নেওয়া যায়নি", en: "Failed to return book", ar: "تعذر إرجاع الكتاب" }));
     }
   }
 
@@ -320,8 +321,8 @@ export class LibraryService {
     try {
       return await this.repository.runTransaction(async (tx) => {
         const record = await this.repository.findBorrowRecordForTenantOnTx(tx, id, madrasaId);
-        if (!record) throw new NotFoundError("Borrow record not found");
-        if (record.status !== "BORROWED") throw new BadRequestError("This borrow record is not currently active");
+        if (!record) throw new NotFoundError(t({ bn: "ধারের রেকর্ড পাওয়া যায়নি", en: "Borrow record not found", ar: "لم يتم العثور على سجل الإعارة" }));
+        if (record.status !== "BORROWED") throw new BadRequestError(t({ bn: "এই ধারের রেকর্ডটি বর্তমানে সক্রিয় নয়", en: "This borrow record is not currently active", ar: "سجل الإعارة هذا غير نشط حاليًا" }));
 
         await tx.libraryBook.update({
           where: { id: record.bookId },
@@ -336,7 +337,7 @@ export class LibraryService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("markLost error:", err, "Failed to mark book as lost");
+      return friendlyFailure("markLost error:", err, t({ bn: "বই হারানো হিসেবে চিহ্নিত করা যায়নি", en: "Failed to mark book as lost", ar: "تعذر تسجيل الكتاب كمفقود" }));
     }
   }
 
@@ -344,9 +345,9 @@ export class LibraryService {
     try {
       return await this.repository.runTransaction(async (tx) => {
         const record = await this.repository.findBorrowRecordForTenantOnTx(tx, id, madrasaId);
-        if (!record) throw new NotFoundError("Borrow record not found");
-        if (Number(record.fineAmount) <= 0) throw new BadRequestError("This record has no fine to settle");
-        if (record.fineSettled) throw new BadRequestError("This fine is already settled");
+        if (!record) throw new NotFoundError(t({ bn: "ধারের রেকর্ড পাওয়া যায়নি", en: "Borrow record not found", ar: "لم يتم العثور على سجل الإعارة" }));
+        if (Number(record.fineAmount) <= 0) throw new BadRequestError(t({ bn: "এই রেকর্ডে নিষ্পত্তি করার মতো কোনো জরিমানা নেই", en: "This record has no fine to settle", ar: "لا توجد غرامة لتسويتها في هذا السجل" }));
+        if (record.fineSettled) throw new BadRequestError(t({ bn: "এই জরিমানা ইতিমধ্যে নিষ্পত্তি হয়েছে", en: "This fine is already settled", ar: "تمت تسوية هذه الغرامة بالفعل" }));
 
         return this.repository.updateBorrowRecordOnTx(tx, id, {
           fineSettled: true,
@@ -355,7 +356,7 @@ export class LibraryService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("settleFine error:", err, "Failed to settle fine");
+      return friendlyFailure("settleFine error:", err, t({ bn: "জরিমানা নিষ্পত্তি করা যায়নি", en: "Failed to settle fine", ar: "تعذر تسوية الغرامة" }));
     }
   }
 
@@ -381,7 +382,7 @@ export class LibraryService {
       const now = new Date();
       return records.map((record) => this.decorateBorrowRecord(record, ratePerDay, now));
     } catch (err) {
-      return friendlyFailure("listBorrowRecords error:", err, "Failed to load borrow records");
+      return friendlyFailure("listBorrowRecords error:", err, t({ bn: "ধারের রেকর্ড লোড করা যায়নি", en: "Failed to load borrow records", ar: "تعذر تحميل سجلات الإعارة" }));
     }
   }
 
@@ -400,7 +401,7 @@ export class LibraryService {
       const setting = await this.repository.findFinePerDaySetting(madrasaId);
       return Number(setting?.value ?? DEFAULT_FINE_PER_DAY);
     } catch (err) {
-      return friendlyFailure("getFinePerDay error:", err, "Failed to load the fine rate");
+      return friendlyFailure("getFinePerDay error:", err, t({ bn: "জরিমানার হার লোড করা যায়নি", en: "Failed to load the fine rate", ar: "تعذر تحميل معدل الغرامة" }));
     }
   }
 
@@ -409,7 +410,7 @@ export class LibraryService {
     try {
       await this.repository.upsertFinePerDaySetting(madrasaId, String(value));
     } catch (err) {
-      return friendlyFailure("setFinePerDay error:", err, "Failed to update the fine rate");
+      return friendlyFailure("setFinePerDay error:", err, t({ bn: "জরিমানার হার আপডেট করা যায়নি", en: "Failed to update the fine rate", ar: "تعذر تحديث معدل الغرامة" }));
     }
   }
 
@@ -468,7 +469,7 @@ export class LibraryService {
           .reverse(),
       };
     } catch (err) {
-      return friendlyFailure("getDashboardSummary error:", err, "Failed to load library dashboard summary");
+      return friendlyFailure("getDashboardSummary error:", err, t({ bn: "লাইব্রেরি ড্যাশবোর্ডের সারাংশ লোড করা যায়নি", en: "Failed to load library dashboard summary", ar: "تعذر تحميل ملخص لوحة المكتبة" }));
     }
   }
 }

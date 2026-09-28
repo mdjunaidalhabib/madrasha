@@ -2,12 +2,14 @@ import { useState } from "react";
 import { FaEdit } from "react-icons/fa";
 import { filterByScript, ScriptLang } from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import { filterToDigits } from "@madrasha/shared-ui/src/components/ui/NumericInput";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { uiText } from "@madrasha/shared-ui/src/components/ui/ui.text";
 
-const SCRIPT_HINTS: Record<ScriptLang, string> = {
-  bn: "শুধু বাংলায় লিখুন",
-  ar: "শুধু আরবিতে লিখুন",
-  en: "Write in English only",
-};
+const SCRIPT_HINT_KEYS = {
+  bn: "onlyBangla",
+  ar: "onlyArabic",
+  en: "onlyEnglish",
+} as const satisfies Record<ScriptLang, string>;
 
 interface Props {
   label: string;
@@ -41,6 +43,8 @@ const Field: React.FC<Props> = ({
   numeric,
   error,
 }) => {
+  const ut = useText(uiText);
+  const c = useText(commonText);
   const isEditing = isEditMode && editableField === name;
   const [showScriptHint, setShowScriptHint] = useState(false);
 
@@ -73,7 +77,7 @@ const Field: React.FC<Props> = ({
           disabled={!isEditMode}
           className="border rounded-lg px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
-          <option value="">Select</option>
+          <option value="">{c.select}</option>
           {options?.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -106,7 +110,7 @@ const Field: React.FC<Props> = ({
 
       {scriptLang && isEditing && showScriptHint && (
         <span className="text-[11px] text-gray-400 mt-0.5 dark:text-slate-500">
-          {SCRIPT_HINTS[scriptLang]}
+          {ut[SCRIPT_HINT_KEYS[scriptLang]]}
         </span>
       )}
 

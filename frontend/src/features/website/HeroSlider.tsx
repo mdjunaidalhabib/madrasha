@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { withAlpha } from "./colorUtils";
 import type { HeroVariant } from "./themes";
 import { cldImg } from "../../utils/cloudImage";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 
 export type PublicSlide = {
   id?: number;
@@ -70,6 +72,8 @@ export default function HeroSlider({
   websiteStatus?: string;
   actions?: ReactNode;
 }) {
+  const t = useText(websiteText);
+  const lang = useLang();
   const [state, setState] = useState<SliderState>({
     active: 0,
     prevActive: null,
@@ -145,7 +149,7 @@ export default function HeroSlider({
   // Full-slide click area; sits under the dots/buttons (they're positioned
   // later in the DOM) so those stay clickable.
   const linkClass = "absolute inset-0 cursor-pointer";
-  const linkLabel = "স্লাইডের লিংক খুলুন";
+  const linkLabel = t.openSlideLink;
 
   return (
     <section
@@ -242,7 +246,7 @@ export default function HeroSlider({
 
         {websiteStatus === "limited" && (
           <div className="relative mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30">
-            Limited mode enabled by Super Admin.
+            {t.limitedMode}
           </div>
         )}
 
@@ -253,7 +257,7 @@ export default function HeroSlider({
                 key={slide.id ?? slide.image_url}
                 type="button"
                 onClick={() => goTo(index)}
-                aria-label={`Slide ${index + 1}`}
+                aria-label={t.slide(localizeDigits(index + 1, lang))}
                 // Dot that stretches into a pill when active; px-1 py-2 +
                 // bg-clip-content keeps a finger-sized tap area.
                 className="box-content h-2 rounded-full bg-clip-content px-1 py-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] transition-all duration-500 ease-out"
@@ -272,18 +276,18 @@ export default function HeroSlider({
           <button
             type="button"
             onClick={() => goTo(state.active - 1)}
-            aria-label="Previous slide"
+            aria-label={t.prevSlide}
             className="absolute start-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={18} className="rtl:rotate-180" />
           </button>
           <button
             type="button"
             onClick={() => goTo(state.active + 1)}
-            aria-label="Next slide"
+            aria-label={t.nextSlide}
             className="absolute end-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-black/25 p-1.5 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 md:flex"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={18} className="rtl:rotate-180" />
           </button>
         </>
       )}

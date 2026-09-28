@@ -1,10 +1,10 @@
 import { type BillingChannel, type SubscriptionSummaryDto } from "../../services/billingApi";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { useLang, useText, formatNumber, formatDate as formatLocalDate, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
-const CHANNEL_LABELS: Record<BillingChannel, string> = { SMS: "SMS", EMAIL: "ইমেইল" };
-
-const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("bn-BD") : "—";
+const formatDate = (value: string | null, lang: Lang) =>
+  value ? formatLocalDate(value, lang) : "—";
 
 interface SubscriptionCardProps {
   channel: BillingChannel;
@@ -13,21 +13,23 @@ interface SubscriptionCardProps {
 }
 
 const SubscriptionCard = ({ channel, subscription, onBuyClick }: SubscriptionCardProps) => {
-  const label = CHANNEL_LABELS[channel];
+  const tx = useText(billingText);
+  const lang = useLang();
+  const label = channel === "SMS" ? "SMS" : tx.email;
 
   if (!subscription || !subscription.active) {
     return (
       <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
         <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400">{label}</h3>
         <p className="mt-3 text-sm text-gray-600 dark:text-slate-400">
-          {label} প্যাকেজ সক্রিয় নেই
+          {tx.notActive(label)}
         </p>
         <button
           type="button"
           onClick={() => onBuyClick(channel)}
           className="mt-3 h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700"
         >
-          প্যাকেজ কিনুন
+          {tx.buyPackage}
         </button>
       </div>
     );
@@ -48,7 +50,7 @@ const SubscriptionCard = ({ channel, subscription, onBuyClick }: SubscriptionCar
         </div>
         {subscription.isLowCredit && (
           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-            {label} কম আছে
+            {tx.lowCredit(label)}
           </span>
         )}
       </div>
@@ -61,25 +63,24 @@ const SubscriptionCard = ({ channel, subscription, onBuyClick }: SubscriptionCar
           />
         </div>
         <p className="mt-1.5 text-xs text-gray-500 dark:text-slate-400">
-          ব্যবহৃত হয়েছে {subscription.usedCredit.toLocaleString("bn-BD")} / মোট{" "}
-          {subscription.totalCredit.toLocaleString("bn-BD")} টি {label}
+          {tx.usedOfTotal(formatNumber(subscription.usedCredit, lang), formatNumber(subscription.totalCredit, lang), label)}
         </p>
       </div>
 
       <div className="mt-3 flex items-end justify-between">
         <div>
-          <p className="text-xs text-gray-500 dark:text-slate-400">অবশিষ্ট আছে</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">{tx.remaining}</p>
           <p
             className={`text-2xl font-extrabold ${
               subscription.isLowCredit ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-slate-100"
             }`}
           >
-            {subscription.remainingCredit.toLocaleString("bn-BD")}{" "}
-            <span className="text-sm font-semibold">টি {label}</span>
+            {formatNumber(subscription.remainingCredit, lang)}{" "}
+            <span className="text-sm font-semibold">{tx.unitOf(label)}</span>
           </p>
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          মেয়াদ: {formatDate(subscription.expiryDate)}
+          {tx.expiry}: {formatDate(subscription.expiryDate, lang)}
         </p>
       </div>
 
@@ -88,7 +89,7 @@ const SubscriptionCard = ({ channel, subscription, onBuyClick }: SubscriptionCar
         onClick={() => onBuyClick(channel)}
         className="mt-3 h-8 rounded-md bg-gray-100 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
       >
-        আরও কিনুন
+        {tx.buyMore}
       </button>
     </div>
   );

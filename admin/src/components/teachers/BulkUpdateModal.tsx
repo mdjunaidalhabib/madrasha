@@ -5,6 +5,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { TeacherFullRecord } from "../../types/teacher";
 import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
 export interface BulkUpdateExcelRow {
   id?: string | number;
@@ -76,35 +78,43 @@ interface BulkUpdateModalProps {
 // division_id is editable here - teachers have no Promotion-equivalent
 // audit-trailed workflow, so changing it via bulk-update is allowed
 // (existence re-checked server-side).
+/** `{ key, label }` whose label reads the current UI language on access. */
+const field = (key: string): { key: string; label: string } => ({
+  key,
+  get label() {
+    return getText(teacherStaffText).fields[key] ?? key;
+  },
+});
+
 const EDITABLE_FIELDS: { key: string; label: string }[] = [
-  { key: "division_id", label: "একাডেমিক বিভাগ আইডি" },
-  { key: "name_bn", label: "নাম" },
-  { key: "name_ar", label: "আরবি নাম" },
-  { key: "nid", label: "এনআইডি" },
-  { key: "gender", label: "লিঙ্গ" },
-  { key: "dob", label: "জন্ম তারিখ" },
-  { key: "age", label: "বয়স" },
-  { key: "phone", label: "ফোন" },
-  { key: "email", label: "ইমেইল" },
-  { key: "designation", label: "পদবি" },
-  { key: "department", label: "বিভাগ (পদ)" },
-  { key: "qualification", label: "যোগ্যতা" },
-  { key: "experience_year", label: "অভিজ্ঞতা (বছর)" },
-  { key: "experience_month", label: "অভিজ্ঞতা (মাস)" },
-  { key: "joining_date", label: "যোগদানের তারিখ" },
-  { key: "salary", label: "বেতন" },
-  { key: "father_name", label: "বাবার নাম" },
-  { key: "father_name_ar", label: "বাবার আরবি নাম" },
-  { key: "father_nid", label: "বাবার এনআইডি" },
-  { key: "father_occupation", label: "বাবার পেশা" },
-  { key: "mother_name", label: "মায়ের নাম" },
-  { key: "mother_nid", label: "মায়ের এনআইডি" },
-  { key: "mother_occupation", label: "মায়ের পেশা" },
-  { key: "parent_phone", label: "অভিভাবকের ফোন" },
-  { key: "division", label: "বিভাগ (ঠিকানা)" },
-  { key: "district", label: "জেলা" },
-  { key: "thana", label: "থানা" },
-  { key: "village", label: "গ্রাম" },
+  field("division_id"),
+  field("name_bn"),
+  field("name_ar"),
+  field("nid"),
+  field("gender"),
+  field("dob"),
+  field("age"),
+  field("phone"),
+  field("email"),
+  field("designation"),
+  field("department"),
+  field("qualification"),
+  field("experience_year"),
+  field("experience_month"),
+  field("joining_date"),
+  field("salary"),
+  field("father_name"),
+  field("father_name_ar"),
+  field("father_nid"),
+  field("father_occupation"),
+  field("mother_name"),
+  field("mother_nid"),
+  field("mother_occupation"),
+  field("parent_phone"),
+  field("division"),
+  field("district"),
+  field("thana"),
+  field("village"),
 ];
 
 const DATE_FIELDS = new Set(["dob", "joining_date"]);
@@ -134,6 +144,9 @@ type PreviewRow = {
 };
 
 const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: BulkUpdateModalProps) => {
+  const t = useText(teacherStaffText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [excelRows, setExcelRows] = useState<BulkUpdateExcelRow[]>([]);
   const [result, setResult] = useState<BulkUpdateResultData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -157,7 +170,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
       return { index, rowNumber, id, name, matched, changes, willSubmit: changes.length > 0 };
     });
-  }, [excelRows, teachers]);
+  }, [excelRows, teachers, lang]);
 
   const submitCount = previewRows.filter((r) => r.willSubmit).length;
 
@@ -173,7 +186,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
   const downloadExport = async () => {
     if (!teachers.length) {
-      useToastStore.getState().show("এক্সপোর্ট করার জন্য কোনো শিক্ষক পাওয়া যায়নি", "error");
+      useToastStore.getState().show(getText(teacherStaffText).noTeacherToExport, "error");
       return;
     }
 
@@ -202,7 +215,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
     const ws = XLSX.utils.aoa_to_sheet([
       [
-        "ধূসর রঙের কলামগুলো (id, registration_no, academic_division_name) লক করা - এগুলোতে লেখা যাবে না। শুধু name_bn আবশ্যক (*), বাকি ঘর খালি রাখলে সেই তথ্য মুছে যাবে (division_id ব্যতিক্রম - খালি রাখলে অপরিবর্তিত থাকবে)।",
+        getText(teacherStaffText).excelLockNote,
       ],
       [],
       headerRow,
@@ -244,15 +257,15 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
     });
 
     const guideRows = [
-      ["লক করা কলাম (এগুলোতে লেখা যাবে না)"],
+      [getText(teacherStaffText).lockedColumnsGuide],
       ["id", "registration_no", "academic_division_name"],
       [],
       ["Gender Guide"],
       ["ID", "Name"],
-      [1, "পুরুষ"],
-      [2, "মহিলা"],
+      [1, getText(teacherStaffText).male],
+      [2, getText(teacherStaffText).female],
       [],
-      ["Division Guide (academic division id হিসেবে ব্যবহার করুন)"],
+      [getText(teacherStaffText).divisionGuide],
       ["ID", "Division Name"],
       ...divisions.map((d) => [d.division_id, d.division_name_bn]),
     ];
@@ -279,7 +292,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
   const handleSubmit = async () => {
     const payload = previewRows.filter((r) => r.willSubmit).map((r) => excelRows[r.index]);
     if (!payload.length) {
-      useToastStore.getState().show("পাঠানোর মতো কোনো পরিবর্তন পাওয়া যায়নি", "error");
+      useToastStore.getState().show(getText(teacherStaffText).noChangesToSend, "error");
       return;
     }
 
@@ -296,7 +309,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
       onSuccess();
     } catch (err: any) {
       logger.error("TEACHER BULK UPDATE SUBMIT ERROR:", err);
-      useToastStore.getState().show(err?.response?.data?.message || "Bulk Update ব্যর্থ হয়েছে", "error");
+      useToastStore.getState().show(err?.response?.data?.message || getText(teacherStaffText).bulkUpdateFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -309,9 +322,9 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
       <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">বাল্ক আপডেট (Excel)</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.bulkUpdateTitle}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              বিদ্যমান শিক্ষকদের তথ্য একসাথে এক্সেল দিয়ে আপডেট করুন।
+              {t.bulkUpdateSubtitle}
             </p>
           </div>
 
@@ -329,11 +342,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <div>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">বাল্ক আপডেট সম্পন্ন হয়েছে</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.bulkUpdateDone}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    আপডেট: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{result.updated}</span> |
-                    অপরিবর্তিত: <span className="font-semibold text-slate-600 dark:text-slate-400">{result.unchanged}</span> |
-                    বাদ পড়েছে: <span className="font-semibold text-red-700 dark:text-red-400">{result.skipped}</span>
+                    {t.updatedCount}: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{localizeDigits(result.updated, lang)}</span> |
+                    {t.unchangedCount}: <span className="font-semibold text-slate-600 dark:text-slate-400">{localizeDigits(result.unchanged, lang)}</span> |
+                    {t.skippedCount}: <span className="font-semibold text-red-700 dark:text-red-400">{localizeDigits(result.skipped, lang)}</span>
                   </p>
                 </div>
 
@@ -342,7 +355,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                   onClick={reset}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  আরেকটি Excel Upload করুন
+                  {t.uploadAnotherExcel}
                 </button>
               </div>
 
@@ -351,11 +364,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                   <table className="min-w-[900px] w-full text-sm">
                     <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{c.serial}</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{c.name}</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
-                        <th className="border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তন / নোট</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{t.state}</th>
+                        <th className="border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{t.changesNotes}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -367,17 +380,17 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.status === "updated" && (
                               <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                আপডেট হয়েছে
+                                {t.statusUpdated}
                               </span>
                             )}
                             {row.status === "unchanged" && (
                               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                পরিবর্তন নেই
+                                {t.statusUnchanged}
                               </span>
                             )}
                             {row.status === "skipped" && (
                               <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-400">
-                                বাদ পড়েছে
+                                {t.statusSkipped}
                               </span>
                             )}
                           </td>
@@ -413,12 +426,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">এক্সেল এক্সপোর্ট / আপলোড</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">{t.exportUpload}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    বর্তমান ফিল্টার অনুযায়ী তালিকাভুক্ত {teachers.length} জন শিক্ষকের তথ্য এক্সপোর্ট
-                    হবে।
+                    {t.exportHint(localizeDigits(teachers.length, lang))}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">ধূসর কলাম (id, registration_no) লক করা - সম্পাদনা করা যাবে না।</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.lockedColsHint}</p>
                 </div>
 
                 <button
@@ -426,12 +438,12 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                   onClick={downloadExport}
                   className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
                 >
-                  এক্সেল এক্সপোর্ট করুন
+                  {t.exportExcel}
                 </button>
               </div>
 
               <ExcelUpload<BulkUpdateExcelRow>
-                buttonText="আপডেট করা Excel আপলোড করুন"
+                buttonText={t.uploadUpdatedExcel}
                 onDataUpload={handleDataUpload}
                 disabled={loading}
                 requiredColumns={["id", "name_bn"]}
@@ -443,9 +455,9 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
             <div>
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">প্রিভিউ</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.preview}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    মোট {excelRows.length} সারি — এর মধ্যে {submitCount} সারিতে পরিবর্তন পাওয়া গেছে
+                    {t.previewSummary(localizeDigits(excelRows.length, lang), localizeDigits(submitCount, lang))}
                   </p>
                 </div>
 
@@ -454,7 +466,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                   onClick={reset}
                   className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
-                  Clear Uploaded Data
+                  {t.clearUploaded}
                 </button>
               </div>
 
@@ -463,11 +475,11 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                   <table className="min-w-[900px] w-full text-sm">
                     <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">SL</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{c.serial}</th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">id</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">নাম</th>
-                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">অবস্থা</th>
-                        <th className="border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">পরিবর্তিত ফিল্ড</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{c.name}</th>
+                        <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{t.state}</th>
+                        <th className="border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">{t.changedFields}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -484,15 +496,15 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                           <td className="whitespace-nowrap px-3 py-3">
                             {!row.matched ? (
                               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                                id পাওয়া যায়নি (তবুও পাঠানো হবে)
+                                {t.idNotFound}
                               </span>
                             ) : row.willSubmit ? (
                               <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
-                                পরিবর্তন হবে
+                                {t.willChange}
                               </span>
                             ) : (
                               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                কোনো পরিবর্তন নেই
+                                {t.noChange}
                               </span>
                             )}
                           </td>
@@ -522,7 +534,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
                 disabled={loading || submitCount === 0}
                 className="mt-5 w-full rounded-xl bg-green-600 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-60"
               >
-                {loading ? "পাঠানো হচ্ছে..." : `${submitCount} জন আপডেট করুন`}
+                {loading ? t.sending : t.updateN(localizeDigits(submitCount, lang))}
               </button>
             </div>
           )}

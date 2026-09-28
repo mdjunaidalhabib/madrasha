@@ -1,21 +1,24 @@
 import type { ReportColumn } from "../../../features/reports/types";
-import { cellValue, formatMeritRank, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printMeritRank } from "../printFormat";
+import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText, type ReportText } from "../report.text";
 
 /**
  * Single source of truth for result-notice table headers.
  * Editing a `header` here updates the preview, print and exported file.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export const RESULT_NOTICE_COLUMNS: ReportColumn[] = [
-  { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
-  { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
-  { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-48" },
-  { header: "মোট", key: "total", className: "min-w-20 text-center" },
-  { header: "গড়", key: "average", className: "min-w-20 text-center" },
-  { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
+export const buildResultNoticeColumns = (t: Pick<ReportText, "col">): ReportColumn[] => [
+  { header: t.col.rollNo, key: "roll", className: "min-w-24 text-center" },
+  { header: t.col.regNo, key: "registration_no", className: "min-w-28 text-center" },
+  { header: t.col.studentName, key: "student_name", className: "min-w-48" },
+  { header: t.col.total, key: "total", className: "min-w-20 text-center" },
+  { header: t.col.average, key: "average", className: "min-w-20 text-center" },
+  { header: t.col.grade, key: "madrasa_grade", className: "min-w-28 text-center" },
   { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
-  { header: "মেধাক্রম", key: "rank_no", className: "min-w-20 text-center" },
-  { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
+  { header: t.col.rank, key: "rank_no", className: "min-w-20 text-center" },
+  { header: t.col.status, key: "status", className: "min-w-24 text-center" },
 ];
 
 type ResultNoticeListProps = {
@@ -49,42 +52,47 @@ const formatCellValue = (row: Record<string, any>, key: string) => {
   }
 
   if (key === "class_name") {
-    return cellValue(row, "class_name") || cellValue(row, "class_name_bn");
+    return printCell(row, "class_name") || printCell(row, "class_name_bn");
   }
 
-  if (key === "rank_no") return formatMeritRank(row?.rank_no);
+  if (key === "rank_no") return printMeritRank(row?.rank_no);
 
-  return cellValue(row, key);
+  return printCell(row, key);
 };
 
 const ResultNoticeList = ({
   rows,
   startIndex = 0,
-  columns = RESULT_NOTICE_COLUMNS,
+  columns = [],
   isFirstPage = true,
   isLastPage = true,
 }: ResultNoticeListProps) => {
-  const configuredColumns = columns.length ? columns : RESULT_NOTICE_COLUMNS;
+  const t = usePrintText(reportText);
+  const isMadrasa = useIsMadrasa();
+  // মাদরাসা গ্রেড (মুমতাজ...) কলাম শুধু মাদরাসায় - অন্য প্রতিষ্ঠানে শুধু প্রদর্শন থেকে বাদ।
+  const configuredColumns = (columns.length ? columns : buildResultNoticeColumns(t)).filter(
+    (column) => isMadrasa || column.key !== "madrasa_grade",
+  );
   const totalWeight = configuredColumns.reduce(
     (sum, column) => sum + getColumnWeight(column.key),
     0,
   );
 
   const firstRow = rows[0] || {};
-  const examName = cellValue(firstRow, "exam_name");
-  const examYear = cellValue(firstRow, "exam_year");
+  const examName = printCell(firstRow, "exam_name");
+  const examYear = printCell(firstRow, "exam_year");
   const className = formatCellValue(firstRow, "class_name");
 
   return (
     <div className="result-notice-report">
       {isFirstPage && (
         <div className="result-notice-heading report-block-heading mb-4 text-center">
-          <h2 className="result-notice-title text-2xl font-bold">ফলাফল সারসংক্ষেপ</h2>
+          <h2 className="result-notice-title text-2xl font-bold">{t.title.resultSummary}</h2>
           <p className="result-notice-exam-name mt-1 text-base font-bold text-black">
             {examName} - {examYear}
           </p>
           <p className="result-notice-subtitle text-base font-bold text-black">
-            জামাতঃ {className}
+            {isMadrasa ? t.jamat : t.classTerm}{t.colon} {className}
           </p>
         </div>
       )}
@@ -151,7 +159,7 @@ const ResultNoticeList = ({
       {isLastPage && (
         <div className="result-notice-signature report-block-signature flex justify-end">
           <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-            মুহতামিমের স্বাক্ষর
+            {t.sign.head}
           </div>
         </div>
       )}

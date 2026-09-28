@@ -1,5 +1,7 @@
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import api from "./api";
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { servicesText } from "./services.text";
 import type {
   AttendanceDevice,
   CreateDevicePayload,
@@ -117,7 +119,7 @@ export const attendanceDeviceApi = {
 
     const rows: TodayRow[] = asArray<any>(data?.items ?? data?.rows).map((r) => ({
       ...r,
-      name_bn: r?.name_bn ?? r?.student_name ?? (r?.student_id == null ? "ম্যাপ করা হয়নি" : ""),
+      name_bn: r?.name_bn ?? r?.student_name ?? (r?.student_id == null ? getText(servicesText).notMapped : ""),
       sms_status: r?.student_id != null ? (smsByStudent.get(Number(r.student_id)) ?? null) : null,
     }));
 

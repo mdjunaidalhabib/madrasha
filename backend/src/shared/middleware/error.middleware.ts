@@ -4,6 +4,8 @@ import { logger } from "../logger/logger";
 import { ApiError } from "../errors/ApiError";
 import { HttpStatus } from "../constants/http-status";
 import { ApiResponse } from "../responses/ApiResponse";
+import { t } from "../i18n";
+import { localizeZodFlatten } from "../validators/messages";
 
 /**
  * @deprecated Prefer the specific classes in shared/errors (NotFoundError,
@@ -14,14 +16,14 @@ import { ApiResponse } from "../responses/ApiResponse";
 export class AppError extends ApiError {}
 
 export const notFoundHandler: RequestHandler = (req, _res, next) => {
-  next(new AppError(`Route not found: ${req.method} ${req.originalUrl}`, HttpStatus.NOT_FOUND));
+  next(new AppError(t({ bn: `রাউট পাওয়া যায়নি: ${req.method} ${req.originalUrl}`, en: `Route not found: ${req.method} ${req.originalUrl}`, ar: `المسار غير موجود: ${req.method} ${req.originalUrl}` }), HttpStatus.NOT_FOUND));
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   // Zod validation errors that reach here (rather than going through the
   // `validate` middleware) still get a consistent 422 response.
   if (err instanceof ZodError) {
-    return ApiResponse.error(res, "Validation failed", HttpStatus.UNPROCESSABLE_ENTITY, err.flatten());
+    return ApiResponse.error(res, t({ bn: "তথ্য যাচাই ব্যর্থ হয়েছে", en: "Validation failed", ar: "فشل التحقق من البيانات" }), HttpStatus.UNPROCESSABLE_ENTITY, localizeZodFlatten(err.flatten()));
   }
 
   const statusCode: number = err.statusCode || err.status || HttpStatus.INTERNAL_SERVER_ERROR;

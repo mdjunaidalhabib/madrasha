@@ -2,7 +2,9 @@ import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import TemplatedLetter from "./engine/TemplatedLetter";
 import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
-import { DEFAULT_TESTIMONIAL_TEMPLATE } from "@madrasha/shared-ui/src/utils/documentTemplates";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { documentDefaultsText } from "./documentDefaults.text";
 
 type TestimonialListProps = {
   rows: Record<string, any>[];
@@ -22,7 +24,8 @@ const TestimonialList = ({
   bodyTextOverride,
   templateId,
 }: TestimonialListProps) => {
-  const template = useDocumentTemplate("testimonial_template", DEFAULT_TESTIMONIAL_TEMPLATE);
+  const template = useDocumentTemplate("testimonial_template", usePrintText(documentDefaultsText).testimonial);
+  const t = usePrintText(reportText);
   const row = rows[0] || {};
 
   return (
@@ -34,7 +37,7 @@ const TestimonialList = ({
       fallback={
         <LetterDocument
           row={row}
-          heading="প্রত্যয়ন পত্র"
+          heading={t.title.testimonial}
           headingClassName={LETTER_HEADING_CLASS}
           bodyClassName={LETTER_BODY_CLASS}
           template={template}
@@ -44,7 +47,7 @@ const TestimonialList = ({
           bare
           letterhead
           beforeHeading={<LetterDateLine />}
-          footer={<LetterSignatureFooter label="প্রধান শিক্ষকের স্বাক্ষর" />}
+          footer={<LetterSignatureFooter label={t.sign.head} />}
         />
       }
     />

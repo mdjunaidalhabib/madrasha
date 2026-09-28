@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { InstitutionType, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_CANVAS_SIZE_PX } from "../src/modules/document-templates/document-templates.constants";
 import {
@@ -9,6 +9,14 @@ import {
   buildIdCardLayers,
   PresetKey,
 } from "../src/modules/document-templates/preset-layer-builders";
+
+import {
+  NON_MADRASA_BOOKS,
+  NON_MADRASA_CLASSES,
+  NON_MADRASA_DIVISIONS,
+  NON_MADRASA_FEE_TIERS,
+  NON_MADRASA_REG_BLOCKS,
+} from "./seed-institutions";
 
 const prisma = new PrismaClient();
 
@@ -309,11 +317,16 @@ async function main() {
   );
 
   /* ============== DIVISIONS ============== */
-  const divisions = [
+  const divisions: { keyName: string; name: string; nameBn: string; institutionType?: InstitutionType }[] = [
     { keyName: "nurani", name: "Nurani", nameBn: "নূরানী" },
     { keyName: "nazera_hifz", name: "Nazera/Hifz", nameBn: "নাযেরা/হিফজ" },
     { keyName: "kitab", name: "Kitab", nameBn: "কিতাব" },
     { keyName: "takhassus", name: "Takhassus", nameBn: "তাখাসসুস" },
+    // School / college / kindergarten catalogues (Division.institutionType) -
+    // super admin only offers a new tenant the divisions of its own type.
+    // SSC/HSC groups are their own divisions because each group has its own
+    // subject list (and can own its own grade scale / fail mark).
+    ...NON_MADRASA_DIVISIONS,
   ];
   const divisionIds: Record<string, number> = {};
   for (const d of divisions) {
@@ -335,7 +348,10 @@ async function main() {
     Premium: { nurani: 150, nazera_hifz: 200, kitab: 100, takhassus: 50 },
   };
   for (let index = 0; index < plans.length; index++) {
-    const sizes = planRegBlockSizes[plans[index].name] ?? {};
+    const sizes = {
+      ...(planRegBlockSizes[plans[index].name] ?? {}),
+      ...(NON_MADRASA_REG_BLOCKS[plans[index].name] ?? {}),
+    };
     const data = Object.entries(sizes)
       .filter(([key]) => divisionIds[key])
       .map(([key, blockSize]) => ({ planId: planIds[index], divisionId: divisionIds[key], blockSize }));
@@ -373,6 +389,7 @@ async function main() {
       { name: "Hadith", nameBn: "হাদিস" },
       { name: "Tafsir", nameBn: "তাফসির" },
     ],
+    ...NON_MADRASA_CLASSES,
   };
 
   const classIds: Record<string, number> = {}; // key: "division/className"
@@ -551,6 +568,7 @@ async function main() {
       { name: "Tafsir Research", nameBn: "তাফসির গবেষণা" },
       { name: "Arabic Language", nameBn: "আরবি ভাষা" },
     ],
+    ...NON_MADRASA_BOOKS,
   };
 
   const bookIds: Record<string, number> = {}; // key: "division/className/bookName"
@@ -1013,6 +1031,7 @@ async function main() {
     nazera_hifz: { admission: 500, form: 150, tuition: 300, exam: 200, boarding: 600 },
     kitab: { admission: 700, form: 200, tuition: 400, exam: 300, boarding: 800 },
     takhassus: { admission: 1000, form: 300, tuition: 600, exam: 400, boarding: 1000 },
+    ...NON_MADRASA_FEE_TIERS,
   };
   for (const [classKey, classId] of Object.entries(classIds)) {
     const [divisionKey] = classKey.split("/");
@@ -1037,7 +1056,8 @@ async function main() {
       { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "পরীক্ষার ফি" },
     ];
 
-    for (const f of feeSpecs) {
+    // A tier amount of 0 (e.g. no boarding at a day school) means "no such fee".
+    for (const f of feeSpecs.filter((spec) => spec.amount > 0)) {
       await createIfMissing(
         `default fee structure: ${f.name} (${classKey})`,
         () => prisma.defaultFeeStructure.findUnique({ where: { keyName: f.keyName } }),

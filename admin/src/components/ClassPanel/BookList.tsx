@@ -1,10 +1,14 @@
 import React from "react";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { classPanelText } from "./classPanel.text";
 
 export default function BookList({
   books = [],
   selectedBooks = [],
   setSelectedBooks,
 }: any) {
+  const t = useText(classPanelText);
+  const lang = useLang();
   const toggleBook = (id: number) => {
     if (selectedBooks.includes(id)) {
       setSelectedBooks(selectedBooks.filter((b: number) => b !== id));
@@ -18,17 +22,17 @@ export default function BookList({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium text-gray-700 dark:text-slate-100">বই নির্বাচন করুন</h2>
+        <h2 className="font-medium text-gray-700 dark:text-slate-100">{t.selectBooks}</h2>
         {books.length > 0 && (
           <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-            {selectedBooks.length} / {books.length} নির্বাচিত
+            {t.selected(localizeDigits(selectedBooks.length, lang), localizeDigits(books.length, lang))}
           </span>
         )}
       </div>
 
       {books.length === 0 ? (
         <p className="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
-          কোনো বই পাওয়া যায়নি
+          {t.noBooks}
         </p>
       ) : (
         <div className="flex max-h-64 flex-wrap content-start gap-2 overflow-y-auto pe-1">

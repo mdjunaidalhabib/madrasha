@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { kioskService } from "./kiosk.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -29,7 +30,7 @@ export const scanFingerprint = asyncHandler(async (req: Request, res: Response) 
 export const createDevice = asyncHandler(async (req: Request, res: Response) => {
   const result = await kioskService.createDevice(getMadrasaId(req), req.body?.name);
   return ApiResponse.success(res, {
-    message: "Kiosk device created successfully",
+    message: t({ bn: "কিয়স্ক ডিভাইস তৈরি হয়েছে", en: "Kiosk device created successfully", ar: "تم إنشاء جهاز الكشك بنجاح" }),
     data: result,
     statusCode: 201,
   });
@@ -42,15 +43,15 @@ export const listDevices = asyncHandler(async (req: Request, res: Response) => {
 
 export const setDeviceActive = asyncHandler(async (req: Request, res: Response) => {
   await kioskService.setDeviceActive(getMadrasaId(req), Number(req.params.id), Boolean(req.body?.is_active));
-  return ApiResponse.success(res, { message: "Kiosk device updated successfully" });
+  return ApiResponse.success(res, { message: t({ bn: "কিয়স্ক ডিভাইস আপডেট হয়েছে", en: "Kiosk device updated successfully", ar: "تم تحديث جهاز الكشك بنجاح" }) });
 });
 
 export const deleteDevice = asyncHandler(async (req: Request, res: Response) => {
   await kioskService.deleteDevice(getMadrasaId(req), Number(req.params.id));
-  return ApiResponse.success(res, { message: "Kiosk device deleted successfully" });
+  return ApiResponse.success(res, { message: t({ bn: "কিয়স্ক ডিভাইস মুছে ফেলা হয়েছে", en: "Kiosk device deleted successfully", ar: "تم حذف جهاز الكشك بنجاح" }) });
 });
 
 export const assignStudentCard = asyncHandler(async (req: Request, res: Response) => {
   await kioskService.assignStudentCard(getMadrasaId(req), Number(req.params.id), req.body?.card_uid);
-  return ApiResponse.success(res, { message: "Card assigned successfully" });
+  return ApiResponse.success(res, { message: t({ bn: "কার্ড যুক্ত করা হয়েছে", en: "Card assigned successfully", ar: "تم ربط البطاقة بنجاح" }) });
 });

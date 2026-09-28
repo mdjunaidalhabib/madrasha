@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
-import { normalizeBanglaDigits, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { commonUiText } from "./commonUi.text";
 import { filterPeopleBySearch } from "../../utils/personSearch";
 
 export type QuickNavRecord = {
@@ -97,6 +99,9 @@ const ProfileQuickNav = ({
   const navigate = useNavigate();
 
   const [records, setRecords] = useState<QuickNavRecord[]>([]);
+  const t = useText(commonUiText);
+  const lang = useLang();
+  const shownName = (record: QuickNavRecord) => record.name_bn || record.name || t.noName;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -247,7 +252,7 @@ const ProfileQuickNav = ({
         {query !== "" && (
           <button
             type="button"
-            aria-label="সার্চ মুছুন"
+            aria-label={t.clearSearch}
             onClick={() => {
               setQuery("");
               inputRef.current?.focus();
@@ -266,7 +271,7 @@ const ProfileQuickNav = ({
           >
             {suggestions.length === 0 ? (
               <li className="px-3 py-2.5 text-[13px] text-gray-500 dark:text-slate-400">
-                কিছু পাওয়া যায়নি
+                {t.nothingFound}
               </li>
             ) : (
               suggestions.map((record, index) => {
@@ -297,15 +302,15 @@ const ProfileQuickNav = ({
 
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-gray-800 dark:text-slate-100">
-                          {recordName(record)}
+                          {shownName(record)}
                           {Number(record.is_active) === 0 && (
                             <span className="ms-1.5 rounded-full bg-red-50 px-1.5 py-px text-[11px] font-normal text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                              বহিষ্কৃত
+                              {t.expelled}
                             </span>
                           )}
                           {Number(record.is_active) === 2 && (
                             <span className="ms-1.5 rounded-full bg-slate-100 px-1.5 py-px text-[11px] font-normal text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              নিষ্ক্রিয়
+                              {t.inactive}
                             </span>
                           )}
                         </p>
@@ -329,7 +334,7 @@ const ProfileQuickNav = ({
 
                       <ChevronRight
                         size={14}
-                        className={`shrink-0 text-blue-500 transition-all duration-200 ease-out dark:text-blue-400 ${
+                        className={`shrink-0 text-blue-500 rtl:rotate-180 transition-all duration-200 ease-out dark:text-blue-400 ${
                           active ? "translate-x-0 opacity-100" : "-translate-x-1.5 opacity-0"
                         }`}
                       />
@@ -347,13 +352,13 @@ const ProfileQuickNav = ({
           type="button"
           disabled={!previousRecord}
           onClick={() => goToRecord(previousRecord)}
-          aria-label="আগের প্রোফাইল"
-          title={previousRecord ? `আগের: ${recordName(previousRecord)}` : "আগের কেউ নেই"}
+          aria-label={t.previousProfile}
+          title={previousRecord ? t.previousNamed(shownName(previousRecord)) : t.noPrevious}
           className={navButtonClass}
         >
           <ChevronLeft
             size={16}
-            className="transition-transform duration-200 group-hover:-translate-x-0.5"
+            className="transition-transform duration-200 group-hover:-translate-x-0.5 rtl:rotate-180"
           />
         </button>
 
@@ -364,9 +369,9 @@ const ProfileQuickNav = ({
             অঙ্কের জন্য, বাংলায় গ্লিফ আরও চেপে যায়। */}
         {currentIndex >= 0 && sortedRecords.length > 0 && (
           <span className="flex h-8 shrink-0 items-center whitespace-nowrap rounded-full bg-gray-100 px-2.5 text-[13px] font-semibold text-gray-600 dark:bg-slate-800 dark:text-slate-400">
-            {toBanglaDigits(currentIndex + 1)}
+            {localizeDigits(currentIndex + 1, lang)}
             <span className="mx-1 font-normal text-gray-300 dark:text-slate-600">/</span>
-            {toBanglaDigits(sortedRecords.length)}
+            {localizeDigits(sortedRecords.length, lang)}
           </span>
         )}
 
@@ -374,13 +379,13 @@ const ProfileQuickNav = ({
           type="button"
           disabled={!nextRecord}
           onClick={() => goToRecord(nextRecord)}
-          aria-label="পরের প্রোফাইল"
-          title={nextRecord ? `পরের: ${recordName(nextRecord)}` : "পরের কেউ নেই"}
+          aria-label={t.nextProfile}
+          title={nextRecord ? t.nextNamed(shownName(nextRecord)) : t.noNext}
           className={navButtonClass}
         >
           <ChevronRight
             size={16}
-            className="transition-transform duration-200 group-hover:translate-x-0.5"
+            className="transition-transform duration-200 group-hover:translate-x-0.5 rtl:rotate-180"
           />
         </button>
       </div>

@@ -1,4 +1,5 @@
 import api, { cachedGet } from "./adminApi";
+import type { InstitutionType, Lang } from "@madrasha/shared-ui/src/i18n";
 
 export type MadrasaListItem = {
   id: number;
@@ -12,13 +13,16 @@ export type MadrasaListItem = {
   user_limit?: number;
   address?: string | null;
   phone?: string | null;
+  institution_type?: InstitutionType;
+  /** Effective (resolved) default language - never null in list rows. */
+  default_language?: Lang;
 };
 
 /* =========================
    MADRASAS
 ========================= */
 
-export async function listMadrasas(params?: { q?: string; page?: number; limit?: number }) {
+export async function listMadrasas(params?: { q?: string; page?: number; limit?: number; institution_type?: InstitutionType }) {
   const res = await cachedGet("/super/madrasas", { params });
   return res.data;
 }

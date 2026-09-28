@@ -1,5 +1,8 @@
 import { useMemo } from "react";
-import { cellValue, formatMeritRank, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printMeritRank } from "../../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../../report.text";
 
 /**
  * পুরস্কার বই-লেবেলের row-তে ডিজাইনের জন্য তৈরি-করা লেখা যোগ করে:
@@ -8,16 +11,18 @@ import { cellValue, formatMeritRank, toBanglaDigits } from "@madrasha/shared-ui/
  *   exam_label  → "পরীক্ষার নাম বছর"
  * ডিজাইনে এগুলো {{rank_label}} ইত্যাদি টোকেনে বসে (দেখুন fieldBindings.ts-এর BOOK_LABEL)।
  */
-export const useBookLabelRows = (rows: Record<string, any>[]) =>
-  useMemo(
+export const useBookLabelRows = (rows: Record<string, any>[]) => {
+  const t = usePrintText(reportText);
+  return useMemo(
     () =>
       rows.map((row) => ({
         ...row,
-        rank_label: formatMeritRank(row.rank_no),
-        class_info: `${cellValue(row, "class_name")}${
-          row.division_name ? ` (${cellValue(row, "division_name")})` : ""
-        } • রোল ${cellValue(row, "roll")}`,
-        exam_label: `${cellValue(row, "exam_name")}${row.exam_year ? ` ${toBanglaDigits(row.exam_year)}` : ""}`,
+        rank_label: printMeritRank(row.rank_no),
+        class_info: `${printCell(row, "class_name")}${
+          row.division_name ? ` (${printCell(row, "division_name")})` : ""
+        } • ${t.col.roll} ${printCell(row, "roll")}`,
+        exam_label: `${printCell(row, "exam_name")}${row.exam_year ? ` ${toBanglaDigits(row.exam_year)}` : ""}`,
       })),
-    [rows],
+    [rows, t],
   );
+};

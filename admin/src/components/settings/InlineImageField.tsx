@@ -5,9 +5,11 @@ import BrandImageBox from "./BrandImageBox";
 import ImageLightbox from "./ImageLightbox";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { CLOUD_NOT_CONFIGURED_MSG, getCloudinaryPublicId } from "../../utils/cloudUpload";
+import { cloudNotConfiguredMsg, getCloudinaryPublicId } from "../../utils/cloudUpload";
 import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 
 export default function InlineImageField({
   label,
@@ -30,6 +32,8 @@ export default function InlineImageField({
   const [draft, setDraft] = useState(value || "");
   const [saving, setSaving] = useState(false);
   const [viewing, setViewing] = useState(false);
+  const t = useText(settingsUiText);
+  const c = useText(commonText);
 
   const startEdit = () => {
     setDraft(value || "");
@@ -43,7 +47,7 @@ export default function InlineImageField({
   // click needed. Cleans up the old Cloudinary asset it replaced too.
   const handleUploaded = async (url: string | null) => {
     if (!url) {
-      useToastStore.getState().show(CLOUD_NOT_CONFIGURED_MSG, "error");
+      useToastStore.getState().show(cloudNotConfiguredMsg(), "error");
       return;
     }
     setSaving(true);
@@ -65,9 +69,9 @@ export default function InlineImageField({
 
   const remove = () => {
     useConfirmStore.getState().show({
-      title: "ছবি মুছুন",
-      message: `"${label}" মুছে ফেলা হবে। এগিয়ে যেতে চান?`,
-      confirmText: "মুছুন",
+      title: t.deleteImage,
+      message: t.deleteImageConfirm(label),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         setSaving(true);
@@ -100,7 +104,7 @@ export default function InlineImageField({
             className={`group/thumb relative shrink-0 cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 ${
               shape === "wide" ? "h-14 w-24" : "h-14 w-14"
             }`}
-            title="বড় করে দেখুন"
+            title={t.viewLarge}
           >
             <img src={value} alt={label} className="h-full w-full object-contain" />
             <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition group-hover/thumb:opacity-100">
@@ -119,14 +123,14 @@ export default function InlineImageField({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
           <p className="text-sm text-gray-900 dark:text-slate-100">
-            {value ? "আপলোড করা আছে" : <span className="text-gray-400 dark:text-slate-500">যোগ করা হয়নি</span>}
+            {value ? t.uploaded : <span className="text-gray-400 dark:text-slate-500">{t.notAdded}</span>}
           </p>
         </div>
         <button
           type="button"
           onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
+          title={t.editTitle}
         >
           <Pencil size={14} />
         </button>
@@ -154,11 +158,11 @@ export default function InlineImageField({
       </div>
       <div className="mt-3 flex justify-end gap-2">
         <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
-          বাতিল
+          {c.cancel}
         </Button>
         {value && (
           <Button type="button" variant="danger" disabled={saving} onClick={remove}>
-            {saving ? "মুছে ফেলা হচ্ছে..." : "মুছুন"}
+            {saving ? t.deleting : c.delete}
           </Button>
         )}
       </div>

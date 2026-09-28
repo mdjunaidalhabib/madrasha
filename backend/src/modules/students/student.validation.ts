@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { idParamSchema } from "../../shared/validators";
+import { vmsg } from "../../shared/validators/messages";
 
 /**
  * Route param validation only. Request-body validation (required fields,
@@ -49,7 +50,7 @@ export const studentPhotoSchema = z.object({
       .string()
       .trim()
       .max(3_000_000)
-      .refine((v) => v === "" || /^(https?:\/\/|data:image\/)/i.test(v), "Invalid image")
+      .refine((v) => v === "" || /^(https?:\/\/|data:image\/)/i.test(v), vmsg({ bn: "ছবি সঠিক নয়", en: "Invalid image", ar: "الصورة غير صالحة" }))
       .nullable(),
   }),
 });
@@ -68,7 +69,7 @@ export const studentNamesBulkSchema = z.object({
         z
           .object({
             id: z.coerce.number().int().positive(),
-            name_bn: z.string().trim().min(1, "বাংলা নাম আবশ্যক").max(200).optional(),
+            name_bn: z.string().trim().min(1, vmsg({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required", ar: "الاسم بالبنغالية مطلوب" })).max(200).optional(),
             arabic_name: nameField,
             name_en: nameField,
             father_name: nameField,
@@ -82,7 +83,7 @@ export const studentNamesBulkSchema = z.object({
       )
       .min(1)
       .max(500)
-      .refine((items) => new Set(items.map((i) => i.id)).size === items.length, "Duplicate id"),
+      .refine((items) => new Set(items.map((i) => i.id)).size === items.length, vmsg({ bn: "একই id একাধিকবার আছে", en: "Duplicate id", ar: "معرف مكرر" })),
   }),
 });
 

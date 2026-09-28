@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type ColumnOption } from "../../hooks/useColumnVisibility";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { commonUiText } from "./commonUi.text";
 
 type Props<T extends string> = {
   columns: ColumnOption<T>[];
@@ -27,8 +29,9 @@ const ColumnVisibilityMenu = <T extends string>({
   order,
   onMove,
   buttonClassName = DEFAULT_BUTTON_CLASS,
-  resetLabel = "সব দেখান (ডিফল্ট)",
+  resetLabel,
 }: Props<T>) => {
+  const t = useText(commonUiText);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,15 +61,15 @@ const ColumnVisibilityMenu = <T extends string>({
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15M4.5 9h15M4.5 15h15" />
         </svg>
-        কলাম
+        {t.columns}
       </button>
 
       {open && (
         <div className="absolute end-0 z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-          <p className="mb-1 px-1 text-xs font-semibold text-gray-500 dark:text-slate-400">কলাম দেখান / লুকান</p>
+          <p className="mb-1 px-1 text-xs font-semibold text-gray-500 dark:text-slate-400">{t.showHideColumns}</p>
           {onMove && (
             <p className="mb-1 px-1 text-[11px] text-gray-400 dark:text-slate-500">
-              তীর বোতাম দিয়ে কলামের ক্রম আগে-পরে করা যাবে
+              {t.reorderHint}
             </p>
           )}
 
@@ -92,7 +95,7 @@ const ColumnVisibilityMenu = <T extends string>({
                       type="button"
                       onClick={() => onMove(col.key, -1)}
                       disabled={index === 0}
-                      title="আগে সরান"
+                      title={t.moveEarlier}
                       className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -103,7 +106,7 @@ const ColumnVisibilityMenu = <T extends string>({
                       type="button"
                       onClick={() => onMove(col.key, 1)}
                       disabled={index === orderedColumns.length - 1}
-                      title="পরে সরান"
+                      title={t.moveLater}
                       className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -121,7 +124,7 @@ const ColumnVisibilityMenu = <T extends string>({
             onClick={onReset}
             className="mt-1 w-full rounded-md border-t border-gray-100 px-2 py-1.5 text-start text-xs text-blue-600 hover:bg-blue-50 dark:border-slate-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
           >
-            {resetLabel}
+            {resetLabel ?? t.showAllDefault}
           </button>
         </div>
       )}

@@ -7,8 +7,11 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useTenantSlug } from "../../utils/useTenantSlug";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianChangePasswordPage() {
+  const t = useText(guardianText);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,11 +24,11 @@ export default function GuardianChangePasswordPage() {
 
   const handleSubmit = async () => {
     if (newPassword.length < 4) {
-      toast.push("error", "পাসওয়ার্ড কমপক্ষে ৪ ক্যারেক্টার হতে হবে");
+      toast.push("error", t.passwordTooShort);
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.push("error", "দুটি পাসওয়ার্ড মিলছে না");
+      toast.push("error", t.passwordMismatch);
       return;
     }
 
@@ -33,7 +36,7 @@ export default function GuardianChangePasswordPage() {
     try {
       await guardianApi.post("/guardian/change-password", { new_password: newPassword });
       markPasswordChanged();
-      toast.push("success", "পাসওয়ার্ড পরিবর্তন হয়েছে");
+      toast.push("success", t.passwordChanged);
       nav(`${base}/dashboard`);
     } catch {
       // handled by guardianApi interceptor 
@@ -45,28 +48,28 @@ export default function GuardianChangePasswordPage() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow">
-        <h2 className="text-xl font-bold">নতুন পাসওয়ার্ড সেট করুন</h2>
+        <h2 className="text-xl font-bold">{t.setNewPassword}</h2>
         <p className="text-xs text-gray-500">
-          নিরাপত্তার জন্য প্রথমবার লগইনে পাসওয়ার্ড পরিবর্তন করা আবশ্যক।
+          {t.mustChangeHint}
         </p>
 
         <Input
           type="password"
           autoComplete="new-password"
-          placeholder="নতুন পাসওয়ার্ড"
+          placeholder={t.newPassword}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
         <Input
           type="password"
           autoComplete="new-password"
-          placeholder="পাসওয়ার্ড আবার লিখুন"
+          placeholder={t.retypePassword}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
         <Button onClick={handleSubmit} disabled={loading} className="w-full">
-          {loading ? "সংরক্ষণ হচ্ছে..." : "পাসওয়ার্ড সংরক্ষণ করুন"}
+          {loading ? t.saving : t.savePassword}
         </Button>
       </div>
     </div>

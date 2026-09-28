@@ -2,8 +2,11 @@ import { FittedCanvas } from "../documents/engine/CardSheet";
 import { useBrandedRows, useDocumentLayout } from "../documents/engine/useDocumentLayout";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { DEFAULT_MARKSHEET_FIELDS } from "../../../services/brandingApi";
-import { SIGNATURE_LABELS, getSignatureSettings } from "./marksheetSignatures";
-import { cellValue, formatMeritRank, formatReportValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { getSignatureSettings, signatureLabel } from "./marksheetSignatures";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printMeritRank, printValue } from "../printFormat";
+import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText, type ReportText } from "../report.text";
 
 type SubjectMark = {
   book_id?: number | string;
@@ -57,24 +60,31 @@ const formatDob = (value: unknown) => {
 // name, father, grade, general grade, status, then merit rank last) is
 // DEFAULT_MARKSHEET_FIELDS's order - an untouched madrasa renders
 // pixel-identical to before.
-const INFO_FIELD_DEFS: Record<string, { label: string; value: (row: Record<string, any>) => string }> = {
-  roll: { label: "রোল নম্বর", value: (row) => cellValue(row, "roll") },
-  registration_no: { label: "রেজিস্ট্রেশন নম্বর", value: (row) => cellValue(row, "registration_no") },
-  date_of_birth: { label: "জন্ম তারিখ", value: (row) => formatDob(row?.date_of_birth) },
-  student_name: { label: "শিক্ষার্থীর নাম", value: (row) => cellValue(row, "student_name") },
-  father_name: { label: "পিতার নাম", value: (row) => cellValue(row, "father_name") },
-  madrasa_grade: { label: "ফলাফল বিভাগ", value: (row) => cellValue(row, "madrasa_grade") },
-  general_grade: { label: "গ্রেড", value: (row) => cellValue(row, "general_grade") },
-  status: { label: "স্ট্যাটাস", value: (row) => cellValue(row, "status") },
-  rank_no: { label: "মেধাস্থান", value: (row) => formatMeritRank(row?.rank_no) },
+const INFO_FIELD_DEFS: Record<string, { label: keyof ReportText["col"]; value: (row: Record<string, any>) => string }> = {
+  roll: { label: "rollNo", value: (row) => printCell(row, "roll") },
+  registration_no: { label: "regNoFull", value: (row) => printCell(row, "registration_no") },
+  date_of_birth: { label: "dob", value: (row) => formatDob(row?.date_of_birth) },
+  student_name: { label: "studentName", value: (row) => printCell(row, "student_name") },
+  father_name: { label: "fatherName", value: (row) => printCell(row, "father_name") },
+  madrasa_grade: { label: "resultDivision", value: (row) => printCell(row, "madrasa_grade") },
+  general_grade: { label: "grade", value: (row) => printCell(row, "general_grade") },
+  status: { label: "status", value: (row) => printCell(row, "status") },
+  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.rank_no) },
 };
 
 // Applies the tenant's saved visibility + order on top of INFO_FIELD_DEFS -
 // hidden fields are dropped, everything else renders in the saved order.
-const getInfoFields = (row: Record<string, any>, fieldSettings: { key: string; visible: boolean }[]) =>
+// Labels come from the print dictionary; the madrasa-only "ফলাফল বিভাগ" (madrasa_grade)
+// field is hidden (display only) for other institution types.
+const getInfoFields = (
+  row: Record<string, any>,
+  fieldSettings: { key: string; visible: boolean }[],
+  t: ReportText,
+  isMadrasa: boolean,
+) =>
   fieldSettings
-    .filter((field) => field.visible && INFO_FIELD_DEFS[field.key])
-    .map((field) => ({ label: INFO_FIELD_DEFS[field.key].label, value: INFO_FIELD_DEFS[field.key].value(row) }));
+    .filter((field) => field.visible && INFO_FIELD_DEFS[field.key] && (isMadrasa || field.key !== "madrasa_grade"))
+    .map((field) => ({ label: t.col[INFO_FIELD_DEFS[field.key].label], value: INFO_FIELD_DEFS[field.key].value(row) }));
 
 const SIGNATURE_CELL_CLASS = {
   left: "col-start-1 row-start-1 justify-self-start",
@@ -82,10 +92,10 @@ const SIGNATURE_CELL_CLASS = {
   right: "col-start-3 row-start-1 justify-self-end",
 } as const;
 
-const formatMark = (subject: SubjectMark) => {
-  if (subject.is_absent) return "অনু";
+const formatMark = (subject: SubjectMark, absentLabel: string) => {
+  if (subject.is_absent) return absentLabel;
   const mark = subject.mark;
-  return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
+  return mark === null || mark === undefined || mark === "" ? "—" : printValue(mark);
 };
 
 // A subject row is highlighted red when the student was absent in it or scored
@@ -102,6 +112,8 @@ const isSubjectFailed = (subject: SubjectMark) => {
 const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId }: MarksheetListProps) => {
   const row = rows[0] || {};
   const subjects = getSubjects(row);
+  const t = usePrintText(reportText);
+  const isMadrasa = useIsMadrasa();
 
   // ডিফল্ট = নিচের সাধারণ মার্কশিট; ব্যবহারকারী ডিজাইন বেছে নিলে তবেই টেমপ্লেট।
   const { layout, loaded: layoutLoaded } = useDocumentLayout("MARKSHEET", templateId);
@@ -125,10 +137,10 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
   // marks * 100, see result-panel.service.ts) - this row is labelled and
   // shown as গড় নম্বর (plain average) rather than a "শতকরা (%)" figure,
   // per this madrasa's preference, so no "%" suffix here.
-  const percentageValue = cellValue(row, "average");
+  const percentageValue = printCell(row, "average");
   const summaryRows = [
-    { label: "মোট নম্বর", value: cellValue(row, "total") },
-    { label: "গড় নম্বর", value: percentageValue },
+    { label: t.col.totalMarks, value: printCell(row, "total") },
+    { label: t.col.averageMark, value: percentageValue },
   ];
 
   return (
@@ -136,15 +148,15 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
       {isFirstPage && (
         <div className="report-block-heading">
           <div className="border-b-2 border-black pb-3 text-center text-black">
-            <h2 className="marksheet-title font-bold text-black">মার্কশিট</h2>
-            <p className="mt-0.5 text-lg font-semibold leading-snug text-black">শ্রেণিঃ {cellValue(row, "class_name")}</p>
+            <h2 className="marksheet-title font-bold text-black">{t.title.marksheet}</h2>
+            <p className="mt-0.5 text-lg font-semibold leading-snug text-black">{t.classTerm}{t.colon} {printCell(row, "class_name")}</p>
             <p className="mt-0.5 text-lg font-semibold leading-snug text-black">
-              {cellValue(row, "exam_name")} - {cellValue(row, "exam_year")} ইং
+              {printCell(row, "exam_name")} - {printCell(row, "exam_year")}{t.yearSuffix}
             </p>
           </div>
 
           <div className="marksheet-info mt-4 grid grid-cols-3 gap-x-6 gap-y-2 px-6 py-3 text-start text-lg text-black">
-            {getInfoFields(row, marksheetFields).map((field) => (
+            {getInfoFields(row, marksheetFields, t, isMadrasa).map((field) => (
               <p key={field.label}>
                 <b>{field.label}:</b> {field.value}
               </p>
@@ -155,10 +167,10 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
             <table className="marksheet-table mt-4 w-full border-collapse text-black">
               <thead>
                 <tr className="bg-emerald-100 text-emerald-950">
-                  <th className="w-12 border border-emerald-400 px-2 py-2 text-center font-bold">ক্রম</th>
-                  <th className="border border-emerald-400 px-3 py-2 text-start font-bold">বিষয়ের নাম</th>
-                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">প্রাপ্ত নম্বর</th>
-                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">পূর্ণমান</th>
+                  <th className="w-12 border border-emerald-400 px-2 py-2 text-center font-bold">{t.col.serialShort}</th>
+                  <th className="border border-emerald-400 px-3 py-2 text-start font-bold">{t.col.subjectName}</th>
+                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">{t.col.obtainedMarks}</th>
+                  <th className="w-24 border border-emerald-400 px-3 py-2 text-center font-bold">{t.col.fullMarks}</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,12 +184,12 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
                     </td>
                     <td className="border border-emerald-700 px-3 py-2 font-medium">{subject.subject_name || "—"}</td>
                     <td className="border border-emerald-700 px-3 py-2 text-center font-bold text-black">
-                      {formatMark(subject)}
+                      {formatMark(subject, t.absentShort)}
                     </td>
                     <td className="border border-emerald-700 px-3 py-2 text-center">
                       {subject.full_marks === undefined || subject.full_marks === null
                         ? "—"
-                        : formatReportValue(subject.full_marks)}
+                        : printValue(subject.full_marks)}
                     </td>
                   </tr>
                 ))}
@@ -205,7 +217,7 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
           {visibleSignatures.map((signature) => (
             <div key={signature.key} className={SIGNATURE_CELL_CLASS[signature.position]}>
               <div className="whitespace-nowrap border-t border-black px-1 pt-0.5 text-center text-base font-semibold">
-                {SIGNATURE_LABELS[signature.key]}
+                {signatureLabel(t, signature.key)}
               </div>
             </div>
           ))}

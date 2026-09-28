@@ -6,8 +6,7 @@ export type NameOwner = "self" | "father" | "mother";
 export type NameLang = "bn" | "ar" | "en";
 export const NAME_LANGS: NameLang[] = ["bn", "ar", "en"];
 
-export const OWNER_LABEL: Record<NameOwner, string> = { self: "নিজের নাম", father: "পিতা", mother: "মাতা" };
-export const LANG_LABEL: Record<NameLang, string> = { bn: "বাংলা নাম", ar: "আরবি নাম", en: "English নাম" };
+// Display labels for owners/languages live in peopleTools.text.ts (owners / ownerName / langs).
 
 // Students store Arabic as `*arabic_name`, teachers/staff as `*_ar`.
 const STUDENT_FIELDS: Record<NameOwner, Record<NameLang, string>> = {

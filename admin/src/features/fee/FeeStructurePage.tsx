@@ -18,6 +18,8 @@ import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 import { Skeleton, SkeletonText } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import ExamFeeTable from "./ExamFeeTable";
+import { commonText, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { feeStructureText } from "./FeeStructurePage.text";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -42,11 +44,7 @@ type FeeStructureRow = {
   exam?: { id: number; name: string; year: string } | null;
 };
 
-const FREQUENCY_LABELS: Record<FeeFrequency, string> = {
-  ONE_TIME: "একবার",
-  MONTHLY: "মাসিক",
-  YEARLY: "বাৎসরিক",
-};
+const FREQUENCIES: FeeFrequency[] = ["ONE_TIME", "MONTHLY", "YEARLY"];
 
 // Matches backend EXAM_FEE_CATEGORY_NAME (fee.constants.ts). পরীক্ষার ফি is
 // not created from the generic form anymore - every exam gets one row per
@@ -57,11 +55,13 @@ const EXAM_FEE_TYPE_NAME = "পরীক্ষার ফি";
 // পেজের নিজস্ব সাইড মেনু - সেটিংস পেজের (SettingsLayout.tsx) মতো একই স্টাইল।
 // "link" থাকা আইটেম অন্য পেজে যায়, বাকিগুলো ?tab= দিয়ে এই পেজেরই অংশ বদলায়।
 type FeeSetupTab = "general" | "exam";
-const FEE_SETUP_MENU: { key: string; label: string; hint: string; icon: typeof Layers; link?: string }[] = [
-  { key: "general", label: "নিয়মিত ও অন্যান্য ফি", hint: "মাসিক, বাৎসরিক ও এককালীন ফি", icon: Layers },
-  { key: "exam", label: "পরীক্ষার ফি", hint: "পরীক্ষা × শ্রেণি অনুযায়ী ফি", icon: ClipboardList },
-  { key: "categories", label: "ফি ধরণ সেটিংস", hint: "ফি-র ধরণ যোগ/বদল", icon: Tags, link: "/ihtemam/fee-categories" },
+const FEE_SETUP_MENU: { key: "general" | "exam" | "categories"; icon: typeof Layers; link?: string }[] = [
+  { key: "general", icon: Layers },
+  { key: "exam", icon: ClipboardList },
+  { key: "categories", icon: Tags, link: "/ihtemam/fee-categories" },
 ];
+
+const num = (n: number | string) => formatNumber(n, getLang());
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -76,6 +76,11 @@ const emptyStructureForm = {
 };
 
 const FeeStructurePage = () => {
+  const t = useText(feeStructureText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const FREQUENCY_LABELS = t.frequency;
+  const localizeCount = (n: number) => formatNumber(n, lang);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: FeeSetupTab = searchParams.get("tab") === "exam" ? "exam" : "general";
   const selectTab = (tab: FeeSetupTab) =>
@@ -203,7 +208,7 @@ const FeeStructurePage = () => {
 
   const handleCreateStructure = async () => {
     if (!structureForm.fee_type || !structureForm.amount || !structureForm.session_id) {
-      useToastStore.getState().show("ফি ধরণ, পরিমাণ ও সেশন দিন", "error");
+      useToastStore.getState().show(getText(feeStructureText).requiredFields, "error");
       return;
     }
     const structureClassId = classId ? Number(classId) : undefined;
@@ -241,17 +246,17 @@ const FeeStructurePage = () => {
         useToastStore
           .getState()
           .show(
-            `ফি কাঠামো তৈরি হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+            getText(feeStructureText).createdWithInvoices(num(data?.invoicesCreated ?? 0), num(data?.studentsProcessed ?? 0)),
             "success",
           );
       } catch (err) {
         logger.error("AUTO BACKFILL ERROR:", err);
         useToastStore
           .getState()
-          .show("ফি কাঠামো তৈরি হয়েছে, তবে বিদ্যমান ছাত্রদের ইনভয়েস তৈরিতে সমস্যা হয়েছে", "error");
+          .show(getText(feeStructureText).createdBackfillFailed, "error");
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "ফি কাঠামো তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(feeStructureText).createFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -271,7 +276,7 @@ const FeeStructurePage = () => {
   const handleUpdateStructure = async () => {
     if (!editTarget) return;
     if (!editForm.fee_type || !editForm.amount || !editForm.session_id) {
-      useToastStore.getState().show("ফি ধরণ, পরিমাণ ও সেশন দিন", "error");
+      useToastStore.getState().show(getText(feeStructureText).requiredFields, "error");
       return;
     }
     const targetClassId = editTarget.classId ?? undefined;
@@ -300,17 +305,17 @@ const FeeStructurePage = () => {
         useToastStore
           .getState()
           .show(
-            `ফি কাঠামো আপডেট হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+            getText(feeStructureText).updatedWithInvoices(num(data?.invoicesCreated ?? 0), num(data?.studentsProcessed ?? 0)),
             "success",
           );
       } catch (err) {
         logger.error("AUTO BACKFILL ON UPDATE ERROR:", err);
         useToastStore
           .getState()
-          .show("ফি কাঠামো আপডেট হয়েছে, তবে বিদ্যমান ছাত্রদের ইনভয়েস তৈরিতে সমস্যা হয়েছে", "error");
+          .show(getText(feeStructureText).updatedBackfillFailed, "error");
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "ফি কাঠামো আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(feeStructureText).updateFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setEditSaving(false);
@@ -320,10 +325,10 @@ const FeeStructurePage = () => {
   const handleDeleteStructure = async (id: number) => {
     try {
       await feeStructureApi.remove(id);
-      useToastStore.getState().show("ফি কাঠামো মুছে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(getText(feeStructureText).deleted, "success");
       setStructures((prev) => prev.filter((row) => row.id !== id));
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(feeStructureText).deleteFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -350,7 +355,7 @@ const FeeStructurePage = () => {
           useToastStore
             .getState()
             .show(
-              `ফি কাঠামো চালু হয়েছে — ${data?.invoicesCreated ?? 0}টি ইনভয়েস তৈরি হয়েছে (${data?.studentsProcessed ?? 0} জন ছাত্রের জন্য)`,
+              getText(feeStructureText).activatedWithInvoices(num(data?.invoicesCreated ?? 0), num(data?.studentsProcessed ?? 0)),
               "success",
             );
         } catch (err) {
@@ -358,7 +363,7 @@ const FeeStructurePage = () => {
         }
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(feeStructureText).toggleFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -400,7 +405,7 @@ const FeeStructurePage = () => {
       const divKey = divId != null ? String(divId) : "other";
       if (!divisionMap.has(divKey)) {
         divisionMap.set(divKey, {
-          label: row.class?.division?.nameBn || "অন্যান্য",
+          label: row.class?.division?.nameBn || t.other,
           divisionId: divId,
           classMap: new Map(),
         });
@@ -410,7 +415,7 @@ const FeeStructurePage = () => {
       if (!division.classMap.has(classKey)) {
         division.classMap.set(classKey, {
           key: classKey,
-          label: row.class?.nameBn || `শ্রেণি #${row.classId}`,
+          label: row.class?.nameBn || t.classFallback(String(row.classId)),
           sortOrder: row.class?.sortOrder ?? 0,
           items: [],
         });
@@ -434,16 +439,16 @@ const FeeStructurePage = () => {
     return [
       {
         key: "generic",
-        label: "সাধারণ (সব বিভাগ ও শ্রেণির জন্য)",
+        label: t.genericGroup,
         divisionId: null,
         classGroups: genericItems.length
-          ? [{ key: "generic-items", label: "সব শ্রেণি", sortOrder: 0, items: genericItems }]
+          ? [{ key: "generic-items", label: t.allClasses, sortOrder: 0, items: genericItems }]
           : [],
         count: genericItems.length,
       },
       ...divisionGroups,
     ];
-  }, [structures, divisions]);
+  }, [structures, divisions, t]);
 
   const [activeDivisionTab, setActiveDivisionTab] = useState("all");
   const formRef = useRef<HTMLDivElement>(null);
@@ -473,7 +478,7 @@ const FeeStructurePage = () => {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6">
           <aside className="no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
             <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-              <h2 className="text-base font-bold">ফি মেনু</h2>
+              <h2 className="text-base font-bold">{t.feeMenu}</h2>
             </div>
             <nav className="space-y-1">
               {FEE_SETUP_MENU.map((item) => {
@@ -489,14 +494,14 @@ const FeeStructurePage = () => {
                     <span className="flex min-w-0 items-start gap-2">
                       <Icon size={15} className="mt-0.5 shrink-0" />
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">{item.label}</span>
+                        <span className="block truncate font-medium">{t.menu[item.key].label}</span>
                         <span className="block truncate text-[11px] text-slate-400 dark:text-slate-500">
-                          {item.hint}
+                          {t.menu[item.key].hint}
                         </span>
                       </span>
                     </span>
                     <span
-                      className={active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}
+                      className={`${active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"} inline-block rtl:rotate-180`}
                     >
                       ›
                     </span>
@@ -523,10 +528,9 @@ const FeeStructurePage = () => {
 
           <div className="min-w-0">
             <div className="mb-4">
-              <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি সেটাপ</h1>
+              <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                ফি নির্ধারণ করুন — নতুন ভর্তি হওয়া ছাত্রদের পাশাপাশি বিদ্যমান সব যোগ্য ছাত্রের জন্যও ইনভয়েস অটোমেটিক
-                তৈরি হয়ে যায়
+                {t.subtitle}
               </p>
             </div>
             {activeTab === "exam" ? (
@@ -538,24 +542,22 @@ const FeeStructurePage = () => {
                   className="mb-4 scroll-mt-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4"
                 >
                   <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
-                    নতুন ফি কাঠামো তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
+                    {t.createTitle} {classId ? t.forSelectedClass : t.forAllClasses}
                   </h2>
                   <p className="mb-3 -mt-1 text-xs text-gray-500 dark:text-slate-400">
-                    তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান ছাত্রদের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে — এডিট করলে বা
-                    নিষ্ক্রিয় থেকে আবার সক্রিয় করলেও একইভাবে হয়ে যায়, আলাদা কিছু চালাতে হয় না। পরীক্ষার ফি এখানে
-                    নয় — বাম পাশের "পরীক্ষার ফি" মেনুতে প্রতিটি পরীক্ষার বিভাগ অনুযায়ী শ্রেণিগুলো নিজে থেকেই আসে।
+                    {t.createHint}
                   </p>
                   <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
                     <div className="w-full sm:w-auto">
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        ফি ধরণ <span className="text-rose-500">*</span>
+                        {t.feeType} <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={structureForm.fee_type}
                         onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
                         className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       >
-                        <option value="">নির্বাচন করুন</option>
+                        <option value="">{c.select}</option>
                         {categories
                           .filter((c) => c.isActive && c.name !== EXAM_FEE_TYPE_NAME)
                           .map((c) => (
@@ -567,14 +569,14 @@ const FeeStructurePage = () => {
                     </div>
                     <div className="w-full sm:w-auto">
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        ফ্রিকোয়েন্সি
+                        {t.frequencyLabel}
                       </label>
                       <select
                         value={structureForm.frequency}
                         onChange={(e) => setStructureForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))}
                         className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       >
-                        {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
+                        {FREQUENCIES.map((f) => (
                           <option key={f} value={f}>
                             {FREQUENCY_LABELS[f]}
                           </option>
@@ -583,12 +585,12 @@ const FeeStructurePage = () => {
                     </div>
                     <div className="w-full sm:w-auto">
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        পরিমাণ (৳) <span className="text-rose-500">*</span>
+                        {t.amountTaka} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         inputMode="decimal"
-                        placeholder="পরিমাণ"
+                        placeholder={t.amount}
                         value={structureForm.amount}
                         onChange={(e) =>
                           setStructureForm((p) => ({ ...p, amount: normalizeBanglaDigits(e.target.value) }))
@@ -597,7 +599,7 @@ const FeeStructurePage = () => {
                       />
                     </div>
                     <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">বিভাগ</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.division}</label>
                       <select
                         value={division}
                         onChange={(event) => {
@@ -607,7 +609,7 @@ const FeeStructurePage = () => {
                         }}
                         className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       >
-                        <option value="">সাধারণ (সব বিভাগ)</option>
+                        <option value="">{t.generalAllDivisions}</option>
                         {divisions.map((d) => (
                           <option key={d.division_id} value={d.division_id}>
                             {d.division_name_bn}
@@ -616,14 +618,14 @@ const FeeStructurePage = () => {
                       </select>
                     </div>
                     <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শ্রেণি</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.classLabel}</label>
                       <select
                         value={classId}
                         onChange={(event) => setClassId(event.target.value)}
                         disabled={!division || classLoading}
                         className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
                       >
-                        <option value="">{classLoading ? "লোড হচ্ছে..." : "সাধারণ (সব শ্রেণি)"}</option>
+                        <option value="">{classLoading ? c.loading : t.generalAllClasses}</option>
                         {classes.map((c) => (
                           <option key={c.class_id} value={c.class_id}>
                             {c.class_name_bn}
@@ -633,18 +635,18 @@ const FeeStructurePage = () => {
                     </div>
                     <div className="w-full sm:w-auto">
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        সেশন <span className="text-rose-500">*</span>
+                        {t.session} <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={structureForm.session_id}
                         onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
                         className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       >
-                        <option value="">সেশন নির্বাচন করুন</option>
+                        <option value="">{t.selectSession}</option>
                         {sessions.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
-                            {s.isActive ? " (সক্রিয়)" : ""}
+                            {s.isActive ? t.activeSuffix : ""}
                           </option>
                         ))}
                       </select>
@@ -655,7 +657,7 @@ const FeeStructurePage = () => {
                       onClick={handleCreateStructure}
                       className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
-                      {saving ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+                      {saving ? t.creating : c.create}
                     </button>
                   </div>
                 </div>
@@ -664,17 +666,17 @@ const FeeStructurePage = () => {
                   <div className="mb-4 flex items-center gap-2">
                     <Layers size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
                     <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
-                      বিভাগ অনুযায়ী ফি কাঠামো
+                      {t.byDivisionTitle}
                     </h2>
                   </div>
                   {!structuresLoading && (
                     <div className="-mx-3 mb-4 overflow-x-auto px-3 sm:mx-0 sm:px-0">
                       <div className="flex w-max gap-1.5 sm:w-auto sm:flex-wrap">
                         {[
-                          { key: "all", label: "সব বিভাগ", count: structures.length },
+                          { key: "all", label: t.allDivisions, count: structures.length },
                           ...groupedStructures.map((g) => ({
                             key: g.key,
-                            label: g.key === "generic" ? "সাধারণ" : g.label,
+                            label: g.key === "generic" ? t.general : g.label,
                             count: g.count,
                           })),
                         ].map((tab) => {
@@ -700,7 +702,7 @@ const FeeStructurePage = () => {
                                       : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
                                 }`}
                               >
-                                {tab.count}
+                                {localizeCount(tab.count)}
                               </span>
                             </button>
                           );
@@ -754,9 +756,9 @@ const FeeStructurePage = () => {
                                 {division.label}
                               </h3>
                               <span className="shrink-0 text-xs text-gray-500 dark:text-slate-400">
-                                {division.count}টি ফি
+                                {t.feeCount(localizeCount(division.count))}
                                 {division.key !== "generic" && division.classGroups.length > 0
-                                  ? ` · ${division.classGroups.length}টি শ্রেণি`
+                                  ? t.classCount(localizeCount(division.classGroups.length))
                                   : ""}
                               </span>
                             </div>
@@ -766,12 +768,12 @@ const FeeStructurePage = () => {
                               className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                             >
                               <Plus size={14} />
-                              ফি যোগ করুন
+                              {t.addFee}
                             </button>
                           </div>
                           {division.classGroups.length === 0 ? (
                             <div className="px-3 py-5 text-center text-xs text-gray-400 dark:text-slate-500">
-                              এই {division.key === "generic" ? "অংশে" : "বিভাগে"} এখনো কোনো ফি সেট করা হয়নি
+                              {division.key === "generic" ? t.emptyGeneric : t.emptyDivision}
                             </div>
                           ) : (
                             <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -785,7 +787,7 @@ const FeeStructurePage = () => {
                                       {group.label}
                                     </h4>
                                     <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                                      {group.items.length}টি
+                                      {t.count(localizeCount(group.items.length))}
                                     </span>
                                   </div>
                                   <div className="flex flex-col gap-1.5">
@@ -798,7 +800,7 @@ const FeeStructurePage = () => {
                                           <div className="truncate font-medium text-gray-800 dark:text-slate-200">
                                             {row.name}{" "}
                                             <span className="font-normal text-gray-500 dark:text-slate-400">
-                                              ৳{row.amount}
+                                              ৳{formatNumber(row.amount, lang)}
                                             </span>
                                           </div>
                                           <div className="mt-1 flex flex-wrap gap-1">
@@ -809,7 +811,7 @@ const FeeStructurePage = () => {
                                             )}
                                             {row.exam && (
                                               <span
-                                                title="নির্দিষ্ট এই পরীক্ষার সাথে যুক্ত - ভর্তির সাথে সাথে বিল হয় না, শুধু তৈরি/আবার-সেট করার সময় বিল হয়"
+                                                title={t.examLinkedHint}
                                                 className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
                                               >
                                                 {row.exam.name} ({row.exam.year})
@@ -823,7 +825,7 @@ const FeeStructurePage = () => {
                                             </span>
                                             {!row.isActive && (
                                               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                                                নিষ্ক্রিয়
+                                                {c.inactive}
                                               </span>
                                             )}
                                           </div>
@@ -835,13 +837,13 @@ const FeeStructurePage = () => {
                                             size="sm"
                                             title={
                                               row.isActive
-                                                ? "বন্ধ করলে এই ফি কাঠামো আর কোনো ছাত্রের জন্য বিল হবে না"
-                                                : "চালু করুন"
+                                                ? t.toggleOffHint
+                                                : t.turnOn
                                             }
                                           />
                                           <button
                                             type="button"
-                                            title="এডিট"
+                                            title={c.edit}
                                             onClick={() => openEditModal(row)}
                                             className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                                           >
@@ -849,7 +851,7 @@ const FeeStructurePage = () => {
                                           </button>
                                           <button
                                             type="button"
-                                            title="মুছুন"
+                                            title={c.delete}
                                             onClick={() => handleDeleteStructure(row.id)}
                                             className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                                           >
@@ -877,20 +879,20 @@ const FeeStructurePage = () => {
       {/* Edit fee structure modal */}
       <Modal
         open={!!editTarget}
-        title={`ফি কাঠামো এডিট করুন — ${editTarget?.name || ""}`}
+        title={t.editTitle(editTarget?.name || "")}
         onClose={() => setEditTarget(null)}
       >
         <div className="flex flex-col gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              ফি ধরণ <span className="text-rose-500">*</span>
+              {t.feeType} <span className="text-rose-500">*</span>
             </label>
             <select
               value={editForm.fee_type}
               onChange={(e) => setEditForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {categories
                 .filter((c) => (c.isActive || c.name === editForm.fee_type) && c.name !== EXAM_FEE_TYPE_NAME)
                 .map((c) => (
@@ -901,13 +903,13 @@ const FeeStructurePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফ্রিকোয়েন্সি</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.frequencyLabel}</label>
             <select
               value={editForm.frequency}
               onChange={(e) => setEditForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              {(Object.keys(FREQUENCY_LABELS) as FeeFrequency[]).map((f) => (
+              {FREQUENCIES.map((f) => (
                 <option key={f} value={f}>
                   {FREQUENCY_LABELS[f]}
                 </option>
@@ -915,7 +917,7 @@ const FeeStructurePage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.amountTaka}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -925,17 +927,17 @@ const FeeStructurePage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">সেশন</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.session}</label>
             <select
               value={editForm.session_id}
               onChange={(e) => setEditForm((p) => ({ ...p, session_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">সেশন নির্বাচন করুন</option>
+              <option value="">{t.selectSession}</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.isActive ? " (সক্রিয়)" : ""}
+                  {s.isActive ? t.activeSuffix : ""}
                 </option>
               ))}
             </select>
@@ -947,7 +949,7 @@ const FeeStructurePage = () => {
             onClick={() => setEditTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -955,7 +957,7 @@ const FeeStructurePage = () => {
             onClick={handleUpdateStructure}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {editSaving ? c.saving : c.save}
           </button>
         </div>
       </Modal>

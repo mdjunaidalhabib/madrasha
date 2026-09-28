@@ -57,6 +57,7 @@ import {
   MAX_ID_CARD_BACK_LOST_TEXT_LENGTH,
 } from "./settings.constants";
 import { linkName } from "../../shared/utils/tenant-name.util";
+import { t } from "../../shared/i18n";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -75,7 +76,7 @@ function parseBoundedNumber(
   if (value === undefined) return undefined;
   const n = Number(value);
   if (!Number.isFinite(n) || n < limits.min || n > limits.max) {
-    throw new BadRequestError(`Invalid ${label} (expected ${limits.min}-${limits.max})`);
+    throw new BadRequestError(t({ bn: `${label} সঠিক নয় (প্রত্যাশিত ${limits.min}-${limits.max})`, en: `Invalid ${label} (expected ${limits.min}-${limits.max})`, ar: `${label} غير صالح (المتوقع ${limits.min}-${limits.max})` }));
   }
   return n;
 }
@@ -101,7 +102,7 @@ function mergeBrandLayoutPatch(
 
   if (patch.name_color !== undefined) {
     if (patch.name_color !== null && !isValidHexColor(patch.name_color)) {
-      throw new BadRequestError("Invalid name_color");
+      throw new BadRequestError(t({ bn: "নামের রং সঠিক নয়", en: "Invalid name_color", ar: "لون الاسم غير صالح" }));
     }
     next.name_color = patch.name_color || BRAND_LAYOUT_DEFAULTS.name_color;
   }
@@ -115,7 +116,7 @@ function mergeBrandLayoutPatch(
 
   if (patch.address_color !== undefined) {
     if (patch.address_color !== null && !isValidHexColor(patch.address_color)) {
-      throw new BadRequestError("Invalid address_color");
+      throw new BadRequestError(t({ bn: "ঠিকানার রং সঠিক নয়", en: "Invalid address_color", ar: "لون العنوان غير صالح" }));
     }
     next.address_color = patch.address_color || BRAND_LAYOUT_DEFAULTS.address_color;
   }
@@ -125,7 +126,7 @@ function mergeBrandLayoutPatch(
 
   if (patch.logo_position !== undefined) {
     if (!(BRAND_LOGO_POSITIONS as readonly string[]).includes(patch.logo_position)) {
-      throw new BadRequestError("Invalid logo_position");
+      throw new BadRequestError(t({ bn: "লোগোর অবস্থান সঠিক নয়", en: "Invalid logo_position", ar: "موضع الشعار غير صالح" }));
     }
     next.logo_position = patch.logo_position as BrandLayoutData["logo_position"];
   }
@@ -158,10 +159,10 @@ function mergeBrandLayoutPatch(
 
   if (patch.footer_text !== undefined) {
     if (patch.footer_text !== null && typeof patch.footer_text !== "string") {
-      throw new BadRequestError("Invalid footer_text");
+      throw new BadRequestError(t({ bn: "ফুটার লেখা সঠিক নয়", en: "Invalid footer_text", ar: "نص التذييل غير صالح" }));
     }
     if (typeof patch.footer_text === "string" && patch.footer_text.length > MAX_BRAND_FOOTER_TEXT_LENGTH) {
-      throw new BadRequestError("footer_text is too long");
+      throw new BadRequestError(t({ bn: "ফুটার লেখা অনেক বড়", en: "footer_text is too long", ar: "نص التذييل طويل جدًا" }));
     }
     next.footer_text = patch.footer_text?.trim() || null;
   }
@@ -175,7 +176,7 @@ function mergeBrandLayoutPatch(
 
   if (patch.footer_color !== undefined) {
     if (patch.footer_color !== null && !isValidHexColor(patch.footer_color)) {
-      throw new BadRequestError("Invalid footer_color");
+      throw new BadRequestError(t({ bn: "ফুটারের রং সঠিক নয়", en: "Invalid footer_color", ar: "لون التذييل غير صالح" }));
     }
     next.footer_color = patch.footer_color || BRAND_LAYOUT_DEFAULTS.footer_color;
   }
@@ -211,16 +212,16 @@ function sanitizeMarksheetFields(
   value: UpdateBrandingRequestDto["marksheet_fields"],
 ): MarksheetFieldItem[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value)) throw new BadRequestError("Invalid marksheet_fields");
+  if (!Array.isArray(value)) throw new BadRequestError(t({ bn: "মার্কশিটের ক্ষেত্রগুলো সঠিক নয়", en: "Invalid marksheet_fields", ar: "حقول كشف الدرجات غير صالحة" }));
 
   const seen = new Set<string>();
   const cleaned: MarksheetFieldItem[] = [];
   for (const item of value) {
     const key = item && typeof item === "object" ? (item as { key?: unknown }).key : undefined;
     if (typeof key !== "string" || !(MARKSHEET_FIELD_KEYS as readonly string[]).includes(key)) {
-      throw new BadRequestError("Invalid marksheet field key");
+      throw new BadRequestError(t({ bn: "মার্কশিটের ক্ষেত্রের কী সঠিক নয়", en: "Invalid marksheet field key", ar: "مفتاح حقل كشف الدرجات غير صالح" }));
     }
-    if (seen.has(key)) throw new BadRequestError("Duplicate marksheet field key");
+    if (seen.has(key)) throw new BadRequestError(t({ bn: "মার্কশিটের ক্ষেত্রের কী একাধিকবার আছে", en: "Duplicate marksheet field key", ar: "مفتاح حقل كشف الدرجات مكرر" }));
     seen.add(key);
     cleaned.push(
       withSignaturePosition(
@@ -268,16 +269,16 @@ function sanitizeAdmitCardFields(
   value: UpdateBrandingRequestDto["admit_card_fields"],
 ): AdmitCardFieldItem[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value)) throw new BadRequestError("Invalid admit_card_fields");
+  if (!Array.isArray(value)) throw new BadRequestError(t({ bn: "প্রবেশপত্রের ক্ষেত্রগুলো সঠিক নয়", en: "Invalid admit_card_fields", ar: "حقول بطاقة الدخول غير صالحة" }));
 
   const seen = new Set<string>();
   const cleaned: AdmitCardFieldItem[] = [];
   for (const item of value) {
     const key = item && typeof item === "object" ? (item as { key?: unknown }).key : undefined;
     if (typeof key !== "string" || !(ADMIT_CARD_FIELD_KEYS as readonly string[]).includes(key)) {
-      throw new BadRequestError("Invalid admit card field key");
+      throw new BadRequestError(t({ bn: "প্রবেশপত্রের ক্ষেত্রের কী সঠিক নয়", en: "Invalid admit card field key", ar: "مفتاح حقل بطاقة الدخول غير صالح" }));
     }
-    if (seen.has(key)) throw new BadRequestError("Duplicate admit card field key");
+    if (seen.has(key)) throw new BadRequestError(t({ bn: "প্রবেশপত্রের ক্ষেত্রের কী একাধিকবার আছে", en: "Duplicate admit card field key", ar: "مفتاح حقل بطاقة الدخول مكرر" }));
     seen.add(key);
     cleaned.push({ key, visible: !!(item as { visible?: unknown }).visible });
   }
@@ -351,34 +352,34 @@ const HTTP_URL_RE = /^https?:\/\/[^\s]+$/i;
  * anything else malformed throws. Returns undefined when nothing was sent. */
 function sanitizeSocialLinks(value: UpdateBrandingRequestDto["social_links"]): SocialLinkItem[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value)) throw new BadRequestError("Invalid social_links");
-  if (value.length > MAX_SOCIAL_LINKS) throw new BadRequestError(`At most ${MAX_SOCIAL_LINKS} social links allowed`);
+  if (!Array.isArray(value)) throw new BadRequestError(t({ bn: "সোশ্যাল লিংক সঠিক নয়", en: "Invalid social_links", ar: "روابط التواصل غير صالحة" }));
+  if (value.length > MAX_SOCIAL_LINKS) throw new BadRequestError(t({ bn: `সর্বোচ্চ ${MAX_SOCIAL_LINKS}টি সোশ্যাল লিংক দেওয়া যাবে`, en: `At most ${MAX_SOCIAL_LINKS} social links allowed`, ar: `يُسمح بـ ${MAX_SOCIAL_LINKS} روابط تواصل كحد أقصى` }));
 
   const cleaned: SocialLinkItem[] = [];
   for (const item of value) {
-    if (!item || typeof item !== "object") throw new BadRequestError("Invalid social link");
+    if (!item || typeof item !== "object") throw new BadRequestError(t({ bn: "সোশ্যাল লিংক সঠিক নয়", en: "Invalid social link", ar: "رابط التواصل غير صالح" }));
     const { type, label, value: raw } = item;
     if (typeof type !== "string" || !(SOCIAL_LINK_TYPES as readonly string[]).includes(type)) {
-      throw new BadRequestError("Invalid social link type");
+      throw new BadRequestError(t({ bn: "সোশ্যাল লিংকের ধরন সঠিক নয়", en: "Invalid social link type", ar: "نوع رابط التواصل غير صالح" }));
     }
-    if (raw !== undefined && raw !== null && typeof raw !== "string") throw new BadRequestError("Invalid social link");
+    if (raw !== undefined && raw !== null && typeof raw !== "string") throw new BadRequestError(t({ bn: "সোশ্যাল লিংক সঠিক নয়", en: "Invalid social link", ar: "رابط التواصل غير صالح" }));
     if (label !== undefined && label !== null && typeof label !== "string") {
-      throw new BadRequestError("Invalid social link label");
+      throw new BadRequestError(t({ bn: "সোশ্যাল লিংকের লেবেল সঠিক নয়", en: "Invalid social link label", ar: "تسمية رابط التواصل غير صالحة" }));
     }
 
     let link = (raw ?? "").trim();
     if (!link) continue;
-    if (link.length > MAX_SOCIAL_LINK_VALUE_LENGTH) throw new BadRequestError("Social link is too long");
+    if (link.length > MAX_SOCIAL_LINK_VALUE_LENGTH) throw new BadRequestError(t({ bn: "সোশ্যাল লিংক অনেক বড়", en: "Social link is too long", ar: "رابط التواصل طويل جدًا" }));
 
     if (type === "whatsapp") {
-      if (!WHATSAPP_NUMBER_RE.test(link)) throw new BadRequestError("Invalid WhatsApp number");
+      if (!WHATSAPP_NUMBER_RE.test(link)) throw new BadRequestError(t({ bn: "হোয়াটসঅ্যাপ নম্বর সঠিক নয়", en: "Invalid WhatsApp number", ar: "رقم واتساب غير صالح" }));
     } else {
       if (!/^https?:\/\//i.test(link)) link = `https://${link}`;
-      if (!HTTP_URL_RE.test(link)) throw new BadRequestError("Invalid social link URL");
+      if (!HTTP_URL_RE.test(link)) throw new BadRequestError(t({ bn: "সোশ্যাল লিংকের URL সঠিক নয়", en: "Invalid social link URL", ar: "عنوان رابط التواصل غير صالح" }));
     }
 
     const cleanLabel = (label ?? "").trim();
-    if (cleanLabel.length > MAX_SOCIAL_LINK_LABEL_LENGTH) throw new BadRequestError("Social link label is too long");
+    if (cleanLabel.length > MAX_SOCIAL_LINK_LABEL_LENGTH) throw new BadRequestError(t({ bn: "সোশ্যাল লিংকের লেবেল অনেক বড়", en: "Social link label is too long", ar: "تسمية رابط التواصل طويلة جدًا" }));
     cleaned.push({ type, label: cleanLabel || null, value: link });
   }
   return cleaned;
@@ -429,7 +430,7 @@ export class SettingsService {
 
   async getBranding(madrasaId: number): Promise<BrandingData> {
     const madrasa = await this.repository.findBranding(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       name: madrasa.name,
@@ -482,32 +483,32 @@ export class SettingsService {
       report_footer_image,
     })) {
       if (value !== undefined && !storageProvider.isValidImage(value)) {
-        throw new BadRequestError(`Invalid image for ${key}`);
+        throw new BadRequestError(t({ bn: `${key}-এর ছবি সঠিক নয়`, en: `Invalid image for ${key}`, ar: `صورة ${key} غير صالحة` }));
       }
     }
 
     if (name !== undefined && !isValidTextValue(name, MAX_MADRASA_NAME_LENGTH)) {
-      throw new BadRequestError("Invalid madrasa name");
+      throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের নাম সঠিক নয়", en: "Invalid institution name", ar: "اسم المؤسسة غير صالح" }));
     }
 
     if (address !== undefined && !isValidTextValue(address, MAX_MADRASA_ADDRESS_LENGTH)) {
-      throw new BadRequestError("Invalid madrasa address");
+      throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের ঠিকানা সঠিক নয়", en: "Invalid institution address", ar: "عنوان المؤسسة غير صالح" }));
     }
 
     if (name !== undefined && (name === null || String(name).trim() === "")) {
-      throw new BadRequestError("Madrasa name cannot be empty");
+      throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের নাম খালি রাখা যাবে না", en: "Institution name cannot be empty", ar: "لا يمكن أن يكون اسم المؤسسة فارغًا" }));
     }
 
     let cleanedPhones: string[] | undefined;
     if (phones !== undefined) {
       cleanedPhones = sanitizeContactList(phones, MAX_BRANDING_PHONE_LENGTH) ?? undefined;
-      if (!cleanedPhones) throw new BadRequestError("Invalid phone numbers");
+      if (!cleanedPhones) throw new BadRequestError(t({ bn: "ফোন নম্বর সঠিক নয়", en: "Invalid phone numbers", ar: "أرقام الهاتف غير صالحة" }));
     }
 
     let cleanedEmails: string[] | undefined;
     if (emails !== undefined) {
       cleanedEmails = sanitizeContactList(emails, MAX_BRANDING_EMAIL_LENGTH) ?? undefined;
-      if (!cleanedEmails) throw new BadRequestError("Invalid email addresses");
+      if (!cleanedEmails) throw new BadRequestError(t({ bn: "ইমেইল ঠিকানা সঠিক নয়", en: "Invalid email addresses", ar: "عناوين البريد الإلكتروني غير صالحة" }));
     }
 
     const cleanedSocialLinks = sanitizeSocialLinks(social_links);
@@ -516,7 +517,7 @@ export class SettingsService {
     if (report_watermark_opacity !== undefined && report_watermark_opacity !== null) {
       opacity = Number(report_watermark_opacity);
       if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
-        throw new BadRequestError("Watermark opacity must be between 0 and 1");
+        throw new BadRequestError(t({ bn: "ওয়াটারমার্কের স্বচ্ছতা অবশ্যই 0 থেকে 1 এর মধ্যে হতে হবে", en: "Watermark opacity must be between 0 and 1", ar: "يجب أن تكون شفافية العلامة المائية بين 0 و 1" }));
       }
     }
 
@@ -524,7 +525,7 @@ export class SettingsService {
       report_print_mode !== undefined &&
       !(REPORT_PRINT_MODES as readonly string[]).includes(report_print_mode)
     ) {
-      throw new BadRequestError("Invalid report print mode");
+      throw new BadRequestError(t({ bn: "রিপোর্ট প্রিন্ট মোড সঠিক নয়", en: "Invalid report print mode", ar: "وضع طباعة التقرير غير صالح" }));
     }
 
     // Fetched unconditionally (not just for report_brand_layout, as before)
@@ -651,7 +652,7 @@ export class SettingsService {
 
   async deleteBrandingImage(madrasaId: number, userId: number, field: string) {
     const mapped = BRANDING_IMAGE_FIELDS[field];
-    if (!mapped) throw new BadRequestError("Invalid field");
+    if (!mapped) throw new BadRequestError(t({ bn: "ক্ষেত্রটি সঠিক নয়", en: "Invalid field", ar: "الحقل غير صالح" }));
 
     await this.repository.updateField(madrasaId, mapped, null);
 
@@ -666,7 +667,7 @@ export class SettingsService {
 
   async getDocumentTemplates(madrasaId: number): Promise<DocumentTemplatesData> {
     const madrasa = await this.repository.findDocumentTemplates(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       sanad_template: madrasa.sanadTemplate,
@@ -695,7 +696,7 @@ export class SettingsService {
       custom_notice_template,
     })) {
       if (value !== undefined && !isValidTemplateValue(value)) {
-        throw new BadRequestError(`Invalid text for ${key} (max ${MAX_TEMPLATE_LENGTH} characters)`);
+        throw new BadRequestError(t({ bn: `${key}-এর লেখা সঠিক নয় (সর্বোচ্চ ${MAX_TEMPLATE_LENGTH} অক্ষর)`, en: `Invalid text for ${key} (max ${MAX_TEMPLATE_LENGTH} characters)`, ar: `نص ${key} غير صالح (بحد أقصى ${MAX_TEMPLATE_LENGTH} حرف)` }));
       }
     }
 
@@ -712,7 +713,7 @@ export class SettingsService {
 
   async getIdCardBack(madrasaId: number): Promise<IdCardBackData> {
     const madrasa = await this.repository.findIdCardBack(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       ...EMPTY_ID_CARD_BACK,
@@ -728,20 +729,20 @@ export class SettingsService {
       ["expiry_date", expiry_date],
     ] as const) {
       if (value !== undefined && value !== null && !isValidIsoDate(value)) {
-        throw new BadRequestError(`Invalid ${label} (expected YYYY-MM-DD)`);
+        throw new BadRequestError(t({ bn: `${label} সঠিক নয় (প্রত্যাশিত YYYY-MM-DD)`, en: `Invalid ${label} (expected YYYY-MM-DD)`, ar: `${label} غير صالح (المتوقع YYYY-MM-DD)` }));
       }
     }
     if (principal_title !== undefined && !isValidTextValue(principal_title, MAX_ID_CARD_BACK_TITLE_LENGTH)) {
-      throw new BadRequestError("Invalid principal_title");
+      throw new BadRequestError(t({ bn: "প্রধানের পদবি সঠিক নয়", en: "Invalid principal_title", ar: "لقب المدير غير صالح" }));
     }
     if (lost_return_text !== undefined && !isValidTextValue(lost_return_text, MAX_ID_CARD_BACK_LOST_TEXT_LENGTH)) {
-      throw new BadRequestError("Invalid lost_return_text");
+      throw new BadRequestError(t({ bn: "হারানো কার্ড ফেরতের লেখা সঠিক নয়", en: "Invalid lost_return_text", ar: "نص إرجاع البطاقة المفقودة غير صالح" }));
     }
     if (principal_signature !== undefined && !storageProvider.isValidImage(principal_signature)) {
-      throw new BadRequestError("Invalid image for principal_signature");
+      throw new BadRequestError(t({ bn: "প্রধানের স্বাক্ষরের ছবি সঠিক নয়", en: "Invalid image for principal_signature", ar: "صورة توقيع المدير غير صالحة" }));
     }
     if (default_design_id !== undefined && default_design_id !== null && !Number.isInteger(default_design_id)) {
-      throw new BadRequestError("Invalid default_design_id");
+      throw new BadRequestError(t({ bn: "ডিফল্ট ডিজাইন সঠিক নয়", en: "Invalid default_design_id", ar: "التصميم الافتراضي غير صالح" }));
     }
 
     const current = await this.getIdCardBack(madrasaId);
@@ -761,7 +762,7 @@ export class SettingsService {
     };
 
     if (next.issue_date && next.expiry_date && next.expiry_date < next.issue_date) {
-      throw new BadRequestError("expiry_date cannot be before issue_date");
+      throw new BadRequestError(t({ bn: "মেয়াদ শেষের তারিখ ইস্যুর তারিখের আগে হতে পারবে না", en: "expiry_date cannot be before issue_date", ar: "لا يمكن أن يكون تاريخ الانتهاء قبل تاريخ الإصدار" }));
     }
 
     await this.repository.updateIdCardBack(madrasaId, {
@@ -771,7 +772,7 @@ export class SettingsService {
 
   async getIdCardDesign(madrasaId: number): Promise<IdCardDesignData> {
     const madrasa = await this.repository.findIdCardDesign(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       id_card_design: madrasa.idCardDesign || DEFAULT_DOCUMENT_DESIGN,
@@ -783,11 +784,11 @@ export class SettingsService {
     const { id_card_design, id_card_background_image } = body;
 
     if (id_card_design !== undefined && !isValidDesignKey(id_card_design)) {
-      throw new BadRequestError("Invalid id card design");
+      throw new BadRequestError(t({ bn: "আইডি কার্ড ডিজাইন সঠিক নয়", en: "Invalid id card design", ar: "تصميم بطاقة الهوية غير صالح" }));
     }
 
     if (id_card_background_image !== undefined && !storageProvider.isValidImage(id_card_background_image)) {
-      throw new BadRequestError("Invalid image for id_card_background_image");
+      throw new BadRequestError(t({ bn: "আইডি কার্ডের ব্যাকগ্রাউন্ড ছবি সঠিক নয়", en: "Invalid image for id_card_background_image", ar: "صورة خلفية بطاقة الهوية غير صالحة" }));
     }
 
     await this.repository.updateIdCardDesign(madrasaId, {
@@ -805,7 +806,7 @@ export class SettingsService {
 
   async getAdmitCardDesign(madrasaId: number): Promise<AdmitCardDesignData> {
     const madrasa = await this.repository.findAdmitCardDesign(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       admit_card_design: madrasa.admitCardDesign || DEFAULT_DOCUMENT_DESIGN,
@@ -817,14 +818,14 @@ export class SettingsService {
     const { admit_card_design, admit_card_background_image } = body;
 
     if (admit_card_design !== undefined && !isValidDesignKey(admit_card_design)) {
-      throw new BadRequestError("Invalid admit card design");
+      throw new BadRequestError(t({ bn: "প্রবেশপত্র ডিজাইন সঠিক নয়", en: "Invalid admit card design", ar: "تصميم بطاقة الدخول غير صالح" }));
     }
 
     if (
       admit_card_background_image !== undefined &&
       !storageProvider.isValidImage(admit_card_background_image)
     ) {
-      throw new BadRequestError("Invalid image for admit_card_background_image");
+      throw new BadRequestError(t({ bn: "প্রবেশপত্রের ব্যাকগ্রাউন্ড ছবি সঠিক নয়", en: "Invalid image for admit_card_background_image", ar: "صورة خلفية بطاقة الدخول غير صالحة" }));
     }
 
     await this.repository.updateAdmitCardDesign(madrasaId, {
@@ -842,7 +843,7 @@ export class SettingsService {
 
   async getLetterDesign(madrasaId: number): Promise<LetterDesignData> {
     const madrasa = await this.repository.findLetterDesign(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       letter_design: madrasa.letterDesign || DEFAULT_DOCUMENT_DESIGN,
@@ -854,11 +855,11 @@ export class SettingsService {
     const { letter_design, letter_background_image } = body;
 
     if (letter_design !== undefined && !isValidDesignKey(letter_design)) {
-      throw new BadRequestError("Invalid letter design");
+      throw new BadRequestError(t({ bn: "চিঠির ডিজাইন সঠিক নয়", en: "Invalid letter design", ar: "تصميم الخطاب غير صالح" }));
     }
 
     if (letter_background_image !== undefined && !storageProvider.isValidImage(letter_background_image)) {
-      throw new BadRequestError("Invalid image for letter_background_image");
+      throw new BadRequestError(t({ bn: "চিঠির ব্যাকগ্রাউন্ড ছবি সঠিক নয়", en: "Invalid image for letter_background_image", ar: "صورة خلفية الخطاب غير صالحة" }));
     }
 
     await this.repository.updateLetterDesign(madrasaId, {
@@ -876,7 +877,7 @@ export class SettingsService {
 
   async getBookLabelDesign(madrasaId: number): Promise<BookLabelDesignData> {
     const madrasa = await this.repository.findBookLabelDesign(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     return {
       book_label_design: madrasa.bookLabelDesign || DEFAULT_DOCUMENT_DESIGN,
@@ -888,14 +889,14 @@ export class SettingsService {
     const { book_label_design, book_label_background_image } = body;
 
     if (book_label_design !== undefined && !isValidDesignKey(book_label_design)) {
-      throw new BadRequestError("Invalid book label design");
+      throw new BadRequestError(t({ bn: "বইয়ের লেবেল ডিজাইন সঠিক নয়", en: "Invalid book label design", ar: "تصميم ملصق الكتاب غير صالح" }));
     }
 
     if (
       book_label_background_image !== undefined &&
       !storageProvider.isValidImage(book_label_background_image)
     ) {
-      throw new BadRequestError("Invalid image for book_label_background_image");
+      throw new BadRequestError(t({ bn: "বইয়ের লেবেলের ব্যাকগ্রাউন্ড ছবি সঠিক নয়", en: "Invalid image for book_label_background_image", ar: "صورة خلفية ملصق الكتاب غير صالحة" }));
     }
 
     await this.repository.updateBookLabelDesign(madrasaId, {
@@ -918,7 +919,7 @@ export class SettingsService {
       this.repository.countActiveStudents(madrasaId),
       this.repository.countActiveUsers(madrasaId),
     ]);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     const endDate = subscription?.endDate ?? null;
     let daysRemaining: number | null = null;
@@ -954,7 +955,7 @@ export class SettingsService {
 
   async getSectionToggles(madrasaId: number): Promise<SectionTogglesData> {
     const madrasa = await this.repository.findSectionToggles(madrasaId);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     const stored = (madrasa.settingsSectionToggles as Record<string, boolean> | null) || {};
     const result: SectionTogglesData = {};
@@ -967,7 +968,7 @@ export class SettingsService {
   async updateSectionToggle(madrasaId: number, body: UpdateSectionToggleRequestDto) {
     const { key, enabled } = body;
     if (!key || !(SETTINGS_SECTION_KEYS as readonly string[]).includes(key)) {
-      throw new BadRequestError("Invalid section key");
+      throw new BadRequestError(t({ bn: "সেকশন কী সঠিক নয়", en: "Invalid section key", ar: "مفتاح القسم غير صالح" }));
     }
 
     const current = await this.getSectionToggles(madrasaId);

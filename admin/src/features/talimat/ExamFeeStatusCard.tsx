@@ -4,6 +4,8 @@ import { CheckCircle2, Search, Wallet, XCircle } from "lucide-react";
 import api from "../../services/api";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examFeeText } from "./talimatMisc.text";
 
 type FeeStudentRow = {
   student_id: number;
@@ -25,13 +27,15 @@ type ExamFeeStatus = {
 
 type Tab = "unpaid" | "paid";
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
 
 /**
  * তালিমাত dashboard - কারা কারা পরীক্ষার ফি দিয়েছে / দেয়নি, for one exam
  * (default: the latest active one). Reads GET /results/dashboard-exam-fee.
  */
 export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; name: string; year: string }[] }) {
+  const t = useText(examFeeText);
+  const lang = useLang();
+  const bn = (value: number) => formatNumber(Number(value || 0), lang);
   const [examId, setExamId] = useState<number | "">("");
   const [data, setData] = useState<ExamFeeStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +70,7 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
   const allRows = useMemo(() => [...(data?.unpaid ?? []), ...(data?.paid ?? [])], [data]);
   const classOptions = useMemo(() => {
     const map = new Map<number, string>();
-    for (const r of allRows) if (!map.has(r.class_id)) map.set(r.class_id, r.class_name || `শ্রেণি #${r.class_id}`);
+    for (const r of allRows) if (!map.has(r.class_id)) map.set(r.class_id, r.class_name || t.classN(String(r.class_id)));
     return [...map.entries()];
   }, [allRows]);
 
@@ -95,8 +99,8 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
             <Wallet size={18} />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষার ফি</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">কারা ফি দিয়েছে আর কারা দেয়নি</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.title}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.subtitle}</p>
           </div>
         </div>
         <select
@@ -106,9 +110,9 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
             setClassId("");
           }}
           className={selectClass}
-          aria-label="পরীক্ষা নির্বাচন"
+          aria-label={t.selectExam}
         >
-          {examId === "" && <option value="">সর্বশেষ পরীক্ষা</option>}
+          {examId === "" && <option value="">{t.latestExam}</option>}
           {exams.map((e) => (
             <option key={e.examId} value={e.examId}>
               {e.name} ({e.year})
@@ -124,14 +128,14 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
           ))}
         </div>
       ) : !data?.exam ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-400 dark:text-slate-500">কোনো সক্রিয় পরীক্ষা নেই</p>
+        <p className="px-5 py-8 text-center text-sm text-slate-400 dark:text-slate-500">{t.noActiveExam}</p>
       ) : total === 0 ? (
         <div className="px-5 py-8 text-center">
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">এই পরীক্ষার ফি এখনো বিল হয়নি</p>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.notBilled}</p>
           <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            পরীক্ষা চালু হলে বা রুটিন তৈরি হলে সব ছাত্রের ইনভয়েস তৈরি হবে।{" "}
+            {t.notBilledHint}{" "}
             <Link to="/fee-management?tab=exam" className="text-indigo-600 hover:underline dark:text-indigo-400">
-              ফি সেটাপ দেখুন
+              {t.viewFeeSetup}
             </Link>
           </p>
         </div>
@@ -143,18 +147,18 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
               [
                 {
                   key: "unpaid" as Tab,
-                  label: "দেয়নি",
+                  label: t.unpaid,
                   count: unpaidCount,
-                  money: `বাকি ৳${bn(data.totals.due)}`,
+                  money: t.dueAmount(bn(data.totals.due)),
                   icon: <XCircle size={18} />,
                   active: "border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/30",
                   text: "text-rose-600 dark:text-rose-400",
                 },
                 {
                   key: "paid" as Tab,
-                  label: "দিয়েছে",
+                  label: t.paid,
                   count: paidCount,
-                  money: `আদায় ৳${bn(data.totals.collected)}`,
+                  money: t.collectedAmount(bn(data.totals.collected)),
                   icon: <CheckCircle2 size={18} />,
                   active: "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30",
                   text: "text-emerald-600 dark:text-emerald-400",
@@ -190,7 +194,7 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${paidPct}%` }} />
               </div>
               <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                {bn(paidPct)}% আদায়
+                {t.collectedPct(bn(paidPct))}
               </span>
             </div>
           </div>
@@ -202,7 +206,7 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="নাম বা রোল খুঁজুন"
+                placeholder={t.searchPlaceholder}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-white ps-8 pe-2.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
@@ -210,9 +214,9 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
               value={classId}
               onChange={(e) => setClassId(e.target.value ? Number(e.target.value) : "")}
               className={selectClass}
-              aria-label="শ্রেণি"
+              aria-label={t.class}
             >
-              <option value="">সব শ্রেণি</option>
+              <option value="">{t.allClasses}</option>
               {classOptions.map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}
@@ -224,16 +228,16 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
           <div className="max-h-96 overflow-y-auto border-t border-slate-100 dark:border-slate-800">
             {rows.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-                {tab === "unpaid" && unpaidCount === 0 ? "সবাই ফি দিয়েছে" : "কোনো ছাত্র পাওয়া যায়নি"}
+                {tab === "unpaid" && unpaidCount === 0 ? t.allPaid : t.noStudents}
               </p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="w-16 px-5 py-2 text-start font-semibold">রোল</th>
-                    <th className="px-2 py-2 text-start font-semibold">নাম</th>
-                    <th className="px-2 py-2 text-start font-semibold">শ্রেণি</th>
-                    <th className="px-5 py-2 text-end font-semibold">{tab === "unpaid" ? "বাকি" : "পরিশোধ"}</th>
+                    <th className="w-16 px-5 py-2 text-start font-semibold">{t.roll}</th>
+                    <th className="px-2 py-2 text-start font-semibold">{t.name}</th>
+                    <th className="px-2 py-2 text-start font-semibold">{t.class}</th>
+                    <th className="px-5 py-2 text-end font-semibold">{tab === "unpaid" ? t.due : t.payment}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -251,7 +255,7 @@ export default function ExamFeeStatusCard({ exams }: { exams: { examId: number; 
                       >
                         ৳{bn(tab === "unpaid" ? r.due : r.paid)}
                         {tab === "unpaid" && r.paid > 0 && (
-                          <span className="ms-1 text-[11px] font-normal text-slate-400">(আংশিক)</span>
+                          <span className="ms-1 text-[11px] font-normal text-slate-400">{t.partial}</span>
                         )}
                       </td>
                     </tr>

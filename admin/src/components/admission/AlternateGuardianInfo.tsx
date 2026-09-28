@@ -1,4 +1,6 @@
 import { AdmissionFormData } from "../../features/students/AdmissionPage";
+import { useText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
 
@@ -11,6 +13,8 @@ const inputClass =
   "border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
 const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
+  const t = useText(admissionText);
+  const isMadrasa = useIsMadrasa();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -18,25 +22,26 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6 dark:bg-slate-900 dark:border-slate-700">
       <div className="border-b pb-3 mb-6 dark:border-slate-700">
-        <h2 className="text-xl font-semibold text-gray-700 dark:text-slate-100">বিকল্প অভিভাবক (পিতা-মাতা ছাড়া)</h2>
+        <h2 className="text-xl font-semibold text-gray-700 dark:text-slate-100">{t.altGuardianInfo}</h2>
       </div>
 
       {formData.hasAltGuardian && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (বাংলা)</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.guardianNameBn}</label>
             <ScriptInput
               scriptLang="bn"
               name="altGuardianName"
               value={formData.altGuardianName || ""}
               onChange={handleChange}
-              placeholder="নাম লিখুন"
+              placeholder={t.enterName}
               className={inputClass}
             />
           </div>
 
+          {isMadrasa && (
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (আরবি)</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.guardianNameAr}</label>
             <ScriptInput
               scriptLang="ar"
               name="altGuardianArabicName"
@@ -46,9 +51,10 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
               className={inputClass}
             />
           </div>
+          )}
 
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">অভিভাবকের নাম (ইংরেজি)</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.guardianNameEn}</label>
             <ScriptInput
               scriptLang="en"
               name="altGuardianNameEn"
@@ -61,24 +67,24 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
 
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-              ছাত্রের সাথে সম্পর্ক
+              {t.relation}
             </label>
             <input
               name="altGuardianRelation"
               value={formData.altGuardianRelation || ""}
               onChange={handleChange}
-              placeholder="যেমন: চাচা, দাদা"
+              placeholder={t.relationPlaceholder}
               className={inputClass}
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">মোবাইল নম্বর</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.mobileNo}</label>
             <NumericInput
               name="altGuardianPhone"
               value={formData.altGuardianPhone || ""}
               onChange={handleChange}
-              placeholder="মোবাইল নম্বর"
+              placeholder={t.mobileNo}
               className={inputClass}
             />
           </div>

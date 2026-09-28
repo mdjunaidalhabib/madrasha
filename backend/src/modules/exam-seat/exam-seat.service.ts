@@ -5,6 +5,7 @@ import { examSeatRepository, ExamSeatRepository } from "./exam-seat.repository";
 import { planSeatAllocation, SeatStrategy } from "./exam-seat.allocation";
 import { AutoAllocateSeatsRequestDto, ManualSeatAdjustRequestDto } from "./exam-seat.dto";
 import { SEAT_ALLOCATION_STRATEGIES } from "./exam-seat.constants";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -23,28 +24,28 @@ export class ExamSeatService {
     try {
       return await this.repository.findByRoutine(madrasaId, examRoutineId);
     } catch (err) {
-      return friendlyFailure("listByRoutine error:", err, "Failed to load seat allocations");
+      return friendlyFailure("listByRoutine error:", err, t({ bn: "আসন বরাদ্দ লোড করা যায়নি", en: "Failed to load seat allocations", ar: "تعذر تحميل توزيع المقاعد" }));
     }
   }
 
   async autoAllocate(madrasaId: number, dto: AutoAllocateSeatsRequestDto) {
     if (isEmpty(dto.exam_routine_id) || !Array.isArray(dto.room_ids) || !dto.room_ids.length) {
-      throw new BadRequestError("exam_routine_id and a non-empty room_ids array are required");
+      throw new BadRequestError(t({ bn: "exam_routine_id ও খালি নয় এমন room_ids তালিকা আবশ্যক", en: "exam_routine_id and a non-empty room_ids array are required", ar: "exam_routine_id ومصفوفة room_ids غير فارغة مطلوبة" }));
     }
     const strategy = dto.strategy ? String(dto.strategy).toUpperCase() : "SEQUENTIAL";
     if (!SEAT_ALLOCATION_STRATEGIES.includes(strategy as (typeof SEAT_ALLOCATION_STRATEGIES)[number])) {
-      throw new BadRequestError(`strategy must be one of ${SEAT_ALLOCATION_STRATEGIES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `strategy অবশ্যই এগুলোর একটি হতে হবে: ${SEAT_ALLOCATION_STRATEGIES.join(", ")}`, en: `strategy must be one of ${SEAT_ALLOCATION_STRATEGIES.join(", ")}`, ar: `يجب أن تكون الاستراتيجية إحدى القيم: ${SEAT_ALLOCATION_STRATEGIES.join(", ")}` }));
     }
     const preserveManualOverrides = Boolean(dto.preserve_manual_overrides);
     const examRoutineId = Number(dto.exam_routine_id);
     const roomIds = dto.room_ids.map(Number);
 
     const routine = await this.repository.findRoutineForAllocation(examRoutineId, madrasaId);
-    if (!routine) throw new NotFoundError("Exam routine not found");
+    if (!routine) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
 
     const rooms = await this.repository.findRoomsByIds(madrasaId, roomIds);
     if (rooms.length !== roomIds.length) {
-      throw new BadRequestError("One or more selected rooms were not found or are inactive");
+      throw new BadRequestError(t({ bn: "নির্বাচিত এক বা একাধিক কক্ষ পাওয়া যায়নি বা নিষ্ক্রিয়", en: "One or more selected rooms were not found or are inactive", ar: "قاعة أو أكثر من القاعات المختارة غير موجودة أو غير نشطة" }));
     }
 
     let candidates = await this.repository.findEligibleCandidatesForRoutine(
@@ -86,7 +87,7 @@ export class ExamSeatService {
         roomCodeById,
       );
     } catch (err) {
-      return friendlyFailure("autoAllocate error:", err, "Failed to allocate seats");
+      return friendlyFailure("autoAllocate error:", err, t({ bn: "আসন বরাদ্দ করা যায়নি", en: "Failed to allocate seats", ar: "تعذر توزيع المقاعد" }));
     }
 
     return { allocated: plan.length };
@@ -94,17 +95,17 @@ export class ExamSeatService {
 
   async manualAdjust(id: number, madrasaId: number, dto: ManualSeatAdjustRequestDto) {
     if (isEmpty(dto.room_id) || isEmpty(dto.seat_no)) {
-      throw new BadRequestError("room_id and seat_no are required");
+      throw new BadRequestError(t({ bn: "room_id ও seat_no আবশ্যক", en: "room_id and seat_no are required", ar: "room_id و seat_no مطلوبان" }));
     }
     const existing = await this.repository.findById(id, madrasaId);
-    if (!existing) throw new NotFoundError("Seat allocation not found");
+    if (!existing) throw new NotFoundError(t({ bn: "আসন বরাদ্দ পাওয়া যায়নি", en: "Seat allocation not found", ar: "لم يتم العثور على توزيع المقعد" }));
 
     const seatNo = String(dto.seat_no).trim();
     const roomId = Number(dto.room_id);
 
     try {
       const [room] = await this.repository.findRoomsByIds(madrasaId, [roomId]);
-      if (!room) throw new BadRequestError("Selected room was not found or is inactive");
+      if (!room) throw new BadRequestError(t({ bn: "নির্বাচিত কক্ষটি পাওয়া যায়নি বা নিষ্ক্রিয়", en: "Selected room was not found or is inactive", ar: "القاعة المختارة غير موجودة أو غير نشطة" }));
 
       const result = await this.repository.updateSeat(id, madrasaId, {
         roomId,
@@ -114,12 +115,12 @@ export class ExamSeatService {
         isManualOverride: true,
         strategy: "MANUAL",
       });
-      if (!result.count) throw new NotFoundError("Seat allocation not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "আসন বরাদ্দ পাওয়া যায়নি", en: "Seat allocation not found", ar: "لم يتم العثور على توزيع المقعد" }));
       await this.repository.setCandidateNo(madrasaId, existing.examCandidateId, room.code, seatNo);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      if (isDuplicateError(err)) throw new ConflictError("This seat is already taken in this room for this exam slot");
-      return friendlyFailure("manualAdjust error:", err, "Failed to adjust seat");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই পরীক্ষার স্লটে এই কক্ষের আসনটি ইতিমধ্যে বরাদ্দ করা হয়েছে", en: "This seat is already taken in this room for this exam slot", ar: "هذا المقعد محجوز بالفعل في هذه القاعة لفترة الامتحان هذه" }));
+      return friendlyFailure("manualAdjust error:", err, t({ bn: "আসন পরিবর্তন করা যায়নি", en: "Failed to adjust seat", ar: "تعذر تعديل المقعد" }));
     }
   }
 
@@ -127,7 +128,7 @@ export class ExamSeatService {
     try {
       await this.repository.clearByRoutine(madrasaId, examRoutineId);
     } catch (err) {
-      return friendlyFailure("clearByRoutine error:", err, "Failed to clear seat allocations");
+      return friendlyFailure("clearByRoutine error:", err, t({ bn: "আসন বরাদ্দ মুছে ফেলা যায়নি", en: "Failed to clear seat allocations", ar: "تعذر مسح توزيع المقاعد" }));
     }
   }
 }

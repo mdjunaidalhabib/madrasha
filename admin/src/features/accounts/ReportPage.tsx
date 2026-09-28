@@ -6,6 +6,9 @@ import DataExportPrintActions, { Orientation, PaperSize } from "../../components
 import PaginatedReportPreview from "../../components/Report/PaginatedReportPreview";
 import { ReportMenuItem } from "../../features/reports/types";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { formatCurrency, usePrintLang, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { money } from "./accountHelpers";
+import { accountsPrintText, accountsText } from "./accounts.text";
 
 type Row = {
   period?: string;
@@ -15,34 +18,21 @@ type Row = {
   total_expense: number | string;
 };
 
-const PERIOD_COLUMNS = [
-  { header: "বিবরণ", key: "period" },
-  { header: "আয়", key: "total_income" },
-  { header: "ব্যয়", key: "total_expense" },
-  { header: "ব্যালেন্স", key: "balance" },
-];
-
-const FUND_CATEGORY_COLUMNS = [
-  { header: "ফান্ড", key: "fund" },
-  { header: "খাত", key: "category" },
-  { header: "আয়", key: "total_income" },
-  { header: "ব্যয়", key: "total_expense" },
-  { header: "ব্যালেন্স", key: "balance" },
-];
-
 const filters = [
-  { label: "দৈনিক", type: "daily", groupBy: "period" },
-  { label: "মাসিক", type: "monthly", groupBy: "period" },
-  { label: "বাৎসরিক", type: "yearly", groupBy: "period" },
-  { label: "ফান্ড ভিত্তিক", type: "monthly", groupBy: "fund" },
-  { label: "খাত ভিত্তিক", type: "monthly", groupBy: "category" },
-  { label: "ফান্ড ও খাত বিস্তারিত", type: "monthly", groupBy: "fund_category" },
-];
-
-const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
+  { key: "daily", type: "daily", groupBy: "period" },
+  { key: "monthly", type: "monthly", groupBy: "period" },
+  { key: "yearly", type: "yearly", groupBy: "period" },
+  { key: "byFund", type: "monthly", groupBy: "fund" },
+  { key: "byCategory", type: "monthly", groupBy: "category" },
+  { key: "fundCategory", type: "monthly", groupBy: "fund_category" },
+] as const;
 
 export default function ReportPage() {
-  const [active, setActive] = useState(filters[1]);
+  const t = useText(accountsText);
+  const p = usePrintText(accountsPrintText);
+  const { lang: printLang } = usePrintLang();
+  const printMoney = (value: number | string) => formatCurrency(Number(value || 0), printLang);
+  const [active, setActive] = useState<(typeof filters)[number]>(filters[1]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -50,18 +40,35 @@ export default function ReportPage() {
   const [orientation, setOrientation] = useState<Orientation>("portrait");
 
   const isFundCategory = active.groupBy === "fund_category";
-  const columns = isFundCategory ? FUND_CATEGORY_COLUMNS : PERIOD_COLUMNS;
+  const columns = useMemo(
+    () =>
+      isFundCategory
+        ? [
+            { header: p.fund, key: "fund" },
+            { header: p.category, key: "category" },
+            { header: p.income, key: "total_income" },
+            { header: p.expense, key: "total_expense" },
+            { header: p.balance, key: "balance" },
+          ]
+        : [
+            { header: p.description, key: "period" },
+            { header: p.income, key: "total_income" },
+            { header: p.expense, key: "total_expense" },
+            { header: p.balance, key: "balance" },
+          ],
+    [isFundCategory, p],
+  );
 
   const reportMeta: ReportMenuItem = useMemo(
     () => ({
       key: "income-expense-report",
-      title: "আয়-ব্যয় রিপোর্ট",
-      subtitle: `${active.label} রিপোর্ট`,
+      title: p.reportTitle,
+      subtitle: p.reportSubtitle(p.reportFilters[active.key]),
       endpoint: "/accounts/report",
       printable: "table",
       columns,
     }),
-    [columns, active.label],
+    [columns, active.key, p],
   );
 
   type ExportRow = {
@@ -83,7 +90,7 @@ export default function ReportPage() {
         const income = Number(row.total_income || 0);
         const expense = Number(row.total_expense || 0);
         return {
-          period: row.period || "নির্ধারিত নয়",
+          period: row.period || p.unassigned,
           total_income: income,
           total_expense: expense,
           balance: income - expense,
@@ -94,7 +101,7 @@ export default function ReportPage() {
     const fundOrder: string[] = [];
     const byFund = new Map<string, Row[]>();
     rows.forEach((row) => {
-      const fund = row.fund || "নির্ধারিত নয়";
+      const fund = row.fund || p.unassigned;
       if (!byFund.has(fund)) {
         byFund.set(fund, []);
         fundOrder.push(fund);
@@ -111,7 +118,7 @@ export default function ReportPage() {
 
       result.push({
         fund,
-        category: "সর্বমোট",
+        category: p.grandTotal,
         total_income: fundIncome,
         total_expense: fundExpense,
         balance: fundIncome - fundExpense,
@@ -123,7 +130,7 @@ export default function ReportPage() {
         const expense = Number(row.total_expense || 0);
         result.push({
           fund: "",
-          category: row.category || "নির্ধারিত নয়",
+          category: row.category || p.unassigned,
           total_income: income,
           total_expense: expense,
           balance: income - expense,
@@ -132,13 +139,13 @@ export default function ReportPage() {
     });
 
     return result;
-  }, [rows, isFundCategory]);
+  }, [rows, isFundCategory, p]);
 
   const previewRows = exportRows.map((row) => ({
     ...row,
-    total_income: money(row.total_income),
-    total_expense: money(row.total_expense),
-    balance: money(row.balance),
+    total_income: printMoney(row.total_income),
+    total_expense: printMoney(row.total_expense),
+    balance: printMoney(row.balance),
   }));
 
   const totals = useMemo(
@@ -169,7 +176,7 @@ export default function ReportPage() {
       } catch (err) {
         logger.error("Accounts report load failed:", err);
         setRows([]);
-        setError("রিপোর্ট লোড করা যায়নি। Backend/schema check করুন।");
+        setError(t.reportLoadFailed);
       } finally {
         setLoading(false);
       }
@@ -179,9 +186,9 @@ export default function ReportPage() {
   return (
     <div className="space-y-6">
       <div className="no-print flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <PageHeader title="আয়-ব্যয় রিপোর্ট" subtitle="দৈনিক, মাসিক, ফান্ড ও খাতভিত্তিক রিপোর্ট" />
+        <PageHeader title={t.incomeExpenseReport} subtitle={t.reportSubtitle} />
         <DataExportPrintActions
-          title="আয়-ব্যয় রিপোর্ট"
+          title={p.reportTitle}
           columns={columns}
           data={exportRows}
           fileName={`income-expense-${active.type}-${active.groupBy}`}
@@ -195,26 +202,26 @@ export default function ReportPage() {
       <div className="no-print flex flex-wrap gap-2">
         {filters.map((filter) => (
           <Button
-            key={`${filter.type}-${filter.groupBy}-${filter.label}`}
-            variant={active.label === filter.label ? "primary" : "secondary"}
+            key={`${filter.type}-${filter.groupBy}-${filter.key}`}
+            variant={active.key === filter.key ? "primary" : "secondary"}
             onClick={() => setActive(filter)}
           >
-            {filter.label}
+            {t.reportFilters[filter.key]}
           </Button>
         ))}
       </div>
 
       <div className="no-print grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">মোট আয়</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.totalIncome}</p>
           <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{money(totals.income)}</p>
         </div>
         <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">মোট ব্যয়</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.totalExpense}</p>
           <p className="mt-2 text-2xl font-bold text-rose-600 dark:text-rose-400">{money(totals.expense)}</p>
         </div>
         <div className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">ব্যালেন্স</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.balance}</p>
           <p className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-400">
             {money(totals.income - totals.expense)}
           </p>

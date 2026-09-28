@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { env } from "../../shared/config/env";
 import { authService } from "./auth.service";
+import { t } from "../../shared/i18n";
 
 /* =========================================================
    REFRESH TOKEN COOKIE (httpOnly - invisible to frontend JS,
@@ -68,7 +69,7 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     const madrasa_id = req.tenant!.madrasa_id;
     const rawRefreshToken = getRawRefreshToken(req);
     if (!rawRefreshToken) {
-      res.status(HttpStatus.BAD_REQUEST).json({ message: "Refresh token is required" });
+      res.status(HttpStatus.BAD_REQUEST).json({ message: t({ bn: "রিফ্রেশ টোকেন আবশ্যক", en: "Refresh token is required", ar: "رمز التحديث مطلوب" }) });
       return;
     }
     const deviceInfo = req.get("user-agent") || null;
@@ -98,7 +99,7 @@ export const logout = async (req: Request, res: Response) => {
     }
   } finally {
     clearRefreshTokenCookie(res);
-    res.json({ message: "Logged out" });
+    res.json({ message: t({ bn: "লগআউট হয়েছে", en: "Logged out", ar: "تم تسجيل الخروج" }) });
   }
 };
 
@@ -113,11 +114,11 @@ export const logoutAllDevices = async (req: Request, res: Response) => {
     await authService.logoutAllDevices(req.user!.id, rawRefreshToken);
 
     if (keepCurrent) {
-      res.json({ message: "Logged out from other devices" });
+      res.json({ message: t({ bn: "অন্যান্য ডিভাইস থেকে লগআউট হয়েছে", en: "Logged out from other devices", ar: "تم تسجيل الخروج من الأجهزة الأخرى" }) });
       return;
     }
     clearRefreshTokenCookie(res);
-    res.json({ message: "Logged out from all devices" });
+    res.json({ message: t({ bn: "সব ডিভাইস থেকে লগআউট হয়েছে", en: "Logged out from all devices", ar: "تم تسجيل الخروج من جميع الأجهزة" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -134,7 +135,7 @@ export const revokeSession = async (req: Request, res: Response) => {
   try {
     const sessionId = Number(req.params.id);
     await authService.revokeSession(req.user!.id, sessionId);
-    res.json({ message: "Session logged out" });
+    res.json({ message: t({ bn: "সেশন লগআউট করা হয়েছে", en: "Session logged out", ar: "تم إنهاء الجلسة" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -172,7 +173,7 @@ export const unlockScreen = async (req: Request, res: Response) => {
 
     await authService.unlockScreen({ userId: user_id, madrasaId: madrasa_id, password });
 
-    res.json({ message: "Unlocked" });
+    res.json({ message: t({ bn: "আনলক করা হয়েছে", en: "Unlocked", ar: "تم فتح القفل" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -196,7 +197,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     // Same generic message whether or not the email exists.
     res.json({
-      message: "If an account with that email exists, a password reset link has been sent.",
+      message: t({ bn: "এই ইমেইলে কোনো অ্যাকাউন্ট থাকলে পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে।", en: "If an account with that email exists, a password reset link has been sent.", ar: "إذا كان هناك حساب بهذا البريد الإلكتروني، فقد تم إرسال رابط إعادة تعيين كلمة المرور." }),
       ...(result.devResetToken ? { dev_reset_token: result.devResetToken } : {}),
     });
   } catch (err) {
@@ -215,7 +216,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     await authService.resetPassword(token, new_password, madrasa_id);
 
-    res.json({ message: "Password has been reset successfully. Please log in." });
+    res.json({ message: t({ bn: "পাসওয়ার্ড রিসেট হয়েছে। অনুগ্রহ করে লগইন করুন।", en: "Password has been reset successfully. Please log in.", ar: "تمت إعادة تعيين كلمة المرور بنجاح. يرجى تسجيل الدخول." }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -246,7 +247,7 @@ export const getMe = async (req: Request, res: Response) => {
 export const updateMe = async (req: Request, res: Response) => {
   try {
     await authService.updateMe(req.user!.id, req.tenant!.madrasa_id, req.body);
-    res.json({ message: "Updated" });
+    res.json({ message: t({ bn: "আপডেট হয়েছে", en: "Updated", ar: "تم التحديث" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -279,7 +280,7 @@ export const changeMyPassword = async (req: Request, res: Response) => {
       current_password,
       new_password,
     );
-    res.json({ message: "Password changed" });
+    res.json({ message: t({ bn: "পাসওয়ার্ড পরিবর্তন হয়েছে", en: "Password changed", ar: "تم تغيير كلمة المرور" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });

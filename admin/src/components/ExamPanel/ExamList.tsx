@@ -18,7 +18,9 @@ import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, formatDate, formatNumber, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
+import { examPanelText } from "./examPanel.text";
 import DivisionScopePicker from "./DivisionScopePicker";
 import { examCoversDivision, type ExamDivisionRef } from "./examDivisionScope";
 
@@ -55,11 +57,9 @@ interface ExamListProps {
 // পুরো ISO datetime (টাইমজোন সহ) আসতে পারে।
 const toDateInputValue = (v?: string | null) => (v ? String(v).slice(0, 10) : "");
 
-const formatDateBn = (v?: string | null) => {
+const formatDateBn = (v: string | null | undefined, lang: Lang) => {
   if (!v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
+  return formatDate(v, lang, { year: "numeric", month: "short", day: "numeric" });
 };
 
 export default function ExamList({
@@ -68,6 +68,9 @@ export default function ExamList({
   divisions = [],
   loading = false,
 }: ExamListProps) {
+  const t = useText(examPanelText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [name, setName] = useState("");
   const [divisionIds, setDivisionIds] = useState<number[]>([]);
   /** List filter: "" = সব পরীক্ষা, otherwise a division id. */
@@ -102,7 +105,7 @@ export default function ExamList({
 
   const addExam = async () => {
     if (!name.trim()) {
-      return useToastStore.getState().show("পরীক্ষার নাম দিন", "error");
+      return useToastStore.getState().show(getText(examPanelText).examNameRequired, "error");
     }
 
     try {
@@ -126,7 +129,7 @@ export default function ExamList({
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "পরীক্ষা যোগ করা যায়নি", "error");
+        .show(err?.response?.data?.message || getText(examPanelText).examAddFailed, "error");
     } finally {
       setAdding(false);
     }
@@ -146,12 +149,12 @@ export default function ExamList({
         useToastStore
           .getState()
           .show(
-            `"${exam.name}" চালু হয়েছে — এর ফি ইহতেমাম (ফি সেটাপ) থেকে চালু করতে হবে`,
+            getText(examPanelText).examActivatedFee(exam.name),
             "success",
           );
       }
     } catch {
-      useToastStore.getState().show("পরীক্ষার অবস্থা পরিবর্তন করা যায়নি", "error");
+      useToastStore.getState().show(getText(examPanelText).examToggleFailed, "error");
       reload();
     }
   };
@@ -159,9 +162,9 @@ export default function ExamList({
   const toggleActive = (exam: ExamItem) => {
     if (exam.isActive && exam.has_fee_link) {
       useConfirmStore.getState().show({
-        title: "পরীক্ষা বন্ধ করবেন?",
-        message: `"${exam.name}" পরীক্ষাটি বন্ধ হলে এর ফি-ও স্বয়ংক্রিয়ভাবে বন্ধ হবে এবং অপরিশোধিত ইনভয়েসগুলো বাতিল হবে। পরে পরীক্ষা চালু করলে ফি আবার ইহতেমাম থেকে চালু করতে হবে।`,
-        confirmText: "বন্ধ করুন",
+        title: t.examOffTitle,
+        message: t.examOffMessage(exam.name),
+        confirmText: t.turnOff,
         danger: true,
         onConfirm: () => setExamActive(exam, false),
       });
@@ -172,13 +175,13 @@ export default function ExamList({
 
   const deleteExam = (id: string | number, examName: string) => {
     useConfirmStore.getState().show({
-      title: "পরীক্ষা মুছবেন?",
-      message: `"${examName}" পরীক্ষাটি ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।`,
-      confirmText: "ট্র্যাশে সরান",
+      title: t.examDeleteTitle,
+      message: t.examDeleteMessage(examName),
+      confirmText: t.moveToTrash,
       danger: true,
       onConfirm: async () => {
         await api.delete(`/exams/${id}`);
-        useToastStore.getState().show("ট্র্যাশে সরানো হয়েছে", "success");
+        useToastStore.getState().show(getText(examPanelText).movedToTrash, "success");
         reload();
       },
     });
@@ -206,7 +209,7 @@ export default function ExamList({
 
   const saveEdit = async (id: string | number) => {
     if (!editName.trim()) {
-      return useToastStore.getState().show("পরীক্ষার নাম দিন", "error");
+      return useToastStore.getState().show(getText(examPanelText).examNameRequired, "error");
     }
 
     try {
@@ -219,13 +222,13 @@ export default function ExamList({
         description: editDescription.trim() || undefined,
         division_ids: editDivisionIds,
       });
-      useToastStore.getState().show("পরীক্ষা আপডেট হয়েছে", "success");
+      useToastStore.getState().show(getText(examPanelText).examUpdated, "success");
       cancelEdit();
       reload();
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "পরীক্ষা আপডেট করা যায়নি", "error");
+        .show(err?.response?.data?.message || getText(examPanelText).examUpdateFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -239,7 +242,7 @@ export default function ExamList({
     try {
       await api.put("/exams/reorder", { ids: ordered.map((item) => item.id) });
     } catch {
-      useToastStore.getState().show("ক্রম পরিবর্তন করা যায়নি", "error");
+      useToastStore.getState().show(getText(examPanelText).reorderFailed, "error");
       reload();
     }
   };
@@ -276,7 +279,7 @@ export default function ExamList({
     : items;
   const canReorder = !filterDivision && items.length > 1;
   const filterOptions = [
-    { id: "", label: "সব" },
+    { id: "", label: t.allShort },
     ...divisions.map((d) => ({ id: String(d.division_id), label: d.division_name_bn || "" })),
   ];
 
@@ -287,13 +290,13 @@ export default function ExamList({
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center gap-2">
         <GraduationCap className="text-blue-600" size={20} />
-        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষাসমূহ</h2>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.exams}</h2>
       </div>
 
       <div className="space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
-            placeholder="পরীক্ষার নাম (যেমনঃ প্রথম সাময়িক পরীক্ষা)"
+            placeholder={t.examNamePlaceholder}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -302,7 +305,7 @@ export default function ExamList({
           />
           <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
             <Plus size={16} />
-            {adding ? "যোগ হচ্ছে..." : "যোগ করুন"}
+            {adding ? t.adding : c.add}
           </Button>
         </div>
 
@@ -321,13 +324,13 @@ export default function ExamList({
           className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
         >
           {showAddDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          {showAddDetails ? "বিস্তারিত লুকান" : "বিস্তারিত যোগ করুন (ধরন, তারিখ, বিবরণ)"}
+          {showAddDetails ? t.hideDetails : t.addDetails}
         </button>
 
         {showAddDetails && (
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-800/60">
             <Input
-              placeholder="পরীক্ষার ধরন (যেমনঃ বার্ষিক)"
+              placeholder={t.examTypePlaceholder}
               value={examType}
               onChange={(e) => setExamType(e.target.value)}
             />
@@ -337,18 +340,18 @@ export default function ExamList({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className={dateInputClass}
-                title="শুরুর তারিখ"
+                title={t.startDate}
               />
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className={dateInputClass}
-                title="শেষের তারিখ"
+                title={t.endDate}
               />
             </div>
             <textarea
-              placeholder="বিবরণ (ঐচ্ছিক)"
+              placeholder={t.descriptionOptional}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -365,13 +368,13 @@ export default function ExamList({
           ))}
         </div>
       ) : items.length === 0 ? (
-        <EmptyState title="কোনো পরীক্ষা যোগ করা হয়নি" hint="উপরে থেকে নতুন পরীক্ষা যোগ করুন" />
+        <EmptyState title={t.noExams} hint={t.addExamHint} />
       ) : (
         <div className="space-y-2">
           {divisions.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
               <span className="me-1 text-xs text-slate-500 dark:text-slate-400">
-                বিভাগ অনুযায়ী দেখুন:
+                {t.viewByDivision}
               </span>
               {filterOptions.map((opt) => {
                 const on = filterDivision === opt.id;
@@ -392,7 +395,7 @@ export default function ExamList({
                   >
                     {opt.label}
                     <span className={on ? "opacity-70" : "text-slate-400"}>
-                      ({count.toLocaleString("bn-BD")})
+                      ({formatNumber(count, lang)})
                     </span>
                   </button>
                 );
@@ -402,14 +405,14 @@ export default function ExamList({
 
           {canReorder && (
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              টেনে (drag) ক্রম পরিবর্তন করা যাবে
+              {t.dragHint}
             </p>
           )}
 
           {visibleItems.length === 0 && (
             <EmptyState
-              title="এই বিভাগের কোনো পরীক্ষা নেই"
-              hint="উপরে বিভাগ নির্বাচন করে নতুন পরীক্ষা যোগ করুন"
+              title={t.noDivisionExams}
+              hint={t.noDivisionExamsHint}
             />
           )}
 
@@ -443,7 +446,7 @@ export default function ExamList({
                           autoFocus
                           value={editName}
                           onChange={(ev) => setEditName(ev.target.value)}
-                          placeholder="পরীক্ষার নাম"
+                          placeholder={t.examName}
                         />
                       </div>
 
@@ -452,8 +455,8 @@ export default function ExamList({
                           onClick={() => saveEdit(e.id)}
                           disabled={saving}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-950/40"
-                          aria-label="সংরক্ষণ করুন"
-                          title="সংরক্ষণ করুন"
+                          aria-label={c.save}
+                          title={c.save}
                         >
                           <Check size={16} />
                         </button>
@@ -461,8 +464,8 @@ export default function ExamList({
                           onClick={cancelEdit}
                           disabled={saving}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-                          aria-label="বাতিল করুন"
-                          title="বাতিল করুন"
+                          aria-label={t.cancelAction}
+                          title={t.cancelAction}
                         >
                           <X size={16} />
                         </button>
@@ -474,7 +477,7 @@ export default function ExamList({
                         {canReorder && (
                           <span
                             className="cursor-grab text-slate-400 active:cursor-grabbing dark:text-slate-500"
-                            title="টেনে সরান"
+                            title={t.dragToMove}
                           >
                             <GripVertical size={18} />
                           </span>
@@ -484,7 +487,7 @@ export default function ExamList({
                             the full sortOrder list), so it stays the same under a
                             division filter. */}
                         <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 px-1 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                          {(items.indexOf(e) + 1).toLocaleString("bn-BD")}
+                          {formatNumber(items.indexOf(e) + 1, lang)}
                         </span>
 
                         <div>
@@ -494,7 +497,7 @@ export default function ExamList({
                           {divisions.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {scopedDivisions.length === 0 ? (
-                                <Badge tone="slate">সকল বিভাগ</Badge>
+                                <Badge tone="slate">{t.allDivisions}</Badge>
                               ) : (
                                 scopedDivisions.map((d) => (
                                   <Badge key={d.division_id} tone="blue">
@@ -509,7 +512,7 @@ export default function ExamList({
                               {[
                                 e.examType,
                                 e.startDate || e.endDate
-                                  ? `${formatDateBn(e.startDate)}${e.endDate ? ` – ${formatDateBn(e.endDate)}` : ""}`
+                                  ? `${formatDateBn(e.startDate, lang)}${e.endDate ? ` – ${formatDateBn(e.endDate, lang)}` : ""}`
                                   : null,
                               ]
                                 .filter(Boolean)
@@ -524,26 +527,26 @@ export default function ExamList({
 
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                         <Badge tone={e.isActive ? "green" : "slate"}>
-                          {e.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
+                          {e.isActive ? c.active : c.inactive}
                         </Badge>
                         <ToggleSwitch
                           checked={e.isActive}
                           onChange={() => toggleActive(e)}
-                          title={e.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                          title={e.isActive ? t.deactivate : t.activate}
                         />
                         <button
                           onClick={() => startEdit(e)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                          aria-label="সম্পাদনা করুন"
-                          title="সম্পাদনা করুন"
+                          aria-label={t.editAction}
+                          title={t.editAction}
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           onClick={() => deleteExam(e.id, e.name)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
-                          aria-label="মুছে ফেলুন"
-                          title="মুছে ফেলুন"
+                          aria-label={t.deleteAction}
+                          title={t.deleteAction}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -564,7 +567,7 @@ export default function ExamList({
                 {isEditing && (
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Input
-                      placeholder="পরীক্ষার ধরন (যেমনঃ বার্ষিক)"
+                      placeholder={t.examTypePlaceholder}
                       value={editExamType}
                       onChange={(ev) => setEditExamType(ev.target.value)}
                     />
@@ -574,18 +577,18 @@ export default function ExamList({
                         value={editStartDate}
                         onChange={(ev) => setEditStartDate(ev.target.value)}
                         className={dateInputClass}
-                        title="শুরুর তারিখ"
+                        title={t.startDate}
                       />
                       <input
                         type="date"
                         value={editEndDate}
                         onChange={(ev) => setEditEndDate(ev.target.value)}
                         className={dateInputClass}
-                        title="শেষের তারিখ"
+                        title={t.endDate}
                       />
                     </div>
                     <textarea
-                      placeholder="বিবরণ (ঐচ্ছিক)"
+                      placeholder={t.descriptionOptional}
                       value={editDescription}
                       onChange={(ev) => setEditDescription(ev.target.value)}
                       rows={2}

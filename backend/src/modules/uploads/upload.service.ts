@@ -2,6 +2,7 @@ import { BadRequestError } from "../../shared/errors";
 import { cloudinaryService, CloudinaryCredentials } from "../../shared/storage/cloudinary.service";
 import { platformSettingsService } from "../super-admin/platform-settings.service";
 import { UploadImageRequestDto, DeleteImageRequestDto } from "./upload.dto";
+import { t } from "../../shared/i18n";
 
 const ALLOWED_FOLDERS = [
   "students",
@@ -25,7 +26,7 @@ export class UploadService {
 
   async uploadImage(madrasaId: number, dto: UploadImageRequestDto) {
     if (!dto.image || !dto.image.startsWith("data:image/")) {
-      throw new BadRequestError("image must be a base64 data URI (data:image/...)");
+      throw new BadRequestError(t({ bn: "ছবি অবশ্যই base64 data URI (data:image/...) হতে হবে", en: "image must be a base64 data URI (data:image/...)" }));
     }
 
     const folder = ALLOWED_FOLDERS.includes(dto.folder || "") ? dto.folder! : "misc";
@@ -47,7 +48,7 @@ export class UploadService {
   }
 
   async deleteImage(_madrasaId: number, dto: DeleteImageRequestDto) {
-    if (!dto.public_id) throw new BadRequestError("public_id is required");
+    if (!dto.public_id) throw new BadRequestError(t({ bn: "public_id আবশ্যক", en: "public_id is required", ar: "public_id مطلوب" }));
 
     const credentials = await this.getCredentials();
     if (!credentials) return { deleted: false };

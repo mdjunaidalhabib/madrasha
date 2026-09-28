@@ -10,6 +10,8 @@ import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePi
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
 import AddressCascadeFields from "@madrasha/shared-ui/src/components/ui/AddressCascadeFields";
+import { formatCurrency, getText, useIsMadrasa, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { admissionApplyText } from "./admissionApply.text";
 
 type DivisionItem = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string; division_id: number };
@@ -64,6 +66,11 @@ const labelClass = "text-sm font-semibold text-slate-700";
 const requiredMark = <span className="text-red-500">*</span>;
 
 export default function AdmissionApplyPage() {
+  const t = useText(admissionApplyText);
+  const lang = useLang();
+  // Arabic-name inputs are madrasa-only UI; the payload keeps its fields
+  // either way (they just stay empty -> null for other institution types).
+  const isMadrasa = useIsMadrasa();
   const slug = useTenantSlug();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -154,7 +161,7 @@ export default function AdmissionApplyPage() {
     setFieldErrors(nextFieldErrors);
 
     if (Object.values(nextFieldErrors).some(Boolean)) {
-      setError("লাল চিহ্নিত আবশ্যক (*) ঘরগুলো পূরণ করুন");
+      setError(getText(admissionApplyText).requiredError);
       return;
     }
 
@@ -206,7 +213,7 @@ export default function AdmissionApplyPage() {
       setSubmittedInvoices(invoices.map((inv: any) => ({ title: inv.title, amount: Number(inv.amount) })));
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || "আবেদন জমা দেওয়া যায়নি, আবার চেষ্টা করুন।");
+      setError(err?.response?.data?.message || getText(admissionApplyText).submitFailed);
     } finally {
       setSubmitting(false);
     }
@@ -225,12 +232,12 @@ export default function AdmissionApplyPage() {
       <header className="border-b border-slate-100 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
           <Link to=".." relative="path" className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
-            <ChevronLeft size={16} />
-            ফিরে যান
+            <ChevronLeft size={16} className="rtl:rotate-180" />
+            {t.goBack}
           </Link>
           <div className="ms-auto flex items-center gap-2">
             {madrasa?.logo_url ? (
-              <img src={madrasa.logo_url} alt="Logo" className="h-8 w-8 rounded-full object-cover" />
+              <img src={madrasa.logo_url} alt={t.logo} className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
@@ -252,40 +259,37 @@ export default function AdmissionApplyPage() {
           >
             <GraduationCap size={26} />
           </div>
-          <h1 className="mt-4 text-2xl font-extrabold md:text-3xl">অনলাইনে ভর্তি আবেদন</h1>
+          <h1 className="mt-4 text-2xl font-extrabold md:text-3xl">{t.title}</h1>
           <p className="mt-2 text-sm text-slate-500">
-            নিচের ফরমটি সঠিকভাবে পূরণ করে জমা দিন। আবেদনটি মাদ্রাসা কর্তৃপক্ষের অনুমোদনের পর
-            চূড়ান্ত ভর্তি সম্পন্ন হবে।
+            {t.intro}
           </p>
         </div>
 
         {success ? (
           <div className="rounded-3xl border border-green-100 bg-green-50 p-8 text-center shadow-sm">
             <CheckCircle2 size={40} className="mx-auto text-green-600" />
-            <h2 className="mt-4 text-lg font-bold text-green-800">আবেদন সফলভাবে জমা হয়েছে</h2>
+            <h2 className="mt-4 text-lg font-bold text-green-800">{t.successTitle}</h2>
             <p className="mt-2 text-sm text-green-700">
-              আপনার আবেদনটি পর্যালোচনার অপেক্ষায় আছে। মাদ্রাসা কর্তৃপক্ষ অনুমোদন করলে আপনার দেওয়া
-              ফোন নম্বরে যোগাযোগ করা হবে।
+              {t.successBody}
             </p>
 
             {submittedInvoices.length > 0 && (
               <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-green-200 bg-white p-4 text-start shadow-sm">
-                <h3 className="text-sm font-bold text-slate-700">প্রযোজ্য ভর্তি ফি</h3>
+                <h3 className="text-sm font-bold text-slate-700">{t.applicableFees}</h3>
                 <ul className="mt-2 space-y-1 text-sm text-slate-600">
                   {submittedInvoices.map((inv, index) => (
                     <li key={index} className="flex items-center justify-between gap-2">
                       <span>{inv.title}</span>
-                      <span className="font-semibold text-slate-800">৳{inv.amount}</span>
+                      <span className="font-semibold text-slate-800">{formatCurrency(inv.amount, lang)}</span>
                     </li>
                   ))}
                 </ul>
                 <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-bold text-slate-800">
-                  <span>মোট</span>
-                  <span>৳{submittedInvoices.reduce((sum, inv) => sum + inv.amount, 0)}</span>
+                  <span>{t.total}</span>
+                  <span>{formatCurrency(submittedInvoices.reduce((sum, inv) => sum + inv.amount, 0), lang)}</span>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">
-                  অনুগ্রহ করে এই ফি মাদ্রাসা অফিসে সরাসরি গিয়ে জমা দিন। অনুমোদনের আগে ফি জমা না
-                  হলে ভর্তি প্রক্রিয়া সম্পন্ন হবে না।
+                  {t.payAtOffice}
                 </p>
               </div>
             )}
@@ -296,7 +300,7 @@ export default function AdmissionApplyPage() {
               className={`mt-6 inline-flex items-center gap-1.5 ${theme.button} px-5 py-2.5 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
-              হোমপেজে ফিরে যান
+              {t.backHome}
             </Link>
           </div>
         ) : (
@@ -317,7 +321,7 @@ export default function AdmissionApplyPage() {
                     backgroundPosition: "center",
                   }}
                 >
-                  {!imagePreview && <span className="text-slate-400 text-xs">ছবি আপলোড</span>}
+                  {!imagePreview && <span className="text-slate-400 text-xs">{t.uploadPhoto}</span>}
                 </div>
                 <input
                   type="file"
@@ -331,31 +335,33 @@ export default function AdmissionApplyPage() {
 
             {/* শিক্ষার্থীর তথ্য */}
             <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">শিক্ষার্থীর তথ্য</h2>
+              <h2 className="mb-4 text-base font-bold text-slate-800">{t.studentInfo}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
-                  <label className={labelClass}>শিক্ষার্থীর পূর্ণ নাম (বাংলা) {requiredMark}</label>
+                  <label className={labelClass}>{t.fullNameBn} {requiredMark}</label>
                   <ScriptInput
                     scriptLang="bn"
                     className={fieldClass("name_bn")}
                     value={form.name_bn}
                     onChange={(e) => update("name_bn", e.target.value)}
-                    placeholder="সম্পূর্ণ নাম লিখুন"
+                    placeholder={t.fullNamePlaceholder}
                     required
                   />
                 </div>
+                {isMadrasa && (
+                  <div>
+                    <label className={labelClass}>{t.nameAr}</label>
+                    <ScriptInput
+                      scriptLang="ar"
+                      className={inputClass}
+                      value={form.arabic_name}
+                      onChange={(e) => update("arabic_name", e.target.value)}
+                      placeholder="اسم الطالب"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className={labelClass}>নাম (আরবি)</label>
-                  <ScriptInput
-                    scriptLang="ar"
-                    className={inputClass}
-                    value={form.arabic_name}
-                    onChange={(e) => update("arabic_name", e.target.value)}
-                    placeholder="اسم الطالب"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>নাম (ইংরেজি)</label>
+                  <label className={labelClass}>{t.nameEn}</label>
                   <ScriptInput
                     scriptLang="en"
                     className={inputClass}
@@ -365,7 +371,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>NID/জন্ম নিবন্ধন নম্বর</label>
+                  <label className={labelClass}>{t.nid}</label>
                   <NumericInput
                     className={inputClass}
                     value={form.nid}
@@ -373,32 +379,32 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>লিঙ্গ</label>
+                  <label className={labelClass}>{t.gender}</label>
                   <select
                     className={inputClass}
                     value={form.gender}
                     onChange={(e) => update("gender", e.target.value ? Number(e.target.value) : "")}
                   >
-                    <option value="">নির্বাচন করুন</option>
-                    <option value={1}>ছেলে</option>
-                    <option value={2}>মেয়ে</option>
+                    <option value="">{t.select}</option>
+                    <option value={1}>{t.male}</option>
+                    <option value={2}>{t.female}</option>
                   </select>
                 </div>
                 <div>
                   <CustomDatePicker
-                    label="জন্ম তারিখ"
+                    label={t.dob}
                     value={form.dob}
                     onChange={(date) => update("dob", date)}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>রক্তের গ্রুপ</label>
+                  <label className={labelClass}>{t.bloodGroup}</label>
                   <select
                     className={inputClass}
                     value={form.blood_group}
                     onChange={(e) => update("blood_group", e.target.value)}
                   >
-                    <option value="">নির্বাচন করুন</option>
+                    <option value="">{t.select}</option>
                     {BLOOD_GROUPS.map((bg) => (
                       <option key={bg} value={bg}>
                         {bg}
@@ -407,7 +413,7 @@ export default function AdmissionApplyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>আবাসিক/অনাবাসিক</label>
+                  <label className={labelClass}>{t.residency}</label>
                   <select
                     className={inputClass}
                     value={form.residency_type}
@@ -415,20 +421,20 @@ export default function AdmissionApplyPage() {
                       update("residency_type", e.target.value ? Number(e.target.value) : "")
                     }
                   >
-                    <option value="">নির্বাচন করুন</option>
-                    <option value={1}>আবাসিক</option>
-                    <option value={2}>অনাবাসিক</option>
+                    <option value="">{t.select}</option>
+                    <option value={1}>{t.residential}</option>
+                    <option value={2}>{t.nonResidential}</option>
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>এতিম শিক্ষার্থী</label>
+                  <label className={labelClass}>{t.orphan}</label>
                   <select
                     className={inputClass}
                     value={form.is_orphan ? "yes" : "no"}
                     onChange={(e) => update("is_orphan", e.target.value === "yes")}
                   >
-                    <option value="no">না</option>
-                    <option value="yes">হ্যাঁ</option>
+                    <option value="no">{t.no}</option>
+                    <option value="yes">{t.yes}</option>
                   </select>
                 </div>
               </div>
@@ -436,17 +442,17 @@ export default function AdmissionApplyPage() {
 
             {/* ভর্তি তথ্য */}
             <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">ভর্তির তথ্য</h2>
+              <h2 className="mb-4 text-base font-bold text-slate-800">{t.admissionInfo}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className={labelClass}>বিভাগ {requiredMark}</label>
+                  <label className={labelClass}>{t.division} {requiredMark}</label>
                   <select
                     className={fieldClass("division_id")}
                     value={form.division_id}
                     onChange={(e) => handleDivisionChange(e.target.value)}
                     required
                   >
-                    <option value="">নির্বাচন করুন</option>
+                    <option value="">{t.select}</option>
                     {divisions.map((d) => (
                       <option key={d.division_id} value={d.division_id}>
                         {d.division_name_bn}
@@ -455,7 +461,7 @@ export default function AdmissionApplyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>ভর্তি হতে ইচ্ছুক শ্রেণি {requiredMark}</label>
+                  <label className={labelClass}>{t.desiredClass} {requiredMark}</label>
                   <select
                     className={fieldClass("class_id")}
                     value={form.class_id}
@@ -463,7 +469,7 @@ export default function AdmissionApplyPage() {
                     disabled={!classesInDivision.length}
                     required
                   >
-                    <option value="">নির্বাচন করুন</option>
+                    <option value="">{t.select}</option>
                     {classesInDivision.map((c) => (
                       <option key={c.class_id} value={c.class_id}>
                         {c.class_name_bn}
@@ -472,14 +478,14 @@ export default function AdmissionApplyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>পূর্বের শ্রেণি</label>
+                  <label className={labelClass}>{t.previousClass}</label>
                   <select
                     className={inputClass}
                     value={form.previous_class_id}
                     onChange={(e) => update("previous_class_id", e.target.value)}
                     disabled={!classesInDivision.length}
                   >
-                    <option value="">নির্বাচন করুন</option>
+                    <option value="">{t.select}</option>
                     {classesInDivision.map((c) => (
                       <option key={c.class_id} value={c.class_id}>
                         {c.class_name_bn}
@@ -488,16 +494,16 @@ export default function AdmissionApplyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>পূর্ববর্তী প্রতিষ্ঠান</label>
+                  <label className={labelClass}>{t.previousInstitution}</label>
                   <input
                     className={inputClass}
                     value={form.previous_institution}
                     onChange={(e) => update("previous_institution", e.target.value)}
-                    placeholder="পূর্ববর্তী প্রতিষ্ঠানের নাম"
+                    placeholder={t.previousInstitutionPlaceholder}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className={labelClass}>পূর্বের ফলাফল</label>
+                  <label className={labelClass}>{t.previousResult}</label>
                   <input
                     className={inputClass}
                     value={form.previous_result}
@@ -509,10 +515,10 @@ export default function AdmissionApplyPage() {
 
             {/* অভিভাবকের তথ্য */}
             <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">অভিভাবকের তথ্য</h2>
+              <h2 className="mb-4 text-base font-bold text-slate-800">{t.guardianInfo}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className={labelClass}>পিতার নাম (বাংলা)</label>
+                  <label className={labelClass}>{t.fatherNameBn}</label>
                   <ScriptInput
                     scriptLang="bn"
                     className={inputClass}
@@ -520,18 +526,20 @@ export default function AdmissionApplyPage() {
                     onChange={(e) => update("father_name", e.target.value)}
                   />
                 </div>
+                {isMadrasa && (
+                  <div>
+                    <label className={labelClass}>{t.fatherNameAr}</label>
+                    <ScriptInput
+                      scriptLang="ar"
+                      className={inputClass}
+                      value={form.father_arabic_name}
+                      onChange={(e) => update("father_arabic_name", e.target.value)}
+                      placeholder="الأب اسم"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className={labelClass}>পিতার নাম (আরবি)</label>
-                  <ScriptInput
-                    scriptLang="ar"
-                    className={inputClass}
-                    value={form.father_arabic_name}
-                    onChange={(e) => update("father_arabic_name", e.target.value)}
-                    placeholder="الأب اسم"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>পিতার নাম (ইংরেজি)</label>
+                  <label className={labelClass}>{t.fatherNameEn}</label>
                   <ScriptInput
                     scriptLang="en"
                     className={inputClass}
@@ -541,7 +549,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>পিতার NID</label>
+                  <label className={labelClass}>{t.fatherNid}</label>
                   <NumericInput
                     className={inputClass}
                     value={form.father_nid}
@@ -549,7 +557,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>পিতার পেশা</label>
+                  <label className={labelClass}>{t.fatherOccupation}</label>
                   <input
                     className={inputClass}
                     value={form.father_occupation}
@@ -557,7 +565,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>মাতার নাম (বাংলা)</label>
+                  <label className={labelClass}>{t.motherNameBn}</label>
                   <ScriptInput
                     scriptLang="bn"
                     className={inputClass}
@@ -565,18 +573,20 @@ export default function AdmissionApplyPage() {
                     onChange={(e) => update("mother_name", e.target.value)}
                   />
                 </div>
+                {isMadrasa && (
+                  <div>
+                    <label className={labelClass}>{t.motherNameAr}</label>
+                    <ScriptInput
+                      scriptLang="ar"
+                      className={inputClass}
+                      value={form.mother_arabic_name}
+                      onChange={(e) => update("mother_arabic_name", e.target.value)}
+                      placeholder="الأم اسم"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className={labelClass}>মাতার নাম (আরবি)</label>
-                  <ScriptInput
-                    scriptLang="ar"
-                    className={inputClass}
-                    value={form.mother_arabic_name}
-                    onChange={(e) => update("mother_arabic_name", e.target.value)}
-                    placeholder="الأم اسم"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>মাতার নাম (ইংরেজি)</label>
+                  <label className={labelClass}>{t.motherNameEn}</label>
                   <ScriptInput
                     scriptLang="en"
                     className={inputClass}
@@ -586,7 +596,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>মাতার NID</label>
+                  <label className={labelClass}>{t.motherNid}</label>
                   <NumericInput
                     className={inputClass}
                     value={form.mother_nid}
@@ -594,7 +604,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>মাতার পেশা</label>
+                  <label className={labelClass}>{t.motherOccupation}</label>
                   <input
                     className={inputClass}
                     value={form.mother_occupation}
@@ -602,7 +612,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>অভিভাবকের ফোন নম্বর {requiredMark}</label>
+                  <label className={labelClass}>{t.guardianPhone} {requiredMark}</label>
                   <NumericInput
                     className={fieldClass("guardian_phone")}
                     value={form.guardian_phone}
@@ -612,7 +622,7 @@ export default function AdmissionApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>অভিভাবকের বিকল্প ফোন নম্বর</label>
+                  <label className={labelClass}>{t.guardianPhone2}</label>
                   <NumericInput
                     className={inputClass}
                     value={form.guardian_phone_2}
@@ -630,14 +640,14 @@ export default function AdmissionApplyPage() {
                   className="w-4 h-4 accent-blue-600"
                 />
                 <span className="text-sm font-semibold text-slate-700">
-                  পিতা-মাতা ছাড়া অন্য অভিভাবক আছে
+                  {t.hasAltGuardian}
                 </span>
               </label>
 
               {form.has_alt_guardian && (
                 <div className="mt-3 grid gap-4 rounded-xl bg-slate-50 p-4 md:grid-cols-2">
                   <div>
-                    <label className={labelClass}>অভিভাবকের নাম (বাংলা)</label>
+                    <label className={labelClass}>{t.altGuardianNameBn}</label>
                     <ScriptInput
                       scriptLang="bn"
                       className={inputClass}
@@ -645,18 +655,20 @@ export default function AdmissionApplyPage() {
                       onChange={(e) => update("alt_guardian_name", e.target.value)}
                     />
                   </div>
+                  {isMadrasa && (
+                    <div>
+                      <label className={labelClass}>{t.altGuardianNameAr}</label>
+                      <ScriptInput
+                        scriptLang="ar"
+                        className={inputClass}
+                        value={form.alt_guardian_arabic_name}
+                        onChange={(e) => update("alt_guardian_arabic_name", e.target.value)}
+                        placeholder="اسم ولي الأمر"
+                      />
+                    </div>
+                  )}
                   <div>
-                    <label className={labelClass}>অভিভাবকের নাম (আরবি)</label>
-                    <ScriptInput
-                      scriptLang="ar"
-                      className={inputClass}
-                      value={form.alt_guardian_arabic_name}
-                      onChange={(e) => update("alt_guardian_arabic_name", e.target.value)}
-                      placeholder="اسم ولي الأمر"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>অভিভাবকের নাম (ইংরেজি)</label>
+                    <label className={labelClass}>{t.altGuardianNameEn}</label>
                     <ScriptInput
                       scriptLang="en"
                       className={inputClass}
@@ -666,16 +678,16 @@ export default function AdmissionApplyPage() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>ছাত্রের সাথে সম্পর্ক</label>
+                    <label className={labelClass}>{t.relation}</label>
                     <input
                       className={inputClass}
                       value={form.alt_guardian_relation}
                       onChange={(e) => update("alt_guardian_relation", e.target.value)}
-                      placeholder="যেমন: চাচা, দাদা"
+                      placeholder={t.relationPlaceholder}
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>মোবাইল নম্বর</label>
+                    <label className={labelClass}>{t.mobile}</label>
                     <NumericInput
                       className={inputClass}
                       value={form.alt_guardian_phone}
@@ -683,7 +695,7 @@ export default function AdmissionApplyPage() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>ঠিকানা</label>
+                    <label className={labelClass}>{t.address}</label>
                     <input
                       className={inputClass}
                       value={form.alt_guardian_address}
@@ -696,7 +708,7 @@ export default function AdmissionApplyPage() {
 
             {/* ঠিকানা */}
             <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">ঠিকানা</h2>
+              <h2 className="mb-4 text-base font-bold text-slate-800">{t.address}</h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <AddressCascadeFields
                   values={{ division: form.division || "", district: form.district || "", thana: form.thana || "" }}
@@ -706,7 +718,7 @@ export default function AdmissionApplyPage() {
                   wrapperClassName=""
                 />
                 <div>
-                  <label className={labelClass}>গ্রাম</label>
+                  <label className={labelClass}>{t.village}</label>
                   <input
                     className={inputClass}
                     value={form.village}
@@ -722,10 +734,10 @@ export default function AdmissionApplyPage() {
               className={`w-full ${theme.button} px-5 py-3 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90 disabled:opacity-60`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
-              {submitting ? "জমা দেওয়া হচ্ছে..." : "আবেদন জমা দিন"}
+              {submitting ? t.submitting : t.submit}
             </button>
             <p className="text-center text-xs text-slate-400" style={{ color: accentLabel }}>
-              * চিহ্নিত ঘরগুলো আবশ্যক
+              {t.requiredNote}
             </p>
           </form>
         )}

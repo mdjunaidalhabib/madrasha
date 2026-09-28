@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError, BadRequestError } from "../../shared/errors";
 import { examInvigilatorService } from "./exam-invigilator.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -12,22 +13,22 @@ const getMadrasaId = (req: Request): number => {
 
 export const getInvigilatorAssignments = asyncHandler(async (req: Request, res: Response) => {
   const examRoutineId = Number(req.query.exam_routine_id);
-  if (!examRoutineId) throw new BadRequestError("exam_routine_id is required");
+  if (!examRoutineId) throw new BadRequestError(t({ bn: "exam_routine_id আবশ্যক", en: "exam_routine_id is required", ar: "exam_routine_id مطلوب" }));
   const data = await examInvigilatorService.listByRoutine(getMadrasaId(req), examRoutineId);
   res.json({ success: true, data });
 });
 
 export const assignInvigilator = asyncHandler(async (req: Request, res: Response) => {
   await examInvigilatorService.assign(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Invigilator assigned successfully");
+  return ApiResponse.message(res, t({ bn: "পরিদর্শক নিয়োগ করা হয়েছে", en: "Invigilator assigned successfully", ar: "تم تعيين المراقب بنجاح" }));
 });
 
 export const updateInvigilatorStatus = asyncHandler(async (req: Request, res: Response) => {
   await examInvigilatorService.updateStatus(Number(req.params.id), getMadrasaId(req), req.body.status);
-  return ApiResponse.message(res, "Invigilator assignment updated successfully");
+  return ApiResponse.message(res, t({ bn: "পরিদর্শক নিয়োগ আপডেট হয়েছে", en: "Invigilator assignment updated successfully", ar: "تم تحديث تعيين المراقب بنجاح" }));
 });
 
 export const removeInvigilatorAssignment = asyncHandler(async (req: Request, res: Response) => {
   await examInvigilatorService.remove(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, "Invigilator assignment removed successfully");
+  return ApiResponse.message(res, t({ bn: "পরিদর্শক নিয়োগ বাতিল করা হয়েছে", en: "Invigilator assignment removed successfully", ar: "تمت إزالة تعيين المراقب بنجاح" }));
 });

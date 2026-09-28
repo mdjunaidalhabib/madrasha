@@ -4,6 +4,7 @@ import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { userService } from "./user.service";
+import { t } from "../../shared/i18n";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const madrasa_id = req.tenant!.madrasa_id;
@@ -15,7 +16,7 @@ export const createUser = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     const id = await userService.createUser(madrasa_id, req.user!.id, req.body);
-    res.json({ message: "User created", id });
+    res.json({ message: t({ bn: "ব্যবহারকারী তৈরি হয়েছে", en: "User created" }), id });
   } catch (error) {
     if (error instanceof ApiError) {
       return res.status(error.statusCode).json({ message: error.message });
@@ -31,7 +32,7 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
 
   await userService.deleteUser(madrasa_id, req.user!.id, id);
 
-  res.json({ message: "Deleted" });
+  res.json({ message: t({ bn: "মুছে ফেলা হয়েছে", en: "Deleted", ar: "تم الحذف" }) });
 });
 
 export const updateUser = asyncHandler(async (req: Request, res: Response) => {
@@ -40,7 +41,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 
   await userService.updateUser(madrasa_id, req.user!.id, id, req.body);
 
-  res.json({ message: "Updated" });
+  res.json({ message: t({ bn: "আপডেট হয়েছে", en: "Updated", ar: "تم التحديث" }) });
 });
 
 export const resetUserPassword = asyncHandler(async (req: Request, res: Response) => {
@@ -49,7 +50,7 @@ export const resetUserPassword = asyncHandler(async (req: Request, res: Response
 
   await userService.adminResetPassword(madrasa_id, req.user!.id, id, req.body);
 
-  res.json({ message: "Password reset" });
+  res.json({ message: t({ bn: "পাসওয়ার্ড রিসেট হয়েছে", en: "Password reset", ar: "تمت إعادة تعيين كلمة المرور" }) });
 });
 
 export const unlockUserAccount = asyncHandler(async (req: Request, res: Response) => {
@@ -58,5 +59,5 @@ export const unlockUserAccount = asyncHandler(async (req: Request, res: Response
 
   await userService.adminUnlockAccount(madrasa_id, req.user!.id, id);
 
-  res.json({ message: "Account unlocked" });
+  res.json({ message: t({ bn: "অ্যাকাউন্ট আনলক করা হয়েছে", en: "Account unlocked", ar: "تم فتح قفل الحساب" }) });
 });

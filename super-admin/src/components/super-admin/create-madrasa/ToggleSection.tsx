@@ -1,3 +1,5 @@
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+
 type Item<T extends string> = {
   key: T;
   label: string;
@@ -23,6 +25,7 @@ export default function ToggleSection<T extends string>({
   selected,
   setSelected,
 }: Props<T>) {
+  const c = useText(commonText);
   const allItems = groups.length ? groups.flatMap((g) => g.items) : items;
 
   const isOn = allItems.length > 0 && selected.length === allItems.length;
@@ -40,7 +43,7 @@ export default function ToggleSection<T extends string>({
     return (
       <div className="border rounded-lg p-4 dark:border-slate-700">
         <h4 className="font-semibold dark:text-slate-200">{title}</h4>
-        <p className="text-sm text-gray-500 mt-2 dark:text-slate-400">No data found</p>
+        <p className="text-sm text-gray-500 mt-2 dark:text-slate-400">{c.noData}</p>
       </div>
     );
   }

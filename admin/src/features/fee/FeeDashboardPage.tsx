@@ -19,6 +19,8 @@ import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { money } from "../accounts/accountHelpers";
+import { formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { feeDashboardText, invoiceStatusText } from "./fee.text";
 
 type FeeDashboardData = {
   totalInvoiced: number;
@@ -111,6 +113,9 @@ const PremiumStatSkeleton = () => (
 );
 
 export default function FeeDashboardPage() {
+  const t = useText(feeDashboardText);
+  const st = useText(invoiceStatusText);
+  const lang = useLang();
   const [data, setData] = useState<FeeDashboardData | null>(null);
   const isDark = useThemeStore((s) => s.theme) === "dark";
   const gridColor = isDark ? "#334155" : "#e2e8f0";
@@ -137,10 +142,10 @@ export default function FeeDashboardPage() {
 
   const statusPieData = data
     ? [
-        { name: "পরিশোধিত", value: data.statusBreakdown.paid, key: "paid" },
-        { name: "আংশিক পরিশোধিত", value: data.statusBreakdown.partiallyPaid, key: "partiallyPaid" },
-        { name: "অপরিশোধিত", value: data.statusBreakdown.unpaid, key: "unpaid" },
-        { name: "মওকুফকৃত", value: data.statusBreakdown.waived, key: "waived" },
+        { name: st.PAID, value: data.statusBreakdown.paid, key: "paid" },
+        { name: st.PARTIALLY_PAID, value: data.statusBreakdown.partiallyPaid, key: "partiallyPaid" },
+        { name: st.UNPAID, value: data.statusBreakdown.unpaid, key: "unpaid" },
+        { name: st.WAIVED, value: data.statusBreakdown.waived, key: "waived" },
       ].filter((row) => row.value > 0)
     : [];
 
@@ -152,13 +157,13 @@ export default function FeeDashboardPage() {
             Array.from({ length: 4 }).map((_, i) => <PremiumStatSkeleton key={i} />)
           ) : (
             <>
-              <PremiumStat label="মোট বিলকৃত" value={money(data.totalInvoiced)} tone="indigo" icon={<Receipt size={20} />} />
-              <PremiumStat label="মোট আদায়" value={money(data.totalCollected)} tone="emerald" icon={<Wallet size={20} />} />
-              <PremiumStat label="মোট বকেয়া" value={money(data.totalDue)} tone="amber" icon={<Banknote size={20} />} />
+              <PremiumStat label={t.totalInvoiced} value={money(data.totalInvoiced)} tone="indigo" icon={<Receipt size={20} />} />
+              <PremiumStat label={t.totalCollected} value={money(data.totalCollected)} tone="emerald" icon={<Wallet size={20} />} />
+              <PremiumStat label={t.totalDue} value={money(data.totalDue)} tone="amber" icon={<Banknote size={20} />} />
               <PremiumStat
-                label="ওভারডিউ"
+                label={t.overdue}
                 value={money(data.overdue.amount)}
-                subLabel={`${Number(data.overdue.count).toLocaleString("bn-BD")} টি চালান`}
+                subLabel={t.invoiceCount(formatNumber(Number(data.overdue.count), lang))}
                 tone="rose"
                 icon={<AlertTriangle size={20} />}
                 to="/fee/overdue-fee"
@@ -169,39 +174,39 @@ export default function FeeDashboardPage() {
 
         <Card className="flex h-full flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to="/fee-collection"
           >
-            ফি গ্রহণ
+            {t.collectFee}
           </Link>
           <Link
             className="rounded-xl bg-amber-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-amber-500"
             to="/fee/pending-fee"
           >
-            ভর্তি ফি পেন্ডিং
+            {t.admissionFeePending}
           </Link>
           <Link
             className="rounded-xl bg-rose-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-rose-500"
             to="/fee/overdue-fee"
           >
-            বকেয়া ফী
+            {t.overdueFees}
           </Link>
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/fee-management"
           >
-            ফি সেটাপ
+            {t.feeSetup}
           </Link>
         </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <ChartCard
-          title="ফি আদায়ের প্রবণতা"
-          subtitle="গত ১২ মাস"
+          title={t.trendTitle}
+          subtitle={t.last12Months}
           loading={loading}
           empty={!loading && !data?.collectionTrend?.length}
           className="xl:col-span-2"
@@ -212,14 +217,14 @@ export default function FeeDashboardPage() {
               <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} />
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={48} />
               <Tooltip formatter={(value: unknown) => money(Number(value))} {...tooltipStyle} />
-              <Line type="monotone" dataKey="total" name="আদায়" stroke="#059669" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="total" name={t.collected} stroke="#059669" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="চালানের অবস্থা"
-          subtitle="সংখ্যা অনুযায়ী"
+          title={t.statusTitle}
+          subtitle={t.byCount}
           loading={loading}
           empty={!loading && statusPieData.length === 0}
         >

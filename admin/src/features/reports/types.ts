@@ -100,6 +100,10 @@ export type ReportShellProps = {
   pageSubtitle?: string;
   accentTitle?: string;
   reports: ReportMenuItem[];
+  // Same menu built in the institution print language - its title/subtitle/
+  // column headers are what the printed page shows (matched by report and
+  // column key). Omitted = print with `reports` as-is.
+  printReports?: ReportMenuItem[];
   hideBrandHeader?: boolean;
   // ID/নাম/মোবাইল সার্চ বক্স - শুধু ডকুমেন্ট সমূহ পেজে (অনেকগুলো ভিন্ন
   // ডকুমেন্ট টাইপের মধ্যে একজন নির্দিষ্ট শিক্ষার্থী খুঁজে বের করার জন্য) দরকার,

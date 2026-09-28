@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Megaphone } from "lucide-react";
 import { withAlpha } from "./colorUtils";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 
 // A fixed amber/yellow highlight — notices read as an alert-style banner
 // on any madrasa's theme color, and it always stays visually distinct from
@@ -9,6 +11,7 @@ const NOTICE_BG = "#fbbf24";
 const NOTICE_TEXT = "#3f2903";
 
 export default function NoticeMarquee({ text, speed }: { text?: string | null; speed?: number | null }) {
+  const t = useText(websiteText);
   const items = (text || "")
     .split("\n")
     .map((line) => line.trim())
@@ -58,7 +61,7 @@ export default function NoticeMarquee({ text, speed }: { text?: string | null; s
           style={{ backgroundColor: withAlpha("#000000", 0.12), color: NOTICE_TEXT }}
         >
           <Megaphone size={14} />
-          <span className="hidden sm:inline">নোটিশ</span>
+          <span className="hidden sm:inline">{t.notice}</span>
         </div>
         <div ref={containerRef} className="relative flex-1 overflow-hidden py-1.5">
           <div

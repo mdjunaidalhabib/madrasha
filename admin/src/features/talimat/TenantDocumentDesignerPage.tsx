@@ -15,6 +15,8 @@ import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import type { TemplateVersionDto } from "../../services/documentTemplateLibraryApi";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { documentTemplatesText } from "./documentTemplates.text";
 
 /** Normalized content fingerprint used to tell whether the live editor
  * state actually differs from a given version - order-independent JSON key
@@ -28,6 +30,7 @@ const contentSnapshot = (v: {
 }) => JSON.stringify({ width: v.width, height: v.height, background: v.background || null, layers: v.layers });
 
 export default function TenantDocumentDesignerPage() {
+  const t = useText(documentTemplatesText);
   const { type: typeSlug = "", id } = useParams();
   const navigate = useNavigate();
   const templateId = Number(id);
@@ -88,7 +91,7 @@ export default function TenantDocumentDesignerPage() {
   }, [templateId]);
 
   if (!type || !templateId) {
-    return <div className="p-6 text-sm text-rose-600">অবৈধ ঠিকানা</div>;
+    return <div className="p-6 text-sm text-rose-600">{t.invalidUrl}</div>;
   }
 
   if (loading) return <SkeletonCard lines={8} />;
@@ -98,15 +101,15 @@ export default function TenantDocumentDesignerPage() {
       <div className="space-y-3 p-6">
         <p className="text-sm text-rose-600">
           {readOnlySystem
-            ? "এটি সুপার অ্যাডমিনের সিস্টেম টেমপ্লেট — এখান থেকে সরাসরি এডিট করা যাবে না। টেমপ্লেট লাইব্রেরি থেকে \"কপি করুন\" চেপে নিজের একটি কপি তৈরি করুন।"
-            : "টেমপ্লেট পাওয়া যায়নি"}
+            ? t.systemReadOnly
+            : t.notFound}
         </p>
         <button
           type="button"
           onClick={() => navigate(`/talimat/settings/documents`)}
           className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
         >
-          <ArrowLeft size={15} /> ডকুমেন্ট টেমপ্লেট তালিকায় ফিরে যান
+          <ArrowLeft size={15} className="rtl:rotate-180" /> {t.backToList}
         </button>
       </div>
     );
@@ -136,10 +139,10 @@ export default function TenantDocumentDesignerPage() {
         layers: designer.state.layers,
       });
       setIsPublished(detail.is_published);
-      useToastStore.getState().show("খসড়া সেভ হয়েছে", "success");
+      useToastStore.getState().show(t.draftSaved, "success");
     } catch {
-      setSaveError("সেভ করা যায়নি, আবার চেষ্টা করুন");
-      useToastStore.getState().show("সেভ করা যায়নি, আবার চেষ্টা করুন", "error");
+      setSaveError(t.saveFailed);
+      useToastStore.getState().show(t.saveFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -158,10 +161,10 @@ export default function TenantDocumentDesignerPage() {
       const detail = await publishTemplate(templateId);
       setIsPublished(detail.is_published);
       setPublishedSnapshot(detail.published ? contentSnapshot(detail.published) : null);
-      useToastStore.getState().show("টেমপ্লেট প্রকাশ হয়েছে", "success");
+      useToastStore.getState().show(t.published, "success");
     } catch {
-      setSaveError("প্রকাশ করা যায়নি, আবার চেষ্টা করুন");
-      useToastStore.getState().show("প্রকাশ করা যায়নি, আবার চেষ্টা করুন", "error");
+      setSaveError(t.publishFailed);
+      useToastStore.getState().show(t.publishFailed, "error");
     } finally {
       setPublishing(false);
     }
@@ -174,7 +177,7 @@ export default function TenantDocumentDesignerPage() {
         onClick={() => navigate(`/talimat/settings/documents`)}
         className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
-        <ArrowLeft size={15} /> ডকুমেন্ট টেমপ্লেট তালিকায় ফিরে যান
+        <ArrowLeft size={15} className="rtl:rotate-180" /> {t.backToList}
       </button>
 
       <Toolbar
@@ -208,15 +211,15 @@ export default function TenantDocumentDesignerPage() {
 
       <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
         <div className="flex items-center gap-3">
-          <span>{DOCUMENT_TYPE_LABELS_BN[type]} টেমপ্লেট এডিট করছেন</span>
-          {!name.trim() && <span className="text-amber-600 dark:text-amber-400">টেমপ্লেটের একটি নাম দিন</span>}
+          <span>{t.editingType(DOCUMENT_TYPE_LABELS_BN[type])}</span>
+          {!name.trim() && <span className="text-amber-600 dark:text-amber-400">{t.nameRequired}</span>}
         </div>
         <button
           type="button"
           onClick={() => setDemoDataOpen(true)}
           className="font-medium text-blue-600 underline dark:text-blue-400"
         >
-          ডেমো ডেটা এডিট করুন{hasPreviewOverrides ? " (পরিবর্তিত)" : ""}
+          {t.editDemoData}{hasPreviewOverrides ? t.modified : ""}
         </button>
       </div>
 
@@ -255,8 +258,7 @@ export default function TenantDocumentDesignerPage() {
 
       {!previewRow && !hasPreviewOverrides && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-          প্রিভিউ দেখানোর জন্য কোনো সক্রিয় শিক্ষার্থীর তথ্য পাওয়া যায়নি — অন্তত একজন শিক্ষার্থী যোগ করলে এখানে প্রকৃত তথ্য
-          দিয়ে প্রিভিউ দেখা যাবে, অথবা "ডেমো ডেটা এডিট করুন" থেকে নিজের মতো নমুনা তথ্য বসিয়ে দেখুন।
+          {t.noPreviewData}
         </div>
       )}
 
@@ -266,7 +268,7 @@ export default function TenantDocumentDesignerPage() {
           variant="ghost"
           onClick={() => navigate(`/talimat/settings/documents`)}
         >
-          সম্পন্ন — তালিকায় ফিরে যান
+          {t.doneBack}
         </Button>
       </div>
 

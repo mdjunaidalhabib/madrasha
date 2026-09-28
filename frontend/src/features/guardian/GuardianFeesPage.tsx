@@ -4,17 +4,13 @@ import { useGuardianAuthStore } from "../../store/guardianAuthStore";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-
-const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
-
-const STATUS_LABEL: Record<string, string> = {
-  UNPAID: "বকেয়া",
-  PARTIALLY_PAID: "আংশিক পরিশোধিত",
-  PAID: "পরিশোধিত",
-  OVERDUE: "মেয়াদোত্তীর্ণ",
-};
+import { formatCurrency, formatDate, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianFeesPage() {
+  const t = useText(guardianText);
+  const lang = useLang();
+  const money = (value: number | string) => formatCurrency(value || 0, lang);
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -30,19 +26,19 @@ export default function GuardianFeesPage() {
   }, [selectedStudentId]);
 
   if (!selectedStudentId) {
-    return <EmptyState title="কোনো সন্তান যুক্ত নেই" />;
+    return <EmptyState title={t.noChild} />;
   }
 
   const invoices = data?.invoices || [];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="ফি" subtitle="ইনভয়েস ও বকেয়ার অবস্থা" />
+      <PageHeader title={t.fees} subtitle={t.feesSubtitle} />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile label="মোট বিল" value={data?.summary?.totalBilled ?? 0} variant="currency" tone="slate" loading={loading} />
-        <StatTile label="পরিশোধিত" value={data?.summary?.totalPaid ?? 0} variant="currency" tone="emerald" loading={loading} />
-        <StatTile label="বকেয়া" value={data?.summary?.totalDue ?? 0} variant="currency" tone="rose" loading={loading} />
+        <StatTile label={t.totalBilled} value={data?.summary?.totalBilled ?? 0} variant="currency" tone="slate" loading={loading} />
+        <StatTile label={t.paid} value={data?.summary?.totalPaid ?? 0} variant="currency" tone="emerald" loading={loading} />
+        <StatTile label={t.due} value={data?.summary?.totalDue ?? 0} variant="currency" tone="rose" loading={loading} />
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
@@ -50,28 +46,28 @@ export default function GuardianFeesPage() {
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50 text-start text-slate-500">
               <tr>
-                <th className="px-5 py-3">খাত</th>
-                <th className="px-5 py-3">নির্ধারিত তারিখ</th>
-                <th className="px-5 py-3">পরিমাণ</th>
-                <th className="px-5 py-3">পরিশোধিত</th>
-                <th className="px-5 py-3">অবস্থা</th>
+                <th className="px-5 py-3">{t.feeHead}</th>
+                <th className="px-5 py-3">{t.dueDate}</th>
+                <th className="px-5 py-3">{t.amount}</th>
+                <th className="px-5 py-3">{t.paid}</th>
+                <th className="px-5 py-3">{t.status}</th>
               </tr>
             </thead>
             <tbody>
               {!loading && invoices.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-5 py-6 text-center text-slate-400">
-                    কোনো ইনভয়েস নেই
+                    {t.noInvoices}
                   </td>
                 </tr>
               )}
               {invoices.map((invoice: any) => (
                 <tr key={invoice.id} className="border-t">
                   <td className="px-5 py-3">{invoice.title}</td>
-                  <td className="px-5 py-3">{new Date(invoice.dueDate).toLocaleDateString("bn-BD")}</td>
+                  <td className="px-5 py-3">{formatDate(invoice.dueDate, lang)}</td>
                   <td className="px-5 py-3">{money(invoice.amount)}</td>
                   <td className="px-5 py-3">{money(invoice.paidAmount)}</td>
-                  <td className="px-5 py-3">{STATUS_LABEL[invoice.status] || invoice.status}</td>
+                  <td className="px-5 py-3">{t.invoiceStatus[invoice.status] || invoice.status}</td>
                 </tr>
               ))}
             </tbody>

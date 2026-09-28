@@ -3,9 +3,12 @@ import { SkeletonCard, SkeletonTable } from "@madrasha/shared-ui/src/components/
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getBillingReport, type BillingChannel, type BillingReport } from "../../../services/superAdminBillingApi";
 import { StatCard, fmtMoney, fmtInt } from "./billingHelpers";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 export default function SuperAdminBillingReportsPage() {
   const { show } = useToastStore();
+  const t = useText(billingText);
 
   const [channel, setChannel] = useState<BillingChannel>("SMS");
   const [report, setReport] = useState<BillingReport | null>(null);
@@ -17,7 +20,7 @@ export default function SuperAdminBillingReportsPage() {
       const res = await getBillingReport(channel);
       setReport((res?.data || null) as BillingReport | null);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Load failed", "error");
+      show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -28,14 +31,14 @@ export default function SuperAdminBillingReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
 
-  const creditUnit = channel === "SMS" ? "SMS" : "Emails";
+  const creditUnit = channel === "SMS" ? t.unitSms : t.unitEmails;
 
   return (
     <div className="p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold dark:text-slate-100">Billing Reports</h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400">Revenue, cost ও profit এর সারসংক্ষেপ।</p>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">{t.reportsTitle}</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">{t.reportsSubtitle}</p>
         </div>
 
         <div className="flex gap-2">
@@ -75,61 +78,61 @@ export default function SuperAdminBillingReportsPage() {
       {!loading && report && (
         <>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label={`Total Sold (${creditUnit})`} value={fmtInt(report.totalSold)} />
-            <StatCard label={`Total Used (${creditUnit})`} value={fmtInt(report.totalUsed)} />
-            <StatCard label={`Total Remaining (${creditUnit})`} value={fmtInt(report.totalRemaining)} />
-            <StatCard label="Active Subscriptions" value={fmtInt(report.activeSubscriptions)} />
+            <StatCard label={t.totalSold(creditUnit)} value={fmtInt(report.totalSold)} />
+            <StatCard label={t.totalUsed(creditUnit)} value={fmtInt(report.totalUsed)} />
+            <StatCard label={t.totalRemaining(creditUnit)} value={fmtInt(report.totalRemaining)} />
+            <StatCard label={t.activeSubscriptions} value={fmtInt(report.activeSubscriptions)} />
 
-            <StatCard label="Revenue" value={`৳ ${fmtMoney(report.revenue)}`} />
-            <StatCard label="Provider Cost" value={`৳ ${fmtMoney(report.providerCostTotal)}`} />
+            <StatCard label={t.revenue} value={`৳ ${fmtMoney(report.revenue)}`} />
+            <StatCard label={t.providerCostTotal} value={`৳ ${fmtMoney(report.providerCostTotal)}`} />
             <StatCard
-              label="Profit"
+              label={t.profit}
               value={`৳ ${fmtMoney(report.profit)}`}
-              hint={Number(report.profit) < 0 ? "লোকসান" : undefined}
+              hint={Number(report.profit) < 0 ? t.loss : undefined}
             />
-            <StatCard label="Expired Subscriptions" value={fmtInt(report.expiredCount)} />
+            <StatCard label={t.expiredSubscriptions} value={fmtInt(report.expiredCount)} />
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Today</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t.today}</h3>
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Requests</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.requests}</div>
                   {fmtInt(report.today.count)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Credit Used</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.creditUsed}</div>
                   {fmtInt(report.today.credit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Cost</div>৳ {fmtMoney(report.today.cost)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.cost}</div>৳ {fmtMoney(report.today.cost)}
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">This Month</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t.thisMonth}</h3>
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Requests</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.requests}</div>
                   {fmtInt(report.month.count)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Credit Used</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.creditUsed}</div>
                   {fmtInt(report.month.credit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Cost</div>৳ {fmtMoney(report.month.cost)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.cost}</div>৳ {fmtMoney(report.month.cost)}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="mt-5">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Low Credit Madrasas</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t.lowCreditTitle}</h3>
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              যেসব মাদরাসার remaining credit threshold এর নিচে নেমে গেছে।
+              {t.lowCreditSubtitle}
             </p>
 
             <div className="mt-3 overflow-hidden rounded-2xl border bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -137,9 +140,9 @@ export default function SuperAdminBillingReportsPage() {
                 <table className="min-w-full text-start text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                     <tr>
-                      <th className="px-4 py-3">Madrasa</th>
-                      <th className="px-4 py-3">Slug</th>
-                      <th className="px-4 py-3">Remaining Credit</th>
+                      <th className="px-4 py-3">{t.colInstitution}</th>
+                      <th className="px-4 py-3">{t.colSlug}</th>
+                      <th className="px-4 py-3">{t.remainingCredit}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-slate-800">
@@ -154,7 +157,7 @@ export default function SuperAdminBillingReportsPage() {
                     {report.lowCreditMadrasas.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-slate-400">
-                          কোনো low-credit মাদরাসা নেই
+                          {t.noLowCredit}
                         </td>
                       </tr>
                     )}

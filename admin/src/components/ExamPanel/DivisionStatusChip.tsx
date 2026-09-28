@@ -1,4 +1,5 @@
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 
 /** Blue "own grading" chip when the division carries an override fail mark,
  * gray "uses default" chip otherwise. */
@@ -9,6 +10,8 @@ export default function DivisionStatusChip({
   failMark: number | null | undefined;
   className?: string;
 }) {
+  const t = useText(examPanelText);
+  const lang = useLang();
   const own = failMark !== null && failMark !== undefined;
   return (
     <span
@@ -23,7 +26,7 @@ export default function DivisionStatusChip({
         className={`h-1.5 w-1.5 shrink-0 rounded-full ${own ? "bg-blue-500" : "bg-slate-400 dark:bg-slate-500"}`}
       />
       <span className="truncate">
-        {own ? `নিজস্ব গ্রেডিং · ফেল মার্ক ${toBanglaDigits(failMark as number)}` : "ডিফল্ট ব্যবহার করছে"}
+        {own ? t.ownGrading(localizeDigits(failMark as number, lang)) : t.usingDefault}
       </span>
     </span>
   );

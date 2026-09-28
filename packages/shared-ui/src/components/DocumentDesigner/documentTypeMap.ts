@@ -1,4 +1,6 @@
 import type { DocumentKind } from "./types";
+import { getText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 /**
  * The backend's DocumentType enum (Prisma) and the frontend's DocumentKind
@@ -29,6 +31,8 @@ export const DOCUMENT_TYPE_TO_KIND: Record<BackendDocumentType, DocumentKind> = 
   BOOK_LABEL: "book-label",
 };
 
+/** @deprecated Bangla-only - use getDocumentTypeLabel(type) (current UI
+ * language) or `useText(designerText).documentTypes[type]` in components. */
 export const DOCUMENT_TYPE_LABELS_BN: Record<BackendDocumentType, string> = {
   ID_CARD: "আইডি কার্ড",
   ADMIT_CARD: "প্রবেশপত্র",
@@ -40,6 +44,10 @@ export const DOCUMENT_TYPE_LABELS_BN: Record<BackendDocumentType, string> = {
   SALARY_SLIP: "বেতন স্লিপ",
   BOOK_LABEL: "পুরস্কার বই-লেবেল",
 };
+
+/** Document type label in the current UI language. */
+export const getDocumentTypeLabel = (type: BackendDocumentType): string =>
+  getText(designerText).documentTypes[type] ?? type;
 
 /** Document types the new template designer is fully wired for in this
  * pass - system starter templates + legacy migration + generation UI. The

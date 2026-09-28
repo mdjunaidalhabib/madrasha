@@ -3,6 +3,7 @@ import { trashRepository, TrashRepository } from "./trash.repository";
 import { toStudentApiDto } from "../students/student.mapper";
 import { toTeacherApiDto } from "../teacher/teacher.mapper";
 import { linkName, tenantDivisionName, tenantClassName } from "../../shared/utils/tenant-name.util";
+import { t } from "../../shared/i18n";
 
 /** How long a soft-deleted record sits in Trash before the background
  * sweep (see core/bootstrap.ts) permanently removes it. */
@@ -102,74 +103,74 @@ export class TrashService {
 
   async restoreStudent(id: number, madrasaId: number) {
     const result = await this.repository.restoreStudent(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed student not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found", ar: "لم يتم العثور على الطالب في سلة المهملات" }));
   }
 
   async restoreTeacher(id: number, madrasaId: number) {
     const result = await this.repository.restoreTeacher(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed teacher not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষক পাওয়া যায়নি", en: "Trashed teacher not found", ar: "لم يتم العثور على المعلم في سلة المهملات" }));
   }
 
   async restoreExam(id: number, madrasaId: number) {
     const result = await this.repository.restoreExam(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed exam not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে পরীক্ষা পাওয়া যায়নি", en: "Trashed exam not found", ar: "لم يتم العثور على الامتحان في سلة المهملات" }));
   }
 
   async restoreDivision(id: number, madrasaId: number) {
     const result = await this.repository.restoreDivision(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed division not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে বিভাগ পাওয়া যায়নি", en: "Trashed division not found", ar: "لم يتم العثور على القسم في سلة المهملات" }));
   }
 
   async restoreClass(id: number, madrasaId: number) {
     const result = await this.repository.restoreClass(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed class not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শ্রেণি পাওয়া যায়নি", en: "Trashed class not found", ar: "لم يتم العثور على الصف في سلة المهملات" }));
   }
 
   async restoreBook(id: number, madrasaId: number) {
     const result = await this.repository.restoreBook(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed book not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে বিষয় পাওয়া যায়নি", en: "Trashed subject not found", ar: "لم يتم العثور على المادة في سلة المهملات" }));
   }
 
   async restoreResult(id: number, madrasaId: number) {
     const result = await this.repository.restoreResult(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed result not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে ফলাফল পাওয়া যায়নি", en: "Trashed result not found", ar: "لم يتم العثور على النتيجة في سلة المهملات" }));
   }
 
   /* ================= PERMANENT DELETE ================= */
 
   async permanentDeleteStudent(id: number, madrasaId: number) {
     const result = await this.repository.permanentDeleteStudent(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed student not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found", ar: "لم يتم العثور على الطالب في سلة المهملات" }));
   }
 
   async permanentDeleteTeacher(id: number, madrasaId: number) {
     const result = await this.repository.permanentDeleteTeacher(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed teacher not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষক পাওয়া যায়নি", en: "Trashed teacher not found", ar: "لم يتم العثور على المعلم في سلة المهملات" }));
   }
 
   async permanentDeleteExam(id: number, madrasaId: number) {
     const count = await this.repository.permanentDeleteExam(id, madrasaId);
-    if (!count) throw new NotFoundError("Trashed exam not found");
+    if (!count) throw new NotFoundError(t({ bn: "ট্র্যাশে পরীক্ষা পাওয়া যায়নি", en: "Trashed exam not found", ar: "لم يتم العثور على الامتحان في سلة المهملات" }));
   }
 
   async permanentDeleteDivision(id: number, madrasaId: number) {
     const result = await this.repository.permanentDeleteDivision(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed division not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে বিভাগ পাওয়া যায়নি", en: "Trashed division not found", ar: "لم يتم العثور على القسم في سلة المهملات" }));
   }
 
   async permanentDeleteClass(id: number, madrasaId: number) {
     const result = await this.repository.permanentDeleteClass(id, madrasaId);
-    if (!result.count) throw new NotFoundError("Trashed class not found");
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শ্রেণি পাওয়া যায়নি", en: "Trashed class not found", ar: "لم يتم العثور على الصف في سلة المهملات" }));
   }
 
   async permanentDeleteBook(id: number, madrasaId: number) {
     const count = await this.repository.permanentDeleteBook(id, madrasaId);
-    if (!count) throw new NotFoundError("Trashed book not found");
+    if (!count) throw new NotFoundError(t({ bn: "ট্র্যাশে বিষয় পাওয়া যায়নি", en: "Trashed subject not found", ar: "لم يتم العثور على المادة في سلة المهملات" }));
   }
 
   async permanentDeleteResult(id: number, madrasaId: number) {
     const count = await this.repository.permanentDeleteResult(id, madrasaId);
-    if (!count) throw new NotFoundError("Trashed result not found");
+    if (!count) throw new NotFoundError(t({ bn: "ট্র্যাশে ফলাফল পাওয়া যায়নি", en: "Trashed result not found", ar: "لم يتم العثور على النتيجة في سلة المهملات" }));
   }
 
   /* ================= AUTO-PURGE ================= */

@@ -8,7 +8,8 @@ import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
-import { LanguageSwitcher } from "@madrasha/shared-ui/src/i18n";
+import { LanguageSwitcher, commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { sidebarText, sidebarModuleLabel, sidebarChildLabel } from "./sidebar.text";
 import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
 import PlanBadge from "../topbar/PlanBadge";
 import LockButton from "../lock/LockButton";
@@ -84,6 +85,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const location = useLocation();
+  const t = useText(sidebarText);
+  const c = useText(commonText);
   const collapsed = closeSidebar ? false : sidebarCollapsed;
   const handleClick = () => {
     if (closeSidebar) closeSidebar();
@@ -146,7 +149,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             <button
               type="button"
               onClick={() => setAccountMenuOpen((v) => !v)}
-              title="অ্যাকাউন্ট মেনু"
+              title={t.accountMenu}
               className={`flex w-full items-center gap-2 rounded-lg p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800 ${accountMenuOpen ? "bg-slate-100 dark:bg-slate-800" : ""}`}
             >
               {user?.photo_url ? (
@@ -181,7 +184,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   <UserCog size={16} className="text-slate-400 dark:text-slate-500" />
-                  প্রোফাইল সেটিংস
+                  {t.profileSettings}
                 </NavLink>
                 <button
                   type="button"
@@ -192,7 +195,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-start text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 >
                   <LogOut size={16} />
-                  লগআউট
+                  {c.logout}
                 </button>
               </div>
             )}
@@ -204,6 +207,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
             <button
               className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden"
               onClick={closeSidebar}
+              aria-label={t.closeMenu}
             >
               ✕
             </button>
@@ -211,10 +215,10 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           <button
             type="button"
             onClick={toggleSidebar}
-            title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
+            title={collapsed ? t.expandMenu : t.collapseMenu}
             className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
           >
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {collapsed ? <PanelLeftOpen size={16} className="rtl:-scale-x-100" /> : <PanelLeftClose size={16} className="rtl:-scale-x-100" />}
           </button>
         </div>
       </div>
@@ -232,8 +236,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
       <button
         type="button"
         onClick={handleLogout}
-        aria-label="লগআউট"
-        title="লগআউট"
+        aria-label={c.logout}
+        title={c.logout}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
       >
         <LogOut size={16} />
@@ -273,7 +277,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 className={({ isActive }) => navItemClass(isActive)}
               >
                 <Icon size={18} />
-                {!collapsed && <span>{module.label}</span>}
+                {!collapsed && <span>{sidebarModuleLabel(t, module.key, module.label)}</span>}
               </NavLink>
             );
           }
@@ -291,7 +295,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 className={moduleHeaderClass(isActiveModule)}
               >
                 <Icon size={18} />
-                {!collapsed && <span className="flex-1 text-start">{module.label}</span>}
+                {!collapsed && <span className="flex-1 text-start">{sidebarModuleLabel(t, module.key, module.label)}</span>}
                 {!collapsed && (
                   <ChevronDown
                     size={16}
@@ -314,7 +318,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                       onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
                       className={() => childItemClass(isActiveModule && activeChildKey === child.key)}
                     >
-                      <span>{child.label}</span>
+                      <span>{sidebarChildLabel(t, module.key, child.key, child.label)}</span>
                       {Boolean(child.count) && (
                         <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
                           {child.count}

@@ -2,6 +2,8 @@ import { ReactElement, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
 import { useAdminAuthStore } from "../../store/adminAuthStore";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { shellText, type NavGroupKey, type NavLabelKey } from "./shell.text";
 import {
   LayoutDashboard,
   School,
@@ -31,39 +33,39 @@ type SuperAdminSidebarProps = {
   closeSidebar?: () => void;
 };
 
-type NavItem = { to: string; label: string; icon: ReactElement; end?: boolean; group: string };
+type NavItem = { to: string; label: NavLabelKey; icon: ReactElement; end?: boolean; group: NavGroupKey };
 
 // পাঁচটি লজিক্যাল গ্রুপে সাজানো - সাইডবারে গ্রুপ-হেডিং দেখানোর জন্য প্রতিটি
 // আইটেমে group ট্যাগ করা থাকে, নিচের রেন্ডারে সেই গ্রুপ অনুযায়ী ভাগ করে
 // দেখানো হয়। ফ্ল্যাট অ্যারে-ই থাকছে (breadcrumb হুক এটাকে ফ্ল্যাট হিসেবে খোঁজে)।
 export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "ড্যাশবোর্ড", icon: <LayoutDashboard size={18} />, end: true, group: "মূল" },
+  { to: "/dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, end: true, group: "main" },
 
-  { to: "/madrasas", label: "মাদরাসাসমূহ", icon: <School size={18} />, end: true, group: "মাদরাসা ব্যবস্থাপনা" },
-  { to: "/madrasas/trash", label: "ট্র্যাশ", icon: <Trash2 size={18} />, group: "মাদরাসা ব্যবস্থাপনা" },
-  { to: "/plans", label: "প্ল্যানসমূহ", icon: <CreditCard size={18} />, group: "মাদরাসা ব্যবস্থাপনা" },
+  { to: "/madrasas", label: "institutions", icon: <School size={18} />, end: true, group: "institutions" },
+  { to: "/madrasas/trash", label: "trash", icon: <Trash2 size={18} />, group: "institutions" },
+  { to: "/plans", label: "plans", icon: <CreditCard size={18} />, group: "institutions" },
 
-  { to: "/document-templates", label: "ডকুমেন্ট টেমপ্লেট", icon: <FileStack size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
-  { to: "/catalog", label: "একাডেমিক ক্যাটালগ", icon: <Layers size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
-  { to: "/fee-structure-templates", label: "ফি টেমপ্লেট", icon: <Wallet size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
-  { to: "/important-links", label: "গুরুত্বপূর্ণ লিংক", icon: <Link2 size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
-  { to: "/vendor-promo", label: "Hikmah IT প্রোমো", icon: <Megaphone size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
-  { to: "/websites", label: "ওয়েবসাইটসমূহ", icon: <Globe2 size={18} />, group: "কন্টেন্ট ও ক্যাটালগ" },
+  { to: "/document-templates", label: "documentTemplates", icon: <FileStack size={18} />, group: "content" },
+  { to: "/catalog", label: "catalog", icon: <Layers size={18} />, group: "content" },
+  { to: "/fee-structure-templates", label: "feeTemplates", icon: <Wallet size={18} />, group: "content" },
+  { to: "/important-links", label: "importantLinks", icon: <Link2 size={18} />, group: "content" },
+  { to: "/vendor-promo", label: "vendorPromo", icon: <Megaphone size={18} />, group: "content" },
+  { to: "/websites", label: "websites", icon: <Globe2 size={18} />, group: "content" },
 
   // বিলিং (SMS/Email credit বিক্রয়)
-  { to: "/billing/sms-packages", label: "SMS প্যাকেজ", icon: <Send size={18} />, group: "বিলিং" },
-  { to: "/billing/email-packages", label: "Email প্যাকেজ", icon: <Mail size={18} />, group: "বিলিং" },
-  { to: "/billing/requests", label: "বিলিং রিকোয়েস্ট", icon: <ClipboardList size={18} />, group: "বিলিং" },
-  { to: "/billing/pricing", label: "বিলিং প্রাইসিং", icon: <Tags size={18} />, group: "বিলিং" },
-  { to: "/billing/reports", label: "বিলিং রিপোর্ট", icon: <BarChart3 size={18} />, group: "বিলিং" },
+  { to: "/billing/sms-packages", label: "smsPackages", icon: <Send size={18} />, group: "billing" },
+  { to: "/billing/email-packages", label: "emailPackages", icon: <Mail size={18} />, group: "billing" },
+  { to: "/billing/requests", label: "billingRequests", icon: <ClipboardList size={18} />, group: "billing" },
+  { to: "/billing/pricing", label: "billingPricing", icon: <Tags size={18} />, group: "billing" },
+  { to: "/billing/reports", label: "billingReports", icon: <BarChart3 size={18} />, group: "billing" },
 
-  { to: "/settings", label: "সেটিংস", icon: <Settings size={18} />, group: "সেটিংস" },
+  { to: "/settings", label: "settings", icon: <Settings size={18} />, group: "settings" },
 ];
 
 // রেন্ডারের সময় ব্যবহারের জন্য group অনুযায়ী ভাগ করা - Map ইনসার্শন-অর্ডার
 // ধরে রাখে, তাই উপরের অ্যারের ক্রমই গ্রুপগুলোর ক্রম নির্ধারণ করে।
 function groupNavItems(items: NavItem[]) {
-  const groups = new Map<string, NavItem[]>();
+  const groups = new Map<NavGroupKey, NavItem[]>();
   for (const item of items) {
     const list = groups.get(item.group);
     if (list) list.push(item);
@@ -98,10 +100,10 @@ function groupHeaderClass(isActive: boolean) {
 
 // গ্রুপের প্রথম আইটেমের আইকনটাই accordion হেডারের আইকন হিসেবে ব্যবহার করা হয় -
 // প্রতিটা গ্রুপের জন্য আলাদা আইকন সংজ্ঞায়িত করার বদলে সহজ সমাধান।
-const GROUP_ICONS: Record<string, ReactElement> = {
-  "মাদরাসা ব্যবস্থাপনা": <School size={18} />,
-  "কন্টেন্ট ও ক্যাটালগ": <Layers size={18} />,
-  "বিলিং": <Wallet size={18} />,
+const GROUP_ICONS: Partial<Record<NavGroupKey, ReactElement>> = {
+  institutions: <School size={18} />,
+  content: <Layers size={18} />,
+  billing: <Wallet size={18} />,
 };
 
 export default function SuperAdminSidebar({
@@ -109,6 +111,8 @@ export default function SuperAdminSidebar({
   onToggleCollapse,
   closeSidebar,
 }: SuperAdminSidebarProps) {
+  const t = useText(shellText);
+  const c = useText(commonText);
   const admin = useAdminAuthStore((s) => s.admin);
   const logout = useAdminAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -128,11 +132,11 @@ export default function SuperAdminSidebar({
   // একবারে একটাই গ্রুপ খোলা থাকে, হেডারে ক্লিক করলে টগল হয়। বর্তমান রুটের
   // গ্রুপ পাল্টালে স্বয়ংক্রিয়ভাবে সেটাই খুলে যায় - রিফ্রেশ/ডিপ-লিংকেও সাবমেনু
   // লুকিয়ে থাকে না।
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [openGroup, setOpenGroup] = useState<NavGroupKey | null>(null);
   useEffect(() => {
     if (activeGroup) setOpenGroup(activeGroup);
   }, [activeGroup]);
-  const toggleGroup = (group: string) => {
+  const toggleGroup = (group: NavGroupKey) => {
     setOpenGroup((prev) => (prev === group ? null : group));
   };
 
@@ -153,7 +157,7 @@ export default function SuperAdminSidebar({
       {!collapsed && (
         <div className="min-w-0 flex-1">
           <span className="block break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
-            সুপার অ্যাডমিন
+            {t.superAdmin}
           </span>
           <span className="block break-words text-xs text-slate-400 dark:text-slate-500">
             {admin?.name || ""}
@@ -163,6 +167,7 @@ export default function SuperAdminSidebar({
       <div className="flex shrink-0 items-center gap-1">
         {closeSidebar && (
           <button
+            aria-label={t.closeMenu}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden"
             onClick={closeSidebar}
           >
@@ -172,7 +177,7 @@ export default function SuperAdminSidebar({
         <button
           type="button"
           onClick={onToggleCollapse}
-          title={collapsed ? "মেনু বড় করুন" : "মেনু ছোট করুন"}
+          title={collapsed ? t.expandMenu : t.collapseMenu}
           className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
         >
           {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
@@ -186,11 +191,11 @@ export default function SuperAdminSidebar({
       <button
         type="button"
         onClick={handleLogout}
-        title="লগআউট"
+        title={c.logout}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
       >
         <LogOut size={16} />
-        {!collapsed && <span>লগআউট</span>}
+        {!collapsed && <span>{c.logout}</span>}
       </button>
     </div>
   );
@@ -210,11 +215,11 @@ export default function SuperAdminSidebar({
                 to={item.to}
                 end={item.end}
                 onClick={handleClick}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? t.nav[item.label] : undefined}
                 className={({ isActive }) => navItemClass(isActive)}
               >
                 {item.icon}
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{t.nav[item.label]}</span>}
               </NavLink>
             </div>
           );
@@ -231,11 +236,11 @@ export default function SuperAdminSidebar({
             <button
               type="button"
               onClick={() => toggleGroup(group)}
-              title={collapsed ? group : undefined}
+              title={collapsed ? t.groups[group] : undefined}
               className={groupHeaderClass(isActive)}
             >
               {GROUP_ICONS[group] || <Layers size={18} />}
-              {!collapsed && <span className="flex-1 text-start">{group}</span>}
+              {!collapsed && <span className="flex-1 text-start">{t.groups[group]}</span>}
               {!collapsed && (
                 <ChevronDown
                   size={16}
@@ -257,7 +262,7 @@ export default function SuperAdminSidebar({
                     onClick={handleClick}
                     className={({ isActive: linkActive }) => childItemClass(linkActive)}
                   >
-                    <span>{item.label}</span>
+                    <span>{t.nav[item.label]}</span>
                   </NavLink>
                 ))}
               </div>

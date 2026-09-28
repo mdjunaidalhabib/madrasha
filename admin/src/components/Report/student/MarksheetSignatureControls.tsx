@@ -11,13 +11,15 @@ import {
 } from "../../../services/brandingApi";
 import {
   SIGNATURE_KEYS,
-  SIGNATURE_LABELS,
   SIGNATURE_POSITIONS,
-  SIGNATURE_POSITION_LABELS,
+  signatureLabel,
   applySignatureChange,
   getSignatureSettings,
   type SignatureKey,
 } from "./marksheetSignatures";
+import { getText, useIsMadrasa, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { reportUiText } from "../reportUi.text";
 
 /** Reads/writes the marksheet field settings (info-field visibility/order plus
  * signature visibility/side - one stored list). The preview updates instantly
@@ -38,7 +40,7 @@ const useMarksheetFieldSettings = () => {
       await saveBranding({ marksheet_fields: next });
     } catch {
       setBranding(branding);
-      useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(getText(reportUiText).saveFailed, "error");
     }
   };
 
@@ -59,6 +61,8 @@ const arrowClass =
 
 /** One row per info field (নাম, রোল, ...): visibility switch + up/down to reorder. */
 export const MarksheetFieldRows = () => {
+  const ui = useText(reportUiText);
+  const isMadrasa = useIsMadrasa();
   const { fields, save } = useMarksheetFieldSettings();
   const infoFields = fields.filter((f) => !isSignatureKey(f.key));
   const signatureFields = fields.filter((f) => isSignatureKey(f.key));
@@ -75,12 +79,14 @@ export const MarksheetFieldRows = () => {
 
   return (
     <div className="space-y-1">
-      {infoFields.map((field, index) => (
+      {infoFields.map((field, index) =>
+        // madrasa_grade (ফলাফল বিভাগ) is madrasa-only - hidden, not removed, elsewhere.
+        !isMadrasa && field.key === "madrasa_grade" ? null : (
         <div key={field.key} className={rowClass(field.visible)}>
           <div className="flex items-center gap-2">
             <ListChecks size={14} className="shrink-0 text-gray-400 dark:text-slate-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-              {MARKSHEET_FIELD_LABELS_BN[field.key] || field.key}
+              {ui.marksheetFields[field.key] || MARKSHEET_FIELD_LABELS_BN[field.key] || field.key}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -88,7 +94,7 @@ export const MarksheetFieldRows = () => {
               type="button"
               onClick={() => move(index, -1)}
               disabled={index === 0}
-              aria-label="উপরে সরান"
+              aria-label={ui.moveUp}
               className={arrowClass}
             >
               <ArrowUp size={12} />
@@ -97,7 +103,7 @@ export const MarksheetFieldRows = () => {
               type="button"
               onClick={() => move(index, 1)}
               disabled={index === infoFields.length - 1}
-              aria-label="নিচে সরান"
+              aria-label={ui.moveDown}
               className={arrowClass}
             >
               <ArrowDown size={12} />
@@ -112,6 +118,8 @@ export const MarksheetFieldRows = () => {
 
 /** One row per signature: name, বাম/মাঝ/ডান side picker and an on/off switch. */
 export const MarksheetSignatureRows = () => {
+  const ui = useText(reportUiText);
+  const t = useText(reportText);
   const { fields, save } = useMarksheetFieldSettings();
   const settings = getSignatureSettings(fields);
 
@@ -127,12 +135,12 @@ export const MarksheetSignatureRows = () => {
               signature.visible ? "text-gray-700 dark:text-slate-300" : "text-gray-400 dark:text-slate-500"
             }`}
           >
-            {SIGNATURE_LABELS[signature.key]}
+            {signatureLabel(t, signature.key)}
           </span>
           <div className="flex items-center gap-2.5">
             <div
               role="group"
-              aria-label="স্বাক্ষরের অবস্থান"
+              aria-label={ui.signaturePosition}
               className={`flex flex-1 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 ${
                 signature.visible ? "" : "pointer-events-none opacity-40"
               }`}
@@ -149,7 +157,7 @@ export const MarksheetSignatureRows = () => {
                       : "bg-white text-gray-600 hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   }`}
                 >
-                  {SIGNATURE_POSITION_LABELS[position]}
+                  {ui.positions[position]}
                 </button>
               ))}
             </div>
@@ -165,17 +173,18 @@ export const MarksheetSignatureRows = () => {
  * signatures (show/hide + side) and a reset. Shared by the সেটিংস page and the
  * report preview toolbar. */
 export const MarksheetControlsPanel = () => {
+  const ui = useText(reportUiText);
   const { save } = useMarksheetFieldSettings();
 
   return (
     <div>
       <p className="mb-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
-        তথ্য ফিল্ড — কোনটা দেখাবেন আর কোন ক্রমে
+        {ui.infoFieldsHint}
       </p>
       <MarksheetFieldRows />
 
       <p className="mb-1 mt-3 text-xs font-semibold text-gray-500 dark:text-slate-400">
-        নিচের স্বাক্ষর — কোনটা দেখাবেন আর কোন পাশে
+        {ui.signaturesHint}
       </p>
       <MarksheetSignatureRows />
 
@@ -185,14 +194,16 @@ export const MarksheetControlsPanel = () => {
         className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
       >
         <RotateCcw size={12} />
-        ডিফল্টে ফিরিয়ে আনুন
+        {ui.resetDefault}
       </button>
     </div>
   );
 };
 
 /** Toolbar button that shows/hides the docked marksheet settings panel. */
-export const MarksheetSettingsToggleButton = ({ open, onToggle }: { open: boolean; onToggle: () => void }) => (
+export const MarksheetSettingsToggleButton = ({ open, onToggle }: { open: boolean; onToggle: () => void }) => {
+  const ui = useText(reportUiText);
+  return (
   <button
     type="button"
     onClick={onToggle}
@@ -204,28 +215,31 @@ export const MarksheetSettingsToggleButton = ({ open, onToggle }: { open: boolea
     }`}
   >
     <PenLine className="h-3 w-3" />
-    মার্কশিট সেটিং
+    {ui.marksheetSettings}
   </button>
 );
+};
 
 /** Marksheet settings panel. On lg+ screens it is docked next to the preview (sticky,
  * the preview shrinks to make room so changes show live). On phones/tablets it slides in
  * from the right edge as a side drawer over a dimmed backdrop - tap outside or ✕ to
  * close - instead of being pushed below the whole preview. */
-export const MarksheetSettingsPanel = ({ onClose }: { onClose: () => void }) => (
+export const MarksheetSettingsPanel = ({ onClose }: { onClose: () => void }) => {
+  const ui = useText(reportUiText);
+  return (
   <>
     <div aria-hidden="true" onClick={onClose} className="no-print fixed inset-0 z-30 bg-slate-900/40 lg:hidden" />
     <aside
       role="dialog"
-      aria-label="মার্কশিট সেটিং"
+      aria-label={ui.marksheetSettings}
       className="no-print animate-sideDrawer fixed inset-y-0 end-0 z-40 flex w-[min(88vw,340px)] flex-col overflow-hidden border-s border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:inset-y-auto lg:end-auto lg:top-3 lg:z-auto lg:m-3 lg:ms-0 lg:max-h-[calc(100vh-1.5rem)] lg:w-[320px] lg:shrink-0 lg:animate-none lg:rounded-xl lg:border lg:shadow-sm"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">মার্কশিট সেটিং</h3>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{ui.marksheetSettings}</h3>
         <button
           type="button"
           onClick={onClose}
-          aria-label="সেটিং প্যানেল বন্ধ করুন"
+          aria-label={ui.closeSettings}
           className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
         >
           <X size={15} />
@@ -237,3 +251,4 @@ export const MarksheetSettingsPanel = ({ onClose }: { onClose: () => void }) => 
     </aside>
   </>
 );
+};

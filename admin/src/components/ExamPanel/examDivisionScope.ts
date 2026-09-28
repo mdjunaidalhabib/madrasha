@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 
 /**
  * বিভাগভিত্তিক পরীক্ষা - client helpers for the division scope GET /exams
@@ -27,7 +29,7 @@ export function examsForDivision<T extends DivisionScoped>(exams: T[], divisionI
 /** Short Bangla label for an exam's scope, e.g. "সকল বিভাগ" / "হিফজ, কিতাব". */
 export function examScopeLabel(exam: DivisionScoped): string {
   const names = (exam.divisions ?? []).map((d) => d.division_name_bn).filter(Boolean);
-  return names.length ? names.join(", ") : "সকল বিভাগ";
+  return names.length ? names.join(", ") : getText(examPanelText).allDivisions;
 }
 
 /** Divisions an exam is held for (all of them for a সকল বিভাগ exam / no exam

@@ -1,0 +1,47 @@
+import { defineText } from "@madrasha/shared-ui/src/i18n";
+
+/** Profile-only labels; shared form labels come from admission/admission.text. */
+export const studentProfileText = defineText({
+  bn: {
+    altGuardianInfo: "বিকল্প অভিভাবকের তথ্য (পিতা-মাতা ছাড়া)",
+    addrDivision: "বিভাগ",
+    district: "জেলা",
+    thana: "থানা",
+    notAvailable: "N/A",
+    nameBn: "নাম (বাংলা)",
+    registrationNo: "রেজিস্ট্রেশন নম্বর",
+    rollAuto: "রোল নম্বর (স্বয়ংক্রিয়)",
+    studentNid: "{{student}}র NID",
+    selectGender: "লিঙ্গ নির্বাচন করুন",
+    selectDivision: "{{division}} নির্বাচন করুন",
+    scriptHint: { bn: "শুধু বাংলায় লিখুন", ar: "শুধু আরবিতে লিখুন", en: "শুধু ইংরেজিতে লিখুন" },
+  },
+  en: {
+    altGuardianInfo: "Alternate Guardian (other than parents)",
+    addrDivision: "Division",
+    district: "District",
+    thana: "Thana",
+    notAvailable: "N/A",
+    nameBn: "Name (Bangla)",
+    registrationNo: "Registration No.",
+    rollAuto: "Roll No. (auto)",
+    studentNid: "{{student}} NID",
+    selectGender: "Select gender",
+    selectDivision: "Select {{division}}",
+    scriptHint: { bn: "Write in Bangla only", ar: "Write in Arabic only", en: "Write in English only" },
+  },
+  ar: {
+    altGuardianInfo: "بيانات ولي الأمر البديل (غير الوالدين)",
+    addrDivision: "المحافظة",
+    district: "المديرية",
+    thana: "المركز",
+    notAvailable: "غير متوفر",
+    nameBn: "الاسم (بالبنغالية)",
+    registrationNo: "رقم التسجيل",
+    rollAuto: "رقم الجلوس (تلقائي)",
+    studentNid: "هوية {{student}}",
+    selectGender: "اختر الجنس",
+    selectDivision: "اختر {{division}}",
+    scriptHint: { bn: "اكتب بالبنغالية فقط", ar: "اكتب بالعربية فقط", en: "اكتب بالإنجليزية فقط" },
+  },
+});

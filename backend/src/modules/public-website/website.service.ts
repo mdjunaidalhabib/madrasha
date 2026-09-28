@@ -33,6 +33,7 @@ import {
   toWebsiteSlideApiDto,
   toWebsiteVideoApiDto,
 } from "./website.mapper";
+import { t } from "../../shared/i18n";
 
 export const resolveTenantId = (req: Request): number =>
   Number((req as any).tenant?.madrasa_id || req.body.madrasa_id || req.query.madrasa_id);
@@ -61,15 +62,15 @@ const noticeBarSpeedValue = (value: unknown) => {
 export const normalizeSlideLink = (value: unknown): string | null => {
   const link = typeof value === "string" ? value.trim() : "";
   if (!link) return null;
-  if (link.length > 255) throw new BadRequestError("Slide link too long");
+  if (link.length > 255) throw new BadRequestError(t({ bn: "স্লাইড লিংক অনেক বড়", en: "Slide link too long", ar: "رابط الشريحة طويل جدًا" }));
   if ((link.startsWith("/") && !link.startsWith("//")) || link.startsWith("#")) return link;
   if (/^https?:\/\//i.test(link)) return link;
   // "name:" not followed by a port digit = a URL scheme.
   if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(link) || link.startsWith("//")) {
-    throw new BadRequestError("Slide link must be an http(s) URL or a site path");
+    throw new BadRequestError(t({ bn: "স্লাইড লিংক অবশ্যই http(s) URL বা সাইটের পাথ হতে হবে", en: "Slide link must be an http(s) URL or a site path", ar: "يجب أن يكون رابط الشريحة عنوان http(s) أو مسارًا في الموقع" }));
   }
   const withScheme = `https://${link}`;
-  if (withScheme.length > 255) throw new BadRequestError("Slide link too long");
+  if (withScheme.length > 255) throw new BadRequestError(t({ bn: "স্লাইড লিংক অনেক বড়", en: "Slide link too long", ar: "رابط الشريحة طويل جدًا" }));
   return withScheme;
 };
 
@@ -78,10 +79,10 @@ export class WebsiteService {
 
   async getPublicWebsite(slug: string) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
 
     if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError("This website is currently disabled");
+      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled", ar: "هذا الموقع معطل حاليًا" }));
     }
 
     // Everything is fetched in one parallel round - the DB is remote, so each
@@ -120,7 +121,7 @@ export class WebsiteService {
     ]);
 
     if (settings?.isPublished === 0) {
-      throw new ForbiddenError("This website is not published yet");
+      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি এখনো প্রকাশিত হয়নি", en: "This website is not published yet", ar: "لم يتم نشر هذا الموقع بعد" }));
     }
     const { divisions, classes } = divisionsWithClasses;
 
@@ -144,7 +145,7 @@ export class WebsiteService {
    * once per page load when the hostname isn't the platform's own domain. */
   async resolveDomainToSlug(host: string) {
     const madrasa = await this.repository.findSlugByCustomDomain(host);
-    if (!madrasa) throw new NotFoundError("No madrasa is connected to this domain");
+    if (!madrasa) throw new NotFoundError(t({ bn: "এই ডোমেইনের সাথে কোনো প্রতিষ্ঠান যুক্ত নেই", en: "No institution is connected to this domain", ar: "لا توجد مؤسسة مرتبطة بهذا النطاق" }));
     return { slug: madrasa.slug };
   }
 
@@ -224,7 +225,7 @@ export class WebsiteService {
       typeof themeKey !== "string" ||
       !(WEBSITE_THEME_KEYS as readonly string[]).includes(themeKey)
     ) {
-      throw new BadRequestError("Invalid theme");
+      throw new BadRequestError(t({ bn: "থিম সঠিক নয়", en: "Invalid theme", ar: "السمة غير صالحة" }));
     }
 
     await this.repository.updateMadrasaContactInfo(madrasaId, {
@@ -275,7 +276,7 @@ export class WebsiteService {
 
   async upsertWebsitePage(madrasaId: number, body: UpsertWebsitePageRequestDto) {
     const { page_key, title, content, is_published = 1, sort_order = 0 } = body;
-    if (!page_key || !title) throw new BadRequestError("page_key and title required");
+    if (!page_key || !title) throw new BadRequestError(t({ bn: "page_key ও শিরোনাম আবশ্যক", en: "page_key and title required", ar: "page_key والعنوان مطلوبان" }));
 
     const shared = {
       title,
@@ -293,7 +294,7 @@ export class WebsiteService {
 
   async saveWebsiteNotice(madrasaId: number, body: SaveWebsiteNoticeRequestDto) {
     const { id, title, content, is_published = 1 } = body;
-    if (!title) throw new BadRequestError("Notice title required");
+    if (!title) throw new BadRequestError(t({ bn: "নোটিশের শিরোনাম আবশ্যক", en: "Notice title required", ar: "عنوان الإشعار مطلوب" }));
 
     if (id) {
       await this.repository.updateNotice(Number(id), madrasaId, {
@@ -319,7 +320,7 @@ export class WebsiteService {
 
   async saveWebsiteGalleryItem(madrasaId: number, body: SaveWebsiteGalleryItemRequestDto) {
     const { id, title, image_url, is_published = 1, sort_order = 0 } = body;
-    if (!image_url) throw new BadRequestError("Image URL required");
+    if (!image_url) throw new BadRequestError(t({ bn: "ছবির URL আবশ্যক", en: "Image URL required", ar: "رابط الصورة مطلوب" }));
 
     if (id) {
       await this.repository.updateGalleryItem(Number(id), madrasaId, {
@@ -347,7 +348,7 @@ export class WebsiteService {
 
   async saveWebsiteVideo(madrasaId: number, body: SaveWebsiteVideoRequestDto) {
     const { id, title, video_url, is_published = 1, sort_order = 0 } = body;
-    if (!video_url?.trim()) throw new BadRequestError("Video URL required");
+    if (!video_url?.trim()) throw new BadRequestError(t({ bn: "ভিডিওর URL আবশ্যক", en: "Video URL required", ar: "رابط الفيديو مطلوب" }));
 
     const shared = {
       title: title || null,
@@ -374,7 +375,7 @@ export class WebsiteService {
 
   async saveWebsiteSlide(madrasaId: number, body: SaveWebsiteSlideRequestDto) {
     const { id, image_url, button_link, is_published = 1, sort_order = 0 } = body;
-    if (!image_url) throw new BadRequestError("Slide image URL required");
+    if (!image_url) throw new BadRequestError(t({ bn: "স্লাইডের ছবির URL আবশ্যক", en: "Slide image URL required", ar: "رابط صورة الشريحة مطلوب" }));
 
     const shared = {
       imageUrl: image_url,
@@ -401,7 +402,7 @@ export class WebsiteService {
 
   async saveWebsiteCommitteeMember(madrasaId: number, body: SaveWebsiteCommitteeMemberRequestDto) {
     const { id, name, designation, photo_url, phone, is_published = 1, sort_order = 0 } = body;
-    if (!name?.trim()) throw new BadRequestError("Committee member name required");
+    if (!name?.trim()) throw new BadRequestError(t({ bn: "কমিটি সদস্যের নাম আবশ্যক", en: "Committee member name required", ar: "اسم عضو اللجنة مطلوب" }));
 
     const shared = {
       name,
@@ -433,9 +434,9 @@ export class WebsiteService {
     body: SubmitWebsiteAdmissionApplicationRequestDto,
   ) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
     if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError("This website is currently disabled");
+      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled", ar: "هذا الموقع معطل حاليًا" }));
     }
 
     const {
@@ -450,8 +451,8 @@ export class WebsiteService {
       note,
     } = body;
 
-    if (!student_name?.trim()) throw new BadRequestError("Student name required");
-    if (!guardian_phone?.trim()) throw new BadRequestError("Guardian phone required");
+    if (!student_name?.trim()) throw new BadRequestError(t({ bn: "শিক্ষার্থীর নাম আবশ্যক", en: "Student name required", ar: "اسم الطالب مطلوب" }));
+    if (!guardian_phone?.trim()) throw new BadRequestError(t({ bn: "অভিভাবকের ফোন নম্বর আবশ্যক", en: "Guardian phone required", ar: "رقم هاتف ولي الأمر مطلوب" }));
 
     const created = await this.repository.createAdmissionApplication({
       madrasaId: madrasa.id,
@@ -478,9 +479,9 @@ export class WebsiteService {
    */
   async submitFullAdmissionApplication(slug: string, body: SubmitFullAdmissionRequestDto) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
-    if (!madrasa) throw new NotFoundError("Madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }));
     if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError("This website is currently disabled");
+      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled", ar: "هذا الموقع معطل حاليًا" }));
     }
 
     return studentService.admitStudent(body as any, madrasa.id);
@@ -488,7 +489,7 @@ export class WebsiteService {
 
   async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {
     if (!(VALID_ADMISSION_STATUSES as readonly string[]).includes(status)) {
-      throw new BadRequestError("Invalid admission status");
+      throw new BadRequestError(t({ bn: "ভর্তির অবস্থা সঠিক নয়", en: "Invalid admission status", ar: "حالة القبول غير صالحة" }));
     }
     await this.repository.updateAdmissionApplicationStatus(
       id,
@@ -504,7 +505,7 @@ export class WebsiteService {
 
   async updateWebsiteStatusBySuperAdmin(id: number, status: string) {
     if (!(VALID_WEBSITE_STATUSES as readonly string[]).includes(status)) {
-      throw new BadRequestError("Invalid website status");
+      throw new BadRequestError(t({ bn: "ওয়েবসাইটের অবস্থা সঠিক নয়", en: "Invalid website status", ar: "حالة الموقع غير صالحة" }));
     }
     await this.repository.updateWebsiteStatus(id, status as WebsiteStatus);
     return status;

@@ -1,3 +1,6 @@
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
+
 interface Props {
   loading: boolean;
   studentName: string;
@@ -20,11 +23,12 @@ const PreviousStudentBanner: React.FC<Props> = ({
   previousClassName,
   onDismiss,
 }) => {
+  const t = useText(admissionText);
   if (loading) {
     return (
       <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-500 text-sm px-4 py-2.5 rounded-lg dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400">
         <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin dark:border-slate-500" />
-        NID দিয়ে পূর্বের তথ্য খোঁজা হচ্ছে...
+        {t.lookingUpNid}
       </div>
     );
   }
@@ -35,21 +39,20 @@ const PreviousStudentBanner: React.FC<Props> = ({
         <span className="text-lg leading-none">⚠️</span>
         <div>
           <p className="font-semibold">
-            এই NID দিয়ে পূর্বে ভর্তিকৃত একজন শিক্ষার্থী পাওয়া গেছে
+            {t.previousFound}
             {studentName ? `: ${studentName}` : ""}
           </p>
           <p className="mt-1 text-amber-800 dark:text-amber-400">
-            পূর্বের সেশন: <span className="font-medium">{previousAcademicYear || "-"}</span>
+            {t.previousSession} <span className="font-medium">{previousAcademicYear || "-"}</span>
             {previousClassName ? (
               <>
                 {" "}
-                | পূর্বের শ্রেণি: <span className="font-medium">{previousClassName}</span>
+                | {t.previousClassLabel} <span className="font-medium">{previousClassName}</span>
               </>
             ) : null}
           </p>
           <p className="mt-1 text-amber-700 dark:text-amber-400">
-            ফর্মটি স্বয়ংক্রিয়ভাবে পূরণ করা হয়েছে। Submit করলে নতুন শিক্ষার্থী তৈরি হবে না -
-            শুধু এই শিক্ষার্থীর সেশন/শ্রেণি আপডেট হয়ে পুনঃভর্তি সম্পন্ন হবে।
+            {t.autoFilledNote}
           </p>
         </div>
       </div>
@@ -59,7 +62,7 @@ const PreviousStudentBanner: React.FC<Props> = ({
         onClick={onDismiss}
         className="shrink-0 text-amber-700 hover:text-amber-900 text-xs font-medium underline dark:text-amber-400 dark:hover:text-amber-300"
       >
-        নতুন হিসেবে ভর্তি করুন
+        {t.admitAsNew}
       </button>
     </div>
   );

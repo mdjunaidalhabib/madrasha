@@ -10,6 +10,8 @@ import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { TeacherFullRecord } from "../../types/teacher";
 import { filterPeopleBySearch } from "../../utils/personSearch";
 import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { orNoneText, teacherStaffColumn, teacherStaffColumnLabel, teacherStaffText } from "./teacherStaff.text";
 
 type TeacherColumnKey =
   | "registration"
@@ -53,39 +55,38 @@ const DEFAULT_VISIBLE_TEACHER_COLUMNS: TeacherColumnKey[] = [
 ];
 
 const TEACHER_COLUMNS: ColumnOption<TeacherColumnKey>[] = [
-  { key: "registration", label: "রেজিস্ট্রেশন নং" },
-  { key: "phone", label: "মোবাইল" },
-  { key: "gender", label: "লিঙ্গ" },
-  { key: "designation", label: "পদবি" },
-  { key: "academicDivision", label: "একাডেমিক বিভাগ" },
-  { key: "qualification", label: "যোগ্যতা" },
-  { key: "nameAr", label: "আরবি নাম" },
-  { key: "nid", label: "এনআইডি" },
-  { key: "dob", label: "জন্ম তারিখ" },
-  { key: "age", label: "বয়স" },
-  { key: "email", label: "ইমেইল" },
-  { key: "department", label: "বিভাগ (পদ)" },
-  { key: "experienceYear", label: "অভিজ্ঞতা (বছর)" },
-  { key: "experienceMonth", label: "অভিজ্ঞতা (মাস)" },
-  { key: "joiningDate", label: "যোগদানের তারিখ" },
-  { key: "salary", label: "বেতন" },
-  { key: "fatherName", label: "বাবার নাম" },
-  { key: "fatherNameAr", label: "বাবার আরবি নাম" },
-  { key: "fatherNid", label: "বাবার এনআইডি" },
-  { key: "fatherOccupation", label: "বাবার পেশা" },
-  { key: "motherName", label: "মায়ের নাম" },
-  { key: "motherNid", label: "মায়ের এনআইডি" },
-  { key: "motherOccupation", label: "মায়ের পেশা" },
-  { key: "parentPhone", label: "অভিভাবকের ফোন" },
-  { key: "addressDivision", label: "বিভাগ (ঠিকানা)" },
-  { key: "district", label: "জেলা" },
-  { key: "thana", label: "থানা" },
-  { key: "village", label: "গ্রাম" },
+  teacherStaffColumn("registration"),
+  teacherStaffColumn("phone"),
+  teacherStaffColumn("gender"),
+  teacherStaffColumn("designation"),
+  teacherStaffColumn("academicDivision"),
+  teacherStaffColumn("qualification"),
+  teacherStaffColumn("nameAr"),
+  teacherStaffColumn("nid"),
+  teacherStaffColumn("dob"),
+  teacherStaffColumn("age"),
+  teacherStaffColumn("email"),
+  teacherStaffColumn("department"),
+  teacherStaffColumn("experienceYear"),
+  teacherStaffColumn("experienceMonth"),
+  teacherStaffColumn("joiningDate"),
+  teacherStaffColumn("salary"),
+  teacherStaffColumn("fatherName"),
+  teacherStaffColumn("fatherNameAr"),
+  teacherStaffColumn("fatherNid"),
+  teacherStaffColumn("fatherOccupation"),
+  teacherStaffColumn("motherName"),
+  teacherStaffColumn("motherNid"),
+  teacherStaffColumn("motherOccupation"),
+  teacherStaffColumn("parentPhone"),
+  teacherStaffColumn("addressDivision"),
+  teacherStaffColumn("district"),
+  teacherStaffColumn("thana"),
+  teacherStaffColumn("village"),
 ];
 const TEACHER_COLUMN_KEYS = TEACHER_COLUMNS.map((c) => c.key);
-const TEACHER_COLUMN_LABEL_MAP = new Map(TEACHER_COLUMNS.map((c) => [c.key, c.label]));
 
-const orNone = (v: unknown) => (v === null || v === undefined || v === "" ? "নেই" : String(v));
+const orNone = orNoneText;
 
 type Division = {
   division_id: number | string;
@@ -129,6 +130,9 @@ type Teacher = {
 
 const TeacherListPage = () => {
   const navigate = useNavigate();
+  const t = useText(teacherStaffText);
+  const c = useText(commonText);
+  const lang = useLang();
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -175,7 +179,7 @@ const TeacherListPage = () => {
     } catch (err) {
       logger.error("LOAD TEACHERS ERROR:", err);
       setTeachers([]);
-      setError("শিক্ষক তালিকা লোড করতে সমস্যা হয়েছে");
+      setError(getText(teacherStaffText).loadTeachersFailed);
     } finally {
       setLoading(false);
     }
@@ -197,9 +201,9 @@ const TeacherListPage = () => {
   }, [loadTeachers, loadDivisions]);
 
   const getGenderName = (gender?: number | string) => {
-    if (Number(gender) === 1 || gender === "male") return "পুরুষ";
-    if (Number(gender) === 2 || gender === "female") return "মহিলা";
-    return "নেই";
+    if (Number(gender) === 1 || gender === "male") return t.male;
+    if (Number(gender) === 2 || gender === "female") return t.female;
+    return t.none;
   };
 
   const getAcademicDivisionId = (teacher: Teacher) =>
@@ -209,9 +213,9 @@ const TeacherListPage = () => {
     (divisionId?: number | string) => {
       const division = divisions.find((item) => String(item.division_id) === String(divisionId));
 
-      return division?.division_name_bn || divisionId || "নেই";
+      return division?.division_name_bn || divisionId || t.none;
     },
-    [divisions],
+    [divisions, t],
   );
 
   // প্রতিটা টগল-করা কলামের প্লেইন টেক্সট মান বের করার ফাংশন — টেবিলের সেলে
@@ -269,25 +273,25 @@ const TeacherListPage = () => {
   const exportTeachers = useMemo(() => {
     return filteredTeachers.map((teacher) => ({
       id: teacher.registration_no || "",
-      name: teacher.name_bn || teacher.name || "নেই",
-      phone: teacher.phone || "নেই",
+      name: teacher.name_bn || teacher.name || t.none,
+      phone: teacher.phone || t.none,
       gender: getGenderName(teacher.gender),
-      designation: teacher.designation || "নেই",
+      designation: teacher.designation || t.none,
       academicDivision: getDivisionName(getAcademicDivisionId(teacher)),
-      qualification: teacher.qualification || "নেই",
-      salary: teacher.salary || "নেই",
+      qualification: teacher.qualification || t.none,
+      salary: teacher.salary || t.none,
     }));
-  }, [filteredTeachers, getDivisionName]);
+  }, [filteredTeachers, getDivisionName, t]);
 
   const exportColumns = [
-    { header: "রেজিস্ট্রেশন নং", key: "id" },
-    { header: "নাম", key: "name" },
-    { header: "মোবাইল", key: "phone" },
-    { header: "লিঙ্গ", key: "gender" },
-    { header: "পদবি", key: "designation" },
-    { header: "একাডেমিক বিভাগ", key: "academicDivision" },
-    { header: "যোগ্যতা", key: "qualification" },
-    { header: "বেতন", key: "salary" },
+    { header: t.fields.registration_no, key: "id" },
+    { header: c.name, key: "name" },
+    { header: t.fields.mobile, key: "phone" },
+    { header: t.fields.gender, key: "gender" },
+    { header: t.fields.designation, key: "designation" },
+    { header: t.fields.academic_division, key: "academicDivision" },
+    { header: t.fields.qualification, key: "qualification" },
+    { header: t.fields.salary, key: "salary" },
   ];
 
   return (
@@ -295,8 +299,8 @@ const TeacherListPage = () => {
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">শিক্ষক তালিকা</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">মোট শিক্ষক: {filteredTeachers.length} জন</p>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">{t.teacherList}</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t.totalTeachers(localizeDigits(filteredTeachers.length, lang))}</p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -305,7 +309,7 @@ const TeacherListPage = () => {
               onClick={() => navigate(`/teacher_staff/teacher_admission`)}
               className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
             >
-              + নতুন শিক্ষক যোগ করুন
+              {t.addTeacher}
             </button>
           </div>
         </div>
@@ -315,7 +319,7 @@ const TeacherListPage = () => {
             <div className="flex w-full flex-wrap items-center gap-2">
               <input
                 type="text"
-                placeholder="ID, নাম, ফোন বা পদবি দিয়ে সার্চ করুন"
+                placeholder={t.listSearchPlaceholder}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[260px]"
@@ -326,9 +330,9 @@ const TeacherListPage = () => {
                 onChange={(event) => setSelectedGender(event.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[150px]"
               >
-                <option value="">সব লিঙ্গ</option>
-                <option value="1">পুরুষ</option>
-                <option value="2">মহিলা</option>
+                <option value="">{t.allGenders}</option>
+                <option value="1">{t.male}</option>
+                <option value="2">{t.female}</option>
               </select>
 
               <select
@@ -336,7 +340,7 @@ const TeacherListPage = () => {
                 onChange={(event) => setSelectedAcademicDivision(event.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[210px]"
               >
-                <option value="">সব একাডেমিক বিভাগ</option>
+                <option value="">{t.allAcademicDivisions}</option>
 
                 {divisions.map((division) => (
                   <option key={division.division_id} value={division.division_id}>
@@ -352,7 +356,7 @@ const TeacherListPage = () => {
                 onClick={() => setBulkUpdateOpen(true)}
                 className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/40"
               >
-                বাল্ক আপডেট
+                {t.bulkUpdate}
               </button>
 
               <ColumnVisibilityMenu
@@ -365,7 +369,7 @@ const TeacherListPage = () => {
               />
 
               <DataExportPrintActions
-                title="শিক্ষক তালিকা"
+                title={t.teacherList}
                 fileName="teacher-list"
                 columns={exportColumns}
                 data={exportTeachers}
@@ -388,13 +392,13 @@ const TeacherListPage = () => {
               <table className="w-full min-w-[950px] border-collapse text-center">
                 <thead className="bg-blue-800 text-sm text-white">
                   <tr>
-                    <th className="border p-2.5 dark:border-slate-700">নাম</th>
+                    <th className="border p-2.5 dark:border-slate-700">{c.name}</th>
                     {orderedVisibleColumns.map((key) => (
                       <th key={key} className="border p-2.5 dark:border-slate-700">
-                        {TEACHER_COLUMN_LABEL_MAP.get(key)}
+                        {teacherStaffColumnLabel(key)}
                       </th>
                     ))}
-                    <th className="border p-2.5 dark:border-slate-700">একশন</th>
+                    <th className="border p-2.5 dark:border-slate-700">{c.actions}</th>
                   </tr>
                 </thead>
 
@@ -402,13 +406,13 @@ const TeacherListPage = () => {
                   {filteredTeachers.length === 0 ? (
                     <tr>
                       <td colSpan={2 + visibleColumns.size} className="p-6 text-center text-gray-500 dark:text-slate-400">
-                        কোন শিক্ষক পাওয়া যায়নি
+                        {t.noTeacherFound}
                       </td>
                     </tr>
                   ) : (
                     filteredTeachers.map((teacher) => (
                       <tr key={teacher.id} className="border-t transition hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                        <td className="border p-2.5 dark:border-slate-700">{teacher.name_bn || teacher.name || "নেই"}</td>
+                        <td className="border p-2.5 dark:border-slate-700">{teacher.name_bn || teacher.name || t.none}</td>
 
                         {orderedVisibleColumns.map((key) => (
                           <td key={key} className="border p-2.5 dark:border-slate-700">
@@ -422,7 +426,7 @@ const TeacherListPage = () => {
                             onClick={() => navigate(`/teacher_staff/teacher/${teacher.id}`)}
                             className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-green-700"
                           >
-                            দেখুন
+                            {c.view}
                           </button>
                         </td>
                       </tr>

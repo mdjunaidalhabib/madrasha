@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
-import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
+import { attachLanguageHeader, getLang, getText, localizeDigits } from "@madrasha/shared-ui/src/i18n";
+import { servicesText } from "./services.text";
 import { useAuthStore } from "../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
@@ -266,10 +267,11 @@ api.interceptors.response.use(
     // otherwise, since the server just told us to back off.
     if (status === 429) {
       const retrySeconds = Number(err?.response?.headers?.["retry-after"]);
-      const baseMsg = err?.response?.data?.message || "অনেক বেশি অনুরোধ হয়েছে।";
+      const st = getText(servicesText);
+      const baseMsg = err?.response?.data?.message || st.tooManyRequests;
       const msg =
         Number.isFinite(retrySeconds) && retrySeconds > 0
-          ? `${baseMsg} অনুগ্রহ করে ${retrySeconds} সেকেন্ড পর আবার চেষ্টা করুন।`
+          ? st.retryAfter(baseMsg, localizeDigits(retrySeconds, getLang()))
           : baseMsg;
       useToastStore.getState().push("error", msg);
       return Promise.reject(err);
@@ -280,7 +282,7 @@ api.interceptors.response.use(
     // logout proceeds regardless, so a failure here shouldn't surface an
     // error toast to the user.
     if (!requestUrl.includes("/auth/logout") && !originalRequest?.silent) {
-      const msg = err?.response?.data?.message || err?.message || "Something went wrong";
+      const msg = err?.response?.data?.message || err?.message || getText(servicesText).somethingWentWrong;
       useToastStore.getState().push("error", msg);
     }
 

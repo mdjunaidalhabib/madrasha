@@ -18,6 +18,8 @@ import DeviceKeyModal, { type RevealedKey } from "./DeviceKeyModal";
 import { DeviceStatusBadge, TimeAgo } from "./components";
 import { useDeviceStatus, useTick } from "./hooks";
 import type { AttendanceDevice } from "./types";
+import { formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const REFRESH_MS = 15_000;
 const TEST_POLL_MS = 4_000;
@@ -41,6 +43,8 @@ const iconBtn =
   "rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800";
 
 export default function AttendanceDevicesPage() {
+  const lang = useLang();
+  const tx = useText(attendanceDeviceText).devices;
   const { devices, setDevices, loading, error, refresh } = useDeviceStatus(REFRESH_MS);
   const now = useTick(15_000);
   const user = useAuthStore((s) => s.user);
@@ -72,7 +76,7 @@ export default function AttendanceDevicesPage() {
             next[Number(id)] = {
               ...t,
               phase: "timeout",
-              message: "৬০ সেকেন্ডে কোনো সাড়া মেলেনি - কানেক্টর চালু আছে কিনা দেখুন",
+              message: getText(attendanceDeviceText).devices.testTimeout(formatNumber(TEST_TIMEOUT_MS / 1000, lang)),
             };
             changed = true;
           }
@@ -81,7 +85,7 @@ export default function AttendanceDevicesPage() {
       });
     }, TEST_POLL_MS);
     return () => clearInterval(timer);
-  }, [waitingCount, refresh]);
+  }, [waitingCount, refresh, lang]);
 
   // Decide each waiting test from the freshest device data.
   useEffect(() => {
@@ -95,11 +99,11 @@ export default function AttendanceDevicesPage() {
 
         if (d.last_test_at && d.last_test_at !== t.baseTestAt) {
           next[d.id] = d.last_test_ok
-            ? { ...t, phase: "ok", message: "ডিভাইসের সাথে সংযোগ সফল হয়েছে" }
+            ? { ...t, phase: "ok", message: getText(attendanceDeviceText).devices.testOk }
             : {
                 ...t,
                 phase: "failed",
-                message: d.last_test_message || d.last_error || "ডিভাইসের সাথে সংযোগ হয়নি",
+                message: d.last_test_message || d.last_error || getText(attendanceDeviceText).devices.testFailed,
               };
           changed = true;
         }
@@ -118,7 +122,7 @@ export default function AttendanceDevicesPage() {
       await attendanceDeviceApi.requestTest(device.id);
       useToastStore
         .getState()
-        .show("টেস্ট অনুরোধ পাঠানো হয়েছে, কানেক্টরের সাড়ার অপেক্ষা...", "info");
+        .show(tx.testRequested, "info");
       await refresh();
     } catch {
       setTests((prev) => {
@@ -157,7 +161,7 @@ export default function AttendanceDevicesPage() {
       useToastStore
         .getState()
         .show(
-          device.is_active ? "ডিভাইস নিষ্ক্রিয় করা হয়েছে" : "ডিভাইস সক্রিয় করা হয়েছে",
+          device.is_active ? tx.deactivated : tx.activated,
           "success",
         );
     } catch {
@@ -169,9 +173,9 @@ export default function AttendanceDevicesPage() {
 
   const confirmRotate = (device: AttendanceDevice) => {
     useConfirmStore.getState().show({
-      title: "কানেক্টর কী পরিবর্তন করুন",
-      message: `"${device.name}" ডিভাইসের নতুন কী তৈরি হবে। পুরনো কী সাথে সাথে অচল হয়ে যাবে, কানেক্টরে নতুন কী বসাতে হবে।`,
-      confirmText: "নতুন কী তৈরি করুন",
+      title: tx.rotateTitle,
+      message: tx.rotateMessage(device.name),
+      confirmText: tx.rotateConfirm,
       danger: true,
       onConfirm: async () => {
         try {
@@ -191,15 +195,15 @@ export default function AttendanceDevicesPage() {
 
   const confirmDelete = (device: AttendanceDevice) => {
     useConfirmStore.getState().show({
-      title: "ডিভাইস ডিলিট করুন",
-      message: `"${device.name}" ডিভাইসটি মুছে ফেলতে চান? কানেক্টর আর এই ডিভাইসের হয়ে ডেটা পাঠাতে পারবে না।`,
-      confirmText: "ডিলিট করুন",
+      title: tx.deleteTitle,
+      message: tx.deleteMessage(device.name),
+      confirmText: tx.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await attendanceDeviceApi.remove(device.id);
           setDevices((prev) => prev.filter((d) => d.id !== device.id));
-          useToastStore.getState().show("ডিভাইস মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(tx.deleted, "success");
         } catch {
           // interceptor toast
         }
@@ -225,7 +229,7 @@ export default function AttendanceDevicesPage() {
         {t.phase === "waiting" && <RefreshCw size={12} className="mt-0.5 shrink-0 animate-spin" />}
         <span>
           {t.phase === "waiting"
-            ? "টেস্ট চলছে - কানেক্টরের সাড়ার অপেক্ষা (সর্বোচ্চ ৬০ সেকেন্ড)..."
+            ? tx.testing(formatNumber(TEST_TIMEOUT_MS / 1000, lang))
             : t.message}
         </span>
       </p>
@@ -235,8 +239,8 @@ export default function AttendanceDevicesPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
-        title="উপস্থিতি ডিভাইস"
-        subtitle="ZKTeco K40 ডিভাইস যোগ করুন ও অবস্থা দেখুন। ডিভাইসের কাছাকাছি চলা কানেক্টর প্রোগ্রাম এই তালিকা থেকে সংযোগের তথ্য নেয়।"
+        title={tx.title}
+        subtitle={tx.subtitle}
         actions={
           <>
             <Button
@@ -246,32 +250,32 @@ export default function AttendanceDevicesPage() {
               className="gap-1.5"
             >
               <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-              রিফ্রেশ
+              {tx.refresh}
             </Button>
             {canManage && (
               <Button onClick={openCreate} className="gap-1.5">
                 <Plus size={15} />
-                নতুন ডিভাইস
+                {tx.newDevice}
               </Button>
             )}
           </>
         }
       />
 
-      <SectionCard title="সব ডিভাইস" hint="প্রতি ১৫ সেকেন্ডে অবস্থা নিজে থেকে আপডেট হয়">
+      <SectionCard title={tx.allDevices} hint={tx.autoUpdateHint(formatNumber(REFRESH_MS / 1000, lang))}>
         {loading ? (
           <SkeletonList items={3} />
         ) : error && devices.length === 0 ? (
           <ErrorState
-            title="ডিভাইস তালিকা লোড করা যায়নি"
-            message="ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।"
+            title={tx.listLoadFailed}
+            message={tx.checkInternet}
             onRetry={manualRefresh}
-            retryText="আবার চেষ্টা করুন"
+            retryText={tx.retry}
           />
         ) : devices.length === 0 ? (
           <EmptyState
-            title="এখনো কোনো ডিভাইস যোগ করা হয়নি"
-            hint="K40 ডিভাইসের আইপি ও পোর্ট দিয়ে প্রথম ডিভাইসটি যোগ করুন।"
+            title={tx.emptyTitle}
+            hint={tx.emptyHint}
           />
         ) : (
           <div className="space-y-3">
@@ -290,12 +294,12 @@ export default function AttendanceDevicesPage() {
                         </span>
                         <DeviceStatusBadge status={device.status} inactive={!device.is_active} />
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          আইডি: {device.device_id}
+                          {tx.id(device.device_id)}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                        {device.ip}:{device.port} · পোলিং প্রতি{" "}
-                        {device.poll_interval_sec.toLocaleString("bn-BD")} সেকেন্ড
+                        {device.ip}:{device.port} ·{" "}
+                        {tx.polling(formatNumber(device.poll_interval_sec, lang))}
                       </p>
                     </div>
 
@@ -309,12 +313,12 @@ export default function AttendanceDevicesPage() {
                             disabled={test?.phase === "waiting"}
                           >
                             <Zap size={13} />
-                            কানেকশন টেস্ট
+                            {tx.connectionTest}
                           </Button>
                           <button
                             type="button"
                             className={iconBtn}
-                            title="সম্পাদনা"
+                            title={tx.edit}
                             onClick={() => openEdit(device)}
                           >
                             <Pencil size={14} />
@@ -322,7 +326,7 @@ export default function AttendanceDevicesPage() {
                           <button
                             type="button"
                             className={iconBtn}
-                            title="কী পরিবর্তন"
+                            title={tx.rotateKey}
                             onClick={() => confirmRotate(device)}
                           >
                             <KeyRound size={14} />
@@ -330,7 +334,7 @@ export default function AttendanceDevicesPage() {
                           <button
                             type="button"
                             className={`${iconBtn} ${device.is_active ? "!text-amber-500" : "!text-green-600"}`}
-                            title={device.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                            title={device.is_active ? tx.deactivate : tx.activate}
                             disabled={busyId === device.id}
                             onClick={() => toggleActive(device)}
                           >
@@ -339,7 +343,7 @@ export default function AttendanceDevicesPage() {
                           <button
                             type="button"
                             className={`${iconBtn} hover:!bg-red-50 hover:!text-red-600 dark:hover:!bg-red-950/40`}
-                            title="মুছুন"
+                            title={tx.delete}
                             onClick={() => confirmDelete(device)}
                           >
                             <Trash2 size={14} />
@@ -352,24 +356,24 @@ export default function AttendanceDevicesPage() {
                   <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-3">
                     <div>
                       <dt className="text-gray-400 dark:text-slate-500">
-                        কানেক্টর সর্বশেষ যোগাযোগ
+                        {tx.connectorLastContact}
                       </dt>
                       <dd className="font-medium text-gray-700 dark:text-slate-200">
                         <TimeAgo
                           value={device.last_seen_at}
                           now={now}
-                          fallback="কখনো সংযুক্ত হয়নি"
+                          fallback={tx.neverConnected}
                         />
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-400 dark:text-slate-500">ডিভাইসে সর্বশেষ সংযোগ</dt>
+                      <dt className="text-gray-400 dark:text-slate-500">{tx.deviceLastContact}</dt>
                       <dd className="font-medium text-gray-700 dark:text-slate-200">
                         <TimeAgo value={device.last_device_contact_at} now={now} />
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-400 dark:text-slate-500">সর্বশেষ সিঙ্ক</dt>
+                      <dt className="text-gray-400 dark:text-slate-500">{tx.lastSync}</dt>
                       <dd className="font-medium text-gray-700 dark:text-slate-200">
                         <TimeAgo value={device.last_sync_at} now={now} />
                       </dd>
@@ -378,7 +382,7 @@ export default function AttendanceDevicesPage() {
 
                   {device.last_error && (
                     <p className="mt-2 break-words rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">
-                      সর্বশেষ ত্রুটি: {device.last_error}
+                      {tx.lastError(device.last_error)}
                     </p>
                   )}
 

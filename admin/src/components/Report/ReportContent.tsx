@@ -25,6 +25,8 @@ import TeacherListPrint from "./teacher/TeacherListPrint";
 import TeacherPhoneListPrint from "./teacher/TeacherPhoneListPrint";
 import ReportTable from "./ReportTable";
 import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "./reportUi.text";
 
 type ReportContentProps = {
   loading: boolean;
@@ -85,6 +87,7 @@ const ReportContent = ({
   cardsPerSheet,
   emptyMessage,
 }: ReportContentProps) => {
+  const ui = useText(reportUiText);
   const overrideTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
   const templateId = selectedTemplateId ?? overrideTemplateId;
 
@@ -103,7 +106,7 @@ const ReportContent = ({
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 bg-white px-6 text-center">
         <Inbox className="h-8 w-8 text-slate-300" />
-        <p className="text-sm font-semibold text-slate-600">{emptyMessage || "কোনো ডাটা পাওয়া যায়নি"}</p>
+        <p className="text-sm font-semibold text-slate-600">{emptyMessage || ui.noData}</p>
       </div>
     );
   }

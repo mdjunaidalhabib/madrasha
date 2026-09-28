@@ -10,6 +10,7 @@ import {
   DEFAULT_SELLING_PRICE,
   MANUAL_GRANT_DEFAULT_VALIDITY_DAYS,
 } from "./billing.constants";
+import { t } from "../../shared/i18n";
 
 const addDays = (date: Date, days: number) => {
   const d = new Date(date);
@@ -88,7 +89,7 @@ export class BillingService {
   }
 
   async previewSms(madrasaId: number, message: string) {
-    if (!message || !message.trim()) throw new BadRequestError("message আবশ্যক");
+    if (!message || !message.trim()) throw new BadRequestError(t({ bn: "message আবশ্যক", en: "message is required", ar: "الرسالة مطلوبة" }));
     const analysis = analyzeSmsContent(message);
     const { sellingPrice } = await this.resolvePricing(madrasaId, "SMS");
     const sub = await this.repository.findSubscription(madrasaId, "SMS");
@@ -268,17 +269,19 @@ export class BillingService {
     dto: { channel?: string; packageId?: number | string; paymentMethodLabel?: string; transactionRef?: string; note?: string },
   ) {
     const channel = String(dto.channel || "").toUpperCase();
-    if (channel !== "SMS" && channel !== "EMAIL") throw new BadRequestError("channel must be SMS or EMAIL");
+    if (channel !== "SMS" && channel !== "EMAIL") throw new BadRequestError(t({ bn: "channel অবশ্যই SMS অথবা EMAIL হতে হবে", en: "channel must be SMS or EMAIL" }));
 
     const pkg = await this.repository.findPackageById(num(dto.packageId));
     if (!pkg || !pkg.isActive || pkg.channel !== channel) {
-      throw new NotFoundError("প্যাকেজ পাওয়া যায়নি বা নিষ্ক্রিয়");
+      throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি বা নিষ্ক্রিয়", en: "Package not found or inactive", ar: "الباقة غير موجودة أو غير نشطة" }));
     }
     if (pkg.type === "RECHARGE") {
       const sub = await this.repository.findSubscription(madrasaId, channel as BillingChannel);
       if (!sub) {
         throw new BadRequestError(
-          `রিচার্জ করার আগে অন্তত একটি ${channel === "SMS" ? "SMS" : "ইমেইল"} প্যাকেজ ক্রয় করতে হবে`,
+          channel === "SMS"
+            ? t({ bn: "রিচার্জ করার আগে অন্তত একটি SMS প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one SMS package before recharging", ar: "يجب شراء باقة رسائل قصيرة واحدة على الأقل قبل إعادة الشحن" })
+            : t({ bn: "রিচার্জ করার আগে অন্তত একটি ইমেইল প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one email package before recharging", ar: "يجب شراء باقة بريد إلكتروني واحدة على الأقل قبل إعادة الشحن" }),
         );
       }
     }
@@ -305,11 +308,11 @@ export class BillingService {
 
   async approvePurchaseRequest(id: number, reviewedById: number | undefined, reviewNote?: string) {
     const request = await this.repository.findPurchaseRequestById(id);
-    if (!request) throw new NotFoundError("Purchase request পাওয়া যায়নি");
-    if (request.status !== "PENDING") throw new ConflictError("এই request ইতিমধ্যে review হয়ে গেছে");
+    if (!request) throw new NotFoundError(t({ bn: "ক্রয়ের অনুরোধ পাওয়া যায়নি", en: "Purchase request not found" }));
+    if (request.status !== "PENDING") throw new ConflictError(t({ bn: "এই অনুরোধ ইতিমধ্যে পর্যালোচনা হয়ে গেছে", en: "This request has already been reviewed" }));
 
     const flip = await this.repository.markPurchaseRequestReviewed(id, "APPROVED", reviewedById, reviewNote);
-    if (flip.count === 0) throw new ConflictError("এই request ইতিমধ্যে review হয়ে গেছে");
+    if (flip.count === 0) throw new ConflictError(t({ bn: "এই অনুরোধ ইতিমধ্যে পর্যালোচনা হয়ে গেছে", en: "This request has already been reviewed" }));
 
     await this.applyPackageToSubscription(
       request.madrasaId,
@@ -323,7 +326,7 @@ export class BillingService {
 
   async rejectPurchaseRequest(id: number, reviewedById: number | undefined, reviewNote?: string) {
     const flip = await this.repository.markPurchaseRequestReviewed(id, "REJECTED", reviewedById, reviewNote);
-    if (flip.count === 0) throw new ConflictError("এই request পাওয়া যায়নি বা ইতিমধ্যে review হয়ে গেছে");
+    if (flip.count === 0) throw new ConflictError(t({ bn: "এই অনুরোধ পাওয়া যায়নি বা ইতিমধ্যে পর্যালোচনা হয়ে গেছে", en: "This request was not found or has already been reviewed" }));
   }
 
   /**
@@ -355,7 +358,7 @@ export class BillingService {
       let updated;
 
       if (pkg.type === "RECHARGE") {
-        if (!existing) throw new BadRequestError("রিচার্জ করার আগে একটি প্যাকেজ ক্রয় করতে হবে");
+        if (!existing) throw new BadRequestError(t({ bn: "রিচার্জ করার আগে একটি প্যাকেজ ক্রয় করতে হবে", en: "You must purchase a package before recharging", ar: "يجب شراء باقة قبل إعادة الشحن" }));
         txType = "RECHARGE";
         updated = await tx.messageSubscription.update({
           where: { madrasaId_channel: { madrasaId, channel } },
@@ -427,7 +430,7 @@ export class BillingService {
     note: string | undefined,
     performedById: number | undefined,
   ) {
-    if (!Number.isFinite(delta) || delta === 0) throw new BadRequestError("delta একটি non-zero সংখ্যা হতে হবে");
+    if (!Number.isFinite(delta) || delta === 0) throw new BadRequestError(t({ bn: "delta একটি শূন্য নয় এমন সংখ্যা হতে হবে", en: "delta must be a non-zero number" }));
 
     return prisma.$transaction(async (tx) => {
       const existing = await tx.messageSubscription.findUnique({
@@ -435,7 +438,7 @@ export class BillingService {
       });
 
       if (!existing) {
-        if (delta < 0) throw new BadRequestError("কোনো সক্রিয় সাবস্ক্রিপশন নেই - কমানোর কিছু নেই");
+        if (delta < 0) throw new BadRequestError(t({ bn: "কোনো সক্রিয় সাবস্ক্রিপশন নেই - কমানোর কিছু নেই", en: "No active subscription - nothing to deduct" }));
         const now = new Date();
         const created = await tx.messageSubscription.create({
           data: {
@@ -467,7 +470,7 @@ export class BillingService {
       }
 
       const newRemaining = existing.remainingCredit + delta;
-      if (newRemaining < 0) throw new BadRequestError("বর্তমান remaining credit-এর চেয়ে বেশি কমানো যাবে না");
+      if (newRemaining < 0) throw new BadRequestError(t({ bn: "বর্তমান অবশিষ্ট ক্রেডিটের চেয়ে বেশি কমানো যাবে না", en: "Cannot deduct more than the current remaining credit" }));
 
       const updated = await tx.messageSubscription.update({
         where: { madrasaId_channel: { madrasaId, channel } },
@@ -502,17 +505,17 @@ export class BillingService {
 
   async createPackageAdmin(dto: Record<string, unknown>, createdById?: number) {
     const channel = String(dto.channel || "").toUpperCase();
-    if (channel !== "SMS" && channel !== "EMAIL") throw new BadRequestError("channel must be SMS or EMAIL");
+    if (channel !== "SMS" && channel !== "EMAIL") throw new BadRequestError(t({ bn: "channel অবশ্যই SMS অথবা EMAIL হতে হবে", en: "channel must be SMS or EMAIL" }));
     const name = String(dto.name || "").trim();
     const credit = num(dto.credit);
     const price = num(dto.price);
     const validityDays = num(dto.validityDays ?? dto.validity_days);
     const type = String(dto.type || "PACKAGE").toUpperCase() === "RECHARGE" ? "RECHARGE" : "PACKAGE";
 
-    if (!name) throw new BadRequestError("প্যাকেজের নাম আবশ্যক");
-    if (credit <= 0) throw new BadRequestError("Credit 0 এর বেশি হতে হবে");
-    if (price < 0) throw new BadRequestError("Price ঋণাত্মক হতে পারবে না");
-    if (type === "PACKAGE" && validityDays <= 0) throw new BadRequestError("Validity days 1 বা তার বেশি হতে হবে");
+    if (!name) throw new BadRequestError(t({ bn: "প্যাকেজের নাম আবশ্যক", en: "Package name is required" }));
+    if (credit <= 0) throw new BadRequestError(t({ bn: "ক্রেডিট 0 এর বেশি হতে হবে", en: "Credit must be greater than 0" }));
+    if (price < 0) throw new BadRequestError(t({ bn: "মূল্য ঋণাত্মক হতে পারবে না", en: "Price cannot be negative" }));
+    if (type === "PACKAGE" && validityDays <= 0) throw new BadRequestError(t({ bn: "মেয়াদ (দিন) 1 বা তার বেশি হতে হবে", en: "Validity days must be 1 or more" }));
 
     return this.repository.createPackage({
       channel: channel as BillingChannel,
@@ -530,7 +533,7 @@ export class BillingService {
 
   async updatePackageAdmin(id: number, dto: Record<string, unknown>, updatedById?: number) {
     const existing = await this.repository.findPackageById(id);
-    if (!existing) throw new NotFoundError("প্যাকেজ পাওয়া যায়নি");
+    if (!existing) throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি", en: "Package not found" }));
 
     const name = String(dto.name || existing.name).trim();
     const credit = dto.credit === undefined ? existing.credit : num(dto.credit);
@@ -540,9 +543,9 @@ export class BillingService {
         ? existing.validityDays
         : num(dto.validityDays ?? dto.validity_days);
 
-    if (!name) throw new BadRequestError("প্যাকেজের নাম আবশ্যক");
-    if (credit <= 0) throw new BadRequestError("Credit 0 এর বেশি হতে হবে");
-    if (price < 0) throw new BadRequestError("Price ঋণাত্মক হতে পারবে না");
+    if (!name) throw new BadRequestError(t({ bn: "প্যাকেজের নাম আবশ্যক", en: "Package name is required" }));
+    if (credit <= 0) throw new BadRequestError(t({ bn: "ক্রেডিট 0 এর বেশি হতে হবে", en: "Credit must be greater than 0" }));
+    if (price < 0) throw new BadRequestError(t({ bn: "মূল্য ঋণাত্মক হতে পারবে না", en: "Price cannot be negative" }));
 
     const result = await this.repository.updatePackage(id, {
       name,
@@ -553,22 +556,22 @@ export class BillingService {
       isActive: dto.isActive === undefined ? existing.isActive : Boolean(dto.isActive),
       updatedById: updatedById ?? null,
     });
-    if (result.count === 0) throw new NotFoundError("প্যাকেজ পাওয়া যায়নি");
+    if (result.count === 0) throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি", en: "Package not found" }));
   }
 
   async togglePackageAdmin(id: number) {
     const pkg = await this.repository.findPackageById(id);
-    if (!pkg) throw new NotFoundError("প্যাকেজ পাওয়া যায়নি");
+    if (!pkg) throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি", en: "Package not found" }));
     await this.repository.updatePackage(id, { isActive: !pkg.isActive });
   }
 
   async deletePackageAdmin(id: number) {
     const running = await this.repository.countRunningSubscriptionsForPackage(id);
     if (running > 0) {
-      throw new ConflictError("এই প্যাকেজ বর্তমানে সক্রিয় subscription-এ ব্যবহৃত হচ্ছে। ডিলিট না করে নিষ্ক্রিয় করুন।");
+      throw new ConflictError(t({ bn: "এই প্যাকেজ বর্তমানে সক্রিয় সাবস্ক্রিপশনে ব্যবহৃত হচ্ছে। ডিলিট না করে নিষ্ক্রিয় করুন।", en: "This package is used by an active subscription. Deactivate it instead of deleting." }));
     }
     const result = await this.repository.softDeletePackage(id);
-    if (result.count === 0) throw new NotFoundError("প্যাকেজ পাওয়া যায়নি");
+    if (result.count === 0) throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি", en: "Package not found" }));
   }
 
   /* ================= SUPER ADMIN: PRICING ================= */
@@ -587,8 +590,8 @@ export class BillingService {
   }
 
   setGlobalPricingAdmin(channel: BillingChannel, dto: { sellingPrice?: number; providerCost?: number; lowCreditThreshold?: number }) {
-    if (dto.sellingPrice !== undefined && num(dto.sellingPrice) < 0) throw new BadRequestError("Selling price ঋণাত্মক হতে পারবে না");
-    if (dto.providerCost !== undefined && num(dto.providerCost) < 0) throw new BadRequestError("Provider cost ঋণাত্মক হতে পারবে না");
+    if (dto.sellingPrice !== undefined && num(dto.sellingPrice) < 0) throw new BadRequestError(t({ bn: "বিক্রয় মূল্য ঋণাত্মক হতে পারবে না", en: "Selling price cannot be negative" }));
+    if (dto.providerCost !== undefined && num(dto.providerCost) < 0) throw new BadRequestError(t({ bn: "প্রোভাইডার খরচ ঋণাত্মক হতে পারবে না", en: "Provider cost cannot be negative" }));
     return this.repository.upsertGlobalPricing(channel, {
       sellingPrice: dto.sellingPrice === undefined ? undefined : num(dto.sellingPrice),
       providerCost: dto.providerCost === undefined ? undefined : num(dto.providerCost),
@@ -597,7 +600,7 @@ export class BillingService {
   }
 
   setPricingOverrideAdmin(madrasaId: number, channel: BillingChannel, sellingPrice: number) {
-    if (num(sellingPrice) < 0) throw new BadRequestError("Selling price ঋণাত্মক হতে পারবে না");
+    if (num(sellingPrice) < 0) throw new BadRequestError(t({ bn: "বিক্রয় মূল্য ঋণাত্মক হতে পারবে না", en: "Selling price cannot be negative" }));
     return this.repository.upsertPricingOverride(madrasaId, channel, num(sellingPrice));
   }
 

@@ -7,6 +7,8 @@ import {
 } from "../../services/examOperationsApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { examOpsText } from "./examOperations.text";
 
 type Person = { id: number; name_bn?: string; name?: string };
 
@@ -21,6 +23,8 @@ const personLabel = (people: Person[], id: number) => {
 };
 
 const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
+  const t = useText(examOpsText);
+  const c = useText(commonText);
   const [teachers, setTeachers] = useState<Person[]>([]);
   const [staff, setStaff] = useState<Person[]>([]);
   const [assignments, setAssignments] = useState<ExamInvigilatorAssignmentRow[]>([]);
@@ -56,7 +60,7 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
 
   const handleAssign = async () => {
     if (!personId) {
-      useToastStore.getState().show("একজন শিক্ষক/স্টাফ নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.pickInvigilator, "error");
       return;
     }
     try {
@@ -67,11 +71,11 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
         invigilator_id: Number(personId),
         role,
       });
-      useToastStore.getState().show("পরিদর্শক নিয়োগ করা হয়েছে", "success");
+      useToastStore.getState().show(t.invigilatorAssigned, "success");
       setPersonId("");
       loadAll();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "নিয়োগ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.assignFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -83,17 +87,17 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
       await examInvigilatorApi.remove(id);
       setAssignments((prev) => prev.filter((a) => a.id !== id));
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সরাতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.removeFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   return (
     <div className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <h3 className="mb-2 text-xs font-semibold text-gray-600 dark:text-slate-400">পরিদর্শক নিয়োগ</h3>
+      <h3 className="mb-2 text-xs font-semibold text-gray-600 dark:text-slate-400">{t.invigilators}</h3>
 
       {loading ? (
-        <div className="text-xs text-gray-400">লোড হচ্ছে...</div>
+        <div className="text-xs text-gray-400">{c.loading}</div>
       ) : (
         <>
           {assignments.length > 0 && (
@@ -103,7 +107,7 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
                   <span>
                     {personLabel(a.invigilatorType === "TEACHER" ? teachers : staff, a.invigilatorId)}{" "}
                     <span className="text-gray-500 dark:text-slate-400">
-                      ({a.invigilatorType === "TEACHER" ? "শিক্ষক" : "স্টাফ"} · {a.role === "CHIEF" ? "প্রধান" : "সহকারী"})
+                      ({a.invigilatorType === "TEACHER" ? t.teacher : t.staff} · {a.role === "CHIEF" ? t.chief : t.assistant})
                     </span>
                   </span>
                   <button
@@ -111,7 +115,7 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
                     onClick={() => handleRemove(a.id)}
                     className="text-red-600 hover:underline dark:text-red-400"
                   >
-                    সরান
+                    {t.remove}
                   </button>
                 </div>
               ))}
@@ -127,15 +131,15 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
               }}
               className="h-8 w-full rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
             >
-              <option value="TEACHER">শিক্ষক</option>
-              <option value="STAFF">স্টাফ</option>
+              <option value="TEACHER">{t.teacher}</option>
+              <option value="STAFF">{t.staff}</option>
             </select>
             <select
               value={personId}
               onChange={(e) => setPersonId(e.target.value)}
               className="h-8 w-full rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name_bn || p.name}
@@ -147,8 +151,8 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
               onChange={(e) => setRole(e.target.value as "CHIEF" | "ASSISTANT")}
               className="h-8 w-full rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[110px]"
             >
-              <option value="ASSISTANT">সহকারী</option>
-              <option value="CHIEF">প্রধান</option>
+              <option value="ASSISTANT">{t.assistant}</option>
+              <option value="CHIEF">{t.chief}</option>
             </select>
             <button
               type="button"
@@ -156,7 +160,7 @@ const ExamInvigilatorPanel = ({ examRoutineId }: { examRoutineId: number }) => {
               onClick={handleAssign}
               className="h-8 w-full rounded-md bg-blue-600 px-3 text-xs font-medium text-white disabled:opacity-60 sm:w-auto"
             >
-              নিয়োগ করুন
+              {t.assign}
             </button>
           </div>
         </>

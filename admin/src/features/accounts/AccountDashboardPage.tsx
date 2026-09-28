@@ -25,6 +25,8 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { AccountRow, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
 import AccountReceiptModal from "./AccountReceiptModal";
 import AccountEditModal from "./AccountEditModal";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 type IncomeExpensePoint = { period: string; total_income: number; total_expense: number };
 type DashboardTrends = { incomeExpense: IncomeExpensePoint[] };
@@ -116,12 +118,14 @@ const MethodCard = ({
   pct,
   amount,
   tone,
+  shareLabel,
 }: {
   icon: ReactNode;
   label: string;
   pct: number;
   amount: string;
   tone: "indigo" | "sky";
+  shareLabel: string;
 }) => {
   const t = STAT_TONES[tone];
   return (
@@ -143,7 +147,7 @@ const MethodCard = ({
       </div>
       <div className="relative mt-2.5 flex items-baseline justify-between">
         <span className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{amount}</span>
-        <span className="text-xs text-slate-400 dark:text-slate-500">মোট আয়ের অংশ</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{shareLabel}</span>
       </div>
     </div>
   );
@@ -151,6 +155,8 @@ const MethodCard = ({
 
 export default function AccountDashboardPage() {
   const toast = useToastStore();
+  const t = useText(accountsText);
+  const c = useText(commonText);
   const [data, setData] = useState<any>(null);
   const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(true);
@@ -186,17 +192,17 @@ export default function AccountDashboardPage() {
 
   const handleDelete = (row: AccountRow) => {
     useConfirmStore.getState().show({
-      title: "এন্ট্রি ডিলিট করুন",
-      message: `"${partyName(row)}" এর ${money(row.amount)} টাকার এন্ট্রিটি মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteEntryTitle,
+      message: t.deleteEntryMessage(partyName(row), money(row.amount)),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/accounts/${row.id}`);
-          toast.push("success", "এন্ট্রি মুছে ফেলা হয়েছে");
+          toast.push("success", t.entryDeleted);
           reloadSummary();
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || t.deleteFailed;
           toast.push("error", msg);
         }
       },
@@ -206,7 +212,7 @@ export default function AccountDashboardPage() {
   const loading = !data;
 
   const fundData: { fund: string; balance: number }[] = (data?.fundBalances || [])
-    .map((fund: FundBalance) => ({ fund: fund.fund || "নির্ধারিত নয়", balance: Number(fund.balance) || 0 }))
+    .map((fund: FundBalance) => ({ fund: fund.fund || t.unassigned, balance: Number(fund.balance) || 0 }))
     .filter((fund: { fund: string; balance: number }) => fund.balance > 0);
 
   const paymentMethodTotals: PaymentMethodTotal[] = data?.paymentMethodTotals || [];
@@ -219,8 +225,8 @@ export default function AccountDashboardPage() {
   const offlinePct = totalMethodIncome ? 100 - onlinePct : 0;
 
   const paymentMethodChartData = [
-    { label: "অনলাইন", আয়: online.income, ব্যয়: online.expense },
-    { label: "অফলাইন (নগদ)", আয়: offline.income, ব্যয়: offline.expense },
+    { label: t.online, income: online.income, expense: online.expense },
+    { label: t.offlineCash, income: offline.income, expense: offline.expense },
   ];
 
   const tooltipStyle = {
@@ -241,13 +247,13 @@ export default function AccountDashboardPage() {
             Array.from({ length: 4 }).map((_, i) => <PremiumStatSkeleton key={i} />)
           ) : (
             <>
-              <PremiumStat label="মোট আয়" value={money(data.income)} tone="emerald" icon={<Wallet size={20} />} />
-              <PremiumStat label="মোট ব্যয়" value={money(data.expense)} tone="rose" icon={<TrendingDown size={20} />} />
-              <PremiumStat label="বর্তমান ব্যালেন্স" value={money(data.balance)} tone="indigo" icon={<Scale size={20} />} />
+              <PremiumStat label={t.totalIncome} value={money(data.income)} tone="emerald" icon={<Wallet size={20} />} />
+              <PremiumStat label={t.totalExpense} value={money(data.expense)} tone="rose" icon={<TrendingDown size={20} />} />
+              <PremiumStat label={t.currentBalance} value={money(data.balance)} tone="indigo" icon={<Scale size={20} />} />
               <PremiumStat
-                label="আজকের আয়"
+                label={t.todayIncome}
                 value={money(data.todayIncome)}
-                subLabel={`আজকের ব্যয়: ${money(data.todayExpense)}`}
+                subLabel={t.todayExpense(money(data.todayExpense))}
                 tone="amber"
                 icon={<CalendarClock size={20} />}
               />
@@ -257,31 +263,31 @@ export default function AccountDashboardPage() {
 
         <Card className="flex flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to={`/accounts/income`}
           >
-            আয়/রশিদ জমা
+            {t.incomeReceiptEntry}
           </Link>
           <Link
             className="rounded-xl bg-rose-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-rose-500"
             to={`/accounts/expense`}
           >
-            ব্যয়/ভাউচার তৈরি
+            {t.expenseVoucherCreate}
           </Link>
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to={`/accounts/transactions`}
           >
-            সকল লেনদেন
+            {t.allTransactions}
           </Link>
           <Link
             className="rounded-xl bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
             to={`/accounts/report`}
           >
-            আয়-ব্যয় রিপোর্ট
+            {t.incomeExpenseReport}
           </Link>
         </Card>
       </div>
@@ -290,14 +296,16 @@ export default function AccountDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <MethodCard
             icon={<Landmark size={14} />}
-            label="অনলাইন আয় (ব্যাংক/মোবাইল)"
+            label={t.onlineIncome}
+            shareLabel={t.shareOfIncome}
             pct={onlinePct}
             amount={money(online.income)}
             tone="indigo"
           />
           <MethodCard
             icon={<Banknote size={14} />}
-            label="অফলাইন আয় (নগদ)"
+            label={t.offlineIncome}
+            shareLabel={t.shareOfIncome}
             pct={offlinePct}
             amount={money(offline.income)}
             tone="sky"
@@ -307,8 +315,8 @@ export default function AccountDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <ChartCard
-          title="আয়-ব্যয়ের প্রবণতা"
-          subtitle="গত ১২ মাস"
+          title={t.trendTitle}
+          subtitle={t.last12Months}
           loading={trendsLoading}
           empty={!trendsLoading && !trends?.incomeExpense?.length}
           className="xl:col-span-2"
@@ -320,15 +328,15 @@ export default function AccountDashboardPage() {
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={48} />
               <Tooltip formatter={(value: unknown) => money(Number(value))} {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <Line type="monotone" dataKey="total_income" name="আয়" stroke="#059669" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="total_expense" name="ব্যয়" stroke="#e11d48" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="total_income" name={t.income} stroke="#059669" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="total_expense" name={t.expense} stroke="#e11d48" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="ফান্ড অনুযায়ী বণ্টন"
-          subtitle="বর্তমান ব্যালেন্স"
+          title={t.fundDistribution}
+          subtitle={t.currentBalance}
           loading={loading}
           empty={!loading && fundData.length === 0}
         >
@@ -348,11 +356,11 @@ export default function AccountDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard
-          title="ফান্ড ব্যালেন্স"
-          subtitle="ফান্ড অনুযায়ী বর্তমান স্থিতি"
+          title={t.fundBalance}
+          subtitle={t.fundBalanceSubtitle}
           actions={
             <Link className="text-sm font-medium text-emerald-600 dark:text-emerald-400" to={`/accounts/report`}>
-              রিপোর্ট দেখুন
+              {t.viewReport}
             </Link>
           }
           loading={loading}
@@ -374,8 +382,8 @@ export default function AccountDashboardPage() {
         </ChartCard>
 
         <ChartCard
-          title="মাধ্যম অনুযায়ী আয়-ব্যয়"
-          subtitle="অনলাইন বনাম অফলাইন (নগদ)"
+          title={t.byMethodTitle}
+          subtitle={t.byMethodSubtitle}
           loading={loading}
           empty={!loading && !online.income && !online.expense && !offline.income && !offline.expense}
         >
@@ -386,8 +394,8 @@ export default function AccountDashboardPage() {
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={48} />
               <Tooltip formatter={(value: unknown) => money(Number(value))} {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <Bar dataKey="আয়" fill="#059669" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="ব্যয়" fill="#e11d48" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="income" name={t.income} fill="#059669" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expense" name={t.expense} fill="#e11d48" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -395,28 +403,28 @@ export default function AccountDashboardPage() {
 
       <Card padding="none" className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">সাম্প্রতিক লেনদেন</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.recentTransactions}</h2>
           <Link className="text-sm font-medium text-emerald-600 dark:text-emerald-400" to={`/accounts/transactions`}>
-            সব দেখুন
+            {t.viewAll}
           </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-5 py-3">তারিখ</th>
-                <th className="px-5 py-3">ধরন</th>
-                <th className="px-5 py-3">ফান্ড / খাত</th>
-                <th className="px-5 py-3">নাম</th>
-                <th className="px-5 py-3">পরিমাণ</th>
-                <th className="px-5 py-3 text-end">অ্যাকশন</th>
+                <th className="px-5 py-3">{c.date}</th>
+                <th className="px-5 py-3">{t.type}</th>
+                <th className="px-5 py-3">{t.fundCategory}</th>
+                <th className="px-5 py-3">{c.name}</th>
+                <th className="px-5 py-3">{c.amount}</th>
+                <th className="px-5 py-3 text-end">{c.actions}</th>
               </tr>
             </thead>
             <tbody>
               {(data?.recentTransactions || []).length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-6 text-center text-slate-400 dark:text-slate-500">
-                    কোনো লেনদেন পাওয়া যায়নি
+                    {t.noTransactions}
                   </td>
                 </tr>
               )}
@@ -434,7 +442,7 @@ export default function AccountDashboardPage() {
                           : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
                       }`}
                     >
-                      {item.type === "income" ? "আয়" : "ব্যয়"}
+                      {item.type === "income" ? t.income : t.expense}
                     </span>
                   </td>
                   <td className="px-5 py-3 dark:text-slate-300">
@@ -454,7 +462,7 @@ export default function AccountDashboardPage() {
                         type="button"
                         onClick={() => setPrintingRow(item)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-500 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
-                        title={item.type === "income" ? "রশিদ প্রিন্ট" : "ভাউচার প্রিন্ট"}
+                        title={item.type === "income" ? t.printReceipt : t.printVoucher}
                       >
                         <Printer size={16} />
                       </button>
@@ -462,7 +470,7 @@ export default function AccountDashboardPage() {
                         type="button"
                         onClick={() => setEditingRow(item)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                        title="এডিট"
+                        title={c.edit}
                       >
                         <Pencil size={16} />
                       </button>
@@ -470,7 +478,7 @@ export default function AccountDashboardPage() {
                         type="button"
                         onClick={() => handleDelete(item)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                        title="মুছুন"
+                        title={c.delete}
                       >
                         <Trash2 size={16} />
                       </button>

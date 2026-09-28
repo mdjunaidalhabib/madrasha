@@ -10,6 +10,8 @@ import BulkTeacherUploadModal, {
 import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "./teacherStaff.text";
 
 export interface TeacherFormData {
   name_bn: string;
@@ -113,6 +115,7 @@ const calculateAge = (dob?: string) => {
 };
 
 const TeacherPage: React.FC = () => {
+  const t = useText(teacherStaffText);
   const [formData, setFormData] = useState<TeacherFormData>(initialState);
   const [errors, setErrors] = useState<TeacherFormErrors>({});
   const [excelTeachers, setExcelTeachers] = useState<ExcelTeacherRow[]>([]);
@@ -140,25 +143,25 @@ const TeacherPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: TeacherFormErrors = {};
 
-    if (!formData.name_bn.trim()) newErrors.name_bn = "শিক্ষকের নাম দিন";
-    if (!formData.academic_division) newErrors.academic_division = "একাডেমিক বিভাগ নির্বাচন করুন";
+    if (!formData.name_bn.trim()) newErrors.name_bn = getText(teacherStaffText).enterTeacherName;
+    if (!formData.academic_division) newErrors.academic_division = getText(teacherStaffText).selectAcademicDivision;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateExcelTeachers = () => {
-    if (!excelTeachers.length) return "Excel file upload করুন";
+    if (!excelTeachers.length) return getText(teacherStaffText).excelUploadFirst;
 
     for (let i = 0; i < excelTeachers.length; i++) {
       const teacher = excelTeachers[i];
 
       if (!teacher.name_bn && !teacher.name) {
-        return `Row ${i + 2}: শিক্ষকের নাম নেই`;
+        return getText(teacherStaffText).rowNoName(String(i + 2));
       }
 
       if (!teacher.academic_division) {
-        return `Row ${i + 2}: academic_division নেই`;
+        return getText(teacherStaffText).rowNoDivision(String(i + 2));
       }
     }
 
@@ -350,8 +353,8 @@ const TeacherPage: React.FC = () => {
     const guideRows = [
       ["Gender Guide"],
       ["ID", "Name"],
-      [1, "পুরুষ"],
-      [2, "মহিলা"],
+      [1, getText(teacherStaffText).male],
+      [2, getText(teacherStaffText).female],
       [],
       ["Academic Division Guide"],
       ["ID", "Academic Division Name"],
@@ -380,13 +383,13 @@ const TeacherPage: React.FC = () => {
       setLoading(true);
       const res = await api.post("/teachers/bulk", { teachers: makeExcelPayload() });
       useToastStore.getState().show(
-        `Bulk Teacher Upload Successful ✅ নতুন: ${res.data?.inserted || 0} | আপডেট: ${res.data?.updated || 0}`,
+        getText(teacherStaffText).bulkUploadSuccess(String(res.data?.inserted || 0), String(res.data?.updated || 0)),
         "success",
       );
       setExcelTeachers([]);
       setBulkModalOpen(false);
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || "Bulk Teacher Upload Failed ❌", "error");
+      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).bulkUploadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -400,11 +403,11 @@ const TeacherPage: React.FC = () => {
     try {
       setLoading(true);
       await api.post("/teachers", makePayload(formData));
-      useToastStore.getState().show("Teacher Added Successfully ✅", "success");
+      useToastStore.getState().show(getText(teacherStaffText).teacherAdded, "success");
       setFormData(initialState);
       setErrors({});
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || "Failed to add teacher ❌", "error");
+      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).teacherAddFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -413,14 +416,14 @@ const TeacherPage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="relative mb-6">
-        <h1 className="text-3xl font-bold text-center dark:text-slate-100">Teacher Registration</h1>
+        <h1 className="text-3xl font-bold text-center dark:text-slate-100">{t.teacherRegistration}</h1>
 
         <button
           type="button"
           onClick={() => setBulkModalOpen(true)}
           className="absolute end-0 top-1/2 -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
         >
-          Bulk Upload
+          {t.bulkUpload}
         </button>
       </div>
 
@@ -439,7 +442,7 @@ const TeacherPage: React.FC = () => {
 
         <AddressInfo formData={formData} setFormData={setFormData} />
 
-        <SubmitButton loading={loading} text="Teacher Save" />
+        <SubmitButton loading={loading} text={t.saveTeacher} />
       </form>
 
       <BulkTeacherUploadModal

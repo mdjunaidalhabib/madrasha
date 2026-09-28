@@ -1,4 +1,6 @@
+import { useText } from "@madrasha/shared-ui/src/i18n";
 import ToggleSection from "./ToggleSection";
+import { createMadrasaText } from "./createMadrasa.text";
 
 type Item = {
   key: string;
@@ -17,7 +19,8 @@ type Props = {
 };
 
 export default function BooksSection({ groups, books, setBooks }: Props) {
+  const t = useText(createMadrasaText);
   if (!groups.length) return null;
 
-  return <ToggleSection title="Books" groups={groups} selected={books} setSelected={setBooks} />;
+  return <ToggleSection title={t.books} groups={groups} selected={books} setSelected={setBooks} />;
 }

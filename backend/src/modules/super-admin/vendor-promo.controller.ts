@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { vendorPromoService } from "./vendor-promo.service";
+import { t } from "../../shared/i18n";
 
 const respondError = (res: Response, error: unknown, logTag: string, fallbackMessage: string) => {
   if (error instanceof ApiError) {
@@ -24,7 +25,7 @@ export const getVendorPromoConfig = async (_req: Request, res: Response) => {
 export const saveVendorPromoConfig = async (req: Request, res: Response) => {
   try {
     await vendorPromoService.saveConfig(req.body);
-    res.json({ message: "সেভ হয়েছে" });
+    res.json({ message: t({ bn: "সেভ হয়েছে", en: "Saved" }) });
   } catch (err) {
     respondError(res, err, "saveVendorPromoConfig ERROR:", "Failed to save vendor promo config");
   }
@@ -42,7 +43,7 @@ export const listVendorServices = async (_req: Request, res: Response) => {
 export const createVendorService = async (req: Request, res: Response) => {
   try {
     const row = await vendorPromoService.createService(req.body);
-    res.status(HttpStatus.CREATED).json({ message: "সার্ভিস তৈরি হয়েছে", id: row.id });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "সার্ভিস তৈরি হয়েছে", en: "Service created" }), id: row.id });
   } catch (err) {
     respondError(res, err, "createVendorService ERROR:", "Failed to create vendor service");
   }
@@ -51,7 +52,7 @@ export const createVendorService = async (req: Request, res: Response) => {
 export const updateVendorService = async (req: Request, res: Response) => {
   try {
     await vendorPromoService.updateService(Number(req.params.id), req.body);
-    res.json({ message: "সার্ভিস আপডেট হয়েছে" });
+    res.json({ message: t({ bn: "সার্ভিস আপডেট হয়েছে", en: "Service updated" }) });
   } catch (err) {
     respondError(res, err, "updateVendorService ERROR:", "Failed to update vendor service");
   }
@@ -60,7 +61,7 @@ export const updateVendorService = async (req: Request, res: Response) => {
 export const deleteVendorService = async (req: Request, res: Response) => {
   try {
     await vendorPromoService.deleteService(Number(req.params.id));
-    res.json({ message: "সার্ভিস মুছে ফেলা হয়েছে" });
+    res.json({ message: t({ bn: "সার্ভিস মুছে ফেলা হয়েছে", en: "Service deleted" }) });
   } catch (err) {
     respondError(res, err, "deleteVendorService ERROR:", "Failed to delete vendor service");
   }
@@ -70,7 +71,7 @@ export const reorderVendorServices = async (req: Request, res: Response) => {
   try {
     const ids = (Array.isArray(req.body?.service_ids) ? req.body.service_ids : []).map(Number);
     await vendorPromoService.reorderServices(ids);
-    res.json({ message: "ক্রম সংরক্ষণ করা হয়েছে" });
+    res.json({ message: t({ bn: "ক্রম সংরক্ষণ করা হয়েছে", en: "Order saved" }) });
   } catch (err) {
     respondError(res, err, "reorderVendorServices ERROR:", "Failed to reorder vendor services");
   }

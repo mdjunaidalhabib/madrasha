@@ -1,4 +1,6 @@
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { createMadrasaText } from "./createMadrasa.text";
 
 type FormData = {
   name: string;
@@ -14,13 +16,14 @@ type Props = {
 };
 
 export default function BasicInfoSection({ data, errors, onChange }: Props) {
+  const t = useText(createMadrasaText);
   const fieldClass = (name: keyof FormData) => (errors[name] ? "border-red-500" : "");
 
   return (
     <div className="space-y-4">
-      <h4 className="font-semibold text-gray-700 dark:text-slate-200">Basic Information</h4>
+      <h4 className="font-semibold text-gray-700 dark:text-slate-200">{t.basicInfo}</h4>
 
-      <Field label="Madrasa Name *" error={errors.name}>
+      <Field label={t.institutionNameRequired} error={errors.name}>
         <Input
           name="name"
           className={fieldClass("name")}
@@ -29,11 +32,11 @@ export default function BasicInfoSection({ data, errors, onChange }: Props) {
         />
       </Field>
 
-      <Field label="Slug (optional)">
+      <Field label={t.slugOptional}>
         <Input name="slug" value={data.slug} onChange={(e) => onChange("slug", e.target.value)} />
       </Field>
 
-      <Field label="Address (optional)">
+      <Field label={t.addressOptional}>
         <Input
           name="address"
           value={data.address}
@@ -41,7 +44,7 @@ export default function BasicInfoSection({ data, errors, onChange }: Props) {
         />
       </Field>
 
-      <Field label="Mobile / Contact Number">
+      <Field label={t.contactNumber}>
         <Input
           name="phone"
           value={data.phone}

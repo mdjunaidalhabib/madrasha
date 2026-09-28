@@ -3,6 +3,9 @@ import Field from "./Field";
 import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "../admission/admission.text";
+import { studentProfileText } from "./studentProfile.text";
 
 /* =============================
    TYPES
@@ -25,6 +28,10 @@ const StudentInfoProfile = ({
   setEditableField,
   isEditMode,
 }: any) => {
+  const t = useText(admissionText);
+  const pt = useText(studentProfileText);
+  const c = useText(commonText);
+  const isMadrasa = useIsMadrasa();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
@@ -112,28 +119,28 @@ const StudentInfoProfile = ({
   ]);
 
   const getGenderName = (gender: any) => {
-    if (gender == 1) return "পুরুষ";
-    if (gender == 2) return "মহিলা";
-    return "N/A";
+    if (gender == 1) return t.male;
+    if (gender == 2) return t.female;
+    return pt.notAvailable;
   };
 
   const getDivisionName = (id: any) => {
     const div = divisions.find((d) => d.division_id == id);
-    return div?.division_name_bn || "N/A";
+    return div?.division_name_bn || pt.notAvailable;
   };
 
   const getClassName = (id: any) => {
     const cls = classes.find((c) => c.class_id == id);
-    return cls?.class_name_bn || "N/A";
+    return cls?.class_name_bn || pt.notAvailable;
   };
 
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl mb-4 dark:text-slate-100">ছাত্রের তথ্য</h2>
+      <h2 className="text-xl mb-4 dark:text-slate-100">{t.studentInfo}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field
-          label="নাম (বাংলা)"
+          label={pt.nameBn}
           name="name_bn"
           value={student.name_bn || ""}
           onChange={handleChange}
@@ -144,32 +151,34 @@ const StudentInfoProfile = ({
         />
 
         <Field
-          label="রেজিস্ট্রেশন নম্বর"
+          label={pt.registrationNo}
           name="registration_no"
           value={student.registration_no || ""}
           isEditMode={false}
         />
 
         <Field
-          label="রোল নম্বর (স্বয়ংক্রিয়)"
+          label={pt.rollAuto}
           name="roll"
           value={student.roll || ""}
           isEditMode={false}
         />
 
-        <Field
-          label="ছাত্রের নাম (আরবি)"
-          name="arabic_name"
-          value={student.arabic_name || ""}
-          onChange={handleChange}
-          editableField={editableField}
-          setEditableField={setEditableField}
-          isEditMode={isEditMode}
-          scriptLang="ar"
-        />
+        {isMadrasa && (
+          <Field
+            label={t.studentNameAr}
+            name="arabic_name"
+            value={student.arabic_name || ""}
+            onChange={handleChange}
+            editableField={editableField}
+            setEditableField={setEditableField}
+            isEditMode={isEditMode}
+            scriptLang="ar"
+          />
+        )}
 
         <Field
-          label="ছাত্রের নাম (ইংরেজি)"
+          label={t.studentNameEn}
           name="name_en"
           value={student.name_en || ""}
           onChange={handleChange}
@@ -180,7 +189,7 @@ const StudentInfoProfile = ({
         />
 
         <Field
-          label="ছাত্রের NID"
+          label={pt.studentNid}
           name="nid"
           value={student.nid || ""}
           onChange={handleChange}
@@ -192,7 +201,7 @@ const StudentInfoProfile = ({
 
         {/* GENDER */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">লিঙ্গ</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.gender}</label>
 
           {isEditMode ? (
             <select
@@ -201,9 +210,9 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">লিঙ্গ নির্বাচন করুন</option>
-              <option value={1}>পুরুষ</option>
-              <option value={2}>মহিলা</option>
+              <option value="">{pt.selectGender}</option>
+              <option value={1}>{t.male}</option>
+              <option value={2}>{t.female}</option>
             </select>
           ) : (
             <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{getGenderName(student.gender)}</p>
@@ -211,7 +220,7 @@ const StudentInfoProfile = ({
         </div>
 
         <CustomDatePicker
-          label="জন্ম তারিখ"
+          label={t.dob}
           value={student.dob}
           isEditMode={isEditMode}
           onChange={(date) =>
@@ -222,11 +231,11 @@ const StudentInfoProfile = ({
           }
         />
 
-        <Field label="বয়স" name="age" value={student.age || ""} isEditMode={false} />
+        <Field label={t.age} name="age" value={student.age || ""} isEditMode={false} />
 
         {/* DIVISION */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">বিভাগ</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.division}</label>
 
           {isEditMode ? (
             <select
@@ -235,7 +244,7 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">বিভাগ নির্বাচন করুন</option>
+              <option value="">{pt.selectDivision}</option>
               {divisions.map((d) => (
                 <option key={d.division_id} value={d.division_id}>
                   {d.division_name_bn}
@@ -251,7 +260,7 @@ const StudentInfoProfile = ({
 
         {/* PREVIOUS CLASS */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">পূর্বের শ্রেণি</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.previousClass}</label>
 
           {isEditMode ? (
             <select
@@ -260,7 +269,7 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">পূর্বের শ্রেণি</option>
+              <option value="">{t.previousClass}</option>
               {classes.map((c) => (
                 <option key={c.class_id} value={c.class_id}>
                   {c.class_name_bn}
@@ -276,7 +285,7 @@ const StudentInfoProfile = ({
 
         {/* CURRENT CLASS */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">বর্তমান শ্রেণি</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.currentClass}</label>
 
           {isEditMode ? (
             <select
@@ -285,7 +294,7 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">বর্তমান শ্রেণি</option>
+              <option value="">{t.currentClass}</option>
               {classes.map((c) => (
                 <option key={c.class_id} value={c.class_id}>
                   {c.class_name_bn}
@@ -300,7 +309,7 @@ const StudentInfoProfile = ({
         </div>
 
         <Field
-          label="পূর্ববর্তী প্রতিষ্ঠান"
+          label={t.previousInstitution}
           name="previous_institution"
           value={student.previous_institution || ""}
           onChange={handleChange}
@@ -310,7 +319,7 @@ const StudentInfoProfile = ({
         />
 
         <Field
-          label="পূর্বের ফলাফল"
+          label={t.previousResult}
           name="previous_result"
           value={student.previous_result || ""}
           onChange={handleChange}
@@ -321,7 +330,7 @@ const StudentInfoProfile = ({
 
         {/* BLOOD GROUP */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">রক্তের গ্রুপ</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.bloodGroup}</label>
 
           {isEditMode ? (
             <select
@@ -330,7 +339,7 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bg) => (
                 <option key={bg} value={bg}>
                   {bg}
@@ -339,14 +348,14 @@ const StudentInfoProfile = ({
             </select>
           ) : (
             <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {student.blood_group || "N/A"}
+              {student.blood_group || pt.notAvailable}
             </p>
           )}
         </div>
 
         {/* RESIDENCY TYPE */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">আবাসিক/অনাবাসিক</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.residency}</label>
 
           {isEditMode ? (
             <select
@@ -355,24 +364,24 @@ const StudentInfoProfile = ({
               onChange={handleChange}
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
-              <option value={1}>আবাসিক</option>
-              <option value={2}>অনাবাসিক</option>
+              <option value="">{c.select}</option>
+              <option value={1}>{t.residential}</option>
+              <option value={2}>{t.nonResidential}</option>
             </select>
           ) : (
             <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {Number(student.residency_type) === 1
-                ? "আবাসিক"
+                ? t.residential
                 : Number(student.residency_type) === 2
-                  ? "অনাবাসিক"
-                  : "N/A"}
+                  ? t.nonResidential
+                  : pt.notAvailable}
             </p>
           )}
         </div>
 
         {/* IS ORPHAN */}
         <div>
-          <label className="text-sm text-gray-500 dark:text-slate-400">এতিম শিক্ষার্থী</label>
+          <label className="text-sm text-gray-500 dark:text-slate-400">{t.orphan}</label>
 
           {isEditMode ? (
             <select
@@ -386,12 +395,12 @@ const StudentInfoProfile = ({
               }
               className="border p-2 rounded w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="no">না</option>
-              <option value="yes">হ্যাঁ</option>
+              <option value="no">{c.no}</option>
+              <option value="yes">{c.yes}</option>
             </select>
           ) : (
             <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {Number(student.is_orphan) === 1 ? "হ্যাঁ" : "না"}
+              {Number(student.is_orphan) === 1 ? c.yes : c.no}
             </p>
           )}
         </div>

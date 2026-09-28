@@ -1,5 +1,7 @@
 import { getPrintLang } from "../i18n/languageStore";
 import { localizeDigits } from "../i18n/format";
+import { getPrintText, getText } from "../i18n/text";
+import { reportUtilsText } from "./reportUtils.text";
 
 // Sentinel stored in a marks-entry cell's local state to mean "student is
 // absent for this subject" — typed as a plain `number` (not a separate
@@ -8,17 +10,17 @@ import { localizeDigits } from "../i18n/format";
 // shapes untouched. Negative and outside 0..full_marks, so it can never
 // collide with a real score.
 export const ABSENT_MARK = -1;
-export const ABSENT_MARK_LABEL = "অনু";
+/** @deprecated Bangla-only constant kept for existing callers - use
+ * getAbsentMarkLabel() (UI language) or getAbsentMarkLabel(true) (print). */
+export const ABSENT_MARK_LABEL = reportUtilsText.bn.absentMark;
 
-const REPORT_TEXT_MAP: Record<string, string> = {
-  PASS: "পাশ",
-  FAIL: "ফেল",
-  PRESENT: "উপস্থিত",
-  ABSENT: "অনুপস্থিত",
-  DRAFT: "খসড়া",
-  PUBLISHED: "প্রকাশিত",
-  INCOMPLETE: "অসম্পূর্ণ",
-};
+/** Short "absent" label for a marks cell - in the current UI language, or in
+ * the print (institution default) language when `forPrint` is true. */
+export const getAbsentMarkLabel = (forPrint = false) =>
+  (forPrint ? getPrintText(reportUtilsText) : getText(reportUtilsText)).absentMark;
+
+/** Status code -> printed label, in the print language. */
+const reportTextFor = (code: string): string | undefined => getPrintText(reportUtilsText).statuses[code];
 
 /** Digits in the PRINT language (the institution default - bn: ০১২, en: 012,
  * ar: ٠١٢). Historically Bangla-only, hence the name; every report/document
@@ -33,7 +35,7 @@ export const formatReportValue = (value: unknown, key = "") => {
   if (value === null || value === undefined || value === "") return "—";
 
   const raw = String(value).trim();
-  const translated = REPORT_TEXT_MAP[raw.toUpperCase()] || raw;
+  const translated = reportTextFor(raw.toUpperCase()) || raw;
 
   // Email addresses must remain machine-readable; all other document values
   // use Bengali digits for a consistent Bangla print output.
@@ -49,9 +51,10 @@ export const formatMeritRank = (value: unknown) => {
   const numeric = Number(normalized);
 
   if (Number.isFinite(numeric) && Number.isInteger(numeric) && numeric > 0) {
-    if (numeric === 1) return "১ম";
-    if (numeric === 2) return "২য়";
-    if (numeric === 3) return "৩য়";
+    const t = getPrintText(reportUtilsText);
+    if (numeric === 1) return t.rank1;
+    if (numeric === 2) return t.rank2;
+    if (numeric === 3) return t.rank3;
     return toBanglaDigits(numeric);
   }
 

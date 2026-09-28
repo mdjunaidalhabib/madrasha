@@ -15,6 +15,8 @@ import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
+import { useText, getText } from "@madrasha/shared-ui/src/i18n";
+import { admissionPageText } from "./AdmissionPage.text";
 
 export interface AdmissionFormData {
   name: string;
@@ -185,6 +187,7 @@ const toGenderNumber = (value: any) => {
 const requiredColumns = ["name_bn", "academic_division", "current_class", "academic_year"];
 
 const AdmissionPage = () => {
+  const t = useText(admissionPageText);
   const [formData, setFormData] = useState<AdmissionFormData>(initialState);
   const [errors, setErrors] = useState<AdmissionFormErrors>({});
   const [excelStudents, setExcelStudents] = useState<ExcelAdmissionRow[]>([]);
@@ -412,31 +415,31 @@ const AdmissionPage = () => {
   const validateForm = () => {
     const newErrors: AdmissionFormErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = "ছাত্রের নাম দিন";
-    if (!formData.academicYear) newErrors.academicYear = "শিক্ষাবর্ষ নির্বাচন করুন";
-    if (!formData.academicDivision) newErrors.academicDivision = "বিভাগ নির্বাচন করুন";
-    if (!formData.currentClass) newErrors.currentClass = "বর্তমান শ্রেণি নির্বাচন করুন";
+    if (!formData.name.trim()) newErrors.name = t.errName;
+    if (!formData.academicYear) newErrors.academicYear = t.errSession;
+    if (!formData.academicDivision) newErrors.academicDivision = t.errDivision;
+    if (!formData.currentClass) newErrors.currentClass = t.errClass;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateExcelStudents = () => {
-    if (!excelStudents.length) return "Excel file upload করুন";
+    if (!excelStudents.length) return t.uploadExcelFirst;
 
     for (let i = 0; i < excelStudents.length; i++) {
       const student = excelStudents[i];
 
       if (!student.name_bn && !student.name) {
-        return `Row ${i + 2}: ছাত্রের নাম নেই`;
+        return t.rowNoName(String(i + 2));
       }
 
       if (!student.academic_division) {
-        return `Row ${i + 2}: academic_division নেই`;
+        return t.rowNoDivision(String(i + 2));
       }
 
       if (!student.current_class && !student.class_id) {
-        return `Row ${i + 2}: current_class/class_id নেই`;
+        return t.rowNoClass(String(i + 2));
       }
     }
 
@@ -533,7 +536,7 @@ const AdmissionPage = () => {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Required fields are marked with red color and * symbol"],
+      [t.templateNote],
       [],
       headerRow,
       sampleRow,
@@ -574,17 +577,17 @@ const AdmissionPage = () => {
     });
 
     const guideRows = [
-      ["Gender Guide"],
-      ["ID", "Name"],
-      [1, "ছেলে"],
-      [2, "মেয়ে"],
+      [t.genderGuide],
+      ["ID", t.guideName],
+      [1, t.male],
+      [2, t.female],
       [],
-      ["Division Guide"],
-      ["ID", "Division Name"],
+      [t.divisionGuide],
+      ["ID", t.divisionName],
       ...divisions.map((d) => [d.division_id, d.division_name_bn]),
       [],
-      ["Class Guide"],
-      ["ID", "Class Name", "Division ID"],
+      [t.classGuide],
+      ["ID", t.className, t.divisionId],
       ...classes.map((c) => [c.class_id, c.class_name_bn, c.division_id || ""]),
     ];
 
@@ -624,8 +627,8 @@ const AdmissionPage = () => {
         .show(
           err?.response?.data?.message ||
             (err?.code === "ECONNABORTED"
-              ? "সার্ভার থেকে উত্তর আসতে দেরি হচ্ছে - আবার আপলোডের আগে শিক্ষার্থী তালিকা দেখে নিন, হয়তো ভর্তি হয়ে গেছে।"
-              : "Bulk Admission Failed ❌"),
+              ? getText(admissionPageText).serverSlow
+              : getText(admissionPageText).bulkFailed),
           "error",
         );
     } finally {
@@ -638,7 +641,7 @@ const AdmissionPage = () => {
 
     const isValid = validateForm();
     if (!isValid) {
-      useToastStore.getState().show("* চিহ্নিত প্রয়োজনীয় ফিল্ডগুলো পূরণ করুন", "error");
+      useToastStore.getState().show(t.fillRequired, "error");
       return;
     }
 
@@ -705,7 +708,7 @@ const AdmissionPage = () => {
         academicYear: formData.academicYear,
       });
     } catch (err: any) {
-      useToastStore.getState().show(err?.response?.data?.message || "Failed ❌", "error");
+      useToastStore.getState().show(err?.response?.data?.message || getText(admissionPageText).failed, "error");
     } finally {
       setLoading(false);
     }
@@ -719,10 +722,10 @@ const AdmissionPage = () => {
           onClick={() => setBulkModalOpen(true)}
           className="self-end sm:self-auto sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap"
         >
-          Bulk Upload
+          {t.bulkUpload}
         </button>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-center break-words">
-          Student Registration
+          {t.pageTitle}
         </h1>
       </div>
 
@@ -779,7 +782,7 @@ const AdmissionPage = () => {
 
       <Modal
         open={Boolean(successInfo)}
-        title={successInfo?.isReAdmission ? "পুনঃভর্তি সফল হয়েছে ✅" : "ভর্তি সফল হয়েছে ✅"}
+        title={successInfo?.isReAdmission ? t.readmissionSuccess : t.admissionSuccess}
         onClose={handleStartNewAdmission}
         maxWidthClassName="max-w-md"
       >
@@ -787,26 +790,26 @@ const AdmissionPage = () => {
           <div className="space-y-4">
             {successInfo.isReAdmission && (
               <p className="text-sm text-gray-600 dark:text-slate-400">
-                পূর্বের সেশন: <span className="font-semibold">{successInfo.previousAcademicYear}</span> → নতুন সেশন:{" "}
+                {t.previousSession} <span className="font-semibold">{successInfo.previousAcademicYear}</span> → {t.newSession}{" "}
                 <span className="font-semibold">{successInfo.academicYear}</span>
               </p>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg bg-gray-50 p-3 text-center dark:bg-slate-800">
-                <div className="text-xs text-gray-500 dark:text-slate-400">রেজিস্ট্রেশন নম্বর</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">{t.registrationNo}</div>
                 <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
                   {successInfo.registrationNo}
                 </div>
               </div>
               <div className="rounded-lg bg-gray-50 p-3 text-center dark:bg-slate-800">
-                <div className="text-xs text-gray-500 dark:text-slate-400">রোল নম্বর</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">{t.rollNo}</div>
                 <div className="text-lg font-bold text-gray-800 dark:text-slate-100">{successInfo.roll}</div>
               </div>
             </div>
 
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              মুহতামিমের অনুমোদনের অপেক্ষায়
+              {t.awaitingApproval}
             </p>
 
             <button
@@ -815,7 +818,7 @@ const AdmissionPage = () => {
               onClick={handleStartNewAdmission}
               className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
-              নতুন ভর্তি ফর্ম
+              {t.newAdmissionForm}
             </button>
           </div>
         )}

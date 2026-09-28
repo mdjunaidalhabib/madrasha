@@ -1,0 +1,78 @@
+import { defineBilingualText } from "@madrasha/shared-ui/src/i18n";
+
+/** Super-admin sidebar, topbar and breadcrumbs. */
+export const shellText = defineBilingualText({
+  bn: {
+    superAdmin: "সুপার অ্যাডমিন",
+    welcome: "স্বাগতম,",
+    openMenu: "মেনু খুলুন",
+    closeMenu: "মেনু বন্ধ করুন",
+    expandMenu: "মেনু বড় করুন",
+    collapseMenu: "মেনু ছোট করুন",
+    home: "হোম",
+    templateEdit: "টেমপ্লেট এডিট",
+    groups: {
+      main: "মূল",
+      institutions: "প্রতিষ্ঠান ব্যবস্থাপনা",
+      content: "কন্টেন্ট ও ক্যাটালগ",
+      billing: "বিলিং",
+      settings: "সেটিংস",
+    },
+    nav: {
+      dashboard: "ড্যাশবোর্ড",
+      institutions: "প্রতিষ্ঠানসমূহ",
+      trash: "ট্র্যাশ",
+      plans: "প্ল্যানসমূহ",
+      documentTemplates: "ডকুমেন্ট টেমপ্লেট",
+      catalog: "একাডেমিক ক্যাটালগ",
+      feeTemplates: "ফি টেমপ্লেট",
+      importantLinks: "গুরুত্বপূর্ণ লিংক",
+      vendorPromo: "Hikmah IT প্রোমো",
+      websites: "ওয়েবসাইটসমূহ",
+      smsPackages: "SMS প্যাকেজ",
+      emailPackages: "Email প্যাকেজ",
+      billingRequests: "বিলিং রিকোয়েস্ট",
+      billingPricing: "বিলিং প্রাইসিং",
+      billingReports: "বিলিং রিপোর্ট",
+      settings: "সেটিংস",
+    },
+  },
+  en: {
+    superAdmin: "Super Admin",
+    welcome: "Welcome,",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
+    expandMenu: "Expand menu",
+    collapseMenu: "Collapse menu",
+    home: "Home",
+    templateEdit: "Edit Template",
+    groups: {
+      main: "Main",
+      institutions: "Institution Management",
+      content: "Content & Catalog",
+      billing: "Billing",
+      settings: "Settings",
+    },
+    nav: {
+      dashboard: "Dashboard",
+      institutions: "Institutions",
+      trash: "Trash",
+      plans: "Plans",
+      documentTemplates: "Document Templates",
+      catalog: "Academic Catalog",
+      feeTemplates: "Fee Templates",
+      importantLinks: "Important Links",
+      vendorPromo: "Hikmah IT Promo",
+      websites: "Websites",
+      smsPackages: "SMS Packages",
+      emailPackages: "Email Packages",
+      billingRequests: "Billing Requests",
+      billingPricing: "Billing Pricing",
+      billingReports: "Billing Reports",
+      settings: "Settings",
+    },
+  },
+});
+
+export type NavLabelKey = keyof (typeof shellText)["bn"]["nav"];
+export type NavGroupKey = keyof (typeof shellText)["bn"]["groups"];

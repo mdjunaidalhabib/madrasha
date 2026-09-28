@@ -12,20 +12,17 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonTable, SkeletonText } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { admissionReviewText } from "./admissionReview.text";
 
 type FeeStatus = "NONE" | "DUE" | "WAIVED" | "PAID";
 
 const FEE_BADGE: Partial<Record<FeeStatus, { label: (due: number) => string; className: string }>> = {
-  DUE: { label: (due) => `বকেয়া ৳${due}`, className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
-  WAIVED: { label: () => "মওকুফকৃত", className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
-  PAID: { label: () => "পরিশোধিত", className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
+  DUE: { label: (due) => getText(admissionReviewText).feeDue(String(due)), className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
+  WAIVED: { label: () => getText(admissionReviewText).feeWaived, className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
+  PAID: { label: () => getText(admissionReviewText).feePaid, className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
 };
 
-const FREQUENCY_LABEL: Record<FeePreviewRow["frequency"], string> = {
-  ONE_TIME: "একবার",
-  MONTHLY: "মাসিক",
-  YEARLY: "বাৎসরিক",
-};
 
 const normalizeFeePreviewArray = (payload: any): FeePreviewRow[] => {
   const data = payload?.data?.data || payload?.data || [];
@@ -80,10 +77,14 @@ type PendingStudent = {
   fee_status?: FeeStatus;
 };
 
-const residencyLabel = (value?: number | null) =>
-  value === 1 ? "আবাসিক" : value === 2 ? "অনাবাসিক" : "নেই";
+const residencyLabel = (value?: number | null) => {
+  const t = getText(admissionReviewText);
+  return value === 1 ? t.residential : value === 2 ? t.nonResidential : t.none;
+};
 
-const admissionTypeLabel = (value?: string) => (value === "RE_ADMISSION" ? "পুনঃভর্তি" : "নতুন");
+// admission_type is a backend enum; only the label is translated.
+const admissionTypeLabel = (value?: string) =>
+  value === "RE_ADMISSION" ? getText(admissionReviewText).readmission : getText(admissionReviewText).newAdmission;
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -91,6 +92,9 @@ const normalizeArray = (payload: any) => {
 };
 
 const PendingAdmissionsPage = () => {
+  const t = useText(admissionReviewText);
+  const c = useText(commonText);
+  const isMadrasa = useIsMadrasa();
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<PendingStudent[]>([]);
@@ -146,7 +150,7 @@ const PendingAdmissionsPage = () => {
     } catch (err) {
       logger.error("LOAD PENDING ADMISSIONS ERROR:", err);
       setRows([]);
-      setError("পেন্ডিং ভর্তির তালিকা লোড করতে সমস্যা হয়েছে");
+      setError(getText(admissionReviewText).pendingLoadFailed);
     } finally {
       setLoading(false);
     }
@@ -192,11 +196,11 @@ const PendingAdmissionsPage = () => {
     if (!activeDiscount || !detailTarget) return;
     const amount = Number(discountAmount);
     if (!amount || amount <= 0) {
-      useToastStore.getState().show("সঠিক পরিমাণ দিন", "error");
+      useToastStore.getState().show(t.validAmount, "error");
       return;
     }
     if (!discountReason.trim()) {
-      useToastStore.getState().show("কারণ লিখুন", "error");
+      useToastStore.getState().show(t.enterReason, "error");
       return;
     }
 
@@ -208,10 +212,10 @@ const PendingAdmissionsPage = () => {
         { amount, reason: discountReason.trim() },
       );
       setFeePreview(normalizeFeePreviewArray(res));
-      useToastStore.getState().show("ছাড় সেট করা হয়েছে", "success");
+      useToastStore.getState().show(t.discountSet, "success");
       setActiveDiscount(null);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(admissionReviewText).somethingWrong;
       useToastStore.getState().show(msg, "error");
     } finally {
       setDiscountBusy(false);
@@ -226,10 +230,10 @@ const PendingAdmissionsPage = () => {
         amount: 0,
       });
       setFeePreview(normalizeFeePreviewArray(res));
-      useToastStore.getState().show("ছাড় সরিয়ে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(t.discountRemoved, "success");
       setActiveDiscount(null);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(admissionReviewText).somethingWrong;
       useToastStore.getState().show(msg, "error");
     } finally {
       setDiscountBusy(false);
@@ -275,11 +279,11 @@ const PendingAdmissionsPage = () => {
     try {
       setBusyId(student.id);
       await admissionApi.approve(Number(student.id));
-      useToastStore.getState().show("ভর্তি অনুমোদন করা হয়েছে", "success");
+      useToastStore.getState().show(getText(admissionReviewText).approved, "success");
       removeRows([student.id]);
       refreshSidebarCounts();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "অনুমোদন করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(admissionReviewText).approveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setBusyId(null);
@@ -289,9 +293,9 @@ const PendingAdmissionsPage = () => {
   const handleBulkApprove = (students: PendingStudent[]) => {
     if (students.length === 0) return;
     useConfirmStore.getState().show({
-      title: "অনুমোদন করবেন?",
-      message: `নির্বাচিত ${students.length}টি ভর্তি অনুমোদন করতে চান?`,
-      confirmText: "অনুমোদন করুন",
+      title: t.approveTitle,
+      message: t.approveMessage(String(students.length)),
+      confirmText: t.approveConfirm,
       onConfirm: async () => {
         setBulkBusy(true);
         try {
@@ -307,13 +311,13 @@ const PendingAdmissionsPage = () => {
             refreshSidebarCounts();
           }
           if (failedCount === 0) {
-            useToastStore.getState().show("অনুমোদন করা হয়েছে", "success");
+            useToastStore.getState().show(getText(admissionReviewText).approvedShort, "success");
           } else if (succeededIds.length === 0) {
-            useToastStore.getState().show("অনুমোদন করতে সমস্যা হয়েছে", "error");
+            useToastStore.getState().show(getText(admissionReviewText).approveFailed, "error");
           } else {
             useToastStore
               .getState()
-              .show(`${succeededIds.length}টি অনুমোদন হয়েছে, ${failedCount}টি ব্যর্থ হয়েছে`, "error");
+              .show(getText(admissionReviewText).approvePartial(String(succeededIds.length), String(failedCount)), "error");
           }
         } finally {
           setBulkBusy(false);
@@ -336,7 +340,7 @@ const PendingAdmissionsPage = () => {
   const handleReject = async () => {
     if (!rejectTargets || rejectTargets.length === 0) return;
     if (!rejectReason.trim()) {
-      useToastStore.getState().show("বাতিলের কারণ লিখুন", "error");
+      useToastStore.getState().show(t.enterRejectReason, "error");
       return;
     }
 
@@ -360,24 +364,24 @@ const PendingAdmissionsPage = () => {
 
       if (!isBulk) {
         if (failedCount === 0) {
-          useToastStore.getState().show("ভর্তি বাতিল করা হয়েছে", "success");
+          useToastStore.getState().show(t.rejected, "success");
           setRejectTargets(null);
         } else {
           const msg =
             (results[0].status === "rejected" && (results[0] as PromiseRejectedResult).reason?.response?.data
               ?.message) ||
-            "বাতিল করতে সমস্যা হয়েছে";
+            t.rejectFailed;
           useToastStore.getState().show(msg, "error");
         }
       } else if (failedCount === 0) {
-        useToastStore.getState().show("বাতিল করা হয়েছে", "success");
+        useToastStore.getState().show(t.rejectedShort, "success");
         setRejectTargets(null);
       } else if (succeededIds.length === 0) {
-        useToastStore.getState().show("বাতিল করতে সমস্যা হয়েছে", "error");
+        useToastStore.getState().show(t.rejectFailed, "error");
       } else {
         useToastStore
           .getState()
-          .show(`${succeededIds.length}টি বাতিল হয়েছে, ${failedCount}টি ব্যর্থ হয়েছে`, "error");
+          .show(t.rejectPartial(String(succeededIds.length), String(failedCount)), "error");
         setRejectTargets(null);
       }
     } finally {
@@ -393,10 +397,10 @@ const PendingAdmissionsPage = () => {
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
-              পেন্ডিং ভর্তি অনুমোদন
+              {t.pendingTitle}
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              পর্যালোচনার অপেক্ষায় আছে: {rows.length} জন
+              {t.awaitingReview(String(rows.length))}
             </p>
           </div>
 
@@ -406,14 +410,14 @@ const PendingAdmissionsPage = () => {
               onClick={() => navigate(`/students/admissions/rejected`)}
               className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
             >
-              বাতিল হওয়া আবেদন
+              {t.rejectedApplications}
             </button>
             <button
               type="button"
               onClick={() => navigate(`/students`)}
               className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:w-auto"
             >
-              ছাত্র তালিকায় ফিরে যান
+              {t.backToList}
             </button>
           </div>
         </div>
@@ -421,7 +425,7 @@ const PendingAdmissionsPage = () => {
         {selectedIds.size > 0 && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
             <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {selectedIds.size}টি নির্বাচিত
+              {t.selectedN(String(selectedIds.size))}
             </span>
             <div className="flex gap-2">
               <button
@@ -430,7 +434,7 @@ const PendingAdmissionsPage = () => {
                 onClick={() => handleBulkApprove(rows.filter((row) => selectedIds.has(row.id)))}
                 className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
               >
-                নির্বাচিতগুলো অনুমোদন করুন
+                {t.approveSelected}
               </button>
               <button
                 type="button"
@@ -438,7 +442,7 @@ const PendingAdmissionsPage = () => {
                 onClick={() => openBulkRejectModal(rows.filter((row) => selectedIds.has(row.id)))}
                 className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
               >
-                নির্বাচিতগুলো বাতিল করুন
+                {t.rejectSelected}
               </button>
             </div>
           </div>
@@ -452,7 +456,7 @@ const PendingAdmissionsPage = () => {
             <div className="py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-              অনুমোদনের অপেক্ষায় কোনো ভর্তি নেই
+              {t.noPending}
             </div>
           ) : (
             <>
@@ -472,19 +476,19 @@ const PendingAdmissionsPage = () => {
                           className="h-4 w-4 rounded border-gray-300"
                         />
                         <span className="font-semibold text-gray-800 dark:text-slate-100">
-                          {student.name_bn || "নাম নেই"}
+                          {student.name_bn || t.noName}
                         </span>
                       </label>
                       <span className="text-xs text-gray-500 dark:text-slate-400">
-                        রোল: {student.roll ?? "নেই"}
+                        {t.rollLabel} {student.roll ?? t.none}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                      পিতা: {student.father_name || "নেই"} | ফোন:{" "}
-                      {student.guardian_phone || "নেই"}
+                      {t.fatherLabel} {student.father_name || t.none} | {t.phoneLabel}{" "}
+                      {student.guardian_phone || t.none}
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                      শ্রেণি: {student.current_class || "নেই"}
+                      {t.classLabel} {student.current_class || t.none}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
@@ -492,7 +496,7 @@ const PendingAdmissionsPage = () => {
                       </span>
                       {student.is_orphan === 1 && (
                         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                          এতিম
+                          {t.orphan}
                         </span>
                       )}
                       {student.residency_type ? (
@@ -519,7 +523,7 @@ const PendingAdmissionsPage = () => {
                         onClick={() => openDetail(student)}
                         className="h-9 flex-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
-                        বিস্তারিত
+                        {t.details}
                       </button>
                       <button
                         type="button"
@@ -527,7 +531,7 @@ const PendingAdmissionsPage = () => {
                         onClick={() => handleApprove(student)}
                         className="h-9 flex-1 rounded-md bg-green-600 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                       >
-                        অনুমোদন
+                        {t.approve}
                       </button>
                       <button
                         type="button"
@@ -535,7 +539,7 @@ const PendingAdmissionsPage = () => {
                         onClick={() => openRejectModal(student)}
                         className="h-9 flex-1 rounded-md bg-red-600 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                       >
-                        বাতিল
+                        {t.reject}
                       </button>
                     </div>
                   </div>
@@ -555,14 +559,14 @@ const PendingAdmissionsPage = () => {
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </th>
-                      <th className="px-3 py-2">নাম</th>
-                      <th className="px-3 py-2">রোল</th>
-                      <th className="px-3 py-2">পিতার নাম</th>
-                      <th className="px-3 py-2">ফোন</th>
-                      <th className="px-3 py-2">শ্রেণি</th>
-                      <th className="px-3 py-2">ভর্তির ধরন</th>
-                      <th className="px-3 py-2">বিশেষ</th>
-                      <th className="px-3 py-2 text-end">অ্যাকশন</th>
+                      <th className="px-3 py-2">{t.colName}</th>
+                      <th className="px-3 py-2">{t.colRoll}</th>
+                      <th className="px-3 py-2">{t.colFatherName}</th>
+                      <th className="px-3 py-2">{t.colPhone}</th>
+                      <th className="px-3 py-2">{t.colClass}</th>
+                      <th className="px-3 py-2">{t.colAdmissionType}</th>
+                      <th className="px-3 py-2">{t.colSpecial}</th>
+                      <th className="px-3 py-2 text-end">{t.colActions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -577,18 +581,18 @@ const PendingAdmissionsPage = () => {
                           />
                         </td>
                         <td className="px-3 py-2 font-medium text-gray-800 dark:text-slate-200">
-                          {student.name_bn || "নাম নেই"}
+                          {student.name_bn || t.noName}
                         </td>
-                        <td className="px-3 py-2">{student.roll ?? "নেই"}</td>
-                        <td className="px-3 py-2">{student.father_name || "নেই"}</td>
-                        <td className="px-3 py-2">{student.guardian_phone || "নেই"}</td>
-                        <td className="px-3 py-2">{student.current_class || "নেই"}</td>
+                        <td className="px-3 py-2">{student.roll ?? t.none}</td>
+                        <td className="px-3 py-2">{student.father_name || t.none}</td>
+                        <td className="px-3 py-2">{student.guardian_phone || t.none}</td>
+                        <td className="px-3 py-2">{student.current_class || t.none}</td>
                         <td className="px-3 py-2">{admissionTypeLabel(student.admission_type)}</td>
                         <td className="px-3 py-2">
                           <div className="flex flex-wrap gap-1">
                             {student.is_orphan === 1 && (
                               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                                এতিম
+                                {t.orphan}
                               </span>
                             )}
                             {student.blood_group && (
@@ -612,7 +616,7 @@ const PendingAdmissionsPage = () => {
                               onClick={() => openDetail(student)}
                               className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
-                              বিস্তারিত
+                              {t.details}
                             </button>
                             <button
                               type="button"
@@ -620,7 +624,7 @@ const PendingAdmissionsPage = () => {
                               onClick={() => handleApprove(student)}
                               className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                             >
-                              অনুমোদন
+                              {t.approve}
                             </button>
                             <button
                               type="button"
@@ -628,7 +632,7 @@ const PendingAdmissionsPage = () => {
                               onClick={() => openRejectModal(student)}
                               className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                             >
-                              বাতিল
+                              {t.reject}
                             </button>
                           </div>
                         </td>
@@ -647,8 +651,8 @@ const PendingAdmissionsPage = () => {
         open={!!rejectTargets}
         title={
           rejectTargets && rejectTargets.length > 1
-            ? `ভর্তি বাতিলের কারণ — ${rejectTargets.length}টি নির্বাচিত`
-            : `ভর্তি বাতিলের কারণ${rejectTargets ? ` — ${rejectTargets[0].name_bn || ""}` : ""}`
+            ? t.rejectReasonBulk(String(rejectTargets.length))
+            : t.rejectReasonOne(rejectTargets ? ` — ${rejectTargets[0].name_bn || ""}` : "")
         }
         onClose={() => setRejectTargets(null)}
       >
@@ -656,7 +660,7 @@ const PendingAdmissionsPage = () => {
           value={rejectReason}
           onChange={(event) => setRejectReason(event.target.value)}
           rows={4}
-          placeholder="বাতিলের কারণ লিখুন..."
+          placeholder={t.rejectReasonPlaceholder}
           className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
         <div className="mt-4 flex justify-end gap-2">
@@ -665,7 +669,7 @@ const PendingAdmissionsPage = () => {
             onClick={() => setRejectTargets(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল করুন
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -673,7 +677,7 @@ const PendingAdmissionsPage = () => {
             onClick={handleReject}
             className="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
           >
-            নিশ্চিত করুন
+            {c.confirm}
           </button>
         </div>
       </Modal>
@@ -681,7 +685,7 @@ const PendingAdmissionsPage = () => {
       {/* Detail modal */}
       <Modal
         open={!!detailTarget}
-        title={`ভর্তি আবেদনের বিস্তারিত${detailTarget ? ` — ${detailTarget.name_bn || ""}` : ""}`}
+        title={t.detailTitle(detailTarget ? ` — ${detailTarget.name_bn || ""}` : "")}
         onClose={() => setDetailTarget(null)}
         maxWidthClassName="max-w-2xl"
       >
@@ -695,25 +699,25 @@ const PendingAdmissionsPage = () => {
               />
             )}
 
-            <DetailSection title="শিক্ষার্থীর তথ্য">
-              <DetailRow label="নাম" value={detailTarget.name_bn} />
-              <DetailRow label="আরবি নাম" value={detailTarget.arabic_name} />
-              <DetailRow label="NID/জন্ম নিবন্ধন" value={detailTarget.nid} />
+            <DetailSection title={t.studentInfo}>
+              <DetailRow label={t.colName} value={detailTarget.name_bn} />
+              <DetailRow label={t.arabicName} value={isMadrasa ? detailTarget.arabic_name : null} />
+              <DetailRow label={t.nid} value={detailTarget.nid} />
               <DetailRow
-                label="লিঙ্গ"
-                value={detailTarget.gender === 1 ? "ছেলে" : detailTarget.gender === 2 ? "মেয়ে" : null}
+                label={t.gender}
+                value={detailTarget.gender === 1 ? t.male : detailTarget.gender === 2 ? t.female : null}
               />
-              <DetailRow label="জন্ম তারিখ" value={detailTarget.dob ? String(detailTarget.dob).slice(0, 10) : null} />
-              <DetailRow label="রক্তের গ্রুপ" value={detailTarget.blood_group} />
-              <DetailRow label="আবাসিক/অনাবাসিক" value={residencyLabel(detailTarget.residency_type)} />
-              <DetailRow label="এতিম" value={detailTarget.is_orphan === 1 ? "হ্যাঁ" : "না"} />
-              <DetailRow label="ভর্তির ধরন" value={admissionTypeLabel(detailTarget.admission_type)} />
-              <DetailRow label="পূর্ববর্তী প্রতিষ্ঠান" value={detailTarget.previous_institution} />
-              <DetailRow label="পূর্বের ফলাফল" value={detailTarget.previous_result} />
+              <DetailRow label={t.dob} value={detailTarget.dob ? String(detailTarget.dob).slice(0, 10) : null} />
+              <DetailRow label={t.bloodGroup} value={detailTarget.blood_group} />
+              <DetailRow label={t.residency} value={residencyLabel(detailTarget.residency_type)} />
+              <DetailRow label={t.orphan} value={detailTarget.is_orphan === 1 ? c.yes : c.no} />
+              <DetailRow label={t.colAdmissionType} value={admissionTypeLabel(detailTarget.admission_type)} />
+              <DetailRow label={t.previousInstitution} value={detailTarget.previous_institution} />
+              <DetailRow label={t.previousResult} value={detailTarget.previous_result} />
             </DetailSection>
 
             <div>
-              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">নির্ধারিত ফি</h4>
+              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">{t.determinedFees}</h4>
               {feePreviewLoading ? (
                 <div className="flex flex-col gap-2">
                   {[0, 1].map((i) => (
@@ -724,7 +728,7 @@ const PendingAdmissionsPage = () => {
                 </div>
               ) : feePreview.length === 0 ? (
                 <div className="text-xs text-gray-400 dark:text-slate-500">
-                  এই শ্রেণির জন্য কোনো নির্ধারিত ফি সেট করা নেই
+                  {t.noFeesForClass}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -740,21 +744,21 @@ const PendingAdmissionsPage = () => {
                           <span className="text-gray-700 dark:text-slate-300">
                             {row.name}{" "}
                             <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                              {FREQUENCY_LABEL[row.frequency]}
+                              {t.frequency[row.frequency]}
                             </span>{" "}
                             <span className="text-gray-400 dark:text-slate-500">৳{row.amount}</span>
                             {row.examLinked && (
                               <span
-                                title="নির্দিষ্ট একটি পরীক্ষার সাথে যুক্ত - ভর্তি অনুমোদনের সাথে সাথে এখনই বিল হবে না, পরীক্ষা আসন্ন হলে আলাদাভাবে বিল করা হবে"
+                                title={t.examLinkedTitle}
                                 className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
                               >
-                                পরীক্ষা এলে বিল হবে
+                                {t.billedOnExam}
                               </span>
                             )}
                             {row.waivedAmount > 0 && (
                               <>
-                                <span className="text-purple-600 dark:text-purple-400"> · ছাড় ৳{row.waivedAmount}</span>
-                                <span className="text-green-600 dark:text-green-400"> · নেট ৳{net}</span>
+                                <span className="text-purple-600 dark:text-purple-400">{t.discountAmt(String(row.waivedAmount))}</span>
+                                <span className="text-green-600 dark:text-green-400">{t.netAmt(String(net))}</span>
                               </>
                             )}
                           </span>
@@ -764,7 +768,7 @@ const PendingAdmissionsPage = () => {
                               onClick={() => openDiscountForm(row)}
                               className="h-7 rounded-md border border-purple-200 px-2.5 text-xs font-medium text-purple-700 transition hover:bg-purple-50 dark:border-purple-900/50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                             >
-                              {row.waivedAmount > 0 ? "ছাড় এডিট করুন" : "ছাড়/মওকুফ করুন"}
+                              {row.waivedAmount > 0 ? t.editDiscount : t.setDiscount}
                             </button>
                             {row.waivedAmount > 0 && (
                               <button
@@ -773,7 +777,7 @@ const PendingAdmissionsPage = () => {
                                 onClick={() => handleRemoveDiscount(row.feeStructureId)}
                                 className="h-7 rounded-md border border-gray-300 px-2.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                               >
-                                সরিয়ে ফেলুন
+                                {t.remove}
                               </button>
                             )}
                           </div>
@@ -782,7 +786,7 @@ const PendingAdmissionsPage = () => {
                         {isActionOpen && (
                           <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-2 dark:border-slate-800">
                             <div>
-                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">ছাড়ের পরিমাণ (৳)</label>
+                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">{t.discountAmount}</label>
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -792,12 +796,12 @@ const PendingAdmissionsPage = () => {
                               />
                             </div>
                             <div className="min-w-[140px] flex-1">
-                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">কারণ</label>
+                              <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-slate-400">{t.reason}</label>
                               <input
                                 type="text"
                                 value={discountReason}
                                 onChange={(e) => setDiscountReason(e.target.value)}
-                                placeholder="যেমন: এতিম ছাত্র"
+                                placeholder={t.reasonPlaceholder}
                                 className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                               />
                             </div>
@@ -807,14 +811,14 @@ const PendingAdmissionsPage = () => {
                               onClick={handleConfirmDiscount}
                               className="h-8 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                             >
-                              নিশ্চিত করুন
+                              {c.confirm}
                             </button>
                             <button
                               type="button"
                               onClick={() => setActiveDiscount(null)}
                               className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
-                              বাতিল
+                              {c.cancel}
                             </button>
                           </div>
                         )}
@@ -825,31 +829,31 @@ const PendingAdmissionsPage = () => {
               )}
             </div>
 
-            <DetailSection title="অভিভাবকের তথ্য">
-              <DetailRow label="পিতার নাম" value={detailTarget.father_name} />
-              <DetailRow label="পিতার NID" value={detailTarget.father_nid} />
-              <DetailRow label="পিতার পেশা" value={detailTarget.father_occupation} />
-              <DetailRow label="মাতার নাম" value={detailTarget.mother_name} />
-              <DetailRow label="মাতার NID" value={detailTarget.mother_nid} />
-              <DetailRow label="মাতার পেশা" value={detailTarget.mother_occupation} />
-              <DetailRow label="মোবাইল নম্বর" value={detailTarget.guardian_phone} />
-              <DetailRow label="বিকল্প মোবাইল নম্বর" value={detailTarget.guardian_phone_2} />
+            <DetailSection title={t.guardianInfo}>
+              <DetailRow label={t.colFatherName} value={detailTarget.father_name} />
+              <DetailRow label={t.fatherNid} value={detailTarget.father_nid} />
+              <DetailRow label={t.fatherOccupation} value={detailTarget.father_occupation} />
+              <DetailRow label={t.motherName} value={detailTarget.mother_name} />
+              <DetailRow label={t.motherNid} value={detailTarget.mother_nid} />
+              <DetailRow label={t.motherOccupation} value={detailTarget.mother_occupation} />
+              <DetailRow label={t.mobile} value={detailTarget.guardian_phone} />
+              <DetailRow label={t.altMobile} value={detailTarget.guardian_phone_2} />
             </DetailSection>
 
             {detailTarget.alt_guardian_name && (
-              <DetailSection title="বিকল্প অভিভাবক (পিতা-মাতা ছাড়া)">
-                <DetailRow label="নাম" value={detailTarget.alt_guardian_name} />
-                <DetailRow label="সম্পর্ক" value={detailTarget.alt_guardian_relation} />
-                <DetailRow label="মোবাইল নম্বর" value={detailTarget.alt_guardian_phone} />
-                <DetailRow label="ঠিকানা" value={detailTarget.alt_guardian_address} />
+              <DetailSection title={t.altGuardian}>
+                <DetailRow label={t.colName} value={detailTarget.alt_guardian_name} />
+                <DetailRow label={t.relation} value={detailTarget.alt_guardian_relation} />
+                <DetailRow label={t.mobile} value={detailTarget.alt_guardian_phone} />
+                <DetailRow label={t.address} value={detailTarget.alt_guardian_address} />
               </DetailSection>
             )}
 
-            <DetailSection title="ঠিকানা">
-              <DetailRow label="বিভাগ" value={detailTarget.division} />
-              <DetailRow label="জেলা" value={detailTarget.district} />
-              <DetailRow label="থানা/উপজেলা" value={detailTarget.thana} />
-              <DetailRow label="গ্রাম" value={detailTarget.village} />
+            <DetailSection title={t.address}>
+              <DetailRow label={t.addrDivision} value={detailTarget.division} />
+              <DetailRow label={t.district} value={detailTarget.district} />
+              <DetailRow label={t.thana} value={detailTarget.thana} />
+              <DetailRow label={t.village} value={detailTarget.village} />
             </DetailSection>
 
             <div className="flex flex-wrap justify-end gap-2 border-t pt-4 dark:border-slate-700">
@@ -859,7 +863,7 @@ const PendingAdmissionsPage = () => {
                 onClick={() => navigate(studentPath(detailTarget, "/edit"))}
                 className="h-9 rounded-md border border-blue-200 px-4 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-950/40"
               >
-                তথ্য সম্পাদনা করুন
+                {t.editInfo}
               </button>
               <button
                 type="button"
@@ -870,7 +874,7 @@ const PendingAdmissionsPage = () => {
                 }}
                 className="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
               >
-                বাতিল
+                {t.reject}
               </button>
               <button
                 type="button"
@@ -881,7 +885,7 @@ const PendingAdmissionsPage = () => {
                 }}
                 className="h-9 rounded-md bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
               >
-                অনুমোদন
+                {t.approve}
               </button>
             </div>
           </div>

@@ -8,6 +8,8 @@ import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import Badge, { BadgeTone } from "@madrasha/shared-ui/src/components/ui/Badge";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import ExamFeeStatusCard from "./ExamFeeStatusCard";
+import { commonText, formatDate as formatLocalDate, formatNumber, getLang, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { talimatDashboardText } from "./talimatDashboard.text";
 
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "no_routine";
 
@@ -80,11 +82,11 @@ const STAT_TONES = {
 
 type StatTone = keyof typeof STAT_TONES;
 
-const EXAM_STATUS_META: Record<ExamStatus, { label: string; tone: BadgeTone }> = {
-  upcoming: { label: "আসন্ন", tone: "blue" },
-  ongoing: { label: "চলমান", tone: "green" },
-  completed: { label: "সমাপ্ত", tone: "slate" },
-  no_routine: { label: "রুটিন নেই", tone: "yellow" },
+const EXAM_STATUS_META: Record<ExamStatus, { labelKey: "upcoming" | "ongoing" | "completed" | "noRoutine"; tone: BadgeTone }> = {
+  upcoming: { labelKey: "upcoming", tone: "blue" },
+  ongoing: { labelKey: "ongoing", tone: "green" },
+  completed: { labelKey: "completed", tone: "slate" },
+  no_routine: { labelKey: "noRoutine", tone: "yellow" },
 };
 
 const PremiumStat = ({
@@ -122,9 +124,12 @@ const PremiumStatSkeleton = () => (
   </div>
 );
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
+const bn = (value: number | string) => formatNumber(Number(value || 0), getLang());
 
 export default function TalimatDashboardPage() {
+  const t = useText(talimatDashboardText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [data, setData] = useState<TalimatDashboardData | null>(null);
   const [classNameById, setClassNameById] = useState<Map<number, string>>(new Map());
   const isDark = useThemeStore((s) => s.theme) === "dark";
@@ -157,21 +162,21 @@ export default function TalimatDashboardPage() {
 
   const statusPieData = data
     ? [
-        { name: "পাস", value: data.statusBreakdown.pass, key: "pass" },
-        { name: "ফেল", value: data.statusBreakdown.fail, key: "fail" },
-        { name: "অনুপস্থিত", value: data.statusBreakdown.absent, key: "absent" },
+        { name: t.pass, value: data.statusBreakdown.pass, key: "pass" },
+        { name: t.fail, value: data.statusBreakdown.fail, key: "fail" },
+        { name: t.absent, value: data.statusBreakdown.absent, key: "absent" },
       ].filter((row) => row.value > 0)
     : [];
 
   const gradeChartData = (data?.gradeDistribution || []).map((row) => ({ grade: row.grade || "N/A", count: row.count }));
 
   const classStatusRows = (data?.classStatus || [])
-    .map((row) => ({ ...row, className: classNameById.get(row.class_id) || `ক্লাস #${row.class_id}` }))
+    .map((row) => ({ ...row, className: classNameById.get(row.class_id) || t.classN(String(row.class_id)) }))
     .sort((a, b) => a.className.localeCompare(b.className, "bn"));
 
   const examStatusRows = data?.examStatusRows || [];
   const formatDate = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" }) : "-";
+    value ? formatLocalDate(value, lang, { day: "numeric", month: "short", year: "numeric" }) : "-";
 
   return (
     <div className="space-y-6">
@@ -182,34 +187,34 @@ export default function TalimatDashboardPage() {
           ) : (
             <>
               <PremiumStat
-                label="সর্বশেষ পরীক্ষা"
-                value={data.latestExam ? data.latestExam.name : "নেই"}
-                subLabel={data.latestExam ? `শিক্ষাবর্ষ ${bn(data.latestExam.year)}` : undefined}
+                label={t.latestExam}
+                value={data.latestExam ? data.latestExam.name : t.none}
+                subLabel={data.latestExam ? t.sessionN(bn(data.latestExam.year)) : undefined}
                 tone="indigo"
                 icon={<GraduationCap size={20} />}
               />
               <PremiumStat
-                label="উপস্থিত"
+                label={t.present}
                 value={bn(data.attendance.present)}
                 subLabel={
                   data.attendance.slotsTaken
-                    ? `${bn(data.attendance.slotsTaken)}টি বিষয়ের হাজিরা থেকে`
-                    : "হাজিরা এখনো নেওয়া হয়নি"
+                    ? t.fromSlots(bn(data.attendance.slotsTaken))
+                    : t.noAttendance
                 }
                 tone="emerald"
                 icon={<UserCheck size={20} />}
               />
               <PremiumStat
-                label="অনুপস্থিত"
+                label={t.absent}
                 value={bn(data.attendance.absent)}
-                subLabel="অন্তত এক বিষয়ে অনুপস্থিত"
+                subLabel={t.absentInOne}
                 tone="rose"
                 icon={<UserX size={20} />}
               />
               <PremiumStat
-                label="পাস / ফেল"
+                label={t.passFail}
                 value={`${bn(data.statusBreakdown.pass)} / ${bn(data.statusBreakdown.fail)}`}
-                subLabel={data.latestExam ? "সর্বশেষ পরীক্ষার ফলাফল" : undefined}
+                subLabel={data.latestExam ? t.latestResult : undefined}
                 tone="amber"
                 icon={<Users size={20} />}
               />
@@ -219,25 +224,25 @@ export default function TalimatDashboardPage() {
 
         <Card className="flex flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
             to="/talimat/results/entry"
           >
-            <ClipboardEdit size={16} /> নম্বর এন্ট্রি
+            <ClipboardEdit size={16} /> {t.marksEntry}
           </Link>
           <Link
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to="/talimat/results"
           >
-            ফলাফল প্রিভিউ
+            {t.resultPreview}
           </Link>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/talimat/settings"
           >
-            <BookOpen size={16} /> সেটিং
+            <BookOpen size={16} /> {t.settings}
           </Link>
         </Card>
       </div>
@@ -245,21 +250,21 @@ export default function TalimatDashboardPage() {
       <Card padding="none" className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষার অবস্থা</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">সক্রিয় পরীক্ষাগুলো রুটিন অনুযায়ী আসন্ন, চলমান নাকি সমাপ্ত</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.examStatus}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.examStatusHint}</p>
           </div>
           {!loading && data && (
             <div className="flex flex-wrap gap-2">
-              <Badge tone="purple">সক্রিয় {bn(data.activeExamsCount)}</Badge>
-              <Badge tone="blue">আসন্ন {bn(data.examStatusBreakdown.upcoming)}</Badge>
-              <Badge tone="green">চলমান {bn(data.examStatusBreakdown.ongoing)}</Badge>
-              <Badge tone="slate">সমাপ্ত {bn(data.examStatusBreakdown.completed)}</Badge>
+              <Badge tone="purple">{t.activeN(bn(data.activeExamsCount))}</Badge>
+              <Badge tone="blue">{t.upcomingN(bn(data.examStatusBreakdown.upcoming))}</Badge>
+              <Badge tone="green">{t.ongoingN(bn(data.examStatusBreakdown.ongoing))}</Badge>
+              <Badge tone="slate">{t.completedN(bn(data.examStatusBreakdown.completed))}</Badge>
             </div>
           )}
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {!loading && examStatusRows.length === 0 && (
-            <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">কোনো সক্রিয় পরীক্ষা নেই</p>
+            <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">{t.noActiveExam}</p>
           )}
           {examStatusRows.map((row) => {
             const meta = EXAM_STATUS_META[row.status];
@@ -274,11 +279,11 @@ export default function TalimatDashboardPage() {
                       ? row.startDate === row.endDate
                         ? formatDate(row.startDate)
                         : `${formatDate(row.startDate)} - ${formatDate(row.endDate)}`
-                      : "পরীক্ষার রুটিন যোগ করা হয়নি"}
+                      : t.noExamRoutine}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                  <Badge tone={meta.tone}>{t[meta.labelKey]}</Badge>
                 </div>
               </div>
             );
@@ -290,8 +295,8 @@ export default function TalimatDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard
-          title="ফলাফলের অবস্থা"
-          subtitle={data?.latestExam ? `সর্বশেষ পরীক্ষা: ${data.latestExam.name}` : undefined}
+          title={t.resultStatus}
+          subtitle={data?.latestExam ? t.latestExamN(data.latestExam.name) : undefined}
           loading={loading}
           empty={!loading && statusPieData.length === 0}
         >
@@ -309,8 +314,8 @@ export default function TalimatDashboardPage() {
         </ChartCard>
 
         <ChartCard
-          title="গ্রেড বণ্টন"
-          subtitle={data?.latestExam ? `সর্বশেষ পরীক্ষা: ${data.latestExam.name}` : undefined}
+          title={t.gradeDistribution}
+          subtitle={data?.latestExam ? t.latestExamN(data.latestExam.name) : undefined}
           loading={loading}
           empty={!loading && gradeChartData.length === 0}
         >
@@ -320,7 +325,7 @@ export default function TalimatDashboardPage() {
               <XAxis dataKey="grade" stroke={axisColor} tick={{ fontSize: 12 }} />
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="count" name="শিক্ষার্থী" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="count" name={t.students} radius={[6, 6, 0, 0]}>
                 {gradeChartData.map((entry, index) => (
                   <Cell key={entry.grade} fill={GRADE_COLORS[index % GRADE_COLORS.length]} />
                 ))}
@@ -332,14 +337,14 @@ export default function TalimatDashboardPage() {
 
       <Card padding="none" className="overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">শ্রেণিভিত্তিক নম্বর এন্ট্রির অবস্থা</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.classEntryStatus}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {data?.latestExam ? `সর্বশেষ পরীক্ষা: ${data.latestExam.name}` : "সর্বশেষ পরীক্ষার তথ্য নেই"}
+            {data?.latestExam ? t.latestExamN(data.latestExam.name) : t.noLatestExam}
           </p>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {!loading && classStatusRows.length === 0 && (
-            <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">কোনো তথ্য পাওয়া যায়নি</p>
+            <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">{c.noData}</p>
           )}
           {classStatusRows.map((row) => {
             const pct = row.total_students > 0 ? Math.round((row.entered_students / row.total_students) * 100) : 0;

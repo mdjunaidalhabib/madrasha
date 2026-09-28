@@ -7,6 +7,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useAccountOptions } from "./useAccountOptions";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { AccountRow, partyName, toDateInput, toTimeInput } from "./accountHelpers";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -52,6 +54,8 @@ type Props = {
 
 export default function AccountEditModal({ row, onClose, onSaved }: Props) {
   const toast = useToastStore();
+  const t = useText(accountsText);
+  const c = useText(commonText);
   const { incomeFunds, expenseGroups, paymentMethods } = useAccountOptions();
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [saving, setSaving] = useState(false);
@@ -105,9 +109,9 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
 
   const handleSave = async () => {
     if (!row) return;
-    if (!editForm.name.trim()) return toast.push("error", "নাম দিন");
+    if (!editForm.name.trim()) return toast.push("error", t.enterName);
     if (!editForm.amount || !Number(editForm.amount) || Number(editForm.amount) <= 0)
-      return toast.push("error", "পরিমাণ দিন");
+      return toast.push("error", t.enterAmount);
 
     const payload: Record<string, string> = {
       entry_date: editForm.entry_date,
@@ -131,11 +135,11 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
     try {
       setSaving(true);
       await api.patch(`/accounts/${row.id}`, payload);
-      toast.push("success", "এন্ট্রি আপডেট হয়েছে");
+      toast.push("success", t.entryUpdated);
       onSaved();
       onClose();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.updateFailed;
       toast.push("error", msg);
     } finally {
       setSaving(false);
@@ -145,26 +149,26 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
   return (
     <Modal
       open={!!row}
-      title={row?.type === "income" ? "আয় এন্ট্রি এডিট করুন" : "ব্যয় এন্ট্রি এডিট করুন"}
+      title={row?.type === "income" ? t.editIncomeTitle : t.editExpenseTitle}
       onClose={onClose}
       maxWidthClassName="max-w-2xl"
     >
       {row && (
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <FieldLabel>তারিখ</FieldLabel>
+            <FieldLabel>{c.date}</FieldLabel>
             <Input type="date" value={editForm.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
           </div>
           <div>
-            <FieldLabel>সময়</FieldLabel>
+            <FieldLabel>{t.time}</FieldLabel>
             <Input type="time" value={editForm.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
           </div>
           <div>
-            <FieldLabel>{row.type === "income" ? "রশিদ নম্বর" : "ভাউচার নম্বর"}</FieldLabel>
+            <FieldLabel>{row.type === "income" ? t.receiptNumber : t.voucherNumber}</FieldLabel>
             <Input value={editForm.no} onChange={(e) => setField("no", e.target.value)} />
           </div>
           <div>
-            <FieldLabel>{row.type === "income" ? "ফান্ড" : "ব্যয় বিভাগ"}</FieldLabel>
+            <FieldLabel>{row.type === "income" ? t.fund : t.expenseGroup}</FieldLabel>
             {row.type === "income" ? (
               <select
                 className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -188,7 +192,7 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
             )}
           </div>
           <div>
-            <FieldLabel>খাত</FieldLabel>
+            <FieldLabel>{t.category}</FieldLabel>
             <select
               className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={editForm.category}
@@ -200,21 +204,21 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
             </select>
           </div>
           <div>
-            <FieldLabel required>নাম</FieldLabel>
+            <FieldLabel required>{c.name}</FieldLabel>
             <Input required value={editForm.name} onChange={(e) => setField("name", e.target.value)} />
           </div>
           {row.type === "income" && (
             <div>
-              <FieldLabel>ঠিকানা</FieldLabel>
+              <FieldLabel>{c.address}</FieldLabel>
               <Input value={editForm.address} onChange={(e) => setField("address", e.target.value)} />
             </div>
           )}
           <div>
-            <FieldLabel>মোবাইল নম্বর</FieldLabel>
+            <FieldLabel>{t.mobileNumber}</FieldLabel>
             <Input value={editForm.mobile} onChange={(e) => setField("mobile", e.target.value)} />
           </div>
           <div>
-            <FieldLabel required>পরিমাণ</FieldLabel>
+            <FieldLabel required>{c.amount}</FieldLabel>
             <Input
               required
               type="text"
@@ -224,7 +228,7 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
             />
           </div>
           <div>
-            <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
+            <FieldLabel>{t.paymentMethod}</FieldLabel>
             <select
               className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={editForm.payment_method}
@@ -236,7 +240,7 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
             </select>
           </div>
           <div className="md:col-span-2">
-            <FieldLabel>নোট / বিবরণ</FieldLabel>
+            <FieldLabel>{t.noteDescription}</FieldLabel>
             <textarea
               rows={2}
               className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -246,10 +250,10 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
           </div>
           <div className="md:col-span-2 mt-2 flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose}>
-              বাতিল
+              {c.cancel}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+              {saving ? c.saving : c.save}
             </Button>
           </div>
         </div>

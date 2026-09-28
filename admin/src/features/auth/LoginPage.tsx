@@ -12,6 +12,8 @@ import TenantBlockedScreen, {
 } from "@madrasha/shared-ui/src/components/ui/TenantBlockedScreen";
 import { getSavedAccounts, upsertSavedAccount, type SavedAccount } from "../../services/savedAccounts";
 import SavedAccountsList, { AccountAvatar } from "./SavedAccountsList";
+import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+import { authText } from "./auth.text";
 
 function readTenantBlockFromResponse(err: any): TenantBlockInfo | null {
   const status = err?.response?.status;
@@ -50,6 +52,7 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const toast = useToastStore();
   const nav = useNavigate();
+  const t = useText(authText);
 
   useEffect(() => {
     setSavedAccounts(getSavedAccounts());
@@ -95,7 +98,7 @@ export default function LoginPage() {
       roleLabel: res.data?.user?.role_label || null,
     });
 
-    toast.push("success", "Logged in");
+    toast.push("success", t.loggedIn);
     nav("/dashboard");
   };
 
@@ -171,9 +174,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
+    <div className="relative flex h-screen items-center justify-center bg-gray-100 p-4">
+      <div className="absolute end-4 top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-sm rounded bg-white p-6 shadow space-y-4">
-        {!tenantBlock && <h2 className="text-xl font-bold">Madrasa Admin Login</h2>}
+        {!tenantBlock && <h2 className="text-xl font-bold">{t.loginTitle}</h2>}
 
         {tenantBlock && (
           <TenantBlockedScreen
@@ -185,7 +191,7 @@ export default function LoginPage() {
 
         {!tenantBlock && showingList && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">এই ডিভাইসে সংরক্ষিত অ্যাকাউন্ট থেকে বেছে নিন</p>
+            <p className="text-sm text-gray-500">{t.pickSavedAccount}</p>
 
             <SavedAccountsList
               accounts={savedAccounts}
@@ -198,7 +204,7 @@ export default function LoginPage() {
               onClick={openManualForm}
               className="w-full text-center text-xs text-blue-600 hover:underline"
             >
-              অন্য মাদরাসা/ইমেইল দিয়ে লগইন করুন
+              {t.loginWithOther}
             </button>
           </div>
         )}
@@ -210,7 +216,7 @@ export default function LoginPage() {
               onClick={backToList}
               className="text-xs text-blue-600 hover:underline"
             >
-              ← অন্য অ্যাকাউন্ট
+              <span className="inline-block rtl:-scale-x-100">←</span> {t.otherAccount}
             </button>
 
             <div className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5">
@@ -229,7 +235,7 @@ export default function LoginPage() {
               <Input
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                placeholder="Password"
+                placeholder={t.password}
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -240,7 +246,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -248,7 +254,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" disabled={loading || !password} className="w-full">
-              {loading ? "Logging in..." : "Login"}
+              {loading ? t.loggingIn : t.login}
             </Button>
 
             <button
@@ -256,7 +262,7 @@ export default function LoginPage() {
               onClick={() => nav("/forgot-password")}
               className="w-full text-center text-xs text-blue-600 hover:underline"
             >
-              পাসওয়ার্ড ভুলে গেছেন?
+              {t.forgotPassword}
             </button>
           </form>
         )}
@@ -269,14 +275,14 @@ export default function LoginPage() {
                 onClick={backToList}
                 className="text-xs text-blue-600 hover:underline"
               >
-                ← সংরক্ষিত অ্যাকাউন্ট তালিকা
+                <span className="inline-block rtl:-scale-x-100">←</span> {t.savedAccountList}
               </button>
             )}
 
             <Input
               type="text"
               autoComplete="organization"
-              placeholder="মাদরাসা কোড"
+              placeholder={t.institutionCode}
               value={madrasaCode}
               onChange={(e) => setMadrasaCode(e.target.value)}
               invalid={attempted && !madrasaCode.trim()}
@@ -285,7 +291,7 @@ export default function LoginPage() {
             <Input
               type="email"
               autoComplete="username"
-              placeholder="Email"
+              placeholder={t.email}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               invalid={attempted && !email.trim()}
@@ -295,7 +301,7 @@ export default function LoginPage() {
               <Input
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                placeholder="Password"
+                placeholder={t.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pe-10"
@@ -306,7 +312,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -314,7 +320,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" disabled={loading || !isFilled} className="w-full">
-              {loading ? "Logging in..." : "Login"}
+              {loading ? t.loggingIn : t.login}
             </Button>
 
             <button
@@ -322,7 +328,7 @@ export default function LoginPage() {
               onClick={() => nav("/forgot-password")}
               className="w-full text-center text-xs text-blue-600 hover:underline"
             >
-              পাসওয়ার্ড ভুলে গেছেন?
+              {t.forgotPassword}
             </button>
           </form>
         )}

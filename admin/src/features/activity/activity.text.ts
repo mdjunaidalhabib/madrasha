@@ -1,129 +1,21 @@
-import type { Lang } from "../../store/languageStore";
+import { defineText, getText } from "@madrasha/shared-ui/src/i18n";
 
-export type ActivityLogText = {
-  title: string;
-  subtitle: string;
-  quickRangeLabel: string;
-  customRangeLabel: string;
-  fromLabel: string;
-  toLabel: string;
-  applyLabel: string;
-  clearLabel: string;
-  colUser: string;
-  colAction: string;
-  colEntity: string;
-  colDetails: string;
-  colTime: string;
-  systemUser: string;
-  noDetails: string;
-  empty: string;
-  loadError: string;
-  totalLabel: (n: string) => string;
-  pageLabel: (page: string, totalPages: string) => string;
-  prevPage: string;
-  nextPage: string;
-  retentionNote: (days: string) => string;
-  showMore: (n: string) => string;
-  showLess: string;
-  dayOption: (n: number) => string;
-};
-
-export const activityLogText: Record<Lang, ActivityLogText> = {
-  bn: {
-    title: "অ্যাক্টিভিটি লগ",
-    subtitle: "ওয়েবসাইটে যা কিছু করা হয়েছে তার সম্পূর্ণ ইতিহাস",
-    quickRangeLabel: "সময়সীমা",
-    customRangeLabel: "নির্দিষ্ট তারিখ",
-    fromLabel: "শুরুর তারিখ",
-    toLabel: "শেষ তারিখ",
-    applyLabel: "প্রয়োগ করুন",
-    clearLabel: "রিসেট",
-    colUser: "ব্যবহারকারী",
-    colAction: "কার্যক্রম",
-    colEntity: "বিষয়",
-    colDetails: "বিস্তারিত",
-    colTime: "সময়",
-    systemUser: "সিস্টেম",
-    noDetails: "—",
-    empty: "এই সময়সীমায় কোনো অ্যাক্টিভিটি পাওয়া যায়নি",
-    loadError: "লগ লোড করা যায়নি",
-    totalLabel: (n) => `মোট ${n} টি লগ`,
-    pageLabel: (page, totalPages) => `পৃষ্ঠা ${page} / ${totalPages}`,
-    prevPage: "পূর্ববর্তী",
-    nextPage: "পরবর্তী",
-    retentionNote: (days) => `${days} দিনের পুরনো লগ স্বয়ংক্রিয়ভাবে মুছে যায়`,
-    showMore: (n) => `আরও ${n} টি দেখুন`,
-    showLess: "কম দেখুন",
-    dayOption: (n) => `${n} দিন`,
-  },
-  en: {
-    title: "Activity Log",
-    subtitle: "Full history of everything done on the website",
-    quickRangeLabel: "Time range",
-    customRangeLabel: "Custom range",
-    fromLabel: "From date",
-    toLabel: "To date",
-    applyLabel: "Apply",
-    clearLabel: "Reset",
-    colUser: "User",
-    colAction: "Action",
-    colEntity: "Entity",
-    colDetails: "Details",
-    colTime: "Time",
-    systemUser: "System",
-    noDetails: "—",
-    empty: "No activity found in this range",
-    loadError: "Failed to load logs",
-    totalLabel: (n) => `${n} logs total`,
-    pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
-    prevPage: "Previous",
-    nextPage: "Next",
-    retentionNote: (days) => `Logs older than ${days} days are deleted automatically`,
-    showMore: (n) => `Show ${n} more`,
-    showLess: "Show less",
-    dayOption: (n) => `${n} days`,
-  },
-  ar: {
-    title: "سجل النشاط",
-    subtitle: "السجل الكامل لكل ما تم عمله على الموقع",
-    quickRangeLabel: "الفترة الزمنية",
-    customRangeLabel: "نطاق مخصص",
-    fromLabel: "من تاريخ",
-    toLabel: "إلى تاريخ",
-    applyLabel: "تطبيق",
-    clearLabel: "إعادة تعيين",
-    colUser: "المستخدم",
-    colAction: "الإجراء",
-    colEntity: "العنصر",
-    colDetails: "التفاصيل",
-    colTime: "الوقت",
-    systemUser: "النظام",
-    noDetails: "—",
-    empty: "لا يوجد نشاط في هذه الفترة",
-    loadError: "تعذر تحميل السجلات",
-    totalLabel: (n) => `إجمالي ${n} سجل`,
-    pageLabel: (page, totalPages) => `صفحة ${page} / ${totalPages}`,
-    prevPage: "السابق",
-    nextPage: "التالي",
-    retentionNote: (days) => `يتم حذف السجلات الأقدم من ${days} يومًا تلقائيًا`,
-    showMore: (n) => `عرض ${n} أخرى`,
-    showLess: "عرض أقل",
-    dayOption: (n) => `${n} يوم`,
-  },
-};
+// Activity-log UI text + the dictionaries that turn a raw {entity, action}
+// log row into a readable sentence. Values may use {{term}} placeholders
+// (institution vocabulary), filled per institution type by useText/getText.
 
 export const QUICK_DAY_OPTIONS = [3, 5, 7, 15, 30, 60, 90] as const;
 
-type LangMap = Record<Lang, Record<string, string>>;
+type SpecialRow = { key: string; bn: string; en: string; ar: string };
 
 // Base noun per top-level entity (first path segment the backend derives -
 // see activityLogger.middleware.ts). Anything not listed here falls back to
 // a humanized version of the raw entity string.
-const ENTITY_NOUNS: LangMap = {
+const ENTITY_NOUNS: Record<"bn" | "en" | "ar", Record<string, string>> = {
   bn: {
-    students: "শিক্ষার্থী",
-    teachers: "শিক্ষক",
-    "teacher-assignments": "শিক্ষক বণ্টন",
+    students: "{{student}}",
+    teachers: "{{teacher}}",
+    "teacher-assignments": "{{teacher}} বণ্টন",
     exams: "পরীক্ষা",
     "general-grades": "সাধারণ গ্রেড",
     "madrasa-grades": "মাদরাসা গ্রেড",
@@ -138,14 +30,14 @@ const ENTITY_NOUNS: LangMap = {
     permissions: "পারমিশন",
     notifications: "নোটিফিকেশন",
     uploads: "ফাইল",
-    "madrasa-divisions": "বিভাগ",
-    "madrasa-classes": "শ্রেণি",
-    "madrasa-books": "বিষয়/কিতাব",
+    "madrasa-divisions": "{{division}}",
+    "madrasa-classes": "{{class}}",
+    "madrasa-books": "{{subject}}",
     attendance: "হাজিরা",
     promotion: "প্রমোশন",
-    sessions: "শিক্ষাবর্ষ",
+    sessions: "{{session}}",
     payroll: "বেতন",
-    talimat: "তালিমাত",
+    talimat: "{{academic}}",
     results: "ফলাফল",
     reports: "রিপোর্ট",
     settings: "সেটিংস",
@@ -158,12 +50,12 @@ const ENTITY_NOUNS: LangMap = {
     documenttemplate: "ডকুমেন্ট টেমপ্লেট",
     library: "লাইব্রেরি",
     website: "ওয়েবসাইট",
-    madrasa: "মাদ্রাসা",
+    madrasa: "{{institution}}",
   },
   en: {
-    students: "Student",
-    teachers: "Teacher",
-    "teacher-assignments": "Teacher Assignment",
+    students: "{{student}}",
+    teachers: "{{teacher}}",
+    "teacher-assignments": "{{teacher}} Assignment",
     exams: "Exam",
     "general-grades": "General Grade",
     "madrasa-grades": "Madrasa Grade",
@@ -178,14 +70,14 @@ const ENTITY_NOUNS: LangMap = {
     permissions: "Permission",
     notifications: "Notification",
     uploads: "File",
-    "madrasa-divisions": "Division",
-    "madrasa-classes": "Class",
-    "madrasa-books": "Subject/Book",
+    "madrasa-divisions": "{{division}}",
+    "madrasa-classes": "{{class}}",
+    "madrasa-books": "{{subject}}",
     attendance: "Attendance",
     promotion: "Promotion",
-    sessions: "Session",
+    sessions: "{{session}}",
     payroll: "Payroll",
-    talimat: "Talimat",
+    talimat: "{{academic}}",
     results: "Result",
     reports: "Report",
     settings: "Settings",
@@ -198,12 +90,12 @@ const ENTITY_NOUNS: LangMap = {
     documenttemplate: "Document Template",
     library: "Library",
     website: "Website",
-    madrasa: "Madrasa",
+    madrasa: "{{institution}}",
   },
   ar: {
-    students: "طالب",
-    teachers: "معلم",
-    "teacher-assignments": "توزيع المعلمين",
+    students: "{{student}}",
+    teachers: "{{teacher}}",
+    "teacher-assignments": "توزيع {{teacher}}",
     exams: "امتحان",
     "general-grades": "الدرجات العامة",
     "madrasa-grades": "درجات المدرسة",
@@ -218,14 +110,14 @@ const ENTITY_NOUNS: LangMap = {
     permissions: "الصلاحية",
     notifications: "إشعار",
     uploads: "ملف",
-    "madrasa-divisions": "القسم",
-    "madrasa-classes": "الصف",
-    "madrasa-books": "المادة",
+    "madrasa-divisions": "{{division}}",
+    "madrasa-classes": "{{class}}",
+    "madrasa-books": "{{subject}}",
     attendance: "الحضور",
     promotion: "الترقية",
-    sessions: "العام الدراسي",
+    sessions: "{{session}}",
     payroll: "كشف الرواتب",
-    talimat: "تعليمات",
+    talimat: "{{academic}}",
     results: "النتيجة",
     reports: "تقرير",
     settings: "الإعدادات",
@@ -238,32 +130,15 @@ const ENTITY_NOUNS: LangMap = {
     documenttemplate: "قالب المستند",
     library: "المكتبة",
     website: "الموقع",
-    madrasa: "المدرسة",
+    madrasa: "{{institution}}",
   },
 };
 
-const ACTION_VERBS: Record<Lang, Record<string, (noun: string) => string>> = {
-  bn: {
-    CREATE: (n) => `${n} যোগ করা হয়েছে`,
-    UPDATE: (n) => `${n} হালনাগাদ করা হয়েছে`,
-    DELETE: (n) => `${n} মুছে ফেলা হয়েছে`,
-  },
-  en: {
-    CREATE: (n) => `${n} created`,
-    UPDATE: (n) => `${n} updated`,
-    DELETE: (n) => `${n} deleted`,
-  },
-  ar: {
-    CREATE: (n) => `تمت إضافة ${n}`,
-    UPDATE: (n) => `تم تحديث ${n}`,
-    DELETE: (n) => `تم حذف ${n}`,
-  },
-};
 
 // Exact "entity|ACTION" phrases for actions that read badly as generic
 // "<noun> created/updated/deleted" - keyed on the full entity path the
 // backend derives (e.g. "invoices/pay"), not just the base noun above.
-const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: string }> = [
+const SPECIAL_LABEL_ROWS: SpecialRow[] = [
   { key: "invoices/pay|CREATE", bn: "ইনভয়েস পরিশোধ করা হয়েছে", en: "Invoice paid", ar: "تم دفع الفاتورة" },
   { key: "invoices/waive|CREATE", bn: "ইনভয়েস মওকুফ করা হয়েছে", en: "Invoice waived", ar: "تم إعفاء الفاتورة" },
   {
@@ -287,25 +162,25 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   },
   {
     key: "madrasa-divisions/reorder|UPDATE",
-    bn: "বিভাগের ক্রম পরিবর্তন করা হয়েছে",
-    en: "Division order changed",
+    bn: "{{division}}ের ক্রম পরিবর্তন করা হয়েছে",
+    en: "{{division}} order changed",
     ar: "تم تغيير ترتيب الأقسام",
   },
   {
     key: "madrasa-classes/reorder|UPDATE",
-    bn: "শ্রেণির ক্রম পরিবর্তন করা হয়েছে",
-    en: "Class order changed",
+    bn: "{{class}}র ক্রম পরিবর্তন করা হয়েছে",
+    en: "{{class}} order changed",
     ar: "تم تغيير ترتيب الصفوف",
   },
   {
     key: "madrasa-books/reorder|UPDATE",
-    bn: "বিষয়ের ক্রম পরিবর্তন করা হয়েছে",
-    en: "Subject order changed",
-    ar: "تم تغيير ترتيب المواد",
+    bn: "{{subject}}ের ক্রম পরিবর্তন করা হয়েছে",
+    en: "{{subject}} order changed",
+    ar: "تم تغيير ترتيب {{subject}}",
   },
   {
     key: "madrasa-books/miyari|UPDATE",
-    bn: "মিয়ারি বিষয় হালনাগাদ করা হয়েছে",
+    bn: "মিয়ারি {{subject}} হালনাগাদ করা হয়েছে",
     en: "Standard subjects updated",
     ar: "تم تحديث المواد المعيارية",
   },
@@ -316,9 +191,10 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   { key: "uploads/image|DELETE", bn: "ছবি মুছে ফেলা হয়েছে", en: "Image deleted", ar: "تم حذف الصورة" },
   { key: "notifications/send|CREATE", bn: "নোটিফিকেশন পাঠানো হয়েছে", en: "Notification sent", ar: "تم إرسال الإشعار" },
   ...(["students", "teachers", "exams", "divisions", "classes", "books", "results"] as const).flatMap((e) => {
-    const noun = ENTITY_NOUNS.bn[e === "divisions" ? "madrasa-divisions" : e === "classes" ? "madrasa-classes" : e === "books" ? "madrasa-books" : e];
-    const nounEn = ENTITY_NOUNS.en[e === "divisions" ? "madrasa-divisions" : e === "classes" ? "madrasa-classes" : e === "books" ? "madrasa-books" : e];
-    const nounAr = ENTITY_NOUNS.ar[e === "divisions" ? "madrasa-divisions" : e === "classes" ? "madrasa-classes" : e === "books" ? "madrasa-books" : e];
+    const key = e === "divisions" ? "madrasa-divisions" : e === "classes" ? "madrasa-classes" : e === "books" ? "madrasa-books" : e;
+    const noun = ENTITY_NOUNS.bn[key];
+    const nounEn = ENTITY_NOUNS.en[key];
+    const nounAr = ENTITY_NOUNS.ar[key];
     return [
       {
         key: `trash/${e}/restore|CREATE`,
@@ -344,24 +220,24 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
 
   // Promotion
   { key: "promotion/preview|CREATE", bn: "প্রমোশনের প্রিভিউ দেখা হয়েছে", en: "Promotion previewed", ar: "تمت معاينة الترقية" },
-  { key: "promotion/execute|CREATE", bn: "শিক্ষার্থীদের প্রমোশন কার্যকর করা হয়েছে", en: "Student promotion executed", ar: "تم تنفيذ ترقية الطلاب" },
+  { key: "promotion/execute|CREATE", bn: "{{student}}দের প্রমোশন কার্যকর করা হয়েছে", en: "{{student}} promotion executed", ar: "تم تنفيذ ترقية الطلاب" },
 
   // Students
-  { key: "students/admission|CREATE", bn: "নতুন শিক্ষার্থী ভর্তি করা হয়েছে", en: "Student admitted", ar: "تم قبول طالب جديد" },
-  { key: "students/admission/bulk|CREATE", bn: "একাধিক শিক্ষার্থী একসাথে (বাল্ক) ভর্তি করা হয়েছে", en: "Students bulk admitted", ar: "تم قبول عدة طلاب دفعة واحدة" },
-  { key: "students/bulk-update|CREATE", bn: "একাধিক শিক্ষার্থীর তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "Students bulk updated", ar: "تم تحديث بيانات عدة طلاب دفعة واحدة" },
-  { key: "students/approve|UPDATE", bn: "শিক্ষার্থীর ভর্তি অনুমোদন করা হয়েছে", en: "Student admission approved", ar: "تمت الموافقة على قبول الطالب" },
-  { key: "students/reject|UPDATE", bn: "শিক্ষার্থীর ভর্তি বাতিল করা হয়েছে", en: "Student admission rejected", ar: "تم رفض قبول الطالب" },
-  { key: "students/expel|UPDATE", bn: "শিক্ষার্থীকে বহিষ্কার করা হয়েছে", en: "Student expelled", ar: "تم فصل الطالب" },
-  { key: "students/transfer-session|UPDATE", bn: "শিক্ষার্থীকে নতুন শিক্ষাবর্ষে স্থানান্তর করা হয়েছে", en: "Student transferred to new session", ar: "تم نقل الطالب إلى عام دراسي جديد" },
-  { key: "students/bulk|DELETE", bn: "একাধিক শিক্ষার্থী ট্র্যাশে সরানো হয়েছে", en: "Students moved to trash in bulk", ar: "تم نقل عدة طلاب إلى سلة المهملات" },
+  { key: "students/admission|CREATE", bn: "নতুন {{student}} ভর্তি করা হয়েছে", en: "{{student}} admitted", ar: "تم قبول طالب جديد" },
+  { key: "students/admission/bulk|CREATE", bn: "একাধিক {{student}} একসাথে (বাল্ক) ভর্তি করা হয়েছে", en: "{{student}}s bulk admitted", ar: "تم قبول عدة طلاب دفعة واحدة" },
+  { key: "students/bulk-update|CREATE", bn: "একাধিক {{student}}র তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "{{student}}s bulk updated", ar: "تم تحديث بيانات عدة طلاب دفعة واحدة" },
+  { key: "students/approve|UPDATE", bn: "{{student}}র ভর্তি অনুমোদন করা হয়েছে", en: "{{student}} admission approved", ar: "تمت الموافقة على قبول الطالب" },
+  { key: "students/reject|UPDATE", bn: "{{student}}র ভর্তি বাতিল করা হয়েছে", en: "{{student}} admission rejected", ar: "تم رفض قبول الطالب" },
+  { key: "students/expel|UPDATE", bn: "{{student}}কে বহিষ্কার করা হয়েছে", en: "{{student}} expelled", ar: "تم فصل الطالب" },
+  { key: "students/transfer-session|UPDATE", bn: "{{student}}কে নতুন {{session}}ে স্থানান্তর করা হয়েছে", en: "{{student}} transferred to new {{session}}", ar: "تم نقل الطالب إلى عام دراسي جديد" },
+  { key: "students/bulk|DELETE", bn: "একাধিক {{student}} ট্র্যাশে সরানো হয়েছে", en: "{{student}}s moved to trash in bulk", ar: "تم نقل عدة طلاب إلى سلة المهملات" },
 
   // Teachers
-  { key: "teachers/bulk|CREATE", bn: "একাধিক শিক্ষক একসাথে (বাল্ক) যোগ করা হয়েছে", en: "Teachers bulk added", ar: "تمت إضافة عدة معلمين دفعة واحدة" },
-  { key: "teachers/bulk-update|CREATE", bn: "একাধিক শিক্ষকের তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "Teachers bulk updated", ar: "تم تحديث بيانات عدة معلمين دفعة واحدة" },
+  { key: "teachers/bulk|CREATE", bn: "একাধিক {{teacher}} একসাথে (বাল্ক) যোগ করা হয়েছে", en: "{{teacher}}s bulk added", ar: "تمت إضافة عدة معلمين دفعة واحدة" },
+  { key: "teachers/bulk-update|CREATE", bn: "একাধিক {{teacher}}ের তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "{{teacher}}s bulk updated", ar: "تم تحديث بيانات عدة معلمين دفعة واحدة" },
 
   // Teacher assignments
-  { key: "teacher-assignments/delete|CREATE", bn: "শিক্ষক বণ্টন মুছে ফেলা হয়েছে", en: "Teacher assignment deleted", ar: "تم حذف توزيع المعلم" },
+  { key: "teacher-assignments/delete|CREATE", bn: "{{teacher}} বণ্টন মুছে ফেলা হয়েছে", en: "{{teacher}} assignment deleted", ar: "تم حذف توزيع المعلم" },
 
   // ResultPanel
   { key: "results/session|CREATE", bn: "ফলাফলের সেশন তৈরি করা হয়েছে", en: "Result session created", ar: "تم إنشاء جلسة النتائج" },
@@ -371,11 +247,11 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   { key: "results/apply-roll-by-rank|CREATE", bn: "মেধাক্রম অনুযায়ী রোল নম্বর দেওয়া হয়েছে", en: "Roll numbers applied by rank", ar: "تم تطبيق أرقام الجلوس حسب الترتيب" },
 
   // Attendance / Kiosk
-  { key: "attendance/bulk|CREATE", bn: "একসাথে অনেক শিক্ষার্থীর হাজিরা দেওয়া হয়েছে", en: "Attendance bulk marked", ar: "تم تسجيل حضور عدة طلاب دفعة واحدة" },
+  { key: "attendance/bulk|CREATE", bn: "একসাথে অনেক {{student}}র হাজিরা দেওয়া হয়েছে", en: "Attendance bulk marked", ar: "تم تسجيل حضور عدة طلاب دفعة واحدة" },
   { key: "attendance/kiosk/devices|CREATE", bn: "কিয়স্ক ডিভাইস যোগ করা হয়েছে", en: "Kiosk device added", ar: "تمت إضافة جهاز الكشك" },
   { key: "attendance/kiosk/devices|UPDATE", bn: "কিয়স্ক ডিভাইস হালনাগাদ করা হয়েছে", en: "Kiosk device updated", ar: "تم تحديث جهاز الكشك" },
   { key: "attendance/kiosk/devices|DELETE", bn: "কিয়স্ক ডিভাইস মুছে ফেলা হয়েছে", en: "Kiosk device deleted", ar: "تم حذف جهاز الكشك" },
-  { key: "attendance/kiosk/students/card|UPDATE", bn: "শিক্ষার্থীর কার্ড/ফিঙ্গারপ্রিন্ট সংযুক্ত করা হয়েছে", en: "Student card/fingerprint assigned", ar: "تم ربط بطاقة/بصمة الطالب" },
+  { key: "attendance/kiosk/students/card|UPDATE", bn: "{{student}}র কার্ড/ফিঙ্গারপ্রিন্ট সংযুক্ত করা হয়েছে", en: "{{student}} card/fingerprint assigned", ar: "تم ربط بطاقة/بصمة الطالب" },
 
   // Library
   { key: "library/categories|CREATE", bn: "লাইব্রেরি ক্যাটাগরি যোগ করা হয়েছে", en: "Library category added", ar: "تمت إضافة فئة المكتبة" },
@@ -422,31 +298,136 @@ const SPECIAL_LABEL_ROWS: Array<{ key: string; bn: string; en: string; ar: strin
   { key: "documenttemplate|DOCUMENT_TEMPLATE.UPDATE", bn: "ডকুমেন্ট টেমপ্লেট হালনাগাদ করা হয়েছে", en: "Document template updated", ar: "تم تحديث قالب المستند" },
   { key: "documenttemplate|DOCUMENT_TEMPLATE.DELETE", bn: "ডকুমেন্ট টেমপ্লেট মুছে ফেলা হয়েছে", en: "Document template deleted", ar: "تم حذف قالب المستند" },
   { key: "documenttemplate|DOCUMENT_TEMPLATE.SET_SYSTEM_DEFAULT", bn: "সিস্টেম ডিফল্ট টেমপ্লেট নির্ধারণ করা হয়েছে", en: "System default template set", ar: "تم تعيين القالب الافتراضي للنظام" },
-  { key: "documenttemplate|DOCUMENT_TEMPLATE.SET_TENANT_DEFAULT", bn: "মাদ্রাসার ডিফল্ট টেমপ্লেট নির্ধারণ করা হয়েছে", en: "Madrasa default template set", ar: "تم تعيين القالب الافتراضي للمدرسة" },
+  { key: "documenttemplate|DOCUMENT_TEMPLATE.SET_TENANT_DEFAULT", bn: "{{institution}}র ডিফল্ট টেমপ্লেট নির্ধারণ করা হয়েছে", en: "{{institution}} default template set", ar: "تم تعيين القالب الافتراضي لـ{{institution}}" },
   { key: "documenttemplate|DOCUMENT_TEMPLATE.AUTO_MIGRATED", bn: "টেমপ্লেট স্বয়ংক্রিয়ভাবে মাইগ্রেট করা হয়েছে", en: "Template auto-migrated", ar: "تمت ترقية القالب تلقائيًا" },
 
   // Super-admin actions visible in a tenant's own log
-  { key: "madrasa|MADRASA_CREATED", bn: "মাদ্রাসা তৈরি করা হয়েছে", en: "Madrasa created", ar: "تم إنشاء المدرسة" },
-  { key: "madrasa|SUPER_ADMIN_MADRASA_UPDATED", bn: "মাদ্রাসার তথ্য হালনাগাদ করা হয়েছে (সুপার এডমিন)", en: "Madrasa updated (super admin)", ar: "تم تحديث بيانات المدرسة (المشرف العام)" },
-  { key: "madrasa|SUPER_ADMIN_MADRASA_DATA_CLEANED", bn: "মাদ্রাসার ডেটা ক্লিন করা হয়েছে (সুপার এডমিন)", en: "Madrasa data cleaned (super admin)", ar: "تم مسح بيانات المدرسة (المشرف العام)" },
+  { key: "madrasa|MADRASA_CREATED", bn: "{{institution}} তৈরি করা হয়েছে", en: "{{institution}} created", ar: "تم إنشاء {{institution}}" },
+  { key: "madrasa|SUPER_ADMIN_MADRASA_UPDATED", bn: "{{institution}}র তথ্য হালনাগাদ করা হয়েছে (সুপার এডমিন)", en: "{{institution}} updated (super admin)", ar: "تم تحديث بيانات {{institution}} (المشرف العام)" },
+  { key: "madrasa|SUPER_ADMIN_MADRASA_DATA_CLEANED", bn: "{{institution}}র ডেটা ক্লিন করা হয়েছে (সুপার এডমিন)", en: "{{institution}} data cleaned (super admin)", ar: "تم مسح بيانات {{institution}} (المشرف العام)" },
   { key: "user|SUPER_ADMIN_USER_CREATED", bn: "নতুন ইউজার তৈরি করা হয়েছে (সুপার এডমিন)", en: "User created (super admin)", ar: "تم إنشاء مستخدم (المشرف العام)" },
   { key: "user|SUPER_ADMIN_USER_DELETED", bn: "ইউজার মুছে ফেলা হয়েছে (সুপার এডমিন)", en: "User deleted (super admin)", ar: "تم حذف المستخدم (المشرف العام)" },
 
   // Per-division fail mark (POST /fail-mark/divisions/:divisionId - the numeric
   // id is stripped by the backend, so the entity is "fail-mark/divisions"; the
   // same call both sets and clears a division's override)
-  { key: "fail-mark/divisions|CREATE", bn: "বিভাগভিত্তিক ফেল মার্ক হালনাগাদ করা হয়েছে", en: "Division fail mark updated", ar: "تم تحديث علامة الرسوب الخاصة بالقسم" },
+  { key: "fail-mark/divisions|CREATE", bn: "{{division}}ভিত্তিক ফেল মার্ক হালনাগাদ করা হয়েছে", en: "{{division}} fail mark updated", ar: "تم تحديث درجة الرسوب الخاصة بـ{{division}}" },
 
   // Talimat
-  { key: "talimat/create|CREATE", bn: "তালিমাত যোগ করা হয়েছে", en: "Talimat added", ar: "تمت إضافة التعليمات" },
+  { key: "talimat/create|CREATE", bn: "{{academic}} যোগ করা হয়েছে", en: "{{academic}} added", ar: "تمت إضافة {{academic}}" },
 ];
 
-const SPECIAL_LABELS: LangMap = { bn: {}, en: {}, ar: {} };
-for (const row of SPECIAL_LABEL_ROWS) {
-  SPECIAL_LABELS.bn[row.key] = row.bn;
-  SPECIAL_LABELS.en[row.key] = row.en;
-  SPECIAL_LABELS.ar[row.key] = row.ar;
-}
+const specialFor = (lang: "bn" | "en" | "ar") =>
+  Object.fromEntries(SPECIAL_LABEL_ROWS.map((row) => [row.key, row[lang]])) as Record<string, string>;
+
+type Verbs = Record<string, (noun: string) => string>;
+
+export const activityText = defineText({
+  bn: {
+    title: "অ্যাক্টিভিটি লগ",
+    subtitle: "ওয়েবসাইটে যা কিছু করা হয়েছে তার সম্পূর্ণ ইতিহাস",
+    quickRangeLabel: "সময়সীমা",
+    customRangeLabel: "নির্দিষ্ট তারিখ",
+    fromLabel: "শুরুর তারিখ",
+    toLabel: "শেষ তারিখ",
+    applyLabel: "প্রয়োগ করুন",
+    clearLabel: "রিসেট",
+    colUser: "ব্যবহারকারী",
+    colAction: "কার্যক্রম",
+    colEntity: "বিষয়",
+    colDetails: "বিস্তারিত",
+    colTime: "সময়",
+    systemUser: "সিস্টেম",
+    noDetails: "—",
+    empty: "এই সময়সীমায় কোনো অ্যাক্টিভিটি পাওয়া যায়নি",
+    loadError: "লগ লোড করা যায়নি",
+    totalLabel: (n: string) => `মোট ${n} টি লগ`,
+    pageLabel: (page: string, totalPages: string) => `পৃষ্ঠা ${page} / ${totalPages}`,
+    prevPage: "পূর্ববর্তী",
+    nextPage: "পরবর্তী",
+    retentionNote: (days: string) => `${days} দিনের পুরনো লগ স্বয়ংক্রিয়ভাবে মুছে যায়`,
+    showMore: (n: string) => `আরও ${n} টি দেখুন`,
+    showLess: "কম দেখুন",
+    dayOption: (n: string) => `${n} দিন`,
+    entities: ENTITY_NOUNS.bn,
+    verbs: {
+      CREATE: (n) => `${n} যোগ করা হয়েছে`,
+      UPDATE: (n) => `${n} হালনাগাদ করা হয়েছে`,
+      DELETE: (n) => `${n} মুছে ফেলা হয়েছে`,
+    } as Verbs,
+    special: specialFor("bn"),
+  },
+  en: {
+    title: "Activity Log",
+    subtitle: "Full history of everything done on the website",
+    quickRangeLabel: "Time range",
+    customRangeLabel: "Custom range",
+    fromLabel: "From date",
+    toLabel: "To date",
+    applyLabel: "Apply",
+    clearLabel: "Reset",
+    colUser: "User",
+    colAction: "Action",
+    colEntity: "Entity",
+    colDetails: "Details",
+    colTime: "Time",
+    systemUser: "System",
+    noDetails: "—",
+    empty: "No activity found in this range",
+    loadError: "Failed to load logs",
+    totalLabel: (n) => `${n} logs total`,
+    pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
+    prevPage: "Previous",
+    nextPage: "Next",
+    retentionNote: (days) => `Logs older than ${days} days are deleted automatically`,
+    showMore: (n) => `Show ${n} more`,
+    showLess: "Show less",
+    dayOption: (n) => `${n} days`,
+    entities: ENTITY_NOUNS.en,
+    verbs: {
+      CREATE: (n) => `${n} created`,
+      UPDATE: (n) => `${n} updated`,
+      DELETE: (n) => `${n} deleted`,
+    },
+    special: specialFor("en"),
+  },
+  ar: {
+    title: "سجل النشاط",
+    subtitle: "السجل الكامل لكل ما تم عمله على الموقع",
+    quickRangeLabel: "الفترة الزمنية",
+    customRangeLabel: "نطاق مخصص",
+    fromLabel: "من تاريخ",
+    toLabel: "إلى تاريخ",
+    applyLabel: "تطبيق",
+    clearLabel: "إعادة تعيين",
+    colUser: "المستخدم",
+    colAction: "الإجراء",
+    colEntity: "العنصر",
+    colDetails: "التفاصيل",
+    colTime: "الوقت",
+    systemUser: "النظام",
+    noDetails: "—",
+    empty: "لا يوجد نشاط في هذه الفترة",
+    loadError: "تعذر تحميل السجلات",
+    totalLabel: (n) => `إجمالي ${n} سجل`,
+    pageLabel: (page, totalPages) => `صفحة ${page} / ${totalPages}`,
+    prevPage: "السابق",
+    nextPage: "التالي",
+    retentionNote: (days) => `يتم حذف السجلات الأقدم من ${days} يومًا تلقائيًا`,
+    showMore: (n) => `عرض ${n} أخرى`,
+    showLess: "عرض أقل",
+    dayOption: (n) => `${n} يوم`,
+    entities: ENTITY_NOUNS.ar,
+    verbs: {
+      CREATE: (n) => `تمت إضافة ${n}`,
+      UPDATE: (n) => `تم تحديث ${n}`,
+      DELETE: (n) => `تم حذف ${n}`,
+    },
+    special: specialFor("ar"),
+  },
+});
+
+export type ActivityLogText = (typeof activityText)["bn"];
 
 function humanize(value: string): string {
   return value
@@ -457,23 +438,24 @@ function humanize(value: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Turns a raw {entity, action} activity-log row into a readable sentence in the given language. */
-export function translateActivityAction(entity: string, action: string, lang: Lang): string {
+/** Turns a raw {entity, action} activity-log row into a readable sentence in
+ * the current UI language. Pass `t` (from useText) inside components. */
+export function translateActivityAction(entity: string, action: string, t: ActivityLogText = getText(activityText)): string {
   const normEntity = (entity || "").toLowerCase();
   const normAction = (action || "").toUpperCase();
 
-  const special = SPECIAL_LABELS[lang][`${normEntity}|${normAction}`];
+  const special = t.special[`${normEntity}|${normAction}`];
   if (special) return special;
 
   const baseEntity = normEntity.split("/")[0];
-  const noun = ENTITY_NOUNS[lang][baseEntity] ?? humanize(normEntity);
-  const verb = ACTION_VERBS[lang][normAction] ?? ACTION_VERBS[lang].UPDATE;
+  const noun = t.entities[baseEntity] ?? humanize(normEntity);
+  const verb = t.verbs[normAction] ?? t.verbs.UPDATE;
   return verb(noun);
 }
 
 /** Human-readable label for the raw entity string (used for the "Entity" column). */
-export function translateEntityName(entity: string, lang: Lang): string {
+export function translateEntityName(entity: string, t: ActivityLogText = getText(activityText)): string {
   const normEntity = (entity || "").toLowerCase();
   const baseEntity = normEntity.split("/")[0];
-  return ENTITY_NOUNS[lang][baseEntity] ?? humanize(normEntity);
+  return t.entities[baseEntity] ?? humanize(normEntity);
 }

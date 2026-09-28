@@ -2,12 +2,8 @@ import { useState } from "react";
 import { FaEdit } from "react-icons/fa";
 import { filterByScript, ScriptLang } from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import { filterToDigits } from "@madrasha/shared-ui/src/components/ui/NumericInput";
-
-const SCRIPT_HINTS: Record<ScriptLang, string> = {
-  bn: "শুধু বাংলায় লিখুন",
-  ar: "শুধু আরবিতে লিখুন",
-  en: "Write in English only",
-};
+import { useText, commonText } from "@madrasha/shared-ui/src/i18n";
+import { studentProfileText } from "./studentProfile.text";
 
 const Field = ({
   label,
@@ -23,6 +19,8 @@ const Field = ({
   scriptLang,
   numeric,
 }: any) => {
+  const pt = useText(studentProfileText);
+  const c = useText(commonText);
   const isEditing = isEditMode && editableField === name;
   const [showScriptHint, setShowScriptHint] = useState(false);
 
@@ -57,7 +55,7 @@ const Field = ({
               ${error ? "border-red-500" : ""}
             `}
           >
-            <option value="">নির্বাচন করুন</option>
+            <option value="">{c.select}</option>
             {options.map((opt: any) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -66,7 +64,7 @@ const Field = ({
           </select>
         ) : (
           <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            {options.find((o: any) => o.value == value)?.label || "N/A"}
+            {options.find((o: any) => o.value == value)?.label || pt.notAvailable}
           </p>
         )
       ) : (
@@ -98,7 +96,7 @@ const Field = ({
 
           {scriptLang && isEditing && showScriptHint && (
             <span className="text-[11px] text-gray-400 mt-0.5 dark:text-slate-500">
-              {SCRIPT_HINTS[scriptLang as ScriptLang]}
+              {pt.scriptHint[scriptLang as ScriptLang]}
             </span>
           )}
         </>

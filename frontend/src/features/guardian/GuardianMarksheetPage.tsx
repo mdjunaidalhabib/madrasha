@@ -7,21 +7,23 @@ import { useTenantSlug } from "../../utils/useTenantSlug";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { formatDate, localizeDigits, usePrintLang, usePrintText, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
-const formatDob = (value: unknown) => {
+const formatDob = (value: unknown, lang: Lang) => {
   if (!value) return "—";
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("bn-BD");
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  PASS: "পাশ",
-  FAIL: "ফেল",
-  ABSENT: "অনুপস্থিত",
+  return formatDate(date, lang);
 };
 
 export default function GuardianMarksheetPage() {
+  const t = useText(guardianText);
+  // The marksheet body is a printable document - it follows the institution
+  // default language, whoever views/prints it.
+  const p = usePrintText(guardianText).ms;
+  const { lang: printLang, dir: printDir } = usePrintLang();
+  const n = (value: unknown) => localizeDigits(String(value), printLang);
   const { resultMasterId } = useParams();
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const madrasaSlug = useTenantSlug();
@@ -49,13 +51,13 @@ export default function GuardianMarksheetPage() {
   }, [selectedStudentId, resultMasterId]);
 
   if (!selectedStudentId) {
-    return <EmptyState title="কোনো সন্তান যুক্ত নেই" />;
+    return <EmptyState title={t.noChild} />;
   }
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="মার্কশিট" />
+        <PageHeader title={t.marksheet} />
         <SkeletonCard lines={8} />
       </div>
     );
@@ -64,14 +66,14 @@ export default function GuardianMarksheetPage() {
   if (notFound || !data) {
     return (
       <EmptyState
-        title="ফলাফল পাওয়া যায়নি"
-        hint="এই মার্কশিট প্রকাশিত নয় অথবা আপনার সন্তানের সাথে সম্পর্কিত নয়।"
+        title={t.resultNotFound}
+        hint={t.resultNotFoundHint}
         action={
           <Link
             to={`${base}/results`}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            ফলাফল তালিকায় ফিরে যান
+            {t.backToResults}
           </Link>
         }
       />
@@ -85,64 +87,66 @@ export default function GuardianMarksheetPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <PageHeader title="মার্কশিট" subtitle={`${data.examName} - ${data.examYear}`} />
+        <PageHeader title={t.marksheet} subtitle={`${data.examName} - ${data.examYear}`} />
         <div className="flex gap-2">
           <Link
             to={`${base}/results`}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            ফিরে যান
+            {t.back}
           </Link>
           <button
             type="button"
             onClick={() => window.print()}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            প্রিন্ট করুন
+            {t.print}
           </button>
         </div>
       </div>
 
       <section
+        lang={printLang}
+        dir={printDir}
         className={`mx-auto max-w-3xl rounded-2xl border bg-white p-6 shadow-sm print:rounded-none print:border-0 print:shadow-none sm:p-8 ${
           failed ? "bg-red-50" : isAbsent ? "bg-amber-50" : "bg-white"
         }`}
       >
         <div className="border-b-2 border-black pb-3 text-center text-black">
-          <h2 className="text-2xl font-bold text-black">মার্কশিট</h2>
-          <p className="mt-1 text-sm font-semibold text-black">শ্রেণিঃ {data.className}</p>
+          <h2 className="text-2xl font-bold text-black">{p.title}</h2>
+          <p className="mt-1 text-sm font-semibold text-black">{p.classLabel} {data.className}</p>
           <p className="mt-1 text-sm font-semibold text-black">
-            {data.examName} - {data.examYear} ইং
+            {data.examName} - {n(data.examYear)} {p.yearSuffix}
           </p>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 py-3 text-sm text-black sm:grid-cols-3">
           <p>
-            <b>রোল নম্বর:</b> {data.roll ?? "—"}
+            <b>{p.rollNo}</b> {n(data.roll ?? "—")}
           </p>
           <p>
-            <b>রেজিস্ট্রেশন নম্বর:</b> {data.registrationNo ?? "—"}
+            <b>{p.registrationNo}</b> {n(data.registrationNo ?? "—")}
           </p>
           <p>
-            <b>জন্ম তারিখ:</b> {formatDob(data.dob)}
+            <b>{p.dob}</b> {formatDob(data.dob, printLang)}
           </p>
           <p>
-            <b>শিক্ষার্থীর নাম:</b> {data.studentName}
+            <b>{p.studentName}</b> {data.studentName}
           </p>
           <p>
-            <b>পিতার নাম:</b> {data.fatherName || "—"}
+            <b>{p.fatherName}</b> {data.fatherName || "—"}
           </p>
           <p>
-            <b>ফলাফল বিভাগ:</b> {data.madrasaGrade || "—"}
+            <b>{p.resultDivision}</b> {data.madrasaGrade || "—"}
           </p>
           <p>
-            <b>গ্রেড:</b> {data.generalGrade || "—"}
+            <b>{p.grade}</b> {data.generalGrade || "—"}
           </p>
           <p>
-            <b>মেধাস্থান:</b> {data.rankNo ?? "—"}
+            <b>{p.rank}</b> {n(data.rankNo ?? "—")}
           </p>
           <p>
-            <b>অবস্থা:</b> {STATUS_LABEL[rowStatus] || rowStatus || "—"}
+            <b>{p.status}</b> {p.resultStatus[rowStatus] || rowStatus || "—"}
           </p>
         </div>
 
@@ -151,39 +155,39 @@ export default function GuardianMarksheetPage() {
             <table className="mt-4 w-full min-w-[420px] border-collapse text-sm text-black">
               <thead>
                 <tr className="bg-slate-100">
-                  <th className="w-12 border border-black px-2 py-2 text-center">ক্রম</th>
-                  <th className="border border-black px-3 py-2 text-start">বিষয়ের নাম</th>
-                  <th className="w-24 border border-black px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
-                  <th className="w-24 border border-black px-3 py-2 text-center">পূর্ণমান</th>
+                  <th className="w-12 border border-black px-2 py-2 text-center">{p.serial}</th>
+                  <th className="border border-black px-3 py-2 text-start">{p.subjectName}</th>
+                  <th className="w-24 border border-black px-3 py-2 text-center">{p.obtained}</th>
+                  <th className="w-24 border border-black px-3 py-2 text-center">{p.fullMarks}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.subjects.map((subject: any, index: number) => (
                   <tr key={subject.bookId ?? index}>
-                    <td className="border border-black px-2 py-1.5 text-center">{index + 1}</td>
+                    <td className="border border-black px-2 py-1.5 text-center">{n(index + 1)}</td>
                     <td className="border border-black px-3 py-1.5">{subject.subjectName || "—"}</td>
                     <td className="border border-black px-3 py-1.5 text-center font-semibold">
-                      {subject.isAbsent ? "অনু" : (subject.mark ?? "—")}
+                      {subject.isAbsent ? p.absentShort : n(subject.mark ?? "—")}
                     </td>
                     <td className="border border-black px-3 py-1.5 text-center">
-                      {subject.fullMarks ?? "—"}
+                      {n(subject.fullMarks ?? "—")}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50">
                   <td colSpan={2} className="border border-black px-3 py-1.5 font-semibold">
-                    মোট নম্বর
+                    {p.totalMarks}
                   </td>
                   <td colSpan={2} className="border border-black px-3 py-1.5 text-center font-bold">
-                    {data.total}
+                    {n(data.total)}
                   </td>
                 </tr>
                 <tr className="bg-slate-50">
                   <td colSpan={2} className="border border-black px-3 py-1.5 font-semibold">
-                    গড় নম্বর
+                    {p.averageMarks}
                   </td>
                   <td colSpan={2} className="border border-black px-3 py-1.5 text-center font-bold">
-                    {data.average}
+                    {n(data.average)}
                   </td>
                 </tr>
               </tbody>

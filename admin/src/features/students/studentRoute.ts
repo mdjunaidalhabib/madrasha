@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { studentsText } from "./students.text";
 import { cachedGet } from "../../services/api";
 
 /**
@@ -49,7 +51,7 @@ export const useStudentIdParam = (): string | undefined => {
         if (!cancelled && res.data?.data?.id) setId(String(res.data.data.id));
       })
       .catch(() => {
-        if (!cancelled) useToastStore.getState().show("এই রেজিস্ট্রেশন নম্বরে কোনো ছাত্র পাওয়া যায়নি", "error");
+        if (!cancelled) useToastStore.getState().show(getText(studentsText).regNotFound, "error");
       });
     return () => {
       cancelled = true;

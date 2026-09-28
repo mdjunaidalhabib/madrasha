@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import guardianApi from "../../services/guardianApi";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
+import { formatDate, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianNoticesPage() {
+  const t = useText(guardianText);
+  const lang = useLang();
   const [notices, setNotices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,9 +21,9 @@ export default function GuardianNoticesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="নোটিশ" subtitle="মাদরাসার সাম্প্রতিক নোটিশসমূহ" />
+      <PageHeader title={t.notices} subtitle={t.noticesSubtitle} />
 
-      {!loading && notices.length === 0 && <EmptyState title="কোনো নোটিশ নেই" />}
+      {!loading && notices.length === 0 && <EmptyState title={t.noNotices} />}
 
       <div className="space-y-3">
         {notices.map((notice) => (
@@ -28,7 +32,7 @@ export default function GuardianNoticesPage() {
               <h3 className="font-bold text-slate-900">{notice.title}</h3>
               {notice.publishedAt && (
                 <span className="text-xs text-slate-400">
-                  {new Date(notice.publishedAt).toLocaleDateString("bn-BD")}
+                  {formatDate(notice.publishedAt, lang)}
                 </span>
               )}
             </div>

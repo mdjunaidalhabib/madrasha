@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { superAdminService } from "./superadmin.service";
+import { t } from "../../shared/i18n";
 
 const respondError = (res: Response, error: unknown, logTag?: string) => {
   if (error instanceof ApiError) {
@@ -46,7 +47,7 @@ export const listPlans = async (_req: Request, res: Response) => {
 export const assignPlanToMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.assignPlanToMadrasa(Number(req.params.id), req.body);
-    res.json({ message: "Plan assigned successfully" });
+    res.json({ message: t({ bn: "প্ল্যান নির্ধারণ করা হয়েছে", en: "Plan assigned successfully" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -57,7 +58,7 @@ export const createMadrasa = async (req: Request, res: Response) => {
   try {
     const result = await superAdminService.createMadrasa(req.body);
     res.status(HttpStatus.CREATED).json({
-      message: "Madrasa created successfully",
+      message: t({ bn: "প্রতিষ্ঠান তৈরি হয়েছে", en: "Institution created successfully" }),
       madrasa_id: result.madrasaId,
       slug: result.finalSlug,
     });
@@ -70,7 +71,7 @@ export const createMadrasa = async (req: Request, res: Response) => {
 export const updateMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.updateMadrasa(Number(req.params.id), req.body);
-    res.json({ message: "Madrasa updated successfully" });
+    res.json({ message: t({ bn: "প্রতিষ্ঠান আপডেট হয়েছে", en: "Institution updated successfully" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -80,7 +81,7 @@ export const updateMadrasa = async (req: Request, res: Response) => {
 export const activateMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.activateMadrasa(Number(req.params.id));
-    res.json({ message: "Activated" });
+    res.json({ message: t({ bn: "সক্রিয় করা হয়েছে", en: "Activated" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -89,7 +90,7 @@ export const activateMadrasa = async (req: Request, res: Response) => {
 export const suspendMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.suspendMadrasa(Number(req.params.id));
-    res.json({ message: "Suspended" });
+    res.json({ message: t({ bn: "স্থগিত করা হয়েছে", en: "Suspended" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -99,7 +100,7 @@ export const suspendMadrasa = async (req: Request, res: Response) => {
 export const trashMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.trashMadrasa(Number(req.params.id));
-    res.json({ message: "Moved to trash and suspended" });
+    res.json({ message: t({ bn: "ট্র্যাশে পাঠানো ও স্থগিত করা হয়েছে", en: "Moved to trash and suspended" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -119,7 +120,7 @@ export const listTrash = async (_req: Request, res: Response) => {
 export const restoreMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.restoreMadrasa(Number(req.params.id));
-    res.json({ message: "Restored successfully" });
+    res.json({ message: t({ bn: "পুনরুদ্ধার করা হয়েছে", en: "Restored successfully" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -179,7 +180,7 @@ export const listMadrasaUsers = async (req: Request, res: Response) => {
 export const createMadrasaUser = async (req: Request, res: Response) => {
   try {
     const result = await superAdminService.createMadrasaUser(Number(req.params.id), req.body);
-    res.status(HttpStatus.CREATED).json({ message: "User created", id: result.id });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "ব্যবহারকারী তৈরি হয়েছে", en: "User created" }), id: result.id });
   } catch (error) {
     respondError(res, error);
   }
@@ -188,7 +189,7 @@ export const createMadrasaUser = async (req: Request, res: Response) => {
 export const deleteMadrasaUser = async (req: Request, res: Response) => {
   try {
     await superAdminService.deleteMadrasaUser(Number(req.params.id), Number(req.params.userId));
-    res.json({ message: "User deleted" });
+    res.json({ message: t({ bn: "ব্যবহারকারী মুছে ফেলা হয়েছে", en: "User deleted" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -201,7 +202,7 @@ export const updateMadrasaUserCredentials = async (req: Request, res: Response) 
       Number(req.params.userId),
       req.body,
     );
-    res.json({ message: "User credentials updated" });
+    res.json({ message: t({ bn: "ব্যবহারকারীর লগইন তথ্য আপডেট হয়েছে", en: "User credentials updated" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -214,7 +215,7 @@ export const updateMadrasaUserRoleStatus = async (req: Request, res: Response) =
       Number(req.params.userId),
       req.body,
     );
-    res.json({ message: "User role/status updated" });
+    res.json({ message: t({ bn: "ব্যবহারকারীর রোল/অবস্থা আপডেট হয়েছে", en: "User role/status updated" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -224,7 +225,7 @@ export const updateMadrasaUserRoleStatus = async (req: Request, res: Response) =
 export const permanentDeleteMadrasa = async (req: Request, res: Response) => {
   try {
     await superAdminService.permanentDeleteMadrasa(Number(req.params.id));
-    res.json({ message: "Permanently deleted" });
+    res.json({ message: t({ bn: "স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Permanently deleted" }) });
   } catch (error) {
     respondError(res, error, "Permanent delete error:");
   }

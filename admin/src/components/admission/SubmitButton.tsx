@@ -1,9 +1,13 @@
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
+
 interface Props {
   loading?: boolean;
   isReAdmission?: boolean;
 }
 
 const SubmitButton: React.FC<Props> = ({ loading = false, isReAdmission = false }) => {
+  const t = useText(admissionText);
   return (
     <div className="sticky bottom-0 sm:bottom-4 z-10 flex justify-center rounded-xl border border-gray-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900">
       <button
@@ -18,10 +22,10 @@ const SubmitButton: React.FC<Props> = ({ loading = false, isReAdmission = false 
         )}
 
         {loading
-          ? "Submitting..."
+          ? t.submitting
           : isReAdmission
-            ? "সেশন আপডেট করুন (পুনঃভর্তি)"
-            : "Submit Admission"}
+            ? t.submitReadmission
+            : t.submitAdmission}
       </button>
     </div>
   );

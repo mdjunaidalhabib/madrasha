@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { promotionService } from "./promotion.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -17,5 +18,5 @@ export const previewPromotion = asyncHandler(async (req: Request, res: Response)
 
 export const executePromotion = asyncHandler(async (req: Request, res: Response) => {
   const data = await promotionService.execute(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.success(res, { message: "Promotion completed successfully", data });
+  return ApiResponse.success(res, { message: t({ bn: "প্রমোশন সম্পন্ন হয়েছে", en: "Promotion completed successfully", ar: "تمت الترقية بنجاح" }), data });
 });

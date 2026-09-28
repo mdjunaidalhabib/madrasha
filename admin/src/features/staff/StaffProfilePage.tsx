@@ -11,10 +11,11 @@ import ProfileQuickNav, { type QuickNavRecord } from "../../components/common/Pr
 import { profileActionButtonClass as actionButtonClass } from "../../components/common/profileActionStyles";
 
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../teachers/teacherStaff.text";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -22,6 +23,9 @@ const StaffProfilePage = () => {
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const t = useText(teacherStaffText);
+  const c = useText(commonText);
+  const lang = useLang();
 
   const [staff, setStaff] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
@@ -45,7 +49,7 @@ const StaffProfilePage = () => {
         setStaff(deepCopy(data));
         setOriginal(deepCopy(data));
       })
-      .catch(() => useToastStore.getState().show("❌ Failed to load staff", "error"))
+      .catch(() => useToastStore.getState().show(getText(teacherStaffText).loadStaffProfileFailed, "error"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -84,7 +88,7 @@ const StaffProfilePage = () => {
 
       await api.put(`/staff/${id}`, changed);
 
-      useToastStore.getState().show("✅ Staff Updated Successfully", "success");
+      useToastStore.getState().show(getText(teacherStaffText).staffUpdated, "success");
 
       const newData = { ...original, ...changed };
 
@@ -96,7 +100,7 @@ const StaffProfilePage = () => {
     } catch (error) {
       logger.error("Update failed:", error);
 
-      useToastStore.getState().show("❌ Update failed", "error");
+      useToastStore.getState().show(getText(teacherStaffText).updateFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -104,19 +108,19 @@ const StaffProfilePage = () => {
 
   const handleDelete = () => {
     useConfirmStore.getState().show({
-      title: "স্টাফ মুছবেন?",
-      message: "এই স্টাফকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
-      confirmText: "ট্র্যাশে সরান",
+      title: getText(teacherStaffText).deleteStaffTitle,
+      message: getText(teacherStaffText).deleteStaffMessage,
+      confirmText: getText(teacherStaffText).moveToTrash,
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/staff/${id}`);
 
-          useToastStore.getState().show("🗑️ ট্র্যাশে সরানো হয়েছে", "success");
+          useToastStore.getState().show(getText(teacherStaffText).movedToTrash, "success");
 
           navigate(`/teacher_staff/all_staff`);
         } catch {
-          useToastStore.getState().show("❌ মুছে ফেলা যায়নি", "error");
+          useToastStore.getState().show(getText(teacherStaffText).deleteFailed, "error");
         }
       },
     });
@@ -130,10 +134,10 @@ const StaffProfilePage = () => {
   const quickNavMeta = useCallback(
     (record: QuickNavRecord) => [
       record.designation as string,
-      `রেজি. ${record.registration_no ? toBanglaDigits(record.registration_no as number) : "নেই"}`,
+      t.regShort(record.registration_no ? localizeDigits(record.registration_no as number, lang) : t.none),
       record.phone as string,
     ],
-    [],
+    [t, lang],
   );
 
   const quickNavSearchFields = useCallback(
@@ -148,8 +152,8 @@ const StaffProfilePage = () => {
       endpoint="/staff"
       currentId={id}
       profilePath={quickNavPath}
-      placeholder="অন্য স্টাফ খুঁজুন — নাম / রেজি. / পদবি"
-      ariaLabel="অন্য স্টাফ খুঁজুন"
+      placeholder={t.searchOtherStaff}
+      ariaLabel={t.searchOtherStaffAria}
       metaParts={quickNavMeta}
       extraSearchFields={quickNavSearchFields}
       phoneFields={quickNavPhoneFields}
@@ -165,19 +169,19 @@ const StaffProfilePage = () => {
       </div>
     );
 
-  if (!staff) return <p className="p-6 text-gray-900 dark:text-slate-100">No staff found</p>;
+  if (!staff) return <p className="p-6 text-gray-900 dark:text-slate-100">{t.noStaffFound}</p>;
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
       {quickNav}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold sm:text-2xl text-gray-900 dark:text-slate-100">Staff Profile</h1>
+        <h1 className="text-xl font-bold sm:text-2xl text-gray-900 dark:text-slate-100">{t.staffProfile}</h1>
 
         <div className="flex flex-wrap items-center gap-1.5">
           {!isEditMode ? (
             <button onClick={() => setIsEditMode(true)} className={`${actionButtonClass} bg-blue-500`}>
-              Edit
+              {c.edit}
             </button>
           ) : (
             <>
@@ -189,7 +193,7 @@ const StaffProfilePage = () => {
                 }}
                 className={`${actionButtonClass} bg-gray-500`}
               >
-                Cancel
+                {c.cancel}
               </button>
 
               <button
@@ -197,13 +201,13 @@ const StaffProfilePage = () => {
                 disabled={!isChanged() || saving}
                 className={`${actionButtonClass} ${isChanged() ? "bg-green-500" : "bg-gray-400"}`}
               >
-                {saving ? "Saving..." : "Update"}
+                {saving ? c.saving : c.update}
               </button>
             </>
           )}
 
           <button onClick={handleDelete} className={`${actionButtonClass} bg-red-500`}>
-            Delete
+            {c.delete}
           </button>
         </div>
       </div>

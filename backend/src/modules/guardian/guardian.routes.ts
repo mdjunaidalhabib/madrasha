@@ -18,6 +18,7 @@ import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { guardianAuthMiddleware } from "../../shared/middleware/guardianAuth.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import { guardianLoginSchema, guardianChangePasswordSchema } from "./guardian.validation";
+import { t } from "../../shared/i18n";
 
 const router = Router();
 
@@ -29,7 +30,7 @@ const loginLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many login attempts. Please try again later." },
+  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later.", ar: "محاولات تسجيل دخول كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
 });
 
 router.post("/login", loginLimiter, tenantMiddleware, validate(guardianLoginSchema), guardianLogin);

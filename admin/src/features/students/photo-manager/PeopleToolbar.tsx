@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 import { Briefcase, GraduationCap, RefreshCw, Search, Users, X } from "lucide-react";
 import FilterSelect from "../../../components/common/FilterSelect";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
-import { TAB_META, type PeopleTab } from "./photoManager";
+import { useText, useLang, localizeDigits } from "@madrasha/shared-ui/src/i18n";
+import { type PeopleTab } from "./photoManager";
+import { peopleToolsText } from "./peopleTools.text";
 import type { PeopleDirectory } from "./usePeopleDirectory";
 
 const TAB_ICONS: Record<PeopleTab, typeof Users> = { students: GraduationCap, teachers: Users, staff: Briefcase };
 
 /** শিক্ষার্থী | শিক্ষক | স্টাফ switcher (hidden when only one tab is allowed). */
 export function PeopleTabs({ dir, disabled }: { dir: PeopleDirectory; disabled?: boolean }) {
+  const pt = useText(peopleToolsText);
   if (dir.tabs.length < 2) return null;
   return (
     <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 sm:self-start">
@@ -26,7 +28,7 @@ export function PeopleTabs({ dir, disabled }: { dir: PeopleDirectory; disabled?:
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
-            <Icon className="h-4 w-4" /> {TAB_META[t].label}
+            <Icon className="h-4 w-4" /> {pt.tabs[t]}
           </button>
         );
       })}
@@ -40,7 +42,7 @@ export function ProgressSummary({
   total,
   done,
   doneLabel,
-  remainingLabel = "বাকি",
+  remainingLabel,
 }: {
   scopeLabel: string;
   total: number;
@@ -48,6 +50,9 @@ export function ProgressSummary({
   doneLabel: string;
   remainingLabel?: string;
 }) {
+  const pt = useText(peopleToolsText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const percent = total ? Math.round((done / total) * 100) : 0;
   return (
     <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -55,11 +60,11 @@ export function ProgressSummary({
         <div className="text-sm text-slate-600 dark:text-slate-300">
           <span className="font-semibold text-slate-800 dark:text-slate-100">{scopeLabel}</span>
           <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
-          মোট <b className="text-slate-900 dark:text-white">{toBanglaDigits(total)}</b>
+          {pt.total} <b className="text-slate-900 dark:text-white">{toBanglaDigits(total)}</b>
           <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
           {doneLabel} <b className="text-emerald-600 dark:text-emerald-400">{toBanglaDigits(done)}</b>
           <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
-          {remainingLabel} <b className="text-amber-600 dark:text-amber-400">{toBanglaDigits(total - done)}</b>
+          {remainingLabel ?? pt.remaining} <b className="text-amber-600 dark:text-amber-400">{toBanglaDigits(total - done)}</b>
         </div>
         <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{toBanglaDigits(percent)}%</div>
       </div>
@@ -83,6 +88,7 @@ export function SegmentedFilter<T extends string>({
   onChange: (v: T) => void;
   options: { value: T; label: string; count?: number }[];
 }) {
+  const lang = useLang();
   return (
     <div className="inline-flex flex-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800 lg:flex-none">
       {options.map((o) => (
@@ -99,7 +105,7 @@ export function SegmentedFilter<T extends string>({
           {o.label}
           {o.count !== undefined && (
             <span className="rounded-full bg-slate-200/70 px-1.5 text-[10px] dark:bg-slate-600/60">
-              {toBanglaDigits(o.count)}
+              {localizeDigits(o.count, lang)}
             </span>
           )}
         </button>
@@ -120,6 +126,7 @@ export function PeopleFilterBar({
   disabled?: boolean;
 }) {
   const { tab } = dir;
+  const pt = useText(peopleToolsText);
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -129,7 +136,7 @@ export function PeopleFilterBar({
             type="text"
             value={dir.search}
             onChange={(e) => dir.setSearch(e.target.value)}
-            placeholder={tab === "students" ? "নাম, রোল বা রেজি. নং" : "নাম বা রেজি. নং"}
+            placeholder={tab === "students" ? pt.searchStudents : pt.searchOthers}
             className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-8 text-sm outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
           {dir.search && (
@@ -137,7 +144,7 @@ export function PeopleFilterBar({
               type="button"
               onClick={() => dir.setSearch("")}
               className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
-              aria-label="সার্চ মুছুন"
+              aria-label={pt.clearSearch}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -151,7 +158,7 @@ export function PeopleFilterBar({
             disabled={disabled}
             wrapperClassName={tab === "students" ? "w-full sm:w-[150px]" : "col-span-2 w-full sm:w-[150px]"}
           >
-            <option value="">সব বিভাগ</option>
+            <option value="">{pt.allDivisions}</option>
             {dir.divisions.map((d) => (
               <option key={d.division_id} value={d.division_id}>
                 {d.division_name_bn}
@@ -167,7 +174,7 @@ export function PeopleFilterBar({
             disabled={disabled}
             wrapperClassName="w-full sm:w-[170px]"
           >
-            <option value="">সব শ্রেণি</option>
+            <option value="">{pt.allClasses}</option>
             {dir.classOptions.map((c) => (
               <option key={c.class_id} value={c.class_id}>
                 {c.class_name_bn}
@@ -184,8 +191,8 @@ export function PeopleFilterBar({
           onClick={dir.reload}
           disabled={dir.loading || disabled}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
-          title="রিফ্রেশ"
-          aria-label="রিফ্রেশ"
+          title={pt.refresh}
+          aria-label={pt.refresh}
         >
           <RefreshCw className={`h-4 w-4 ${dir.loading ? "animate-spin" : ""}`} />
         </button>

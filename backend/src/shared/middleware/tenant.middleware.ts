@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../database/prisma";
 import { logger } from "../logger/logger";
+import { t } from "../i18n";
 
 function normalizeSlug(value: unknown) {
   return String(value || "")
@@ -52,7 +53,7 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
 
     if (!slug) {
       return res.status(400).json({
-        message: "Madrasa slug required. Example: /jamia/admin/login",
+        message: t({ bn: "প্রতিষ্ঠানের slug আবশ্যক। উদাহরণ: /jamia/admin/login", en: "Institution slug required. Example: /jamia/admin/login", ar: "المعرف المختصر للمؤسسة مطلوب. مثال: /jamia/admin/login" }),
       });
     }
 
@@ -62,15 +63,15 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     });
 
     if (!madrasa) {
-      return res.status(410).json({ message: "Madrasa not found" });
+      return res.status(410).json({ message: t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }) });
     }
 
     if (madrasa.deletedAt) {
-      return res.status(410).json({ message: "This madrasa has been deleted" });
+      return res.status(410).json({ message: t({ bn: "এই প্রতিষ্ঠানটি মুছে ফেলা হয়েছে", en: "This institution has been deleted", ar: "تم حذف هذه المؤسسة" }) });
     }
 
     if (!madrasa.isActive) {
-      return res.status(423).json({ message: "This madrasa is suspended" });
+      return res.status(423).json({ message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended", ar: "هذه المؤسسة معلقة" }) });
     }
 
     req.tenant = {
@@ -81,6 +82,6 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     next();
   } catch (err: any) {
     logger.error("Tenant middleware error", err);
-    return res.status(500).json({ message: "Tenant resolution failed" });
+    return res.status(500).json({ message: t({ bn: "প্রতিষ্ঠান শনাক্ত করা যায়নি", en: "Tenant resolution failed", ar: "تعذر تحديد المؤسسة" }) });
   }
 };

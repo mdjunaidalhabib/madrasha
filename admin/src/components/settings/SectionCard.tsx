@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ToggleSwitch } from "./ToggleSwitch";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
 
 export default function SectionCard({
   title,
@@ -20,6 +21,7 @@ export default function SectionCard({
   /** হেডারের ডান পাশে বাটনের মতো একটি অ্যাকশন (যেমনঃ "ডিফল্টে ফিরুন")। */
   actions?: ReactNode;
 }) {
+  const c = useText(commonText);
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -37,7 +39,7 @@ export default function SectionCard({
           <div className="flex shrink-0 items-center gap-2">
             {!toggle.checked && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                নিষ্ক্রিয়
+                {c.inactive}
               </span>
             )}
             <ToggleSwitch checked={toggle.checked} onChange={toggle.onChange} disabled={toggle.disabled} />

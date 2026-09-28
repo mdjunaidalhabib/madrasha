@@ -6,18 +6,22 @@ import { getTenantGuardianBase } from "../utils/tenantSlug";
 import { useTenantSlug } from "../utils/useTenantSlug";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
 import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
+import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "../features/guardian/guardian.text";
 
+// Labels come from guardianText.nav[to].
 const NAV_ITEMS = [
-  { to: "dashboard", label: "ড্যাশবোর্ড" },
-  { to: "profile", label: "প্রোফাইল" },
-  { to: "attendance", label: "হাজিরা" },
-  { to: "results", label: "ফলাফল" },
-  { to: "exam-routine", label: "পরীক্ষার সময়সূচি" },
-  { to: "fees", label: "ফি" },
-  { to: "notices", label: "নোটিশ" },
+  { to: "dashboard" },
+  { to: "profile" },
+  { to: "attendance" },
+  { to: "results" },
+  { to: "exam-routine" },
+  { to: "fees" },
+  { to: "notices" },
 ];
 
 export default function GuardianLayout() {
+  const t = useText(guardianText);
   const madrasaSlug = useTenantSlug();
   const base = getTenantGuardianBase(madrasaSlug);
   const nav = useNavigate();
@@ -38,14 +42,14 @@ export default function GuardianLayout() {
   }, [setChildren]);
 
   const breadcrumbs = useMemo(() => {
-    const home = { label: "হোম", to: `${base}/dashboard` };
+    const home = { label: t.home, to: `${base}/dashboard` };
     if (location.pathname.startsWith(`${base}/results/`)) {
-      return [home, { label: "ফলাফল", to: `${base}/results` }, { label: "মার্কশিট" }];
+      return [home, { label: t.nav.results, to: `${base}/results` }, { label: t.marksheet }];
     }
     const current = NAV_ITEMS.find((item) => location.pathname === `${base}/${item.to}`);
-    if (!current || current.to === "dashboard") return [home, { label: "ড্যাশবোর্ড" }];
-    return [home, { label: current.label }];
-  }, [base, location.pathname]);
+    if (!current || current.to === "dashboard") return [home, { label: t.nav.dashboard }];
+    return [home, { label: t.nav[current.to] }];
+  }, [base, location.pathname, t]);
 
   const handleLogout = () => {
     logout();
@@ -57,14 +61,14 @@ export default function GuardianLayout() {
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-bold text-slate-900">অভিভাবক প্যানেল</p>
+            <p className="text-sm font-bold text-slate-900">{t.panelTitle}</p>
             <p className="text-xs text-slate-500">{guardian?.name || guardian?.phone}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {children.length > 1 && (
               <select
-                aria-label="সন্তান নির্বাচন করুন"
+                aria-label={t.selectChild}
                 value={selectedStudentId ?? ""}
                 onChange={(e) => selectStudent(Number(e.target.value))}
                 className="rounded border px-2 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -76,11 +80,12 @@ export default function GuardianLayout() {
                 ))}
               </select>
             )}
+            <LanguageSwitcher />
             <button
               onClick={handleLogout}
               className="rounded bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              লগআউট
+              {t.logout}
             </button>
           </div>
         </div>
@@ -96,7 +101,7 @@ export default function GuardianLayout() {
                 }`
               }
             >
-              {item.label}
+              {t.nav[item.to]}
             </NavLink>
           ))}
         </nav>

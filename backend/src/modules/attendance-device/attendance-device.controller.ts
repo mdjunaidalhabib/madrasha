@@ -16,6 +16,8 @@ import {
 } from "./attendance-device.dto";
 import { attendanceDeviceService } from "./attendance-device.service";
 import { attendanceDeviceIngestService } from "./attendance-device-ingest.service";
+import { t } from "../../shared/i18n";
+import { localizeZodFlatten } from "../../shared/validators/messages";
 
 const madrasaIdOf = (req: Request): number => {
   const id = req.tenant?.madrasa_id;
@@ -24,19 +26,19 @@ const madrasaIdOf = (req: Request): number => {
 };
 
 const deviceOf = (req: Request) => {
-  if (!req.attendanceDevice) throw new UnauthorizedError("Device not authenticated");
+  if (!req.attendanceDevice) throw new UnauthorizedError(t({ bn: "ডিভাইস যাচাই করা হয়নি", en: "Device not authenticated", ar: "لم تتم مصادقة الجهاز" }));
   return req.attendanceDevice;
 };
 
 const parse = <S extends ZodTypeAny>(schema: S, data: unknown): z.infer<S> => {
   const result = schema.safeParse(data);
-  if (!result.success) throw new ValidationError("Validation failed", result.error.flatten());
+  if (!result.success) throw new ValidationError(t({ bn: "তথ্য যাচাই ব্যর্থ হয়েছে", en: "Validation failed", ar: "فشل التحقق من البيانات" }), localizeZodFlatten(result.error.flatten()));
   return result.data;
 };
 
 const idParam = (req: Request): number => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) throw new ValidationError("id is invalid");
+  if (!Number.isInteger(id) || id <= 0) throw new ValidationError(t({ bn: "id সঠিক নয়", en: "id is invalid", ar: "المعرف غير صالح" }));
   return id;
 };
 
@@ -70,7 +72,7 @@ export const listDevices = asyncHandler(async (req: Request, res: Response) => {
 
 export const createDevice = asyncHandler(async (req: Request, res: Response) => {
   const data = await attendanceDeviceService.createDevice(madrasaIdOf(req), parse(createDeviceSchema, req.body));
-  return ApiResponse.success(res, { message: "ডিভাইস যোগ করা হয়েছে", data, statusCode: 201 });
+  return ApiResponse.success(res, { message: t({ bn: "ডিভাইস যোগ করা হয়েছে", en: "Device added", ar: "تمت إضافة الجهاز" }), data, statusCode: 201 });
 });
 
 export const updateDevice = asyncHandler(async (req: Request, res: Response) => {
@@ -79,22 +81,22 @@ export const updateDevice = asyncHandler(async (req: Request, res: Response) => 
     idParam(req),
     parse(updateDeviceSchema, req.body),
   );
-  return ApiResponse.success(res, { message: "ডিভাইস আপডেট করা হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "ডিভাইস আপডেট করা হয়েছে", en: "Device updated", ar: "تم تحديث الجهاز" }), data });
 });
 
 export const deleteDevice = asyncHandler(async (req: Request, res: Response) => {
   await attendanceDeviceService.deleteDevice(madrasaIdOf(req), idParam(req));
-  return ApiResponse.success(res, { message: "ডিভাইস মুছে ফেলা হয়েছে" });
+  return ApiResponse.success(res, { message: t({ bn: "ডিভাইস মুছে ফেলা হয়েছে", en: "Device deleted", ar: "تم حذف الجهاز" }) });
 });
 
 export const rotateDeviceKey = asyncHandler(async (req: Request, res: Response) => {
   const data = await attendanceDeviceService.rotateKey(madrasaIdOf(req), idParam(req));
-  return ApiResponse.success(res, { message: "নতুন কী তৈরি হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "নতুন কী তৈরি হয়েছে", en: "New key generated", ar: "تم إنشاء مفتاح جديد" }), data });
 });
 
 export const requestDeviceTest = asyncHandler(async (req: Request, res: Response) => {
   const data = await attendanceDeviceService.requestTest(madrasaIdOf(req), idParam(req));
-  return ApiResponse.success(res, { message: "কানেকশন টেস্ট অনুরোধ করা হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "কানেকশন টেস্ট অনুরোধ করা হয়েছে", en: "Connection test requested", ar: "تم طلب اختبار الاتصال" }), data });
 });
 
 /* ================= admin: mappings ================= */
@@ -109,12 +111,12 @@ export const listMappings = asyncHandler(async (req: Request, res: Response) => 
 
 export const setMapping = asyncHandler(async (req: Request, res: Response) => {
   const data = await attendanceDeviceService.setMapping(madrasaIdOf(req), parse(setMappingSchema, req.body));
-  return ApiResponse.success(res, { message: "ম্যাপিং সংরক্ষণ করা হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "ম্যাপিং সংরক্ষণ করা হয়েছে", en: "Mapping saved", ar: "تم حفظ الربط" }), data });
 });
 
 export const deleteMapping = asyncHandler(async (req: Request, res: Response) => {
   await attendanceDeviceService.deleteMapping(madrasaIdOf(req), Number(req.params.studentId));
-  return ApiResponse.success(res, { message: "ম্যাপিং মুছে ফেলা হয়েছে" });
+  return ApiResponse.success(res, { message: t({ bn: "ম্যাপিং মুছে ফেলা হয়েছে", en: "Mapping deleted", ar: "تم حذف الربط" }) });
 });
 
 export const listUnmappedUsers = asyncHandler(async (req: Request, res: Response) => {

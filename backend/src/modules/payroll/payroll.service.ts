@@ -5,6 +5,7 @@ import { notificationService } from "../notifications/notification.service";
 import { payrollRepository, PayrollRepository } from "./payroll.repository";
 import { GeneratePayrollRequestDto, MarkPayrollPaidRequestDto, PayrollQueryDto } from "./payroll.dto";
 import { MONTH_FORMAT_REGEX, YEAR_FORMAT_REGEX } from "./payroll.constants";
+import { t } from "../../shared/i18n";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -14,7 +15,7 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 const toNonNegative = (value: unknown, fallback = 0): number => {
   if (value === undefined || value === null || value === "") return fallback;
   const num = Number(value);
-  if (Number.isNaN(num) || num < 0) throw new BadRequestError("Amounts must be non-negative numbers");
+  if (Number.isNaN(num) || num < 0) throw new BadRequestError(t({ bn: "পরিমাণ অবশ্যই ঋণাত্মক নয় এমন সংখ্যা হতে হবে", en: "Amounts must be non-negative numbers", ar: "يجب أن تكون المبالغ أعدادًا غير سالبة" }));
   return num;
 };
 
@@ -30,7 +31,7 @@ export class PayrollService {
    */
   async generate(madrasaId: number, dto: GeneratePayrollRequestDto) {
     if (!dto.month || !MONTH_FORMAT_REGEX.test(dto.month)) {
-      throw new BadRequestError('month must be in "YYYY-MM" format');
+      throw new BadRequestError(t({ bn: "মাস অবশ্যই \"YYYY-MM\" ফরম্যাটে হতে হবে", en: "month must be in \"YYYY-MM\" format", ar: "يجب أن يكون الشهر بصيغة \"YYYY-MM\"" }));
     }
 
     const overrideMap = new Map(
@@ -68,7 +69,7 @@ export class PayrollService {
 
       return { created, skipped: teachers.length - created, totalTeachers: teachers.length };
     } catch (err) {
-      return friendlyFailure("generatePayroll error:", err, "Failed to generate payroll");
+      return friendlyFailure("generatePayroll error:", err, t({ bn: "বেতন তালিকা তৈরি করা যায়নি", en: "Failed to generate payroll", ar: "تعذر إنشاء كشف الرواتب" }));
     }
   }
 
@@ -78,7 +79,7 @@ export class PayrollService {
    * the API per month. */
   async list(madrasaId: number, query: PayrollQueryDto) {
     if (query.year && !YEAR_FORMAT_REGEX.test(query.year)) {
-      throw new BadRequestError('year must be in "YYYY" format');
+      throw new BadRequestError(t({ bn: "বছর অবশ্যই \"YYYY\" ফরম্যাটে হতে হবে", en: "year must be in \"YYYY\" format", ar: "يجب أن تكون السنة بصيغة \"YYYY\"" }));
     }
 
     const where: Prisma.PayrollRecordWhereInput = {};
@@ -90,7 +91,7 @@ export class PayrollService {
     try {
       return await this.repository.findMany(madrasaId, where);
     } catch (err) {
-      return friendlyFailure("listPayroll error:", err, "Failed to load payroll records");
+      return friendlyFailure("listPayroll error:", err, t({ bn: "বেতনের রেকর্ড লোড করা যায়নি", en: "Failed to load payroll records", ar: "تعذر تحميل سجلات الرواتب" }));
     }
   }
 
@@ -109,15 +110,15 @@ export class PayrollService {
     const fund = dto.fund?.trim();
     const category = dto.category?.trim();
     if (!fund || !category) {
-      throw new BadRequestError("ফান্ড ও খাত নির্বাচন করা আবশ্যক");
+      throw new BadRequestError(t({ bn: "ফান্ড ও খাত নির্বাচন করা আবশ্যক", en: "Selecting a fund and a category is required", ar: "يجب اختيار الصندوق والبند" }));
     }
 
     let result: { payrollId: number; netAmount: number; teacherName: string; teacherPhone: string | null; month: string };
     try {
       result = await this.repository.runTransaction(async (tx) => {
         const record = await this.repository.findForTenantOnTx(tx, id, madrasaId);
-        if (!record) throw new NotFoundError("Payroll record not found");
-        if (record.status === "PAID") throw new BadRequestError("This payroll is already paid");
+        if (!record) throw new NotFoundError(t({ bn: "বেতনের রেকর্ড পাওয়া যায়নি", en: "Payroll record not found", ar: "لم يتم العثور على سجل الراتب" }));
+        if (record.status === "PAID") throw new BadRequestError(t({ bn: "এই বেতন ইতিমধ্যে পরিশোধিত", en: "This payroll is already paid", ar: "هذا الراتب مدفوع بالفعل" }));
 
         const ledgerEntry = await tx.account.create({
           data: {
@@ -150,7 +151,7 @@ export class PayrollService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("markPayrollPaid error:", err, "Failed to mark payroll as paid");
+      return friendlyFailure("markPayrollPaid error:", err, t({ bn: "বেতন পরিশোধিত হিসেবে চিহ্নিত করা যায়নি", en: "Failed to mark payroll as paid", ar: "تعذر تسجيل الراتب كمدفوع" }));
     }
 
     await notificationService.triggerEvent(madrasaId, "SALARY_PAYMENT", result.teacherPhone, {

@@ -4,6 +4,8 @@ import { Camera, ImagePlus, Loader2, RefreshCw, Trash2, User, X, SwitchCamera, C
 import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { useText, getText, commonText } from "@madrasha/shared-ui/src/i18n";
+import { photoText } from "./photo.text";
 
 /* ------------------------------------------------------------------ */
 /*  Image helpers                                                      */
@@ -87,8 +89,10 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
   open,
   onClose,
   onCapture,
-  title = "ক্যামেরা দিয়ে ছবি তুলুন",
+  title,
 }) => {
+  const pt = useText(photoText);
+  const c = useText(commonText);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
@@ -108,7 +112,7 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
     const start = async () => {
       setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError("এই ব্রাউজারে ক্যামেরা সাপোর্ট নেই (HTTPS বা localhost প্রয়োজন)।");
+        setError(getText(photoText).noCameraSupport);
         return;
       }
       setStarting(true);
@@ -132,12 +136,13 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
       } catch (err: any) {
         logger.error("CAMERA ERROR:", err);
         if (!cancelled) {
+          const msg = getText(photoText);
           setError(
             err?.name === "NotAllowedError"
-              ? "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি। ব্রাউজারের ঠিকানা-বারের পাশ থেকে অনুমতি দিন।"
+              ? msg.cameraDenied
               : err?.name === "NotFoundError"
-                ? "কোনো ক্যামেরা পাওয়া যায়নি।"
-                : "ক্যামেরা চালু করা যায়নি।",
+                ? msg.noCamera
+                : msg.cameraFailed,
           );
         }
       } finally {
@@ -191,13 +196,13 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
             <Camera className="h-4 w-4 text-emerald-600" />
-            {title}
+            {title ?? pt.cameraTitle}
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="বন্ধ করুন"
+            aria-label={c.close}
           >
             <X className="h-4 w-4" />
           </button>
@@ -237,7 +242,7 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
           </div>
           {!shot && !error && (
             <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
-              মুখ ডিম্বাকার গাইডের ভেতরে রেখে ছবি তুলুন
+              {pt.faceGuide}
             </p>
           )}
         </div>
@@ -250,14 +255,14 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
                 onClick={() => setShot(null)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
-                <RefreshCw className="h-4 w-4" /> আবার তুলুন
+                <RefreshCw className="h-4 w-4" /> {pt.retake}
               </button>
               <button
                 type="button"
                 onClick={confirm}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                <Check className="h-4 w-4" /> ব্যবহার করুন
+                <Check className="h-4 w-4" /> {pt.use}
               </button>
             </>
           ) : (
@@ -267,7 +272,7 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
                 onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
                 disabled={!hasMultipleCams}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-                title="ক্যামেরা বদলান"
+                title={pt.switchCamera}
               >
                 <SwitchCamera className="h-4 w-4" />
               </button>
@@ -277,7 +282,7 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
                 disabled={!!error || starting}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                <Camera className="h-4 w-4" /> ছবি তুলুন
+                <Camera className="h-4 w-4" /> {pt.capture}
               </button>
             </>
           )}
@@ -312,11 +317,12 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
   value,
   onChange,
   folder,
-  label = "ছবি",
-  hint = "JPG/PNG · পাসপোর্ট সাইজ (৩:৪)",
+  label,
+  hint,
   layout = "row",
   className = "",
 }) => {
+  const pt = useText(photoText);
   const fileRef = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -337,7 +343,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
       await accept(await fileToPortraitDataUrl(file));
     } catch (err) {
       logger.error("PHOTO READ ERROR:", err);
-      useToastStore.getState().show("ছবিটি পড়া যায়নি — সঠিক ইমেজ ফাইল দিন", "error");
+      useToastStore.getState().show(getText(photoText).readFailed, "error");
     }
   };
 
@@ -364,9 +370,9 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
       </div>
 
       <div className={`min-w-0 ${layout === "stack" ? "text-center" : ""}`}>
-        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</div>
+        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{label ?? pt.photo}</div>
         <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
-          {uploading ? "আপলোড হচ্ছে..." : hint}
+          {uploading ? pt.uploading : hint ?? pt.hint}
         </div>
         <div className={`flex flex-wrap gap-2 ${layout === "stack" ? "justify-center" : ""}`}>
           <button
@@ -375,7 +381,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
             disabled={uploading}
             className={`${btn} border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700`}
           >
-            <ImagePlus className="h-3.5 w-3.5" /> আপলোড
+            <ImagePlus className="h-3.5 w-3.5" /> {pt.upload}
           </button>
           <button
             type="button"
@@ -383,7 +389,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
             disabled={uploading}
             className={`${btn} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}
           >
-            <Camera className="h-3.5 w-3.5" /> ক্যামেরা
+            <Camera className="h-3.5 w-3.5" /> {pt.camera}
           </button>
           {value && (
             <button
@@ -391,7 +397,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
               onClick={() => onChange("")}
               disabled={uploading}
               className={`${btn} border-transparent px-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40`}
-              title="ছবি মুছুন"
+              title={pt.removePhoto}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

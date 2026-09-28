@@ -27,6 +27,8 @@ import type { CardsPerPage } from "../../store/selectedTemplateOverrideStore";
 import { MarksheetSettingsToggleButton } from "./student/MarksheetSignatureControls";
 import { AdmitCardSettingsToggleButton } from "./documents/AdmitCardFieldControls";
 import NoticeBoardPicker from "./documents/NoticeBoardPicker";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "./reportUi.text";
 
 const fieldClass =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/40 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
@@ -93,16 +95,16 @@ type ReportFilterBarProps = {
 // আইডি কার্ড / বই-লেবেলের পাতা-বিন্যাস অপশন - অন্য রিপোর্টে এই ড্রপডাউন দেখায় না।
 // প্রবেশপত্র সবসময় স্বয়ংক্রিয় বিন্যাসে ছাপা হয় (দেখুন resolveCardsPerSheet) - আলাদা
 // পছন্দের দরকার নেই, তাই ওই রিপোর্টে এই ড্রপডাউন নেই।
-const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: string }[]> = {
+const CARD_LAYOUT_OPTIONS: Record<string, { value: CardsPerPage; label: "idCardSingle" | "idCardGrid" | "labelsAll" | "onePerPage" }[]> = {
   // "1" = একক শিক্ষার্থী (প্রতি পাতায় ১টি) - ডিফল্ট; "grid" = সকল শিক্ষার্থী (কাগজ ভাগ হয়ে একপাতায় অনেকগুলো)।
   "id-card": [
-    { value: "1", label: "একক শিক্ষার্থী (পাতায় ১টি)" },
-    { value: "grid", label: "সকল শিক্ষার্থী (পাতায় অনেকগুলো)" },
+    { value: "1", label: "idCardSingle" },
+    { value: "grid", label: "idCardGrid" },
   ],
   // পুরস্কার বই-লেবেল: ডিফল্ট = পুরো কাগজে সব লেবেল, কাটার-রেখাসহ।
   "book-label": [
-    { value: "auto", label: "সকল লেবেল (কাটার-রেখাসহ)" },
-    { value: "1", label: "প্রতি পাতায় ১টি" },
+    { value: "auto", label: "labelsAll" },
+    { value: "1", label: "onePerPage" },
   ],
 };
 
@@ -152,6 +154,7 @@ const ReportFilterBar = ({
   setupExtras,
   summary,
 }: ReportFilterBarProps) => {
+  const ui = useText(reportUiText);
   const builtinDesigns = activeReport.documentType ? listBuiltinDesigns(activeReport.documentType) : [];
   const cardLayoutOptions = activeReport.printable ? CARD_LAYOUT_OPTIONS[activeReport.printable] : undefined;
 
@@ -164,7 +167,7 @@ const ReportFilterBar = ({
             <Search className="pointer-events-none absolute start-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="ID / নাম / মোবাইল"
+              placeholder={ui.searchPlaceholder}
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               className={`${fieldClass} ps-6`}
@@ -184,7 +187,7 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="">পরীক্ষা নির্বাচন করুন</option>
+            <option value="">{ui.selectExam}</option>
             {exams.map((exam) => (
               <option key={exam.id} value={exam.id}>
                 {exam.name}
@@ -201,13 +204,13 @@ const ReportFilterBar = ({
           selectClassName={selectFieldClass}
           iconClassName={selectIconClass}
         >
-          <option value="">{divisionRequired ? "বিভাগ নির্বাচন করুন" : "সকল বিভাগ"}</option>
+          <option value="">{divisionRequired ? ui.selectDivision : ui.allDivisions}</option>
           {divisions.map((division) => (
             <option key={division.division_id} value={division.division_id}>
               {division.division_name_bn}
             </option>
           ))}
-          {divisionRequired && <option value="all">সকল বিভাগ</option>}
+          {divisionRequired && <option value="all">{ui.allDivisions}</option>}
         </FilterSelect>
 
         {/* Teacher rows carry no class_id (teachers belong to a division, not
@@ -226,9 +229,9 @@ const ReportFilterBar = ({
             <option value="">
               {selectedDivision && selectedDivision !== "all"
                 ? divisionRequired
-                  ? "শ্রেণি নির্বাচন করুন"
-                  : "সকল শ্রেণি"
-                : "আগে বিভাগ নির্বাচন"}
+                  ? ui.selectClass
+                  : ui.allClasses
+                : ui.pickDivisionFirst}
             </option>
             {classes.map((cls) => (
               <option key={cls.class_id} value={cls.class_id}>
@@ -236,7 +239,7 @@ const ReportFilterBar = ({
               </option>
             ))}
             {divisionRequired && selectedDivision && selectedDivision !== "all" && (
-              <option value="all">সকল শ্রেণি</option>
+              <option value="all">{ui.allClasses}</option>
             )}
           </FilterSelect>
         )}
@@ -250,7 +253,7 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="">{selectedClass && selectedClass !== "all" ? "সকল বিষয়" : "আগে শ্রেণি নির্বাচন করুন"}</option>
+            <option value="">{selectedClass && selectedClass !== "all" ? ui.allSubjects : ui.pickClassFirst}</option>
             {subjectOptions.map((subject) => (
               <option key={subject.key} value={subject.key}>
                 {subject.name}
@@ -268,9 +271,9 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="">ডিফল্ট (সাধারণ ডিজাইন)</option>
+            <option value="">{ui.defaultDesign}</option>
             {builtinDesigns.length > 0 && (
-              <optgroup label="রেডিমেড ডিজাইন">
+              <optgroup label={ui.readyDesigns}>
                 {builtinDesigns.map((design) => (
                   <option key={design.id} value={design.id}>
                     {design.name}
@@ -279,7 +282,7 @@ const ReportFilterBar = ({
               </optgroup>
             )}
             {templates.length > 0 && (
-              <optgroup label="আমার / সিস্টেম টেমপ্লেট">
+              <optgroup label={ui.myTemplates}>
                 {templates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>
                     {tpl.name}
@@ -300,7 +303,7 @@ const ReportFilterBar = ({
             iconClassName={selectIconClass}
           >
             <option value={DEFAULT_ID_CARD_BACK_ID}>{getDefaultBuiltinBackDesign().name}</option>
-            <optgroup label="রেডিমেড ডিজাইন">
+            <optgroup label={ui.readyDesigns}>
               {listBuiltinBackDesigns().map((design) => (
                 <option key={design.id} value={design.id}>
                   {design.name}
@@ -308,7 +311,7 @@ const ReportFilterBar = ({
               ))}
             </optgroup>
             {templates.length > 0 && (
-              <optgroup label="আমার / সিস্টেম টেমপ্লেট">
+              <optgroup label={ui.myTemplates}>
                 {templates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>
                     {tpl.name}
@@ -329,7 +332,7 @@ const ReportFilterBar = ({
           >
             {cardLayoutOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {ui[option.label]}
               </option>
             ))}
           </FilterSelect>
@@ -345,8 +348,8 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="both">দুই পাশ (সামনে + পিছনে)</option>
-            <option value="back">শুধু পিছনের পাশ</option>
+            <option value="both">{ui.bothSides}</option>
+            <option value="back">{ui.backOnly}</option>
           </FilterSelect>
         )}
 
@@ -358,8 +361,8 @@ const ReportFilterBar = ({
             selectClassName={selectFieldClass}
             iconClassName={selectIconClass}
           >
-            <option value="both">দুই পাশ (সামনে + পিছনে)</option>
-            <option value="front">শুধু সামনের পাশ</option>
+            <option value="both">{ui.bothSides}</option>
+            <option value="front">{ui.frontOnly}</option>
           </FilterSelect>
         )}
 
@@ -377,7 +380,7 @@ const ReportFilterBar = ({
             className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2 text-[13px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
           >
             <Settings2 className="h-3 w-3" />
-            টেমপ্লেট
+            {ui.templates}
           </Link>
         )}
 
@@ -388,7 +391,7 @@ const ReportFilterBar = ({
             className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-200 px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <X className="h-3 w-3" />
-            মুছুন
+            {ui.clear}
           </button>
         )}
       </div>

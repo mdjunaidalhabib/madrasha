@@ -6,6 +6,7 @@ import {
   SaveVendorPromoConfigRequestDto,
   UpdateVendorServiceRequestDto,
 } from "./vendor-promo.dto";
+import { t } from "../../shared/i18n";
 
 // Ship-with-sane-defaults so the card/page render something sensible even
 // before a Super Admin has ever opened the settings page - every field
@@ -81,7 +82,7 @@ export class VendorPromoService {
     if (dto.portfolio_url !== undefined) data.portfolioUrl = dto.portfolio_url.trim() || null;
     if (dto.address !== undefined) data.address = dto.address.trim() || null;
 
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
     await this.repository.upsertConfig(data);
   }
 
@@ -147,7 +148,7 @@ export class VendorPromoService {
   }
 
   async createService(dto: CreateVendorServiceRequestDto) {
-    if (isEmpty(dto.label)) throw new BadRequestError("label আবশ্যক");
+    if (isEmpty(dto.label)) throw new BadRequestError(t({ bn: "label আবশ্যক", en: "label is required" }));
 
     const maxOrder = await this.repository.findMaxServiceSortOrder();
     return this.repository.createService({
@@ -161,18 +162,18 @@ export class VendorPromoService {
 
   async updateService(id: number, dto: UpdateVendorServiceRequestDto) {
     const existing = await this.repository.findServiceById(id);
-    if (!existing) throw new NotFoundError("সার্ভিস পাওয়া যায়নি");
+    if (!existing) throw new NotFoundError(t({ bn: "সার্ভিস পাওয়া যায়নি", en: "Service not found" }));
 
     const data: Prisma.PlatformVendorServiceUpdateInput = {};
     if (dto.label !== undefined) {
-      if (isEmpty(dto.label)) throw new BadRequestError("label খালি রাখা যাবে না");
+      if (isEmpty(dto.label)) throw new BadRequestError(t({ bn: "label খালি রাখা যাবে না", en: "label cannot be empty" }));
       data.label = String(dto.label).trim();
     }
     if (dto.desc !== undefined) data.desc = dto.desc?.trim() || null;
     if (dto.icon_key !== undefined) data.iconKey = dto.icon_key?.trim() || "Sparkles";
     if (dto.is_current !== undefined) data.isCurrent = Boolean(dto.is_current);
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     await this.repository.updateService(id, data);
   }
@@ -182,7 +183,7 @@ export class VendorPromoService {
       await this.repository.deleteService(id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("সার্ভিস পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "সার্ভিস পাওয়া যায়নি", en: "Service not found" }));
       }
       throw err;
     }
@@ -193,7 +194,7 @@ export class VendorPromoService {
     const allIds = rows.map((r) => r.id);
     const sameSet =
       allIds.length === orderedIds.length && allIds.every((id) => orderedIds.includes(id));
-    if (!sameSet) throw new BadRequestError("service_ids must match every existing service exactly");
+    if (!sameSet) throw new BadRequestError(t({ bn: "service_ids অবশ্যই বিদ্যমান সব সার্ভিসের সাথে হুবহু মিলতে হবে", en: "service_ids must match every existing service exactly" }));
 
     await this.repository.reorderServices(orderedIds);
   }

@@ -13,7 +13,11 @@ import { useAuthStore } from "../../store/authStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits, normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, formatNumber, getLang, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { pendingAdmissionFeeText } from "./PendingAdmissionFeePage.text";
+import { overdueText } from "./fee.text";
+import { feeInvoicesText } from "./FeeInvoicesPage.text";
 
 // Backend caps a single page at 200 (see PendingInvoicesQueryDto handling in
 // fee.service.ts) - fetched once here and then searched/paginated client
@@ -50,6 +54,13 @@ const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "ONL
 
 const PendingAdmissionFeePage = () => {
   const navigate = useNavigate();
+  const t = useText(pendingAdmissionFeeText);
+  const pg = useText(overdueText);
+  const fi = useText(feeInvoicesText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const toBanglaDigits = (value: string | number) => localizeDigits(value, lang);
+  const money = (value: number) => formatNumber(value, lang);
   const role = useAuthStore((s) => s.user?.role);
   const isMuhtamim = role === "MUHTAMIM" || role === "মুহতামিম";
 
@@ -107,20 +118,19 @@ const PendingAdmissionFeePage = () => {
   const handleClearAll = () => {
     if (rows.length === 0) return;
     useConfirmStore.getState().show({
-      title: "পুরো তালিকা ক্লিয়ার করবেন?",
-      message:
-        "এই তালিকার সবগুলো এখান থেকে সরে যাবে (সবার জন্য)। ভর্তি ফি বাতিল হবে না — পরে \"ছাত্র ফি গ্রহণ\" পেজ থেকে সেগুলো নেওয়া যাবে।",
-      confirmText: "ক্লিয়ার করুন",
+      title: t.clearTitle,
+      message: t.clearMessage,
+      confirmText: t.clearConfirm,
       danger: false,
       onConfirm: async () => {
         try {
           setClearing(true);
           await invoiceApi.clearPending();
-          useToastStore.getState().show("তালিকা ক্লিয়ার করা হয়েছে", "success");
+          useToastStore.getState().show(getText(pendingAdmissionFeeText).cleared, "success");
           setSelectedIds(new Set());
           await loadRows();
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "ক্লিয়ার করতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || getText(pendingAdmissionFeeText).clearFailed;
           useToastStore.getState().show(msg, "error");
         } finally {
           setClearing(false);
@@ -200,11 +210,16 @@ const PendingAdmissionFeePage = () => {
       const failed = results.filter((r) => r.status === "rejected").length;
       const succeeded = results.length - failed;
       if (failed === 0) {
-        useToastStore.getState().show(`${succeeded} জনের ভর্তি ফি একসাথে নেওয়া হয়েছে`, "success");
+        useToastStore
+          .getState()
+          .show(getText(pendingAdmissionFeeText).bulkPaid(localizeDigits(succeeded, getLang())), "success");
       } else {
         useToastStore
           .getState()
-          .show(`${succeeded} জনের ফি নেওয়া হয়েছে, ${failed} জনের ব্যর্থ হয়েছে`, "error");
+          .show(
+            getText(pendingAdmissionFeeText).bulkPartial(localizeDigits(succeeded, getLang()), localizeDigits(failed, getLang())),
+            "error",
+          );
       }
       setBulkPayOpen(false);
       setSelectedIds(new Set());
@@ -238,7 +253,7 @@ const PendingAdmissionFeePage = () => {
   const handlePay = async () => {
     if (!payTarget) return;
     if (!payAmount || Number(payAmount) <= 0) {
-      useToastStore.getState().show("পরিমাণ দিন", "error");
+      useToastStore.getState().show(getText(pendingAdmissionFeeText).enterAmount, "error");
       return;
     }
     try {
@@ -251,11 +266,11 @@ const PendingAdmissionFeePage = () => {
         note: payNote.trim() || undefined,
         paid_at: payDate || undefined,
       });
-      useToastStore.getState().show("পেমেন্ট রেকর্ড করা হয়েছে", "success");
+      useToastStore.getState().show(getText(pendingAdmissionFeeText).paymentRecorded, "success");
       setPayTarget(null);
       loadRows();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "পেমেন্ট রেকর্ড করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(pendingAdmissionFeeText).paymentFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setPaying(false);
@@ -271,11 +286,11 @@ const PendingAdmissionFeePage = () => {
   const handleWaive = async () => {
     if (!waiveTarget) return;
     if (!waiveAmount || Number(waiveAmount) <= 0) {
-      useToastStore.getState().show("মওকুফের পরিমাণ দিন", "error");
+      useToastStore.getState().show(getText(pendingAdmissionFeeText).enterWaiveAmount, "error");
       return;
     }
     if (!waiveReason.trim()) {
-      useToastStore.getState().show("মওকুফের কারণ লিখুন", "error");
+      useToastStore.getState().show(getText(pendingAdmissionFeeText).enterWaiveReason, "error");
       return;
     }
     try {
@@ -284,11 +299,11 @@ const PendingAdmissionFeePage = () => {
         amount: Number(waiveAmount),
         reason: waiveReason.trim(),
       });
-      useToastStore.getState().show("ভর্তি ফি মওকুফ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(pendingAdmissionFeeText).waived, "success");
       setWaiveTarget(null);
       loadRows();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মওকুফ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(pendingAdmissionFeeText).waiveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setWaiving(false);
@@ -301,15 +316,15 @@ const PendingAdmissionFeePage = () => {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
-              ভর্তি ফি পেন্ডিং
+              {t.title}
               {rows.length > 0 && (
                 <span className="ms-2 rounded-full bg-rose-100 px-2 py-0.5 text-[13px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                  {rows.length}
+                  {toBanglaDigits(rows.length)}
                 </span>
               )}
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              যেসব ছাত্র আবেদন করেছে কিন্তু এখনও ভর্তি ফি পরিশোধ করেনি
+              {t.subtitle}
             </p>
           </div>
 
@@ -320,7 +335,7 @@ const PendingAdmissionFeePage = () => {
               disabled={clearing}
               className="h-9 shrink-0 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              {clearing ? "ক্লিয়ার হচ্ছে..." : "সব ক্লিয়ার করুন"}
+              {clearing ? t.clearing : t.clearAll}
             </button>
           )}
         </div>
@@ -331,7 +346,7 @@ const PendingAdmissionFeePage = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="নাম, রোল বা রেজিস্ট্রেশন নম্বর দিয়ে খুঁজুন..."
+            placeholder={t.searchPlaceholder}
             className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
         </div>
@@ -339,14 +354,14 @@ const PendingAdmissionFeePage = () => {
         {selectedIds.size > 0 && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
             <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
-              {toBanglaDigits(selectedIds.size)} জন নির্বাচিত হয়েছে
+              {t.selectedCount(toBanglaDigits(selectedIds.size))}
             </p>
             <button
               type="button"
               onClick={openBulkPayModal}
               className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700"
             >
-              নির্বাচিত সবার ফি একসাথে নিন
+              {t.collectSelected}
             </button>
           </div>
         )}
@@ -356,11 +371,11 @@ const PendingAdmissionFeePage = () => {
             <SkeletonList items={5} />
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-              কোনো ছাত্রের ভর্তি ফি পেন্ডিং নেই — সব ভর্তি ফি পরিশোধিত বা মওকুফকৃত
+              {t.empty}
             </div>
           ) : filteredRows.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-              এই সার্চে কোনো ফলাফল পাওয়া যায়নি
+              {pg.noResults}
             </div>
           ) : (
             <>
@@ -371,7 +386,7 @@ const PendingAdmissionFeePage = () => {
                   onChange={toggleSelectAll}
                   className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                 />
-                <span className="text-xs font-medium text-gray-500 dark:text-slate-400">সব নির্বাচন করুন</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.selectAll}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 {paginatedRows.map((row) => (
@@ -392,25 +407,25 @@ const PendingAdmissionFeePage = () => {
                         className="min-w-0 text-start"
                       >
                         <div className="truncate font-medium text-gray-800 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400">
-                          {row.student?.nameBn || `ছাত্র #${row.studentId}`}
+                          {row.student?.nameBn || t.studentFallback(String(row.studentId))}
                           <span className="ms-1.5 font-normal text-gray-500 dark:text-slate-400">
-                            (রোল {row.student?.roll ?? "-"} · রেজি. নং {row.student?.registrationNo ?? "-"}
+                            ({t.roll} {row.student?.roll ?? "-"} · {t.regNo} {row.student?.registrationNo ?? "-"}
                             {row.student?.classRef?.nameBn ? ` · ${row.student.classRef.nameBn}` : ""})
                           </span>
                         </div>
                         <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                          {row.title} · নির্ধারিত তারিখ {row.dueDate?.slice(0, 10)}
+                          {row.title} · {t.dueDate} {row.dueDate?.slice(0, 10)}
                         </div>
                       </button>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="font-semibold text-rose-600 dark:text-rose-400">৳{remainingDue(row)}</span>
+                      <span className="font-semibold text-rose-600 dark:text-rose-400">৳{money(remainingDue(row))}</span>
                       <button
                         type="button"
                         onClick={() => openPayModal(row)}
                         className="h-8 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700"
                       >
-                        ফি নিন
+                        {t.collect}
                       </button>
                       {isMuhtamim && (
                         <button
@@ -418,7 +433,7 @@ const PendingAdmissionFeePage = () => {
                           onClick={() => openWaiveModal(row)}
                           className="h-8 rounded-md border border-purple-200 px-3 text-xs font-medium text-purple-700 hover:bg-purple-50 dark:border-purple-900 dark:text-purple-400 dark:hover:bg-purple-950/40"
                         >
-                          মওকুফ
+                          {t.waive}
                         </button>
                       )}
                     </div>
@@ -430,8 +445,7 @@ const PendingAdmissionFeePage = () => {
               <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 dark:border-slate-800 sm:flex-row">
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 sm:text-sm">
                   <span>
-                    দেখাচ্ছে {toBanglaDigits(rangeStart)}–{toBanglaDigits(rangeEnd)}, মোট{" "}
-                    {toBanglaDigits(filteredRows.length)} জন
+                    {pg.showing(toBanglaDigits(rangeStart), toBanglaDigits(rangeEnd), toBanglaDigits(filteredRows.length))}
                   </span>
                   <select
                     value={pageSize}
@@ -440,7 +454,7 @@ const PendingAdmissionFeePage = () => {
                   >
                     {PAGE_SIZES.map((size) => (
                       <option key={size} value={size}>
-                        পাতায় {toBanglaDigits(size)} জন
+                        {pg.perPage(toBanglaDigits(size))}
                       </option>
                     ))}
                   </select>
@@ -453,10 +467,10 @@ const PendingAdmissionFeePage = () => {
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
                   >
-                    আগের
+                    {pg.prev}
                   </button>
                   <span className="text-xs text-gray-600 dark:text-slate-400 sm:text-sm">
-                    পাতা {toBanglaDigits(currentPage)} / {toBanglaDigits(totalPages)}
+                    {pg.page(toBanglaDigits(currentPage), toBanglaDigits(totalPages))}
                   </span>
                   <button
                     type="button"
@@ -464,7 +478,7 @@ const PendingAdmissionFeePage = () => {
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     className="h-8 rounded-md border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:text-sm"
                   >
-                    পরের
+                    {pg.next}
                   </button>
                 </div>
               </div>
@@ -476,13 +490,13 @@ const PendingAdmissionFeePage = () => {
       {/* Pay modal */}
       <Modal
         open={!!payTarget}
-        title={`ভর্তি ফি নিন — ${payTarget?.student?.nameBn || ""}`}
+        title={t.payTitle(payTarget?.student?.nameBn || "")}
         onClose={() => setPayTarget(null)}
       >
         {payTarget && (
           <div className="flex flex-col gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{fi.amountTaka}</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -490,11 +504,11 @@ const PendingAdmissionFeePage = () => {
                 onChange={(e) => setPayAmount(normalizeBanglaDigits(e.target.value))}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">বাকি আছে: ৳{remainingDue(payTarget)}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t.remaining(money(remainingDue(payTarget)))}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পদ্ধতি</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{fi.method}</label>
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
@@ -508,7 +522,7 @@ const PendingAdmissionFeePage = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">তারিখ</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{c.date}</label>
                 <input
                   type="date"
                   value={payDate}
@@ -521,14 +535,14 @@ const PendingAdmissionFeePage = () => {
             {configuredMethods.length > 0 && (
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                  কোন চ্যানেলে টাকা পাওয়া গেছে (ঐচ্ছিক)
+                  {fi.channel}
                 </label>
                 <select
                   value={payMethodSettingId}
                   onChange={(e) => setPayMethodSettingId(e.target.value)}
                   className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  <option value="">নির্বাচন করুন (ঐচ্ছিক)</option>
+                  <option value="">{fi.selectOptional}</option>
                   {configuredMethods.map((method) => (
                     <option key={method.id} value={method.id}>
                       {method.label}
@@ -540,7 +554,7 @@ const PendingAdmissionFeePage = () => {
             )}
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                ট্রানজেকশন রেফারেন্স (ঐচ্ছিক)
+                {fi.transactionRef}
               </label>
               <input
                 type="text"
@@ -550,7 +564,7 @@ const PendingAdmissionFeePage = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নোট (ঐচ্ছিক)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{fi.noteOptional}</label>
               <textarea
                 value={payNote}
                 onChange={(e) => setPayNote(e.target.value)}
@@ -566,7 +580,7 @@ const PendingAdmissionFeePage = () => {
             onClick={() => setPayTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -574,7 +588,7 @@ const PendingAdmissionFeePage = () => {
             onClick={handlePay}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {paying ? "সংরক্ষণ হচ্ছে..." : "পেমেন্ট নিশ্চিত করুন"}
+            {paying ? c.saving : t.confirmPayment}
           </button>
         </div>
       </Modal>
@@ -582,14 +596,14 @@ const PendingAdmissionFeePage = () => {
       {/* Waive modal — Muhtamim only */}
       <Modal
         open={!!waiveTarget}
-        title={`ভর্তি ফি মওকুফ করুন — ${waiveTarget?.student?.nameBn || ""}`}
+        title={t.waiveTitle(waiveTarget?.student?.nameBn || "")}
         onClose={() => setWaiveTarget(null)}
       >
         {waiveTarget && (
           <div className="flex flex-col gap-3">
-            <p className="text-xs text-gray-500 dark:text-slate-400">বাকি আছে: ৳{remainingDue(waiveTarget)}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">{t.remaining(money(remainingDue(waiveTarget)))}</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">মওকুফের পরিমাণ (৳)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.waiveAmount}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -603,18 +617,18 @@ const PendingAdmissionFeePage = () => {
                   onClick={() => setWaiveAmount(String(remainingDue(waiveTarget)))}
                   className="h-9 shrink-0 rounded-md border border-purple-200 px-3 text-xs font-medium text-purple-700 hover:bg-purple-50"
                 >
-                  সম্পূর্ণ মওকুফ করুন
+                  {t.waiveFull}
                 </button>
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">কারণ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.reason}</label>
               <textarea
                 value={waiveReason}
                 onChange={(e) => setWaiveReason(e.target.value)}
                 rows={2}
                 className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="যেমন: এতিম ছাত্র, আর্থিক অসচ্ছলতা"
+                placeholder={t.reasonPlaceholder}
               />
             </div>
           </div>
@@ -625,7 +639,7 @@ const PendingAdmissionFeePage = () => {
             onClick={() => setWaiveTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -633,7 +647,7 @@ const PendingAdmissionFeePage = () => {
             onClick={handleWaive}
             className="h-9 rounded-md bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
           >
-            {waiving ? "সংরক্ষণ হচ্ছে..." : "মওকুফ নিশ্চিত করুন"}
+            {waiving ? c.saving : t.confirmWaive}
           </button>
         </div>
       </Modal>
@@ -642,16 +656,16 @@ const PendingAdmissionFeePage = () => {
           পুরো টাকা) একই পদ্ধতি/তারিখ দিয়ে রেকর্ড করা হয় */}
       <Modal
         open={bulkPayOpen}
-        title={`নির্বাচিত ${toBanglaDigits(selectedIds.size)} জনের ভর্তি ফি একসাথে নিন`}
+        title={t.bulkTitle(toBanglaDigits(selectedIds.size))}
         onClose={() => setBulkPayOpen(false)}
       >
         <div className="flex flex-col gap-3">
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            প্রতিটি নির্বাচিত ছাত্রের বাকি থাকা সম্পূর্ণ ভর্তি ফি একসাথে পরিশোধিত হিসেবে রেকর্ড হবে।
+            {t.bulkHint}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পদ্ধতি</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{fi.method}</label>
               <select
                 value={bulkMethod}
                 onChange={(e) => setBulkMethod(e.target.value as PaymentMethod)}
@@ -665,7 +679,7 @@ const PendingAdmissionFeePage = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">তারিখ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{c.date}</label>
               <input
                 type="date"
                 value={bulkDate}
@@ -678,14 +692,14 @@ const PendingAdmissionFeePage = () => {
           {configuredMethods.length > 0 && (
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                কোন চ্যানেলে টাকা পাওয়া গেছে (ঐচ্ছিক)
+                {fi.channel}
               </label>
               <select
                 value={bulkMethodSettingId}
                 onChange={(e) => setBulkMethodSettingId(e.target.value)}
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="">নির্বাচন করুন (ঐচ্ছিক)</option>
+                <option value="">{fi.selectOptional}</option>
                 {configuredMethods.map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.label}
@@ -697,7 +711,7 @@ const PendingAdmissionFeePage = () => {
           )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              ট্রানজেকশন রেফারেন্স (ঐচ্ছিক)
+              {fi.transactionRef}
             </label>
             <input
               type="text"
@@ -707,7 +721,7 @@ const PendingAdmissionFeePage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নোট (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{fi.noteOptional}</label>
             <textarea
               value={bulkNote}
               onChange={(e) => setBulkNote(e.target.value)}
@@ -722,7 +736,7 @@ const PendingAdmissionFeePage = () => {
             onClick={() => setBulkPayOpen(false)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -730,7 +744,7 @@ const PendingAdmissionFeePage = () => {
             onClick={handleBulkPay}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {bulkPaying ? "সংরক্ষণ হচ্ছে..." : "সবার পেমেন্ট নিশ্চিত করুন"}
+            {bulkPaying ? c.saving : t.confirmAll}
           </button>
         </div>
       </Modal>

@@ -1,7 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 import { AlertCircle, Check, CheckCircle2, FileDown, FileUp, Keyboard, Languages, Loader2, Pencil, Save, Undo2 } from "lucide-react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, useIsMadrasa, localizeDigits, getLang } from "@madrasha/shared-ui/src/i18n";
+import { namesManagerText } from "./StudentNamesManagerPage.text";
+import { peopleToolsText } from "./photo-manager/peopleTools.text";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -18,9 +20,7 @@ import {
 import type { CardStatus, DirectoryPerson, PeopleTab } from "./photo-manager/photoManager";
 import {
   ARABIC_FONT_STACK,
-  LANG_LABEL,
   NAME_LANGS,
-  OWNER_LABEL,
   cleanName,
   nameField,
   saveNameChanges,
@@ -73,6 +73,8 @@ type RowProps = {
   handlers: CellHandlers;
   layout: "table" | "card";
   idLabel: string;
+  /** Arabic name column is madrasa-only (values are kept, just not shown). */
+  showArabic: boolean;
 };
 
 const cellInputClass = (dirty: boolean, error: boolean, layout: "table" | "card") =>
@@ -87,7 +89,8 @@ const cellInputClass = (dirty: boolean, error: boolean, layout: "table" | "card"
   }`;
 
 function StatusIcon({ status, bnError }: { status?: CardStatus; bnError: boolean }) {
-  if (bnError) return <AlertCircle className="h-4 w-4 text-rose-500" aria-label="বাংলা নাম আবশ্যক" />;
+  const t = useText(namesManagerText);
+  if (bnError) return <AlertCircle className="h-4 w-4 text-rose-500" aria-label={t.bnRequired} />;
   if (status === "saving") return <Loader2 className="h-4 w-4 animate-spin text-slate-400" />;
   if (status === "saved") return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
   if (status === "error") return <AlertCircle className="h-4 w-4 text-rose-600" />;
@@ -106,6 +109,7 @@ function rowPropsEqual(a: RowProps, b: RowProps) {
     a.handlers === b.handlers &&
     a.layout === b.layout &&
     a.idLabel === b.idLabel &&
+    a.showArabic === b.showArabic &&
     a.values.every((v, i) => v === b.values[i]) &&
     a.dirty.every((v, i) => v === b.dirty[i])
   );
@@ -123,9 +127,13 @@ const NameRow = memo(function NameRow({
   handlers,
   layout,
   idLabel,
+  showArabic,
 }: RowProps) {
+  const t = useText(namesManagerText);
+  const pt = useText(peopleToolsText);
   const inputs = NAME_LANGS.map((lang, col) => {
     const isAr = lang === "ar";
+    if (isAr && !showArabic) return null;
     // Read mode: plain text - the grid only becomes inputs after "এডিট করুন".
     if (!canEdit)
       return (
@@ -156,9 +164,9 @@ const NameRow = memo(function NameRow({
         spellCheck={false}
         autoComplete="off"
         placeholder={
-          isAr ? "الاسم بالعربية" : lang === "en" ? "Name in English" : layout === "card" ? LANG_LABEL[lang] : "বাংলায় নাম"
+          isAr ? "الاسم بالعربية" : lang === "en" ? "Name in English" : layout === "card" ? pt.langs[lang] : t.placeholderBn
         }
-        aria-label={`${person.name} — ${LANG_LABEL[lang]}`}
+        aria-label={`${person.name} — ${pt.langs[lang]}`}
         style={isAr ? { fontFamily: ARABIC_FONT_STACK, fontSize: "1rem" } : undefined}
         className={cellInputClass(dirty[col], col === 0 && bnError, layout)}
       />
@@ -181,16 +189,16 @@ const NameRow = memo(function NameRow({
             <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">
               {idLabel}
               {person.subtitle && ` · ${person.subtitle}`}
-              {owner !== "self" && ` · ${OWNER_LABEL[owner]}র নাম`}
+              {owner !== "self" && t.ownerNameSuffix(pt.ownerName[owner])}
             </div>
           </div>
           <StatusIcon status={status} bnError={bnError} />
         </div>
         <div className="space-y-2">
-          {inputs.map((input, i) => (
+          {inputs.map((input, i) => input && (
             <label key={NAME_LANGS[i]} className="block">
               <span className="mb-0.5 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                {LANG_LABEL[NAME_LANGS[i]]}
+                {pt.langs[NAME_LANGS[i]]}
                 {owner === "self" && i === 0 && <span className="text-rose-500"> *</span>}
               </span>
               {input}
@@ -216,7 +224,7 @@ const NameRow = memo(function NameRow({
           <span className="whitespace-nowrap">{idLabel}</span>
         </div>
       </td>
-      {inputs.map((input, i) => (
+      {inputs.map((input, i) => input && (
         <td key={NAME_LANGS[i]} className="px-2 py-2 align-middle">
           {input}
         </td>
@@ -228,11 +236,6 @@ const NameRow = memo(function NameRow({
   );
 }, rowPropsEqual);
 
-const SCRIPT_WARNING: Record<NameLang, string> = {
-  bn: "এই ঘরে শুধু বাংলায় লিখুন",
-  ar: "এই ঘরে শুধু আরবিতে লিখুন",
-  en: "এই ঘরে শুধু English-এ লিখুন",
-};
 let lastScriptWarn = 0;
 
 /** Throttled toast when a keystroke/paste in the wrong script is dropped. */
@@ -240,7 +243,7 @@ function warnScript(lang: NameLang) {
   const now = Date.now();
   if (now - lastScriptWarn < 2500) return;
   lastScriptWarn = now;
-  useToastStore.getState().show(SCRIPT_WARNING[lang], "info");
+  useToastStore.getState().show(getText(namesManagerText).scriptWarning[lang], "info");
 }
 
 /* ------------------------------------------------------------------ */
@@ -254,6 +257,13 @@ function warnScript(lang: NameLang) {
  * fills downward. Edits are drafts until "সব সেভ করুন" / Ctrl+S.
  */
 export default function StudentNamesManagerPage() {
+  const t = useText(namesManagerText);
+  const pt = useText(peopleToolsText);
+  const lang = useLang();
+  const isMadrasa = useIsMadrasa();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
+  // Columns a non-madrasa never fills (Arabic) don't count toward completeness / paste.
+  const shownLangs = useMemo(() => (isMadrasa ? NAME_LANGS : NAME_LANGS.filter((l) => l !== "ar")), [isMadrasa]);
   const [owner, setOwner] = useState<NameOwner>("self");
   const [completeness, setCompleteness] = useState<Completeness>("");
   const dir = usePeopleDirectory({ who: owner === "self" ? "" : owner, status: completeness });
@@ -288,8 +298,9 @@ export default function StudentNamesManagerPage() {
   );
 
   const isComplete = useCallback(
-    (p: DirectoryPerson) => fields.every((f) => cleanName(savedValue(p, f)) !== ""),
-    [fields],
+    (p: DirectoryPerson) =>
+      fields.every((f, i) => !shownLangs.includes(NAME_LANGS[i]) || cleanName(savedValue(p, f)) !== ""),
+    [fields, shownLangs],
   );
 
   const filtered = useMemo(() => {
@@ -338,7 +349,7 @@ export default function StudentNamesManagerPage() {
   const [excelBusy, setExcelBusy] = useState(false);
 
   const downloadTemplate = async () => {
-    if (!filtered.length) return useToastStore.getState().show("ডাউনলোড করার মতো কেউ নেই", "error");
+    if (!filtered.length) return useToastStore.getState().show(t.nothingToDownload, "error");
     setExcelBusy(true);
     try {
       await downloadNamesTemplate(tab, filtered, dir.scopeLabel);
@@ -380,8 +391,8 @@ export default function StudentNamesManagerPage() {
       if (edits.length) setEditing(true); // imported drafts must be reviewable
       const people = new Set(edits.map((x) => x.person.id)).size;
       const extra = [
-        unknown ? `${toBanglaDigits(unknown)} টি সারি মেলেনি` : "",
-        dropped ? `${toBanglaDigits(dropped)} ঘরে ভুল ভাষার অক্ষর বাদ দেওয়া হয়েছে` : "",
+        unknown ? t.rowsUnmatched(toBanglaDigits(unknown)) : "",
+        dropped ? t.wrongScriptDropped(toBanglaDigits(dropped)) : "",
       ]
         .filter(Boolean)
         .join(" · ");
@@ -390,12 +401,12 @@ export default function StudentNamesManagerPage() {
         .getState()
         .show(
           edits.length
-            ? `${toBanglaDigits(people)} জনের ${toBanglaDigits(edits.length)} টি নাম বসানো হয়েছে — দেখে "সব সেভ করুন" চাপুন${suffix}`
-            : `কোনো নতুন পরিবর্তন পাওয়া যায়নি${suffix}`,
+            ? t.importedNames(toBanglaDigits(people), toBanglaDigits(edits.length), suffix)
+            : t.noNewChanges(suffix),
           edits.length ? "success" : "info",
         );
     } catch (err: any) {
-      useToastStore.getState().show(err?.message || "Excel ফাইল পড়া যায়নি", "error");
+      useToastStore.getState().show(err?.message || t.excelReadFailed, "error");
     } finally {
       setExcelBusy(false);
     }
@@ -423,8 +434,8 @@ export default function StudentNamesManagerPage() {
 
   // Handlers read the latest state through a ref so they stay referentially
   // stable - otherwise every keystroke would re-render every memoized row.
-  const live = useRef({ filtered, tab, owner, visibleCount, applyEdits, focusCell });
-  live.current = { filtered, tab, owner, visibleCount, applyEdits, focusCell };
+  const live = useRef({ filtered, tab, owner, visibleCount, applyEdits, focusCell, shownLangs });
+  live.current = { filtered, tab, owner, visibleCount, applyEdits, focusCell, shownLangs };
 
   const handlers: CellHandlers = useMemo(
     () => ({
@@ -462,7 +473,8 @@ export default function StudentNamesManagerPage() {
         const text = e.clipboardData.getData("text");
         if (!/[\n\t]/.test(text)) return; // single value: normal paste
         e.preventDefault();
-        const { filtered, tab, owner, applyEdits, visibleCount } = live.current;
+        const { filtered, tab, owner, applyEdits, visibleCount, shownLangs } = live.current;
+        const startCol = shownLangs.indexOf(NAME_LANGS[col]);
         const lines = text.replace(/\r/g, "").split("\n");
         if (lines[lines.length - 1] === "") lines.pop();
         const edits: { person: DirectoryPerson; field: string; value: string }[] = [];
@@ -470,7 +482,7 @@ export default function StudentNamesManagerPage() {
           const person = filtered[rowIdx + i];
           if (!person) return;
           line.split("\t").forEach((cell, j) => {
-            const lang = NAME_LANGS[col + j];
+            const lang = shownLangs[startCol + j];
             if (!lang) return;
             const scripted = filterByScript(cell, lang);
             if (scripted !== cell) warnScript(lang);
@@ -483,7 +495,7 @@ export default function StudentNamesManagerPage() {
         if (last >= visibleCount) setVisibleCount(last + 1);
         useToastStore
           .getState()
-          .show(`${toBanglaDigits(Math.min(lines.length, filtered.length - rowIdx))} সারিতে পেস্ট হয়েছে`, "success");
+          .show(getText(namesManagerText).pastedRows(localizeDigits(Math.min(lines.length, filtered.length - rowIdx), getLang())), "success");
       },
     }),
     [],
@@ -529,7 +541,7 @@ export default function StudentNamesManagerPage() {
     if (invalid) {
       useToastStore
         .getState()
-        .show(`${toBanglaDigits(invalid)} জনের বাংলা নাম খালি — বাংলা নাম আবশ্যক, সেগুলো সেভ হয়নি`, "error");
+        .show(t.bnEmpty(toBanglaDigits(invalid)), "error");
       if (firstInvalid) {
         const idx = filtered.indexOf(firstInvalid);
         if (idx >= 0 && owner === "self") focusCell(idx, 0);
@@ -577,17 +589,17 @@ export default function StudentNamesManagerPage() {
       .getState()
       .show(
         failed
-          ? `${toBanglaDigits(ok)} টি সেভ হয়েছে, ${toBanglaDigits(failed)} টি ব্যর্থ${errors.size ? ` (${[...errors][0]})` : ""}`
-          : `${toBanglaDigits(ok)} জনের নাম সেভ হয়েছে`,
+          ? t.savedFailed(toBanglaDigits(ok), toBanglaDigits(failed), errors.size ? ` (${[...errors][0]})` : "")
+          : t.savedAll(toBanglaDigits(ok)),
         failed ? "error" : "success",
       );
-  }, [saving, dirtyCount, drafts, personByKey, tab, filtered, owner, focusCell, updatePeople]);
+  }, [saving, dirtyCount, drafts, personByKey, tab, filtered, owner, focusCell, updatePeople, t]);
 
   const discardAll = () =>
     useConfirmStore.getState().show({
-      title: "পরিবর্তন বাতিল করবেন?",
-      message: `${toBanglaDigits(dirtyCount)} টি সারির সেভ-না-করা পরিবর্তন মুছে যাবে।`,
-      confirmText: "বাতিল করুন",
+      title: t.discardTitle,
+      message: t.discardMessage(toBanglaDigits(dirtyCount)),
+      confirmText: t.discardConfirm,
       danger: true,
       onConfirm: () => {
         setDrafts({});
@@ -627,9 +639,9 @@ export default function StudentNamesManagerPage() {
   useEffect(() => {
     if (blocker.state !== "blocked") return;
     useConfirmStore.getState().show({
-      title: "সেভ না করেই চলে যাবেন?",
-      message: "কিছু নামের পরিবর্তন এখনো সেভ হয়নি। চলে গেলে সেগুলো হারিয়ে যাবে।",
-      confirmText: "না সেভ করে যান",
+      title: getText(namesManagerText).leaveTitle,
+      message: getText(namesManagerText).leaveMessage,
+      confirmText: getText(namesManagerText).leaveConfirm,
       danger: true,
       onConfirm: () => blockerRef.current.proceed?.(),
       onCancel: () => blockerRef.current.reset?.(),
@@ -648,12 +660,12 @@ export default function StudentNamesManagerPage() {
   const idLabelOf = (p: DirectoryPerson) =>
     tab === "students"
       ? p.roll
-        ? `রোল ${toBanglaDigits(p.roll)}`
+        ? t.roll(toBanglaDigits(p.roll))
         : p.regNo
-          ? `রেজি. ${toBanglaDigits(p.regNo)}`
+          ? t.reg(toBanglaDigits(p.regNo))
           : "—"
       : p.regNo
-        ? `রেজি. ${toBanglaDigits(p.regNo)}`
+        ? t.reg(toBanglaDigits(p.regNo))
         : "—";
 
   const rows = visible.map((p, rowIdx) => {
@@ -675,6 +687,7 @@ export default function StudentNamesManagerPage() {
         handlers={handlers}
         layout={layout}
         idLabel={idLabelOf(p)}
+        showArabic={isMadrasa}
       />
     );
   });
@@ -686,10 +699,10 @@ export default function StudentNamesManagerPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">
-              <Languages className="h-6 w-6 text-emerald-600" /> নাম (৩ ভাষা)
+              <Languages className="h-6 w-6 text-emerald-600" /> {isMadrasa ? t.title : t.titleBilingual}
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              বাংলা, আরবি ও ইংরেজি নাম এক জায়গা থেকে — Excel থেকে পুরো কলাম পেস্টও করা যায়।
+              {isMadrasa ? t.subtitle : t.subtitleBilingual}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -698,7 +711,7 @@ export default function StudentNamesManagerPage() {
               onChange={(v) => setOwner(v)}
               options={(["self", "father", "mother"] as NameOwner[]).map((o) => ({
                 value: o,
-                label: o === "self" ? (tab === "students" ? "শিক্ষার্থী" : TAB_LABEL_SELF[tab]) : OWNER_LABEL[o],
+                label: o === "self" ? pt.tabs[tab] : pt.owners[o],
               }))}
             />
             <div className="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -706,10 +719,10 @@ export default function StudentNamesManagerPage() {
                 type="button"
                 onClick={downloadTemplate}
                 disabled={excelBusy || loading}
-                title="বর্তমান ফিল্টারের তালিকাসহ Excel ফরম্যাট"
+                title={t.templateTitle}
                 className="inline-flex h-10 items-center gap-1.5 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <FileDown className="h-4 w-4 text-emerald-600" /> ফরম্যাট ডাউনলোড
+                <FileDown className="h-4 w-4 text-emerald-600" /> {t.downloadTemplate}
               </button>
               <button
                 type="button"
@@ -718,7 +731,7 @@ export default function StudentNamesManagerPage() {
                 className="inline-flex h-10 items-center gap-1.5 border-s border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {excelBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 text-blue-600" />}
-                Excel আপলোড
+                {t.uploadExcel}
               </button>
             </div>
             {tabCanEdit &&
@@ -727,10 +740,10 @@ export default function StudentNamesManagerPage() {
                   type="button"
                   onClick={() => setEditing(false)}
                   disabled={dirtyCount > 0 || saving}
-                  title={dirtyCount > 0 ? "আগে পরিবর্তন সেভ বা বাতিল করুন" : "এডিট বন্ধ করুন"}
+                  title={dirtyCount > 0 ? t.saveOrDiscardFirst : t.stopEditing}
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  <Check className="h-4 w-4 text-emerald-600" /> সম্পন্ন
+                  <Check className="h-4 w-4 text-emerald-600" /> {t.done}
                 </button>
               ) : (
                 <button
@@ -739,7 +752,7 @@ export default function StudentNamesManagerPage() {
                   disabled={loading}
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  <Pencil className="h-4 w-4" /> এডিট করুন
+                  <Pencil className="h-4 w-4" /> {t.edit}
                 </button>
               ))}
             <input ref={excelInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={importExcel} />
@@ -749,11 +762,11 @@ export default function StudentNamesManagerPage() {
         <PeopleTabs dir={dir} disabled={dirtyCount > 0 || saving} />
 
         <ProgressSummary
-          scopeLabel={`${dir.scopeLabel} · ${owner === "self" ? "নিজের নাম" : `${OWNER_LABEL[owner]}র নাম`}`}
+          scopeLabel={`${dir.scopeLabel} · ${pt.ownerName[owner]}`}
           total={total}
           done={completeCount}
-          doneLabel="৩ ভাষাই আছে"
-          remainingLabel="অসম্পূর্ণ"
+          doneLabel={isMadrasa ? t.allLangsDone : t.allLangsDoneBilingual}
+          remainingLabel={t.incomplete}
         />
 
         <PeopleFilterBar
@@ -763,25 +776,22 @@ export default function StudentNamesManagerPage() {
               value={completeness}
               onChange={setCompleteness}
               options={[
-                { value: "", label: "সব", count: total },
-                { value: "incomplete", label: "অসম্পূর্ণ", count: total - completeCount },
-                { value: "complete", label: "সম্পূর্ণ", count: completeCount },
+                { value: "", label: t.all, count: total },
+                { value: "incomplete", label: t.incomplete, count: total - completeCount },
+                { value: "complete", label: t.complete, count: completeCount },
               ]}
             />
           }
         />
 
-        <PeopleNotices dir={dir} readOnlyText="নাম পরিবর্তনের অনুমতি আপনার নেই — শুধু দেখতে পারবেন।" />
+        <PeopleNotices dir={dir} readOnlyText={t.readOnly} />
 
         {!narrow && editable && !loading && filtered.length > 0 && (
           <div className="-mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
-              <Keyboard className="h-3.5 w-3.5" /> Enter/↓ = নিচের ঘর · Tab = পাশের ঘর · Ctrl+S = সব সেভ
+              <Keyboard className="h-3.5 w-3.5" /> {t.keyboardHint}
             </span>
-            <span>
-              Excel থেকে কপি করা কলাম যেকোনো ঘরে পেস্ট করলে নিচের দিকে ভরে যাবে · অথবা "ফরম্যাট ডাউনলোড" করে পূরণ
-              করে "Excel আপলোড" দিন
-            </span>
+            <span>{t.pasteHint}</span>
           </div>
         )}
 
@@ -795,9 +805,9 @@ export default function StudentNamesManagerPage() {
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
             <Languages className="h-10 w-10 text-slate-300 dark:text-slate-600" />
             <div className="font-semibold text-slate-700 dark:text-slate-200">
-              {completeness === "incomplete" && total > 0 ? "সবার ৩ ভাষার নাম দেওয়া আছে" : "কাউকে পাওয়া যায়নি"}
+              {completeness === "incomplete" && total > 0 ? t.everyoneComplete : t.noneFound}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">ফিল্টার বা সার্চ পরিবর্তন করে দেখুন।</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.tryChangingFilter}</p>
           </div>
         ) : narrow ? (
           <div className="space-y-3">{rows}</div>
@@ -807,20 +817,22 @@ export default function StudentNamesManagerPage() {
               <thead>
                 <tr className="bg-slate-50 text-start text-xs font-semibold text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                   <th className="w-60 px-4 py-2.5">
-                    {TAB_LABEL_SELF[tab]}
+                    {pt.tabs[tab]}
                     <span className="font-normal text-slate-400">
                       {" "}
-                      · {tab === "students" ? "শ্রেণি ও রোল" : "পদবি ও রেজি."}
+                      · {tab === "students" ? t.classAndRoll : t.designationAndReg}
                     </span>
                   </th>
                   <th className="px-3 py-2.5">
-                    {LANG_LABEL.bn}
+                    {pt.langs.bn}
                     {owner === "self" && <span className="text-rose-500"> *</span>}
                   </th>
-                  <th className="px-3 py-2.5 text-end" dir="rtl">
-                    {LANG_LABEL.ar} <span style={{ fontFamily: ARABIC_FONT_STACK }}>(الاسم)</span>
-                  </th>
-                  <th className="px-3 py-2.5">{LANG_LABEL.en}</th>
+                  {isMadrasa && (
+                    <th className="px-3 py-2.5 text-end" dir="rtl">
+                      {pt.langs.ar} <span style={{ fontFamily: ARABIC_FONT_STACK }}>(الاسم)</span>
+                    </th>
+                  )}
+                  <th className="px-3 py-2.5">{pt.langs.en}</th>
                   <th className="w-8" />
                 </tr>
               </thead>
@@ -836,10 +848,10 @@ export default function StudentNamesManagerPage() {
               onClick={() => setVisibleCount((c) => c + CHUNK)}
               className="h-10 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              আরও দেখান
+              {t.showMore}
             </button>
             <span className="text-xs text-slate-400">
-              {toBanglaDigits(visibleCount)} / {toBanglaDigits(filtered.length)} দেখানো হচ্ছে
+              {t.showingOf(toBanglaDigits(visibleCount), toBanglaDigits(filtered.length))}
             </span>
           </div>
         )}
@@ -850,7 +862,7 @@ export default function StudentNamesManagerPage() {
             <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur dark:border-amber-900/60 dark:bg-slate-900/95">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                {toBanglaDigits(dirtyCount)} টি পরিবর্তন
+                {t.changesN(toBanglaDigits(dirtyCount))}
                 <span className="hidden text-xs font-normal text-slate-400 sm:inline">· Ctrl+S</span>
               </div>
               <div className="flex gap-2">
@@ -860,7 +872,7 @@ export default function StudentNamesManagerPage() {
                   disabled={saving}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <Undo2 className="h-4 w-4" /> বাতিল
+                  <Undo2 className="h-4 w-4" /> {t.discard}
                 </button>
                 <button
                   type="button"
@@ -869,7 +881,7 @@ export default function StudentNamesManagerPage() {
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  সব সেভ করুন
+                  {t.saveAll}
                 </button>
               </div>
             </div>
@@ -879,5 +891,3 @@ export default function StudentNamesManagerPage() {
     </div>
   );
 }
-
-const TAB_LABEL_SELF: Record<PeopleTab, string> = { students: "শিক্ষার্থী", teachers: "শিক্ষক", staff: "স্টাফ" };

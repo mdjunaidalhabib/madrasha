@@ -14,6 +14,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../components/settings/SectionCard";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
+import { commonText, formatDateTime as formatDateTimeL, getLang, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceText } from "./attendance.text";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -23,7 +25,7 @@ const normalizeArray = (payload: any) => {
 const formatDateTime = (value: string | null) => {
   if (!value) return null;
   try {
-    return new Date(value).toLocaleString("bn-BD", {
+    return formatDateTimeL(value, getLang(), {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -33,6 +35,8 @@ const formatDateTime = (value: string | null) => {
 };
 
 export default function AttendanceKioskDevicesPage() {
+  const t = useText(attendanceText).kiosk;
+  const c = useText(commonText);
   const [devices, setDevices] = useState<KioskDevice[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -80,7 +84,7 @@ export default function AttendanceKioskDevicesPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      useToastStore.getState().show("ডিভাইসের একটা নাম দিন", "error");
+      useToastStore.getState().show(t.nameRequired, "error");
       return;
     }
     try {
@@ -88,9 +92,9 @@ export default function AttendanceKioskDevicesPage() {
       const res = await kioskDeviceApi.create(name.trim());
       const data = (res.data as any)?.data;
       setCreatedDevice({ id: data.id, name: data.name, rawKey: data.rawKey });
-      useToastStore.getState().show("কিওস্ক ডিভাইস তৈরি হয়েছে", "success");
+      useToastStore.getState().show(t.created, "success");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "ডিভাইস তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.createFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCreating(false);
@@ -100,9 +104,9 @@ export default function AttendanceKioskDevicesPage() {
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      useToastStore.getState().show(`${label} কপি হয়েছে`, "success");
+      useToastStore.getState().show(t.copied(label), "success");
     } catch {
-      useToastStore.getState().show("কপি করা যায়নি", "error");
+      useToastStore.getState().show(t.copyFailed, "error");
     }
   };
 
@@ -114,26 +118,26 @@ export default function AttendanceKioskDevicesPage() {
       );
       useToastStore
         .getState()
-        .show(device.isActive ? "ডিভাইস নিষ্ক্রিয় করা হয়েছে" : "ডিভাইস সক্রিয় করা হয়েছে", "success");
+        .show(device.isActive ? t.deactivated : t.activated, "success");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.updateFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   const handleDelete = (device: KioskDevice) => {
     useConfirmStore.getState().show({
-      title: "কিওস্ক ডিভাইস ডিলিট করুন",
-      message: `"${device.name}" ডিভাইসটি স্থায়ীভাবে মুছে ফেলতে চান? এই ডিভাইসের কী দিয়ে আর কার্ড স্ক্যান করা যাবে না।`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(device.name),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await kioskDeviceApi.remove(device.id);
-          useToastStore.getState().show("ডিভাইস মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(attendanceText).kiosk.deleted, "success");
           setDevices((prev) => prev.filter((d) => d.id !== device.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || getText(attendanceText).kiosk.deleteFailed;
           useToastStore.getState().show(msg, "error");
         }
       },
@@ -143,23 +147,23 @@ export default function AttendanceKioskDevicesPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
-        title="কিওস্ক ডিভাইস ব্যবস্থাপনা"
-        subtitle="গেটে থাকা কিওস্ক ট্যাবলেট/পিসিকে অ্যাটেন্ডেন্স নেওয়ার অনুমতি দিতে এখানে ডিভাইস তৈরি করুন। প্রতিটি ডিভাইসের একটি নিজস্ব কী থাকে যা কিওস্ক পেজে একবার সেটআপ করতে হয়।"
+        title={t.title}
+        subtitle={t.subtitle}
         actions={
           <Button onClick={openCreateModal} className="gap-1.5">
             <Plus size={15} />
-            নতুন ডিভাইস তৈরি করুন
+            {t.newDevice}
           </Button>
         }
       />
 
-      <SectionCard title="সব কিওস্ক ডিভাইস">
+      <SectionCard title={t.allDevices}>
         {loading ? (
           <SkeletonList items={3} />
         ) : devices.length === 0 ? (
           <EmptyState
-            title="এখনো কোনো কিওস্ক ডিভাইস তৈরি করা হয়নি"
-            hint="উপরের বাটন থেকে প্রথম ডিভাইসটি তৈরি করুন।"
+            title={t.emptyTitle}
+            hint={t.emptyHint}
           />
         ) : (
           <div className="space-y-3">
@@ -178,14 +182,14 @@ export default function AttendanceKioskDevicesPage() {
                           : "bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
                       }`}
                     >
-                      {device.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
+                      {device.isActive ? t.active : t.inactive}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                    সর্বশেষ সংযুক্ত: {formatDateTime(device.lastSeenAt) || "কখনো সংযুক্ত হয়নি"}
+                    {t.lastSeen(formatDateTime(device.lastSeenAt) || t.neverConnected)}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-slate-500">
-                    তৈরি হয়েছে: {formatDateTime(device.createdAt)}
+                    {t.createdAt(formatDateTime(device.createdAt) ?? "")}
                   </p>
                 </div>
 
@@ -198,7 +202,7 @@ export default function AttendanceKioskDevicesPage() {
                         ? "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                         : "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
                     }`}
-                    title={device.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                    title={device.isActive ? t.deactivate : t.activate}
                   >
                     <Power size={14} />
                   </button>
@@ -206,7 +210,7 @@ export default function AttendanceKioskDevicesPage() {
                     type="button"
                     onClick={() => handleDelete(device)}
                     className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                    title="মুছুন"
+                    title={t.delete}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -219,41 +223,41 @@ export default function AttendanceKioskDevicesPage() {
 
       <Modal
         open={modalOpen}
-        title={createdDevice ? "ডিভাইস কী" : "নতুন কিওস্ক ডিভাইস"}
+        title={createdDevice ? t.keyTitle : t.newTitle}
         onClose={closeModal}
       >
         {!createdDevice ? (
           <div className="flex flex-col gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                ডিভাইসের নাম
+                {t.name}
               </label>
               <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="যেমন: প্রধান গেট কিওস্ক"
+                placeholder={t.namePlaceholder}
                 autoFocus
               />
             </div>
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={closeModal}>
-                বাতিল
+                {c.cancel}
               </Button>
               <Button type="button" disabled={creating} onClick={handleCreate}>
-                {creating ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+                {creating ? t.creating : t.create}
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium text-red-600 dark:text-red-400">
-              এই কী আর কখনো দেখানো যাবে না, এখনই কপি করে নিরাপদে রাখুন
+              {t.keyWarning}
             </p>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                ডিভাইস কী
+                {t.deviceKey}
               </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 select-all break-all rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
@@ -261,19 +265,19 @@ export default function AttendanceKioskDevicesPage() {
                 </code>
                 <button
                   type="button"
-                  onClick={() => copyText(createdDevice.rawKey, "ডিভাইস কী")}
+                  onClick={() => copyText(createdDevice.rawKey, t.deviceKey)}
                   className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  title="কপি করুন"
+                  title={t.copy}
                 >
                   <Copy size={13} />
-                  কপি করুন
+                  {t.copy}
                 </button>
               </div>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                কিওস্ক পেজের URL (ট্যাবলেটে খুলুন)
+                {t.kioskUrl}
               </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 select-all break-all rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
@@ -283,17 +287,17 @@ export default function AttendanceKioskDevicesPage() {
                   type="button"
                   onClick={() => copyText(kioskUrl, "URL")}
                   className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  title="কপি করুন"
+                  title={t.copy}
                 >
                   <Copy size={13} />
-                  কপি করুন
+                  {t.copy}
                 </button>
               </div>
             </div>
 
             <div className="mt-2 flex justify-end">
               <Button type="button" onClick={closeModal}>
-                বুঝেছি, বন্ধ করুন
+                {t.done}
               </Button>
             </div>
           </div>

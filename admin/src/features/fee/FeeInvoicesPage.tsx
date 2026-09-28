@@ -17,6 +17,9 @@ import InvoicePrintModal from "./InvoicePrintModal";
 import ExamFeeBulkCollectModal from "./ExamFeeBulkCollectModal";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
+import { commonText, formatNumber, getLang, getText, localizeDigits, useLang, usePrintText, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { feeInvoicesText } from "./FeeInvoicesPage.text";
+import { invoicePrintText, invoiceStatusText } from "./fee.text";
 
 type StudentOption = {
   id: number;
@@ -47,47 +50,26 @@ const toPositiveAmount = (value: string | undefined) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-const STATUS_LABELS: Record<InvoiceStatus, { label: string; className: string }> = {
-  UNPAID: { label: "অপরিশোধিত", className: "bg-red-100 text-red-700" },
-  PARTIALLY_PAID: { label: "আংশিক পরিশোধিত", className: "bg-amber-100 text-amber-700" },
-  PAID: { label: "পরিশোধিত", className: "bg-green-100 text-green-700" },
-  OVERDUE: { label: "মেয়াদোত্তীর্ণ", className: "bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300" },
-  WAIVED: { label: "মওকুফকৃত", className: "bg-purple-100 text-purple-700" },
-};
+const INVOICE_STATUSES: InvoiceStatus[] = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "WAIVED"];
 
 const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"];
 
-const BN_MONTH_NAMES = [
-  "জানুয়ারি",
-  "ফেব্রুয়ারি",
-  "মার্চ",
-  "এপ্রিল",
-  "মে",
-  "জুন",
-  "জুলাই",
-  "আগস্ট",
-  "সেপ্টেম্বর",
-  "অক্টোবর",
-  "নভেম্বর",
-  "ডিসেম্বর",
-];
+// Short forms (feeInvoicesText.monthsShort) are for the ledger table's column
+// headers on narrow screens — the full month names make a 12-column table far
+// wider than any phone, so mobile gets the compact form and larger screens
+// get the full name.
 
-// Short forms for the ledger table's column headers on narrow screens — the
-// full Bangla month names make a 12-column table far wider than any phone,
-// so mobile gets the compact form and larger screens get the full name.
-const BN_MONTH_SHORT = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"];
-
-// invoice.month is stored "YYYY-MM" (calendar month); rendered as the Bangla
-// month name + Bangla-digit year for the monthly fee grid.
-const monthLabel = (month: string) => {
+// invoice.month is stored "YYYY-MM" (calendar month); rendered as the
+// localized month name + localized-digit year for the monthly fee grid.
+const monthLabelIn = (month: string, names: string[], lang: Lang) => {
   const [year, monthNum] = month.split("-");
-  const name = BN_MONTH_NAMES[Number(monthNum) - 1] || month;
-  return `${name} ${Number(year).toLocaleString("bn-BD")}`;
+  const name = names[Number(monthNum) - 1] || month;
+  return `${name} ${localizeDigits(Number(year), lang)}`;
 };
 
-const monthShortLabel = (month: string) => {
+const monthShortLabelIn = (month: string, names: string[]) => {
   const monthNum = Number(month.split("-")[1]);
-  return BN_MONTH_SHORT[monthNum - 1] || month;
+  return names[monthNum - 1] || month;
 };
 
 const normalizeArray = (payload: any) => {
@@ -106,6 +88,14 @@ const emptyPayCommon = {
 type PayLine = { selected: boolean; amount: string };
 
 const FeeInvoicesPage = () => {
+  const t = useText(feeInvoicesText);
+  const c = useText(commonText);
+  const st = useText(invoiceStatusText);
+  const printT = usePrintText(invoicePrintText);
+  const lang = useLang();
+  const money = (value: number | string) => formatNumber(Number(value || 0), lang);
+  const monthLabel = (month: string) => monthLabelIn(month, t.months, lang);
+  const monthShortLabel = (month: string) => monthShortLabelIn(month, t.monthsShort);
   // "বকেয়া ফী" পেজ থেকে "?student_id=" দিয়ে সরাসরি এই ছাত্রকে বেছে নেওয়া
   // অবস্থায় আসার জন্য - allStudents লোড হওয়ার পর একবার প্রয়োগ হয়।
   const [searchParams] = useSearchParams();
@@ -374,7 +364,7 @@ const FeeInvoicesPage = () => {
       ([, line]) => line.selected && Number(line.amount) > 0,
     );
     if (selected.length === 0) {
-      useToastStore.getState().show("অন্তত একটি ফি নির্বাচন করে পরিমাণ দিন", "error");
+      useToastStore.getState().show(getText(feeInvoicesText).selectAtLeastOne, "error");
       return;
     }
 
@@ -404,7 +394,12 @@ const FeeInvoicesPage = () => {
       if (failed === 0) {
         useToastStore
           .getState()
-          .show(success > 1 ? `${success}টি ফি একসাথে পরিশোধ রেকর্ড হয়েছে` : "পেমেন্ট রেকর্ড করা হয়েছে", "success");
+          .show(
+            success > 1
+              ? getText(feeInvoicesText).paidMany(localizeDigits(success, getLang()))
+              : getText(feeInvoicesText).paidOne,
+            "success",
+          );
         setPayTarget(null);
         setCheckedInvoiceIds(new Set());
         setAmountOverrides({});
@@ -412,7 +407,10 @@ const FeeInvoicesPage = () => {
       } else {
         useToastStore
           .getState()
-          .show(`${success}টি পরিশোধ হয়েছে, ${failed}টি ব্যর্থ হয়েছে — আবার চেষ্টা করুন`, "error");
+          .show(
+            getText(feeInvoicesText).partialFailure(localizeDigits(success, getLang()), localizeDigits(failed, getLang())),
+            "error",
+          );
       }
       loadInvoices();
     } finally {
@@ -497,9 +495,9 @@ const FeeInvoicesPage = () => {
       <div className="mx-auto max-w-6xl">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি গ্রহণ</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              ছাত্র খুঁজে নিন, মাসিক ফি আদায়-অনাদায় ছক দেখুন ও পেমেন্ট রেকর্ড করুন
+              {t.subtitle}
             </p>
           </div>
           {canCollect && (
@@ -509,7 +507,7 @@ const FeeInvoicesPage = () => {
               className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:h-11"
             >
               <Users size={16} />
-              পরীক্ষার ফি — শ্রেণিভিত্তিক
+              {t.bulkExamFee}
             </button>
           )}
         </div>
@@ -521,7 +519,7 @@ const FeeInvoicesPage = () => {
           {selectedStudent && (
             <div className="mb-2 flex items-center justify-between gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm dark:bg-blue-950/40">
               <span className="text-blue-800 dark:text-blue-300">
-                নির্বাচিত: <b className="font-bold">{selectedStudent.name_bn || `ছাত্র #${selectedStudent.id}`}</b>
+                {t.selected}: <b className="font-bold">{selectedStudent.name_bn || t.studentFallback(String(selectedStudent.id))}</b>
               </span>
               <button
                 type="button"
@@ -529,7 +527,7 @@ const FeeInvoicesPage = () => {
                 className="flex items-center gap-1 rounded border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300"
               >
                 <X size={12} />
-                বদলান
+                {t.change}
               </button>
             </div>
           )}
@@ -543,13 +541,13 @@ const FeeInvoicesPage = () => {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="ছাত্রের নাম, রোল বা রেজি নং দিয়ে খুঁজুন"
+              placeholder={t.searchPlaceholder}
               className="h-11 w-full rounded-md border border-gray-300 ps-8 pe-3 text-base outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
             {showSuggestions && studentQuery.trim() && (
               <div className="absolute start-0 end-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 {studentSuggestions.length === 0 ? (
-                  <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">কোনো ছাত্র পাওয়া যায়নি</div>
+                  <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-slate-500">{t.noStudentFound}</div>
                 ) : (
                   studentSuggestions.map((s) => (
                     <button
@@ -559,12 +557,12 @@ const FeeInvoicesPage = () => {
                       className="flex w-full items-center justify-between px-3 py-2 text-start text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
                       <span className="text-gray-800 dark:text-slate-200">
-                        {s.name_bn || `ছাত্র #${s.id}`}
-                        {s.current_class ? ` · শ্রেণি: ${s.current_class}` : ""}
+                        {s.name_bn || t.studentFallback(String(s.id))}
+                        {s.current_class ? ` · ${t.classLabel}: ${s.current_class}` : ""}
                       </span>
                       <span className="text-xs text-gray-400 dark:text-slate-500">
-                        রোল {s.roll ?? "-"}
-                        {s.registration_no ? ` · রেজি ${s.registration_no}` : ""}
+                        {t.roll} {s.roll ?? "-"}
+                        {s.registration_no ? ` · ${t.reg} ${s.registration_no}` : ""}
                       </span>
                     </button>
                   ))
@@ -578,15 +576,15 @@ const FeeInvoicesPage = () => {
             picked, so this sheet has its shape from the very first load. */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
           <div className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">
-            ছাত্রের তথ্য
+            {t.studentInfo}
           </div>
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-3 lg:grid-cols-5">
             {[
-              { label: "আইডি নং", value: selectedStudent ? selectedStudent.registration_no ?? selectedStudent.id : "—" },
-              { label: "নাম", value: selectedStudent ? selectedStudent.name_bn || `ছাত্র #${selectedStudent.id}` : "—" },
-              { label: "অভিভাবকের নাম", value: selectedStudent ? studentDetail?.father_name || "—" : "—" },
-              { label: "ঠিকানা", value: selectedStudent ? studentAddress || "—" : "—" },
-              { label: "মোবাইল", value: selectedStudent ? studentDetail?.guardian_phone || "—" : "—" },
+              { label: t.idNo, value: selectedStudent ? selectedStudent.registration_no ?? selectedStudent.id : "—" },
+              { label: c.name, value: selectedStudent ? selectedStudent.name_bn || t.studentFallback(String(selectedStudent.id)) : "—" },
+              { label: t.guardianName, value: selectedStudent ? studentDetail?.father_name || "—" : "—" },
+              { label: c.address, value: selectedStudent ? studentAddress || "—" : "—" },
+              { label: c.mobile, value: selectedStudent ? studentDetail?.guardian_phone || "—" : "—" },
             ].map((field) => (
               <div key={field.label} className="min-w-0 bg-white px-3 py-2.5 dark:bg-slate-900">
                 <div className="text-xs font-medium text-gray-400 dark:text-slate-500">{field.label}</div>
@@ -605,10 +603,10 @@ const FeeInvoicesPage = () => {
             onChange={(event) => setInvoiceStatusFilter(event.target.value)}
             className="h-10 w-full rounded-md border border-gray-300 px-3 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
           >
-            <option value="">সব স্ট্যাটাস</option>
-            {(Object.keys(STATUS_LABELS) as InvoiceStatus[]).map((status) => (
+            <option value="">{t.allStatus}</option>
+            {INVOICE_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {STATUS_LABELS[status].label}
+                {st[status]}
               </option>
             ))}
           </select>
@@ -617,15 +615,15 @@ const FeeInvoicesPage = () => {
         {/* Summary stats — always visible, ৳০ until a student is picked */}
         <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-3">
           <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900 sm:p-4">
-            <div className="text-xs text-gray-500 dark:text-slate-400 sm:text-sm">মোট বকেয়া</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400 sm:text-sm">{t.totalDue}</div>
             <div className="mt-0.5 text-xl font-extrabold text-rose-600 dark:text-rose-400 sm:text-2xl">
-              ৳{invoiceSummary.totalDue.toLocaleString("bn-BD")}
+              ৳{money(invoiceSummary.totalDue)}
             </div>
           </div>
           <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900 sm:p-4">
-            <div className="text-xs text-gray-500 dark:text-slate-400 sm:text-sm">সংগৃহীত</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400 sm:text-sm">{t.collected}</div>
             <div className="mt-0.5 text-xl font-extrabold text-emerald-600 dark:text-emerald-400 sm:text-2xl">
-              ৳{invoiceSummary.totalCollected.toLocaleString("bn-BD")}
+              ৳{money(invoiceSummary.totalCollected)}
             </div>
           </div>
         </div>
@@ -638,17 +636,17 @@ const FeeInvoicesPage = () => {
             what's currently ticked (1 month × rate, 2 months × rate, ...). */}
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <h4 className="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-slate-300">
-            মাসিক ফি আদায় - অনাদায় ছক, সাল - {ledgerYear.toLocaleString("bn-BD")}
+            {t.ledgerTitle(localizeDigits(ledgerYear, lang))}
           </h4>
           <p className="mb-1.5 text-center text-[11px] text-gray-400 dark:text-slate-500 sm:hidden">
-            ⟷ টেবিলটি পাশে স্ক্রল করে বাকি মাসগুলো দেখুন
+            {t.scrollHint}
           </p>
           <div className="overflow-x-auto rounded-lg border border-gray-300 dark:border-slate-700">
             <table className="w-full min-w-[620px] border-collapse text-sm">
               <thead>
                 <tr>
                   <th className="sticky start-0 z-10 border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                    বিষয়সমূহ
+                    {t.items}
                   </th>
                   {displayMonths.map((m) => (
                     <th
@@ -660,7 +658,7 @@ const FeeInvoicesPage = () => {
                     </th>
                   ))}
                   <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-center text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                    পরিমাণ
+                    {t.amount}
                   </th>
                 </tr>
               </thead>
@@ -671,7 +669,7 @@ const FeeInvoicesPage = () => {
                       colSpan={displayMonths.length + 2}
                       className="border border-gray-300 px-2.5 py-8 text-center text-gray-400 dark:border-slate-700 dark:text-slate-500"
                     >
-                      লোড হচ্ছে...
+                      {c.loading}
                     </td>
                   </tr>
                 ) : !selectedStudent ? (
@@ -680,7 +678,7 @@ const FeeInvoicesPage = () => {
                       colSpan={displayMonths.length + 2}
                       className="border border-gray-300 px-2.5 py-8 text-center text-gray-400 dark:border-slate-700 dark:text-slate-500"
                     >
-                      ফি দেখতে ও নিতে উপরের সার্চ বারে একজন ছাত্র খুঁজে নির্বাচন করুন
+                      {t.pickStudentHint}
                     </td>
                   </tr>
                 ) : monthlyGroups.length === 0 && otherInvoices.length === 0 ? (
@@ -689,7 +687,7 @@ const FeeInvoicesPage = () => {
                       colSpan={displayMonths.length + 2}
                       className="border border-gray-300 px-2.5 py-8 text-center text-gray-400 dark:border-slate-700 dark:text-slate-500"
                     >
-                      এই ছাত্রের কোনো ফি নেই
+                      {t.noFees}
                     </td>
                   </tr>
                 ) : (
@@ -711,7 +709,7 @@ const FeeInvoicesPage = () => {
                               <input
                                 type="checkbox"
                                 checked={unlocked}
-                                title="ফি নিতে এই ঘরে টিক দিয়ে মাসগুলো খুলুন"
+                                title={t.unlockHint}
                                 onChange={() => {
                                   setUnlockedRows((prev) => {
                                     const next = new Set(prev);
@@ -741,7 +739,7 @@ const FeeInvoicesPage = () => {
                             <span className="flex flex-col leading-tight">
                               <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">{group.title}</span>
                               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                ৳{Number(rate || 0).toLocaleString("bn-BD")}
+                                ৳{money(Number(rate || 0))}
                               </span>
                             </span>
                           </label>
@@ -770,14 +768,14 @@ const FeeInvoicesPage = () => {
                               {invoice.status === "PAID" ? (
                                 <button
                                   type="button"
-                                  title="প্রিন্ট"
+                                  title={c.print}
                                   onClick={() => setPrintTarget(invoice)}
                                   className="inline-flex"
                                 >
                                   <CircleCheck size={17} className="text-green-600 dark:text-green-400" />
                                 </button>
                               ) : invoice.status === "WAIVED" ? (
-                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">মওকুফ</span>
+                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{t.waivedShort}</span>
                               ) : (
                                 <input
                                   type="checkbox"
@@ -808,7 +806,7 @@ const FeeInvoicesPage = () => {
                               />
                               <button
                                 type="button"
-                                title="সংরক্ষণ করুন"
+                                title={c.save}
                                 onClick={() => confirmEditAmount(rowCheckedItems[0])}
                                 className="rounded p-0.5 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                               >
@@ -816,7 +814,7 @@ const FeeInvoicesPage = () => {
                               </button>
                               <button
                                 type="button"
-                                title="বাতিল"
+                                title={c.cancel}
                                 onClick={cancelEditAmount}
                                 className="rounded p-0.5 text-gray-400 hover:bg-gray-100 dark:text-slate-500 dark:hover:bg-slate-800"
                               >
@@ -827,17 +825,17 @@ const FeeInvoicesPage = () => {
                             <button
                               type="button"
                               onClick={() => startEditAmount(rowCheckedItems[0])}
-                              title="আংশিক পরিমাণ দিতে ক্লিক করুন"
+                              title={t.partialAmountHint}
                               className="inline-flex items-center gap-1"
                             >
                               <span className={rowActiveAmount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-300 dark:text-slate-600"}>
-                                ৳{rowActiveAmount.toLocaleString("bn-BD")}
+                                ৳{money(rowActiveAmount)}
                               </span>
                               <Pencil size={11} className="text-gray-400 dark:text-slate-500" />
                             </button>
                           ) : (
                             <span className={rowActiveAmount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-300 dark:text-slate-600"}>
-                              ৳{rowActiveAmount.toLocaleString("bn-BD")}
+                              ৳{money(rowActiveAmount)}
                             </span>
                           )}
                         </td>
@@ -864,14 +862,14 @@ const FeeInvoicesPage = () => {
                             {invoice.status === "PAID" ? (
                               <button
                                 type="button"
-                                title="প্রিন্ট"
+                                title={c.print}
                                 onClick={() => setPrintTarget(invoice)}
                                 className="mt-0.5 inline-flex shrink-0"
                               >
                                 <CircleCheck size={15} className="text-green-600 dark:text-green-400" />
                               </button>
                             ) : invoice.status === "WAIVED" ? (
-                              <span className="mt-0.5 shrink-0 text-xs font-bold text-purple-600 dark:text-purple-400">মওকুফ</span>
+                              <span className="mt-0.5 shrink-0 text-xs font-bold text-purple-600 dark:text-purple-400">{t.waivedShort}</span>
                             ) : (
                               <input
                                 type="checkbox"
@@ -884,7 +882,7 @@ const FeeInvoicesPage = () => {
                             <span className="flex flex-col leading-tight">
                               <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">{invoice.title}</span>
                               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                ৳{Number(invoice.amount || 0).toLocaleString("bn-BD")}
+                                ৳{money(Number(invoice.amount || 0))}
                               </span>
                             </span>
                           </label>
@@ -915,7 +913,7 @@ const FeeInvoicesPage = () => {
                               />
                               <button
                                 type="button"
-                                title="সংরক্ষণ করুন"
+                                title={c.save}
                                 onClick={() => confirmEditAmount(invoice)}
                                 className="rounded p-0.5 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                               >
@@ -923,7 +921,7 @@ const FeeInvoicesPage = () => {
                               </button>
                               <button
                                 type="button"
-                                title="বাতিল"
+                                title={c.cancel}
                                 onClick={cancelEditAmount}
                                 className="rounded p-0.5 text-gray-400 hover:bg-gray-100 dark:text-slate-500 dark:hover:bg-slate-800"
                               >
@@ -934,14 +932,14 @@ const FeeInvoicesPage = () => {
                             <button
                               type="button"
                               onClick={() => startEditAmount(invoice)}
-                              title="আংশিক পরিমাণ দিতে ক্লিক করুন"
+                              title={t.partialAmountHint}
                               className="inline-flex items-center gap-1"
                             >
-                              <span className="text-emerald-600 dark:text-emerald-400">৳{effectiveAmount(invoice).toLocaleString("bn-BD")}</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">৳{money(effectiveAmount(invoice))}</span>
                               <Pencil size={11} className="text-gray-400 dark:text-slate-500" />
                             </button>
                           ) : (
-                            <span className="text-gray-300 dark:text-slate-600">৳০</span>
+                            <span className="text-gray-300 dark:text-slate-600">৳{money(0)}</span>
                           )}
                         </td>
                       </tr>
@@ -957,10 +955,10 @@ const FeeInvoicesPage = () => {
                       colSpan={displayMonths.length + 1}
                       className="border border-gray-300 px-3 py-2.5 text-end text-sm font-bold text-gray-800 dark:border-slate-700 dark:text-slate-100"
                     >
-                      সর্বমোট
+                      {t.grandTotal}
                     </td>
                     <td className="border border-gray-300 px-3 py-2.5 text-center text-base font-extrabold text-blue-700 dark:border-slate-700 dark:text-blue-400">
-                      ৳{checkedTotal.toLocaleString("bn-BD")}
+                      ৳{money(checkedTotal)}
                     </td>
                   </tr>
                 </tfoot>
@@ -977,8 +975,8 @@ const FeeInvoicesPage = () => {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 px-3 py-2.5 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-4">
           <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm text-gray-600 dark:text-slate-400">
-              {checkedInvoices.length}টি নির্বাচিত ·{" "}
-              <span className="font-semibold text-gray-800 dark:text-slate-100">৳{checkedTotal.toLocaleString("bn-BD")}</span>
+              {t.selectedCount(localizeDigits(checkedInvoices.length, lang))} ·{" "}
+              <span className="font-semibold text-gray-800 dark:text-slate-100">৳{money(checkedTotal)}</span>
             </span>
             <button
               type="button"
@@ -986,7 +984,7 @@ const FeeInvoicesPage = () => {
               className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 sm:w-auto"
             >
               <Wallet size={14} />
-              নির্বাচিত ফি সংগ্রহ করুন
+              {t.collectSelected}
             </button>
           </div>
         </div>
@@ -996,7 +994,7 @@ const FeeInvoicesPage = () => {
           "সব বকেয়া ফি নিন" (every unpaid fee for one student at once) */}
       <Modal
         open={!!payTarget}
-        title={`পেমেন্ট রেকর্ড করুন — ${payStudentLabel}`}
+        title={t.payTitle(payStudentLabel)}
         onClose={() => setPayTarget(null)}
         maxWidthClassName="max-w-lg"
       >
@@ -1021,7 +1019,7 @@ const FeeInvoicesPage = () => {
                         className="h-4 w-4 shrink-0 rounded border-gray-300 dark:border-slate-600"
                       />
                       <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-slate-300">
-                        {invoice.title} <span className="text-gray-400 dark:text-slate-500">(বাকি ৳{remaining})</span>
+                        {invoice.title} <span className="text-gray-400 dark:text-slate-500">{t.remainingParen(money(remaining))}</span>
                       </span>
                     </label>
                     <div className="flex shrink-0 items-center gap-1.5 ps-6 sm:ps-0">
@@ -1036,7 +1034,7 @@ const FeeInvoicesPage = () => {
                       />
                       {isPartial && (
                         <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                          আংশিক
+                          {t.partial}
                         </span>
                       )}
                     </div>
@@ -1044,15 +1042,15 @@ const FeeInvoicesPage = () => {
                 );
               })}
               <div className="mt-1 flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm font-semibold text-gray-800 dark:border-slate-700 dark:text-slate-100">
-                <span>মোট নেওয়া হবে</span>
-                <span>৳{selectedPayTotal.toLocaleString("bn-BD")}</span>
+                <span>{t.totalToCollect}</span>
+                <span>৳{money(selectedPayTotal)}</span>
               </div>
             </div>
           )}
 
           {payTarget && payTarget.length === 1 && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.amountTaka}</label>
               <input
                 type="number"
                 value={payLines[payTarget[0].id]?.amount ?? ""}
@@ -1062,14 +1060,14 @@ const FeeInvoicesPage = () => {
                 className="h-10 w-full rounded-md border border-gray-300 px-3 text-base outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                বাকি আছে: ৳{remainingDue(payTarget[0])} — সম্পূর্ণ না দিয়ে কম অঙ্ক লিখলে আংশিক পরিশোধ হিসেবে রেকর্ড হবে
+                {t.remainingHint(money(remainingDue(payTarget[0])))}
               </p>
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পদ্ধতি</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.method}</label>
               <select
                 value={payCommon.method}
                 onChange={(e) => setPayCommon((p) => ({ ...p, method: e.target.value as PaymentMethod }))}
@@ -1083,7 +1081,7 @@ const FeeInvoicesPage = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">তারিখ</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{c.date}</label>
               <input
                 type="date"
                 value={payCommon.paid_at}
@@ -1097,7 +1095,7 @@ const FeeInvoicesPage = () => {
           {configuredMethods.length > 0 && (
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                কোন চ্যানেলে টাকা পাওয়া গেছে (ঐচ্ছিক)
+                {t.channel}
               </label>
               <select
                 value={payCommon.payment_method_setting_id}
@@ -1106,7 +1104,7 @@ const FeeInvoicesPage = () => {
                 }
                 className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="">নির্বাচন করুন (ঐচ্ছিক)</option>
+                <option value="">{t.selectOptional}</option>
                 {configuredMethods.map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.label}
@@ -1119,7 +1117,7 @@ const FeeInvoicesPage = () => {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              ট্রানজেকশন রেফারেন্স (ঐচ্ছিক)
+              {t.transactionRef}
             </label>
             <input
               type="text"
@@ -1130,13 +1128,13 @@ const FeeInvoicesPage = () => {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নোট (ঐচ্ছিক)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.noteOptional}</label>
             <textarea
               value={payCommon.note}
               onChange={(e) => setPayCommon((p) => ({ ...p, note: e.target.value }))}
               rows={2}
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="যেমন: আংশিক পরিশোধ, বাকিটা পরের মাসে দেবে"
+              placeholder={t.notePlaceholder}
             />
           </div>
         </div>
@@ -1146,7 +1144,7 @@ const FeeInvoicesPage = () => {
             onClick={() => setPayTarget(null)}
             className="h-10 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -1154,7 +1152,7 @@ const FeeInvoicesPage = () => {
             onClick={handlePay}
             className="h-10 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {paying ? "সংরক্ষণ হচ্ছে..." : `৳${selectedPayTotal.toLocaleString("bn-BD")} পেমেন্ট নিশ্চিত করুন`}
+            {paying ? c.saving : t.confirmPay(money(selectedPayTotal))}
           </button>
         </div>
       </Modal>
@@ -1172,7 +1170,7 @@ const FeeInvoicesPage = () => {
         invoice={printTarget}
         studentLabel={
           printTarget
-            ? `${printTarget.student?.nameBn || ""}${printTarget.student?.roll ? ` (রোল ${printTarget.student.roll})` : ""}`
+            ? `${printTarget.student?.nameBn || ""}${printTarget.student?.roll ? ` (${printT.roll} ${printTarget.student.roll})` : ""}`
             : ""
         }
         onClose={() => setPrintTarget(null)}

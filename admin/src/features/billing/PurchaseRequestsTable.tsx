@@ -2,11 +2,13 @@ import { useEffect, useImperativeHandle, useState, forwardRef } from "react";
 import { billingApi, type MessagePurchaseRequest, type PurchaseRequestStatus } from "../../services/billingApi";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useLang, useText, formatNumber, formatDateTime } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
-const STATUS_LABELS: Record<PurchaseRequestStatus, { label: string; className: string }> = {
-  PENDING: { label: "অপেক্ষমাণ", className: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" },
-  APPROVED: { label: "অনুমোদিত", className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
-  REJECTED: { label: "বাতিল", className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
+const STATUS_CLASSES: Record<PurchaseRequestStatus, string> = {
+  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  APPROVED: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
 };
 
 export interface PurchaseRequestsTableHandle {
@@ -14,6 +16,8 @@ export interface PurchaseRequestsTableHandle {
 }
 
 const PurchaseRequestsTable = forwardRef<PurchaseRequestsTableHandle>((_props, ref) => {
+  const tx = useText(billingText);
+  const lang = useLang();
   const [requests, setRequests] = useState<MessagePurchaseRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +38,7 @@ const PurchaseRequestsTable = forwardRef<PurchaseRequestsTableHandle>((_props, r
 
   if (loading) return <SkeletonList items={5} />;
   if (requests.length === 0) {
-    return <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">কোনো অনুরোধ নেই</div>;
+    return <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">{tx.noRequests}</div>;
   }
 
   return (
@@ -43,22 +47,22 @@ const PurchaseRequestsTable = forwardRef<PurchaseRequestsTableHandle>((_props, r
         <div key={r.id} className="rounded-lg border border-gray-200 p-3 text-sm dark:border-slate-700">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-medium text-gray-800 dark:text-slate-200">
-              {r.channel === "SMS" ? "SMS" : "ইমেইল"} — {r.package?.name || "প্যাকেজ"}
+              {r.channel === "SMS" ? "SMS" : tx.email} — {r.package?.name || tx.packageBadge}
             </span>
-            <span className={`rounded px-2 py-0.5 text-xs ${STATUS_LABELS[r.status].className}`}>
-              {STATUS_LABELS[r.status].label}
+            <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASSES[r.status]}`}>
+              {tx.requestStatus[r.status]}
             </span>
           </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-            ৳{Number(r.amount).toLocaleString("bn-BD")}
+            ৳{formatNumber(Number(r.amount), lang)}
             {r.paymentMethodLabel && ` · ${r.paymentMethodLabel}`}
             {r.transactionRef && ` · ${r.transactionRef}`} ·{" "}
-            {new Date(r.createdAt).toLocaleString("bn-BD")}
+            {formatDateTime(r.createdAt, lang)}
           </p>
-          {r.note && <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">নোট: {r.note}</p>}
+          {r.note && <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{tx.note}: {r.note}</p>}
           {r.status !== "PENDING" && r.reviewNote && (
             <p className="mt-1 text-xs text-gray-600 dark:text-slate-300">
-              পর্যালোচনা: {r.reviewNote}
+              {tx.review}: {r.reviewNote}
             </p>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { ApiError, NotFoundError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
+import { t } from "../../shared/i18n";
 
 export { TenantNotResolvedError } from "../../shared/errors";
 
@@ -152,7 +153,7 @@ export interface BulkUpdateResult {
 
 export class StudentNotFoundError extends NotFoundError {
   constructor() {
-    super("Student not found");
+    super(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
   }
 }
 
@@ -162,7 +163,7 @@ export class MissingFieldsError extends ApiError {
   public readonly received: unknown;
 
   constructor(missingFields: string[], received: unknown) {
-    super("Required fields missing", HttpStatus.BAD_REQUEST);
+    super(t({ bn: "আবশ্যক তথ্য দেওয়া হয়নি", en: "Required fields missing", ar: "حقول مطلوبة مفقودة" }), HttpStatus.BAD_REQUEST);
     this.missingFields = missingFields;
     this.received = received;
   }

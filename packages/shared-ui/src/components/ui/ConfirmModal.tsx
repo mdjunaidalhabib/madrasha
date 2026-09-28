@@ -1,4 +1,6 @@
 import Modal from "./Modal";
+import { commonText, useText } from "../../i18n";
+import { uiText } from "./ui.text";
 
 type Props = {
   open: boolean;
@@ -16,13 +18,15 @@ export default function ConfirmModal({
   open,
   title,
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText,
+  cancelText,
   danger = false,
   loading = false,
   onConfirm,
   onClose,
 }: Props) {
+  const c = useText(commonText);
+  const t = useText(uiText);
   return (
     <Modal open={open} title={title} onClose={onClose}>
       <div className="space-y-4">
@@ -35,7 +39,7 @@ export default function ConfirmModal({
             disabled={loading}
             className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            {cancelText}
+            {cancelText ?? c.cancel}
           </button>
 
           <button
@@ -49,7 +53,7 @@ export default function ConfirmModal({
                 : "bg-black hover:bg-black/90 dark:bg-slate-700 dark:hover:bg-slate-600",
             ].join(" ")}
           >
-            {loading ? "Please wait..." : confirmText}
+            {loading ? t.pleaseWait : confirmText ?? c.confirm}
           </button>
         </div>
       </div>

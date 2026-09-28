@@ -8,7 +8,7 @@ import DocumentPreview from "@madrasha/shared-ui/src/components/DocumentDesigner
 import CreateTemplateModal from "@madrasha/shared-ui/src/components/DocumentDesigner/CreateTemplateModal";
 import {
   DOCUMENT_TYPE_TO_KIND,
-  DOCUMENT_TYPE_LABELS_BN,
+  getDocumentTypeLabel,
   type BackendDocumentType,
 } from "@madrasha/shared-ui/src/components/DocumentDesigner/documentTypeMap";
 import {
@@ -19,6 +19,8 @@ import {
   setSystemDefaultTemplate,
 } from "../../../services/superAdminDocumentTemplateApi";
 import type { TemplateDetailDto, TemplateListItemDto } from "../../../services/documentTemplateTypes";
+import { getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { documentTemplatesText } from "./documentTemplates.text";
 
 const ALL_TYPES: BackendDocumentType[] = [
   "ID_CARD",
@@ -53,6 +55,9 @@ const PLACEHOLDER_ROW: Record<string, any> = {
 
 export default function SuperAdminDocumentTemplatesPage() {
   const navigate = useNavigate();
+  const t = useText(documentTemplatesText);
+  // Re-render on language switch (document type labels are resolved via getText).
+  useLang();
   const [type, setType] = useState<BackendDocumentType>("ID_CARD");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<TemplateListItemDto[]>([]);
@@ -71,7 +76,7 @@ export default function SuperAdminDocumentTemplatesPage() {
       const detailEntries = await Promise.all(list.map((item) => getSystemTemplate(item.id).then((d) => [item.id, d] as const)));
       setDetails(Object.fromEntries(detailEntries));
     } catch {
-      setError("টেমপ্লেট তালিকা লোড করা যায়নি");
+      setError(getText(documentTemplatesText).listLoadFailed);
     } finally {
       setLoading(false);
     }
@@ -92,7 +97,7 @@ export default function SuperAdminDocumentTemplatesPage() {
       openInDesigner(detail.id);
       setCreateOpen(false);
     } catch {
-      setCreateError("নতুন টেমপ্লেট তৈরি করা যায়নি, আবার চেষ্টা করুন");
+      setCreateError(getText(documentTemplatesText).createFailed);
     } finally {
       setBusyId(null);
     }
@@ -104,20 +109,20 @@ export default function SuperAdminDocumentTemplatesPage() {
       await setSystemDefaultTemplate(item.id);
       await load();
     } catch {
-      setError("সিস্টেম ডিফল্ট নির্ধারণ করা যায়নি — প্রথমে প্রকাশ করুন");
+      setError(getText(documentTemplatesText).setDefaultFailed);
     } finally {
       setBusyId(null);
     }
   };
 
   const handleDelete = async (item: TemplateListItemDto) => {
-    if (!window.confirm(`"${item.name}" টেমপ্লেটটি মুছে ফেলতে চান?`)) return;
+    if (!window.confirm(getText(documentTemplatesText).confirmDelete(item.name))) return;
     setBusyId(item.id);
     try {
       await deleteSystemTemplate(item.id);
       await load();
     } catch {
-      setError("মুছে ফেলা যায়নি");
+      setError(getText(documentTemplatesText).deleteFailed);
     } finally {
       setBusyId(null);
     }
@@ -126,8 +131,8 @@ export default function SuperAdminDocumentTemplatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Document Templates"
-        subtitle="Manage system-wide template library for ID Card, Admit Card and other documents"
+        title={t.title}
+        subtitle={t.subtitle}
         actions={
           <Button
             type="button"
@@ -136,14 +141,14 @@ export default function SuperAdminDocumentTemplatesPage() {
               setCreateOpen(true);
             }}
           >
-            <Plus size={15} className="me-1.5" /> New Template
+            <Plus size={15} className="me-1.5" /> {t.newTemplate}
           </Button>
         }
       />
 
       <CreateTemplateModal
         open={createOpen}
-        defaultName={`নতুন ${DOCUMENT_TYPE_LABELS_BN[type]}`}
+        defaultName={t.newTemplateName(getDocumentTypeLabel(type))}
         busy={busyId === -1}
         error={createError}
         onClose={() => setCreateOpen(false)}
@@ -151,16 +156,16 @@ export default function SuperAdminDocumentTemplatesPage() {
       />
 
       <div className="flex flex-wrap gap-2">
-        {ALL_TYPES.map((t) => (
+        {ALL_TYPES.map((dt) => (
           <button
-            key={t}
+            key={dt}
             type="button"
-            onClick={() => setType(t)}
+            onClick={() => setType(dt)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-              type === t ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-800"
+              type === dt ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-800"
             }`}
           >
-            {DOCUMENT_TYPE_LABELS_BN[t]}
+            {getDocumentTypeLabel(dt)}
           </button>
         ))}
       </div>
@@ -171,7 +176,7 @@ export default function SuperAdminDocumentTemplatesPage() {
         <SkeletonCard lines={6} />
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          এই ধরনের কোনো সিস্টেম টেমপ্লেট নেই। একটি নতুন টেমপ্লেট তৈরি করুন।
+          {t.empty}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -207,7 +212,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                 <div className="mb-2 flex items-center gap-1.5">
                   <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                   {item.is_system_default && (
-                    <span title="System Default" className="text-amber-500 dark:text-amber-400">
+                    <span title={t.systemDefault} className="text-amber-500 dark:text-amber-400">
                       <CheckCircle2 size={14} />
                     </span>
                   )}
@@ -215,12 +220,12 @@ export default function SuperAdminDocumentTemplatesPage() {
                 <div className="mb-3">
                   {!item.is_published && (
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                      Draft
+                      {t.draft}
                     </span>
                   )}
                   {item.is_published && (
                     <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                      Published
+                      {t.published}
                     </span>
                   )}
                 </div>
@@ -231,7 +236,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                     onClick={() => openInDesigner(item.id)}
                     className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
-                    <Pencil size={12} /> Edit
+                    <Pencil size={12} /> {t.edit}
                   </button>
                   {!item.is_system_default && (
                     <button
@@ -240,7 +245,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                       onClick={() => handleSetDefault(item)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
-                      <Star size={12} /> Set Default
+                      <Star size={12} /> {t.setDefault}
                     </button>
                   )}
                   {!item.is_system_default && (
@@ -250,7 +255,7 @@ export default function SuperAdminDocumentTemplatesPage() {
                       onClick={() => handleDelete(item)}
                       className="flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                     >
-                      <Trash2 size={12} /> Delete
+                      <Trash2 size={12} /> {t.delete}
                     </button>
                   )}
                 </div>

@@ -1,5 +1,6 @@
 import { Layers } from "lucide-react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 import { hasOwnGrading, type DivisionFailMark } from "./divisionGrading";
 import DivisionStatusChip from "./DivisionStatusChip";
 
@@ -33,11 +34,14 @@ export default function GradeScopePanel({
   selected: GradeScope;
   onSelect: (scope: GradeScope) => void;
 }) {
+  const t = useText(examPanelText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   return (
     <>
       {/* Mobile / tablet: horizontally scrollable pills */}
       <div className="-mx-1 overflow-x-auto px-1 pb-1 lg:hidden">
-        <div className="flex gap-2" role="group" aria-label="গ্রেডিং স্কোপ">
+        <div className="flex gap-2" role="group" aria-label={t.gradingScope}>
           <button
             type="button"
             aria-pressed={selected === null}
@@ -45,7 +49,7 @@ export default function GradeScopePanel({
             className={pillClass(selected === null)}
           >
             <Layers size={14} />
-            ডিফল্ট
+            {t.defaultShort}
           </button>
           {divisions.map((d) => {
             const active = selected === d.division_id;
@@ -77,7 +81,7 @@ export default function GradeScopePanel({
 
       {/* Desktop: sticky side panel */}
       <aside
-        aria-label="গ্রেডিং স্কোপ"
+        aria-label={t.gradingScope}
         className="sticky top-4 hidden max-h-[calc(100vh-2rem)] w-64 shrink-0 self-start overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:block"
       >
         <button
@@ -88,21 +92,21 @@ export default function GradeScopePanel({
         >
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
             <Layers size={15} className="text-emerald-600 dark:text-emerald-400" />
-            ডিফল্ট (সব বিভাগের জন্য)
+            {t.defaultAll}
           </div>
           <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-            ফেল মার্ক {toBanglaDigits(defaultFailMark)}
+            {t.failMarkN(toBanglaDigits(defaultFailMark))}
           </span>
         </button>
 
         <div className="my-2 flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          বিভাগসমূহ
+          {t.divisions}
           <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
           {toBanglaDigits(divisions.length)}
         </div>
 
         {divisions.length === 0 && (
-          <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">কোনো বিভাগ নেই</p>
+          <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{t.noDivision}</p>
         )}
 
         <div className="space-y-1">

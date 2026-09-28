@@ -2,8 +2,10 @@
 
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits, formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, localizeDigits, useIsMadrasa, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { resultStatusBadge } from "./resultStatus";
+import { resultPanelText } from "./resultPanel.text";
 
 interface SummaryMark {
   book_id: number;
@@ -87,6 +89,16 @@ export default function FullResultTable({
   onRequestRejectResult,
   onRecalculate,
 }: Props) {
+  const lang = useLang();
+  const rt = useText(resultPanelText);
+  const t = rt.full;
+  const c = useText(commonText);
+  const isMadrasa = useIsMadrasa();
+  const num = (value: number | string) => localizeDigits(value, lang);
+  // Madrasa-grade column only for madrasas - schools/colleges see general grades.
+  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 9 : 8);
+  const statusLabel = (status: string) =>
+    rt.resultStatus[String(status || "").toUpperCase()] ?? localizeDigits(formatReportValue(status), lang);
   const dataList = Array.isArray(summary) ? summary : [];
   const subjectList = Array.isArray(books) ? books : [];
 
@@ -108,9 +120,9 @@ export default function FullResultTable({
     if (!resultMasterId || !onDelete) return;
 
     useConfirmStore.getState().show({
-      title: "Delete Result",
-      message: "Are you sure?",
-      confirmText: "Delete",
+      title: t.deleteTitle,
+      message: t.deleteMessage,
+      confirmText: c.delete,
       danger: true,
       onConfirm: () => onDelete(resultMasterId),
     });
@@ -119,17 +131,17 @@ export default function FullResultTable({
   const getMark = (student: Summary, bookId: number) => {
     const found = student.marks?.find((m) => m.book_id === bookId);
     if (!found) return "-";
-    return found.is_absent ? "অনু" : toBanglaDigits(found.mark);
+    return found.is_absent ? rt.absentShort : num(found.mark);
   };
 
   return (
     <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4 dark:bg-slate-900">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">📊 Full Result Table</h2>
+          <h2 className="text-base sm:text-lg font-semibold">{t.title}</h2>
           {dataList.length > 0 && (
             <p className="text-sm text-gray-500 mt-1 dark:text-slate-400 flex items-center gap-2">
-              Status:{" "}
+              {t.status}{" "}
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge.className}`}>
                 {statusBadge.label}
               </span>
@@ -142,7 +154,7 @@ export default function FullResultTable({
             onClick={() => window.print()}
             className="flex-1 sm:flex-none bg-gray-700 text-white px-3 sm:px-4 py-2 rounded text-sm"
           >
-            🖨 Print
+            🖨 {c.print}
           </button>
 
           {/* Opens the whole-class entry grid. Once published the backend
@@ -154,12 +166,12 @@ export default function FullResultTable({
               onClick={onEdit}
               title={
                 alreadyPublished
-                  ? "প্রকাশিত ফলাফল — পুরো ক্লাসের নাম্বার একসাথে সংশোধন করুন"
-                  : "পুরো ক্লাসের নাম্বার একসাথে এডিট করুন"
+                  ? t.editAllPublishedTitle
+                  : t.editAllTitle
               }
               className="flex-1 sm:flex-none bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
-              {alreadyPublished ? "✏️ সব নম্বর সংশোধন" : "✏️ Edit Marks"}
+              {alreadyPublished ? t.correctAll : t.editMarks}
             </button>
           )}
 
@@ -168,17 +180,17 @@ export default function FullResultTable({
               onClick={handleDelete}
               className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm"
             >
-              Delete
+              {c.delete}
             </button>
           )}
 
           {onRecalculate && (isProcessing || isResultVerified || isApproved || alreadyPublished) && (
             <button
               onClick={onRecalculate}
-              title="বর্তমান ফেল মার্ক ও গ্রেড সীমা অনুযায়ী এই ফলাফল নতুন করে হিসাব করুন"
+              title={t.recalcTitle}
               className="flex-1 sm:flex-none bg-teal-600 text-white px-3 sm:px-4 py-2 rounded text-sm hover:bg-teal-700"
             >
-              🔄 পুনঃগণনা
+              {t.recalc}
             </button>
           )}
 
@@ -186,10 +198,10 @@ export default function FullResultTable({
             <button
               onClick={onApplyRollByRank}
               disabled={applyingRoll}
-              title="ফলাফলের মেধাক্রম অনুযায়ী প্রত্যেক ছাত্রের রোল নম্বর নতুন করে বসাবে"
+              title={t.rollByRankTitle}
               className="flex-1 sm:flex-none bg-purple-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              {applyingRoll ? "রোল আপডেট হচ্ছে..." : "🏆 মেধাক্রম অনুযায়ী রোল"}
+              {applyingRoll ? t.rollUpdating : t.rollByRank}
             </button>
           )}
 
@@ -197,10 +209,10 @@ export default function FullResultTable({
             <button
               onClick={onUndoRollByRank}
               disabled={applyingRoll}
-              title="মেধাক্রম অনুযায়ী বসানো রোলের ঠিক আগের রোল নম্বরগুলো ফিরিয়ে আনবে"
+              title={t.undoRollTitle}
               className="flex-1 sm:flex-none bg-amber-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              ↩️ আগের রোলে ফিরে যান
+              {t.undoRoll}
             </button>
           )}
 
@@ -208,10 +220,10 @@ export default function FullResultTable({
             <button
               onClick={onVerifyResult}
               disabled={verifyingResult}
-              title="নম্বর প্রসেস সম্পন্ন — এখন ফলাফল যাচাই করুন"
+              title={t.verifyTitle}
               className="flex-1 sm:flex-none bg-sky-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              {verifyingResult ? "যাচাই হচ্ছে..." : "✅ ফলাফল যাচাই করুন"}
+              {verifyingResult ? t.verifying : t.verify}
             </button>
           )}
 
@@ -219,10 +231,10 @@ export default function FullResultTable({
             <button
               onClick={onApprove}
               disabled={approving}
-              title="যাচাইকৃত ফলাফল অনুমোদন করুন"
+              title={t.approveTitle}
               className="flex-1 sm:flex-none bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              {approving ? "অনুমোদন হচ্ছে..." : "👍 অনুমোদন করুন"}
+              {approving ? t.approving : t.approve}
             </button>
           )}
 
@@ -230,10 +242,10 @@ export default function FullResultTable({
             <button
               onClick={onRequestRejectResult}
               disabled={approving}
-              title="ফলাফল প্রত্যাখ্যান করে আবার প্রসেসিং-এ ফেরত পাঠান"
+              title={t.rejectTitle}
               className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              প্রত্যাখ্যান
+              {t.reject}
             </button>
           )}
 
@@ -243,52 +255,52 @@ export default function FullResultTable({
               disabled={publishing}
               className="flex-1 sm:flex-none bg-green-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
             >
-              {publishing ? "Publishing..." : "Publish"}
+              {publishing ? t.publishing : t.publish}
             </button>
           )}
         </div>
       </div>
 
       {loading ? (
-        <SkeletonTable rows={8} columns={subjectList.length + 9} />
+        <SkeletonTable rows={8} columns={columnCount} />
       ) : (
       <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
       <table className="w-full table-fixed min-w-[900px] border text-xs sm:text-sm dark:border-slate-800">
         <colgroup>
-          {Array.from({ length: subjectList.length + 9 }).map((_, i) => (
-            <col key={i} style={{ width: `${100 / (subjectList.length + 9)}%` }} />
+          {Array.from({ length: columnCount }).map((_, i) => (
+            <col key={i} style={{ width: `${100 / columnCount}%` }} />
           ))}
         </colgroup>
         <thead className="bg-gray-100 dark:bg-slate-800">
           <tr>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">রেজিঃ নম্বর</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">শিক্ষার্থীর নাম</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.regNo}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.studentName}</th>
 
             {subjectList.map((b) => (
               <th key={b.book_id} className="border px-2 py-2 text-center dark:border-slate-800">
                 <span>
-                  {b.book_name || b.book_name_bn || b.name_bn || `Book ${b.book_id}`}
-                  {b.is_miyari ? <span className="ms-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">(মিয়ারি)</span> : null}
+                  {b.book_name || b.book_name_bn || b.name_bn || t.bookFallback(num(b.book_id))}
+                  {b.is_miyari ? <span className="ms-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{t.miyari}</span> : null}
                   {b.pass_mark != null ? (
                     <span
                       className="ms-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
-                      title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                      title={rt.marks.passMarkTitle}
                     >
-                      (পাস {b.pass_mark})
+                      {t.pass(num(b.pass_mark))}
                     </span>
                   ) : null}
-                  <span className="ms-1 text-[10px] text-gray-400 dark:text-slate-500">/{b.full_marks ?? 100}</span>
+                  <span className="ms-1 text-[10px] text-gray-400 dark:text-slate-500">/{num(b.full_marks ?? 100)}</span>
                 </span>
               </th>
             ))}
 
-            <th className="border px-2 py-2 text-center dark:border-slate-800">মোট</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">গড়</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">সাধারণ গ্রেড</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">মাদরাসা গ্রেড</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">অবস্থা</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">মেধাক্রম</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">কার্যক্রম</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.total}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.average}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.generalGrade}</th>
+            {isMadrasa && <th className="border px-2 py-2 text-center dark:border-slate-800">{t.madrasaGrade}</th>}
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.resultState}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.rank}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.actions}</th>
           </tr>
         </thead>
 
@@ -296,10 +308,10 @@ export default function FullResultTable({
           {dataList.length === 0 ? (
             <tr>
               <td
-                colSpan={subjectList.length + 9}
+                colSpan={columnCount}
                 className="text-center py-10 text-gray-400 dark:text-slate-500"
               >
-                No Result Found
+                {t.noResult}
               </td>
             </tr>
           ) : (
@@ -315,7 +327,7 @@ export default function FullResultTable({
                 }
               >
                 <td className="border px-2 py-2 text-center break-words">
-                  {toBanglaDigits(s.registration_no)}
+                  {num(s.registration_no)}
                 </td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>
 
@@ -326,22 +338,24 @@ export default function FullResultTable({
                 ))}
 
                 <td className="border px-2 py-2 text-blue-600 text-center break-words">
-                  {toBanglaDigits(s.total)}
+                  {num(s.total)}
                 </td>
                 <td className="border px-2 py-2 text-green-600 text-center break-words">
-                  {toBanglaDigits(Number(s.average).toFixed(2))}
+                  {num(Number(s.average).toFixed(2))}
                 </td>
                 <td className="border px-2 py-2 text-center break-words">
                   {s.general_grade || "-"}
                 </td>
+                {isMadrasa && (
+                  <td className="border px-2 py-2 text-center break-words">
+                    {s.madrasa_grade || "-"}
+                  </td>
+                )}
                 <td className="border px-2 py-2 text-center break-words">
-                  {s.madrasa_grade || "-"}
-                </td>
-                <td className="border px-2 py-2 text-center break-words">
-                  {formatReportValue(s.status)}
+                  {statusLabel(s.status)}
                 </td>
                 <td className="border px-2 py-2 text-center font-bold break-words">
-                  {toBanglaDigits(s.rank_no)}
+                  {num(s.rank_no)}
                 </td>
 
                 <td className="border px-2 py-2 text-center break-words">
@@ -351,7 +365,7 @@ export default function FullResultTable({
                         onClick={() => onView(s.student_id)}
                         className="text-blue-600"
                       >
-                        View
+                        {t.view}
                       </button>
                     )}
                     {onEditStudent && (
@@ -359,12 +373,12 @@ export default function FullResultTable({
                         onClick={() => onEditStudent(s.student_id)}
                         title={
                           alreadyPublished
-                            ? "প্রকাশিত ফলাফল — সংশোধনের অনুরোধ পাঠান"
-                            : "শুধুমাত্র এর নাম্বার এডিট করুন"
+                            ? t.correctPublishedTitle
+                            : t.editOneTitle
                         }
                         className="text-indigo-600"
                       >
-                        {alreadyPublished ? "✏️ সংশোধন" : "✏️ Edit"}
+                        {alreadyPublished ? t.correct : t.edit}
                       </button>
                     )}
                   </div>

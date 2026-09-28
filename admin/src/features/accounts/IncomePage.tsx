@@ -8,6 +8,8 @@ import { useAccountOptions } from "./useAccountOptions";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { formatDateInput } from "./accountHelpers";
 import AccountRecentPanel from "./AccountRecentPanel";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 const nowTimeInput = () => {
   const d = new Date();
@@ -22,6 +24,8 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 
 export default function IncomePage() {
   const toast = useToastStore();
+  const t = useText(accountsText);
+  const c = useText(commonText);
   const { incomeFunds, paymentMethods, loading } = useAccountOptions();
   const [refreshKey, setRefreshKey] = useState(0);
   const [form, setForm] = useState({
@@ -68,10 +72,10 @@ export default function IncomePage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.donor_name.trim()) return toast.push("error", "নাম দিন");
-    if (!form.amount || !Number(form.amount) || Number(form.amount) <= 0) return toast.push("error", "পরিমাণ দিন");
+    if (!form.donor_name.trim()) return toast.push("error", t.enterName);
+    if (!form.amount || !Number(form.amount) || Number(form.amount) <= 0) return toast.push("error", t.enterAmount);
     await api.post("/accounts/income", form);
-    toast.push("success", "আয়/রশিদ জমা সংরক্ষণ হয়েছে");
+    toast.push("success", t.incomeSaved);
     setForm((prev) => ({
       ...prev,
       donor_name: "",
@@ -88,14 +92,14 @@ export default function IncomePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="রশিদ জমা / আয় এন্ট্রি"
-        subtitle="কওমি মাদরাসার ফান্ডভিত্তিক আয় ও রশিদ জমা"
+        title={t.incomeTitle}
+        subtitle={t.incomeSubtitle}
       />
       <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel>ফান্ড</FieldLabel>
+              <FieldLabel>{t.fund}</FieldLabel>
               <select
                 className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={form.fund}
@@ -108,7 +112,7 @@ export default function IncomePage() {
               </select>
             </div>
             <div>
-              <FieldLabel>খাত</FieldLabel>
+              <FieldLabel>{t.category}</FieldLabel>
               <select
                 className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={form.category}
@@ -123,55 +127,55 @@ export default function IncomePage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel>তারিখ</FieldLabel>
+              <FieldLabel>{c.date}</FieldLabel>
               <Input type="date" value={form.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
             </div>
             <div>
-              <FieldLabel>সময়</FieldLabel>
+              <FieldLabel>{t.time}</FieldLabel>
               <Input type="time" value={form.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
             </div>
           </div>
           <div>
-            <FieldLabel required>নাম</FieldLabel>
+            <FieldLabel required>{c.name}</FieldLabel>
             <Input
               required
-              placeholder="দাতার নাম"
+              placeholder={t.donorNamePlaceholder}
               value={form.donor_name}
               onChange={(e) => setField("donor_name", e.target.value)}
             />
           </div>
           <div>
-            <FieldLabel>ঠিকানা</FieldLabel>
+            <FieldLabel>{c.address}</FieldLabel>
             <Input
-              placeholder="ঠিকানা"
+              placeholder={c.address}
               value={form.address}
               onChange={(e) => setField("address", e.target.value)}
             />
           </div>
           <div>
-            <FieldLabel>মোবাইল নম্বর</FieldLabel>
+            <FieldLabel>{t.mobileNumber}</FieldLabel>
             <Input
               type="tel"
               placeholder="01XXXXXXXXX"
               value={form.mobile}
               onChange={(e) => setField("mobile", e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-400">SMS পাঠানোর জন্য ব্যবহৃত হবে</p>
+            <p className="mt-1 text-xs text-slate-400">{t.usedForSms}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel required>পরিমাণ</FieldLabel>
+              <FieldLabel required>{c.amount}</FieldLabel>
               <Input
                 required
                 type="text"
                 inputMode="decimal"
-                placeholder="পরিমাণ"
+                placeholder={c.amount}
                 value={form.amount}
                 onChange={(e) => setField("amount", normalizeBanglaDigits(e.target.value))}
               />
             </div>
             <div>
-              <FieldLabel>পেমেন্ট মাধ্যম</FieldLabel>
+              <FieldLabel>{t.paymentMethod}</FieldLabel>
               <select
                 className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={form.payment_method}
@@ -185,10 +189,10 @@ export default function IncomePage() {
             </div>
           </div>
           <div>
-            <FieldLabel>নোট / বিবরণ</FieldLabel>
+            <FieldLabel>{t.noteDescription}</FieldLabel>
             <textarea
               rows={2}
-              placeholder="ঐচ্ছিক নোট"
+              placeholder={t.optionalNote}
               className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.note}
               onChange={(e) => setField("note", e.target.value)}
@@ -197,7 +201,7 @@ export default function IncomePage() {
         </div>
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSubmit} className="w-full rounded-xl px-8">
-            সংরক্ষণ করুন
+            {c.save}
           </Button>
         </div>
       </div>

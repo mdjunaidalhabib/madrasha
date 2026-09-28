@@ -7,6 +7,8 @@ import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { money } from "../accounts/accountHelpers";
+import { formatNumber, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { libraryText } from "./library.text";
 
 type LibraryDashboardData = {
   totalBooks: number;
@@ -95,9 +97,11 @@ const PremiumStatSkeleton = () => (
   </div>
 );
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
 
 export default function LibraryDashboardPage() {
+  const lang = useLang();
+  const t = useText(libraryText).dashboard;
+  const bn = (value: number) => formatNumber(Number(value || 0), lang);
   const [data, setData] = useState<LibraryDashboardData | null>(null);
   const isDark = useThemeStore((s) => s.theme) === "dark";
   const gridColor = isDark ? "#334155" : "#e2e8f0";
@@ -125,9 +129,9 @@ export default function LibraryDashboardPage() {
   const byCategory = (data?.byCategory || []).slice(0, 8);
   const statusPieData = data
     ? [
-        { name: "ইস্যুকৃত", value: data.statusBreakdown.borrowed, key: "borrowed" },
-        { name: "ফেরতকৃত", value: data.statusBreakdown.returned, key: "returned" },
-        { name: "হারানো", value: data.statusBreakdown.lost, key: "lost" },
+        { name: t.borrowed, value: data.statusBreakdown.borrowed, key: "borrowed" },
+        { name: t.returned, value: data.statusBreakdown.returned, key: "returned" },
+        { name: t.lost, value: data.statusBreakdown.lost, key: "lost" },
       ].filter((row) => row.value > 0)
     : [];
 
@@ -140,32 +144,32 @@ export default function LibraryDashboardPage() {
           ) : (
             <>
               <PremiumStat
-                label="মোট বই"
+                label={t.totalBooks}
                 value={bn(data.totalBooks)}
-                subLabel={`মোট কপি: ${bn(data.totalCopies)}`}
+                subLabel={t.totalCopies(bn(data.totalCopies))}
                 tone="indigo"
                 icon={<Library size={20} />}
                 to="/library/catalog"
               />
               <PremiumStat
-                label="বর্তমানে ইস্যুকৃত"
+                label={t.onLoan}
                 value={bn(data.onLoan)}
-                subLabel={`উপলব্ধ: ${bn(data.availableCopies)}`}
+                subLabel={t.available(bn(data.availableCopies))}
                 tone="emerald"
                 icon={<BookOpen size={20} />}
                 to="/library/circulation"
               />
               <PremiumStat
-                label="ওভারডিউ"
+                label={t.overdue}
                 value={bn(data.overdueCount)}
                 tone="amber"
                 icon={<BookMarked size={20} />}
                 to="/library/overdue"
               />
               <PremiumStat
-                label="বকেয়া জরিমানা"
-                value={money(data.unsettledFines.amount)}
-                subLabel={`${bn(data.unsettledFines.count)} টি রেকর্ড`}
+                label={t.unsettledFines}
+                value={money(data.unsettledFines.amount, lang)}
+                subLabel={t.records(bn(data.unsettledFines.count))}
                 tone="rose"
                 icon={<AlertTriangle size={20} />}
                 to="/library/overdue"
@@ -176,39 +180,39 @@ export default function LibraryDashboardPage() {
 
         <Card className="flex h-full flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
             to="/library/catalog"
           >
-            ক্যাটালগ
+            {t.catalog}
           </Link>
           <Link
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to="/library/circulation"
           >
-            সার্কুলেশন
+            {t.circulation}
           </Link>
           <Link
             className="rounded-xl bg-rose-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-rose-500"
             to="/library/overdue"
           >
-            ওভারডিউ ও জরিমানা
+            {t.overdueFines}
           </Link>
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/library/settings"
           >
-            সেটিং
+            {t.settings}
           </Link>
         </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <ChartCard
-          title="সার্কুলেশন প্রবণতা"
-          subtitle="গত ১২ মাস"
+          title={t.trendTitle}
+          subtitle={t.last12Months}
           loading={loading}
           empty={!loading && !data?.borrowTrend?.length}
           className="xl:col-span-2"
@@ -216,15 +220,15 @@ export default function LibraryDashboardPage() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data?.borrowTrend || []} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} />
-              <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
-              <Tooltip {...tooltipStyle} />
-              <Line type="monotone" dataKey="count" name="ইস্যু" stroke="#4f46e5" strokeWidth={2} dot={false} />
+              <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} tickFormatter={(v) => localizeDigits(v, lang)} />
+              <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} tickFormatter={(v) => formatNumber(v, lang)} />
+              <Tooltip {...tooltipStyle} labelFormatter={(v) => localizeDigits(String(v), lang)} formatter={(v) => formatNumber(Number(v), lang)} />
+              <Line type="monotone" dataKey="count" name={t.issues} stroke="#4f46e5" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="বই ধারের অবস্থা" loading={loading} empty={!loading && statusPieData.length === 0}>
+        <ChartCard title={t.statusTitle} loading={loading} empty={!loading && statusPieData.length === 0}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={statusPieData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={3}>
@@ -232,21 +236,21 @@ export default function LibraryDashboardPage() {
                   <Cell key={entry.key} fill={STATUS_COLORS[entry.key as keyof typeof STATUS_COLORS]} stroke="none" />
                 ))}
               </Pie>
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...tooltipStyle} formatter={(v) => formatNumber(Number(v), lang)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
 
-      <ChartCard title="ক্যাটাগরি অনুযায়ী বই" loading={loading} empty={!loading && byCategory.length === 0}>
+      <ChartCard title={t.byCategory} loading={loading} empty={!loading && byCategory.length === 0}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={byCategory} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
-            <XAxis type="number" stroke={axisColor} tick={{ fontSize: 12 }} allowDecimals={false} />
+            <XAxis type="number" stroke={axisColor} tick={{ fontSize: 12 }} allowDecimals={false} tickFormatter={(v) => formatNumber(v, lang)} />
             <YAxis type="category" dataKey="category" stroke={axisColor} tick={{ fontSize: 12 }} width={110} />
-            <Tooltip {...tooltipStyle} />
-            <Bar dataKey="count" name="বই" radius={[0, 6, 6, 0]}>
+            <Tooltip {...tooltipStyle} formatter={(v) => formatNumber(Number(v), lang)} />
+            <Bar dataKey="count" name={t.books} radius={[0, 6, 6, 0]}>
               {byCategory.map((entry, index) => (
                 <Cell key={entry.category} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
               ))}

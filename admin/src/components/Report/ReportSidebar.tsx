@@ -1,4 +1,6 @@
 import { ReportMenuItem } from "../../../src/features/reports/types";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "./reportUi.text";
 
 type ReportSidebarProps = {
   reports: ReportMenuItem[];
@@ -12,6 +14,7 @@ type ReportSection = {
 };
 
 const ReportSidebar = ({ reports, activeKey, onChange }: ReportSidebarProps) => {
+  const ui = useText(reportUiText);
   const sections = reports.reduce<ReportSection[]>((acc, item) => {
     const title = item.groupTitle;
     const current = acc.find((section) => section.title === title);
@@ -23,7 +26,7 @@ const ReportSidebar = ({ reports, activeKey, onChange }: ReportSidebarProps) => 
   return (
     <aside className="report-sidebar no-print self-start rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
       <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-        <h2 className="text-base font-bold">রিপোর্ট সমূহ</h2>
+        <h2 className="text-base font-bold">{ui.reportsHeading}</h2>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:block lg:space-y-2">
@@ -53,7 +56,7 @@ const ReportSidebar = ({ reports, activeKey, onChange }: ReportSidebarProps) => 
                     }`}
                   >
                     <span className="truncate font-medium">{item.title}</span>
-                    <span className={active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}>›</span>
+                    <span className={`inline-block rtl:rotate-180 ${active ? "text-blue-700 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}`}>›</span>
                   </button>
                 );
               })}

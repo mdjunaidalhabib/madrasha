@@ -21,6 +21,8 @@ import {
   useDivisionGradeScales,
 } from "../../components/ResultPanel/useClassGrading";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { resultsText } from "./results.text";
 
 interface Division {
   division_id: number;
@@ -91,6 +93,7 @@ const extractArray = (res: any) => {
 // class's detailed result below. Actual number entry lives on its own page
 // (ResultEntryPage); this page only links out to it.
 export default function ResultPreviewPage() {
+  const t = useText(resultsText);
   const push = useToastStore((state) => state.push);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,7 +161,7 @@ export default function ResultPreviewPage() {
       setStatuses(extractArray(res.data?.statuses));
     } catch (err) {
       logger.error("Overview load error:", err);
-      push("error", "প্রিভিউ লোড করা যায়নি");
+      push("error", t.previewLoadFailed);
     } finally {
       setOverviewLoading(false);
     }
@@ -279,7 +282,7 @@ export default function ResultPreviewPage() {
     });
 
     if (payload.length === 0) {
-      return push("error", "অন্তত একটি নাম্বার দিন");
+      return push("error", t.atLeastOneMark);
     }
 
     setStudentSaving(true);
@@ -296,10 +299,10 @@ export default function ResultPreviewPage() {
       await loadOverview();
 
       setEditingStudent(null);
-      push("success", "নাম্বার আপডেট হয়েছে");
+      push("success", t.marksUpdated);
     } catch (err: any) {
       logger.error("Save student marks error:", err);
-      push("error", err?.response?.data?.message || "সেভ করা যায়নি");
+      push("error", err?.response?.data?.message || t.saveFailed);
     } finally {
       setStudentSaving(false);
     }
@@ -313,7 +316,7 @@ export default function ResultPreviewPage() {
   // its own, matching the backend's one-field-per-correction model.
   const handleSubmitCorrections = async (values: Record<number, number>, reason?: string) => {
     if (!editingStudent || !resultMasterId) return;
-    if (!reason) return push("error", "সংশোধনের কারণ লিখুন");
+    if (!reason) return push("error", t.reasonRequired);
 
     const requests: CorrectionItem[] = [];
 
@@ -323,14 +326,14 @@ export default function ResultPreviewPage() {
 
       const next = values[book.book_id];
       if (next === undefined) {
-        return push("error", "কোনো বিষয়ের নম্বর ফাঁকা রাখা যাবে না — নম্বর অথবা \"-\" (অনুপস্থিত) দিন");
+        return push("error", t.noEmptyMark);
       }
 
       requests.push(...correctionItemsForCell(editingStudent.student_id, book.book_id, original, next));
     }
 
     if (requests.length === 0) {
-      return push("error", "কোনো নম্বর বদলানো হয়নি");
+      return push("error", t.noMarksChanged);
     }
 
     setStudentSaving(true);
@@ -348,15 +351,15 @@ export default function ResultPreviewPage() {
 
       setEditingStudent(null);
       if (res.data?.applied) {
-        push("success", "সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে");
+        push("success", t.correctionApplied);
         await loadSummary();
         await loadOverview();
       } else {
-        push("success", "সংশোধনের অনুরোধ জমা হয়েছে — অনুমোদনের অপেক্ষায়");
+        push("success", t.correctionRequested);
       }
     } catch (err: any) {
       logger.error("Submit correction error:", err);
-      push("error", err?.response?.data?.message || "সংশোধন জমা দেওয়া যায়নি");
+      push("error", err?.response?.data?.message || t.correctionFailed);
     } finally {
       setStudentSaving(false);
       setCorrectionReloadKey((k) => k + 1);
@@ -369,38 +372,38 @@ export default function ResultPreviewPage() {
   // /results/publish will accept it. Both actions already existed as
   // backend endpoints; this just wires the missing UI for them.
   const handleVerifyResult = async () => {
-    if (!resultMasterId) return push("error", "No processed result found");
+    if (!resultMasterId) return push("error", t.noProcessedResult);
 
     try {
       setVerifyingResult(true);
       const res = await api.post(`/results/${resultMasterId}/verify-result`, {});
       if (res.data?.valid === false) {
-        push("error", (res.data?.issues || []).join(" | ") || "ফলাফলে সমস্যা পাওয়া গেছে");
+        push("error", (res.data?.issues || []).join(" | ") || t.resultIssues);
       } else {
-        push("success", "ফলাফল যাচাই করা হয়েছে");
+        push("success", t.resultVerified);
       }
       await loadSummary();
       await loadOverview();
     } catch (err: any) {
       logger.error("Verify result error:", err);
-      push("error", err?.response?.data?.message || "যাচাই করা যায়নি");
+      push("error", err?.response?.data?.message || t.verifyFailed);
     } finally {
       setVerifyingResult(false);
     }
   };
 
   const handleApprove = async () => {
-    if (!resultMasterId) return push("error", "No processed result found");
+    if (!resultMasterId) return push("error", t.noProcessedResult);
 
     try {
       setApproving(true);
       await api.post(`/results/${resultMasterId}/approve`, { approve: true });
       await loadSummary();
       await loadOverview();
-      push("success", "ফলাফল অনুমোদিত হয়েছে");
+      push("success", t.resultApproved);
     } catch (err: any) {
       logger.error("Approve result error:", err);
-      push("error", err?.response?.data?.message || "অনুমোদন করা যায়নি");
+      push("error", err?.response?.data?.message || t.approveFailed);
     } finally {
       setApproving(false);
     }
@@ -415,27 +418,27 @@ export default function ResultPreviewPage() {
       await loadSummary();
       await loadOverview();
       setRejectResultOpen(false);
-      push("success", "ফলাফল প্রত্যাখ্যান করা হয়েছে");
+      push("success", t.resultRejected);
     } catch (err: any) {
       logger.error("Reject result error:", err);
-      push("error", err?.response?.data?.message || "প্রত্যাখ্যান করা যায়নি");
+      push("error", err?.response?.data?.message || t.rejectFailed);
     } finally {
       setApproving(false);
     }
   };
 
   const handlePublish = async () => {
-    if (!resultMasterId) return push("error", "No processed result found");
+    if (!resultMasterId) return push("error", t.noProcessedResult);
 
     try {
       setPublishing(true);
       await api.post("/results/publish", { result_master_id: resultMasterId });
       await loadSummary();
       await loadOverview();
-      push("success", "Result published successfully");
+      push("success", t.resultPublished);
     } catch (err: any) {
       logger.error("Publish error:", err);
-      push("error", err?.response?.data?.message || "ফলাফল প্রকাশ করা যায়নি");
+      push("error", err?.response?.data?.message || t.publishFailed);
     } finally {
       setPublishing(false);
     }
@@ -447,22 +450,17 @@ export default function ResultPreviewPage() {
   // explains what's about to happen. A one-level undo (see
   // handleUndoRollByRank) still backs this up either way.
   const handleApplyRollByRank = () => {
-    if (!resultMasterId) return push("error", "No processed result found");
+    if (!resultMasterId) return push("error", t.noProcessedResult);
 
     useConfirmStore.getState().show({
-      title: "রোল আপডেট নিশ্চিত করুন (১/২)",
-      message:
-        "এই ফলাফলের মেধাক্রম অনুযায়ী পুরো ক্লাসের রোল নম্বর নতুন করে বসানো হবে (রোল ১ = সর্বোচ্চ নম্বরপ্রাপ্ত)। " +
-        "পুরনো পরীক্ষার মার্কশিটে কোনো প্রভাব পড়বে না। এগিয়ে যেতে চান?",
-      confirmText: "এগিয়ে যান",
+      title: t.rollConfirmTitle,
+      message: t.rollConfirmMessage,
+      confirmText: t.proceed,
       onConfirm: () => {
         useConfirmStore.getState().show({
-          title: "শেষবারের মতো নিশ্চিত করুন (২/২)",
-          message:
-            "আপনি কি সত্যিই নিশ্চিত? এখনই পুরো ক্লাসের প্রত্যেক শিক্ষার্থীর রোল নম্বর বদলে যাবে। " +
-            "যতবারই এটি প্রয়োগ করুন না কেন, \"আগের রোলে ফিরে যান\" বাটন সবসময় একদম প্রথম (মূল) রোল নম্বরে ফিরিয়ে নেবে — " +
-            "যতক্ষণ না একবার সেটি চেপে ফিরিয়ে নিচ্ছেন।",
-          confirmText: "হ্যাঁ, নিশ্চিত — এখনই করুন",
+          title: t.finalConfirm,
+          message: t.rollFinalMessage,
+          confirmText: t.rollFinalConfirm,
           danger: true,
           onConfirm: async () => {
             try {
@@ -470,10 +468,10 @@ export default function ResultPreviewPage() {
               await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
               await loadSummary();
               await loadOverview();
-              push("success", "মেধাক্রম অনুযায়ী রোল আপডেট হয়েছে");
+              push("success", t.rollUpdated);
             } catch (err: any) {
               logger.error("Apply roll by rank error:", err);
-              push("error", err?.response?.data?.message || "রোল আপডেট করা যায়নি");
+              push("error", err?.response?.data?.message || t.rollUpdateFailed);
             } finally {
               setApplyingRoll(false);
             }
@@ -491,20 +489,19 @@ export default function ResultPreviewPage() {
     if (!resultMasterId) return;
 
     useConfirmStore.getState().show({
-      title: "আগের রোলে ফিরে যান",
-      message:
-        "মেধাক্রম অনুযায়ী বসানো রোল বাতিল করে, তার ঠিক আগে যে রোল নম্বরগুলো ছিল তা ফিরিয়ে আনা হবে। এগিয়ে যেতে চান?",
-      confirmText: "ফিরিয়ে আনুন",
+      title: t.undoRollTitle,
+      message: t.undoRollMessage,
+      confirmText: t.undoRollConfirm,
       onConfirm: async () => {
         try {
           setApplyingRoll(true);
           await api.post("/results/undo-roll-by-rank", { result_master_id: resultMasterId });
           await loadSummary();
           await loadOverview();
-          push("success", "আগের রোল নম্বর ফিরিয়ে আনা হয়েছে");
+          push("success", t.rollRestored);
         } catch (err: any) {
           logger.error("Undo roll by rank error:", err);
-          push("error", err?.response?.data?.message || "ফিরিয়ে আনা যায়নি");
+          push("error", err?.response?.data?.message || t.restoreFailed);
         } finally {
           setApplyingRoll(false);
         }
@@ -527,17 +524,17 @@ export default function ResultPreviewPage() {
           {canRecalculate && (
             <button
               onClick={() => setRecalcTarget({ masterId: null })}
-              title="ফেল মার্ক/গ্রেড বদলের পর সব ফলাফল নতুন সেটিং অনুযায়ী হালনাগাদ করুন"
+              title={t.recalcTitle}
               className="flex-1 sm:flex-none bg-teal-600 text-white px-5 py-2 rounded hover:bg-teal-700"
             >
-              🔄 সব ফলাফল পুনঃগণনা
+              {`🔄 ${t.recalcAll}`}
             </button>
           )}
           <button
             onClick={goToEntry}
             className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2 rounded"
           >
-            ➕ নাম্বার এন্ট্রি
+            {`➕ ${t.marksEntry}`}
           </button>
         </div>
       </div>
@@ -552,7 +549,7 @@ export default function ResultPreviewPage() {
               onClick={handleClearSelection}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline shrink-0"
             >
-              ← সব দেখুন
+              {`← ${t.viewAll}`}
             </button>
           </div>
 
@@ -636,10 +633,10 @@ export default function ResultPreviewPage() {
 
       <ReasonPromptModal
         open={rejectResultOpen}
-        title="ফলাফল প্রত্যাখ্যান করুন"
-        message="এই ফলাফল প্রত্যাখ্যান করা হলে এটি আবার 'প্রসেসিং' অবস্থায় ফিরে যাবে এবং পুনরায় যাচাই প্রয়োজন হবে।"
-        label="প্রত্যাখ্যানের কারণ"
-        confirmText="প্রত্যাখ্যান করুন"
+        title={t.rejectResultTitle}
+        message={t.rejectResultMessage}
+        label={t.rejectReason}
+        confirmText={t.rejectConfirm}
         loading={approving}
         onCancel={() => setRejectResultOpen(false)}
         onConfirm={handleConfirmRejectResult}

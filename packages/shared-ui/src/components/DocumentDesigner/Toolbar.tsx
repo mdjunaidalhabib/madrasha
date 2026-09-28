@@ -4,6 +4,8 @@ import Button from "../ui/Button";
 import { useToastStore } from "../../store/toastStore";
 import type { CanvasBackground } from "./types";
 import { detectPageSize, pageSizePx, pxToMm, mmToPx, PAGE_SIZE_LABELS_BN, type PageSizeId } from "./pageSizes";
+import { getText, localizeDigits, useLang, useText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 export interface ToolbarProps {
   name: string;
@@ -54,6 +56,8 @@ const Toolbar = ({
   hasChanges,
   saveError,
 }: ToolbarProps) => {
+  const t = useText(designerText);
+  const lang = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
   // Detected from the actual size by default; "কাস্টম" is a user override so
@@ -81,7 +85,7 @@ const Toolbar = ({
       <input
         value={name}
         onChange={(e) => onChangeName(e.target.value)}
-        placeholder="টেমপ্লেটের নাম"
+        placeholder={t.templateName}
         className="min-w-[180px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       />
 
@@ -89,14 +93,18 @@ const Toolbar = ({
         <button
           type="button"
           onClick={() => onChangeZoom(Math.max(0.25, Number((zoom - 0.1).toFixed(2))))}
+          title={t.zoomOut}
+          aria-label={t.zoomOut}
           className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <ZoomOut size={16} />
         </button>
-        <span className="w-10 text-center text-xs text-slate-600 dark:text-slate-400">{Math.round(zoom * 100)}%</span>
+        <span className="w-10 text-center text-xs text-slate-600 dark:text-slate-400">{localizeDigits(Math.round(zoom * 100), lang)}%</span>
         <button
           type="button"
           onClick={() => onChangeZoom(Math.min(2, Number((zoom + 0.1).toFixed(2))))}
+          title={t.zoomIn}
+          aria-label={t.zoomIn}
           className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <ZoomIn size={16} />
@@ -108,18 +116,18 @@ const Toolbar = ({
           value={pageSizeId}
           onChange={(e) => handlePresetChange(e.target.value as PageSizeId)}
           className="rounded-md border-none bg-transparent py-1 text-xs font-medium text-slate-700 outline-none dark:text-slate-300"
-          title="পেজ সাইজ"
+          title={t.pageSize}
         >
           {(Object.keys(PAGE_SIZE_LABELS_BN) as PageSizeId[]).map((id) => (
             <option key={id} value={id}>
-              {PAGE_SIZE_LABELS_BN[id]}
+              {id === "CUSTOM" ? t.customSize : PAGE_SIZE_LABELS_BN[id]}
             </option>
           ))}
         </select>
         <button
           type="button"
           onClick={toggleOrientation}
-          title={orientation === "portrait" ? "উলম্ব (Portrait)" : "অনুভূমিক (Landscape)"}
+          title={orientation === "portrait" ? t.portrait : t.landscape}
           className="rounded p-1 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
         >
           {orientation === "portrait" ? <RectangleVertical size={16} /> : <RectangleHorizontal size={16} />}
@@ -135,7 +143,7 @@ const Toolbar = ({
                 if (Number.isFinite(mm) && mm > 0) onChangeSize(mmToPx(mm), height);
               }}
               className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              title="প্রস্থ (mm)"
+              title={t.widthMm}
             />
             <span>×</span>
             <input
@@ -147,7 +155,7 @@ const Toolbar = ({
                 if (Number.isFinite(mm) && mm > 0) onChangeSize(width, mmToPx(mm));
               }}
               className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              title="উচ্চতা (mm)"
+              title={t.heightMm}
             />
             <span>mm</span>
           </div>
@@ -168,7 +176,7 @@ const Toolbar = ({
             const url = await onUploadBackgroundImage(file);
             onChangeBackground({ ...background, image: url, fit: background?.fit || "cover" });
           } catch {
-            useToastStore.getState().show("ব্যাকগ্রাউন্ড ছবি আপলোড করা যায়নি, আবার চেষ্টা করুন", "error");
+            useToastStore.getState().show(getText(designerText).bgUploadFailed, "error");
           } finally {
             setUploadingBg(false);
           }
@@ -177,18 +185,18 @@ const Toolbar = ({
       <Button type="button" variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploadingBg}>
         {uploadingBg ? (
           <>
-            <Loader2 size={15} className="me-1.5 animate-spin" /> আপলোড হচ্ছে...
+            <Loader2 size={15} className="me-1.5 animate-spin" /> {t.uploading}
           </>
         ) : (
           <>
-            <ImageIcon size={15} className="me-1.5" /> ব্যাকগ্রাউন্ড আপলোড
+            <ImageIcon size={15} className="me-1.5" /> {t.uploadBackground}
           </>
         )}
       </Button>
       {background?.image && (
         <button
           type="button"
-          title="ব্যাকগ্রাউন্ড সরান"
+          title={t.removeBackground}
           onClick={() => onChangeBackground({ ...background, image: undefined })}
           className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
         >
@@ -197,7 +205,7 @@ const Toolbar = ({
       )}
       <input
         type="color"
-        title="ব্যাকগ্রাউন্ড রং"
+        title={t.backgroundColor}
         value={background?.color || "#ffffff"}
         onChange={(e) => onChangeBackground({ ...background, color: e.target.value })}
         className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700"
@@ -206,7 +214,7 @@ const Toolbar = ({
       <div className="ms-auto flex items-center gap-2">
         {saveError && <span className="text-xs text-rose-600 dark:text-rose-400">{saveError}</span>}
         <Button type="button" variant="secondary" onClick={onSaveDraft} disabled={saving}>
-          {saving ? "সেভ হচ্ছে..." : "খসড়া সেভ করুন"}
+          {saving ? t.savingDraft : t.saveDraft}
         </Button>
         <Button
           type="button"
@@ -215,12 +223,12 @@ const Toolbar = ({
           disabled={publishing || (isPublished && !hasChanges)}
         >
           {publishing
-            ? "প্রকাশ হচ্ছে..."
+            ? t.publishing
             : isPublished && !hasChanges
-            ? "প্রকাশিত"
+            ? t.published
             : isPublished
-            ? "পুনঃপ্রকাশ করুন"
-            : "প্রকাশ করুন"}
+            ? t.republish
+            : t.publish}
         </Button>
       </div>
     </div>

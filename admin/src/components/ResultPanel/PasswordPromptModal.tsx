@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 
 interface Props {
   open: boolean;
@@ -30,6 +32,8 @@ export default function PasswordPromptModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const t = useText(resultPanelText).password;
+  const c = useText(commonText);
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -59,7 +63,7 @@ export default function PasswordPromptModal({
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-            আপনার পাসওয়ার্ড দিন
+            {t.label}
           </label>
           <div className="relative">
             <input
@@ -83,22 +87,22 @@ export default function PasswordPromptModal({
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-              aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+              aria-label={showPassword ? t.hide : t.show}
               tabIndex={-1}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {isEmpty && <p className="mt-1 text-xs text-red-600 dark:text-red-400">পাসওয়ার্ড আবশ্যক</p>}
+          {isEmpty && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{t.required}</p>}
           {!isEmpty && error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={handleCancel} disabled={loading}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button variant="danger" onClick={handleConfirm} disabled={loading}>
-            {loading ? "যাচাই হচ্ছে..." : "নিশ্চিত করুন"}
+            {loading ? t.verifying : c.confirm}
           </Button>
         </div>
       </div>

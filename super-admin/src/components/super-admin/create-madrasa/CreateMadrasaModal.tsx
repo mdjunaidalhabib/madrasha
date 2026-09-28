@@ -5,7 +5,10 @@ import PlanSection, { RegBlockPreviewRow } from "./PlanSection";
 import DefaultUsersSection from "./DefaultUsersSection";
 import { CreateMadrasaPayload } from "./types";
 import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdminMadrasasPage";
-import api, { cachedGet } from "../../../services/adminApi";
+import { cachedGet } from "../../../services/adminApi";
+import { commonText, useText, type InstitutionType } from "@madrasha/shared-ui/src/i18n";
+import { createMadrasaText } from "./createMadrasa.text";
+import InstitutionSection, { normalizeDefaultLanguage, type DefaultLanguageValue } from "./InstitutionSection";
 
 import DivisionsSection from "./DivisionsSection";
 import ToggleSection from "./ToggleSection";
@@ -21,6 +24,9 @@ type Item = {
   label: string;
 };
 
+/** Catalogue division row, tagged with the institution type it belongs to. */
+type DivisionItem = Item & { institutionType: InstitutionType };
+
 type Group = {
   title: string;
   items: Item[];
@@ -35,12 +41,17 @@ type DefaultUser = {
 };
 
 export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) {
+  const t = useText(createMadrasaText);
+  const c = useText(commonText);
   const [form, setForm] = useState({
     name: "",
     slug: "",
     address: "",
     phone: "",
   });
+
+  const [institutionType, setInstitutionType] = useState<InstitutionType>("MADRASA");
+  const [defaultLanguage, setDefaultLanguage] = useState<DefaultLanguageValue>("");
 
   const [planId, setPlanId] = useState("");
   const [studentLimit, setStudentLimit] = useState(100);
@@ -49,7 +60,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   // ===== master data =====
-  const [divisionItems, setDivisionItems] = useState<Item[]>([]);
+  const [allDivisionItems, setAllDivisionItems] = useState<DivisionItem[]>([]);
   const [moduleItems, setModuleItems] = useState<Item[]>([]);
   const [allClasses, setAllClasses] = useState<any[]>([]);
   const [allBooks, setAllBooks] = useState<any[]>([]);
@@ -101,9 +112,10 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
         cachedGet("/super/books"),
       ]);
 
-      const divData = (divRes.data?.data || []).map((r: any) => ({
+      const divData: DivisionItem[] = (divRes.data?.data || []).map((r: any) => ({
         key: String(r.id),
         label: r.label || r.name,
+        institutionType: (r.institution_type || "MADRASA") as InstitutionType,
       }));
 
       const modData = (modRes.data?.data || []).map((r: any) => ({
@@ -114,12 +126,13 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
       const classesData = classRes.data?.data || [];
       const booksData = bookRes.data?.data || [];
 
-      setDivisionItems(divData);
+      setAllDivisionItems(divData);
       setModuleItems(modData);
       setAllClasses(classesData);
       setAllBooks(booksData);
 
-      setDivisions(divData.map((d: Item) => d.key));
+      // Default: every catalogue division of the (initial) institution type.
+      setDivisions(divData.filter((d) => d.institutionType === "MADRASA").map((d) => d.key));
       setModules(modData.map((m: Item) => m.key));
       setClasses(classesData.map((c: any) => String(c.id)));
       setBooks(booksData.map((b: any) => String(b.id)));
@@ -127,6 +140,21 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
     fetchData();
   }, []);
+
+  // Only the catalogue divisions of the selected institution type are offered
+  // (classes/books follow their division, see the effects below).
+  const divisionItems = useMemo<Item[]>(
+    () => allDivisionItems.filter((d) => d.institutionType === institutionType),
+    [allDivisionItems, institutionType],
+  );
+
+  const handleTypeChange = (type: InstitutionType) => {
+    setInstitutionType(type);
+    setDefaultLanguage((prev) => normalizeDefaultLanguage(type, prev));
+    // A new institution starts with the whole catalogue of its type selected,
+    // so switching type swaps the selection to that type's divisions.
+    setDivisions(allDivisionItems.filter((d) => d.institutionType === type).map((d) => d.key));
+  };
 
   /* =========================
   Division → Classes
@@ -149,7 +177,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
         }));
 
       return {
-        title: division?.label || "Unknown",
+        title: division?.label || t.unknown,
         items,
       };
     });
@@ -160,6 +188,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
     // ✅ Classes UI is hidden — auto-select ALL classes under the selected divisions
     setClasses(validKeys);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [divisions, allClasses, divisionItems]);
 
   /* =========================
@@ -183,7 +212,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
         }));
 
       return {
-        title: cls?.label || cls?.name || "Unknown",
+        title: cls?.label || cls?.name || t.unknown,
         items,
       };
     });
@@ -194,6 +223,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
     // ✅ Books UI is hidden — auto-select ALL books under the auto-selected classes
     setBooks(validKeys);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes, allBooks, allClasses]);
 
   /* =========================
@@ -252,25 +282,25 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!form.name.trim()) newErrors.name = "Madrasa name required";
+    if (!form.name.trim()) newErrors.name = t.errInstitutionName;
 
     defaultUsers.forEach((u) => {
       if (!u.enabled) return;
 
       if (!u.name.trim()) {
-        newErrors[u.role + "_name"] = "Name required";
+        newErrors[u.role + "_name"] = t.errName;
       }
 
       if (!u.email.trim()) {
-        newErrors[u.role + "_email"] = "Email required";
+        newErrors[u.role + "_email"] = t.errEmail;
       }
 
       if (!u.password.trim()) {
-        newErrors[u.role + "_password"] = "Password required";
+        newErrors[u.role + "_password"] = t.errPassword;
       }
 
       if (u.password.length < 6) {
-        newErrors[u.role + "_password"] = "Password must be at least 6 characters";
+        newErrors[u.role + "_password"] = t.errPasswordMin;
       }
     });
 
@@ -289,6 +319,8 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
     try {
       const payload: CreateMadrasaPayload = {
         ...form,
+        institution_type: institutionType,
+        default_language: defaultLanguage || null,
         plan_id: Number(planId),
         student_limit: studentLimit,
         user_limit: userLimit,
@@ -325,6 +357,16 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           onChange={(field, value) => setForm((prev) => ({ ...prev, [field]: value }))}
         />
 
+        <div className="space-y-3">
+          <h4 className="font-semibold text-gray-700 dark:text-slate-200">{t.typeAndLanguage}</h4>
+          <InstitutionSection
+            institutionType={institutionType}
+            defaultLanguage={defaultLanguage}
+            onTypeChange={handleTypeChange}
+            onLanguageChange={setDefaultLanguage}
+          />
+        </div>
+
         <PlanSection
           plans={plans}
           plan_id={planId}
@@ -339,13 +381,16 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
         />
 
         <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />
+        {!divisionItems.length && allDivisionItems.length > 0 && (
+          <p className="-mt-4 text-xs text-amber-600 dark:text-amber-400">{t.noDivisionsForType}</p>
+        )}
 
         {/* Classes section intentionally hidden: classes are auto-created based on selected divisions */}
 
         {/* Books section intentionally hidden: books are auto-created based on the auto-selected classes */}
 
         <ToggleSection
-          title="Modules"
+          title={t.modules}
           items={moduleItems}
           selected={modules}
           setSelected={setModules}
@@ -359,11 +404,11 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
 
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {c.cancel}
           </Button>
 
           <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? "Creating..." : "Create"}
+            {saving ? t.creating : c.create}
           </Button>
         </div>
       </div>

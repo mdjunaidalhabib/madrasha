@@ -59,6 +59,7 @@ import {
   CreateMadrasaRequestDto,
   UpdateMadrasaRequestDto,
 } from "./superadmin.dto";
+import { t } from "../../shared/i18n";
 
 function slugify(text: string) {
   return text
@@ -79,7 +80,7 @@ const cleanNumberArray = (v: unknown): number[] => {
 const resolvePlanStartDate = (value?: string): Date => {
   if (!value) return new Date(new Date().toDateString());
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) throw new BadRequestError("Invalid start date");
+  if (Number.isNaN(parsed.getTime())) throw new BadRequestError(t({ bn: "শুরুর তারিখ সঠিক নয়", en: "Invalid start date" }));
   return new Date(parsed.toDateString());
 };
 
@@ -153,7 +154,7 @@ export class SuperAdminService {
     await this.repository.runTransaction(async (tx) => {
       const madrasa = await this.repository.findMadrasaOnTx(tx, madrasaId);
       if (!madrasa) throw new MadrasaNotFoundError();
-      if (madrasa.deletedAt) throw new TrashedMadrasaOperationError("Cannot assign plan to trashed madrasa");
+      if (madrasa.deletedAt) throw new TrashedMadrasaOperationError(t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠানে প্ল্যান দেওয়া যাবে না", en: "Cannot assign a plan to a trashed institution" }));
 
       const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
       if (!plan) throw new InvalidPlanError();
@@ -173,7 +174,7 @@ export class SuperAdminService {
   }
 
   async createMadrasa(dto: CreateMadrasaRequestDto) {
-    if (!dto.name) throw new BadRequestError("Madrasa name required");
+    if (!dto.name) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের নাম আবশ্যক", en: "Institution name required" }));
 
     const divisionIds = cleanNumberArray(dto.divisions);
     const moduleIds = cleanNumberArray(dto.modules);
@@ -265,7 +266,7 @@ export class SuperAdminService {
         defaultSettings.some((setting) => setting.name === "fail_mark");
       if (!templatesReady) {
         throw new BadRequestError(
-          "New-madrasa templates are missing. Run npx prisma db seed before creating a madrasa.",
+          t({ bn: "নতুন প্রতিষ্ঠানের টেমপ্লেট নেই। প্রতিষ্ঠান তৈরির আগে npx prisma db seed চালান।", en: "New-institution templates are missing. Run npx prisma db seed before creating an institution." }),
         );
       }
 
@@ -402,7 +403,7 @@ export class SuperAdminService {
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
-        if (!plan) throw new InvalidPlanError("Invalid plan_id");
+        if (!plan) throw new InvalidPlanError(t({ bn: "plan_id সঠিক নয়", en: "Invalid plan_id" }));
 
         const durationDays = Number(dto.duration_days) > 0 ? Number(dto.duration_days) : plan.durationDays || 0;
 
@@ -650,7 +651,7 @@ export class SuperAdminService {
       if (!madrasa) throw new MadrasaNotFoundError();
       if (madrasa.deletedAt) {
         throw new TrashedMadrasaOperationError(
-          "This madrasa is in trash. Restore it from the Trash page first.",
+          t({ bn: "এই প্রতিষ্ঠানটি ট্র্যাশে আছে। আগে ট্র্যাশ পেজ থেকে পুনরুদ্ধার করুন।", en: "This institution is in trash. Restore it from the Trash page first." }),
         );
       }
     }
@@ -663,7 +664,7 @@ export class SuperAdminService {
       const madrasa = await this.repository.findMadrasaDeletedAt(id);
       if (!madrasa) throw new MadrasaNotFoundError();
       if (madrasa.deletedAt) {
-        throw new TrashedMadrasaOperationError("This madrasa is already in trash.");
+        throw new TrashedMadrasaOperationError(t({ bn: "এই প্রতিষ্ঠানটি ইতিমধ্যে ট্র্যাশে আছে।", en: "This institution is already in trash." }));
       }
     }
   }
@@ -686,7 +687,7 @@ export class SuperAdminService {
 
   async restoreMadrasa(id: number) {
     const madrasa = await this.repository.findTrashedMadrasaSlug(id);
-    if (!madrasa) throw new NotFoundError("Trashed madrasa not found");
+    if (!madrasa) throw new NotFoundError(t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠান পাওয়া যায়নি", en: "Trashed institution not found" }));
 
     // Safety net: a trashed madrasa's slug is reserved (see makeUniqueSlug),
     // so this should never actually find a conflict — but we keep the check
@@ -780,7 +781,7 @@ export class SuperAdminService {
 
   async deleteMadrasaUser(madrasaId: number, userId: number) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError("Invalid user id");
+    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -815,7 +816,7 @@ export class SuperAdminService {
     dto: { name?: string; email?: string; password?: string },
   ) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError("Invalid user id");
+    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -825,7 +826,7 @@ export class SuperAdminService {
     const password = dto.password || "";
 
     if (!name && !email && !password) {
-      throw new BadRequestError("name, email বা password অন্তত একটা দিতে হবে");
+      throw new BadRequestError(t({ bn: "name, email বা password অন্তত একটা দিতে হবে", en: "Provide at least one of name, email or password" }));
     }
 
     const data: Prisma.UserUncheckedUpdateInput = {};
@@ -874,7 +875,7 @@ export class SuperAdminService {
     dto: { role_id?: number | string; is_active?: boolean | number },
   ) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError("Invalid user id");
+    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -894,7 +895,7 @@ export class SuperAdminService {
 
     if (dto.is_active !== undefined) data.isActive = dto.is_active ? 1 : 0;
 
-    if (!Object.keys(data).length) throw new BadRequestError("role_id বা is_active অন্তত একটা দিতে হবে");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "role_id বা is_active অন্তত একটা দিতে হবে", en: "Provide at least one of role_id or is_active" }));
 
     await this.repository.updateMadrasaUserCredentials(userId, data);
 

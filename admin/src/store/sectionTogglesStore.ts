@@ -1,3 +1,5 @@
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { servicesText } from "../services/services.text";
 import { create } from "zustand";
 import { getSectionToggles, saveSectionToggle, type SectionTogglesPayload } from "../services/sectionTogglesApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
@@ -43,10 +45,10 @@ export const useSectionTogglesStore = create<State>((set, get) => ({
     try {
       const data = await saveSectionToggle(key, enabled);
       set({ toggles: data });
-      useToastStore.getState().show("সংরক্ষণ হয়েছে।", "success");
+      useToastStore.getState().show(getText(servicesText).savedDot, "success");
     } catch {
       set({ toggles: previous });
-      useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(getText(servicesText).saveFailedRetry, "error");
     }
   },
 

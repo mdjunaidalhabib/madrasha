@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { DocumentLayer } from "../types";
 import type { FieldBinding } from "../fieldBindings";
+import { useText } from "../../../i18n";
+import { designerText } from "../designer.text";
 
 export interface PropertyInspectorProps {
   layer: DocumentLayer | null;
@@ -35,8 +37,8 @@ const style = (layer: DocumentLayer): CSSProperties => (layer.style as CSSProper
  * loading needed to offer these here. Generic web-safe fonts are included
  * too for documents that mix in English/Latin text. */
 const FONT_OPTIONS: { value: string; label: string }[] = [
-  { value: '"Kalpurush", "Hind Siliguri", sans-serif', label: "কালপুরুষ (Kalpurush)" },
-  { value: '"Hind Siliguri", sans-serif', label: "হিন্দ শিলিগুড়ি (Hind Siliguri)" },
+  { value: '"Kalpurush", "Hind Siliguri", sans-serif', label: "Kalpurush" },
+  { value: '"Hind Siliguri", sans-serif', label: "Hind Siliguri" },
   { value: '"Noto Sans Bengali", sans-serif', label: "Noto Sans Bengali" },
   { value: '"Noto Serif Bengali", serif', label: "Noto Serif Bengali" },
   { value: '"Manrope", sans-serif', label: "Manrope" },
@@ -53,10 +55,14 @@ const FONT_OPTIONS: { value: string; label: string }[] = [
  * qrcode gets a field binding; shape gets fill/stroke).
  */
 const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspectorProps) => {
+  const t = useText(designerText);
+  // Localized display names for the two Bangla fonts; others show as-is.
+  const fontLabel = (f: { value: string; label: string }) =>
+    f.label === "Kalpurush" ? t.fontKalpurush : f.label === "Hind Siliguri" ? t.fontHind : f.label;
   if (!layer) {
     return (
       <div className="w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
-        কোনো এলিমেন্ট নির্বাচিত নেই — ক্যানভাসে কোনো এলিমেন্টে ক্লিক করুন
+        {t.noSelection}
       </div>
     );
   }
@@ -72,21 +78,21 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
   return (
     <div className="w-72 shrink-0 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <div>
-        <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">অবস্থান ও আকার</p>
+        <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t.positionSize}</p>
         <div className="grid grid-cols-2 gap-2">
           <NumberField label="X" value={layer.x} onChange={(v) => onChange({ x: v })} />
           <NumberField label="Y" value={layer.y} onChange={(v) => onChange({ y: v })} />
-          <NumberField label="প্রস্থ" value={layer.width} onChange={(v) => onChange({ width: v })} />
-          <NumberField label="উচ্চতা" value={layer.height} onChange={(v) => onChange({ height: v })} />
-          <NumberField label="ঘূর্ণন (°)" value={layer.rotation} onChange={(v) => onChange({ rotation: v })} />
+          <NumberField label={t.width} value={layer.width} onChange={(v) => onChange({ width: v })} />
+          <NumberField label={t.height} value={layer.height} onChange={(v) => onChange({ height: v })} />
+          <NumberField label={t.rotation} value={layer.rotation} onChange={(v) => onChange({ rotation: v })} />
         </div>
       </div>
 
       {layer.type === "text" && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">টেক্সট</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.text}</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল্ড বাইন্ড করুন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.bindField}</span>
             <select
               value={"__custom__"}
               onChange={(e) => {
@@ -95,7 +101,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               }}
               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="__custom__">— নির্বাচন করুন —</option>
+              <option value="__custom__">{t.selectOption}</option>
               {textBindings.map((f) => (
                 <option key={f.field} value={f.field}>
                   {f.label}
@@ -105,7 +111,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              লেখা (স্ট্যাটিক অথবা {"{{ফিল্ড}}"} সহ)
+              {t.textContent}
             </span>
             <textarea
               value={content.template ?? content.text ?? ""}
@@ -119,7 +125,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফন্ট</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.font}</span>
             <select
               value={String(style(layer).fontFamily || FONT_OPTIONS[0].value)}
               onChange={(e) => updateStyle({ fontFamily: e.target.value })}
@@ -130,19 +136,19 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               )}
               {FONT_OPTIONS.map((f) => (
                 <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
-                  {f.label}
+                  {fontLabel(f)}
                 </option>
               ))}
             </select>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <NumberField
-              label="ফন্ট সাইজ"
+              label={t.fontSize}
               value={Number(style(layer).fontSize) || 12}
               onChange={(v) => updateStyle({ fontSize: v })}
             />
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">রং</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.color}</span>
               <input
                 type="color"
                 value={String(style(layer).color || "#0f172a")}
@@ -157,22 +163,22 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               checked={style(layer).fontWeight === 700 || style(layer).fontWeight === "700"}
               onChange={(e) => updateStyle({ fontWeight: e.target.checked ? 700 : 400 })}
             />
-            বোল্ড
+            {t.bold}
           </label>
         </div>
       )}
 
       {isImageLike && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">ছবি</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.image}</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল্ড বাইন্ড করুন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.bindField}</span>
             <select
               value={content.field || ""}
               onChange={(e) => updateContent({ field: e.target.value || undefined })}
               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">— স্ট্যাটিক ছবি —</option>
+              <option value="">{t.staticImage}</option>
               {imageBindings.map((f) => (
                 <option key={f.field} value={f.field}>
                   {f.label}
@@ -182,7 +188,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
           </label>
           {!content.field && (
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ছবি আপলোড করুন</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.uploadImage}</span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -221,14 +227,14 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
                 }
               }}
             />
-            আকার পরিবর্তনের সময় অনুপাত ঠিক রাখুন (ছবি গোল হয়ে যাবে)
+            {t.lockAspect}
           </label>
 
           <div>
-            <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">বর্ডার</p>
+            <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{t.border}</p>
             <div className="grid grid-cols-2 gap-2">
               <NumberField
-                label="প্রস্থ (px)"
+                label={t.widthPx}
                 value={Number(style(layer).borderWidth) || 0}
                 onChange={(v) => {
                   const width = Math.max(0, v);
@@ -244,7 +250,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
                 }}
               />
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">রং</span>
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.color}</span>
                 <input
                   type="color"
                   value={String(style(layer).borderColor || "#0f172a")}
@@ -260,7 +266,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
                 onClick={() => updateStyle({ borderWidth: undefined, borderStyle: undefined, borderColor: undefined })}
                 className="mt-1.5 text-[11px] font-medium text-rose-600 underline dark:text-rose-400"
               >
-                বর্ডার মুছুন
+                {t.removeBorder}
               </button>
             )}
           </div>
@@ -270,16 +276,16 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
       {(layer.type === "qrcode" || layer.type === "barcode") && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {layer.type === "qrcode" ? "কিউআর কোড" : "বারকোড"}
+            {layer.type === "qrcode" ? t.layerTypes.qrcode : t.layerTypes.barcode}
           </p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">কোন ফিল্ডের মান এনকোড হবে</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.encodeField}</span>
             <select
               value={content.field || ""}
               onChange={(e) => updateContent({ field: e.target.value || undefined })}
               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">— নির্বাচন করুন —</option>
+              <option value="">{t.selectOption}</option>
               {textBindings.map((f) => (
                 <option key={f.field} value={f.field}>
                   {f.label}
@@ -292,21 +298,21 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
 
       {layer.type === "shape" && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">শেপ</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.shape}</p>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ধরন</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.shapeType}</span>
             <select
               value={content.shape || "rectangle"}
               onChange={(e) => updateContent({ shape: e.target.value })}
               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="rectangle">আয়তক্ষেত্র</option>
-              <option value="circle">বৃত্ত</option>
-              <option value="line">রেখা</option>
+              <option value="rectangle">{t.rectangle}</option>
+              <option value="circle">{t.circle}</option>
+              <option value="line">{t.line}</option>
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">ফিল রং</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t.fillColor}</span>
             <input
               type="color"
               value={content.fill || "#e2e8f0"}
@@ -323,7 +329,7 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
           checked={layer.visible !== false}
           onChange={(e) => onChange({ visible: e.target.checked })}
         />
-        দৃশ্যমান
+        {t.visible}
       </label>
     </div>
   );

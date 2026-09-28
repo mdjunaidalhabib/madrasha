@@ -21,13 +21,15 @@ import {
 } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 import {
   MAX_SOCIAL_LINKS,
   SOCIAL_LINK_TYPES,
-  SOCIAL_LINK_TYPE_LABELS_BN,
   type SocialLinkItem,
   type SocialLinkType,
 } from "../../services/brandingApi";
+import { servicesText } from "../../services/services.text";
 
 const TYPE_ICONS: Record<SocialLinkType, ReactNode> = {
   whatsapp: <MessageCircle size={15} />,
@@ -60,18 +62,18 @@ const TYPE_COLORS: Record<SocialLinkType, string> = {
 };
 
 const PLACEHOLDERS: Record<SocialLinkType, string> = {
-  whatsapp: "যেমন: 01712345678 বা +8801712345678",
-  facebook_page: "যেমন: https://facebook.com/yourpage",
-  facebook_profile: "যেমন: https://facebook.com/profile.php?id=...",
-  facebook_group: "যেমন: https://facebook.com/groups/...",
-  youtube: "যেমন: https://youtube.com/@yourchannel",
-  instagram: "যেমন: https://instagram.com/yourname",
-  telegram: "যেমন: https://t.me/yourchannel",
-  tiktok: "যেমন: https://tiktok.com/@yourname",
-  x: "যেমন: https://x.com/yourname",
-  linkedin: "যেমন: https://linkedin.com/in/yourname",
-  website: "যেমন: https://example.com",
-  other: "যেকোনো লিংক (https://...)",
+  whatsapp: "01712345678 / +8801712345678",
+  facebook_page: "https://facebook.com/yourpage",
+  facebook_profile: "https://facebook.com/profile.php?id=...",
+  facebook_group: "https://facebook.com/groups/...",
+  youtube: "https://youtube.com/@yourchannel",
+  instagram: "https://instagram.com/yourname",
+  telegram: "https://t.me/yourchannel",
+  tiktok: "https://tiktok.com/@yourname",
+  x: "https://x.com/yourname",
+  linkedin: "https://linkedin.com/in/yourname",
+  website: "https://example.com",
+  other: "",
 };
 
 const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
@@ -88,14 +90,14 @@ export function socialLinkHref(link: SocialLinkItem) {
   return link.type === "whatsapp" ? whatsappHref(link.value) : link.value;
 }
 
-function validate(link: SocialLinkItem): string | null {
+function validate(link: SocialLinkItem): "invalidWhatsapp" | "invalidLink" | null {
   const value = link.value.trim();
   if (!value) return null;
   if (link.type === "whatsapp") {
-    return /^\+?[0-9০-৯][0-9০-৯\s-]{5,19}$/.test(value) ? null : "সঠিক WhatsApp নম্বর দিন";
+    return /^\+?[0-9০-৯][0-9০-৯\s-]{5,19}$/.test(value) ? null : "invalidWhatsapp";
   }
   const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-  return /^https?:\/\/[^\s]+\.[^\s]+/i.test(withScheme) ? null : "সঠিক লিংক দিন";
+  return /^https?:\/\/[^\s]+\.[^\s]+/i.test(withScheme) ? null : "invalidLink";
 }
 
 const emptyRow = (type: SocialLinkType = "whatsapp"): SocialLinkItem => ({ type, label: "", value: "" });
@@ -116,6 +118,11 @@ export default function InlineSocialLinksField({
   const [draft, setDraft] = useState<SocialLinkItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const tx = useText(settingsUiText);
+  const c = useText(commonText);
+  const typeLabels = useText(servicesText).socialLinkTypes;
+  const placeholderFor = (type: SocialLinkType) =>
+    PLACEHOLDERS[type] ? tx.example(PLACEHOLDERS[type]) : tx.anyLink;
 
   const startEdit = () => {
     setDraft(values.length ? values.map((v) => ({ ...v, label: v.label ?? "" })) : [emptyRow()]);
@@ -170,7 +177,7 @@ export default function InlineSocialLinksField({
     return (
       <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500 dark:text-slate-400">সোশ্যাল লিংক</p>
+          <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{tx.socialLinks}</p>
           {values.length ? (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {values.map((link, i) => (
@@ -188,7 +195,7 @@ export default function InlineSocialLinksField({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {link.label || SOCIAL_LINK_TYPE_LABELS_BN[link.type]}
+                      {link.label || typeLabels[link.type]}
                     </span>
                     <span className="block truncate text-xs text-gray-500 dark:text-slate-400">{link.value}</span>
                   </span>
@@ -197,14 +204,14 @@ export default function InlineSocialLinksField({
               ))}
             </div>
           ) : (
-            <p className="mt-0.5 text-sm text-gray-400 dark:text-slate-500">যোগ করা হয়নি</p>
+            <p className="mt-0.5 text-sm text-gray-400 dark:text-slate-500">{tx.notAdded}</p>
           )}
         </div>
         <button
           type="button"
           onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
+          title={tx.editTitle}
         >
           <Pencil size={14} />
         </button>
@@ -214,10 +221,9 @@ export default function InlineSocialLinksField({
 
   return (
     <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
-      <p className="mb-1 text-xs font-medium text-gray-500 dark:text-slate-400">সোশ্যাল লিংক</p>
+      <p className="mb-1 text-xs font-medium text-gray-500 dark:text-slate-400">{tx.socialLinks}</p>
       <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
-        একই ধরনের একাধিক লিংক দেওয়া যাবে (যেমন কয়েকটি WhatsApp নম্বর বা একাধিক Facebook পেজ)। "নাম" ঐচ্ছিক — যেমন
-        "অফিস", "মুহতামিম সাহেব"।
+        {tx.socialLinksHint}
       </p>
 
       <div className="space-y-2">
@@ -242,7 +248,7 @@ export default function InlineSocialLinksField({
                   >
                     {SOCIAL_LINK_TYPES.map((t) => (
                       <option key={t} value={t}>
-                        {SOCIAL_LINK_TYPE_LABELS_BN[t]}
+                        {typeLabels[t]}
                       </option>
                     ))}
                   </select>
@@ -251,7 +257,7 @@ export default function InlineSocialLinksField({
                   <Input
                     value={link.label ?? ""}
                     onChange={(e) => updateAt(index, { label: e.target.value })}
-                    placeholder="নাম (ঐচ্ছিক)"
+                    placeholder={tx.nameOptional}
                     maxLength={80}
                   />
                 </div>
@@ -261,7 +267,7 @@ export default function InlineSocialLinksField({
                     value={link.value}
                     invalid={!!error}
                     onChange={(e) => updateAt(index, { value: e.target.value })}
-                    placeholder={PLACEHOLDERS[link.type]}
+                    placeholder={placeholderFor(link.type)}
                     maxLength={500}
                   />
                 </div>
@@ -271,7 +277,7 @@ export default function InlineSocialLinksField({
                     onClick={() => move(index, -1)}
                     disabled={index === 0}
                     className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-500 dark:hover:bg-slate-800"
-                    title="উপরে নিন"
+                    title={tx.moveUp}
                   >
                     <ArrowUp size={14} />
                   </button>
@@ -280,7 +286,7 @@ export default function InlineSocialLinksField({
                     onClick={() => move(index, 1)}
                     disabled={index === draft.length - 1}
                     className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-500 dark:hover:bg-slate-800"
-                    title="নিচে নিন"
+                    title={tx.moveDown}
                   >
                     <ArrowDown size={14} />
                   </button>
@@ -288,13 +294,13 @@ export default function InlineSocialLinksField({
                     type="button"
                     onClick={() => removeAt(index)}
                     className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                    title="মুছুন"
+                    title={c.delete}
                   >
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
-              {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
+              {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{tx[error]}</p>}
             </div>
           );
         })}
@@ -307,7 +313,7 @@ export default function InlineSocialLinksField({
             onClick={() => addRow()}
             className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
           >
-            <Plus size={13} /> আরেকটি যোগ করুন
+            <Plus size={13} /> {tx.addAnother}
           </button>
           <span className="text-xs text-gray-300 dark:text-slate-600">|</span>
           {(["whatsapp", "facebook_page", "youtube"] as SocialLinkType[]).map((t) => (
@@ -317,7 +323,7 @@ export default function InlineSocialLinksField({
               onClick={() => addRow(t)}
               className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
             >
-              <Plus size={11} /> {SOCIAL_LINK_TYPE_LABELS_BN[t]}
+              <Plus size={11} /> {typeLabels[t]}
             </button>
           ))}
         </div>
@@ -325,10 +331,10 @@ export default function InlineSocialLinksField({
 
       <div className="mt-3 flex justify-end gap-2">
         <Button type="button" variant="secondary" disabled={saving} onClick={() => setEditing(false)}>
-          বাতিল
+          {c.cancel}
         </Button>
         <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          {saving ? c.saving : c.save}
         </Button>
       </div>
     </div>

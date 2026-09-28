@@ -1,5 +1,7 @@
 import { ReportMenuItem } from "../../../src/features/reports/types";
-import { cellValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "./printFormat";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "./reportUi.text";
 
 type ReportTableProps = {
   report: ReportMenuItem;
@@ -9,6 +11,7 @@ type ReportTableProps = {
 };
 
 const ReportTable = ({ report, rows, startIndex = 0, isFirstPage = true }: ReportTableProps) => {
+  const ui = useText(reportUiText);
   return (
     <div className="w-full min-w-0">
       {isFirstPage && (
@@ -57,7 +60,7 @@ const ReportTable = ({ report, rows, startIndex = 0, isFirstPage = true }: Repor
                       column.className || ""
                     }`}
                   >
-                    {cellValue(row, column.key) || "-"}
+                    {printCell(row, column.key) || "-"}
                   </td>
                 ))}
               </tr>

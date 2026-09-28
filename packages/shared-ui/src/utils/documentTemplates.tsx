@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { cellValue, toBanglaDigits } from "./reportUtils";
+import { getText } from "../i18n/text";
+import { templateTokenText } from "./documentTemplates.text";
 
 /**
  * Editable document templates (Sanad, Testimonial, Transfer Letter, Admit Card rules).
@@ -14,36 +16,45 @@ import { cellValue, toBanglaDigits } from "./reportUtils";
 
 export type TemplateToken = { key: string; label: string };
 
+/** A token whose `label` is read in the current UI language each time it is
+ * accessed (a getter), so existing `token.label` callers stay unchanged. */
+const token = (key: string): TemplateToken => ({
+  key,
+  get label() {
+    return getText(templateTokenText)[key] ?? key;
+  },
+});
+
 export const SANAD_TOKENS: TemplateToken[] = [
-  { key: "student_name", label: "শিক্ষার্থীর নাম" },
-  { key: "father_name", label: "পিতার নাম" },
-  { key: "mother_name", label: "মাতার নাম" },
-  { key: "division_name", label: "বিভাগ" },
-  { key: "class_name", label: "শ্রেণি" },
-  { key: "academic_year", label: "শিক্ষাবর্ষ/সেশন" },
-  { key: "result_summary", label: "ফলাফল" },
+  token("student_name"),
+  token("father_name"),
+  token("mother_name"),
+  token("division_name"),
+  token("class_name"),
+  token("academic_year"),
+  token("result_summary"),
 ];
 
 export const TESTIMONIAL_TOKENS: TemplateToken[] = [
-  { key: "student_name", label: "শিক্ষার্থীর নাম" },
-  { key: "father_name", label: "পিতার নাম" },
-  { key: "division_name", label: "বিভাগ" },
-  { key: "class_name", label: "শ্রেণি" },
+  token("student_name"),
+  token("father_name"),
+  token("division_name"),
+  token("class_name"),
 ];
 
 export const TRANSFER_LETTER_TOKENS: TemplateToken[] = [
-  { key: "student_name", label: "শিক্ষার্থীর নাম" },
-  { key: "father_name", label: "পিতার নাম" },
-  { key: "roll", label: "রোল নম্বর" },
-  { key: "registration_no", label: "রেজিস্ট্রেশন নম্বর" },
-  { key: "division_name", label: "বিভাগ" },
-  { key: "class_name", label: "শ্রেণি" },
-  { key: "academic_year", label: "শিক্ষাবর্ষ/সেশন" },
+  token("student_name"),
+  token("father_name"),
+  token("roll"),
+  token("registration_no"),
+  token("division_name"),
+  token("class_name"),
+  token("academic_year"),
 ];
 
 export const ADMIT_CARD_RULE_TOKENS: TemplateToken[] = [
-  { key: "exam_name", label: "পরীক্ষার নাম" },
-  { key: "academic_year", label: "শিক্ষাবর্ষ/সেশন" },
+  token("exam_name"),
+  token("academic_year"),
 ];
 
 export const DEFAULT_SANAD_TEMPLATE =

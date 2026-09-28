@@ -4,6 +4,7 @@ import { platformSettingsRepository, PlatformSettingsRepository } from "./platfo
 import type { CloudinaryCredentials } from "../../shared/storage/cloudinary.service";
 import { smsService, SmsBalanceConfig, BalanceResult } from "../../shared/notifications/sms.service";
 import { emailService, SmtpConfig, ConnectionCheckResult } from "../../shared/notifications/email.service";
+import { t } from "../../shared/i18n";
 
 export interface SaveCloudinaryConfigRequestDto {
   cloud_name?: string;
@@ -48,7 +49,7 @@ export class PlatformSettingsService {
 
   async saveCloudinaryConfig(dto: SaveCloudinaryConfigRequestDto) {
     if (!dto.cloud_name?.trim() || !dto.api_key?.trim() || !dto.api_secret?.trim()) {
-      throw new BadRequestError("cloud_name, api_key and api_secret are all required");
+      throw new BadRequestError(t({ bn: "cloud_name, api_key ও api_secret সবগুলোই আবশ্যক", en: "cloud_name, api_key and api_secret are all required" }));
     }
 
     await this.repository.upsertCloudinaryConfig({
@@ -100,7 +101,7 @@ export class PlatformSettingsService {
 
   async saveSmsConfig(dto: SaveSmsConfigRequestDto) {
     if (!dto.api_url?.trim() || !dto.api_key?.trim()) {
-      throw new BadRequestError("api_url এবং api_key আবশ্যক");
+      throw new BadRequestError(t({ bn: "api_url এবং api_key আবশ্যক", en: "api_url and api_key are required" }));
     }
 
     await this.repository.upsertSmsConfig({
@@ -148,7 +149,7 @@ export class PlatformSettingsService {
 
   async checkSmsBalance(): Promise<BalanceResult> {
     const config = await this.resolveSmsConfig();
-    if (!config) throw new BadRequestError("SMS গেটওয়ে কনফিগার করা নেই");
+    if (!config) throw new BadRequestError(t({ bn: "SMS গেটওয়ে কনফিগার করা নেই", en: "SMS gateway is not configured", ar: "بوابة الرسائل القصيرة غير مُعدة" }));
     return smsService.getBalance(config);
   }
 
@@ -170,7 +171,7 @@ export class PlatformSettingsService {
 
   async saveEmailConfig(dto: SaveEmailConfigRequestDto) {
     if (!dto.host?.trim() || !dto.user?.trim() || !dto.pass?.trim() || !dto.from_email?.trim()) {
-      throw new BadRequestError("host, user, pass এবং from_email আবশ্যক");
+      throw new BadRequestError(t({ bn: "host, user, pass এবং from_email আবশ্যক", en: "host, user, pass and from_email are required" }));
     }
 
     await this.repository.upsertEmailConfig({
@@ -207,7 +208,7 @@ export class PlatformSettingsService {
 
   async checkEmailConnection(): Promise<ConnectionCheckResult> {
     const config = await this.resolveEmailConfig();
-    if (!config) throw new BadRequestError("SMTP কনফিগার করা নেই");
+    if (!config) throw new BadRequestError(t({ bn: "SMTP কনফিগার করা নেই", en: "SMTP is not configured", ar: "SMTP غير مُعد" }));
     return emailService.verifyConnection(config);
   }
 }

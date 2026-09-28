@@ -7,6 +7,7 @@ import {
   PromotionPreviewRequestDto,
 } from "./promotion.dto";
 import { PROMOTION_STATUSES } from "./promotion.constants";
+import { t } from "../../shared/i18n";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -28,7 +29,7 @@ export class PromotionService {
    */
   async preview(madrasaId: number, dto: PromotionPreviewRequestDto) {
     if (!dto.from_class_id || !dto.from_year) {
-      throw new BadRequestError("from_class_id and from_year are required");
+      throw new BadRequestError(t({ bn: "from_class_id ও from_year আবশ্যক", en: "from_class_id and from_year are required", ar: "from_class_id و from_year مطلوبان" }));
     }
 
     const classId = Number(dto.from_class_id);
@@ -60,7 +61,7 @@ export class PromotionService {
         };
       });
     } catch (err) {
-      return friendlyFailure("promotionPreview error:", err, "Failed to build promotion preview");
+      return friendlyFailure("promotionPreview error:", err, t({ bn: "প্রমোশনের প্রিভিউ তৈরি করা যায়নি", en: "Failed to build promotion preview", ar: "تعذر إنشاء معاينة الترقية" }));
     }
   }
 
@@ -72,14 +73,14 @@ export class PromotionService {
    */
   async execute(madrasaId: number, promotedById: number | undefined, dto: PromotionExecuteRequestDto) {
     if (!dto.from_class_id || !dto.to_class_id || !dto.from_year || !dto.to_year) {
-      throw new BadRequestError("from_class_id, to_class_id, from_year and to_year are required");
+      throw new BadRequestError(t({ bn: "from_class_id, to_class_id, from_year ও to_year আবশ্যক", en: "from_class_id, to_class_id, from_year and to_year are required", ar: "from_class_id و to_class_id و from_year و to_year مطلوبة" }));
     }
     if (!Array.isArray(dto.decisions) || dto.decisions.length === 0) {
-      throw new BadRequestError("decisions must be a non-empty array");
+      throw new BadRequestError(t({ bn: "decisions একটি খালি নয় এমন তালিকা হতে হবে", en: "decisions must be a non-empty array", ar: "يجب أن تكون decisions مصفوفة غير فارغة" }));
     }
     for (const decision of dto.decisions) {
       if (!PROMOTION_STATUSES.includes(decision.status)) {
-        throw new BadRequestError(`Invalid status "${decision.status}" for student ${decision.student_id}`);
+        throw new BadRequestError(t({ bn: `শিক্ষার্থী ${decision.student_id}-এর জন্য "${decision.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${decision.status}" for student ${decision.student_id}`, ar: `الحالة "${decision.status}" غير صالحة للطالب ${decision.student_id}` }));
       }
     }
 
@@ -174,7 +175,7 @@ export class PromotionService {
     } catch (err) {
       // e.g. RegistrationBlockFullError - the admin needs its actual message.
       if (err instanceof BadRequestError) throw err;
-      return friendlyFailure("promotionExecute error:", err, "Failed to execute promotion");
+      return friendlyFailure("promotionExecute error:", err, t({ bn: "প্রমোশন সম্পন্ন করা যায়নি", en: "Failed to execute promotion", ar: "تعذر تنفيذ الترقية" }));
     }
   }
 }

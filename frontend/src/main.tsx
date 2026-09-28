@@ -10,6 +10,21 @@ import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontF
 import InstallPrompt from "@madrasha/shared-ui/src/pwa/InstallPrompt";
 import { setupPwa } from "@madrasha/shared-ui/src/pwa/pwa";
 import { setupTenantManifest } from "./utils/pwaManifest";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { appText } from "./app/app.text";
+
+// Institution-neutral, translated fallback name for the install prompt
+// (the manifest name, once known, takes precedence inside InstallPrompt).
+function SiteInstallPrompt() {
+  const t = useText(appText);
+  return (
+    <InstallPrompt
+      appName={t.appName}
+      storageKey="qms-site:pwa-dismissed-at"
+      hideOnPaths={/\/kiosk(\/|$)/}
+    />
+  );
+}
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
@@ -22,11 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <App />
       <Toaster />
       <ConfirmDialog />
-      <InstallPrompt
-        appName="মাদ্রাসা"
-        storageKey="qms-site:pwa-dismissed-at"
-        hideOnPaths={/\/kiosk(\/|$)/}
-      />
+      <SiteInstallPrompt />
     </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -41,6 +41,7 @@ import {
   CATEGORY_UPDATE_SUCCESS_MESSAGE,
   CATEGORY_DELETE_SUCCESS_MESSAGE,
 } from "./account.constants";
+import { t } from "../../shared/i18n";
 
 const clean = (value: unknown): string | null =>
   value === undefined || value === null || value === "" ? null : String(value).trim();
@@ -114,12 +115,12 @@ export class AccountService {
       details: `নতুন ফান্ড/বিভাগ যোগ করা হয়েছে — নাম: ${name}, ধরন: ${body.type === "income" ? "আয়" : "ব্যয়"}`,
     });
 
-    return { message: FUND_CREATE_SUCCESS_MESSAGE, id: created.id };
+    return { message: FUND_CREATE_SUCCESS_MESSAGE(), id: created.id };
   }
 
   async updateFund(madrasaId: number, userId: number, id: number, body: UpdateFundRequestDto) {
     const existing = await this.repository.findFundForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE());
 
     const data: Prisma.AccountFundUpdateInput = {};
     if (body.name !== undefined) {
@@ -146,12 +147,12 @@ export class AccountService {
       details: `ফান্ড/বিভাগ আপডেট করা হয়েছে (${existing.name})${changeSummary}`,
     });
 
-    return { message: FUND_UPDATE_SUCCESS_MESSAGE, id: updated.id };
+    return { message: FUND_UPDATE_SUCCESS_MESSAGE(), id: updated.id };
   }
 
   async deleteFund(madrasaId: number, userId: number, id: number) {
     const existing = await this.repository.findFundForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE());
 
     await this.repository.deleteFund(id);
 
@@ -164,12 +165,12 @@ export class AccountService {
       details: `ফান্ড/বিভাগ মুছে ফেলা হয়েছে — নাম: ${existing.name}, ধরন: ${existing.type === "income" ? "আয়" : "ব্যয়"}`,
     });
 
-    return { message: FUND_DELETE_SUCCESS_MESSAGE };
+    return { message: FUND_DELETE_SUCCESS_MESSAGE() };
   }
 
   async createCategory(madrasaId: number, userId: number, fundId: number, body: CreateCategoryRequestDto) {
     const fund = await this.repository.findFundForTenant(fundId, madrasaId);
-    if (!fund) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE);
+    if (!fund) throw new NotFoundError(FUND_NOT_FOUND_MESSAGE());
 
     const name = clean(body.name);
     if (!name) throw new FundValidationError();
@@ -186,12 +187,12 @@ export class AccountService {
       details: `নতুন খাত যোগ করা হয়েছে — নাম: ${name}, ফান্ড: ${fund.name}`,
     });
 
-    return { message: CATEGORY_CREATE_SUCCESS_MESSAGE, id: created.id };
+    return { message: CATEGORY_CREATE_SUCCESS_MESSAGE(), id: created.id };
   }
 
   async updateCategory(madrasaId: number, userId: number, id: number, body: UpdateCategoryRequestDto) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE());
 
     const data: Prisma.AccountCategoryUpdateInput = {};
     if (body.name !== undefined) {
@@ -218,12 +219,12 @@ export class AccountService {
       details: `খাত আপডেট করা হয়েছে (${existing.name}, ফান্ড: ${existing.fund.name})${changeSummary}`,
     });
 
-    return { message: CATEGORY_UPDATE_SUCCESS_MESSAGE, id: updated.id };
+    return { message: CATEGORY_UPDATE_SUCCESS_MESSAGE(), id: updated.id };
   }
 
   async deleteCategory(madrasaId: number, userId: number, id: number) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(CATEGORY_NOT_FOUND_MESSAGE());
 
     await this.repository.deleteCategory(id);
 
@@ -236,7 +237,7 @@ export class AccountService {
       details: `খাত মুছে ফেলা হয়েছে — নাম: ${existing.name}, ফান্ড: ${existing.fund.name}`,
     });
 
-    return { message: CATEGORY_DELETE_SUCCESS_MESSAGE };
+    return { message: CATEGORY_DELETE_SUCCESS_MESSAGE() };
   }
 
   async createIncome(madrasaId: number, userId: number, body: CreateIncomeRequestDto) {
@@ -285,7 +286,7 @@ export class AccountService {
       details: `আয় যোগ করা হয়েছে — দাতা: ${donor_name}, পরিমাণ: ${amount} টাকা, ফান্ড: ${fund}, খাত: ${category}, পদ্ধতি: ${payment_method}`,
     });
 
-    return { message: INCOME_SUCCESS_MESSAGE, id: created.id };
+    return { message: INCOME_SUCCESS_MESSAGE(), id: created.id };
   }
 
   async createExpense(madrasaId: number, userId: number, body: CreateExpenseRequestDto) {
@@ -332,7 +333,7 @@ export class AccountService {
       details: `ব্যয় যোগ করা হয়েছে — গ্রহীতা: ${receiver_name}, পরিমাণ: ${amount} টাকা, ফান্ড: ${fund}, খাত: ${category}, পদ্ধতি: ${payment_method}`,
     });
 
-    return { message: EXPENSE_SUCCESS_MESSAGE, id: created.id };
+    return { message: EXPENSE_SUCCESS_MESSAGE(), id: created.id };
   }
 
   async getReport(madrasaId: number, type: string, groupBy: string): Promise<ReportRow[]> {
@@ -381,7 +382,7 @@ export class AccountService {
 
   async update(madrasaId: number, userId: number, id: number, body: UpdateAccountRequestDto) {
     const existing = await this.repository.findForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(ACCOUNT_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(ACCOUNT_NOT_FOUND_MESSAGE());
 
     const data: Prisma.AccountUpdateInput = {};
     if (body.amount !== undefined) {
@@ -433,12 +434,12 @@ export class AccountService {
       details: `${existing.type === "income" ? "আয়" : "ব্যয়"} হালনাগাদ করা হয়েছে — ${existing.type === "income" ? "দাতা" : "গ্রহীতা"}: ${updatedName || "অজানা"}, পরিমাণ: ${updated.amount} টাকা, ফান্ড: ${updated.fund || "অজানা"}, খাত: ${updated.category || "অজানা"}, পদ্ধতি: ${updated.paymentMethod || "অজানা"}`,
     });
 
-    return { message: ACCOUNT_UPDATE_SUCCESS_MESSAGE, id: updated.id };
+    return { message: ACCOUNT_UPDATE_SUCCESS_MESSAGE(), id: updated.id };
   }
 
   async remove(madrasaId: number, userId: number, id: number) {
     const existing = await this.repository.findForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError(ACCOUNT_NOT_FOUND_MESSAGE);
+    if (!existing) throw new NotFoundError(ACCOUNT_NOT_FOUND_MESSAGE());
 
     await this.repository.softDelete(id);
 
@@ -453,7 +454,7 @@ export class AccountService {
       details: `${existing.type === "income" ? "আয়" : "ব্যয়"} মুছে ফেলা হয়েছে — ${existing.type === "income" ? "দাতা" : "গ্রহীতা"}: ${existingName || "অজানা"}, পরিমাণ: ${existing.amount} টাকা, ফান্ড: ${existing.fund || "অজানা"}, খাত: ${existing.category || "অজানা"}`,
     });
 
-    return { message: ACCOUNT_DELETE_SUCCESS_MESSAGE };
+    return { message: ACCOUNT_DELETE_SUCCESS_MESSAGE() };
   }
 
   /** Deletes many entries at once (e.g. cleaning up a batch of stale/
@@ -463,7 +464,7 @@ export class AccountService {
     const numericIds = [...new Set((body.ids || []).map(Number))].filter(
       (id) => Number.isInteger(id) && id > 0,
     );
-    if (numericIds.length === 0) throw new BadRequestError("মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি");
+    if (numericIds.length === 0) throw new BadRequestError(t({ bn: "মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি", en: "No entries selected for deletion", ar: "لم يتم تحديد أي قيود للحذف" }));
 
     const result = await this.repository.softDeleteMany(numericIds, madrasaId);
 
@@ -475,7 +476,7 @@ export class AccountService {
       details: `${result.count} টি এন্ট্রি একসাথে মুছে ফেলা হয়েছে`,
     });
 
-    return { message: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, count: result.count };
+    return { message: t({ bn: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, en: `${result.count} entries deleted`, ar: `تم حذف ${result.count} من القيود` }), count: result.count };
   }
 }
 

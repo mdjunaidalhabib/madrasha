@@ -1,4 +1,6 @@
 import { AdmissionFormData } from "../../features/students/AdmissionPage";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
 import AddressCascadeFields, { AddressField } from "@madrasha/shared-ui/src/components/ui/AddressCascadeFields";
 
 interface Props {
@@ -10,6 +12,7 @@ const addressSelectClass =
   "border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
 const AddressInfo: React.FC<Props> = ({ formData, setFormData }) => {
+  const t = useText(admissionText);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
@@ -27,7 +30,7 @@ const AddressInfo: React.FC<Props> = ({ formData, setFormData }) => {
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 mt-6 dark:bg-slate-900 dark:border-slate-700">
       <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-200 dark:border-slate-700">
-        ঠিকানার তথ্য
+        {t.addressInfo}
       </h2>
 
       {/* 4 Column Grid */}
@@ -41,13 +44,13 @@ const AddressInfo: React.FC<Props> = ({ formData, setFormData }) => {
         {/* Village*/}
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            গ্রাম
+            {t.village}
           </label>
           <input
             name="village"
             value={formData.village || ""}
             onChange={handleChange}
-            placeholder="গ্রাম"
+            placeholder={t.village}
             className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>

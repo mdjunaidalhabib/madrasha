@@ -5,11 +5,14 @@ import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { shellText } from "../topbar/shell.text";
 
 export default function LockScreen() {
   const unlock = useUIStore((s) => s.unlock);
   const isLocked = useUIStore((s) => s.isLocked);
   const user = useAuthStore((s) => s.user);
+  const t = useText(shellText);
 
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,11 +27,11 @@ export default function LockScreen() {
       setPassword("");
       unlock();
     } catch {
-      setError("পাসওয়ার্ড সঠিক নয়।");
+      setError(t.wrongPassword);
     }
   };
 
-  const avatarLetter = (user?.name || "ম").trim().charAt(0).toUpperCase();
+  const avatarLetter = (user?.name || "?").trim().charAt(0).toUpperCase();
 
   return (
     // A soft, desaturated tint (not flat black) over a heavily blurred
@@ -48,11 +51,11 @@ export default function LockScreen() {
               {avatarLetter}
             </span>
           )}
-          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">স্ক্রিন লক করা আছে</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">{t.screenLocked}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             {user?.name
-              ? `${user.name}, চালিয়ে যেতে পাসওয়ার্ড দিন`
-              : "চালিয়ে যেতে পাসওয়ার্ড দিন"}
+              ? t.enterPasswordToContinueNamed(user.name)
+              : t.enterPasswordToContinue}
           </p>
         </div>
 
@@ -60,7 +63,7 @@ export default function LockScreen() {
           <Input
             type={showPassword ? "text" : "password"}
             autoFocus
-            placeholder="পাসওয়ার্ড দিন"
+            placeholder={t.enterPassword}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
@@ -70,7 +73,7 @@ export default function LockScreen() {
             type="button"
             onClick={() => setShowPassword((v) => !v)}
             className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t.hidePassword : t.showPassword}
             tabIndex={-1}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -79,7 +82,7 @@ export default function LockScreen() {
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         <div className="mt-4">
           <Button className="w-full" onClick={handleUnlock}>
-            আনলক করুন
+            {t.unlock}
           </Button>
         </div>
       </div>

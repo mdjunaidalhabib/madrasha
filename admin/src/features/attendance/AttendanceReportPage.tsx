@@ -6,6 +6,8 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, formatDate, formatNumber, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { attendanceText } from "./attendance.text";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string; division_id?: number };
@@ -33,10 +35,10 @@ const monthRange = (month: string) => {
   return { from, to: to > todayIso() ? todayIso() : to };
 };
 
-const formatBnDate = (iso: string) => {
+const formatBnDate = (iso: string, lang: Lang) => {
   const date = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("bn-BD", { year: "numeric", month: "long", day: "numeric" });
+  return formatDate(date, lang, { year: "numeric", month: "long", day: "numeric" });
 };
 
 const normalizeArray = (payload: any) => {
@@ -45,6 +47,11 @@ const normalizeArray = (payload: any) => {
 };
 
 const AttendanceReportPage = () => {
+  const lang = useLang();
+  const tx = useText(attendanceText);
+  const t = tx.report;
+  const c = useText(commonText);
+  const num = (n: number) => formatNumber(n, lang);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
@@ -161,10 +168,10 @@ const AttendanceReportPage = () => {
   const studentNameById = useMemo(() => {
     const map = new Map<string, { name: string; roll: number | string }>();
     for (const student of reportStudents) {
-      map.set(String(student.id), { name: student.name_bn || "নাম নেই", roll: student.roll ?? "-" });
+      map.set(String(student.id), { name: student.name_bn || tx.common.noName, roll: student.roll ?? "-" });
     }
     return map;
-  }, [reportStudents]);
+  }, [reportStudents, tx]);
 
   const loadReport = useCallback(async () => {
     if (!month) return;
@@ -182,7 +189,7 @@ const AttendanceReportPage = () => {
       setRecords(normalizeArray(res));
     } catch (err) {
       logger.error("LOAD ATTENDANCE REPORT ERROR:", err);
-      useToastStore.getState().show("রিপোর্ট লোড করতে সমস্যা হয়েছে", "error");
+      useToastStore.getState().show(getText(attendanceText).report.loadFailed, "error");
       setRecords([]);
     } finally {
       setReportLoading(false);
@@ -265,7 +272,7 @@ const AttendanceReportPage = () => {
         const classItem = allClasses.find((c) => String(c.class_id) === classId);
         return {
           classId,
-          className: classNameById.get(classId) || `ক্লাস #${classId}`,
+          className: classNameById.get(classId) || t.classFallback(classId),
           classItem,
           ...counts,
           total,
@@ -274,7 +281,7 @@ const AttendanceReportPage = () => {
         };
       })
       .sort((a, b) => a.className.localeCompare(b.className, "bn"));
-  }, [records, studentClassById, classNameById, allClasses, selectedClass]);
+  }, [records, studentClassById, classNameById, allClasses, selectedClass, t]);
 
   const topAbsentees = useMemo(() => {
     const byStudent = new Map<string, number>();
@@ -346,11 +353,11 @@ const AttendanceReportPage = () => {
         class_id: Number(selectedClass),
         entries,
       });
-      useToastStore.getState().show("উপস্থিতি হালনাগাদ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(attendanceText).report.updated, "success");
       setEditDate("");
       loadReport();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "হালনাগাদ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(attendanceText).report.updateFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setEditSaving(false);
@@ -360,8 +367,8 @@ const AttendanceReportPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="উপস্থিতি রিপোর্ট"
-        subtitle="ক্লাস নির্বাচন না করলে পুরো মাদ্রাসার সারাংশ দেখাবে; নির্দিষ্ট বিভাগ/শ্রেণি বাছাই করলে শুধু সেটির রিপোর্ট ও এডিট অপশন দেখাবে"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
       {/* Filters */}
@@ -376,7 +383,7 @@ const AttendanceReportPage = () => {
             }}
             className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
           >
-            <option value="">বিভাগ নির্বাচন করুন</option>
+            <option value="">{tx.common.selectDivision}</option>
             {divisions.map((division) => (
               <option key={division.division_id} value={division.division_id}>
                 {division.division_name_bn}
@@ -390,7 +397,7 @@ const AttendanceReportPage = () => {
             disabled={!selectedDivision || classLoading}
             className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
           >
-            <option value="">{classLoading ? "শ্রেণি লোড হচ্ছে..." : "শ্রেণি নির্বাচন করুন"}</option>
+            <option value="">{classLoading ? tx.common.classLoading : tx.common.selectClass}</option>
             {classes.map((classItem) => (
               <option key={classItem.class_id} value={classItem.class_id}>
                 {classItem.class_name_bn}
@@ -416,10 +423,10 @@ const AttendanceReportPage = () => {
         <>
           {/* Dashboard */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile label="উপস্থিতির হার" value={overall.rate} variant="percentage" tone="blue" />
-            <StatTile label="মোট উপস্থিত" value={overall.PRESENT} tone="emerald" />
-            <StatTile label="মোট অনুপস্থিত" value={overall.ABSENT} tone="rose" />
-            <StatTile label="উপস্থিতি নেওয়া হয়েছে" value={overall.days} subLabel="দিন" tone="indigo" />
+            <StatTile label={t.rate} value={overall.rate} variant="percentage" tone="blue" />
+            <StatTile label={t.totalPresent} value={overall.PRESENT} tone="emerald" />
+            <StatTile label={t.totalAbsent} value={overall.ABSENT} tone="rose" />
+            <StatTile label={t.daysTaken} value={overall.days} subLabel={t.days} tone="indigo" />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -427,36 +434,36 @@ const AttendanceReportPage = () => {
               /* Day-wise summary for the one selected class, with per-day edit */
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
                 <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">দিনভিত্তিক সারাংশ</h2>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.daily}</h2>
                 </div>
                 {dailySummary.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-slate-400">এই মাসে কোনো উপস্থিতি রেকর্ড নেই</div>
+                  <div className="p-8 text-center text-sm text-slate-400">{t.noRecords}</div>
                 ) : (
                   <div className="max-h-[420px] overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <tr>
-                          <th className="px-5 py-2.5 font-medium">তারিখ</th>
-                          <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">উপস্থিত</th>
-                          <th className="px-3 py-2.5 text-center font-medium text-red-700 dark:text-red-400">অনুপস্থিত</th>
+                          <th className="px-5 py-2.5 font-medium">{t.date}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">{tx.common.present}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-red-700 dark:text-red-400">{tx.common.absent}</th>
                           <th className="px-3 py-2.5"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {dailySummary.map((day) => (
                           <tr key={day.date} className="border-t border-slate-100 dark:border-slate-800">
-                            <td className="px-5 py-2.5 text-slate-700 dark:text-slate-300">{formatBnDate(day.date)}</td>
+                            <td className="px-5 py-2.5 text-slate-700 dark:text-slate-300">{formatBnDate(day.date, lang)}</td>
                             <td className="px-3 py-2.5 text-center text-green-700 dark:text-green-400">
-                              {day.PRESENT + day.LATE}
+                              {num(day.PRESENT + day.LATE)}
                             </td>
-                            <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{day.ABSENT}</td>
+                            <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{num(day.ABSENT)}</td>
                             <td className="px-3 py-2.5 text-end">
                               <button
                                 type="button"
                                 onClick={() => openEditForDate(day.date)}
                                 className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
                               >
-                                এডিট
+                                {t.edit}
                               </button>
                             </td>
                           </tr>
@@ -468,7 +475,7 @@ const AttendanceReportPage = () => {
 
                 {/* Backfill / edit any date, including ones with no record yet */}
                 <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">অন্য কোনো তারিখ এডিট করুন:</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{t.editOtherDate}</span>
                   <input
                     type="date"
                     max={todayIso()}
@@ -482,20 +489,20 @@ const AttendanceReportPage = () => {
                  into that class's day-wise detail and edit capability. */
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
                 <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">ক্লাসভিত্তিক সারাংশ</h2>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.classWise}</h2>
                 </div>
                 {classSummary.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-slate-400">এই মাসে কোনো উপস্থিতি রেকর্ড নেই</div>
+                  <div className="p-8 text-center text-sm text-slate-400">{t.noRecords}</div>
                 ) : (
                   <div className="max-h-[420px] overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <tr>
-                          <th className="px-5 py-2.5 font-medium">শ্রেণি</th>
-                          <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">উপস্থিত</th>
-                          <th className="px-3 py-2.5 text-center font-medium text-red-700 dark:text-red-400">অনুপস্থিত</th>
-                          <th className="px-3 py-2.5 text-center font-medium">হার</th>
-                          <th className="px-3 py-2.5 text-center font-medium">হাজিরার দিন</th>
+                          <th className="px-5 py-2.5 font-medium">{t.class}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">{tx.common.present}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-red-700 dark:text-red-400">{tx.common.absent}</th>
+                          <th className="px-3 py-2.5 text-center font-medium">{t.rateShort}</th>
+                          <th className="px-3 py-2.5 text-center font-medium">{t.attendanceDays}</th>
                           <th className="px-3 py-2.5"></th>
                         </tr>
                       </thead>
@@ -504,14 +511,14 @@ const AttendanceReportPage = () => {
                           <tr key={row.classId} className="border-t border-slate-100 dark:border-slate-800">
                             <td className="px-5 py-2.5 text-slate-700 dark:text-slate-300">{row.className}</td>
                             <td className="px-3 py-2.5 text-center text-green-700 dark:text-green-400">
-                              {row.PRESENT + row.LATE}
+                              {num(row.PRESENT + row.LATE)}
                             </td>
-                            <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{row.ABSENT}</td>
+                            <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{num(row.ABSENT)}</td>
                             <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-400">
-                              {row.rate}%
+                              {num(row.rate)}%
                             </td>
                             <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-400">
-                              {row.days}
+                              {num(row.days)}
                             </td>
                             <td className="px-3 py-2.5 text-end">
                               <button
@@ -520,7 +527,7 @@ const AttendanceReportPage = () => {
                                 onClick={() => row.classItem && openClassDetail(row.classItem)}
                                 className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
                               >
-                                বিস্তারিত
+                                {t.details}
                               </button>
                             </td>
                           </tr>
@@ -531,7 +538,7 @@ const AttendanceReportPage = () => {
                 )}
 
                 <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400 dark:border-slate-800">
-                  কোনো নির্দিষ্ট দিনের উপস্থিতি এডিট করতে উপরে বিভাগ ও শ্রেণি নির্বাচন করুন, অথবা কোনো ক্লাসের পাশে "বিস্তারিত" চাপুন
+                  {t.classHint}
                 </div>
               </div>
             )}
@@ -539,10 +546,10 @@ const AttendanceReportPage = () => {
             {/* Top absentees */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">সর্বাধিক অনুপস্থিত</h2>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.topAbsent}</h2>
               </div>
               {topAbsentees.length === 0 ? (
-                <div className="p-6 text-center text-sm text-slate-400">এই মাসে কোনো অনুপস্থিতি নেই</div>
+                <div className="p-6 text-center text-sm text-slate-400">{t.noAbsence}</div>
               ) : (
                 <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                   {topAbsentees.map((row) => (
@@ -555,7 +562,7 @@ const AttendanceReportPage = () => {
                         )}
                       </span>
                       <span className="shrink-0 font-semibold text-red-700 dark:text-red-400">
-                        {row.absentCount} দিন
+                        {t.dayCount(num(row.absentCount))}
                       </span>
                     </li>
                   ))}
@@ -569,23 +576,23 @@ const AttendanceReportPage = () => {
             <div className="rounded-2xl border border-blue-200 bg-white shadow-sm dark:border-blue-900/50 dark:bg-slate-900">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  {formatBnDate(editDate)} - উপস্থিতি এডিট
+                  {t.editTitle(formatBnDate(editDate, lang))}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setEditDate("")}
                   className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  বন্ধ করুন
+                  {c.close}
                 </button>
               </div>
 
               {studentsInClass.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">এই শ্রেণিতে কোনো ছাত্র নেই</div>
+                <div className="p-8 text-center text-sm text-slate-400">{tx.common.noStudentsInClass}</div>
               ) : (
                 <div className="mx-auto max-w-md p-4 sm:p-5">
                   <label className="flex cursor-pointer items-center justify-between gap-3 border-b border-gray-200 pb-2 text-sm font-medium text-gray-700 dark:border-slate-700 dark:text-slate-200">
-                    <span>সবাইকে উপস্থিত করুন</span>
+                    <span>{tx.common.markAllPresent}</span>
                     <input
                       type="checkbox"
                       checked={editAllChecked}
@@ -616,7 +623,7 @@ const AttendanceReportPage = () => {
                                     : "text-gray-400 line-through dark:text-slate-500"
                                 }`}
                               >
-                                {student.name_bn || "নাম নেই"}
+                                {student.name_bn || tx.common.noName}
                               </span>
                             </span>
                             <input
@@ -637,7 +644,7 @@ const AttendanceReportPage = () => {
                       onClick={handleSaveEdit}
                       className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                     >
-                      {editSaving ? "সংরক্ষণ হচ্ছে..." : "পরিবর্তন সংরক্ষণ করুন"}
+                      {editSaving ? c.saving : t.saveChanges}
                     </button>
                   </div>
                 </div>

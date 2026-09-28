@@ -1,3 +1,6 @@
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
+
 export function ToggleSwitch({
   checked,
   onChange,
@@ -44,10 +47,11 @@ export function PublishToggle({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const t = useText(settingsUiText);
   return (
     <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
       <ToggleSwitch checked={checked} onChange={onChange} />
-      প্রকাশ করুন
+      {t.publish}
     </label>
   );
 }

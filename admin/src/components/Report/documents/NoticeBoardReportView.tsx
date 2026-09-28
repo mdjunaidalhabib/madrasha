@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import LetterDocument from "./engine/LetterDocument";
 import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
 import { useNoticeBoardReportStore } from "../../../store/noticeBoardReportStore";
+import { usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { reportUiText } from "../reportUi.text";
 
 type NoticeBoardReportViewProps = {
   rows: Record<string, any>[];
@@ -20,21 +23,23 @@ type NoticeBoardReportViewProps = {
 const NoticeBoardReportView = ({ rows: _rows }: NoticeBoardReportViewProps) => {
   const notices = useNoticeBoardReportStore((s) => s.notices);
   const selectedId = useNoticeBoardReportStore((s) => s.selectedId);
+  const ui = useText(reportUiText);
+  const t = usePrintText(reportText);
 
   const selected = notices?.find((n) => n.id === selectedId) || null;
 
   if (notices === null) {
-    return <p className="py-10 text-center text-sm text-slate-400">লোড হচ্ছে...</p>;
+    return <p className="py-10 text-center text-sm text-slate-400">{ui.loading}</p>;
   }
 
   if (notices.length === 0) {
     return (
       <div className="no-print py-10 text-center text-sm text-slate-500">
-        এখনো কোনো নোটিশ তৈরি করা হয়নি।{" "}
+        {ui.noNoticeYet}{" "}
         <Link to="/talimat/settings/notices" className="font-semibold text-blue-700 underline">
-          এখান থেকে প্রথম নোটিশটি লিখুন
+          {ui.writeFirstNotice}
         </Link>
-        ।
+        {ui.sentenceEnd}
       </div>
     );
   }
@@ -56,7 +61,7 @@ const NoticeBoardReportView = ({ rows: _rows }: NoticeBoardReportViewProps) => {
           <LetterDateLine />
         </>
       }
-      footer={<LetterSignatureFooter label="প্রধান শিক্ষকের স্বাক্ষর ও সীল" />}
+      footer={<LetterSignatureFooter label={t.sign.headSeal} />}
     />
   );
 };

@@ -1,3 +1,5 @@
+import type { InstitutionType, Lang } from "@madrasha/shared-ui/src/i18n";
+
 export type UserRole = "muhtamim" | "talimat" | "accountant";
 
 export type DefaultUserType = {
@@ -15,6 +17,9 @@ export type CreateMadrasaPayload = {
   slug?: string;
   address?: string;
   phone?: string;
+  institution_type: InstitutionType;
+  /** null = the institution type's own default language. */
+  default_language: Lang | null;
 
   /* ========================
   Plan

@@ -1,21 +1,22 @@
 import { BadRequestError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 /** This module's tenant-missing message differs from other modules' - preserved exactly. */
 export class MadrasaNotFoundError extends BadRequestError {
   constructor() {
-    super("Madrasa not found in tenant");
+    super(t({ bn: "টেন্যান্টে প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found in tenant", ar: "لم يتم العثور على المؤسسة" }));
   }
 }
 
 export class InvalidAssignmentRequestError extends BadRequestError {
   constructor() {
-    super("Invalid request");
+    super(t({ bn: "অনুরোধটি সঠিক নয়", en: "Invalid request", ar: "طلب غير صالح" }));
   }
 }
 
 export class AssignmentAlreadyExistsError extends BadRequestError {
   constructor() {
-    super("Teacher already has assignment. Use update instead.");
+    super(t({ bn: "এই শিক্ষকের ইতিমধ্যে দায়িত্ব নির্ধারিত আছে। পরিবর্তে আপডেট করুন।", en: "Teacher already has assignment. Use update instead.", ar: "المعلم لديه تكليف بالفعل. استخدم التحديث بدلًا من ذلك." }));
   }
 }
 

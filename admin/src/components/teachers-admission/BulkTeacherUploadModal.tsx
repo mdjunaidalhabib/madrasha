@@ -1,4 +1,6 @@
 import ExcelUpload from "../common/ExcelUpload";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
 export interface ExcelTeacherRow {
   name_bn?: string;
@@ -66,11 +68,14 @@ const BulkTeacherUploadModal = ({
   onDownloadTemplate,
   divisions,
 }: BulkTeacherUploadModalProps) => {
+  const t = useText(teacherStaffText);
+  const c = useText(commonText);
+  const lang = useLang();
   if (!open) return null;
 
   const getGenderName = (gender: any) => {
-    if (Number(gender) === 1) return "পুরুষ";
-    if (Number(gender) === 2) return "মহিলা";
+    if (Number(gender) === 1) return t.male;
+    if (Number(gender) === 2) return t.female;
     return "-";
   };
 
@@ -79,36 +84,37 @@ const BulkTeacherUploadModal = ({
     return division?.division_name_bn || id || "-";
   };
 
+  const f = t.fields;
   const previewColumns = [
-    "SL",
-    "Name BN",
-    "Arabic Name",
-    "NID",
-    "Gender",
-    "DOB",
-    "Age",
-    "Phone",
-    "Email",
-    "Designation",
-    "Academic Division",
-    "Qualification",
-    "Experience Year",
-    "Experience Month",
-    "Joining Date",
-    "Salary",
-    "Father Name",
-    "Father Arabic Name",
-    "Father NID",
-    "Father Occupation",
-    "Mother Name",
-    "Mother NID",
-    "Mother Occupation",
-    "Parent Phone",
-    "Division",
-    "District",
-    "Thana",
-    "Village",
-    "Image",
+    c.serial,
+    t.nameBnShort,
+    f.name_ar,
+    f.nid,
+    f.gender,
+    f.dob,
+    f.age,
+    f.phone,
+    f.email,
+    f.designation,
+    f.academic_division,
+    f.qualification,
+    f.experience_year,
+    f.experience_month,
+    f.joining_date,
+    f.salary,
+    f.father_name,
+    f.father_name_ar,
+    f.father_nid,
+    f.father_occupation,
+    f.mother_name,
+    f.mother_nid,
+    f.mother_occupation,
+    f.parent_phone,
+    f.division,
+    f.district,
+    f.thana,
+    f.village,
+    f.image,
   ];
 
   return (
@@ -116,8 +122,8 @@ const BulkTeacherUploadModal = ({
       <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Bulk Teacher Upload</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Excel file upload করে একসাথে teacher add করুন</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.bulkTeacherUpload}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.bulkTeacherUploadHint}</p>
           </div>
 
           <button
@@ -134,13 +140,13 @@ const BulkTeacherUploadModal = ({
             <>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Upload Excel Sheet</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">{t.uploadExcelSheet}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Required fields template-এ red color এবং * mark থাকবে
+                    {t.requiredFieldsHint}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Gender: 1 = পুরুষ, 2 = মহিলা</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.genderHint(t.male, t.female)}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Required columns: name_bn, academic_division
+                    {t.requiredColumnsHint}
                   </p>
                 </div>
 
@@ -149,12 +155,12 @@ const BulkTeacherUploadModal = ({
                   onClick={onDownloadTemplate}
                   className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
                 >
-                  Download Template
+                  {t.downloadTemplate}
                 </button>
               </div>
 
               <ExcelUpload<ExcelTeacherRow>
-                buttonText="Upload Teacher Excel"
+                buttonText={t.uploadTeacherExcel}
                 onDataUpload={onDataUpload}
                 disabled={loading}
                 requiredColumns={requiredColumns}
@@ -166,9 +172,9 @@ const BulkTeacherUploadModal = ({
             <div>
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Preview Teachers</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.previewTeachers}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Total {excelTeachers.length} teacher found
+                    {t.totalFound(localizeDigits(excelTeachers.length, lang))}
                   </p>
                 </div>
 
@@ -177,7 +183,7 @@ const BulkTeacherUploadModal = ({
                   onClick={onClear}
                   className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
-                  Clear Uploaded Data
+                  {t.clearUploaded}
                 </button>
               </div>
 
@@ -261,7 +267,7 @@ const BulkTeacherUploadModal = ({
                           <td className="whitespace-nowrap px-3 py-3">{teacher.thana || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">{teacher.village || "-"}</td>
                           <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.image ? "Uploaded" : "-"}
+                            {teacher.image ? t.uploaded : "-"}
                           </td>
                         </tr>
                       ))}
@@ -276,7 +282,7 @@ const BulkTeacherUploadModal = ({
                 disabled={loading}
                 className="mt-5 w-full rounded-xl bg-green-600 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-60"
               >
-                {loading ? "Submitting..." : "Submit All Teachers"}
+                {loading ? t.submitting : t.submitAllTeachers}
               </button>
             </div>
           )}

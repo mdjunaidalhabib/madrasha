@@ -1,5 +1,7 @@
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { commonUiText } from "./commonUi.text";
 
 interface ExcelUploadProps<T> {
   onDataUpload: (data: T[]) => void;
@@ -10,10 +12,11 @@ interface ExcelUploadProps<T> {
 
 const ExcelUpload = <T,>({
   onDataUpload,
-  buttonText = "Upload Excel File",
+  buttonText,
   disabled = false,
   requiredColumns = [],
 }: ExcelUploadProps<T>) => {
+  const t = useText(commonUiText);
   const cleanHeaderKey = (key: string) => key.replace("*", "").trim();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,13 +38,13 @@ const ExcelUpload = <T,>({
       try {
         const XLSX = await import("xlsx");
         const result = event.target?.result;
-        if (!result) return useToastStore.getState().show("File read failed", "error");
+        if (!result) return useToastStore.getState().show(getText(commonUiText).fileReadFailed, "error");
 
         const data = new Uint8Array(result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
 
         const sheetName = workbook.SheetNames[0];
-        if (!sheetName) return useToastStore.getState().show("Excel sheet not found", "error");
+        if (!sheetName) return useToastStore.getState().show(getText(commonUiText).sheetNotFound, "error");
 
         const sheet = workbook.Sheets[sheetName];
 
@@ -51,7 +54,7 @@ const ExcelUpload = <T,>({
           raw: false,
         });
 
-        if (!allRows.length) return useToastStore.getState().show("Excel file is empty", "error");
+        if (!allRows.length) return useToastStore.getState().show(getText(commonUiText).excelEmpty, "error");
 
         const headerRowIndex = allRows.findIndex((row) =>
           row.some((cell) => requiredColumns.includes(cleanHeaderKey(String(cell)))),
@@ -77,7 +80,7 @@ const ExcelUpload = <T,>({
             return item;
           }) as T[];
 
-        if (!cleanedRows.length) return useToastStore.getState().show("No student data found", "error");
+        if (!cleanedRows.length) return useToastStore.getState().show(getText(commonUiText).noStudentData, "error");
 
         onDataUpload(cleanedRows);
         e.target.value = "";
@@ -87,7 +90,7 @@ const ExcelUpload = <T,>({
       }
     };
 
-    reader.onerror = () => useToastStore.getState().show("Failed to read file", "error");
+    reader.onerror = () => useToastStore.getState().show(getText(commonUiText).fileReadFailed, "error");
 
     reader.readAsArrayBuffer(file);
   };
@@ -99,11 +102,11 @@ const ExcelUpload = <T,>({
           📄
         </div>
 
-        <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">Upload Excel File</h3>
+        <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">{t.uploadExcel}</h3>
 
         <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Select admission Excel file. Required columns marked with{" "}
-          <span className="font-bold text-red-600 dark:text-red-400">*</span> will be detected automatically.
+          {t.excelHintBefore}{" "}
+          <span className="font-bold text-red-600 dark:text-red-400">*</span> {t.excelHintAfter}
         </p>
 
         <label
@@ -112,7 +115,7 @@ const ExcelUpload = <T,>({
           }`}
         >
           <span className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-            {buttonText}
+            {buttonText ?? t.uploadExcel}
           </span>
 
           <input
@@ -124,21 +127,21 @@ const ExcelUpload = <T,>({
           />
         </label>
 
-        <p className="mt-4 text-xs font-medium text-slate-500 dark:text-slate-400">Supported file: .xlsx, .xls, .csv</p>
+        <p className="mt-4 text-xs font-medium text-slate-500 dark:text-slate-400">{t.supportedFiles}</p>
       </div>
 
       {requiredColumns.length > 0 && (
         <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/40">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h4 className="font-bold text-red-900 dark:text-red-400">Required Template Columns</h4>
+              <h4 className="font-bold text-red-900 dark:text-red-400">{t.requiredColumns}</h4>
               <p className="text-xs text-red-700 dark:text-red-400">
-                Template-এ এই columns red color এবং * mark থাকবে
+                {t.requiredColumnsHint}
               </p>
             </div>
 
             <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
-              Required
+              {t.required}
             </span>
           </div>
 

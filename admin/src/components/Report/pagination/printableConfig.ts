@@ -25,10 +25,10 @@ export type PrintableConfig = {
 const noGrouping = () => "__all__";
 
 const examContextGroupKey = (extraExamName: boolean) => (row: Record<string, any>) => {
-  const division = cellValue(row, "division_name") || cellValue(row, "division_name_bn") || "সকল বিভাগ";
-  const className = cellValue(row, "class_name") || cellValue(row, "class_name_bn") || "সকল শ্রেণি";
-  const academicYear = cellValue(row, "academic_year") || cellValue(row, "exam_year") || "সকল শিক্ষাবর্ষ";
-  const examName = extraExamName ? cellValue(row, "exam_name") || "পরীক্ষা" : "";
+  const division = cellValue(row, "division_name") || cellValue(row, "division_name_bn") || "*";
+  const className = cellValue(row, "class_name") || cellValue(row, "class_name_bn") || "*";
+  const academicYear = cellValue(row, "academic_year") || cellValue(row, "exam_year") || "*";
+  const examName = extraExamName ? cellValue(row, "exam_name") || "*" : "";
   return `${division}|${className}|${academicYear}|${examName}`;
 };
 

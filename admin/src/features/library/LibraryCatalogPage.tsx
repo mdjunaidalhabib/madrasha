@@ -5,6 +5,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { libraryText } from "./library.text";
 
 type LibraryCategory = { id: number; name: string };
 
@@ -37,6 +39,9 @@ const normalizeArray = (payload: any) => {
 };
 
 const LibraryCatalogPage = () => {
+  const lang = useLang();
+  const t = useText(libraryText).catalog;
+  const c = useText(commonText);
   const [categories, setCategories] = useState<LibraryCategory[]>([]);
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [booksLoading, setBooksLoading] = useState(false);
@@ -94,7 +99,7 @@ const LibraryCatalogPage = () => {
     try {
       setSavingCategory(true);
       await libraryCategoryApi.create({ name: newCategoryName.trim() });
-      useToastStore.getState().show("ক্যাটাগরি যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(t.categoryAdded, "success");
       setNewCategoryName("");
       loadCategories();
     } finally {
@@ -107,7 +112,7 @@ const LibraryCatalogPage = () => {
     try {
       setSavingCategory(true);
       await libraryCategoryApi.update(editingCategory.id, { name: editingCategoryName.trim() });
-      useToastStore.getState().show("ক্যাটাগরি আপডেট হয়েছে", "success");
+      useToastStore.getState().show(t.categoryUpdated, "success");
       setEditingCategory(null);
       loadCategories();
     } finally {
@@ -116,9 +121,9 @@ const LibraryCatalogPage = () => {
   };
 
   const handleDeleteCategory = async (category: LibraryCategory) => {
-    if (!window.confirm(`"${category.name}" ক্যাটাগরিটি মুছে ফেলতে চান?`)) return;
+    if (!window.confirm(t.confirmDeleteCategory(category.name))) return;
     await libraryCategoryApi.remove(category.id);
-    useToastStore.getState().show("ক্যাটাগরি মুছে ফেলা হয়েছে", "success");
+    useToastStore.getState().show(t.categoryDeleted, "success");
     loadCategories();
     loadBooks();
   };
@@ -145,7 +150,7 @@ const LibraryCatalogPage = () => {
 
   const handleSaveBook = async () => {
     if (!bookForm.title.trim()) {
-      useToastStore.getState().show("বইয়ের নাম দিন", "error");
+      useToastStore.getState().show(t.titleRequired, "error");
       return;
     }
     const payload = {
@@ -162,10 +167,10 @@ const LibraryCatalogPage = () => {
       setSavingBook(true);
       if (editingBook) {
         await libraryBookApi.update(editingBook.id, payload);
-        useToastStore.getState().show("বইয়ের তথ্য আপডেট হয়েছে", "success");
+        useToastStore.getState().show(t.bookUpdated, "success");
       } else {
         await libraryBookApi.create(payload);
-        useToastStore.getState().show("নতুন বই যোগ করা হয়েছে", "success");
+        useToastStore.getState().show(t.bookAdded, "success");
       }
       setBookModalOpen(false);
       loadBooks();
@@ -175,10 +180,10 @@ const LibraryCatalogPage = () => {
   };
 
   const handleDeleteBook = async (book: LibraryBook) => {
-    if (!window.confirm(`"${book.title}" বইটি মুছে ফেলতে চান?`)) return;
+    if (!window.confirm(t.confirmDeleteBook(book.title))) return;
     try {
       await libraryBookApi.remove(book.id);
-      useToastStore.getState().show("বই মুছে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(t.bookDeleted, "success");
       loadBooks();
     } catch {
       // global axios interceptor already shows the server's friendly error
@@ -188,7 +193,7 @@ const LibraryCatalogPage = () => {
 
   const toggleBookActive = async (book: LibraryBook) => {
     await libraryBookApi.update(book.id, { is_active: !book.isActive });
-    useToastStore.getState().show(book.isActive ? "বই নিষ্ক্রিয় করা হয়েছে" : "বই সক্রিয় করা হয়েছে", "success");
+    useToastStore.getState().show(book.isActive ? t.bookDeactivated : t.bookActivated, "success");
     loadBooks();
   };
 
@@ -198,21 +203,21 @@ const LibraryCatalogPage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">বই তালিকা</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">লাইব্রেরির বই ও ক্যাটাগরি পরিচালনা করুন</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           {/* Categories panel */}
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-            <h2 className="mb-2 text-sm font-semibold text-gray-700 dark:text-slate-300">ক্যাটাগরি সমূহ</h2>
+            <h2 className="mb-2 text-sm font-semibold text-gray-700 dark:text-slate-300">{t.categories}</h2>
             <div className="mb-3 flex gap-1.5">
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()}
-                placeholder="নতুন ক্যাটাগরি"
+                placeholder={t.newCategory}
                 className="h-8 flex-1 rounded-md border border-gray-300 px-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
               <button
@@ -233,7 +238,7 @@ const LibraryCatalogPage = () => {
                   !categoryFilter ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" : "text-gray-600 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-slate-800"
                 }`}
               >
-                সব বই
+                {t.allBooks}
               </button>
               {categoryOptions.map((cat) => (
                 <div
@@ -272,7 +277,7 @@ const LibraryCatalogPage = () => {
                       <span className="hidden shrink-0 gap-1 group-hover:flex">
                         <button
                           type="button"
-                          title="সম্পাদনা"
+                          title={t.edit}
                           onClick={() => {
                             setEditingCategory(cat);
                             setEditingCategoryName(cat.name);
@@ -283,7 +288,7 @@ const LibraryCatalogPage = () => {
                         </button>
                         <button
                           type="button"
-                          title="মুছুন"
+                          title={t.delete}
                           onClick={() => handleDeleteCategory(cat)}
                           className="text-gray-400 hover:text-rose-600"
                         >
@@ -306,7 +311,7 @@ const LibraryCatalogPage = () => {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="নাম, লেখক বা ISBN দিয়ে খুঁজুন"
+                  placeholder={t.searchPlaceholder}
                   className="h-9 w-full rounded-md border border-gray-300 ps-8 pe-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -316,7 +321,7 @@ const LibraryCatalogPage = () => {
                 className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
               >
                 <Plus size={15} />
-                নতুন বই
+                {t.newBook}
               </button>
             </div>
 
@@ -325,7 +330,7 @@ const LibraryCatalogPage = () => {
             ) : books.length === 0 ? (
               <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
                 <BookOpen size={28} className="mx-auto mb-2 text-gray-300 dark:text-slate-600" />
-                কোনো বই পাওয়া যায়নি
+                {t.noBooks}
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
@@ -347,16 +352,16 @@ const LibraryCatalogPage = () => {
                         )}
                         {!book.isActive && (
                           <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-                            নিষ্ক্রিয়
+                            {t.inactive}
                           </span>
                         )}
                       </div>
                       <div className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">
                         {book.isbn ? `ISBN: ${book.isbn} · ` : ""}
-                        {book.shelfLocation ? `শেলফ: ${book.shelfLocation} · ` : ""}
-                        কপি:{" "}
+                        {book.shelfLocation ? t.shelf(book.shelfLocation) : ""}
+                        {t.copies}{" "}
                         <span className={book.copiesAvailable > 0 ? "font-medium text-emerald-600 dark:text-emerald-400" : "font-medium text-rose-600 dark:text-rose-400"}>
-                          {book.copiesAvailable}/{book.copiesTotal}
+                          {formatNumber(book.copiesAvailable, lang)}/{formatNumber(book.copiesTotal, lang)}
                         </span>
                       </div>
                     </div>
@@ -366,11 +371,11 @@ const LibraryCatalogPage = () => {
                         onClick={() => toggleBookActive(book)}
                         className="flex h-7 items-center rounded-md border border-gray-200 px-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
-                        {book.isActive ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                        {book.isActive ? t.deactivate : t.activate}
                       </button>
                       <button
                         type="button"
-                        title="সম্পাদনা"
+                        title={t.edit}
                         onClick={() => openEditBookModal(book)}
                         className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                       >
@@ -378,7 +383,7 @@ const LibraryCatalogPage = () => {
                       </button>
                       <button
                         type="button"
-                        title="মুছুন"
+                        title={t.delete}
                         onClick={() => handleDeleteBook(book)}
                         className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-950/40"
                       >
@@ -395,13 +400,13 @@ const LibraryCatalogPage = () => {
 
       <Modal
         open={bookModalOpen}
-        title={editingBook ? "বইয়ের তথ্য সম্পাদনা করুন" : "নতুন বই যোগ করুন"}
+        title={editingBook ? t.editBookTitle : t.addBookTitle}
         onClose={() => setBookModalOpen(false)}
         maxWidthClassName="max-w-lg"
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">বইয়ের নাম *</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.bookName}</label>
             <input
               type="text"
               value={bookForm.title}
@@ -410,7 +415,7 @@ const LibraryCatalogPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">লেখক</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.author}</label>
             <input
               type="text"
               value={bookForm.author}
@@ -419,7 +424,7 @@ const LibraryCatalogPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">প্রকাশক</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.publisher}</label>
             <input
               type="text"
               value={bookForm.publisher}
@@ -437,7 +442,7 @@ const LibraryCatalogPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শেলফ লোকেশন</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.shelfLocation}</label>
             <input
               type="text"
               value={bookForm.shelf_location}
@@ -446,13 +451,13 @@ const LibraryCatalogPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ক্যাটাগরি</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.category}</label>
             <select
               value={bookForm.category_id}
               onChange={(e) => setBookForm((f) => ({ ...f, category_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -461,7 +466,7 @@ const LibraryCatalogPage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">মোট কপি সংখ্যা</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.totalCopies}</label>
             <input
               type="number"
               min={1}
@@ -477,7 +482,7 @@ const LibraryCatalogPage = () => {
             onClick={() => setBookModalOpen(false)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -485,7 +490,7 @@ const LibraryCatalogPage = () => {
             onClick={handleSaveBook}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {savingBook ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {savingBook ? c.saving : c.save}
           </button>
         </div>
       </Modal>

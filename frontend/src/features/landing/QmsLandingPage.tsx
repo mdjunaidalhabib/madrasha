@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import ContactFab from "./ContactFab";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
+import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { landingText } from "./landing.text";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
 // the floating contact button and the Contact section below. Kept in one
@@ -35,13 +37,20 @@ import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
 const CONTACT_PHONE_DISPLAY = "01624114405";
 const CONTACT_PHONE_INTL = "8801624114405"; // wa.me needs country code, no "+" or leading 0
 
+// Labels come from landingText.nav[key].
 const NAV_LINKS = [
-  { href: "#about", label: "পরিচিতি" },
-  { href: "#why", label: "কেন QMS" },
-  { href: "#getting-started", label: "ব্যবহার গাইড" },
-  { href: "#service", label: "সেবা নিন" },
-  { href: "#contact", label: "যোগাযোগ" },
+  { href: "#about", key: "about" },
+  { href: "#why", key: "why" },
+  { href: "#getting-started", key: "gettingStarted" },
+  { href: "#service", key: "service" },
+  { href: "#contact", key: "contact" },
 ];
+
+const FEATURE_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wallet, BarChart3, MessageSquareText, Settings];
+const WHY_ICONS = [Clock, ShieldCheck, BarChart3, ShieldCheck, LayoutDashboard, Users2];
+const STEP_ICONS = [UserPlus, Settings, Users2, ClipboardList, LayoutDashboard];
+const SERVICE_ICONS = [PhoneCall, PlayCircle, Wrench, FileCheck2, Rocket];
+const MOCK_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wallet];
 
 /* ---------------------------------------------------------
    Design tokens for this page:
@@ -99,6 +108,7 @@ function StepItem({
   desc: string;
   isLast?: boolean;
 }) {
+  const t = useText(landingText);
   return (
     <div className="relative flex gap-5">
       <div className="flex flex-col items-center">
@@ -109,7 +119,7 @@ function StepItem({
       </div>
       <div className="pb-10">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-          ধাপ {index}
+          {t.step(index)}
         </p>
         <h3 className="mt-1 text-lg font-bold text-slate-900">{title}</h3>
         <p className="mt-1.5 max-w-xl text-sm leading-6 text-slate-600">{desc}</p>
@@ -119,6 +129,8 @@ function StepItem({
 }
 
 export default function QmsLandingPage() {
+  const t = useText(landingText);
+  const lang = useLang();
   const adminAppLoginUrl = getAdminAppLoginUrl();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   // Tracks which section is currently in view so the matching nav link can
@@ -187,26 +199,27 @@ export default function QmsLandingPage() {
                     isActive ? "font-semibold text-emerald-700" : ""
                   }`}
                 >
-                  {link.label}
+                  {t.nav[link.key]}
                 </a>
               );
             })}
           </nav>
 
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <a
               href={adminAppLoginUrl}
               className="hidden items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 sm:inline-flex"
             >
-              অ্যাডমিন প্যানেলে যান
-              <ArrowRight size={15} />
+              {t.goToAdmin}
+              <ArrowRight size={15} className="rtl:rotate-180" />
             </a>
 
             {/* Mobile menu toggle */}
             <button
               type="button"
               onClick={() => setMobileNavOpen((v) => !v)}
-              aria-label={mobileNavOpen ? "মেনু বন্ধ করুন" : "মেনু খুলুন"}
+              aria-label={mobileNavOpen ? t.closeMenu : t.openMenu}
               aria-expanded={mobileNavOpen}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 md:hidden"
             >
@@ -231,7 +244,7 @@ export default function QmsLandingPage() {
                       isActive ? "bg-emerald-50 font-semibold text-emerald-700" : ""
                     }`}
                   >
-                    {link.label}
+                    {t.nav[link.key]}
                   </a>
                 );
               })}
@@ -240,8 +253,8 @@ export default function QmsLandingPage() {
                 onClick={() => setMobileNavOpen(false)}
                 className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
               >
-                অ্যাডমিন প্যানেলে যান
-                <ArrowRight size={15} />
+                {t.goToAdmin}
+                <ArrowRight size={15} className="rtl:rotate-180" />
               </a>
             </nav>
           </div>
@@ -271,13 +284,12 @@ export default function QmsLandingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-8 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-28">
           <div>
             <h1 className="text-2xl font-extrabold leading-[1.25] tracking-tight text-white sm:text-4xl sm:leading-[1.15] lg:text-5xl">
-              কওমি মাদ্রাসা পরিচালনার
-              <span className="block text-emerald-400">সম্পূর্ণ ডিজিটাল সমাধান</span>
+              {t.heroLine1}
+              <span className="block text-emerald-400">{t.heroLine2}</span>
             </h1>
 
             <p className="mt-5 max-w-lg text-base leading-7 text-slate-300">
-              QMS (Qawmi Madrasa Management System) একটি আধুনিক সফটওয়্যার, যা দিয়ে ছাত্র, শিক্ষক,
-              ভর্তি, হাজিরা, পরীক্ষা-ফলাফল ও হিসাব — সবকিছু এক জায়গা থেকে সহজে পরিচালনা করা যায়।
+              {t.heroBody}
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -285,30 +297,24 @@ export default function QmsLandingPage() {
                 href="#service"
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-500"
               >
-                সেবাটি নিন
-                <ArrowRight size={16} />
+                {t.getService}
+                <ArrowRight size={16} className="rtl:rotate-180" />
               </a>
               <a
                 href="#about"
                 className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/5"
               >
-                আরও জানুন
+                {t.learnMore}
               </a>
             </div>
 
             <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-slate-400">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-400" />
-                নিরাপদ ও নির্ভরযোগ্য ডেটা
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-400" />
-                বাংলা ভাষায় সম্পূর্ণ ইন্টারফেস
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-400" />
-                মোবাইল ও ডেস্কটপ সাপোর্ট
-              </div>
+              {t.badges.map((badge) => (
+                <div key={badge} className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  {badge}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -326,14 +332,10 @@ export default function QmsLandingPage() {
                 </span>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {[
-                  { icon: <Users size={18} />, label: "Students" },
-                  { icon: <Users2 size={18} />, label: "Teachers" },
-                  { icon: <UserPlus size={18} />, label: "Admission" },
-                  { icon: <CalendarCheck size={18} />, label: "Attendance" },
-                  { icon: <ClipboardList size={18} />, label: "Examination" },
-                  { icon: <Wallet size={18} />, label: "Accounts" },
-                ].map((m) => (
+                {t.mockModules.map((label, i) => {
+                  const Icon = MOCK_ICONS[i];
+                  return { icon: <Icon size={18} />, label };
+                }).map((m) => (
                   <div
                     key={m.label}
                     className="rounded-xl bg-white/[0.06] p-4 text-slate-200 ring-1 ring-white/5"
@@ -345,8 +347,8 @@ export default function QmsLandingPage() {
               </div>
             </div>
             <div className="absolute -bottom-5 -start-5 hidden rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl sm:block">
-              <p className="text-[11px] font-medium text-emerald-100">Result প্রস্তুত</p>
-              <p className="text-sm font-bold">এক ক্লিকে রিপোর্ট</p>
+              <p className="text-[11px] font-medium text-emerald-100">{t.resultReady}</p>
+              <p className="text-sm font-bold">{t.oneClickReport}</p>
             </div>
           </div>
         </div>
@@ -355,62 +357,20 @@ export default function QmsLandingPage() {
       {/* ---------------- About QMS ---------------- */}
       <section id="about" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <SectionEyebrow>About QMS</SectionEyebrow>
+          <SectionEyebrow>{t.aboutEyebrow}</SectionEyebrow>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
-            মাদ্রাসার সকল কার্যক্রম একটি প্ল্যাটফর্মে
+            {t.aboutTitle}
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            কওমি মাদ্রাসার দৈনন্দিন প্রশাসনিক ও একাডেমিক কাজগুলো সহজ ও গোছালো করতে QMS তৈরি করা
-            হয়েছে। প্রতিটি মডিউল বাস্তব প্রয়োজন বিবেচনা করে ডিজাইন করা।
+            {t.aboutBody}
           </p>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <FeatureCard
-            icon={<Users size={20} />}
-            title="Student Management"
-            desc="শিক্ষার্থীদের তথ্য, প্রোফাইল ও একাডেমিক রেকর্ড সহজে সংরক্ষণ ও পরিচালনা করুন।"
-          />
-          <FeatureCard
-            icon={<Users2 size={20} />}
-            title="Teacher Management"
-            desc="শিক্ষকদের নিয়োগ, প্রোফাইল ও দায়িত্ব বণ্টন এক জায়গা থেকে নিয়ন্ত্রণ করুন।"
-          />
-          <FeatureCard
-            icon={<UserPlus size={20} />}
-            title="Admission"
-            desc="নতুন শিক্ষার্থী ভর্তি প্রক্রিয়া দ্রুত, নির্ভুল ও ডিজিটালভাবে সম্পন্ন করুন।"
-          />
-          <FeatureCard
-            icon={<CalendarCheck size={20} />}
-            title="Attendance"
-            desc="দৈনিক হাজিরা রেকর্ড রাখুন এবং উপস্থিতির প্রবণতা সহজে বিশ্লেষণ করুন।"
-          />
-          <FeatureCard
-            icon={<ClipboardList size={20} />}
-            title="Examination & Result"
-            desc="পরীক্ষা পরিচালনা, নম্বর এন্ট্রি ও ফলাফল প্রকাশ স্বয়ংক্রিয়ভাবে করুন।"
-          />
-          <FeatureCard
-            icon={<Wallet size={20} />}
-            title="Accounts"
-            desc="আয়-ব্যয়, ফান্ড ও আর্থিক হিসাব স্বচ্ছভাবে ট্র্যাক করুন।"
-          />
-          <FeatureCard
-            icon={<BarChart3 size={20} />}
-            title="Reports"
-            desc="একাডেমিক, আর্থিক ও প্রশাসনিক রিপোর্ট মুহূর্তেই তৈরি ও প্রিন্ট করুন।"
-          />
-          <FeatureCard
-            icon={<MessageSquareText size={20} />}
-            title="SMS / Notification"
-            desc="অভিভাবক ও শিক্ষকদের কাছে গুরুত্বপূর্ণ তথ্য দ্রুত পৌঁছে দিন।"
-          />
-          <FeatureCard
-            icon={<Settings size={20} />}
-            title="Settings ও অন্যান্য"
-            desc="মাদ্রাসার নিজস্ব প্রয়োজন অনুযায়ী সিস্টেম কাস্টমাইজ ও নিয়ন্ত্রণ করুন।"
-          />
+          {t.features.map((card, i) => {
+            const Icon = FEATURE_ICONS[i];
+            return <FeatureCard key={card.title} icon={<Icon size={20} />} title={card.title} desc={card.desc} />;
+          })}
         </div>
       </section>
 
@@ -423,44 +383,18 @@ export default function QmsLandingPage() {
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold tracking-wide text-emerald-300">
-              Why Choose QMS
+              {t.whyEyebrow}
             </div>
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
-              কেন আপনার মাদ্রাসার জন্য QMS
+              {t.whyTitle}
             </h2>
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <WhyCard
-              icon={<Clock size={20} />}
-              title="সময় সাশ্রয়"
-              desc="ম্যানুয়াল রেজিস্টার ও হিসাবের ঝামেলা ছাড়াই কাজ হবে দ্রুত ও সহজ।"
-            />
-            <WhyCard
-              icon={<ShieldCheck size={20} />}
-              title="নির্ভুল তথ্য সংরক্ষণ"
-              desc="প্রতিটি তথ্য নির্ভুলভাবে ডিজিটালি সংরক্ষিত থাকে, ভুলের সম্ভাবনা কমে যায়।"
-            />
-            <WhyCard
-              icon={<BarChart3 size={20} />}
-              title="সহজ রিপোর্ট"
-              desc="জটিল হিসাব-নিকাশ এক ক্লিকে রিপোর্ট আকারে দেখুন ও প্রিন্ট করুন।"
-            />
-            <WhyCard
-              icon={<ShieldCheck size={20} />}
-              title="নিরাপদ ডেটা"
-              desc="মাদ্রাসার তথ্য সুরক্ষিত সার্ভারে নিরাপদে সংরক্ষিত থাকে।"
-            />
-            <WhyCard
-              icon={<LayoutDashboard size={20} />}
-              title="Modern Dashboard"
-              desc="প্রতিদিনের কার্যক্রম এক নজরে দেখার জন্য আধুনিক ড্যাশবোর্ড।"
-            />
-            <WhyCard
-              icon={<Users2 size={20} />}
-              title="Multi-user Support"
-              desc="প্রশাসন, শিক্ষক ও কর্মচারীরা একসাথে নিজ নিজ দায়িত্বে কাজ করতে পারবেন।"
-            />
+            {t.why.map((card, i) => {
+              const Icon = WHY_ICONS[i];
+              return <WhyCard key={card.title} icon={<Icon size={20} />} title={card.title} desc={card.desc} />;
+            })}
           </div>
         </div>
       </section>
@@ -468,47 +402,29 @@ export default function QmsLandingPage() {
       {/* ---------------- Getting Started ---------------- */}
       <section id="getting-started" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <SectionEyebrow>Getting Started</SectionEyebrow>
+          <SectionEyebrow>{t.startEyebrow}</SectionEyebrow>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
-            কীভাবে ব্যবহার শুরু করবেন
+            {t.startTitle}
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            মাত্র কয়েকটি ধাপে আপনার মাদ্রাসা QMS ব্যবহার শুরু করতে পারবে।
+            {t.startBody}
           </p>
         </div>
 
         <div className="mx-auto mt-12 max-w-2xl">
-          <StepItem
-            index="১"
-            icon={<UserPlus size={18} />}
-            title="অ্যাকাউন্ট তৈরি"
-            desc="আপনার মাদ্রাসার জন্য একটি QMS অ্যাকাউন্ট খুলুন।"
-          />
-          <StepItem
-            index="২"
-            icon={<Settings size={18} />}
-            title="মাদ্রাসার তথ্য সেটআপ"
-            desc="মাদ্রাসার নাম, ঠিকানা, লোগো ও প্রয়োজনীয় তথ্য যুক্ত করুন।"
-          />
-          <StepItem
-            index="৩"
-            icon={<Users2 size={18} />}
-            title="শিক্ষক ও শিক্ষার্থী যুক্ত করা"
-            desc="শিক্ষক ও শিক্ষার্থীদের প্রোফাইল সিস্টেমে যুক্ত করুন।"
-          />
-          <StepItem
-            index="৪"
-            icon={<ClipboardList size={18} />}
-            title="ক্লাস, বিভাগ ও বিষয় সেটআপ"
-            desc="মাদ্রাসার একাডেমিক কাঠামো অনুযায়ী ক্লাস, বিভাগ ও বিষয় নির্ধারণ করুন।"
-          />
-          <StepItem
-            index="৫"
-            icon={<LayoutDashboard size={18} />}
-            title="দৈনন্দিন ব্যবহার"
-            desc="হাজিরা, পরীক্ষা, হিসাব ও রিপোর্ট — প্রতিদিনের কাজে QMS ব্যবহার শুরু করুন।"
-            isLast
-          />
+          {t.steps.map((step, i) => {
+            const Icon = STEP_ICONS[i];
+            return (
+              <StepItem
+                key={step.title}
+                index={localizeDigits(i + 1, lang)}
+                icon={<Icon size={18} />}
+                title={step.title}
+                desc={step.desc}
+                isLast={i === t.steps.length - 1}
+              />
+            );
+          })}
         </div>
       </section>
 
@@ -516,49 +432,26 @@ export default function QmsLandingPage() {
       <section id="service" className="bg-slate-50 py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <SectionEyebrow>How to Get This Service</SectionEyebrow>
+            <SectionEyebrow>{t.serviceEyebrow}</SectionEyebrow>
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
-              যেভাবে সেবাটি নিতে পারবেন
+              {t.serviceTitle}
             </h2>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              Hikmah IT-এর সহায়তায় সম্পূর্ণ ঝামেলাহীনভাবে QMS চালু করুন।
+              {t.serviceBody}
             </p>
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {[
-              {
-                icon: <PhoneCall size={20} />,
-                title: "যোগাযোগ",
-                desc: "ফোন বা ইমেইলে আমাদের সাথে যোগাযোগ করুন।",
-              },
-              {
-                icon: <PlayCircle size={20} />,
-                title: "ডেমো",
-                desc: "সিস্টেমের একটি লাইভ ডেমো দেখুন।",
-              },
-              {
-                icon: <Wrench size={20} />,
-                title: "সেটআপ",
-                desc: "আপনার মাদ্রাসার জন্য সিস্টেম কনফিগার করা হবে।",
-              },
-              {
-                icon: <FileCheck2 size={20} />,
-                title: "ট্রেনিং",
-                desc: "ব্যবহারকারীদের প্রয়োজনীয় প্রশিক্ষণ দেওয়া হবে।",
-              },
-              {
-                icon: <Rocket size={20} />,
-                title: "লাইভ চালু",
-                desc: "সম্পূর্ণ প্রস্তুত হয়ে গেলে সিস্টেম লাইভ চালু হবে।",
-              },
-            ].map((s, i) => (
+            {t.service.map((card, i) => {
+              const Icon = SERVICE_ICONS[i];
+              return { ...card, icon: <Icon size={20} /> };
+            }).map((s, i) => (
               <div
                 key={s.title}
                 className="relative rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
               >
                 <span className="absolute end-4 top-4 text-2xl font-extrabold text-slate-100">
-                  {i + 1}
+                  {localizeDigits(i + 1, lang)}
                 </span>
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
                   {s.icon}
@@ -574,8 +467,8 @@ export default function QmsLandingPage() {
               href="#contact"
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
             >
-              এখনই যোগাযোগ করুন
-              <ArrowRight size={16} />
+              {t.contactNow}
+              <ArrowRight size={16} className="rtl:rotate-180" />
             </a>
           </div>
         </div>
@@ -587,11 +480,11 @@ export default function QmsLandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5">
             <div className="p-8 sm:p-10 lg:col-span-2">
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20">
-                Contact Us
+                {t.contactEyebrow}
               </div>
               <h2 className="mt-4 text-2xl font-extrabold text-white">Hikmah IT</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                আপনার মাদ্রাসার জন্য QMS চালু করতে আজই যোগাযোগ করুন। আমরা আছি প্রতিটি ধাপে পাশে।
+                {t.contactBody}
               </p>
             </div>
 
@@ -603,7 +496,7 @@ export default function QmsLandingPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
                   <Phone size={18} />
                 </span>
-                <span className="text-xs font-medium text-slate-400">Phone</span>
+                <span className="text-xs font-medium text-slate-400">{t.phone}</span>
                 <span className="text-sm font-semibold text-white" dir="ltr">
                   {CONTACT_PHONE_DISPLAY}
                 </span>
@@ -615,7 +508,7 @@ export default function QmsLandingPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
                   <Mail size={18} />
                 </span>
-                <span className="text-xs font-medium text-slate-400">Email</span>
+                <span className="text-xs font-medium text-slate-400">{t.email}</span>
                 <span className="break-all text-sm font-semibold text-white">
                   hikmahitcenter@gmail.com
                 </span>
@@ -624,9 +517,9 @@ export default function QmsLandingPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
                   <MapPin size={18} />
                 </span>
-                <span className="text-xs font-medium text-slate-400">Address</span>
+                <span className="text-xs font-medium text-slate-400">{t.address}</span>
                 <span className="text-sm font-semibold text-white">
-                  Jamalpur, Dhaka, Bangladesh
+                  {t.addressValue}
                 </span>
               </div>
             </div>
@@ -652,7 +545,7 @@ export default function QmsLandingPage() {
                 >
                   QMS
                 </a>{" "}
-                — Powered by{" "}
+                {t.poweredBy}{" "}
                 <a
                   href="https://hikmahit.com"
                   target="_blank"
@@ -665,7 +558,7 @@ export default function QmsLandingPage() {
             </div>
 
             <p>
-              &copy; {new Date().getFullYear()}{" "}
+              &copy; {localizeDigits(new Date().getFullYear(), lang)}{" "}
               <a
                 href="https://hikmahit.com"
                 target="_blank"
@@ -674,7 +567,7 @@ export default function QmsLandingPage() {
               >
                 Hikmah IT
               </a>
-              . সর্বস্বত্ব সংরক্ষিত।
+              . {t.allRightsReserved}
             </p>
           </div>
         </div>

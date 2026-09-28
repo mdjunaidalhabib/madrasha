@@ -1,4 +1,8 @@
+import { LOCALE_MAP, getLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
+
 export function Badge({ active }: { active: boolean }) {
+  const t = useText(billingText);
   return (
     <span
       className={[
@@ -8,19 +12,20 @@ export function Badge({ active }: { active: boolean }) {
           : "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400",
       ].join(" ")}
     >
-      {active ? "Active" : "Inactive"}
+      {active ? t.active : t.inactive}
     </span>
   );
 }
 
 export function StatusBadge({ status }: { status: "PENDING" | "APPROVED" | "REJECTED" }) {
+  const t = useText(billingText);
   const cls =
     status === "APPROVED"
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
       : status === "REJECTED"
         ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
         : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400";
-  const label = status === "APPROVED" ? "Approved" : status === "REJECTED" ? "Rejected" : "Pending";
+  const label = status === "APPROVED" ? t.approved : status === "REJECTED" ? t.rejected : t.pending;
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
       {label}
@@ -29,6 +34,7 @@ export function StatusBadge({ status }: { status: "PENDING" | "APPROVED" | "REJE
 }
 
 export function TypeBadge({ type }: { type: "PACKAGE" | "RECHARGE" }) {
+  const t = useText(billingText);
   return (
     <span
       className={[
@@ -38,19 +44,19 @@ export function TypeBadge({ type }: { type: "PACKAGE" | "RECHARGE" }) {
           : "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
       ].join(" ")}
     >
-      {type === "PACKAGE" ? "Package" : "Recharge"}
+      {type === "PACKAGE" ? t.typePackage : t.typeRecharge}
     </span>
   );
 }
 
 export function fmtMoney(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
-  return n.toLocaleString("en-BD", { maximumFractionDigits: 2 });
+  return n.toLocaleString(LOCALE_MAP[getLang()], { maximumFractionDigits: 2 });
 }
 
 export function fmtInt(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
-  return n.toLocaleString("en-BD");
+  return n.toLocaleString(LOCALE_MAP[getLang()]);
 }
 
 // allow digits + one dot, max 2 decimals

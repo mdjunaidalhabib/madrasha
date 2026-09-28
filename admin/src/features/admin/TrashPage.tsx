@@ -4,7 +4,10 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, formatDate as formatLangDate, localizeDigits, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { trashText } from "./trash.text";
+
+type TrashText = typeof trashText.bn;
 
 type TabKey = "students" | "teachers" | "exams" | "divisions" | "classes" | "books" | "results";
 
@@ -81,15 +84,7 @@ type TrashRow =
   | TrashBookRow
   | TrashResultRow;
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "students", label: "শিক্ষার্থী" },
-  { key: "teachers", label: "শিক্ষক" },
-  { key: "exams", label: "পরীক্ষা" },
-  { key: "divisions", label: "বিভাগ" },
-  { key: "classes", label: "শ্রেণি" },
-  { key: "books", label: "কিতাব" },
-  { key: "results", label: "রেজাল্ট" },
-];
+const TABS: TabKey[] = ["students", "teachers", "exams", "divisions", "classes", "books", "results"];
 
 // Different tabs key their display name under different fields (results
 // don't have a single "name" at all — they're identified by exam + class).
@@ -117,15 +112,13 @@ const extractArray = (res: any): any[] => {
   return Array.isArray(data) ? data : [];
 };
 
-const formatDate = (value?: string | null) => {
+const formatDate = (value: string | null | undefined, lang: Lang) => {
   if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return toBanglaDigits(date.toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" }));
+  return formatLangDate(value, lang, { day: "numeric", month: "long", year: "numeric" }) || "-";
 };
 
-const daysBadge = (days: number) => {
-  const label = days <= 0 ? "আজই মুছে যাবে" : `বাকি আছে: ${toBanglaDigits(days)} দিন`;
+const daysBadge = (days: number, t: TrashText, lang: Lang) => {
+  const label = days <= 0 ? t.deletesToday : t.daysLeft(localizeDigits(days, lang));
   const classes =
     days <= 1
       ? "bg-red-100 text-red-700 border-red-300"
@@ -140,6 +133,10 @@ const daysBadge = (days: number) => {
 };
 
 export default function TrashPage() {
+  const t = useText(trashText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const n = (value: number) => localizeDigits(value, lang);
   const [activeTab, setActiveTab] = useState<TabKey>("students");
   const [rowsByTab, setRowsByTab] = useState<Record<TabKey, TrashRow[]>>({
     students: [],
@@ -189,7 +186,7 @@ export default function TrashPage() {
       });
     } catch (err) {
       logger.error("LOAD TRASH ERROR:", err);
-      useToastStore.getState().show("ট্র্যাশ লোড করা যায়নি", "error");
+      useToastStore.getState().show(t.loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -234,19 +231,19 @@ export default function TrashPage() {
   const handleRestore = (tab: TabKey, row: TrashRow) => {
     const name = getRowName(tab, row);
     useConfirmStore.getState().show({
-      title: "ফিরিয়ে আনবেন?",
-      message: `"${name || ""}" ট্র্যাশ থেকে ফিরিয়ে আনতে চান? এটি আগের মতোই সক্রিয় হয়ে যাবে।`,
-      confirmText: "ফিরিয়ে আনুন",
+      title: t.restoreTitle,
+      message: t.restoreMessage(name || ""),
+      confirmText: t.restore,
       onConfirm: async () => {
         try {
           setBusyId(row.id);
           await api.post(`/trash/${tab}/${row.id}/restore`);
-          useToastStore.getState().show("ফিরিয়ে আনা হয়েছে", "success");
+          useToastStore.getState().show(t.restored, "success");
           removeRow(tab, row.id);
         } catch (err: any) {
           useToastStore
             .getState()
-            .show(err?.response?.data?.message || "ফিরিয়ে আনা যায়নি", "error");
+            .show(err?.response?.data?.message || t.restoreFailed, "error");
         } finally {
           setBusyId(null);
         }
@@ -257,20 +254,20 @@ export default function TrashPage() {
   const handlePermanentDelete = (tab: TabKey, row: TrashRow) => {
     const name = getRowName(tab, row);
     useConfirmStore.getState().show({
-      title: "স্থায়ীভাবে মুছবেন?",
-      message: `"${name || ""}" স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি আর ফিরিয়ে আনা যাবে না — সম্পর্কিত সব তথ্য (রেজাল্ট, মার্কস ইত্যাদি) একসাথে মুছে যাবে।`,
-      confirmText: "স্থায়ীভাবে মুছে ফেলুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(name || ""),
+      confirmText: t.deleteForever,
       danger: true,
       onConfirm: async () => {
         try {
           setBusyId(row.id);
           await api.delete(`/trash/${tab}/${row.id}`);
-          useToastStore.getState().show("স্থায়ীভাবে মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(t.deletedForever, "success");
           removeRow(tab, row.id);
         } catch (err: any) {
           useToastStore
             .getState()
-            .show(err?.response?.data?.message || "মুছে ফেলা যায়নি", "error");
+            .show(err?.response?.data?.message || t.deleteFailed, "error");
         } finally {
           setBusyId(null);
         }
@@ -281,9 +278,9 @@ export default function TrashPage() {
   const handleBulkRestore = (tab: TabKey, targetRows: TrashRow[]) => {
     if (targetRows.length === 0) return;
     useConfirmStore.getState().show({
-      title: "ফিরিয়ে আনবেন?",
-      message: `নির্বাচিত ${toBanglaDigits(targetRows.length)}টি আইটেম ট্র্যাশ থেকে ফিরিয়ে আনতে চান? এগুলো আগের মতোই সক্রিয় হয়ে যাবে।`,
-      confirmText: "ফিরিয়ে আনুন",
+      title: t.restoreTitle,
+      message: t.bulkRestoreMessage(n(targetRows.length)),
+      confirmText: t.restore,
       onConfirm: async () => {
         setBulkBusy(true);
         try {
@@ -296,14 +293,14 @@ export default function TrashPage() {
           const failedCount = results.length - succeededIds.length;
           if (succeededIds.length > 0) removeRows(tab, succeededIds);
           if (failedCount === 0) {
-            useToastStore.getState().show("ফিরিয়ে আনা হয়েছে", "success");
+            useToastStore.getState().show(t.restored, "success");
           } else if (succeededIds.length === 0) {
-            useToastStore.getState().show("ফিরিয়ে আনা যায়নি", "error");
+            useToastStore.getState().show(t.restoreFailed, "error");
           } else {
             useToastStore
               .getState()
               .show(
-                `${toBanglaDigits(succeededIds.length)}টি ফিরিয়ে আনা হয়েছে, ${toBanglaDigits(failedCount)}টি ব্যর্থ হয়েছে`,
+                t.bulkRestorePartial(n(succeededIds.length), n(failedCount)),
                 "error",
               );
           }
@@ -317,9 +314,9 @@ export default function TrashPage() {
   const handleBulkDelete = (tab: TabKey, targetRows: TrashRow[]) => {
     if (targetRows.length === 0) return;
     useConfirmStore.getState().show({
-      title: "স্থায়ীভাবে মুছবেন?",
-      message: `নির্বাচিত ${toBanglaDigits(targetRows.length)}টি আইটেম স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি আর ফিরিয়ে আনা যাবে না — সম্পর্কিত সব তথ্য (রেজাল্ট, মার্কস ইত্যাদি) একসাথে মুছে যাবে।`,
-      confirmText: "স্থায়ীভাবে মুছে ফেলুন",
+      title: t.deleteTitle,
+      message: t.bulkDeleteMessage(n(targetRows.length)),
+      confirmText: t.deleteForever,
       danger: true,
       onConfirm: async () => {
         setBulkBusy(true);
@@ -333,14 +330,14 @@ export default function TrashPage() {
           const failedCount = results.length - succeededIds.length;
           if (succeededIds.length > 0) removeRows(tab, succeededIds);
           if (failedCount === 0) {
-            useToastStore.getState().show("স্থায়ীভাবে মুছে ফেলা হয়েছে", "success");
+            useToastStore.getState().show(t.deletedForever, "success");
           } else if (succeededIds.length === 0) {
-            useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
+            useToastStore.getState().show(t.deleteFailed, "error");
           } else {
             useToastStore
               .getState()
               .show(
-                `${toBanglaDigits(succeededIds.length)}টি মুছে ফেলা হয়েছে, ${toBanglaDigits(failedCount)}টি ব্যর্থ হয়েছে`,
+                t.bulkDeletePartial(n(succeededIds.length), n(failedCount)),
                 "error",
               );
           }
@@ -360,34 +357,33 @@ export default function TrashPage() {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">🗑️ ট্র্যাশ</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">🗑️ {t.title}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            মুছে ফেলা শিক্ষার্থী, শিক্ষক, পরীক্ষা, বিভাগ, শ্রেণি, কিতাব ও রেজাল্ট এখানে ৭ দিন থাকে
-            — এর মধ্যে ফিরিয়ে আনতে না পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।
+            {t.subtitle}
           </p>
         </div>
 
         <div className="mb-4 flex gap-2 border-b border-gray-200 dark:border-slate-800">
           {TABS.map((tab) => (
             <button
-              key={tab.key}
+              key={tab}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-                activeTab === tab.key
+                activeTab === tab
                   ? "border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
-              {tab.label}
+              {t.tabs[tab]}
               <span
                 className={`ms-1.5 rounded-full px-1.5 py-0.5 text-[11px] ${
-                  rowsByTab[tab.key].length > 0
+                  rowsByTab[tab].length > 0
                     ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                     : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}
               >
-                {toBanglaDigits(rowsByTab[tab.key].length)}
+                {n(rowsByTab[tab].length)}
               </span>
             </button>
           ))}
@@ -396,7 +392,7 @@ export default function TrashPage() {
         {selected.size > 0 && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
             <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {toBanglaDigits(selected.size)}টি নির্বাচিত
+              {t.selectedCount(n(selected.size))}
             </span>
             <div className="flex gap-2">
               <button
@@ -405,7 +401,7 @@ export default function TrashPage() {
                 onClick={() => handleBulkRestore(activeTab, selectedRows)}
                 className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
               >
-                নির্বাচিতগুলো ফিরিয়ে আনুন
+                {t.restoreSelected}
               </button>
               <button
                 type="button"
@@ -413,7 +409,7 @@ export default function TrashPage() {
                 onClick={() => handleBulkDelete(activeTab, selectedRows)}
                 className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
               >
-                নির্বাচিতগুলো স্থায়ী মুছুন
+                {t.deleteSelected}
               </button>
             </div>
           </div>
@@ -423,7 +419,7 @@ export default function TrashPage() {
           {loading ? (
             <SkeletonTable rows={5} columns={4} />
           ) : rows.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">ট্র্যাশ খালি আছে</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">{t.empty}</div>
           ) : (
             <>
               {/* Mobile cards */}
@@ -440,34 +436,34 @@ export default function TrashPage() {
                         />
                         <span className="font-semibold text-gray-800 dark:text-slate-100">{getRowName(activeTab, row)}</span>
                       </label>
-                      {daysBadge(row.days_remaining)}
+                      {daysBadge(row.days_remaining, t, lang)}
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       {activeTab === "students" && (
                         <>
-                          রোল: {(row as TrashStudentRow).roll ?? "নেই"} | শ্রেণি:{" "}
-                          {(row as TrashStudentRow).current_class || "নেই"}
+                          {t.roll}: {(row as TrashStudentRow).roll ?? t.none} | {t.class}:{" "}
+                          {(row as TrashStudentRow).current_class || t.none}
                         </>
                       )}
                       {activeTab === "teachers" && (
                         <>
-                          রেজি. নং: {(row as TrashTeacherRow).registration_no ?? "নেই"} | ফোন:{" "}
-                          {(row as TrashTeacherRow).phone || "নেই"}
+                          {t.regNo}: {(row as TrashTeacherRow).registration_no ?? t.none} | {t.phone}:{" "}
+                          {(row as TrashTeacherRow).phone || t.none}
                         </>
                       )}
-                      {activeTab === "exams" && <>সাল: {(row as TrashExamRow).year || "নেই"}</>}
+                      {activeTab === "exams" && <>{t.year}: {(row as TrashExamRow).year || t.none}</>}
                       {activeTab === "classes" && (
-                        <>বিভাগ: {(row as TrashClassRow).division_name_bn || "নেই"}</>
+                        <>{t.division}: {(row as TrashClassRow).division_name_bn || t.none}</>
                       )}
                       {activeTab === "results" && (
                         <>
-                          সাল: {(row as TrashResultRow).exam_year || "নেই"} | অবস্থা:{" "}
-                          {(row as TrashResultRow).status || "নেই"}
+                          {t.year}: {(row as TrashResultRow).exam_year || t.none} | {t.state}:{" "}
+                          {(row as TrashResultRow).status || t.none}
                         </>
                       )}
                     </div>
                     <div className="mt-1 text-xs text-gray-400 dark:text-slate-500">
-                      মুছে ফেলা হয়েছে: {formatDate(row.deleted_at)}
+                      {t.deletedAt}: {formatDate(row.deleted_at, lang)}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -476,7 +472,7 @@ export default function TrashPage() {
                         onClick={() => handleRestore(activeTab, row)}
                         className="h-9 flex-1 rounded-md bg-green-600 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                       >
-                        ফিরিয়ে আনুন
+                        {t.restore}
                       </button>
                       <button
                         type="button"
@@ -484,7 +480,7 @@ export default function TrashPage() {
                         onClick={() => handlePermanentDelete(activeTab, row)}
                         className="h-9 flex-1 rounded-md bg-red-600 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                       >
-                        স্থায়ী মুছুন
+                        {t.permanentDelete}
                       </button>
                     </div>
                   </div>
@@ -504,30 +500,30 @@ export default function TrashPage() {
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </th>
-                      <th className="px-3 py-2">নাম</th>
+                      <th className="px-3 py-2">{c.name}</th>
                       {activeTab === "students" && (
                         <>
-                          <th className="px-3 py-2">রোল</th>
-                          <th className="px-3 py-2">শ্রেণি</th>
+                          <th className="px-3 py-2">{t.roll}</th>
+                          <th className="px-3 py-2">{t.class}</th>
                         </>
                       )}
                       {activeTab === "teachers" && (
                         <>
-                          <th className="px-3 py-2">রেজি. নং</th>
-                          <th className="px-3 py-2">ফোন</th>
+                          <th className="px-3 py-2">{t.regNo}</th>
+                          <th className="px-3 py-2">{t.phone}</th>
                         </>
                       )}
-                      {activeTab === "exams" && <th className="px-3 py-2">সাল</th>}
-                      {activeTab === "classes" && <th className="px-3 py-2">বিভাগ</th>}
+                      {activeTab === "exams" && <th className="px-3 py-2">{t.year}</th>}
+                      {activeTab === "classes" && <th className="px-3 py-2">{t.division}</th>}
                       {activeTab === "results" && (
                         <>
-                          <th className="px-3 py-2">সাল</th>
-                          <th className="px-3 py-2">অবস্থা</th>
+                          <th className="px-3 py-2">{t.year}</th>
+                          <th className="px-3 py-2">{t.state}</th>
                         </>
                       )}
-                      <th className="px-3 py-2">মুছে ফেলা হয়েছে</th>
-                      <th className="px-3 py-2">মেয়াদ</th>
-                      <th className="px-3 py-2 text-end">অ্যাকশন</th>
+                      <th className="px-3 py-2">{t.deletedAt}</th>
+                      <th className="px-3 py-2">{t.validity}</th>
+                      <th className="px-3 py-2 text-end">{c.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -546,34 +542,34 @@ export default function TrashPage() {
                         </td>
                         {activeTab === "students" && (
                           <>
-                            <td className="px-3 py-2">{(row as TrashStudentRow).roll ?? "নেই"}</td>
+                            <td className="px-3 py-2">{(row as TrashStudentRow).roll ?? t.none}</td>
                             <td className="px-3 py-2">
-                              {(row as TrashStudentRow).current_class || "নেই"}
+                              {(row as TrashStudentRow).current_class || t.none}
                             </td>
                           </>
                         )}
                         {activeTab === "teachers" && (
                           <>
                             <td className="px-3 py-2">
-                              {(row as TrashTeacherRow).registration_no ?? "নেই"}
+                              {(row as TrashTeacherRow).registration_no ?? t.none}
                             </td>
-                            <td className="px-3 py-2">{(row as TrashTeacherRow).phone || "নেই"}</td>
+                            <td className="px-3 py-2">{(row as TrashTeacherRow).phone || t.none}</td>
                           </>
                         )}
                         {activeTab === "exams" && (
-                          <td className="px-3 py-2">{(row as TrashExamRow).year || "নেই"}</td>
+                          <td className="px-3 py-2">{(row as TrashExamRow).year || t.none}</td>
                         )}
                         {activeTab === "classes" && (
-                          <td className="px-3 py-2">{(row as TrashClassRow).division_name_bn || "নেই"}</td>
+                          <td className="px-3 py-2">{(row as TrashClassRow).division_name_bn || t.none}</td>
                         )}
                         {activeTab === "results" && (
                           <>
-                            <td className="px-3 py-2">{(row as TrashResultRow).exam_year || "নেই"}</td>
-                            <td className="px-3 py-2">{(row as TrashResultRow).status || "নেই"}</td>
+                            <td className="px-3 py-2">{(row as TrashResultRow).exam_year || t.none}</td>
+                            <td className="px-3 py-2">{(row as TrashResultRow).status || t.none}</td>
                           </>
                         )}
-                        <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{formatDate(row.deleted_at)}</td>
-                        <td className="px-3 py-2">{daysBadge(row.days_remaining)}</td>
+                        <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{formatDate(row.deleted_at, lang)}</td>
+                        <td className="px-3 py-2">{daysBadge(row.days_remaining, t, lang)}</td>
                         <td className="px-3 py-2">
                           <div className="flex justify-end gap-2">
                             <button
@@ -582,7 +578,7 @@ export default function TrashPage() {
                               onClick={() => handleRestore(activeTab, row)}
                               className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                             >
-                              ফিরিয়ে আনুন
+                              {t.restore}
                             </button>
                             <button
                               type="button"
@@ -590,7 +586,7 @@ export default function TrashPage() {
                               onClick={() => handlePermanentDelete(activeTab, row)}
                               className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                             >
-                              স্থায়ী মুছুন
+                              {t.permanentDelete}
                             </button>
                           </div>
                         </td>

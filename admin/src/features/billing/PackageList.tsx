@@ -3,6 +3,8 @@ import { billingApi, type BillingChannel, type MessagePackage } from "../../serv
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import PurchaseRequestModal from "./PurchaseRequestModal";
+import { useLang, useText, formatNumber } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 interface PackageListProps {
   channel: BillingChannel;
@@ -11,6 +13,8 @@ interface PackageListProps {
 }
 
 const PackageList = ({ channel, onChannelChange, onPurchased }: PackageListProps) => {
+  const tx = useText(billingText);
+  const lang = useLang();
   const [packages, setPackages] = useState<MessagePackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<MessagePackage | null>(null);
@@ -46,14 +50,14 @@ const PackageList = ({ channel, onChannelChange, onPurchased }: PackageListProps
             channel === "EMAIL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
           }`}
         >
-          ইমেইল
+          {tx.email}
         </button>
       </div>
 
       {loading ? (
         <SkeletonList items={3} />
       ) : packages.length === 0 ? (
-        <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">কোনো প্যাকেজ পাওয়া যায়নি</div>
+        <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">{tx.noPackages}</div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {packages.map((pkg) => (
@@ -71,18 +75,18 @@ const PackageList = ({ channel, onChannelChange, onPurchased }: PackageListProps
                         : "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                     }`}
                   >
-                    {pkg.type === "RECHARGE" ? "রিচার্জ" : "প্যাকেজ"}
+                    {pkg.type === "RECHARGE" ? tx.recharge : tx.packageBadge}
                   </span>
                 </div>
                 {pkg.description && (
                   <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{pkg.description}</p>
                 )}
                 <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
-                  {pkg.credit.toLocaleString("bn-BD")} টি {channel === "SMS" ? "SMS" : "ইমেইল"}
-                  {pkg.type === "PACKAGE" && ` · ${pkg.validityDays} দিন মেয়াদ`}
+                  {tx.creditCount(formatNumber(pkg.credit, lang), channel === "SMS" ? "SMS" : tx.email)}
+                  {pkg.type === "PACKAGE" && ` · ${tx.validity(formatNumber(pkg.validityDays, lang))}`}
                 </p>
                 <p className="mt-1 text-lg font-bold text-gray-800 dark:text-slate-100">
-                  ৳{Number(pkg.price).toLocaleString("bn-BD")}
+                  ৳{formatNumber(Number(pkg.price), lang)}
                 </p>
               </div>
 
@@ -91,7 +95,7 @@ const PackageList = ({ channel, onChannelChange, onPurchased }: PackageListProps
                 onClick={() => setSelectedPackage(pkg)}
                 className="mt-3 h-9 w-full rounded-md bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700"
               >
-                কিনুন
+                {tx.buy}
               </button>
             </div>
           ))}

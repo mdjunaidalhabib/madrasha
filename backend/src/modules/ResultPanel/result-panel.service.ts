@@ -17,14 +17,17 @@ import { GradeRow } from "./result-panel.types";
 import { ClassGradingConfig, MadrasaGradingConfig } from "./result-grading-config";
 import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
 import { linkName, tenantClassName } from "../../shared/utils/tenant-name.util";
+import { currentLanguage, t } from "../../shared/i18n";
 
 const toNumber = (value: any, fallback = 0) => {
   const n = Number(value);
   return Number.isNaN(n) ? fallback : n;
 };
 
+// Only used for user-facing messages: Bangla digits when the request is in
+// Bangla, plain digits otherwise.
 const toBanglaDigits = (value: string | number) =>
-  String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
+  currentLanguage() !== "bn" ? String(value) : String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
 
 /**
  * Grade band for a PASSED student. `gradeList` holds passing bands only (fail
@@ -117,7 +120,7 @@ export class ResultPanelService {
 
     const subjectCount = subjects.filter((row) => row.book).length;
     if (subjectCount === 0) {
-      throw new BadRequestError("এই শ্রেণিতে কোনো সক্রিয় বিষয় পাওয়া যায়নি");
+      throw new BadRequestError(t({ bn: "এই শ্রেণিতে কোনো সক্রিয় বিষয় পাওয়া যায়নি", en: "No active subjects were found in this class", ar: "لم يتم العثور على مواد نشطة في هذا الصف" }));
     }
 
     const enteredCountByStudent = new Map(
@@ -171,17 +174,21 @@ export class ResultPanelService {
         .slice(0, 3)
         .map((student) =>
           `${student.studentName}${
-            student.roll ? ` (রোল ${toBanglaDigits(student.roll)})` : ""
+            student.roll ? ` (${t({ bn: "রোল", en: "roll", ar: "رقم الجلوس" })} ${toBanglaDigits(student.roll)})` : ""
           }`,
         )
         .join(", ");
       const more =
         completeness.incompleteStudents.length > 3
-          ? `সহ আরও ${toBanglaDigits(completeness.incompleteStudents.length - 3)} জন`
+          ? t({ bn: `সহ আরও ${toBanglaDigits(completeness.incompleteStudents.length - 3)} জন`, en: `and ${completeness.incompleteStudents.length - 3} more`, ar: `و${completeness.incompleteStudents.length - 3} آخرين` })
           : "";
 
       throw new BadRequestError(
-        `${toBanglaDigits(completeness.incompleteStudents.length)} জন শিক্ষার্থীর মোট ${toBanglaDigits(completeness.missingEntries)}টি বিষয়ের নম্বর দেওয়া হয়নি। ${examples}${more ? ` ${more}` : ""}। সব বিষয়ের নম্বর দিন; অনুপস্থিত হলে ঘরে "-" লিখুন।`,
+        t({
+          bn: `${toBanglaDigits(completeness.incompleteStudents.length)} জন শিক্ষার্থীর মোট ${toBanglaDigits(completeness.missingEntries)}টি বিষয়ের নম্বর দেওয়া হয়নি। ${examples}${more ? ` ${more}` : ""}। সব বিষয়ের নম্বর দিন; অনুপস্থিত হলে ঘরে "-" লিখুন।`,
+          en: `Marks are missing for ${completeness.missingEntries} subject entries of ${completeness.incompleteStudents.length} student(s): ${examples}${more ? ` ${more}` : ""}. Enter marks for every subject; write "-" in the cell if absent.`,
+          ar: `الدرجات مفقودة في ${completeness.missingEntries} مادة لـ ${completeness.incompleteStudents.length} طالب: ${examples}${more ? ` ${more}` : ""}. أدخل درجات جميع المواد؛ واكتب "-" في الخانة عند الغياب.`,
+        }),
       );
     }
 
@@ -572,7 +579,7 @@ export class ResultPanelService {
 
     if (single) {
       const exists = await this.repository.findResultMasterById(single, madrasaId);
-      if (!exists) throw new NotFoundError("Result session not found");
+      if (!exists) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
     }
 
     const config = this.loadCalculationConfig(madrasaId);
@@ -636,7 +643,7 @@ export class ResultPanelService {
    * definition already complete. */
   async reprocessResultMaster(madrasaId: number, resultMasterId: number) {
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     const config = await this.loadCalculationConfig(madrasaId).forClass(master.classId);
     // Keep each student's original roll snapshot (promotions overwrite
@@ -673,13 +680,13 @@ export class ResultPanelService {
 
   async createSession(madrasaId: number, examId: number, classId: number) {
     if (!examId || !classId) {
-      throw new BadRequestError("exam_id and class_id are required");
+      throw new BadRequestError(t({ bn: "exam_id ও class_id আবশ্যক", en: "exam_id and class_id are required", ar: "exam_id و class_id مطلوبان" }));
     }
 
     const existing = await this.repository.findResultMaster(madrasaId, examId, classId);
     if (existing) {
       return {
-        message: "Session already exists",
+        message: t({ bn: "সেশন ইতিমধ্যে আছে", en: "Session already exists", ar: "الجلسة موجودة بالفعل" }),
         result_master_id: existing.id,
         status: existing.status,
       };
@@ -687,7 +694,7 @@ export class ResultPanelService {
 
     await assertExamCoversClass(madrasaId, examId, classId);
     const created = await this.repository.createResultMaster(madrasaId, examId, classId);
-    return { message: "Session created successfully", result_master_id: created.id };
+    return { message: t({ bn: "সেশন তৈরি হয়েছে", en: "Session created successfully", ar: "تم إنشاء الجلسة بنجاح" }), result_master_id: created.id };
   }
 
   async saveMarks(madrasaId: number, userId: number, body: SaveMarksRequestDto) {
@@ -695,7 +702,7 @@ export class ResultPanelService {
     const result_master_id = body.result_master_id;
 
     if (!Array.isArray(data) || data.length === 0) {
-      throw new BadRequestError("Marks data is required");
+      throw new BadRequestError(t({ bn: "নম্বরের তথ্য আবশ্যক", en: "Marks data is required", ar: "بيانات الدرجات مطلوبة" }));
     }
 
     const first = data[0] || ({} as MarkRowDto);
@@ -703,7 +710,7 @@ export class ResultPanelService {
     const class_id = toNumber(first.class_id);
 
     if (!exam_id || !class_id) {
-      throw new BadRequestError("exam_id and class_id are required in marks data");
+      throw new BadRequestError(t({ bn: "নম্বরের তথ্যে exam_id ও class_id আবশ্যক", en: "exam_id and class_id are required in marks data", ar: "exam_id و class_id مطلوبان في بيانات الدرجات" }));
     }
 
     // Every row must identify a real student and subject — malformed rows
@@ -712,7 +719,7 @@ export class ResultPanelService {
     for (const row of data) {
       if (!toNumber(row.student_id) || !toNumber(row.book_id)) {
         throw new BadRequestError(
-          "অবৈধ শিক্ষার্থী বা বিষয় নির্বাচন করা হয়েছে — নম্বর সংরক্ষণ করা যায়নি।",
+          t({ bn: "অবৈধ শিক্ষার্থী বা বিষয় নির্বাচন করা হয়েছে — নম্বর সংরক্ষণ করা যায়নি।", en: "An invalid student or subject was selected — the marks could not be saved.", ar: "تم اختيار طالب أو مادة غير صالحة — تعذر حفظ الدرجات." }),
         );
       }
     }
@@ -728,13 +735,13 @@ export class ResultPanelService {
     if (result_master_id) {
       master = await this.repository.findResultMasterById(Number(result_master_id), madrasaId);
       if (!master) {
-        throw new NotFoundError("Result session not found");
+        throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
       }
     } else {
       const createdId = await this.getOrCreateSessionId(madrasaId, exam_id, class_id);
       master = await this.repository.findResultMasterById(createdId, madrasaId);
       if (!master) {
-        throw new NotFoundError("Result session not found");
+        throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
       }
     }
     const resultMasterId = master.id;
@@ -745,7 +752,7 @@ export class ResultPanelService {
     // session itself has moved past marks-editing entirely.
     if (master.status === RESULT_STATUS.PUBLISHED || master.status === RESULT_STATUS.LOCKED) {
       throw new ConflictError(
-        "এই ফলাফল ইতিমধ্যে প্রকাশিত/লক করা হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।",
+        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত/লক করা হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This result is already published/locked — marks cannot be edited directly. Use the 'result correction' process if needed.", ar: "هذه النتيجة منشورة/مقفلة بالفعل — لا يمكن تعديل الدرجات مباشرة. استخدم إجراء 'تصحيح النتيجة' عند الحاجة." }),
       );
     }
 
@@ -798,7 +805,7 @@ export class ResultPanelService {
             .map((id) => nameByBookId.get(id) || `বিষয় ${id}`)
             .join(", ");
           throw new ConflictError(
-            `${names} বিষয়ের নম্বর ইতিমধ্যে জমা/যাচাই হয়ে গেছে — সরাসরি সম্পাদনা করা যাবে না। প্রয়োজনে যাচাইকারীর মাধ্যমে প্রত্যাখ্যান করিয়ে পুনরায় জমা দিন, অথবা প্রকাশের পর সংশোধন (correction) প্রক্রিয়া ব্যবহার করুন।`,
+            t({ bn: `${names} বিষয়ের নম্বর ইতিমধ্যে জমা/যাচাই হয়ে গেছে — সরাসরি সম্পাদনা করা যাবে না। প্রয়োজনে যাচাইকারীর মাধ্যমে প্রত্যাখ্যান করিয়ে পুনরায় জমা দিন, অথবা প্রকাশের পর সংশোধন (correction) প্রক্রিয়া ব্যবহার করুন।`, en: `Marks for ${names} have already been submitted/verified — they cannot be edited directly. If needed, have the verifier reject them and submit again, or use the correction process after publishing.`, ar: `تم تقديم/التحقق من درجات ${names} بالفعل — لا يمكن تعديلها مباشرة. عند الحاجة اطلب من المدقق رفضها ثم أعد تقديمها، أو استخدم إجراء التصحيح بعد النشر.` }),
           );
         }
         bypassedLock = true;
@@ -878,13 +885,13 @@ export class ResultPanelService {
           const compFullMark = configByComponent.get(c.component as any);
           if (compFullMark === undefined) {
             throw new BadRequestError(
-              `${bookName} বিষয়ে "${c.component}" নামের কোনো নম্বর বিভাজন কনফিগার করা নেই।`,
+              t({ bn: `${bookName} বিষয়ে "${c.component}" নামের কোনো নম্বর বিভাজন কনফিগার করা নেই।`, en: `No mark component named "${c.component}" is configured for ${bookName}.`, ar: `لا يوجد مكوّن درجات باسم "${c.component}" مُعد للمادة ${bookName}.` }),
             );
           }
           const v = c.value === null || c.value === undefined || c.value === "" ? 0 : Number(c.value);
           if (!Number.isFinite(v) || !isValidDecimal(v) || v < 0 || v > compFullMark) {
             throw new BadRequestError(
-              `${bookName} বিষয়ের "${c.component}" অংশে সর্বোচ্চ ${compFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`,
+              t({ bn: `${bookName} বিষয়ের "${c.component}" অংশে সর্বোচ্চ ${compFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`, en: `Enter a valid mark (at most two decimals) up to ${compFullMark} for the "${c.component}" part of ${bookName} (student ID: ${studentId}).`, ar: `أدخل درجة صحيحة (بحد أقصى منزلتين عشريتين) حتى ${compFullMark} لجزء "${c.component}" من ${bookName} (رقم الطالب: ${studentId}).` }),
             );
           }
           values.push({ component: c.component, value: v });
@@ -897,7 +904,7 @@ export class ResultPanelService {
           row.mark === null || row.mark === undefined || row.mark === "" ? NaN : Number(row.mark);
         if (!Number.isFinite(raw) || !isValidDecimal(raw) || raw < 0 || raw > effectiveFullMark) {
           throw new BadRequestError(
-            `${bookName} বিষয়ে সর্বোচ্চ ${effectiveFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`,
+            t({ bn: `${bookName} বিষয়ে সর্বোচ্চ ${effectiveFullMark} নম্বরের মধ্যে সঠিক (দুই দশমিকের বেশি নয়) নম্বর দিন (শিক্ষার্থী আইডি: ${studentId})।`, en: `Enter a valid mark (at most two decimals) up to ${effectiveFullMark} for ${bookName} (student ID: ${studentId}).`, ar: `أدخل درجة صحيحة (بحد أقصى منزلتين عشريتين) حتى ${effectiveFullMark} للمادة ${bookName} (رقم الطالب: ${studentId}).` }),
           );
         }
         finalMark = round2(raw);
@@ -976,14 +983,14 @@ export class ResultPanelService {
       await this.repository.revertMasterStatusIfAdvanced(resultMasterId, madrasaId);
     }
 
-    return { message: "Marks saved successfully", result_master_id: resultMasterId };
+    return { message: t({ bn: "নম্বর সংরক্ষণ করা হয়েছে", en: "Marks saved successfully", ar: "تم حفظ الدرجات بنجاح" }), result_master_id: resultMasterId };
   }
 
   async getMarks(madrasaId: number, examId: number, classId: number, resultMasterIdInput: number) {
     let result_master_id = resultMasterIdInput;
 
     if (!examId || !classId) {
-      throw new BadRequestError("exam_id and class_id are required");
+      throw new BadRequestError(t({ bn: "exam_id ও class_id আবশ্যক", en: "exam_id and class_id are required", ar: "exam_id و class_id مطلوبان" }));
     }
 
     if (!result_master_id) {
@@ -1032,17 +1039,17 @@ export class ResultPanelService {
     let result_master_id = toNumber(body.result_master_id);
 
     if (!exam_id || !class_id) {
-      throw new BadRequestError("exam_id and class_id are required");
+      throw new BadRequestError(t({ bn: "exam_id ও class_id আবশ্যক", en: "exam_id and class_id are required", ar: "exam_id و class_id مطلوبان" }));
     }
 
     if (!result_master_id) {
       const master = await this.repository.findLatestResultMasterId(madrasaId, exam_id, class_id);
-      if (!master) throw new NotFoundError("Result session not found");
+      if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
       result_master_id = master.id;
     }
 
     let master = await this.repository.findResultMasterById(result_master_id, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     // The master's status is only advanced by submit/verify events, so a
     // session can be left at DRAFT/MARKS_SUBMITTED even though every
@@ -1071,11 +1078,11 @@ export class ResultPanelService {
         master.status === RESULT_STATUS.LOCKED
       ) {
         throw new ConflictError(
-          "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।",
+          t({ bn: "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।", en: "This result is already approved/published — use 'result correction' to change marks and 'recalculate' to refresh it after changing fail marks/grades.", ar: "هذه النتيجة معتمدة/منشورة بالفعل — استخدم 'تصحيح النتيجة' لتغيير الدرجات و'إعادة الحساب' لتحديثها بعد تغيير درجات الرسوب/التقديرات." }),
         );
       }
       throw new ConflictError(
-        "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।",
+        t({ bn: "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।", en: "The result cannot be processed until marks for all subjects are submitted and verified.", ar: "لا يمكن معالجة النتيجة حتى يتم تقديم درجات جميع المواد والتحقق منها." }),
       );
     }
 
@@ -1096,7 +1103,7 @@ export class ResultPanelService {
     );
 
     if (!processed) {
-      throw new BadRequestError("No marks found to process");
+      throw new BadRequestError(t({ bn: "প্রসেস করার মতো কোনো নম্বর পাওয়া যায়নি", en: "No marks found to process", ar: "لم يتم العثور على درجات للمعالجة" }));
     }
 
     // Guarded on "DRAFT", not `reprocessable` - rebuildResultSummary just
@@ -1115,7 +1122,7 @@ export class ResultPanelService {
     );
     if (!ok) {
       throw new ConflictError(
-        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
       );
     }
 
@@ -1128,12 +1135,12 @@ export class ResultPanelService {
       details: JSON.stringify({ exam_id, class_id }),
     });
 
-    return { message: "Result processed successfully", result_master_id };
+    return { message: t({ bn: "ফলাফল প্রসেস করা হয়েছে", en: "Result processed successfully", ar: "تمت معالجة النتيجة بنجاح" }), result_master_id };
   }
 
   async getClassStatus(madrasaId: number, examId: number, divisionId: number) {
     if (!examId || !divisionId) {
-      throw new BadRequestError("exam_id and division_id are required");
+      throw new BadRequestError(t({ bn: "exam_id ও division_id আবশ্যক", en: "exam_id and division_id are required", ar: "exam_id و division_id مطلوبان" }));
     }
 
     const rows = await this.repository.findClassStatus(madrasaId, examId, divisionId);
@@ -1360,7 +1367,7 @@ export class ResultPanelService {
 
   async getSummary(madrasaId: number, examId: number, classId: number) {
     if (!examId || !classId) {
-      throw new BadRequestError("exam_id and class_id are required");
+      throw new BadRequestError(t({ bn: "exam_id ও class_id আবশ্যক", en: "exam_id and class_id are required", ar: "exam_id و class_id مطلوبان" }));
     }
 
     const rows = await this.repository.findResultSummaries(madrasaId, examId, classId);
@@ -1384,11 +1391,11 @@ export class ResultPanelService {
 
   async publishResult(madrasaId: number, userId: number, resultMasterId: number) {
     if (!resultMasterId) {
-      throw new BadRequestError("result_master_id is required");
+      throw new BadRequestError(t({ bn: "result_master_id আবশ্যক", en: "result_master_id is required", ar: "result_master_id مطلوب" }));
     }
 
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     let status: ResultPublishStatus = master.status;
 
@@ -1411,7 +1418,7 @@ export class ResultPanelService {
         const verifyOutcome = await resultWorkflowService.verifyResult(madrasaId, userId, resultMasterId);
         if (!verifyOutcome.valid) {
           throw new ConflictError(
-            `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${verifyOutcome.issues[0]}`,
+            t({ bn: `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${verifyOutcome.issues[0]}`, en: `Problems were found while verifying the result, so it could not be published: ${verifyOutcome.issues[0]}`, ar: `تم العثور على مشكلات أثناء التحقق من النتيجة، لذا تعذر نشرها: ${verifyOutcome.issues[0]}` }),
           );
         }
         status = RESULT_STATUS.RESULT_VERIFIED;
@@ -1425,7 +1432,7 @@ export class ResultPanelService {
 
     if (status !== RESULT_STATUS.APPROVED) {
       throw new ConflictError(
-        "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না। এই ফলাফল যাচাই/অনুমোদনের জন্য পৃথক অনুমোদনকারীর কাছে পাঠাতে হবে।",
+        t({ bn: "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না। এই ফলাফল যাচাই/অনুমোদনের জন্য পৃথক অনুমোদনকারীর কাছে পাঠাতে হবে।", en: "The result cannot be published until it is APPROVED. It must be sent to a separate approver for verification/approval.", ar: "لا يمكن نشر النتيجة حتى يتم اعتمادها (APPROVED). يجب إرسالها إلى معتمِد مستقل للتحقق/الاعتماد." }),
       );
     }
 
@@ -1437,7 +1444,7 @@ export class ResultPanelService {
     );
 
     const summary = await this.repository.findResultSummaryExists(resultMasterId);
-    if (!summary) throw new BadRequestError("Process result before publish");
+    if (!summary) throw new BadRequestError(t({ bn: "প্রকাশের আগে ফলাফল প্রসেস করুন", en: "Process result before publish", ar: "قم بمعالجة النتيجة قبل النشر" }));
 
     // Snapshot the full result at the moment of publish - an audit/
     // integrity record only in this phase, NOT wired into any
@@ -1452,7 +1459,7 @@ export class ResultPanelService {
     );
     if (!published) {
       throw new ConflictError(
-        "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।",
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
       );
     }
 
@@ -1489,7 +1496,7 @@ export class ResultPanelService {
       logger.error("RESULT_PUBLISHED notification failed:", err);
     }
 
-    return { message: "Result published successfully" };
+    return { message: t({ bn: "ফলাফল প্রকাশিত হয়েছে", en: "Result published successfully", ar: "تم نشر النتيجة بنجاح" }) };
   }
 
   /**
@@ -1507,15 +1514,15 @@ export class ResultPanelService {
    */
   async applyRollByRank(madrasaId: number, resultMasterId: number) {
     if (!resultMasterId) {
-      throw new BadRequestError("result_master_id is required");
+      throw new BadRequestError(t({ bn: "result_master_id আবশ্যক", en: "result_master_id is required", ar: "result_master_id مطلوب" }));
     }
 
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     const ranked = await this.repository.findRankedStudentsForResult(resultMasterId);
     if (!ranked.length) {
-      throw new BadRequestError("Process result before reassigning roll by rank");
+      throw new BadRequestError(t({ bn: "মেধাক্রম অনুযায়ী রোল পুনর্বিন্যাসের আগে ফলাফল প্রসেস করুন", en: "Process result before reassigning roll by rank", ar: "قم بمعالجة النتيجة قبل إعادة ترقيم الطلاب حسب الترتيب" }));
     }
 
     const roster = await this.repository.findActiveStudentsInClass(madrasaId, master.classId);
@@ -1547,7 +1554,7 @@ export class ResultPanelService {
 
     await this.repository.reassignRollsInTransaction(assignments);
 
-    return { message: "Roll reassigned by result rank", updated: assignments.length, can_undo: true };
+    return { message: t({ bn: "ফলাফলের মেধাক্রম অনুযায়ী রোল পুনর্বিন্যাস করা হয়েছে", en: "Roll reassigned by result rank", ar: "تمت إعادة ترقيم الطلاب حسب ترتيب النتيجة" }), updated: assignments.length, can_undo: true };
   }
 
   /** Restores the roll numbers captured before the FIRST applyRollByRank
@@ -1557,15 +1564,15 @@ export class ResultPanelService {
    * reports that instead of silently no-op'ing. */
   async undoRollByRank(madrasaId: number, resultMasterId: number) {
     if (!resultMasterId) {
-      throw new BadRequestError("result_master_id is required");
+      throw new BadRequestError(t({ bn: "result_master_id আবশ্যক", en: "result_master_id is required", ar: "result_master_id مطلوب" }));
     }
 
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     const snapshot = await this.repository.findRollSnapshot(resultMasterId, madrasaId);
     if (!snapshot || !snapshot.length) {
-      throw new BadRequestError("ফিরিয়ে নেওয়ার মতো কোনো পূর্ববর্তী রোল সংরক্ষিত নেই।");
+      throw new BadRequestError(t({ bn: "ফিরিয়ে নেওয়ার মতো কোনো পূর্ববর্তী রোল সংরক্ষিত নেই।", en: "No previous roll numbers are saved to restore.", ar: "لا توجد أرقام جلوس سابقة محفوظة لاستعادتها." }));
     }
 
     const assignments = snapshot
@@ -1575,21 +1582,21 @@ export class ResultPanelService {
     await this.repository.reassignRollsInTransaction(assignments);
     await this.repository.saveRollSnapshot(resultMasterId, madrasaId, null);
 
-    return { message: "পূর্ববর্তী রোল নম্বর ফিরিয়ে আনা হয়েছে", updated: assignments.length };
+    return { message: t({ bn: "পূর্ববর্তী রোল নম্বর ফিরিয়ে আনা হয়েছে", en: "Previous roll numbers restored", ar: "تمت استعادة أرقام الجلوس السابقة" }), updated: assignments.length };
   }
 
   async deleteResult(madrasaId: number, id: number) {
-    if (!id) throw new BadRequestError("Invalid result id");
+    if (!id) throw new BadRequestError(t({ bn: "ফলাফলের id সঠিক নয়", en: "Invalid result id", ar: "معرف النتيجة غير صالح" }));
 
     const master = await this.repository.findResultMasterById(id, madrasaId);
-    if (!master) throw new NotFoundError("Result session not found");
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
     // Soft-delete only — moves the result to Trash. Marks/summary rows are
     // preserved until it's permanently deleted from there (see
     // trash.repository.ts#permanentDeleteResult).
     await this.repository.softDeleteResultMaster(id, madrasaId);
 
-    return { message: "Result moved to trash" };
+    return { message: t({ bn: "ফলাফল ট্র্যাশে পাঠানো হয়েছে", en: "Result moved to trash", ar: "تم نقل النتيجة إلى سلة المهملات" }) };
   }
 
   async getFullResultView(
@@ -1602,11 +1609,11 @@ export class ResultPanelService {
 
     if (!result_master_id) {
       if (!examId || !classId) {
-        throw new BadRequestError("result_master_id or exam_id + class_id is required");
+        throw new BadRequestError(t({ bn: "result_master_id অথবা exam_id + class_id আবশ্যক", en: "result_master_id or exam_id + class_id is required", ar: "result_master_id أو exam_id + class_id مطلوب" }));
       }
 
       const master = await this.repository.findLatestResultMasterId(madrasaId, examId, classId);
-      if (!master) throw new NotFoundError("Result session not found");
+      if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
 
       result_master_id = master.id;
     }

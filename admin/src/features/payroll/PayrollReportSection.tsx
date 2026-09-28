@@ -3,7 +3,8 @@ import { payrollApi, type PayrollStatus } from "../../services/phase2Api";
 import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { formatNumber, localizeDigits, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { payrollText } from "./payroll.text";
 
 type PayrollReportRow = {
   teacherId: number;
@@ -24,20 +25,6 @@ type MatrixTeacher = {
   totalPending: number;
 };
 
-const MONTH_LABELS_BN = [
-  "জানু",
-  "ফেব্রু",
-  "মার্চ",
-  "এপ্রিল",
-  "মে",
-  "জুন",
-  "জুলাই",
-  "আগস্ট",
-  "সেপ্ট",
-  "অক্টো",
-  "নভে",
-  "ডিসে",
-];
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => String(currentYear - i));
@@ -45,12 +32,12 @@ const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => String(currentYear - i)
 const buildMonthKeys = (year: string) =>
   Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
 
-const monthLabel = (monthKey: string) => {
+const monthLabelIn = (monthKey: string, months: string[]) => {
   const monthIndex = Number(monthKey.slice(5, 7)) - 1;
-  return MONTH_LABELS_BN[monthIndex] || monthKey;
+  return months[monthIndex] || monthKey;
 };
 
-const money = (value: number) => `৳${value.toLocaleString("bn-BD")}`;
+const moneyIn = (value: number, lang: Lang) => `৳${formatNumber(value, lang)}`;
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -58,6 +45,10 @@ const normalizeArray = (payload: any) => {
 };
 
 const PayrollReportSection = () => {
+  const tx = useText(payrollText);
+  const lang = useLang();
+  const money = (value: number) => moneyIn(value, lang);
+  const monthLabel = (monthKey: string) => monthLabelIn(monthKey, tx.months);
   const [year, setYear] = useState(String(currentYear));
   const [rows, setRows] = useState<PayrollReportRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,7 +77,7 @@ const PayrollReportSection = () => {
       if (!byTeacher.has(row.teacherId)) {
         byTeacher.set(row.teacherId, {
           teacherId: row.teacherId,
-          name: row.teacher?.nameBn || `শিক্ষক #${row.teacherId}`,
+          name: row.teacher?.nameBn || tx.teacherFallback(String(row.teacherId)),
           designation: row.teacher?.designation || "",
           cells: {},
           totalPaid: 0,
@@ -100,7 +91,7 @@ const PayrollReportSection = () => {
       else entry.totalPending += amount;
     });
     return Array.from(byTeacher.values()).sort((a, b) => a.name.localeCompare(b.name, "bn"));
-  }, [rows]);
+  }, [rows, tx]);
 
   const displayedMatrix = showOnlyDue ? matrix.filter((t) => t.totalPending > 0) : matrix;
 
@@ -128,12 +119,13 @@ const PayrollReportSection = () => {
 
   const exportColumns = useMemo(
     () => [
-      { header: "শিক্ষক", key: "name" },
-      { header: "পদবি", key: "designation" },
-      ...monthKeys.map((m) => ({ header: `${monthLabel(m)} ${toBanglaDigits(year)}`, key: m })),
-      { header: "মোট বকেয়া", key: "totalPending" },
+      { header: tx.teacher, key: "name" },
+      { header: tx.designation, key: "designation" },
+      ...monthKeys.map((m) => ({ header: `${monthLabel(m)} ${localizeDigits(year, lang)}`, key: m })),
+      { header: tx.totalDue, key: "totalPending" },
     ],
-    [monthKeys, year],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [monthKeys, year, tx, lang],
   );
 
   const exportData = useMemo(
@@ -142,19 +134,20 @@ const PayrollReportSection = () => {
         const record: Record<string, any> = {
           name: t.name,
           designation: t.designation || "-",
-          totalPending: t.totalPending ? money(t.totalPending) : "৳০",
+          totalPending: money(t.totalPending || 0),
         };
         monthKeys.forEach((m) => {
           const cell = t.cells[m];
           record[m] = !cell
-            ? "তৈরি হয়নি"
+            ? tx.notGenerated
             : cell.status === "PAID"
-              ? `পরিশোধিত (${money(cell.amount)})`
-              : `বকেয়া (${money(cell.amount)})`;
+              ? tx.paidWith(money(cell.amount))
+              : tx.dueWith(money(cell.amount));
         });
         return record;
       }),
-    [displayedMatrix, monthKeys],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayedMatrix, monthKeys, tx, lang],
   );
 
   return (
@@ -169,7 +162,7 @@ const PayrollReportSection = () => {
             >
               {YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>
-                  {toBanglaDigits(y)}
+                  {localizeDigits(y, lang)}
                 </option>
               ))}
             </select>
@@ -180,12 +173,12 @@ const PayrollReportSection = () => {
                 checked={showOnlyDue}
                 onChange={(event) => setShowOnlyDue(event.target.checked)}
               />
-              শুধু বকেয়া শিক্ষক দেখান
+              {tx.onlyDueTeachers}
             </label>
           </div>
 
           <DataExportPrintActions
-            title="শিক্ষক বেতন রেজিস্টার"
+            title={tx.registerTitle}
             columns={exportColumns}
             data={exportData}
             fileName={`payroll-register-${year}`}
@@ -194,9 +187,9 @@ const PayrollReportSection = () => {
         </div>
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-slate-400">
-          <span>বকেয়া শিক্ষক: {summary.teachersWithDue} জন</span>
-          <span className="text-amber-700 dark:text-amber-400">মোট বকেয়া: {money(summary.totalDue)}</span>
-          <span className="text-green-700 dark:text-green-400">মোট পরিশোধিত: {money(summary.totalPaid)}</span>
+          <span>{tx.teachersWithDue(formatNumber(summary.teachersWithDue, lang))}</span>
+          <span className="text-amber-700 dark:text-amber-400">{tx.totalDue}: {money(summary.totalDue)}</span>
+          <span className="text-green-700 dark:text-green-400">{tx.totalPaid}: {money(summary.totalPaid)}</span>
         </div>
       </div>
 
@@ -207,7 +200,7 @@ const PayrollReportSection = () => {
           </div>
         ) : displayedMatrix.length === 0 ? (
           <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-            {toBanglaDigits(year)} সালের কোনো পেরোল রেকর্ড পাওয়া যায়নি
+            {tx.noRecordsForYear(localizeDigits(year, lang))}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -215,7 +208,7 @@ const PayrollReportSection = () => {
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-800">
                   <th className="sticky start-0 z-10 border border-slate-200 bg-slate-100 px-3 py-2 text-start font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                    শিক্ষক
+                    {tx.teacher}
                   </th>
                   {monthKeys.map((m) => (
                     <th
@@ -226,7 +219,7 @@ const PayrollReportSection = () => {
                     </th>
                   ))}
                   <th className="border border-slate-200 px-2 py-2 font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
-                    মোট বকেয়া
+                    {tx.totalDue}
                   </th>
                 </tr>
               </thead>
@@ -261,7 +254,7 @@ const PayrollReportSection = () => {
                       {t.totalPending > 0 ? (
                         <span className="text-amber-700 dark:text-amber-400">{money(t.totalPending)}</span>
                       ) : (
-                        <span className="text-green-700 dark:text-green-400">৳০</span>
+                        <span className="text-green-700 dark:text-green-400">{money(0)}</span>
                       )}
                     </td>
                   </tr>
@@ -270,7 +263,7 @@ const PayrollReportSection = () => {
               <tfoot>
                 <tr className="bg-slate-50 font-medium dark:bg-slate-800/60">
                   <td className="sticky start-0 z-10 border border-slate-200 bg-slate-50 px-3 py-2 text-start dark:border-slate-700 dark:bg-slate-800/60">
-                    মাসিক মোট
+                    {tx.monthlyTotal}
                   </td>
                   {monthKeys.map((m) => (
                     <td key={m} className="border border-slate-200 px-2 py-1.5 text-[11px] dark:border-slate-700">

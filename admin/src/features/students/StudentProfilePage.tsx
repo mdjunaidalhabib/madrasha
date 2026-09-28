@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import { studentProfilePageText } from "./StudentProfilePage.text";
 import { useNavigate } from "react-router-dom";
 import { studentPath, useStudentIdParam } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
@@ -22,7 +23,7 @@ import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPr
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { sessionApi, type Session } from "../../services/sessionApi";
 import { assignStudentCard } from "../../services/phase1Api";
-import { STUDENT_STATUS_BADGE_CLASS, STUDENT_STATUS_LABEL, studentStatus } from "../../utils/studentStatus";
+import { STUDENT_STATUS_BADGE_CLASS, studentStatus, studentStatusLabel } from "../../utils/studentStatus";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
 
@@ -54,6 +55,9 @@ const normalizeStudent = (raw: any) => {
 };
 
 const StudentProfilePage = () => {
+  const t = useText(studentProfilePageText);
+  const c = useText(commonText);
+  const lang = useLang();
   const id = useStudentIdParam();
   const navigate = useNavigate();
 
@@ -92,7 +96,7 @@ const StudentProfilePage = () => {
       setOriginal(deepCopy(data));
     } catch (err) {
       logger.error("FETCH STUDENT ERROR:", err);
-      useToastStore.getState().show("Failed to load student", "error");
+      useToastStore.getState().show(getText(studentProfilePageText).loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -145,10 +149,10 @@ const StudentProfilePage = () => {
 
       setEditableField(null);
 
-      useToastStore.getState().show("Updated successfully", "success");
+      useToastStore.getState().show(getText(studentProfilePageText).updated, "success");
     } catch (error) {
       logger.error("UPDATE ERROR:", error);
-      useToastStore.getState().show("Update failed", "error");
+      useToastStore.getState().show(getText(studentProfilePageText).updateFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -156,18 +160,18 @@ const StudentProfilePage = () => {
 
   const handleDelete = () => {
     useConfirmStore.getState().show({
-      title: "শিক্ষার্থী মুছবেন?",
-      message: "এই শিক্ষার্থীকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
-      confirmText: "ট্র্যাশে সরান",
+      title: t.deleteTitle,
+      message: t.deleteMessage,
+      confirmText: t.moveToTrash,
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/students/${id}`);
-          useToastStore.getState().show("ট্র্যাশে সরানো হয়েছে", "success");
+          useToastStore.getState().show(getText(studentProfilePageText).movedToTrash, "success");
           navigate(`/students`);
         } catch (error) {
           logger.error("DELETE ERROR:", error);
-          useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
+          useToastStore.getState().show(getText(commonText).deleteFailed, "error");
         }
       },
     });
@@ -181,11 +185,11 @@ const StudentProfilePage = () => {
     const deactivating = !isInactive;
 
     useConfirmStore.getState().show({
-      title: deactivating ? "শিক্ষার্থীকে নিষ্ক্রিয় করবেন?" : "শিক্ষার্থীকে সক্রিয় করবেন?",
+      title: deactivating ? t.deactivateTitle : t.activateTitle,
       message: deactivating
-        ? "নিষ্ক্রিয় শিক্ষার্থী হাজিরা, পরীক্ষা ও বিভিন্ন তালিকায় আসবে না। এটি বহিষ্কার নয় — রেকর্ড থাকবে, পরে চাইলে আবার সক্রিয় করা যাবে।"
-        : "এই শিক্ষার্থীকে আবার সক্রিয় করতে চান?",
-      confirmText: deactivating ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন",
+        ? t.deactivateMessage
+        : t.activateMessage,
+      confirmText: deactivating ? t.deactivate : t.activate,
       onConfirm: async () => {
         try {
           setExpelBusy(true);
@@ -195,10 +199,10 @@ const StudentProfilePage = () => {
           setOriginal((prev: any) => ({ ...prev, is_active: next }));
           useToastStore
             .getState()
-            .show(deactivating ? "নিষ্ক্রিয় করা হয়েছে" : "সক্রিয় করা হয়েছে", "success");
+            .show(deactivating ? getText(studentProfilePageText).deactivated : getText(studentProfilePageText).activated, "success");
         } catch (error) {
           logger.error("SET STUDENT INACTIVE ERROR:", error);
-          useToastStore.getState().show("করা যায়নি", "error");
+          useToastStore.getState().show(getText(studentProfilePageText).actionFailed, "error");
         } finally {
           setExpelBusy(false);
         }
@@ -210,11 +214,11 @@ const StudentProfilePage = () => {
     const expelling = !isExpelled;
 
     useConfirmStore.getState().show({
-      title: expelling ? "শিক্ষার্থীকে বহিষ্কার করবেন?" : "বহিষ্কার বাতিল করবেন?",
+      title: expelling ? t.expelTitle : t.unexpelTitle,
       message: expelling
-        ? "এই শিক্ষার্থীকে বহিষ্কার করা হবে। রেকর্ড ট্র্যাশে যাবে না, পরে চাইলে বহিষ্কার বাতিল করা যাবে।"
-        : "এই শিক্ষার্থীর বহিষ্কার অবস্থা বাতিল করে আবার সক্রিয় করতে চান?",
-      confirmText: expelling ? "বহিষ্কার করুন" : "সক্রিয় করুন",
+        ? t.expelMessage
+        : t.unexpelMessage,
+      confirmText: expelling ? t.expel : t.activate,
       danger: expelling,
       onConfirm: async () => {
         try {
@@ -224,10 +228,10 @@ const StudentProfilePage = () => {
           setOriginal((prev: any) => ({ ...prev, is_active: expelling ? 0 : 1 }));
           useToastStore
             .getState()
-            .show(expelling ? "বহিষ্কার করা হয়েছে" : "বহিষ্কার বাতিল করা হয়েছে", "success");
+            .show(expelling ? getText(studentProfilePageText).expelled : getText(studentProfilePageText).unexpelled, "success");
         } catch (error) {
           logger.error("EXPEL STUDENT ERROR:", error);
-          useToastStore.getState().show("করা যায়নি", "error");
+          useToastStore.getState().show(getText(studentProfilePageText).actionFailed, "error");
         } finally {
           setExpelBusy(false);
         }
@@ -254,7 +258,7 @@ const StudentProfilePage = () => {
 
   const handleTransferSession = async () => {
     if (!transferSessionId) {
-      useToastStore.getState().show("সেশন নির্বাচন করুন", "error");
+      useToastStore.getState().show(getText(studentProfilePageText).selectSession, "error");
       return;
     }
     try {
@@ -267,11 +271,11 @@ const StudentProfilePage = () => {
       const newRoll = (res.data as any)?.data?.roll;
       useToastStore
         .getState()
-        .show(`সেশন ট্রান্সফার সফল হয়েছে (নতুন রোল: ${newRoll ?? "-"})`, "success");
+        .show(getText(studentProfilePageText).transferDone(String(newRoll ?? "-")), "success");
       setTransferModalOpen(false);
       fetchStudent();
     } catch (error: any) {
-      const msg = error?.response?.data?.message || "সেশন ট্রান্সফার করা যায়নি";
+      const msg = error?.response?.data?.message || getText(studentProfilePageText).transferFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setTransferBusy(false);
@@ -285,17 +289,17 @@ const StudentProfilePage = () => {
 
   const handleAssignCard = async () => {
     if (!cardUid.trim()) {
-      useToastStore.getState().show("কার্ড UID লিখুন", "error");
+      useToastStore.getState().show(getText(studentProfilePageText).enterCardUid, "error");
       return;
     }
     try {
       setCardBusy(true);
       await assignStudentCard(Number(id), cardUid.trim());
-      useToastStore.getState().show("কার্ড যুক্ত করা হয়েছে", "success");
+      useToastStore.getState().show(getText(studentProfilePageText).cardAssigned, "success");
       setCardModalOpen(false);
       fetchStudent();
     } catch (error: any) {
-      const msg = error?.response?.data?.message || "কার্ড যুক্ত করা যায়নি";
+      const msg = error?.response?.data?.message || getText(studentProfilePageText).cardFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCardBusy(false);
@@ -312,10 +316,10 @@ const StudentProfilePage = () => {
   const quickNavMeta = useCallback(
     (record: QuickNavRecord) => [
       (record.current_class || record.class_name || record.class) as string,
-      `রোল ${record.roll ? toBanglaDigits(record.roll as number) : "নেই"}`,
-      `রেজি. ${record.registration_no ? toBanglaDigits(record.registration_no as number) : "নেই"}`,
+      t.roll(record.roll ? localizeDigits(record.roll as number, lang) : t.none),
+      t.reg(record.registration_no ? localizeDigits(record.registration_no as number, lang) : t.none),
     ],
-    [],
+    [t, lang],
   );
 
   const quickNavSearchFields = useCallback(
@@ -346,8 +350,8 @@ const StudentProfilePage = () => {
       }
       currentId={id}
       profilePath={quickNavPath}
-      placeholder="অন্য ছাত্র খুঁজুন — নাম / রোল / রেজি. / শ্রেণি"
-      ariaLabel="অন্য ছাত্র খুঁজুন"
+      placeholder={t.searchOther}
+      ariaLabel={t.searchOtherAria}
       metaParts={quickNavMeta}
       extraSearchFields={quickNavSearchFields}
       phoneFields={quickNavPhoneFields}
@@ -362,7 +366,7 @@ const StudentProfilePage = () => {
         <SkeletonCard lines={4} />
       </div>
     );
-  if (!student) return <p className="p-6">No student found</p>;
+  if (!student) return <p className="p-6">{t.notFound}</p>;
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
@@ -370,11 +374,11 @@ const StudentProfilePage = () => {
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold sm:text-2xl">Student Profile</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">{t.title}</h1>
           <span
             className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STUDENT_STATUS_BADGE_CLASS[status]}`}
           >
-            {STUDENT_STATUS_LABEL[status]}
+            {studentStatusLabel(student.is_active)}
           </span>
         </div>
 
@@ -384,17 +388,17 @@ const StudentProfilePage = () => {
             disabled={!isChanged() || saving}
             className={`${actionButtonClass} ${isChanged() && !saving ? "bg-green-500" : "bg-gray-400"}`}
           >
-            {saving ? "Saving..." : "Update"}
+            {saving ? c.saving : c.update}
           </button>
 
           <AdmissionFormPrintButton row={student} className={outlineButtonClass} />
 
           <button onClick={openTransferModal} className={`${actionButtonClass} bg-indigo-600`}>
-            সেশন ট্রান্সফার
+            {t.sessionTransfer}
           </button>
 
           <button onClick={openCardModal} className={`${actionButtonClass} bg-teal-600`}>
-            RFID কার্ড যুক্ত করুন
+            {t.assignCard}
           </button>
 
           {!isExpelled && (
@@ -403,7 +407,7 @@ const StudentProfilePage = () => {
               disabled={expelBusy}
               className={`${actionButtonClass} ${isInactive ? "bg-green-600" : "bg-slate-500"}`}
             >
-              {isInactive ? "সক্রিয় করুন" : "নিষ্ক্রিয়"}
+              {isInactive ? t.activate : t.inactive}
             </button>
           )}
 
@@ -412,11 +416,11 @@ const StudentProfilePage = () => {
             disabled={expelBusy}
             className={`${actionButtonClass} ${isExpelled ? "bg-amber-500" : "bg-orange-600"}`}
           >
-            {isExpelled ? "বহিষ্কার বাতিল" : "বহিষ্কার"}
+            {isExpelled ? t.unexpel : t.expelShort}
           </button>
 
           <button onClick={handleDelete} className={`${actionButtonClass} bg-red-500`}>
-            Delete
+            {c.delete}
           </button>
         </div>
       </div>
@@ -458,43 +462,42 @@ const StudentProfilePage = () => {
 
       <Modal
         open={transferModalOpen}
-        title="সেশন ট্রান্সফার"
+        title={t.sessionTransfer}
         onClose={() => setTransferModalOpen(false)}
       >
         <div className="flex flex-col gap-3">
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            বর্তমান সেশন:{" "}
+            {t.currentSession}{" "}
             <span className="font-medium text-gray-700 dark:text-slate-300">
               {student.academic_year}
             </span>{" "}
-            — এই শিক্ষার্থীকে সরাসরি নতুন সেশনে নিয়ে যাওয়া হবে, রোল স্বয়ংক্রিয়ভাবে নতুন করে
-            বসবে।
+            {t.transferNote}
           </p>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              নতুন সেশন
+              {t.newSession}
             </label>
             <select
               value={transferSessionId}
               onChange={(e) => setTransferSessionId(e.target.value)}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">নির্বাচন করুন</option>
+              <option value="">{c.select}</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.isActive ? " (সক্রিয়)" : ""}
+                  {s.isActive ? t.activeSuffix : ""}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              রোল নম্বর (ঐচ্ছিক)
+              {t.rollOptional}
             </label>
             <input
               type="number"
-              placeholder="খালি রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী রোল বসবে"
+              placeholder={t.rollPlaceholder}
               value={transferRoll}
               onChange={(e) => setTransferRoll(e.target.value)}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -502,7 +505,7 @@ const StudentProfilePage = () => {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              কারণ (ঐচ্ছিক)
+              {t.reasonOptional}
             </label>
             <input
               type="text"
@@ -518,7 +521,7 @@ const StudentProfilePage = () => {
             onClick={() => setTransferModalOpen(false)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -526,27 +529,27 @@ const StudentProfilePage = () => {
             onClick={handleTransferSession}
             className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
           >
-            {transferBusy ? "ট্রান্সফার হচ্ছে..." : "ট্রান্সফার করুন"}
+            {transferBusy ? t.transferring : t.transfer}
           </button>
         </div>
       </Modal>
 
       <Modal
         open={cardModalOpen}
-        title="RFID কার্ড যুক্ত করুন"
+        title={t.assignCard}
         onClose={() => setCardModalOpen(false)}
       >
         <div className="flex flex-col gap-3">
           {student.card_uid && (
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              বর্তমান কার্ড:{" "}
+              {t.currentCard}{" "}
               <span className="font-medium text-gray-700 dark:text-slate-300">
                 {student.card_uid}
               </span>
             </p>
           )}
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            কার্ডটি রিডারে ট্যাপ করুন অথবা ম্যানুয়ালি লিখুন
+            {t.tapCard}
           </p>
           <input
             type="text"
@@ -565,7 +568,7 @@ const StudentProfilePage = () => {
             onClick={() => setCardModalOpen(false)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -573,7 +576,7 @@ const StudentProfilePage = () => {
             onClick={handleAssignCard}
             className="h-9 rounded-md bg-teal-600 px-4 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-60"
           >
-            {cardBusy ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {cardBusy ? c.saving : c.save}
           </button>
         </div>
       </Modal>

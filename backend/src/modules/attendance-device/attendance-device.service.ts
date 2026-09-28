@@ -26,6 +26,7 @@ import {
 } from "./device-secret.util";
 import { dateOnly, isValidDateString, localDateString, localDayRangeUtc } from "./time.util";
 import { tenantClassName } from "../../shared/utils/tenant-name.util";
+import { t } from "../../shared/i18n";
 
 /**
  * Effective status shown to admins, derived at read time: a connector that has
@@ -83,7 +84,7 @@ const encryptOrFail = (plain: string): string => {
   } catch (err) {
     if (err instanceof DeviceSecretConfigError) {
       logger.error("DEVICE_SECRET_ENC_KEY is missing/invalid; cannot store device comm password");
-      throw new ApiError("সার্ভারে DEVICE_SECRET_ENC_KEY কনফিগার করা নেই, ডিভাইস পাসওয়ার্ড সংরক্ষণ করা যাচ্ছে না", 500);
+      throw new ApiError(t({ bn: "সার্ভারে DEVICE_SECRET_ENC_KEY কনফিগার করা নেই, ডিভাইস পাসওয়ার্ড সংরক্ষণ করা যাচ্ছে না", en: "DEVICE_SECRET_ENC_KEY is not configured on the server, so the device password cannot be saved", ar: "لم يتم إعداد DEVICE_SECRET_ENC_KEY على الخادم، لذا لا يمكن حفظ كلمة مرور الجهاز" }), 500);
     }
     throw err;
   }
@@ -110,7 +111,7 @@ export class AttendanceDeviceService {
 
   private async requireDevice(madrasaId: number, id: number) {
     const device = await this.repository.findDevice(madrasaId, id);
-    if (!device) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+    if (!device) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
     return device;
   }
 
@@ -135,7 +136,7 @@ export class AttendanceDeviceService {
       return { ...toDeviceDto(device, this.now()), raw_key: rawKey };
     } catch (err) {
       if ((err as { code?: string })?.code === "P2002") {
-        throw new ConflictError("এই ডিভাইস আইডি ইতিমধ্যে ব্যবহৃত হয়েছে");
+        throw new ConflictError(t({ bn: "এই ডিভাইস আইডি ইতিমধ্যে ব্যবহৃত হয়েছে", en: "This device ID is already in use", ar: "معرف الجهاز هذا مستخدم بالفعل" }));
       }
       throw err;
     }
@@ -156,7 +157,7 @@ export class AttendanceDeviceService {
 
     if (Object.keys(data).length > 0) {
       const res = await this.repository.updateDevice(madrasaId, id, data);
-      if (res.count === 0) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+      if (res.count === 0) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
     }
     logger.info("Attendance device updated", { madrasaId, deviceId: id, fields: Object.keys(data) });
     return toDeviceDto(await this.requireDevice(madrasaId, id), this.now());
@@ -164,7 +165,7 @@ export class AttendanceDeviceService {
 
   async deleteDevice(madrasaId: number, id: number) {
     const res = await this.repository.deleteDevice(madrasaId, id);
-    if (res.count === 0) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+    if (res.count === 0) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
     logger.info("Attendance device deleted", { madrasaId, deviceId: id });
   }
 
@@ -172,7 +173,7 @@ export class AttendanceDeviceService {
     const device = await this.requireDevice(madrasaId, id);
     const rawKey = generateDeviceKey();
     const res = await this.repository.updateDevice(madrasaId, id, { apiKeyHash: hashDeviceKey(rawKey) });
-    if (res.count === 0) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+    if (res.count === 0) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
     logger.info("Attendance device key rotated", { madrasaId, deviceId: id });
     return { id: device.id, device_id: device.deviceCode, raw_key: rawKey };
   }
@@ -180,7 +181,7 @@ export class AttendanceDeviceService {
   async requestTest(madrasaId: number, id: number) {
     const at = this.now();
     const res = await this.repository.updateDevice(madrasaId, id, { testRequestedAt: at });
-    if (res.count === 0) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+    if (res.count === 0) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
     return { test_requested_at: at.toISOString() };
   }
 
@@ -212,18 +213,18 @@ export class AttendanceDeviceService {
 
   async setMapping(madrasaId: number, dto: SetMappingDto) {
     const student = await this.repository.findStudentForMapping(madrasaId, dto.student_id);
-    if (!student) throw new NotFoundError("শিক্ষার্থী পাওয়া যায়নি");
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
 
     const conflict = await this.repository.findMapByDeviceUserId(madrasaId, dto.device_user_id);
     if (conflict && conflict.studentId !== dto.student_id) {
-      throw new ConflictError(`এই ডিভাইস ইউজার আইডি (${dto.device_user_id}) অন্য শিক্ষার্থীর (${conflict.student.nameBn}) সাথে যুক্ত আছে`);
+      throw new ConflictError(t({ bn: `এই ডিভাইস ইউজার আইডি (${dto.device_user_id}) অন্য শিক্ষার্থীর (${conflict.student.nameBn}) সাথে যুক্ত আছে`, en: `This device user ID (${dto.device_user_id}) is linked to another student (${conflict.student.nameBn})`, ar: `معرف مستخدم الجهاز هذا (${dto.device_user_id}) مرتبط بطالب آخر (${conflict.student.nameBn})` }));
     }
 
     try {
       await this.repository.replaceMap(madrasaId, dto.student_id, dto.device_user_id);
     } catch (err) {
       if ((err as { code?: string })?.code === "P2002") {
-        throw new ConflictError("এই ডিভাইস ইউজার আইডি অন্য শিক্ষার্থীর সাথে যুক্ত আছে");
+        throw new ConflictError(t({ bn: "এই ডিভাইস ইউজার আইডি অন্য শিক্ষার্থীর সাথে যুক্ত আছে", en: "This device user ID is linked to another student", ar: "معرف مستخدم الجهاز هذا مرتبط بطالب آخر" }));
       }
       throw err;
     }
@@ -244,9 +245,9 @@ export class AttendanceDeviceService {
   }
 
   async deleteMapping(madrasaId: number, studentId: number) {
-    if (!Number.isInteger(studentId) || studentId <= 0) throw new BadRequestError("student id is invalid");
+    if (!Number.isInteger(studentId) || studentId <= 0) throw new BadRequestError(t({ bn: "শিক্ষার্থীর id সঠিক নয়", en: "student id is invalid", ar: "معرف الطالب غير صالح" }));
     const res = await this.repository.deleteMapByStudent(madrasaId, studentId);
-    if (res.count === 0) throw new NotFoundError("ম্যাপিং পাওয়া যায়নি");
+    if (res.count === 0) throw new NotFoundError(t({ bn: "ম্যাপিং পাওয়া যায়নি", en: "Mapping not found", ar: "لم يتم العثور على الربط" }));
   }
 
   async unmappedUsers(madrasaId: number) {
@@ -269,7 +270,7 @@ export class AttendanceDeviceService {
 
   private resolveDate(input?: string): string {
     const date = input || localDateString(this.now(), this.tz);
-    if (!isValidDateString(date)) throw new BadRequestError("date must be YYYY-MM-DD");
+    if (!isValidDateString(date)) throw new BadRequestError(t({ bn: "তারিখ অবশ্যই YYYY-MM-DD ফরম্যাটে হতে হবে", en: "date must be YYYY-MM-DD", ar: "يجب أن يكون التاريخ بصيغة YYYY-MM-DD" }));
     return date;
   }
 
@@ -280,7 +281,7 @@ export class AttendanceDeviceService {
     let deviceFilter: number | undefined;
     if (q.device_id) {
       const device = await this.repository.findDevice(madrasaId, q.device_id);
-      if (!device) throw new NotFoundError("ডিভাইস পাওয়া যায়নি");
+      if (!device) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found", ar: "لم يتم العثور على الجهاز" }));
       deviceFilter = device.id;
     }
 

@@ -4,6 +4,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import DeleteConfirmModal from "../../../components/super-admin/DeleteConfirmModal";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { commonText, formatDateTime, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { madrasasText } from "./madrasas.text";
 
 type DeleteStats = { students: number; users: number; accounts: number };
 
@@ -29,6 +31,10 @@ export default function SuperAdminMadrasasTrashPage() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
   const toast = useToastStore();
+  const t = useText(madrasasText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const n = (v: number) => formatNumber(v, lang);
 
   useEffect(() => {
     load();
@@ -68,10 +74,10 @@ export default function SuperAdminMadrasasTrashPage() {
     setBusyId(id);
     try {
       const res = await adminApi.post(`/super/madrasas/${id}/restore`);
-      toast.push("success", res.data?.message || "Restored successfully");
+      toast.push("success", res.data?.message || getText(madrasasText).restored);
       await load();
     } catch (err: any) {
-      toast.push("error", err?.response?.data?.message || "Restore failed");
+      toast.push("error", err?.response?.data?.message || getText(madrasasText).restoreFailed);
     } finally {
       setBusyId(null);
     }
@@ -89,7 +95,7 @@ export default function SuperAdminMadrasasTrashPage() {
       const stats = await fetchStats(m.id);
       setPendingDelete({ ids: [m.id], stats });
     } catch (err: any) {
-      toast.push("error", err?.response?.data?.message || "Failed to load delete stats");
+      toast.push("error", err?.response?.data?.message || getText(madrasasText).statsFailed);
     } finally {
       setStatsLoading(false);
     }
@@ -113,7 +119,7 @@ export default function SuperAdminMadrasasTrashPage() {
       );
       setPendingDelete({ ids, stats });
     } catch (err: any) {
-      toast.push("error", err?.response?.data?.message || "Failed to load delete stats");
+      toast.push("error", err?.response?.data?.message || getText(madrasasText).statsFailed);
     } finally {
       setStatsLoading(false);
     }
@@ -143,18 +149,17 @@ export default function SuperAdminMadrasasTrashPage() {
     setBulkBusy(false);
     setPendingDelete(null);
 
+    const tx = getText(madrasasText);
+    const nn = (v: number) => formatNumber(v, getLang());
     if (failed.length === 0) {
-      toast.push(
-        "success",
-        ids.length > 1 ? `${ids.length}টি মাদ্রাসা স্থায়ীভাবে মুছে ফেলা হয়েছে` : "Permanently deleted",
-      );
+      toast.push("success", ids.length > 1 ? tx.manyDeleted(nn(ids.length)) : tx.oneDeleted);
     } else if (failed.length < ids.length) {
       toast.push(
         "error",
-        `${ids.length - failed.length}টি মুছে ফেলা হয়েছে, ${failed.length}টি ব্যর্থ হয়েছে। Slug এখনও ব্যবহারে আছে।`,
+        tx.partialDeleted(nn(ids.length - failed.length), nn(failed.length)),
       );
     } else {
-      toast.push("error", "Permanent delete failed. Slug is still in use.");
+      toast.push("error", tx.deleteFailed);
     }
 
     await load();
@@ -163,22 +168,22 @@ export default function SuperAdminMadrasasTrashPage() {
   return (
     <div className="bg-white p-4 rounded shadow dark:bg-slate-900">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold dark:text-slate-100">Trash</h2>
+        <h2 className="text-lg font-bold dark:text-slate-100">{t.trashTitle}</h2>
 
         {selectionMode && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-900 dark:bg-indigo-950/40">
             <span className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
-              {selectedIds.size}টি নির্বাচিত
+              {t.selected(n(selectedIds.size))}
             </span>
             <Button
               variant="secondary"
               onClick={() => setSelectedIds(new Set())}
               disabled={statsLoading || bulkBusy}
             >
-              Clear
+              {c.clear}
             </Button>
             <Button variant="danger" onClick={openBulkDeleteModal} disabled={statsLoading || bulkBusy}>
-              {statsLoading ? "Loading..." : `Permanently Delete ${selectedIds.size}`}
+              {statsLoading ? c.loading : t.permanentlyDeleteN(n(selectedIds.size))}
             </Button>
           </div>
         )}
@@ -187,7 +192,7 @@ export default function SuperAdminMadrasasTrashPage() {
       {loading ? (
         <SkeletonTable rows={6} columns={5} />
       ) : !items.length ? (
-        <p className="text-gray-500 dark:text-slate-400">Trash is empty</p>
+        <p className="text-gray-500 dark:text-slate-400">{t.trashEmpty}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[620px] text-sm">
@@ -199,13 +204,13 @@ export default function SuperAdminMadrasasTrashPage() {
                     className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                     checked={allSelected}
                     onChange={toggleAll}
-                    aria-label="Select all"
+                    aria-label={t.selectAll}
                   />
                 </th>
-                <th className="text-start p-2 dark:text-slate-200">Name</th>
-                <th className="text-start p-2 dark:text-slate-200">Slug</th>
-                <th className="text-start p-2 dark:text-slate-200">Deleted At</th>
-                <th className="text-start p-2 dark:text-slate-200">Actions</th>
+                <th className="text-start p-2 dark:text-slate-200">{c.name}</th>
+                <th className="text-start p-2 dark:text-slate-200">{t.slug}</th>
+                <th className="text-start p-2 dark:text-slate-200">{t.deletedAt}</th>
+                <th className="text-start p-2 dark:text-slate-200">{c.actions}</th>
               </tr>
             </thead>
 
@@ -220,22 +225,22 @@ export default function SuperAdminMadrasasTrashPage() {
                         className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         checked={selectedIds.has(m.id)}
                         onChange={() => toggleOne(m.id)}
-                        aria-label={`Select ${m.name}`}
+                        aria-label={t.selectRow(m.name)}
                       />
                     </td>
                     <td className="p-2 dark:text-slate-100">{m.name}</td>
                     <td className="p-2 dark:text-slate-300">{m.slug}</td>
                     <td className="p-2 text-gray-500 dark:text-slate-400">
-                      {m.deleted_at ? new Date(m.deleted_at).toLocaleString() : "-"}
+                      {m.deleted_at ? formatDateTime(m.deleted_at, lang) : "-"}
                     </td>
                     <td className="p-2">
                       <div className="flex gap-2 flex-wrap">
                         <Button onClick={() => restore(m.id)} disabled={locked}>
-                          {busyId === m.id ? "..." : "Restore"}
+                          {busyId === m.id ? "..." : t.restore}
                         </Button>
 
                         <Button variant="danger" onClick={() => openDeleteModal(m)} disabled={locked}>
-                          Delete Permanently
+                          {t.deletePermanently}
                         </Button>
                       </div>
                     </td>
@@ -254,7 +259,7 @@ export default function SuperAdminMadrasasTrashPage() {
           count={pendingDelete.ids.length}
           busy={bulkBusy}
           busyLabel={
-            pendingDelete.ids.length > 1 ? `Deleting ${progress.done}/${progress.total}...` : "Deleting..."
+            pendingDelete.ids.length > 1 ? t.deletingProgress(n(progress.done), n(progress.total)) : t.deleting
           }
           onClose={() => {
             if (bulkBusy) return;

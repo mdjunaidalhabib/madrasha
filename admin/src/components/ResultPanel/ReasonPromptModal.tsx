@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 
 interface Props {
   open: boolean;
@@ -24,13 +26,15 @@ export default function ReasonPromptModal({
   open,
   title,
   message,
-  label = "কারণ লিখুন",
-  confirmText = "নিশ্চিত করুন",
+  label,
+  confirmText,
   confirmVariant = "danger",
   loading = false,
   onCancel,
   onConfirm,
 }: Props) {
+  const t = useText(resultPanelText).reason;
+  const c = useText(commonText);
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
 
@@ -61,7 +65,7 @@ export default function ReasonPromptModal({
         {message && <p className="text-sm text-gray-600 dark:text-slate-400">{message}</p>}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{label}</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{label ?? t.label}</label>
           <textarea
             autoFocus
             rows={3}
@@ -72,17 +76,17 @@ export default function ReasonPromptModal({
                 ? "border-red-400 focus:ring-red-400 dark:border-red-700"
                 : "border-gray-300 focus:ring-blue-400 dark:border-slate-600"
             }`}
-            placeholder="কারণ লিখুন..."
+            placeholder={t.placeholder}
           />
-          {isInvalid && <p className="mt-1 text-xs text-red-600 dark:text-red-400">কারণ লেখা আবশ্যক</p>}
+          {isInvalid && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{t.required}</p>}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={handleCancel} disabled={loading}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button variant={confirmVariant} onClick={handleConfirm} disabled={loading}>
-            {loading ? "..." : confirmText}
+            {loading ? "..." : (confirmText ?? c.confirm)}
           </Button>
         </div>
       </div>

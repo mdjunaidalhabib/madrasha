@@ -3,7 +3,8 @@ import { Check, Layers, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { reportFailMarkSaved } from "./failMarkFeedback";
 import { hasOwnGrading, parseFailMarkDraft, type DivisionFailMark } from "./divisionGrading";
@@ -27,6 +28,10 @@ export default function ScopeSummaryCard({
   defaultFailMark: number;
   reload: () => void;
 }) {
+  const t = useText(examPanelText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const [editing, setEditing] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [draft, setDraft] = useState("");
@@ -58,7 +63,7 @@ export default function ScopeSummaryCard({
   const save = async (savedMessage?: string) => {
     const value = parseFailMarkDraft(draft);
     if (value === null) {
-      return useToastStore.getState().show("০ থেকে ১০০ এর মধ্যে পূর্ণসংখ্যা ফেল মার্ক দিন", "error");
+      return useToastStore.getState().show(getText(examPanelText).failMarkRange, "error");
     }
 
     try {
@@ -69,7 +74,7 @@ export default function ScopeSummaryCard({
       cancel();
       reload();
     } catch (err: any) {
-      useToastStore.getState().show(err?.response?.data?.message || "আপডেট করা যায়নি", "error");
+      useToastStore.getState().show(err?.response?.data?.message || getText(examPanelText).updateFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -78,17 +83,17 @@ export default function ScopeSummaryCard({
   const resetToDefault = () => {
     if (!division) return;
     useConfirmStore.getState().show({
-      title: "ডিফল্টে ফিরে যাবেন?",
-      message: `"${division.name}" বিভাগের আলাদা ফেল মার্ক ও এই বিভাগের নিজস্ব সব গ্রেড মুছে যাবে। বিভাগটি সাধারণ ফেল মার্ক (${toBanglaDigits(defaultFailMark)}) ও ডিফল্ট গ্রেড ব্যবহার করবে।`,
-      confirmText: "ডিফল্টে ফিরুন",
+      title: t.resetTitle,
+      message: t.resetMessage(division.name, toBanglaDigits(defaultFailMark)),
+      confirmText: t.resetConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await api.post(`/fail-mark/divisions/${division.division_id}`, { value: null });
-          reportFailMarkSaved("ডিফল্টে ফিরে গেছে");
+          reportFailMarkSaved(getText(examPanelText).resetDone);
           reload();
         } catch (err: any) {
-          useToastStore.getState().show(err?.response?.data?.message || "ডিফল্টে ফেরানো যায়নি", "error");
+          useToastStore.getState().show(err?.response?.data?.message || getText(examPanelText).resetFailed, "error");
         }
       },
     });
@@ -105,14 +110,14 @@ export default function ScopeSummaryCard({
         <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Layers size={14} />
-            নির্বাচিত স্কোপ
+            {t.selectedScope}
           </div>
           <h2 className="truncate text-xl font-bold text-slate-900 dark:text-slate-100">
-            {isDefault ? "ডিফল্ট (সব বিভাগের জন্য)" : division!.name}
+            {isDefault ? t.defaultAll : division!.name}
           </h2>
           {isDefault ? (
             <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              সাধারণ গ্রেডিং
+              {t.generalGrading}
             </span>
           ) : (
             <DivisionStatusChip failMark={division!.fail_mark} />
@@ -120,7 +125,7 @@ export default function ScopeSummaryCard({
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800 sm:min-w-[13rem]">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">ফেল মার্ক</div>
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.failMark}</div>
           {editing || enabling ? (
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <input
@@ -129,11 +134,11 @@ export default function ScopeSummaryCard({
                 max={100}
                 step={1}
                 inputMode="numeric"
-                aria-label="ফেল মার্ক"
+                aria-label={t.failMark}
                 className={numberInput}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onKeyDown(enabling ? "নিজস্ব গ্রেডিং চালু হয়েছে" : undefined)}
+                onKeyDown={onKeyDown(enabling ? t.ownEnabled : undefined)}
                 autoFocus
               />
               {editing && (
@@ -143,8 +148,8 @@ export default function ScopeSummaryCard({
                     onClick={() => save()}
                     disabled={saving}
                     className={`${iconBtn} bg-emerald-600 text-white hover:bg-emerald-700`}
-                    aria-label="সংরক্ষণ করুন"
-                    title="সংরক্ষণ করুন"
+                    aria-label={c.save}
+                    title={c.save}
                   >
                     <Check size={17} />
                   </button>
@@ -153,8 +158,8 @@ export default function ScopeSummaryCard({
                     onClick={cancel}
                     disabled={saving}
                     className={`${iconBtn} border border-slate-200 text-slate-500 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700`}
-                    aria-label="বাতিল করুন"
-                    title="বাতিল করুন"
+                    aria-label={t.cancelAction}
+                    title={t.cancelAction}
                   >
                     <X size={17} />
                   </button>
@@ -170,14 +175,14 @@ export default function ScopeSummaryCard({
               >
                 {toBanglaDigits(shown)}
               </span>
-              <span className="text-sm text-slate-500 dark:text-slate-400">নম্বর</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{t.marks}</span>
               {(isDefault || own) && (
                 <button
                   type="button"
                   onClick={startEdit}
                   className={`${iconBtn} ms-auto border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100`}
-                  aria-label="ফেল মার্ক পরিবর্তন করুন"
-                  title="ফেল মার্ক পরিবর্তন করুন"
+                  aria-label={t.changeFailMark}
+                  title={t.changeFailMark}
                 >
                   <Pencil size={16} />
                 </button>
@@ -186,24 +191,23 @@ export default function ScopeSummaryCard({
           )}
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
             {(enabling || editing ? parseFailMarkDraft(draft) ?? shown : shown) > 0
-              ? `${toBanglaDigits(0)}–${toBanglaDigits((enabling || editing ? parseFailMarkDraft(draft) ?? shown : shown) - 1)} ফেল · `
+              ? t.failRange(toBanglaDigits(0), toBanglaDigits((enabling || editing ? parseFailMarkDraft(draft) ?? shown : shown) - 1))
               : ""}
-            পাস শুরু {toBanglaDigits(enabling || editing ? parseFailMarkDraft(draft) ?? shown : shown)} থেকে
+            {t.passFrom(toBanglaDigits(enabling || editing ? parseFailMarkDraft(draft) ?? shown : shown))}
           </p>
         </div>
       </div>
 
       {isDefault && (
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          যে বিভাগের নিজস্ব গ্রেডিং চালু নেই, সেগুলো এই ফেল মার্ক ও নিচের ডিফল্ট গ্রেড ব্যবহার করে। ফেল মার্ক বদলালে সর্বনিম্ন
-          গ্রেডের সীমা স্বয়ংক্রিয়ভাবে মিলে যায়।
+          {t.defaultExplain}
         </p>
       )}
 
       {!isDefault && !own && !enabling && (
         <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-700 dark:text-slate-300">
-            এই বিভাগ ডিফল্ট গ্রেডিং ব্যবহার করছে (ফেল মার্ক {toBanglaDigits(defaultFailMark)})
+            {t.usesDefault(toBanglaDigits(defaultFailMark))}
           </p>
           <Button
             className="shrink-0 gap-2"
@@ -213,7 +217,7 @@ export default function ScopeSummaryCard({
             }}
           >
             <Sparkles size={16} />
-            এই বিভাগের জন্য নিজস্ব গ্রেডিং চালু করুন
+            {t.enableOwn}
           </Button>
         </div>
       )}
@@ -221,16 +225,15 @@ export default function ScopeSummaryCard({
       {!isDefault && !own && enabling && (
         <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
           <p className="text-sm text-slate-700 dark:text-slate-300">
-            ওপরের ঘরে এই বিভাগের ফেল মার্ক দিন (ডিফল্ট: {toBanglaDigits(defaultFailMark)})। চালু করলে ডিফল্ট গ্রেডগুলোর একটি কপি এই
-            বিভাগের জন্য তৈরি হবে এবং সর্বনিম্ন গ্রেড নতুন ফেল মার্কের সাথে মিলিয়ে নেওয়া হবে। এরপর গ্রেডগুলো আলাদাভাবে সম্পাদনা করা যাবে।
+            {t.enableExplain(toBanglaDigits(defaultFailMark))}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => save("নিজস্ব গ্রেডিং চালু হয়েছে")} disabled={saving} className="gap-2">
+            <Button onClick={() => save(t.ownEnabled)} disabled={saving} className="gap-2">
               <Check size={16} />
-              {saving ? "চালু হচ্ছে..." : "চালু করুন"}
+              {saving ? t.enabling : t.enable}
             </Button>
             <Button variant="secondary" onClick={cancel} disabled={saving}>
-              বাতিল
+              {c.cancel}
             </Button>
           </div>
         </div>
@@ -239,11 +242,11 @@ export default function ScopeSummaryCard({
       {!isDefault && own && (
         <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            এই বিভাগের নিজস্ব গ্রেড ও ফেল মার্ক ব্যবহার হচ্ছে। ডিফল্টে ফিরলে নিজস্ব সব গ্রেড মুছে যাবে।
+            {t.ownExplain}
           </p>
           <Button variant="danger" className="shrink-0 gap-2" onClick={resetToDefault}>
             <RotateCcw size={15} />
-            ডিফল্টে ফিরুন
+            {t.resetConfirm}
           </Button>
         </div>
       )}

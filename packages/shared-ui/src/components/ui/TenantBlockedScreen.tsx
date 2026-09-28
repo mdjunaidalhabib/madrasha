@@ -1,4 +1,6 @@
 import { Ban, Clock3, ArrowLeft } from "lucide-react";
+import { useText } from "../../i18n";
+import { uiText } from "./ui.text";
 
 export type TenantBlockStatus = 410 | 423;
 
@@ -26,14 +28,11 @@ export default function TenantBlockedScreen({
   onBack,
   backLabel,
 }: TenantBlockedScreenProps) {
+  const t = useText(uiText);
   const isDeleted = status === 410;
   const Icon = isDeleted ? Ban : Clock3;
-  const heading = isDeleted
-    ? "মাদরাসার অ্যাকাউন্ট বাতিল করা হয়েছে"
-    : "মাদরাসার অ্যাকাউন্ট সাময়িকভাবে স্থগিত";
-  const explanation = isDeleted
-    ? "এই মাদরাসার অ্যাকাউন্টটি স্থায়ীভাবে মুছে ফেলা হয়েছে, তাই এটি দিয়ে আর লগইন করা যাবে না। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।"
-    : "আপনার মাদরাসার অ্যাকাউন্ট সাময়িকভাবে স্থগিত করা হয়েছে। এটি পুনরায় সক্রিয় করা হতে পারে — বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।";
+  const heading = isDeleted ? t.tenantDeletedHeading : t.tenantSuspendedHeading;
+  const explanation = isDeleted ? t.tenantDeletedText : t.tenantSuspendedText;
   const badgeColor = isDeleted ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600";
 
   return (
@@ -54,8 +53,8 @@ export default function TenantBlockedScreen({
           onClick={onBack}
           className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
         >
-          <ArrowLeft size={14} />
-          {backLabel || "অন্য মাদরাসা দিয়ে লগইন করুন"}
+          <ArrowLeft size={14} className="rtl:rotate-180" />
+          {backLabel || t.loginWithOther}
         </button>
       )}
     </div>

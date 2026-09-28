@@ -15,6 +15,17 @@ import {
   permanentDeletePlan,
 } from "../../../services/superAdminApi";
 import { catalogDivisionApi, type CatalogDivisionDto } from "../../../services/superAdminCatalogApi";
+import {
+  INSTITUTION_TYPE_LABELS,
+  LOCALE_MAP,
+  commonText,
+  formatDateTime,
+  formatNumber,
+  getLang,
+  useLang,
+  useText,
+} from "@madrasha/shared-ui/src/i18n";
+import { plansText } from "./plans.text";
 
 type Plan = {
   id: number;
@@ -50,6 +61,7 @@ const emptyForm: PlanForm = {
 };
 
 function Badge({ active }: { active: boolean }) {
+  const t = useText(plansText);
   return (
     <span
       className={[
@@ -59,14 +71,14 @@ function Badge({ active }: { active: boolean }) {
           : "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400",
       ].join(" ")}
     >
-      {active ? "Active" : "Inactive"}
+      {active ? t.active : t.inactive}
     </span>
   );
 }
 
 function fmtMoney(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
-  return n.toLocaleString("en-BD", { maximumFractionDigits: 2 });
+  return n.toLocaleString(LOCALE_MAP[getLang()], { maximumFractionDigits: 2 });
 }
 
 // allow digits + one dot, max 2 decimals
@@ -82,9 +94,11 @@ function sanitizePriceText(input: string) {
 /** Plan's per-বিভাগ registration-number block size per class, in the
  * catalog's বিভাগ order - e.g. "নূরানী ৩০ · নাযেরা/হিফজ ৪০ · কিতাব ২০". */
 function RegBlockSizes({ plan, divisions }: { plan: Plan; divisions: CatalogDivisionDto[] }) {
+  const t = useText(plansText);
+  const lang = useLang();
   const sizes = new Map((plan.regBlocks || []).map((b) => [b.divisionId, b.blockSize]));
   const items = divisions.filter((d) => sizes.get(d.id));
-  if (!items.length) return <span className="text-xs text-gray-400 dark:text-slate-500">সেট করা নেই</span>;
+  if (!items.length) return <span className="text-xs text-gray-400 dark:text-slate-500">{t.notSet}</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {items.map((d) => (
@@ -92,7 +106,7 @@ function RegBlockSizes({ plan, divisions }: { plan: Plan; divisions: CatalogDivi
           key={d.id}
           className="whitespace-nowrap rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
         >
-          {d.label || d.name} {sizes.get(d.id)!.toLocaleString("bn-BD")}
+          {d.label || d.name} {formatNumber(sizes.get(d.id)!, lang)}
         </span>
       ))}
     </div>
@@ -126,6 +140,10 @@ function IconButton({
 
 export default function SuperAdminPlansPage() {
   const { show } = useToastStore();
+  const t = useText(plansText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const n = (v: number) => formatNumber(v, lang);
 
   // tabs: "plans" | "trash"
   const [tab, setTab] = useState<"plans" | "trash">("plans");
@@ -154,8 +172,8 @@ export default function SuperAdminPlansPage() {
   const [target, setTarget] = useState<Plan | null>(null);
 
   const modalTitle = useMemo(
-    () => (editing ? `Edit Plan — #${editing.id}` : "Create New Plan"),
-    [editing],
+    () => (editing ? t.editPlanTitle(String(editing.id)) : t.createPlanTitle),
+    [editing, t],
   );
 
   async function loadPlans() {
@@ -164,7 +182,7 @@ export default function SuperAdminPlansPage() {
       const res = await fetchPlans({ q, active });
       setRows((res?.data || []) as Plan[]);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Load failed", "error");
+      show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -176,7 +194,7 @@ export default function SuperAdminPlansPage() {
       const res = await listTrashPlans();
       setTrashRows((res?.data || []) as Plan[]);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Trash load failed", "error");
+      show(e?.response?.data?.message || t.trashLoadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -231,14 +249,14 @@ export default function SuperAdminPlansPage() {
   function validate(): string | null {
     const priceNum = Number(priceText || 0);
 
-    if (!form.name.trim()) return "Plan নাম দিন";
-    if (form.student_limit < 0) return "Student limit 0 বা তার বেশি হতে হবে";
-    if (form.user_limit < 0) return "User limit 0 বা তার বেশি হতে হবে";
-    if (form.duration_days <= 0) return "Duration days 1 বা তার বেশি হতে হবে";
-    if (Number.isNaN(priceNum) || priceNum < 0) return "Price 0 বা তার বেশি হতে পারবে না";
+    if (!form.name.trim()) return t.errName;
+    if (form.student_limit < 0) return t.errStudentLimit;
+    if (form.user_limit < 0) return t.errUserLimit;
+    if (form.duration_days <= 0) return t.errDuration;
+    if (Number.isNaN(priceNum) || priceNum < 0) return t.errPrice;
     for (const d of divisions) {
       const v = (regBlocks[d.id] || "").trim();
-      if (v && (!/^d+$/.test(v) || Number(v) > 100000)) return "রেজি. ব্লকের সাইজ 0 থেকে 100000 এর মধ্যে পূর্ণসংখ্যা দিন";
+      if (v && (!/^\d+$/.test(v) || Number(v) > 100000)) return t.errRegBlock;
     }
 
     return null;
@@ -265,16 +283,16 @@ export default function SuperAdminPlansPage() {
 
       if (editing) {
         await updatePlan(editing.id, { ...payload, reg_block_sizes });
-        show("Plan আপডেট হয়েছে", "success");
+        show(t.updated, "success");
       } else {
         await createPlan({ ...payload, reg_block_sizes });
-        show("Plan তৈরি হয়েছে", "success");
+        show(t.created, "success");
       }
 
       setOpen(false);
       await loadPlans();
     } catch (e2: any) {
-      show(e2?.response?.data?.message || "Save failed", "error");
+      show(e2?.response?.data?.message || t.saveFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -283,10 +301,10 @@ export default function SuperAdminPlansPage() {
   async function onToggle(id: number) {
     try {
       await togglePlan(id);
-      show("Status updated", "success");
+      show(t.statusUpdated, "success");
       await loadPlans();
     } catch (e: any) {
-      show(e?.response?.data?.message || "Toggle failed", "error");
+      show(e?.response?.data?.message || t.toggleFailed, "error");
     }
   }
 
@@ -303,26 +321,26 @@ export default function SuperAdminPlansPage() {
     try {
       if (confirmMode === "trash") {
         await deletePlan(target.id);
-        show("Plan trash এ পাঠানো হয়েছে", "success");
+        show(t.movedToTrash, "success");
         setConfirmOpen(false);
         await loadPlans();
       }
 
       if (confirmMode === "restore") {
         await restorePlan(target.id);
-        show("Plan restore হয়েছে", "success");
+        show(t.restored, "success");
         setConfirmOpen(false);
         await loadTrash();
       }
 
       if (confirmMode === "permanent") {
         await permanentDeletePlan(target.id);
-        show("Plan permanently deleted", "success");
+        show(t.permanentlyDeleted, "success");
         setConfirmOpen(false);
         await loadTrash();
       }
     } catch (e: any) {
-      show(e?.response?.data?.message || "Action failed", "error");
+      show(e?.response?.data?.message || t.actionFailed, "error");
     } finally {
       setConfirmLoading(false);
       setTarget(null);
@@ -331,25 +349,25 @@ export default function SuperAdminPlansPage() {
 
   const confirmTitle =
     confirmMode === "trash"
-      ? "Move to Trash?"
+      ? t.confirmTrashTitle
       : confirmMode === "restore"
-        ? "Restore Plan?"
-        : "Permanent Delete?";
+        ? t.confirmRestoreTitle
+        : t.confirmPermanentTitle;
 
   const confirmMessage =
     confirmMode === "trash"
-      ? `Plan "${target?.name ?? ""}" trash এ যাবে (restore করা যাবে)।`
+      ? t.confirmTrashMessage(target?.name ?? "")
       : confirmMode === "restore"
-        ? `Plan "${target?.name ?? ""}" আবার active list এ ফিরে আসবে।`
-        : `Plan "${target?.name ?? ""}" permanently delete হবে (ফিরিয়ে আনা যাবে না)।`;
+        ? t.confirmRestoreMessage(target?.name ?? "")
+        : t.confirmPermanentMessage(target?.name ?? "");
 
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold dark:text-slate-100">Plans</h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400">Super Admin এখান থেকে pricing/limits manage করবে।</p>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">{t.title}</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -362,7 +380,7 @@ export default function SuperAdminPlansPage() {
                 : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
-            Plans
+            {t.tabPlans}
           </button>
 
           <button
@@ -374,7 +392,7 @@ export default function SuperAdminPlansPage() {
                 : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
-            Trash
+            {t.tabTrash}
           </button>
 
           {tab === "plans" && (
@@ -382,7 +400,7 @@ export default function SuperAdminPlansPage() {
               onClick={openCreate}
               className="flex-1 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 sm:flex-none"
             >
-              + New Plan
+              {t.newPlan}
             </button>
           )}
         </div>
@@ -392,12 +410,12 @@ export default function SuperAdminPlansPage() {
       {tab === "plans" && (
         <div className="mt-5 grid gap-3 md:grid-cols-12">
           <div className="md:col-span-5">
-            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Search</label>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.search}</label>
             <div className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
               <span className="text-gray-400 dark:text-slate-500">🔎</span>
               <input
                 className="w-full bg-transparent text-sm outline-none dark:text-slate-100"
-                placeholder="Plan name দিয়ে খুঁজুন..."
+                placeholder={t.searchPlaceholder}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -405,15 +423,15 @@ export default function SuperAdminPlansPage() {
           </div>
 
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Status</label>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.status}</label>
             <select
               className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               value={active}
               onChange={(e) => setActive(e.target.value as "all" | "1" | "0")}
             >
-              <option value="all">All</option>
-              <option value="1">Active</option>
-              <option value="0">Inactive</option>
+              <option value="all">{t.all}</option>
+              <option value="1">{t.active}</option>
+              <option value="0">{t.inactive}</option>
             </select>
           </div>
 
@@ -423,11 +441,11 @@ export default function SuperAdminPlansPage() {
               disabled={loading}
               className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
             >
-              {loading ? "Loading..." : "Refresh"}
+              {loading ? c.loading : t.refresh}
             </button>
 
             <div className="text-xs text-gray-500 dark:text-slate-400">
-              Total: <span className="font-medium text-gray-800 dark:text-slate-100">{rows.length}</span>
+              {t.total}: <span className="font-medium text-gray-800 dark:text-slate-100">{n(rows.length)}</span>
             </div>
           </div>
         </div>
@@ -441,11 +459,11 @@ export default function SuperAdminPlansPage() {
             disabled={loading}
             className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            {loading ? "Loading..." : "Refresh Trash"}
+            {loading ? c.loading : t.refreshTrash}
           </button>
 
           <div className="text-xs text-gray-500 dark:text-slate-400">
-            Total Trash: <span className="font-medium text-gray-800 dark:text-slate-100">{trashRows.length}</span>
+            {t.totalTrash}: <span className="font-medium text-gray-800 dark:text-slate-100">{n(trashRows.length)}</span>
           </div>
         </div>
       )}
@@ -456,8 +474,8 @@ export default function SuperAdminPlansPage() {
 
         {!loading && tab === "plans" && rows.length === 0 && (
           <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">কোনো Plan পাওয়া যায়নি</div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">নতুন Plan যোগ করতে “New Plan” চাপুন</div>
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.noPlans}</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">{t.noPlansHint}</div>
           </div>
         )}
 
@@ -470,43 +488,43 @@ export default function SuperAdminPlansPage() {
                   <div className="font-medium text-gray-900 dark:text-slate-100">
                     #{p.id} — {p.name}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Duration: {p.durationDays} days</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.duration(n(p.durationDays))}</div>
                 </div>
                 <Badge active={!!p.isActive} />
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Students</div>
-                  {p.studentLimit}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.students}</div>
+                  {n(p.studentLimit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Users</div>
-                  {p.userLimit}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
+                  {n(p.userLimit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Price</div>৳ {fmtMoney(p.price)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
                 </div>
               </div>
 
               <div className="mt-3">
-                <div className="mb-1 text-xs text-gray-500 dark:text-slate-400">রেজি. ব্লক (প্রতি শ্রেণি)</div>
+                <div className="mb-1 text-xs text-gray-500 dark:text-slate-400">{t.regBlockPerClass}</div>
                 <RegBlockSizes plan={p} divisions={divisions} />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <IconButton title="Edit" onClick={() => openEdit(p)}>
-                  ✏️ Edit
+                <IconButton title={t.edit} onClick={() => openEdit(p)}>
+                  ✏️ {t.edit}
                 </IconButton>
-                <IconButton title="Toggle" onClick={() => onToggle(p.id)}>
-                  🔁 Toggle
+                <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
+                  🔁 {t.toggle}
                 </IconButton>
                 <IconButton
-                  title="Move to Trash"
+                  title={t.moveToTrash}
                   variant="danger"
                   onClick={() => openConfirm("trash", p)}
                 >
-                  🗑 Trash
+                  🗑 {t.trash}
                 </IconButton>
               </div>
             </div>
@@ -514,8 +532,8 @@ export default function SuperAdminPlansPage() {
 
         {!loading && tab === "trash" && trashRows.length === 0 && (
           <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">Trash খালি</div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">কোনো Plan trash এ নেই</div>
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.trashEmpty}</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">{t.trashEmptyHint}</div>
           </div>
         )}
 
@@ -529,7 +547,7 @@ export default function SuperAdminPlansPage() {
                     #{p.id} — {p.name}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">
-                    Deleted: {p.deletedAt ? new Date(p.deletedAt).toLocaleString() : "-"}
+                    {t.deleted}: {p.deletedAt ? formatDateTime(p.deletedAt, lang) : "-"}
                   </div>
                 </div>
                 <Badge active={!!p.isActive} />
@@ -537,28 +555,28 @@ export default function SuperAdminPlansPage() {
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Students</div>
-                  {p.studentLimit}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.students}</div>
+                  {n(p.studentLimit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Users</div>
-                  {p.userLimit}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
+                  {n(p.userLimit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Price</div>৳ {fmtMoney(p.price)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <IconButton title="Restore" variant="warn" onClick={() => openConfirm("restore", p)}>
-                  ♻️ Restore
+                <IconButton title={t.restore} variant="warn" onClick={() => openConfirm("restore", p)}>
+                  ♻️ {t.restore}
                 </IconButton>
                 <IconButton
-                  title="Permanent Delete"
+                  title={t.permanentDelete}
                   variant="danger"
                   onClick={() => openConfirm("permanent", p)}
                 >
-                  ❌ Permanent
+                  ❌ {t.permanent}
                 </IconButton>
               </div>
             </div>
@@ -575,14 +593,14 @@ export default function SuperAdminPlansPage() {
             <thead className="bg-gray-50 text-xs text-gray-600">
               <tr>
                 <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Students</th>
-                <th className="px-4 py-3">রেজি. ব্লক / শ্রেণি</th>
-                <th className="px-4 py-3">Users</th>
-                <th className="px-4 py-3">Days</th>
-                <th className="px-4 py-3">Price</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-end">Actions</th>
+                <th className="px-4 py-3">{t.colName}</th>
+                <th className="px-4 py-3">{t.students}</th>
+                <th className="px-4 py-3">{t.regBlockCol}</th>
+                <th className="px-4 py-3">{t.users}</th>
+                <th className="px-4 py-3">{t.days}</th>
+                <th className="px-4 py-3">{t.price}</th>
+                <th className="px-4 py-3">{t.status}</th>
+                <th className="px-4 py-3 text-end">{t.colActions}</th>
               </tr>
             </thead>
 
@@ -593,7 +611,7 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3 text-gray-700">{p.id}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{p.name}</div>
-                      <div className="text-xs text-gray-500">Duration: {p.durationDays} days</div>
+                      <div className="text-xs text-gray-500">{t.duration(n(p.durationDays))}</div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
                     <td className="px-4 py-3">
@@ -607,20 +625,20 @@ export default function SuperAdminPlansPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <IconButton title="Edit" onClick={() => openEdit(p)}>
-                          ✏️ Edit
+                        <IconButton title={t.edit} onClick={() => openEdit(p)}>
+                          ✏️ {t.edit}
                         </IconButton>
 
-                        <IconButton title="Toggle" onClick={() => onToggle(p.id)}>
-                          🔁 Toggle
+                        <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
+                          🔁 {t.toggle}
                         </IconButton>
 
                         <IconButton
-                          title="Move to Trash"
+                          title={t.moveToTrash}
                           variant="danger"
                           onClick={() => openConfirm("trash", p)}
                         >
-                          🗑 Trash
+                          🗑 {t.trash}
                         </IconButton>
                       </div>
                     </td>
@@ -634,7 +652,7 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{p.name}</div>
                       <div className="text-xs text-gray-500">
-                        Deleted: {p.deletedAt ? new Date(p.deletedAt).toLocaleString() : "-"}
+                        {t.deleted}: {p.deletedAt ? formatDateTime(p.deletedAt, lang) : "-"}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
@@ -650,19 +668,19 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <IconButton
-                          title="Restore"
+                          title={t.restore}
                           variant="warn"
                           onClick={() => openConfirm("restore", p)}
                         >
-                          ♻️ Restore
+                          ♻️ {t.restore}
                         </IconButton>
 
                         <IconButton
-                          title="Permanent Delete"
+                          title={t.permanentDelete}
                           variant="danger"
                           onClick={() => openConfirm("permanent", p)}
                         >
-                          ❌ Permanent
+                          ❌ {t.permanent}
                         </IconButton>
                       </div>
                     </td>
@@ -672,8 +690,8 @@ export default function SuperAdminPlansPage() {
               {tab === "plans" && rows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center">
-                    <div className="text-sm font-medium text-gray-800">কোনো Plan পাওয়া যায়নি</div>
-                    <div className="text-xs text-gray-500">নতুন Plan যোগ করতে “New Plan” চাপুন</div>
+                    <div className="text-sm font-medium text-gray-800">{t.noPlans}</div>
+                    <div className="text-xs text-gray-500">{t.noPlansHint}</div>
                   </td>
                 </tr>
               )}
@@ -681,8 +699,8 @@ export default function SuperAdminPlansPage() {
               {tab === "trash" && trashRows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center">
-                    <div className="text-sm font-medium text-gray-800">Trash খালি</div>
-                    <div className="text-xs text-gray-500">কোনো Plan trash এ নেই</div>
+                    <div className="text-sm font-medium text-gray-800">{t.trashEmpty}</div>
+                    <div className="text-xs text-gray-500">{t.trashEmptyHint}</div>
                   </td>
                 </tr>
               )}
@@ -696,10 +714,10 @@ export default function SuperAdminPlansPage() {
       <Modal open={open} title={modalTitle} onClose={() => setOpen(false)}>
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600">Plan Name</label>
+            <label className="text-xs text-gray-600">{t.planName}</label>
             <input
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="e.g. Basic / Standard"
+              placeholder={t.planNamePlaceholder}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
@@ -707,7 +725,7 @@ export default function SuperAdminPlansPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">Student Limit</label>
+              <label className="text-xs text-gray-600">{t.studentLimit}</label>
               <input
                 type="number"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
@@ -717,7 +735,7 @@ export default function SuperAdminPlansPage() {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">User Limit</label>
+              <label className="text-xs text-gray-600">{t.userLimit}</label>
               <input
                 type="number"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
@@ -727,7 +745,7 @@ export default function SuperAdminPlansPage() {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">Duration Days</label>
+              <label className="text-xs text-gray-600">{t.durationDays}</label>
               <input
                 type="number"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
@@ -738,7 +756,7 @@ export default function SuperAdminPlansPage() {
 
             <div className="grid gap-2">
               <label className="text-xs text-gray-600">
-                Price (৳){" "}
+                {t.priceTaka}{" "}
                 <span className="text-[11px] text-gray-400">(৳ {fmtMoney(priceText)})</span>
               </label>
               <input
@@ -757,17 +775,20 @@ export default function SuperAdminPlansPage() {
           {divisions.length > 0 && (
             <div className="grid gap-2 rounded-xl border p-3 dark:border-slate-700">
               <div>
-                <div className="text-sm font-medium text-gray-800 dark:text-slate-200">রেজি. নম্বর ব্লক (প্রতি শ্রেণি)</div>
+                <div className="text-sm font-medium text-gray-800 dark:text-slate-200">{t.regBlockTitle}</div>
                 <p className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">
-                  নতুন মাদ্রাসা তৈরির সময় প্রতিটি শ্রেণি এই সাইজের ব্লক পাবে (যেমন নূরানী ৩০ হলে ১–৩০, ৩১–৬০…)।
-                  খালি বা 0 রাখলে ওই বিভাগে অটো ব্লক হবে না। পরে মাদ্রাসার অ্যাডমিন ব্লক কম-বেশি করতে পারবেন;
-                  এখানে বদলালে আগের মাদ্রাসার ব্লক বদলাবে না।
+                  {t.regBlockHint}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 {divisions.map((d) => (
                   <div key={d.id} className="grid gap-1">
-                    <label className="truncate text-xs text-gray-600 dark:text-slate-400">{d.label || d.name}</label>
+                    <label className="truncate text-xs text-gray-600 dark:text-slate-400">
+                      {d.label || d.name}
+                      <span className="ms-1 text-[10px] text-gray-400 dark:text-slate-500">
+                        ({INSTITUTION_TYPE_LABELS[d.institution_type ?? "MADRASA"][lang]})
+                      </span>
+                    </label>
                     <input
                       type="number"
                       min={0}
@@ -789,7 +810,7 @@ export default function SuperAdminPlansPage() {
               checked={!!form.is_active}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked ? 1 : 0 })}
             />
-            <span className="text-gray-700">Active</span>
+            <span className="text-gray-700">{t.active}</span>
           </label>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -798,7 +819,7 @@ export default function SuperAdminPlansPage() {
               onClick={() => setOpen(false)}
               className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50"
             >
-              Cancel
+              {c.cancel}
             </button>
 
             <button
@@ -806,7 +827,7 @@ export default function SuperAdminPlansPage() {
               disabled={saving}
               className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
             >
-              {saving ? "Saving..." : editing ? "Update" : "Create"}
+              {saving ? c.saving : editing ? c.update : c.create}
             </button>
           </div>
         </form>
@@ -819,12 +840,12 @@ export default function SuperAdminPlansPage() {
         message={confirmMessage}
         confirmText={
           confirmMode === "trash"
-            ? "Move to Trash"
+            ? t.moveToTrash
             : confirmMode === "restore"
-              ? "Restore"
-              : "Permanent Delete"
+              ? t.restore
+              : t.permanentDelete
         }
-        cancelText="Cancel"
+        cancelText={c.cancel}
         danger={confirmMode === "permanent"}
         loading={confirmLoading}
         onClose={() => {

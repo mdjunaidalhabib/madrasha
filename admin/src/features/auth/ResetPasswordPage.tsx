@@ -5,6 +5,8 @@ import api from "../../services/api";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { LanguageSwitcher, commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { authText } from "./auth.text";
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -18,18 +20,20 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
 
   const nav = useNavigate();
+  const t = useText(authText);
+  const c = useText(commonText);
 
   const handleSubmit = async () => {
     if (!token) {
-      useToastStore.getState().show("রিসেট লিংক সঠিক নয়", "error");
+      useToastStore.getState().show(t.invalidResetLink, "error");
       return;
     }
     if (newPassword.length < 6) {
-      useToastStore.getState().show("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+      useToastStore.getState().show(t.passwordMin6, "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      useToastStore.getState().show("দুটো পাসওয়ার্ড মিলছে না", "error");
+      useToastStore.getState().show(t.passwordMismatch, "error");
       return;
     }
 
@@ -41,9 +45,9 @@ export default function ResetPasswordPage() {
         { headers: { "X-Madrasa-Slug": slug } },
       );
       setDone(true);
-      useToastStore.getState().show("পাসওয়ার্ড পরিবর্তন হয়েছে", "success");
+      useToastStore.getState().show(t.passwordChanged, "success");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "রিসেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.resetFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setLoading(false);
@@ -51,21 +55,24 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+    <div className="relative flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+      <div className="absolute end-4 top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
-        <h2 className="text-xl font-bold dark:text-slate-100">নতুন পাসওয়ার্ড সেট করুন</h2>
+        <h2 className="text-xl font-bold dark:text-slate-100">{t.setNewPassword}</h2>
 
         {!token ? (
           <p className="text-sm text-red-600 dark:text-red-400">
-            এই লিংকটি সঠিক নয়। আবার "পাসওয়ার্ড ভুলে গেছেন" থেকে চেষ্টা করুন।
+            {t.linkInvalidTryAgain}
           </p>
         ) : done ? (
           <div className="space-y-3">
             <p className="text-sm text-green-700 dark:text-green-400">
-              আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে। এখন লগইন করুন।
+              {t.passwordChangedLogin}
             </p>
             <Button onClick={() => nav("/login")} className="w-full">
-              লগইন করুন
+              {t.loginNow}
             </Button>
           </div>
         ) : (
@@ -74,7 +81,7 @@ export default function ResetPasswordPage() {
               <Input
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="নতুন পাসওয়ার্ড"
+                placeholder={t.newPassword}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="pe-10"
@@ -83,6 +90,7 @@ export default function ResetPasswordPage() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -92,13 +100,13 @@ export default function ResetPasswordPage() {
             <Input
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="পাসওয়ার্ড আবার লিখুন"
+              placeholder={t.retypePassword}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
 
             <Button onClick={handleSubmit} disabled={loading} className="w-full">
-              {loading ? "সংরক্ষণ হচ্ছে..." : "পাসওয়ার্ড পরিবর্তন করুন"}
+              {loading ? c.saving : t.changePassword}
             </Button>
           </>
         )}

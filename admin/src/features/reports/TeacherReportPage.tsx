@@ -1,52 +1,55 @@
 import ReportShell, { ReportMenuItem } from "./ReportShell";
+import { useLocalizedReports, type ReportBuilder } from "./useLocalizedReports";
 
-const reports: ReportMenuItem[] = [
+const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
   {
     key: "teacher-list",
-    title: "শিক্ষক লিস্ট",
-    subtitle: "সকল শিক্ষকের পূর্ণ তালিকা",
+    ...t.r["teacher-list"],
     endpoint: "/reports/teacher/list",
     printable: "teacher-list",
     requiresDivision: true,
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষক", key: "teacher_name" },
-      { header: "পদবি", key: "designation" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "ডিপার্টমেন্ট", key: "department" },
-      { header: "যোগ্যতা", key: "qualification" },
-      { header: "মোবাইল", key: "phone" },
-      { header: "ইমেইল", key: "email" },
-      { header: "যোগদান", key: "joining_date" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.teacher, key: "teacher_name" },
+      { header: col.designation, key: "designation" },
+      { header: col.division, key: "division_name" },
+      { header: col.department, key: "department" },
+      { header: col.qualification, key: "qualification" },
+      { header: col.mobile, key: "phone" },
+      { header: col.email, key: "email" },
+      { header: col.joining, key: "joining_date" },
     ],
   },
   {
     key: "teacher-phones",
-    title: "শিক্ষকদের মোবাইল নাম্বার",
-    subtitle: "শিক্ষক ও অভিভাবক/জরুরি যোগাযোগ নাম্বার",
+    ...t.r["teacher-phones"],
     endpoint: "/reports/teacher/phones",
     printable: "teacher-phone-list",
     requiresDivision: true,
     columns: [
-      { header: "রেজিস্ট্রেশন নম্বর", key: "registration_no" },
-      { header: "শিক্ষক", key: "teacher_name" },
-      { header: "পদবি", key: "designation" },
-      { header: "বিভাগ", key: "division_name" },
-      { header: "মোবাইল", key: "phone" },
-      { header: "জরুরি মোবাইল", key: "parent_phone" },
+      { header: col.regNoFull, key: "registration_no" },
+      { header: col.teacher, key: "teacher_name" },
+      { header: col.designation, key: "designation" },
+      { header: col.division, key: "division_name" },
+      { header: col.mobile, key: "phone" },
+      { header: col.emergencyMobile, key: "parent_phone" },
     ],
   },
 ];
 
-const TeacherReportPage = ({ printMode }: { printMode?: boolean }) => (
-  <ReportShell
-    pageTitle="শিক্ষক রিপোর্ট"
-    pageSubtitle="শিক্ষক তালিকা ও মোবাইল নাম্বার database থেকে নিয়ে দ্রুত export/print করার সুবিধা।"
-    accentTitle="Teacher Reports"
-    reports={reports}
-    reportsPageKey="teacher"
-    printMode={printMode}
-  />
-);
+const TeacherReportPage = ({ printMode }: { printMode?: boolean }) => {
+  const { reports, printReports, t } = useLocalizedReports(buildReports);
+  return (
+    <ReportShell
+      pageTitle={t.page.teacherTitle}
+      pageSubtitle={t.page.teacherSubtitle}
+      accentTitle="Teacher Reports"
+      reports={reports}
+      printReports={printReports}
+      reportsPageKey="teacher"
+      printMode={printMode}
+    />
+  );
+};
 
 export default TeacherReportPage;

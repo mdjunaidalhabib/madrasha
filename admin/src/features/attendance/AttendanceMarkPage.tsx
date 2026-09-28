@@ -5,6 +5,8 @@ import { attendanceApi, type AttendanceStatus } from "../../services/phase1Api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { formatDate, formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceText } from "./attendance.text";
 
 type Division = {
   division_id: number;
@@ -26,11 +28,6 @@ type Student = {
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
-const TODAY_BN = new Date().toLocaleDateString("bn-BD", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -38,6 +35,11 @@ const normalizeArray = (payload: any) => {
 };
 
 const AttendanceMarkPage = () => {
+  const lang = useLang();
+  const tx = useText(attendanceText);
+  const t = tx.mark;
+  const todayLabel = formatDate(new Date(), lang, { year: "numeric", month: "long", day: "numeric" });
+  const num = (n: number) => formatNumber(n, lang);
 
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -192,7 +194,7 @@ const AttendanceMarkPage = () => {
 
   const handleSaveAll = async () => {
     if (!selectedClass) {
-      useToastStore.getState().show("প্রথমে শ্রেণি নির্বাচন করুন", "error");
+      useToastStore.getState().show(getText(attendanceText).mark.selectClassFirst, "error");
       return;
     }
     const entries = studentsInClass.map((student) => ({
@@ -200,7 +202,7 @@ const AttendanceMarkPage = () => {
       status: (presentByStudent[String(student.id)] ? "PRESENT" : "ABSENT") as AttendanceStatus,
     }));
     if (entries.length === 0) {
-      useToastStore.getState().show("এই শ্রেণিতে কোনো ছাত্র নেই", "error");
+      useToastStore.getState().show(getText(attendanceText).common.noStudentsInClass, "error");
       return;
     }
 
@@ -212,10 +214,10 @@ const AttendanceMarkPage = () => {
         class_id: Number(selectedClass),
         entries,
       });
-      useToastStore.getState().show("উপস্থিতি সংরক্ষণ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(attendanceText).mark.saved, "success");
       setAlreadySubmitted(true);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "উপস্থিতি সংরক্ষণ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(attendanceText).mark.saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -227,9 +229,9 @@ const AttendanceMarkPage = () => {
       <div className="mx-auto max-w-md">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছাত্র উপস্থিতি</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            আজকের তারিখ: <span className="font-medium">{TODAY_BN}</span> · টিক দিলে উপস্থিত, টিক না দিলে অনুপস্থিত
+            {t.todayDate} <span className="font-medium">{todayLabel}</span> · {t.tickHint}
           </p>
         </div>
 
@@ -245,7 +247,7 @@ const AttendanceMarkPage = () => {
               }}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
-              <option value="">বিভাগ নির্বাচন করুন</option>
+              <option value="">{tx.common.selectDivision}</option>
               {divisions.map((division) => (
                 <option key={division.division_id} value={division.division_id}>
                   {division.division_name_bn}
@@ -260,7 +262,7 @@ const AttendanceMarkPage = () => {
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
             >
               <option value="">
-                {classLoading ? "শ্রেণি লোড হচ্ছে..." : "শ্রেণি নির্বাচন করুন"}
+                {classLoading ? tx.common.classLoading : tx.common.selectClass}
               </option>
               {classes.map((classItem) => (
                 <option key={classItem.class_id} value={classItem.class_id}>
@@ -272,10 +274,10 @@ const AttendanceMarkPage = () => {
 
           {selectedClass && (
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-slate-400">
-              <span>মোট: {studentsInClass.length}</span>
-              <span className="text-green-700 dark:text-green-400">উপস্থিত: {presentCount}</span>
+              <span>{t.total(num(studentsInClass.length))}</span>
+              <span className="text-green-700 dark:text-green-400">{t.presentCount(num(presentCount))}</span>
               <span className="text-red-700 dark:text-red-400">
-                অনুপস্থিত: {studentsInClass.length - presentCount}
+                {t.absentCount(num(studentsInClass.length - presentCount))}
               </span>
             </div>
           )}
@@ -284,12 +286,12 @@ const AttendanceMarkPage = () => {
         {/* Already-submitted notice */}
         {selectedClass && alreadySubmitted && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-            <span>আজকের উপস্থিতি ইতিমধ্যে জমা দেওয়া হয়েছে। পরিবর্তনের প্রয়োজন হলে উপস্থিতি রিপোর্ট থেকে এডিট করুন।</span>
+            <span>{t.alreadySubmitted}</span>
             <Link
               to={`/attendance/report`}
               className="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-transparent dark:text-amber-300 dark:hover:bg-amber-950/50"
             >
-              উপস্থিতি রিপোর্টে যান
+              {t.goToReport}
             </Link>
           </div>
         )}
@@ -297,7 +299,7 @@ const AttendanceMarkPage = () => {
         {/* Student list */}
         {!selectedClass ? (
           <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
-            উপস্থিতি নেওয়ার জন্য প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
+            {t.selectFirst}
           </div>
         ) : studentsLoading ? (
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
@@ -305,7 +307,7 @@ const AttendanceMarkPage = () => {
           </div>
         ) : studentsInClass.length === 0 ? (
           <div className="rounded-xl bg-white p-10 text-center text-sm text-gray-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
-            এই শ্রেণিতে {academicYear} শিক্ষাবর্ষে কোনো ছাত্র নেই
+            {t.noStudentsYear(formatNumber(academicYear, lang).replace(/[,٬]/g, ""))}
           </div>
         ) : (
           <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
@@ -314,7 +316,7 @@ const AttendanceMarkPage = () => {
                 alreadySubmitted ? "opacity-60" : "cursor-pointer"
               }`}
             >
-              <span>সবাইকে উপস্থিত করুন</span>
+              <span>{tx.common.markAllPresent}</span>
               <input
                 type="checkbox"
                 checked={allChecked}
@@ -349,7 +351,7 @@ const AttendanceMarkPage = () => {
                               : "text-gray-400 line-through dark:text-slate-500"
                           }`}
                         >
-                          {student.name_bn || "নাম নেই"}
+                          {student.name_bn || tx.common.noName}
                         </span>
                       </span>
                       <input
@@ -372,7 +374,7 @@ const AttendanceMarkPage = () => {
                   onClick={handleSaveAll}
                   className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                 >
-                  {saving ? "সংরক্ষণ হচ্ছে..." : "উপস্থিতি সংরক্ষণ করুন"}
+                  {saving ? t.saving : t.save}
                 </button>
               </div>
             )}

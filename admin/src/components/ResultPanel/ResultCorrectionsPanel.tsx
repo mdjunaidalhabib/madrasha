@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, formatDate, getLang, getText, localizeDigits, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import ReasonPromptModal from "./ReasonPromptModal";
 import { correctionStatusBadge } from "./resultStatus";
@@ -46,37 +47,29 @@ interface Props {
   onApplied: () => void;
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  mark: "নম্বর",
-  is_absent: "অনুপস্থিতি",
-  is_exempted: "অব্যাহতি",
-  is_withheld: "স্থগিত",
-  note: "মন্তব্য",
-  general_grade: "সাধারণ গ্রেড",
-  madrasa_grade: "মাদরাসা গ্রেড",
-  total: "মোট",
-  average: "গড়",
-  status: "অবস্থা",
-  rank_no: "মেধাক্রম",
-};
+// Display labels only - `field` values are backend keys.
+const fieldLabel = (field: string) => getText(resultPanelText).corrections.fields[field] || field;
 
-const BOOLEAN_LABELS: Record<string, Record<string, string>> = {
-  is_absent: { true: "অনুপস্থিত", false: "উপস্থিত" },
-  is_exempted: { true: "হ্যাঁ", false: "না" },
-  is_withheld: { true: "হ্যাঁ", false: "না" },
+const booleanLabel = (field: string, value: string): string | undefined => {
+  const t = getText(resultPanelText).corrections;
+  const labels: Record<string, Record<string, string>> = {
+    is_absent: { true: t.absent, false: t.present },
+    is_exempted: { true: t.yes, false: t.no },
+    is_withheld: { true: t.yes, false: t.no },
+  };
+  return labels[field]?.[value];
 };
 
 const formatValue = (field: string, value: string | null) => {
   if (value === null || value === "") return "—";
-  const boolLabel = BOOLEAN_LABELS[field]?.[value];
+  const boolLabel = booleanLabel(field, value);
   if (boolLabel) return boolLabel;
-  return /^-?\d+(\.\d+)?$/.test(value) ? toBanglaDigits(value) : value;
+  return /^-?\d+(\.\d+)?$/.test(value) ? localizeDigits(value, getLang()) : value;
 };
 
 const formatWhen = (iso: string | null) => {
   if (!iso) return "";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : toBanglaDigits(d.toLocaleDateString("en-GB"));
+  return formatDate(iso, getLang(), { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
 /** Lists every correction request filed against a PUBLISHED/LOCKED result and
@@ -93,6 +86,9 @@ export default function ResultCorrectionsPanel({
   onApplied,
 }: Props) {
   const push = useToastStore((state) => state.push);
+  const t = useText(resultPanelText).corrections;
+  const c = useText(commonText);
+  const num = (value: number | string) => localizeDigits(value, getLang());
   const [rows, setRows] = useState<CorrectionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -120,12 +116,12 @@ export default function ResultCorrectionsPanel({
   }, [load, reloadKey]);
 
   const studentName = (id: number | null) =>
-    students.find((s) => s.student_id === id)?.name_bn || (id ? `শিক্ষার্থী #${toBanglaDigits(id)}` : "—");
+    students.find((s) => s.student_id === id)?.name_bn || (id ? t.studentFallback(num(id)) : "—");
 
   const bookName = (id: number | null) => {
     if (!id) return "—";
     const b = books.find((x) => x.book_id === id);
-    return b?.book_name_bn || b?.name_bn || b?.book_name || `বিষয় #${toBanglaDigits(id)}`;
+    return b?.book_name_bn || b?.name_bn || b?.book_name || t.bookFallback(num(id));
   };
 
   const decide = async (id: number, approve: boolean, note?: string) => {
@@ -135,12 +131,12 @@ export default function ResultCorrectionsPanel({
         approve,
         ...(note ? { decision_note: note } : {}),
       });
-      push("success", approve ? "সংশোধন প্রয়োগ করা হয়েছে" : "সংশোধনের অনুরোধ প্রত্যাখ্যান করা হয়েছে");
+      push("success", approve ? t.applied : t.rejected);
       await load();
       if (approve) onApplied();
     } catch (err: any) {
       logger.error("Decide correction error:", err);
-      push("error", err?.response?.data?.message || "সিদ্ধান্ত নেওয়া যায়নি");
+      push("error", err?.response?.data?.message || t.decideFailed);
       await load();
     } finally {
       setDecidingId(null);
@@ -150,9 +146,15 @@ export default function ResultCorrectionsPanel({
 
   const handleApprove = (row: CorrectionRow) => {
     useConfirmStore.getState().show({
-      title: "সংশোধন অনুমোদন করুন",
-      message: `${studentName(row.student_id)} — ${bookName(row.book_id)}: ${FIELD_LABELS[row.field] || row.field} "${formatValue(row.field, row.old_value)}" থেকে "${formatValue(row.field, row.new_value)}" করা হবে। মোট, গড়, গ্রেড ও মেধাক্রম নতুন করে হিসাব হবে।`,
-      confirmText: "অনুমোদন ও প্রয়োগ",
+      title: t.approveTitle,
+      message: t.approveMessage(
+        studentName(row.student_id),
+        bookName(row.book_id),
+        fieldLabel(row.field),
+        formatValue(row.field, row.old_value),
+        formatValue(row.field, row.new_value),
+      ),
+      confirmText: t.approveConfirm,
       onConfirm: () => decide(row.id, true),
     });
   };
@@ -166,25 +168,25 @@ export default function ResultCorrectionsPanel({
     <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold dark:text-slate-100">📝 ফলাফল সংশোধনের অনুরোধ</h2>
+          <h2 className="text-base sm:text-lg font-semibold dark:text-slate-100">{t.title}</h2>
           <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
-            প্রকাশিত ফলাফলে সরাসরি নম্বর বদলানো যায় না — "✏️ সংশোধন" চেপে অনুরোধ পাঠান, অনুমোদনের পর তা প্রয়োগ হবে।
+            {t.subtitle}
           </p>
         </div>
         <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400 cursor-pointer">
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          সব দেখান ({toBanglaDigits(rows.length)})
+          {t.showAll(num(rows.length))}
         </label>
       </div>
 
       {loading && rows.length === 0 ? (
-        <p className="text-sm text-gray-400 py-4 text-center dark:text-slate-500">লোড হচ্ছে...</p>
+        <p className="text-sm text-gray-400 py-4 text-center dark:text-slate-500">{c.loading}</p>
       ) : visible.length === 0 ? (
         <p className="text-sm text-gray-400 py-4 text-center dark:text-slate-500">
           {rows.length === 0
-            ? "এখনো কোনো সংশোধনের অনুরোধ নেই"
+            ? t.noneYet
             : pendingCount === 0
-              ? "কোনো অপেক্ষমান অনুরোধ নেই"
+              ? t.nonePending
               : ""}
         </p>
       ) : (
@@ -192,13 +194,13 @@ export default function ResultCorrectionsPanel({
           <table className="w-full min-w-[720px] border text-xs sm:text-sm dark:border-slate-800">
             <thead className="bg-gray-100 dark:bg-slate-800">
               <tr>
-                <th className="border px-2 py-2 text-start dark:border-slate-800">শিক্ষার্থী</th>
-                <th className="border px-2 py-2 text-start dark:border-slate-800">বিষয়</th>
-                <th className="border px-2 py-2 text-start dark:border-slate-800">ক্ষেত্র</th>
-                <th className="border px-2 py-2 text-center dark:border-slate-800">আগে → নতুন</th>
-                <th className="border px-2 py-2 text-start dark:border-slate-800">কারণ</th>
-                <th className="border px-2 py-2 text-center dark:border-slate-800">অবস্থা</th>
-                {canDecide && <th className="border px-2 py-2 text-center dark:border-slate-800">কার্যক্রম</th>}
+                <th className="border px-2 py-2 text-start dark:border-slate-800">{t.student}</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">{t.subject}</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">{t.field}</th>
+                <th className="border px-2 py-2 text-center dark:border-slate-800">{t.beforeAfter}</th>
+                <th className="border px-2 py-2 text-start dark:border-slate-800">{t.reason}</th>
+                <th className="border px-2 py-2 text-center dark:border-slate-800">{t.state}</th>
+                {canDecide && <th className="border px-2 py-2 text-center dark:border-slate-800">{t.actions}</th>}
               </tr>
             </thead>
             <tbody>
@@ -209,14 +211,14 @@ export default function ResultCorrectionsPanel({
                   <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
                     <td className="border px-2 py-2 dark:border-slate-800">{studentName(r.student_id)}</td>
                     <td className="border px-2 py-2 dark:border-slate-800">{bookName(r.book_id)}</td>
-                    <td className="border px-2 py-2 dark:border-slate-800">{FIELD_LABELS[r.field] || r.field}</td>
+                    <td className="border px-2 py-2 dark:border-slate-800">{fieldLabel(r.field)}</td>
                     <td className="border px-2 py-2 text-center whitespace-nowrap dark:border-slate-800">
                       {formatValue(r.field, r.old_value)} → <b>{formatValue(r.field, r.new_value)}</b>
                     </td>
                     <td className="border px-2 py-2 break-words dark:border-slate-800">
                       {r.reason}
                       {r.decision_note ? (
-                        <div className="text-[11px] text-gray-500 dark:text-slate-400">সিদ্ধান্ত: {r.decision_note}</div>
+                        <div className="text-[11px] text-gray-500 dark:text-slate-400">{t.decision(r.decision_note)}</div>
                       ) : null}
                       <div className="text-[11px] text-gray-400 dark:text-slate-500">{formatWhen(r.requested_at)}</div>
                     </td>
@@ -234,14 +236,14 @@ export default function ResultCorrectionsPanel({
                               disabled={decidingId === r.id}
                               className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:bg-gray-400"
                             >
-                              অনুমোদন
+                              {t.approve}
                             </button>
                             <button
                               onClick={() => setRejectId(r.id)}
                               disabled={decidingId === r.id}
                               className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:bg-gray-400"
                             >
-                              প্রত্যাখ্যান
+                              {t.reject}
                             </button>
                           </div>
                         ) : (
@@ -259,10 +261,10 @@ export default function ResultCorrectionsPanel({
 
       <ReasonPromptModal
         open={rejectId !== null}
-        title="সংশোধনের অনুরোধ প্রত্যাখ্যান"
-        message="প্রত্যাখ্যান করলে ফলাফলে কোনো পরিবর্তন হবে না।"
-        label="প্রত্যাখ্যানের কারণ"
-        confirmText="প্রত্যাখ্যান করুন"
+        title={t.rejectTitle}
+        message={t.rejectMessage}
+        label={t.rejectLabel}
+        confirmText={t.rejectConfirm}
         loading={decidingId !== null}
         onCancel={() => setRejectId(null)}
         onConfirm={(reason) => rejectId !== null && decide(rejectId, false, reason)}

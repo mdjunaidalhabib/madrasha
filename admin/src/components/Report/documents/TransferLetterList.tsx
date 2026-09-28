@@ -2,7 +2,9 @@ import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import TemplatedLetter from "./engine/TemplatedLetter";
 import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
-import { DEFAULT_TRANSFER_LETTER_TEMPLATE } from "@madrasha/shared-ui/src/utils/documentTemplates";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { documentDefaultsText } from "./documentDefaults.text";
 
 type TransferLetterListProps = {
   rows: Record<string, any>[];
@@ -22,7 +24,8 @@ const TransferLetterList = ({
   bodyTextOverride,
   templateId,
 }: TransferLetterListProps) => {
-  const template = useDocumentTemplate("transfer_letter_template", DEFAULT_TRANSFER_LETTER_TEMPLATE);
+  const template = useDocumentTemplate("transfer_letter_template", usePrintText(documentDefaultsText).transferLetter);
+  const t = usePrintText(reportText);
   const row = rows[0] || {};
 
   return (
@@ -34,7 +37,7 @@ const TransferLetterList = ({
       fallback={
         <LetterDocument
           row={row}
-          heading="ছাড়পত্র"
+          heading={t.title.transferLetter}
           headingClassName={LETTER_HEADING_CLASS}
           bodyClassName={LETTER_BODY_CLASS}
           template={template}
@@ -44,7 +47,7 @@ const TransferLetterList = ({
           bare
           letterhead
           beforeHeading={<LetterDateLine />}
-          footer={<LetterSignatureFooter label="প্রধান শিক্ষকের স্বাক্ষর ও সীল" />}
+          footer={<LetterSignatureFooter label={t.sign.headSeal} />}
         />
       }
     />

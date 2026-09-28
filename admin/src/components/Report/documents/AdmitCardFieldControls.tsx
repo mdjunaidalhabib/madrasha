@@ -8,6 +8,8 @@ import {
   saveBranding,
   type AdmitCardFieldItem,
 } from "../../../services/brandingApi";
+import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "../reportUi.text";
 
 /** Reads/writes the admit card's "ডিফল্ট (সাধারণ)" design field settings
  * (visibility/order - one stored list, same pattern as marksheet_fields, see
@@ -29,7 +31,7 @@ const useAdmitCardFieldSettings = () => {
       await saveBranding({ admit_card_fields: next });
     } catch {
       setBranding(branding);
-      useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(getText(reportUiText).saveFailed, "error");
     }
   };
 
@@ -48,6 +50,7 @@ const arrowClass =
 
 /** One row per info field (নাম, পিতার নাম, ...): visibility switch + up/down to reorder. */
 export const AdmitCardFieldRows = () => {
+  const ui = useText(reportUiText);
   const { fields, save } = useAdmitCardFieldSettings();
 
   const toggle = (key: string, visible: boolean) => save(fields.map((f) => (f.key === key ? { ...f, visible } : f)));
@@ -67,7 +70,7 @@ export const AdmitCardFieldRows = () => {
           <div className="flex items-center gap-2">
             <ListChecks size={14} className="shrink-0 text-gray-400 dark:text-slate-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-              {ADMIT_CARD_FIELD_LABELS_BN[field.key] || field.key}
+              {ui.admitCardFields[field.key] || ADMIT_CARD_FIELD_LABELS_BN[field.key] || field.key}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -75,7 +78,7 @@ export const AdmitCardFieldRows = () => {
               type="button"
               onClick={() => move(index, -1)}
               disabled={index === 0}
-              aria-label="উপরে সরান"
+              aria-label={ui.moveUp}
               className={arrowClass}
             >
               <ArrowUp size={12} />
@@ -84,7 +87,7 @@ export const AdmitCardFieldRows = () => {
               type="button"
               onClick={() => move(index, 1)}
               disabled={index === fields.length - 1}
-              aria-label="নিচে সরান"
+              aria-label={ui.moveDown}
               className={arrowClass}
             >
               <ArrowDown size={12} />
@@ -101,12 +104,13 @@ export const AdmitCardFieldRows = () => {
  * order) and a reset. Shared by the settings page (if added later) and the report
  * preview toolbar. */
 export const AdmitCardControlsPanel = () => {
+  const ui = useText(reportUiText);
   const { save } = useAdmitCardFieldSettings();
 
   return (
     <div>
       <p className="mb-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
-        তথ্য ফিল্ড — কোনটা দেখাবেন আর কোন ক্রমে
+        {ui.infoFieldsHint}
       </p>
       <AdmitCardFieldRows />
 
@@ -116,14 +120,16 @@ export const AdmitCardControlsPanel = () => {
         className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
       >
         <RotateCcw size={12} />
-        ডিফল্টে ফিরিয়ে আনুন
+        {ui.resetDefault}
       </button>
     </div>
   );
 };
 
 /** Toolbar button that shows/hides the docked admit-card field settings panel. */
-export const AdmitCardSettingsToggleButton = ({ open, onToggle }: { open: boolean; onToggle: () => void }) => (
+export const AdmitCardSettingsToggleButton = ({ open, onToggle }: { open: boolean; onToggle: () => void }) => {
+  const ui = useText(reportUiText);
+  return (
   <button
     type="button"
     onClick={onToggle}
@@ -135,25 +141,28 @@ export const AdmitCardSettingsToggleButton = ({ open, onToggle }: { open: boolea
     }`}
   >
     <PenLine className="h-3 w-3" />
-    ফিল্ড সেটিং
+    {ui.fieldSettings}
   </button>
 );
+};
 
 /** Admit-card field settings panel - same docked/drawer layout as MarksheetSettingsPanel. */
-export const AdmitCardSettingsPanel = ({ onClose }: { onClose: () => void }) => (
+export const AdmitCardSettingsPanel = ({ onClose }: { onClose: () => void }) => {
+  const ui = useText(reportUiText);
+  return (
   <>
     <div aria-hidden="true" onClick={onClose} className="no-print fixed inset-0 z-30 bg-slate-900/40 lg:hidden" />
     <aside
       role="dialog"
-      aria-label="প্রবেশপত্র ফিল্ড সেটিং"
+      aria-label={ui.admitCardFieldSettings}
       className="no-print animate-sideDrawer fixed inset-y-0 end-0 z-40 flex w-[min(88vw,340px)] flex-col overflow-hidden border-s border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:inset-y-auto lg:end-auto lg:top-3 lg:z-auto lg:m-3 lg:ms-0 lg:max-h-[calc(100vh-1.5rem)] lg:w-[320px] lg:shrink-0 lg:animate-none lg:rounded-xl lg:border lg:shadow-sm"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">প্রবেশপত্র ফিল্ড সেটিং</h3>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{ui.admitCardFieldSettings}</h3>
         <button
           type="button"
           onClick={onClose}
-          aria-label="সেটিং প্যানেল বন্ধ করুন"
+          aria-label={ui.closeSettings}
           className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
         >
           <X size={15} />
@@ -165,3 +174,4 @@ export const AdmitCardSettingsPanel = ({ onClose }: { onClose: () => void }) => 
     </aside>
   </>
 );
+};

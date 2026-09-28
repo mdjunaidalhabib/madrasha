@@ -1,4 +1,6 @@
 import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdminMadrasasPage";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { createMadrasaText } from "./createMadrasa.text";
 
 /** One বিভাগ's share of the registration-number blocks a new madrasa gets. */
 export type RegBlockPreviewRow = {
@@ -9,8 +11,6 @@ export type RegBlockPreviewRow = {
   start: number | null;
   end: number | null;
 };
-
-const bn = (n: number) => n.toLocaleString("bn-BD", { useGrouping: false });
 
 type Props = {
   plans: Plan[];
@@ -37,13 +37,16 @@ export default function PlanSection({
   onStartDateChange,
   regBlockPreview = [],
 }: Props) {
+  const t = useText(createMadrasaText);
+  const lang = useLang();
+  const bn = (n: number) => localizeDigits(n, lang);
   return (
     <div className="space-y-4">
-      <h4 className="font-semibold text-gray-700 dark:text-slate-200">Plan & Limits</h4>
+      <h4 className="font-semibold text-gray-700 dark:text-slate-200">{t.planAndLimits}</h4>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">Plan</label>
+          <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">{t.plan}</label>
           <select
             className="w-full border rounded px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={plan_id}
@@ -57,14 +60,14 @@ export default function PlanSection({
           </select>
         </div>
 
-        <LimitField label="Student Limit" value={student_limit} disabled={locked} />
-        <LimitField label="User Limit" value={user_limit} disabled={locked} />
+        <LimitField label={t.studentLimit} value={student_limit} disabled={locked} />
+        <LimitField label={t.userLimit} value={user_limit} disabled={locked} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-gray-600 block mb-1 dark:text-slate-400">
-            Plan Start Date
+            {t.planStartDate}
           </label>
           <input
             type="date"
@@ -74,29 +77,29 @@ export default function PlanSection({
           />
         </div>
 
-        <LimitField label="Duration (Days)" value={duration_days} disabled={locked} />
+        <LimitField label={t.durationDays} value={duration_days} disabled={locked} />
       </div>
 
       <p className="-mt-2 text-xs text-gray-400 dark:text-slate-500">
-        এই মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করে থাকলে প্রকৃত শুরুর তারিখ দিন, নাহলে আজকের তারিখ থাকবে।
+        {t.startDateHint}
       </p>
 
       {regBlockPreview.length > 0 && (
         <div className="rounded-lg border dark:border-slate-700">
           <div className="border-b px-3 py-2 dark:border-slate-700">
-            <div className="text-sm font-medium text-gray-700 dark:text-slate-200">রেজি. নম্বর ব্লক (প্ল্যান অনুযায়ী)</div>
+            <div className="text-sm font-medium text-gray-700 dark:text-slate-200">{t.regBlockTitle}</div>
             <p className="text-[11px] text-gray-500 dark:text-slate-400">
-              তৈরির সময় প্রতিটি শ্রেণি নিচের সাইজের ব্লক পাবে, পরপর সাজানো। পরে মাদ্রাসার অ্যাডমিন কম-বেশি করতে পারবেন।
+              {t.regBlockHint}
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-start text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
-                  <th className="px-3 py-2 font-medium">বিভাগ</th>
-                  <th className="px-3 py-2 font-medium">প্রতি শ্রেণি</th>
-                  <th className="px-3 py-2 font-medium">শ্রেণি</th>
-                  <th className="px-3 py-2 font-medium">নম্বর</th>
+                  <th className="px-3 py-2 font-medium">{t.colDivision}</th>
+                  <th className="px-3 py-2 font-medium">{t.colPerClass}</th>
+                  <th className="px-3 py-2 font-medium">{t.colClasses}</th>
+                  <th className="px-3 py-2 font-medium">{t.colNumbers}</th>
                 </tr>
               </thead>
               <tbody className="divide-y dark:divide-slate-700">
@@ -106,12 +109,12 @@ export default function PlanSection({
                     <td className="px-3 py-2 font-semibold tabular-nums">
                       {row.size ? bn(row.size) : <span className="font-normal text-gray-400">—</span>}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">{bn(row.classCount)}টি</td>
+                    <td className="px-3 py-2 tabular-nums">{t.classCount(bn(row.classCount))}</td>
                     <td className="px-3 py-2 tabular-nums">
                       {row.start != null && row.end != null ? (
                         `${bn(row.start)}–${bn(row.end)}`
                       ) : (
-                        <span className="text-xs text-gray-400">অটো ব্লক নেই</span>
+                        <span className="text-xs text-gray-400">{t.noAutoBlock}</span>
                       )}
                     </td>
                   </tr>

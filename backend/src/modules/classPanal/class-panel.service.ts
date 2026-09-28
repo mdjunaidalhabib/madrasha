@@ -19,6 +19,7 @@ import {
   ReorderDivisionsRequestDto,
   UpdateClassRegistrationBlockRequestDto,
 } from "./class-panel.dto";
+import { t } from "../../shared/i18n";
 
 export class ClassPanelService {
   constructor(
@@ -35,7 +36,7 @@ export class ClassPanelService {
 
   async listClasses(madrasaId: number | undefined, divisionId: number) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!divisionId) throw new BadRequestError("division_id is required");
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
 
     const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
     return rows.map((r) => ({
@@ -48,7 +49,7 @@ export class ClassPanelService {
   async addClass(madrasaId: number | undefined, dto: AddClassRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
     if (!dto.division_id || !dto.name_bn) {
-      throw new BadRequestError("division_id and name_bn required");
+      throw new BadRequestError(t({ bn: "division_id ও name_bn আবশ্যক", en: "division_id and name_bn required", ar: "division_id و name_bn مطلوبان" }));
     }
 
     const created = await this.repository.createClass(madrasaId, dto.name_bn, Number(dto.division_id));
@@ -74,9 +75,9 @@ export class ClassPanelService {
 
   async updateClass(madrasaId: number | undefined, id: number, dto: UpdateClassRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!dto.name_bn) throw new BadRequestError("name_bn required");
+    if (!dto.name_bn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn required", ar: "name_bn مطلوب" }));
     const { count } = await this.repository.updateClassName(madrasaId, id, dto.name_bn);
-    if (!count) throw new NotFoundError("Class not found in this madrasa");
+    if (!count) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে শ্রেণিটি পাওয়া যায়নি", en: "Class not found in this institution", ar: "لم يتم العثور على الصف في هذه المؤسسة" }));
   }
 
   async deleteClass(madrasaId: number | undefined, id: number) {
@@ -91,9 +92,9 @@ export class ClassPanelService {
 
   async updateDivision(madrasaId: number | undefined, id: number, dto: UpdateDivisionRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!dto.name_bn) throw new BadRequestError("name_bn required");
+    if (!dto.name_bn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn required", ar: "name_bn مطلوب" }));
     const { count } = await this.repository.updateDivisionName(madrasaId, id, dto.name_bn);
-    if (!count) throw new NotFoundError("Division not found in this madrasa");
+    if (!count) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে বিভাগটি পাওয়া যায়নি", en: "Division not found in this institution", ar: "لم يتم العثور على القسم في هذه المؤسسة" }));
   }
 
   async reorderDivisions(madrasaId: number | undefined, dto: ReorderDivisionsRequestDto) {
@@ -101,7 +102,7 @@ export class ClassPanelService {
 
     const orderedDivisionIds = (Array.isArray(dto.division_ids) ? dto.division_ids : []).map(Number);
     if (orderedDivisionIds.some((id) => !id)) {
-      throw new BadRequestError("division_ids must be valid ids");
+      throw new BadRequestError(t({ bn: "division_ids সঠিক আইডি হতে হবে", en: "division_ids must be valid ids", ar: "يجب أن تكون division_ids معرفات صالحة" }));
     }
 
     const rows = await this.repository.findActiveDivisions(madrasaId);
@@ -111,23 +112,23 @@ export class ClassPanelService {
       activeDivisionIds.length === orderedDivisionIds.length &&
       activeDivisionIds.every((id) => orderedDivisionIds.includes(id));
     if (!sameSet) {
-      throw new BadRequestError("division_ids must match this madrasa's active divisions exactly");
+      throw new BadRequestError(t({ bn: "division_ids অবশ্যই এই প্রতিষ্ঠানের সক্রিয় বিভাগগুলোর সাথে হুবহু মিলতে হবে", en: "division_ids must match this institution's active divisions exactly", ar: "يجب أن تطابق division_ids الأقسام النشطة لهذه المؤسسة تمامًا" }));
     }
 
     await this.repository.reorderDivisions(madrasaId, orderedDivisionIds);
 
-    return { message: "বিভাগের ক্রম সংরক্ষণ করা হয়েছে" };
+    return { message: t({ bn: "বিভাগের ক্রম সংরক্ষণ করা হয়েছে", en: "Division order saved", ar: "تم حفظ ترتيب الأقسام" }) };
   }
 
   async reorderClasses(madrasaId: number | undefined, dto: ReorderClassesRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const divisionId = Number(dto.division_id);
-    if (!divisionId) throw new BadRequestError("division_id is required");
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
 
     const orderedClassIds = (Array.isArray(dto.class_ids) ? dto.class_ids : []).map(Number);
     if (orderedClassIds.some((id) => !id)) {
-      throw new BadRequestError("class_ids must be valid ids");
+      throw new BadRequestError(t({ bn: "class_ids সঠিক আইডি হতে হবে", en: "class_ids must be valid ids", ar: "يجب أن تكون class_ids معرفات صالحة" }));
     }
 
     const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
@@ -137,12 +138,12 @@ export class ClassPanelService {
       activeClassIds.length === orderedClassIds.length &&
       activeClassIds.every((id) => orderedClassIds.includes(id));
     if (!sameSet) {
-      throw new BadRequestError("class_ids must match this division's active classes exactly");
+      throw new BadRequestError(t({ bn: "class_ids অবশ্যই এই বিভাগের সক্রিয় শ্রেণিগুলোর সাথে হুবহু মিলতে হবে", en: "class_ids must match this division's active classes exactly", ar: "يجب أن تطابق class_ids الصفوف النشطة لهذا القسم تمامًا" }));
     }
 
     await this.repository.reorderClasses(madrasaId, orderedClassIds);
 
-    return { message: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে" };
+    return { message: t({ bn: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে", en: "Class order saved", ar: "تم حفظ ترتيب الصفوف" }) };
   }
 
   /** Every active class's registration-number block, grouped by বিভাগ in
@@ -197,7 +198,7 @@ export class ClassPanelService {
     dto: UpdateClassRegistrationBlockRequestDto,
   ) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!classId) throw new BadRequestError("class_id is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
 
     const parse = (value: unknown) =>
       value === null || value === undefined || String(value).trim() === "" ? null : Number(value);
@@ -205,25 +206,25 @@ export class ClassPanelService {
     const end = parse(dto.reg_no_end);
 
     if ((start === null) !== (end === null)) {
-      throw new BadRequestError("শুরু ও শেষ দুটো নম্বরই দিন, অথবা ব্লক মুছতে দুটোই খালি রাখুন");
+      throw new BadRequestError(t({ bn: "শুরু ও শেষ দুটো নম্বরই দিন, অথবা ব্লক মুছতে দুটোই খালি রাখুন", en: "Enter both the start and end numbers, or leave both empty to remove the block", ar: "أدخل رقمي البداية والنهاية معًا، أو اتركهما فارغين لحذف النطاق" }));
     }
     if (start !== null && end !== null) {
       if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 999_999_999) {
-        throw new BadRequestError("রেজি. নম্বর ১ বা তার বেশি পূর্ণসংখ্যা হতে হবে");
+        throw new BadRequestError(t({ bn: "রেজি. নম্বর ১ বা তার বেশি পূর্ণসংখ্যা হতে হবে", en: "Registration numbers must be whole numbers of 1 or more", ar: "يجب أن تكون أرقام التسجيل أعدادًا صحيحة من 1 فأكثر" }));
       }
       if (start > end) {
-        throw new BadRequestError("শুরুর নম্বর শেষের নম্বরের চেয়ে বড় হতে পারবে না");
+        throw new BadRequestError(t({ bn: "শুরুর নম্বর শেষের নম্বরের চেয়ে বড় হতে পারবে না", en: "The start number cannot be greater than the end number", ar: "لا يمكن أن يكون رقم البداية أكبر من رقم النهاية" }));
       }
       const overlap = await this.repository.findOverlappingRegistrationBlock(madrasaId, classId, start, end);
       if (overlap) {
         throw new BadRequestError(
-          `এই ব্লকটি "${linkName(overlap, overlap.class)}" শ্রেণির ব্লকের (${overlap.regNoStart}–${overlap.regNoEnd}) সাথে মিলে যাচ্ছে`,
+          t({ bn: `এই ব্লকটি "${linkName(overlap, overlap.class)}" শ্রেণির ব্লকের (${overlap.regNoStart}–${overlap.regNoEnd}) সাথে মিলে যাচ্ছে`, en: `This block overlaps the block of class "${linkName(overlap, overlap.class)}" (${overlap.regNoStart}–${overlap.regNoEnd})`, ar: `يتداخل هذا النطاق مع نطاق الصف "${linkName(overlap, overlap.class)}" (${overlap.regNoStart}–${overlap.regNoEnd})` }),
         );
       }
     }
 
     const linkedClass = await this.repository.findActiveClassForMadrasa(madrasaId, classId);
-    if (!linkedClass) throw new NotFoundError("Class not found in this madrasa");
+    if (!linkedClass) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে শ্রেণিটি পাওয়া যায়নি", en: "Class not found in this institution", ar: "لم يتم العثور على الصف في هذه المؤسسة" }));
 
     await this.repository.updateClassRegistrationBlock(madrasaId, classId, start, end);
     return { message: start === null ? "রেজি. নম্বরের ব্লক মুছে ফেলা হয়েছে" : "রেজি. নম্বরের ব্লক সংরক্ষণ করা হয়েছে" };
@@ -231,7 +232,7 @@ export class ClassPanelService {
 
   async listSubjects(madrasaId: number | undefined, classId: number) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!classId) throw new BadRequestError("class_id is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
 
     const rows = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
     return rows.map((r) => ({
@@ -256,19 +257,19 @@ export class ClassPanelService {
       new Set((Array.isArray(dto.book_ids) ? dto.book_ids : []).map(Number).filter(Boolean)),
     );
 
-    if (!classId) throw new BadRequestError("class_id is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
 
     const subjects = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
     const activeBookIds = new Set(subjects.map((row) => row.book.id));
     if (bookIds.some((bookId) => !activeBookIds.has(bookId))) {
-      throw new BadRequestError("নির্বাচিত কিতাবটি এই শ্রেণির সক্রিয় কিতাব নয়");
+      throw new BadRequestError(t({ bn: "নির্বাচিত বিষয়টি এই শ্রেণির সক্রিয় বিষয় নয়", en: "The selected subject is not an active subject of this class", ar: "المادة المختارة ليست مادة نشطة في هذا الصف" }));
     }
 
     await this.repository.setMiyariSubjects(madrasaId, classId, bookIds);
     const resultRefresh = await this.results.reprocessClassResults(madrasaId, classId);
 
     return {
-      message: "মিয়ারি কিতাব সংরক্ষণ করা হয়েছে",
+      message: t({ bn: "মিয়ারি বিষয় সংরক্ষণ করা হয়েছে", en: "Standard (mi'yari) subject saved", ar: "تم حفظ المادة المعيارية" }),
       book_ids: bookIds,
       refreshed_results: resultRefresh.updated,
       skipped_incomplete_results: resultRefresh.skipped,
@@ -279,11 +280,11 @@ export class ClassPanelService {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const classId = Number(dto.class_id);
-    if (!classId) throw new BadRequestError("class_id is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
 
     const orderedBookIds = (Array.isArray(dto.book_ids) ? dto.book_ids : []).map(Number);
     if (orderedBookIds.some((id) => !id)) {
-      throw new BadRequestError("book_ids must be valid ids");
+      throw new BadRequestError(t({ bn: "book_ids সঠিক আইডি হতে হবে", en: "book_ids must be valid ids", ar: "يجب أن تكون book_ids معرفات صالحة" }));
     }
 
     const subjects = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
@@ -293,23 +294,23 @@ export class ClassPanelService {
       activeBookIds.length === orderedBookIds.length &&
       activeBookIds.every((id) => orderedBookIds.includes(id));
     if (!sameSet) {
-      throw new BadRequestError("book_ids must match this class's active books exactly");
+      throw new BadRequestError(t({ bn: "book_ids অবশ্যই এই শ্রেণির সক্রিয় বিষয়গুলোর সাথে হুবহু মিলতে হবে", en: "book_ids must match this class's active subjects exactly", ar: "يجب أن تطابق book_ids المواد النشطة لهذا الصف تمامًا" }));
     }
 
     await this.repository.reorderSubjects(madrasaId, orderedBookIds);
 
-    return { message: "কিতাবের ক্রম সংরক্ষণ করা হয়েছে" };
+    return { message: t({ bn: "বিষয়ের ক্রম সংরক্ষণ করা হয়েছে", en: "Subject order saved", ar: "تم حفظ ترتيب المواد" }) };
   }
 
   async addSubject(madrasaId: number | undefined, dto: AddSubjectRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
     if (!dto.class_id || !dto.name_bn) {
-      throw new BadRequestError("class_id and name_bn required");
+      throw new BadRequestError(t({ bn: "class_id ও name_bn আবশ্যক", en: "class_id and name_bn required", ar: "class_id و name_bn مطلوبان" }));
     }
 
     const classId = Number(dto.class_id);
     const linkedClass = await this.repository.findActiveClassForMadrasa(madrasaId, classId);
-    if (!linkedClass) throw new NotFoundError("Class not found in this madrasa");
+    if (!linkedClass) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে শ্রেণিটি পাওয়া যায়নি", en: "Class not found in this institution", ar: "لم يتم العثور على الصف في هذه المؤسسة" }));
 
     await this.repository.createAndLinkSubject(madrasaId, dto.name_bn, classId);
     await this.results.reprocessClassResults(madrasaId, classId);
@@ -317,13 +318,13 @@ export class ClassPanelService {
 
   async updateSubject(madrasaId: number | undefined, id: number, dto: UpdateSubjectRequestDto) {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
-    if (!dto.name_bn) throw new BadRequestError("name_bn required");
+    if (!dto.name_bn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn required", ar: "name_bn مطلوب" }));
 
     const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
-    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+    if (!linkedSubject?.book) throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found", ar: "لم يتم العثور على المادة" }));
 
     const updated = await this.repository.updateSubjectForMadrasa(madrasaId, id, dto.name_bn);
-    if (!updated) throw new NotFoundError("Subject not found");
+    if (!updated) throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found", ar: "لم يتم العثور على المادة" }));
 
     // `updated.id` — not the route's `id` — because a shared seeded subject
     // may have just been copy-on-write'd to a new private Book (see
@@ -335,7 +336,7 @@ export class ClassPanelService {
     if (dto.full_marks !== undefined) {
       const fullMark = Number(dto.full_marks);
       if (!Number.isFinite(fullMark) || fullMark <= 0) {
-        throw new BadRequestError("full_marks must be a positive number");
+        throw new BadRequestError(t({ bn: "full_marks অবশ্যই ধনাত্মক সংখ্যা হতে হবে", en: "full_marks must be a positive number", ar: "يجب أن تكون full_marks عددًا موجبًا" }));
       }
       effectiveFullMark = Math.round(fullMark);
 
@@ -353,7 +354,7 @@ export class ClassPanelService {
       } else {
         const passMark = Number(passMarkRaw);
         if (!Number.isFinite(passMark) || passMark < 0 || passMark > effectiveFullMark) {
-          throw new BadRequestError("pass_mark must be between 0 and the subject's full marks");
+          throw new BadRequestError(t({ bn: "pass_mark অবশ্যই 0 থেকে বিষয়ের পূর্ণ নম্বরের মধ্যে হতে হবে", en: "pass_mark must be between 0 and the subject's full marks", ar: "يجب أن تكون pass_mark بين 0 والدرجة الكاملة للمادة" }));
         }
         await this.repository.updateSubjectPassMark(madrasaId, updated.id, Math.round(passMark));
       }
@@ -369,7 +370,7 @@ export class ClassPanelService {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
-    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+    if (!linkedSubject?.book) throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found", ar: "لم يتم العثور على المادة" }));
 
     const markCount = await this.repository.countSubjectMarks(madrasaId, id);
 
@@ -385,7 +386,7 @@ export class ClassPanelService {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const linkedSubject = await this.repository.findSubjectForMadrasa(madrasaId, id);
-    if (!linkedSubject?.book) throw new NotFoundError("Subject not found");
+    if (!linkedSubject?.book) throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found", ar: "لم يتم العثور على المادة" }));
 
     // Marks are preserved — this only moves the subject to Trash.
     await this.repository.deactivateSubject(madrasaId, id);

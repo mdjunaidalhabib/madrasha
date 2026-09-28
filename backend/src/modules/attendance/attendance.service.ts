@@ -8,6 +8,7 @@ import {
   BulkMarkAttendanceRequestDto,
 } from "./attendance.dto";
 import { ATTENDEE_TYPES, ATTENDANCE_STATUSES } from "./attendance.constants";
+import { t } from "../../shared/i18n";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -15,9 +16,9 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 };
 
 const parseDateOnly = (value: string | undefined, label: string): Date => {
-  if (!value) throw new BadRequestError(`${label} is required`);
+  if (!value) throw new BadRequestError(t({ bn: `${label} আবশ্যক`, en: `${label} is required`, ar: `${label} مطلوب` }));
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new BadRequestError(`${label} is invalid`);
+  if (Number.isNaN(date.getTime())) throw new BadRequestError(t({ bn: `${label} সঠিক নয়`, en: `${label} is invalid`, ar: `${label} غير صالح` }));
   return date;
 };
 
@@ -31,13 +32,13 @@ export class AttendanceService {
   ) {
     const attendeeType = String(dto.attendee_type || "").toUpperCase();
     if (!ATTENDEE_TYPES.includes(attendeeType as any)) {
-      throw new BadRequestError("attendee_type must be STUDENT, TEACHER or STAFF");
+      throw new BadRequestError(t({ bn: "attendee_type অবশ্যই STUDENT, TEACHER অথবা STAFF হতে হবে", en: "attendee_type must be STUDENT, TEACHER or STAFF", ar: "يجب أن يكون attendee_type أحد القيم STUDENT أو TEACHER أو STAFF" }));
     }
 
     const date = parseDateOnly(dto.date, "date");
 
     if (!Array.isArray(dto.entries) || dto.entries.length === 0) {
-      throw new BadRequestError("entries must be a non-empty array");
+      throw new BadRequestError(t({ bn: "entries একটি খালি নয় এমন তালিকা হতে হবে", en: "entries must be a non-empty array", ar: "يجب أن تكون entries مصفوفة غير فارغة" }));
     }
 
     const classId = dto.class_id ? Number(dto.class_id) : null;
@@ -46,11 +47,11 @@ export class AttendanceService {
       const status = String(entry.status || "").toUpperCase();
       if (!ATTENDANCE_STATUSES.includes(status as any)) {
         throw new BadRequestError(
-          `Invalid status "${entry.status}" for attendee ${entry.attendee_id}`,
+          t({ bn: `হাজিরাদাতা ${entry.attendee_id}-এর জন্য "${entry.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${entry.status}" for attendee ${entry.attendee_id}`, ar: `الحالة "${entry.status}" غير صالحة للحاضر ${entry.attendee_id}` }),
         );
       }
       if (entry.attendee_id === undefined || entry.attendee_id === null) {
-        throw new BadRequestError("attendee_id is required for every entry");
+        throw new BadRequestError(t({ bn: "প্রতিটি এন্ট্রির জন্য attendee_id আবশ্যক", en: "attendee_id is required for every entry", ar: "attendee_id مطلوب لكل قيد" }));
       }
 
       return {
@@ -68,7 +69,7 @@ export class AttendanceService {
       await this.repository.upsertMany(madrasaId, rows);
       return rows.length;
     } catch (err) {
-      return friendlyFailure("bulkMarkAttendance error:", err, "Failed to save attendance");
+      return friendlyFailure("bulkMarkAttendance error:", err, t({ bn: "হাজিরা সংরক্ষণ করা যায়নি", en: "Failed to save attendance", ar: "تعذر حفظ الحضور" }));
     }
   }
 
@@ -91,20 +92,20 @@ export class AttendanceService {
     try {
       return await this.repository.findMany(madrasaId, where as any);
     } catch (err) {
-      return friendlyFailure("listAttendance error:", err, "Failed to load attendance");
+      return friendlyFailure("listAttendance error:", err, t({ bn: "হাজিরা লোড করা যায়নি", en: "Failed to load attendance", ar: "تعذر تحميل الحضور" }));
     }
   }
 
   async summary(madrasaId: number, query: AttendanceSummaryQueryDto) {
-    if (!query.attendee_id) throw new BadRequestError("attendee_id is required");
+    if (!query.attendee_id) throw new BadRequestError(t({ bn: "attendee_id আবশ্যক", en: "attendee_id is required", ar: "attendee_id مطلوب" }));
     const attendeeType = String(query.attendee_type || "").toUpperCase();
     if (!ATTENDEE_TYPES.includes(attendeeType as any)) {
-      throw new BadRequestError("attendee_type must be STUDENT, TEACHER or STAFF");
+      throw new BadRequestError(t({ bn: "attendee_type অবশ্যই STUDENT, TEACHER অথবা STAFF হতে হবে", en: "attendee_type must be STUDENT, TEACHER or STAFF", ar: "يجب أن يكون attendee_type أحد القيم STUDENT أو TEACHER أو STAFF" }));
     }
 
     const month = query.month || new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-").map(Number);
-    if (!year || !monthNum) throw new BadRequestError("month must be in YYYY-MM format");
+    if (!year || !monthNum) throw new BadRequestError(t({ bn: "month অবশ্যই YYYY-MM ফরম্যাটে হতে হবে", en: "month must be in YYYY-MM format", ar: "يجب أن يكون الشهر بصيغة YYYY-MM" }));
 
     const from = new Date(Date.UTC(year, monthNum - 1, 1));
     const to = new Date(Date.UTC(year, monthNum, 0));
@@ -130,7 +131,7 @@ export class AttendanceService {
 
       return { month, ...counts, total, percentage };
     } catch (err) {
-      return friendlyFailure("attendanceSummary error:", err, "Failed to load attendance summary");
+      return friendlyFailure("attendanceSummary error:", err, t({ bn: "হাজিরার সারাংশ লোড করা যায়নি", en: "Failed to load attendance summary", ar: "تعذر تحميل ملخص الحضور" }));
     }
   }
 }

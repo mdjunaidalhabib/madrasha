@@ -3,7 +3,8 @@ import { Check, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
@@ -75,7 +76,10 @@ export default function GradeList({
   // keep it out of the list, the count and the chain so it never becomes the
   // "lowest band".
   const grades = withoutFailGrades(kind, allGrades);
-  const failSuffix = kind === "madrasa" ? "কে" : "-কে";
+  const t = useText(examPanelText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const [name, setName] = useState("");
   const [max, setMax] = useState("");
   const [point, setPoint] = useState("");
@@ -119,10 +123,10 @@ export default function GradeList({
     try {
       setFixing(true);
       await applyChainUpdates(rechained);
-      useToastStore.getState().show("গ্রেডের সীমা ঠিক করা হয়েছে", "success");
+      useToastStore.getState().show(getText(examPanelText).scaleFixed, "success");
       reload();
     } catch (err: any) {
-      useToastStore.getState().show(err?.response?.data?.message || "গ্রেডের সীমা ঠিক করা যায়নি", "error");
+      useToastStore.getState().show(err?.response?.data?.message || getText(examPanelText).scaleFixFailed, "error");
     } finally {
       setFixing(false);
     }
@@ -130,13 +134,13 @@ export default function GradeList({
 
   const add = async () => {
     if (!name.trim() || !max) {
-      return useToastStore.getState().show("সব ঘর পূরণ করুন", "error");
+      return useToastStore.getState().show(getText(examPanelText).fillAll, "error");
     }
 
     if (isFailGrade(kind, name)) {
       return useToastStore
         .getState()
-        .show(`"${failLabel}" আলাদা গ্রেড নয় — নম্বর ফেল মার্কের কম হলে শিক্ষার্থী স্বয়ংক্রিয়ভাবে ${failLabel} (ফেল) হয়`, "error");
+        .show(getText(examPanelText).failNotGrade(failLabel), "error");
     }
 
     try {
@@ -158,7 +162,7 @@ export default function GradeList({
       setPoint("");
       reload();
     } catch {
-      useToastStore.getState().show("গ্রেড যোগ করা যায়নি", "error");
+      useToastStore.getState().show(getText(examPanelText).gradeAddFailed, "error");
     } finally {
       setAdding(false);
     }
@@ -166,9 +170,9 @@ export default function GradeList({
 
   const del = (id: string | number, gradeName: string) => {
     useConfirmStore.getState().show({
-      title: "গ্রেড মুছবেন?",
-      message: `"${gradeName}" গ্রেডটি মুছে ফেলতে চান?`,
-      confirmText: "মুছে ফেলুন",
+      title: t.deleteGradeTitle,
+      message: t.deleteGradeMessage(gradeName),
+      confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
         const chained = recomputeChainAfterDelete(grades.map(toChainGrade), id, failMark);
@@ -193,12 +197,12 @@ export default function GradeList({
 
   const saveEdit = async (grade: GradeItem) => {
     if (!editName.trim()) {
-      return useToastStore.getState().show("গ্রেডের নাম দিন", "error");
+      return useToastStore.getState().show(getText(examPanelText).gradeNameRequired, "error");
     }
     if (isFailGrade(kind, editName)) {
       return useToastStore
         .getState()
-        .show(`"${failLabel}" আলাদা গ্রেডের নাম হিসেবে ব্যবহার করা যাবে না — এটি ফেলের স্বয়ংক্রিয় গ্রেড`, "error");
+        .show(getText(examPanelText).failNameReserved(failLabel), "error");
     }
 
     const { min, max: maxMark } = getGradeRange(grade);
@@ -210,11 +214,11 @@ export default function GradeList({
         max_mark: maxMark,
         point: editPoint ? Number(editPoint) : undefined,
       });
-      useToastStore.getState().show("গ্রেড আপডেট হয়েছে", "success");
+      useToastStore.getState().show(getText(examPanelText).gradeUpdated, "success");
       cancelEdit();
       reload();
     } catch (err: any) {
-      useToastStore.getState().show(err?.response?.data?.message || "গ্রেড আপডেট করা যায়নি", "error");
+      useToastStore.getState().show(err?.response?.data?.message || getText(examPanelText).gradeUpdateFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -231,12 +235,12 @@ export default function GradeList({
           </span>
           <h2 className="truncate text-lg font-bold text-slate-900 dark:text-slate-100">{config.title}</h2>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-            {toBanglaDigits(grades.length)}টি
+            {t.countN(toBanglaDigits(grades.length))}
           </span>
         </div>
         {readOnly && (
           <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Lock size={13} /> শুধু দেখার জন্য
+            <Lock size={13} /> {t.readOnly}
           </span>
         )}
       </div>
@@ -248,14 +252,14 @@ export default function GradeList({
             <div className="flex gap-2">
               <Input
                 className="w-full sm:w-24"
-                placeholder="সর্বোচ্চ"
+                placeholder={t.maxPlaceholder}
                 type="number"
                 value={max}
                 onChange={(e) => setMax(e.target.value)}
               />
               <Input
                 className="w-full sm:w-24"
-                placeholder="পয়েন্ট"
+                placeholder={t.point}
                 type="number"
                 step="0.01"
                 value={point}
@@ -265,8 +269,8 @@ export default function GradeList({
                 onClick={add}
                 disabled={adding}
                 className="shrink-0 px-3"
-                aria-label="গ্রেড যোগ করুন"
-                title="গ্রেড যোগ করুন"
+                aria-label={t.addGrade}
+                title={t.addGrade}
               >
                 <Plus size={16} />
               </Button>
@@ -274,7 +278,7 @@ export default function GradeList({
           </div>
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            শুধু সর্বোচ্চ নম্বর দিন — সর্বনিম্ন নম্বর স্বয়ংক্রিয়ভাবে আগের গ্রেড থেকে হিসাব হয়ে যাবে। পয়েন্ট ঐচ্ছিক।
+            {t.maxOnlyHint}
           </p>
         </>
       )}
@@ -286,30 +290,28 @@ export default function GradeList({
             {failMark > 0 ? `${toBanglaDigits(0)} - ${toBanglaDigits(failMark - 1)}` : "—"}
           </span>
         </span>
-        <span className="text-xs font-normal text-rose-700/80 dark:text-rose-400/80">(ফেল · স্বয়ংক্রিয়)</span>
+        <span className="text-xs font-normal text-rose-700/80 dark:text-rose-400/80">{t.failAuto}</span>
       </div>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        নম্বর {toBanglaDigits(failMark)}-এর কম পেলে শিক্ষার্থী স্বয়ংক্রিয়ভাবে {failLabel} (ফেল) হবে — {failLabel}
-        {failSuffix} আলাদা গ্রেড হিসেবে যোগ করার দরকার নেই।
+        {t.failAutoHint(toBanglaDigits(failMark), failLabel)}
       </p>
 
       {!readOnly && mismatched.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
           <p className="min-w-0 flex-1">
-            গ্রেডের সীমায় ফাঁক বা অমিল আছে — সর্বনিম্ন গ্রেড {toBanglaDigits(failMark)} থেকে শুরু হওয়ার কথা, কিন্তু সংরক্ষিত
-            সীমা মেলেনি।
+            {t.mismatch(toBanglaDigits(failMark))}
           </p>
           <Button onClick={fixScale} disabled={fixing} className="shrink-0">
-            {fixing ? "ঠিক করা হচ্ছে..." : "স্বয়ংক্রিয়ভাবে ঠিক করুন"}
+            {fixing ? t.fixing : t.autoFix}
           </Button>
         </div>
       )}
 
       {sorted.length === 0 ? (
         <EmptyState
-          title="কোনো গ্রেড যোগ করা হয়নি"
-          hint={readOnly ? "ডিফল্টে কোনো গ্রেড নেই" : "উপরে থেকে নতুন গ্রেড যোগ করুন"}
+          title={t.noGrades}
+          hint={readOnly ? t.noDefaultGrades : t.addGradeHint}
         />
       ) : (
         <div className="space-y-2">
@@ -337,7 +339,7 @@ export default function GradeList({
                           if (ev.key === "Enter") saveEdit(g);
                           if (ev.key === "Escape") cancelEdit();
                         }}
-                        placeholder="গ্রেড"
+                        placeholder={t.grade}
                       />
                       <Input
                         className="sm:w-28"
@@ -347,7 +349,7 @@ export default function GradeList({
                           if (ev.key === "Enter") saveEdit(g);
                           if (ev.key === "Escape") cancelEdit();
                         }}
-                        placeholder="পয়েন্ট"
+                        placeholder={t.point}
                         type="number"
                         step="0.01"
                       />
@@ -358,8 +360,8 @@ export default function GradeList({
                         onClick={() => saveEdit(g)}
                         disabled={saving}
                         className={`${actionBtn} text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40`}
-                        aria-label="সংরক্ষণ করুন"
-                        title="সংরক্ষণ করুন"
+                        aria-label={c.save}
+                        title={c.save}
                       >
                         <Check size={16} />
                       </button>
@@ -368,8 +370,8 @@ export default function GradeList({
                         onClick={cancelEdit}
                         disabled={saving}
                         className={`${actionBtn} text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800`}
-                        aria-label="বাতিল করুন"
-                        title="বাতিল করুন"
+                        aria-label={t.cancelAction}
+                        title={t.cancelAction}
                       >
                         <X size={16} />
                       </button>
@@ -387,7 +389,7 @@ export default function GradeList({
                       </span>
                       {hasPoint(g) && (
                         <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                          পয়েন্ট {toBanglaDigits(String(g.point))}
+                          {t.pointN(toBanglaDigits(String(g.point)))}
                         </span>
                       )}
                     </div>
@@ -397,8 +399,8 @@ export default function GradeList({
                           type="button"
                           onClick={() => startEdit(g)}
                           className={`${actionBtn} text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40`}
-                          aria-label="সম্পাদনা করুন"
-                          title="সম্পাদনা করুন"
+                          aria-label={t.editAction}
+                          title={t.editAction}
                         >
                           <Pencil size={16} />
                         </button>
@@ -406,8 +408,8 @@ export default function GradeList({
                           type="button"
                           onClick={() => del(g.id, g.name)}
                           className={`${actionBtn} text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300`}
-                          aria-label="মুছে ফেলুন"
-                          title="মুছে ফেলুন"
+                          aria-label={t.deleteAction}
+                          title={t.deleteAction}
                         >
                           <Trash2 size={16} />
                         </button>

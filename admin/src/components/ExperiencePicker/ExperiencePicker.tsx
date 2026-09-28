@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
 interface Props {
   label: string;
@@ -14,6 +16,10 @@ const ExperiencePicker: React.FC<Props> = ({
   month,
   onChange,
 }) => {
+  const t = useText(teacherStaffText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const num = (v: string | number) => localizeDigits(v, lang);
   const [openField, setOpenField] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +27,7 @@ const ExperiencePicker: React.FC<Props> = ({
   const months = Array.from({ length: 12 }, (_, i) => i);
 
   /* 👉 DISPLAY TEXT */
-  const display = year || month ? `${year || 0} বছর ${month || 0} মাস` : "";
+  const display = year || month ? t.yearsMonths(num(year || 0), num(month || 0)) : "";
 
   /* CLOSE DROPDOWN */
   useEffect(() => {
@@ -55,8 +61,8 @@ const ExperiencePicker: React.FC<Props> = ({
             className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between dark:border-slate-700 dark:bg-slate-800"
           >
             <div>
-              <p className="text-xs text-gray-500 dark:text-slate-400">বছর</p>
-              <p className="text-sm font-semibold dark:text-slate-100">{year || "Select"}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t.year}</p>
+              <p className="text-sm font-semibold dark:text-slate-100">{year ? num(year) : c.select}</p>
             </div>
             <ChevronDown
               size={18}
@@ -77,7 +83,7 @@ const ExperiencePicker: React.FC<Props> = ({
                   }}
                   className="px-3 py-2 hover:bg-green-50 cursor-pointer dark:text-slate-200 dark:hover:bg-green-950/40"
                 >
-                  {y}
+                  {num(y)}
                 </div>
               ))}
             </div>
@@ -91,8 +97,8 @@ const ExperiencePicker: React.FC<Props> = ({
             className="border rounded-lg px-3 py-2 bg-white cursor-pointer flex justify-between dark:border-slate-700 dark:bg-slate-800"
           >
             <div>
-              <p className="text-xs text-gray-500 dark:text-slate-400">মাস</p>
-              <p className="text-sm font-semibold dark:text-slate-100">{month || "Select"}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t.month}</p>
+              <p className="text-sm font-semibold dark:text-slate-100">{month ? num(month) : c.select}</p>
             </div>
             <ChevronDown
               size={18}
@@ -113,7 +119,7 @@ const ExperiencePicker: React.FC<Props> = ({
                   }}
                   className="px-3 py-2 hover:bg-green-50 cursor-pointer dark:text-slate-200 dark:hover:bg-green-950/40"
                 >
-                  {m}
+                  {num(m)}
                 </div>
               ))}
             </div>

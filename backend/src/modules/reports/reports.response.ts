@@ -18,7 +18,7 @@ export const fail = (res: Response, error: unknown) => {
   return res.status(500).json({
     success: false,
     data: [],
-    message: REPORT_LOAD_FAILED_MESSAGE,
+    message: REPORT_LOAD_FAILED_MESSAGE(),
   } satisfies ReportResponse);
 };
 
@@ -48,7 +48,7 @@ export const requireTenant = (req: Request, res: Response): number => {
   const madrasaId = tenantId(req);
 
   if (!madrasaId) {
-    res.status(400).json({ success: false, data: [], message: REPORT_TENANT_NOT_FOUND_MESSAGE });
+    res.status(400).json({ success: false, data: [], message: REPORT_TENANT_NOT_FOUND_MESSAGE() });
     return 0;
   }
 

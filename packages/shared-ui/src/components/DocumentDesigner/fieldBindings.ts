@@ -1,4 +1,6 @@
 import type { BackendDocumentType } from "./documentTypeMap";
+import { getText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 export interface FieldBinding {
   /** Row key, e.g. "student_name" - matches the columns selected in
@@ -12,46 +14,56 @@ export interface FieldBinding {
   isImage?: boolean;
 }
 
+/** A binding whose `label` is read in the current UI language on every
+ * access (getter) - the `field` key never changes. */
+const bind = (field: string, isImage?: boolean): FieldBinding => ({
+  field,
+  get label() {
+    return getText(designerText).fields[field] ?? field;
+  },
+  ...(isImage ? { isImage } : {}),
+});
+
 const STUDENT_FIELDS: FieldBinding[] = [
-  { field: "student_name", label: "শিক্ষার্থীর নাম" },
-  { field: "father_name", label: "পিতার নাম" },
-  { field: "mother_name", label: "মাতার নাম" },
-  { field: "image", label: "শিক্ষার্থীর ছবি", isImage: true },
-  { field: "roll", label: "রোল নং" },
-  { field: "registration_no", label: "রেজিস্ট্রেশন নং" },
-  { field: "class_name", label: "শ্রেণি" },
-  { field: "division_name", label: "বিভাগ" },
-  { field: "academic_year", label: "শিক্ষাবর্ষ" },
-  { field: "guardian_phone", label: "অভিভাবকের মোবাইল" },
+  bind("student_name"),
+  bind("father_name"),
+  bind("mother_name"),
+  bind("image", true),
+  bind("roll"),
+  bind("registration_no"),
+  bind("class_name"),
+  bind("division_name"),
+  bind("academic_year"),
+  bind("guardian_phone"),
 ];
 
 /** আইডি কার্ডের পিছনের পাতা - Talimat → ডকুমেন্টস টেমপ্লেট → "আইডি কার্ড ব্যাক" ট্যাবের মান (দেখুন useIdCardBackRows)। */
 const ID_CARD_BACK_FIELDS: FieldBinding[] = [
-  { field: "id_issue_date", label: "কার্ড ইস্যুর তারিখ" },
-  { field: "id_expiry_date", label: "কার্ডের মেয়াদ শেষ" },
-  { field: "principal_title", label: "অধ্যক্ষের পদবি" },
-  { field: "id_lost_return", label: "হারিয়ে গেলে ফেরতের ঠিকানা" },
-  { field: "principal_signature", label: "অধ্যক্ষের স্বাক্ষর", isImage: true },
+  bind("id_issue_date"),
+  bind("id_expiry_date"),
+  bind("principal_title"),
+  bind("id_lost_return"),
+  bind("principal_signature", true),
 ];
 
 const ADMIT_CARD_ONLY_FIELDS: FieldBinding[] = [
-  { field: "exam_name", label: "পরীক্ষার নাম" },
-  { field: "exam_year", label: "পরীক্ষার বছর" },
+  bind("exam_name"),
+  bind("exam_year"),
 ];
 
 /** পুরস্কার বই-লেবেল - reports.repository-র prize-book-labels row + useBookLabelRows-এর তৈরি `rank_label`/`exam_label`। */
 const BOOK_LABEL_FIELDS: FieldBinding[] = [
-  { field: "student_name", label: "শিক্ষার্থীর নাম" },
-  { field: "rank_label", label: "মেধাক্রম (১ম/২য়/৩য়...)" },
-  { field: "rank_no", label: "মেধাক্রম (সংখ্যা)" },
-  { field: "class_info", label: "শ্রেণি (বিভাগ) • রোল" },
-  { field: "roll", label: "রোল নং" },
-  { field: "class_name", label: "শ্রেণি" },
-  { field: "division_name", label: "বিভাগ" },
-  { field: "madrasa_grade", label: "মাদরাসা গ্রেড" },
-  { field: "exam_name", label: "পরীক্ষার নাম" },
-  { field: "exam_year", label: "পরীক্ষার বছর" },
-  { field: "exam_label", label: "পরীক্ষা ও বছর" },
+  bind("student_name"),
+  bind("rank_label"),
+  bind("rank_no"),
+  bind("class_info"),
+  bind("roll"),
+  bind("class_name"),
+  bind("division_name"),
+  bind("madrasa_grade"),
+  bind("exam_name"),
+  bind("exam_year"),
+  bind("exam_label"),
 ];
 
 /** Per document type, the fields an admin can bind a layer to in the

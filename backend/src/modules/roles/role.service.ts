@@ -5,6 +5,7 @@ import { DEFAULT_ROLE_PERMISSION_KEYS, isMuhtamimRole, normalizeAppRole } from "
 import { roleRepository, RoleRepository } from "./role.repository";
 import { CreateRoleRequestDto, UpdateRoleRequestDto } from "./role.dto";
 import { PROTECTED_ROLE_KEYS } from "./role.constants";
+import { t } from "../../shared/i18n";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -39,7 +40,7 @@ export class RoleService {
           .filter((k): k is string => Boolean(k)),
       }));
     } catch (err) {
-      return friendlyFailure("listRoles error:", err, "Failed to load roles");
+      return friendlyFailure("listRoles error:", err, t({ bn: "রোল লোড করা যায়নি", en: "Failed to load roles", ar: "تعذر تحميل الأدوار" }));
     }
   }
 
@@ -47,13 +48,13 @@ export class RoleService {
     try {
       return await this.repository.findAllPermissions();
     } catch (err) {
-      return friendlyFailure("listPermissionCatalog error:", err, "Failed to load permissions");
+      return friendlyFailure("listPermissionCatalog error:", err, t({ bn: "পারমিশন লোড করা যায়নি", en: "Failed to load permissions", ar: "تعذر تحميل الصلاحيات" }));
     }
   }
 
   async createRole(madrasaId: number, dto: CreateRoleRequestDto) {
     if (!dto.name_bn || !dto.name_bn.trim()) {
-      throw new BadRequestError("name_bn is required");
+      throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
     }
 
     // "তালিমাত"/"হিসাবরক্ষক" are no longer provisioned for every madrasa, so
@@ -65,7 +66,7 @@ export class RoleService {
     let keyName = isBuiltin ? builtinKey : dto.key_name?.trim().toUpperCase() || deriveKeyName(dto.name_bn);
     const existing = await this.repository.findRoleByKeyForTenant(madrasaId, keyName);
     if (existing) {
-      if (isBuiltin) throw new ConflictError("এই রোলটি আগে থেকেই আছে");
+      if (isBuiltin) throw new ConflictError(t({ bn: "এই রোলটি আগে থেকেই আছে", en: "This role already exists", ar: "هذا الدور موجود بالفعل" }));
       // Auto-disambiguate rather than fail outright on an auto-derived key.
       keyName = `${keyName}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
     }
@@ -92,13 +93,13 @@ export class RoleService {
         return { id: role.id, key_name: role.keyName };
       });
     } catch (err) {
-      return friendlyFailure("createRole error:", err, "Failed to create role");
+      return friendlyFailure("createRole error:", err, t({ bn: "রোল তৈরি করা যায়নি", en: "Failed to create role", ar: "تعذر إنشاء الدور" }));
     }
   }
 
   async updateRole(id: number, madrasaId: number, dto: UpdateRoleRequestDto) {
     const role = await this.repository.findRoleForTenant(id, madrasaId);
-    if (!role) throw new NotFoundError("Role not found");
+    if (!role) throw new NotFoundError(t({ bn: "রোল পাওয়া যায়নি", en: "Role not found", ar: "لم يتم العثور على الدور" }));
 
     // MUHTAMIM bypasses every permission check regardless of what's stored
     // in role_permissions (see isMuhtamimRole in rbac.middleware.ts) - its
@@ -107,7 +108,7 @@ export class RoleService {
     // would silently do nothing, which is worse than just refusing.
     if (dto.permission_keys !== undefined && isMuhtamimRole(role.keyName || "")) {
       throw new ConflictError(
-        "মুহতামিম সবসময় সম্পূর্ণ অ্যাক্সেস পাবেন — এই রোলের পারমিশন পরিবর্তন করা যাবে না।",
+        t({ bn: "প্রতিষ্ঠান প্রধান সবসময় সম্পূর্ণ অ্যাক্সেস পাবেন — এই রোলের পারমিশন পরিবর্তন করা যাবে না।", en: "The institution head always has full access — this role's permissions cannot be changed.", ar: "رئيس المؤسسة لديه دائمًا صلاحية كاملة — لا يمكن تغيير صلاحيات هذا الدور." }),
       );
     }
 
@@ -126,17 +127,17 @@ export class RoleService {
         }
       });
     } catch (err) {
-      return friendlyFailure("updateRole error:", err, "Failed to update role");
+      return friendlyFailure("updateRole error:", err, t({ bn: "রোল আপডেট করা যায়নি", en: "Failed to update role", ar: "تعذر تحديث الدور" }));
     }
   }
 
   async deleteRole(id: number, madrasaId: number) {
     const role = await this.repository.findRoleForTenant(id, madrasaId);
-    if (!role) throw new NotFoundError("Role not found");
+    if (!role) throw new NotFoundError(t({ bn: "রোল পাওয়া যায়নি", en: "Role not found", ar: "لم يتم العثور على الدور" }));
 
     if (PROTECTED_ROLE_KEYS.includes(role.keyName || "")) {
       throw new ConflictError(
-        "This is a default system role and can't be deleted (its key is relied on elsewhere)",
+        t({ bn: "এটি একটি ডিফল্ট সিস্টেম রোল, তাই মুছে ফেলা যাবে না (এর কী অন্যত্র ব্যবহৃত হয়)", en: "This is a default system role and can't be deleted (its key is relied on elsewhere)", ar: "هذا دور نظام افتراضي ولا يمكن حذفه (يعتمد عليه النظام في مواضع أخرى)" }),
       );
     }
 
@@ -144,16 +145,16 @@ export class RoleService {
     const target = roles.find((r) => r.id === id);
     if (target && target._count.users > 0) {
       throw new ConflictError(
-        `Can't delete this role while ${target._count.users} user(s) are still assigned to it`,
+        t({ bn: `এই রোলে এখনও ${target._count.users} জন ব্যবহারকারী যুক্ত থাকায় এটি মুছে ফেলা যাবে না`, en: `Can't delete this role while ${target._count.users} user(s) are still assigned to it`, ar: `لا يمكن حذف هذا الدور ما دام ${target._count.users} مستخدم مرتبطين به` }),
       );
     }
 
     try {
       const result = await this.repository.deleteRoleForTenant(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Role not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "রোল পাওয়া যায়নি", en: "Role not found", ar: "لم يتم العثور على الدور" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteRole error:", err, "Failed to delete role");
+      return friendlyFailure("deleteRole error:", err, t({ bn: "রোল মুছে ফেলা যায়নি", en: "Failed to delete role", ar: "تعذر حذف الدور" }));
     }
   }
 }

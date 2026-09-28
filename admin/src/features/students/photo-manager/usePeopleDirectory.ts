@@ -5,6 +5,8 @@ import { useAuthStore } from "../../../store/authStore";
 import { hasPermission } from "../../../utils/permissions";
 import { filterPeopleBySearch } from "../../../utils/personSearch";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText, getText } from "@madrasha/shared-ui/src/i18n";
+import { peopleToolsText } from "./peopleTools.text";
 import {
   TAB_META,
   toStaffPerson,
@@ -27,6 +29,7 @@ export type ClassItem = { class_id: number; class_name_bn: string; division_id?:
  * live in the URL too; read their initial values via `initialParam`.
  */
 export function usePeopleDirectory(extraParams: Record<string, string> = {}) {
+  const pt = useText(peopleToolsText);
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
@@ -90,7 +93,7 @@ export function usePeopleDirectory(extraParams: Record<string, string> = {}) {
       setLists((prev) => ({ ...prev, [t]: list }));
     } catch (err) {
       logger.error("PEOPLE TOOL LIST LOAD ERROR:", err);
-      setError("তালিকা লোড করা যায়নি");
+      setError(getText(peopleToolsText).listLoadFailed);
     } finally {
       setLoading(false);
     }
@@ -184,7 +187,7 @@ export function usePeopleDirectory(extraParams: Record<string, string> = {}) {
       classId && classes.find((c) => String(c.class_id) === classId)?.class_name_bn,
     ]
       .filter(Boolean)
-      .join(" › ") || `সব ${TAB_META[tab].label}`;
+      .join(" › ") || pt.allOf(pt.tabs[tab]);
 
   return {
     tabs,

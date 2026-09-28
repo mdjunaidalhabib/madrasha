@@ -6,6 +6,7 @@ import { promotionRepository } from "../promotion/promotion.repository";
 import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
 import { NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
+import { t } from "../../shared/i18n";
 
 const RECENT_INVOICE_COUNT = 5;
 const ATTENDANCE_RECENT_DAYS = 30;
@@ -28,7 +29,7 @@ const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 export class StudentProfileService {
   async getProfile360(studentId: number, madrasaId: number) {
     const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
-    if (!student) throw new NotFoundError("Student not found");
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
 
     const to = new Date();
     const from = new Date(to);

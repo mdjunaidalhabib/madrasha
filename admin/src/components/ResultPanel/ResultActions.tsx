@@ -1,3 +1,6 @@
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
+
 interface Props {
   onSave: () => void;
   onReset?: () => void;
@@ -11,6 +14,7 @@ interface Props {
 }
 
 export default function ResultActions({ onSave, onReset, disabled, saveDisabledReason }: Props) {
+  const t = useText(resultPanelText).actions;
   const saveDisabled = disabled || Boolean(saveDisabledReason);
 
   return (
@@ -21,7 +25,7 @@ export default function ResultActions({ onSave, onReset, disabled, saveDisabledR
         title={!disabled && saveDisabledReason ? saveDisabledReason : undefined}
         className="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
       >
-        💾 সংরক্ষণ ও প্রসেস করুন
+        {t.saveAndProcess}
       </button>
 
       {/* Outline/ghost styling (not a solid red fill) so this destructive,
@@ -33,7 +37,7 @@ export default function ResultActions({ onSave, onReset, disabled, saveDisabledR
           disabled={disabled}
           className="border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
         >
-          ♻ রিসেট
+          {t.reset}
         </button>
       )}
     </div>

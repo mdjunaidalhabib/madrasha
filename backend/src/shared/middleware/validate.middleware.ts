@@ -1,5 +1,7 @@
 import { RequestHandler } from "express";
 import { AnyZodObject, ZodError } from "zod";
+import { t } from "../i18n";
+import { localizeZodFlatten } from "../validators/messages";
 
 export const validate = (schema: AnyZodObject): RequestHandler => {
   return (req, res, next) => {
@@ -10,8 +12,8 @@ export const validate = (schema: AnyZodObject): RequestHandler => {
       if (error instanceof ZodError) {
         return res.status(422).json({
           success: false,
-          message: "Validation failed",
-          errors: error.flatten(),
+          message: t({ bn: "তথ্য যাচাই ব্যর্থ হয়েছে", en: "Validation failed", ar: "فشل التحقق من البيانات" }),
+          errors: localizeZodFlatten(error.flatten()),
         });
       }
       next(error);

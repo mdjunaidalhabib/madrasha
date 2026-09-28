@@ -1,6 +1,14 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import ErrorState from "./ErrorState";
 import { logger } from "../../utils/logger";
+import { useText } from "../../i18n";
+import { uiText } from "./ui.text";
+
+// Function wrapper so the fallback re-renders in the current UI language.
+function RouteErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const t = useText(uiText);
+  return <ErrorState title={t.routeErrorTitle} message={t.routeErrorMessage} onRetry={onRetry} />;
+}
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean };
@@ -24,11 +32,7 @@ export default class RouteErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <ErrorState
-          title="পেজ লোড করা যায়নি"
-          message="এই পেজে একটি সমস্যা হয়েছে। মেনু থেকে অন্য পেজে যান অথবা আবার চেষ্টা করুন।"
-          onRetry={() => this.setState({ hasError: false })}
-        />
+        <RouteErrorFallback onRetry={() => this.setState({ hasError: false })} />
       );
     }
 

@@ -6,6 +6,8 @@ import { cachedGet } from "../../services/api";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
+import { formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "./teacherStaff.text";
 
 type GenderBreakdown = { male: number; female: number; unspecified: number };
 type DesignationRow = { designation: string; count: number };
@@ -99,7 +101,6 @@ const PremiumStatSkeleton = () => (
   </div>
 );
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
 
 /** Merges two {period,count} series (different periods may be missing from
  * either side) into one chart-ready array keyed by the union of periods,
@@ -119,6 +120,9 @@ export default function TeacherStaffDashboardPage() {
   const [teacher, setTeacher] = useState<TeacherSummary | null>(null);
   const [staff, setStaff] = useState<StaffSummary | null>(null);
   const isDark = useThemeStore((s) => s.theme) === "dark";
+  const t = useText(teacherStaffText);
+  const lang = useLang();
+  const bn = (value: number) => formatNumber(value || 0, lang);
   const gridColor = isDark ? "#334155" : "#e2e8f0";
   const axisColor = isDark ? "#64748b" : "#94a3b8";
 
@@ -161,59 +165,59 @@ export default function TeacherStaffDashboardPage() {
           ) : (
             <>
               <PremiumStat
-                label="মোট শিক্ষক"
+                label={t.totalTeachersLabel}
                 value={bn(teacher.totalActiveTeachers)}
                 tone="indigo"
                 icon={<GraduationCap size={20} />}
                 to="/teacher_staff/all_teacher"
               />
               <PremiumStat
-                label="মোট স্টাফ"
+                label={t.totalStaffLabel}
                 value={bn(staff.totalActiveStaff)}
                 tone="emerald"
                 icon={<Users size={20} />}
                 to="/teacher_staff/all_staff"
               />
-              <PremiumStat label="পুরুষ" value={bn(totalMale)} tone="sky" icon={<UsersRound size={20} />} />
-              <PremiumStat label="মহিলা" value={bn(totalFemale)} tone="rose" icon={<UsersRound size={20} />} />
+              <PremiumStat label={t.male} value={bn(totalMale)} tone="sky" icon={<UsersRound size={20} />} />
+              <PremiumStat label={t.female} value={bn(totalFemale)} tone="rose" icon={<UsersRound size={20} />} />
             </>
           )}
         </div>
 
         <Card className="flex h-full flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
             to="/teacher_staff/teacher_admission"
           >
-            <UserPlus size={16} /> নতুন শিক্ষক
+            <UserPlus size={16} /> {t.newTeacher}
           </Link>
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/teacher_staff/all_teacher"
           >
-            শিক্ষকসমূহ
+            {t.teachers}
           </Link>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
             to="/teacher_staff/staff_admission"
           >
-            <UserPlus size={16} /> নতুন স্টাফ
+            <UserPlus size={16} /> {t.newStaff}
           </Link>
           <Link
             className="rounded-xl bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
             to="/teacher_staff/all_staff"
           >
-            স্টাফসমূহ
+            {t.staffs}
           </Link>
         </Card>
       </div>
 
       <ChartCard
-        title="নিয়োগের প্রবণতা"
-        subtitle="গত ১২ মাস, শিক্ষক বনাম স্টাফ"
+        title={t.hiringTrend}
+        subtitle={t.hiringTrendSubtitle}
         loading={loading}
         empty={!loading && joiningTrend.length === 0}
       >
@@ -224,15 +228,15 @@ export default function TeacherStaffDashboardPage() {
             <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
             <Tooltip {...tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 13 }} />
-            <Line type="monotone" dataKey="teacher" name="শিক্ষক" stroke="#4f46e5" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="staff" name="স্টাফ" stroke="#059669" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="teacher" name={t.teacher} stroke="#4f46e5" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="staff" name={t.staff} stroke="#059669" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard
-          title="শিক্ষক - পদবি অনুযায়ী"
+          title={t.teacherByDesignation}
           loading={loading}
           empty={!loading && teacherDesignations.length === 0}
         >
@@ -242,7 +246,7 @@ export default function TeacherStaffDashboardPage() {
               <XAxis type="number" stroke={axisColor} tick={{ fontSize: 12 }} allowDecimals={false} />
               <YAxis type="category" dataKey="designation" stroke={axisColor} tick={{ fontSize: 12 }} width={100} />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="count" name="শিক্ষক" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="count" name={t.teacher} radius={[0, 6, 6, 0]}>
                 {teacherDesignations.map((entry, index) => (
                   <Cell key={entry.designation} fill={DESIGNATION_COLORS[index % DESIGNATION_COLORS.length]} />
                 ))}
@@ -252,7 +256,7 @@ export default function TeacherStaffDashboardPage() {
         </ChartCard>
 
         <ChartCard
-          title="স্টাফ - পদবি অনুযায়ী"
+          title={t.staffByDesignation}
           loading={loading}
           empty={!loading && staffDesignations.length === 0}
         >
@@ -262,7 +266,7 @@ export default function TeacherStaffDashboardPage() {
               <XAxis type="number" stroke={axisColor} tick={{ fontSize: 12 }} allowDecimals={false} />
               <YAxis type="category" dataKey="designation" stroke={axisColor} tick={{ fontSize: 12 }} width={100} />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="count" name="স্টাফ" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="count" name={t.staff} radius={[0, 6, 6, 0]}>
                 {staffDesignations.map((entry, index) => (
                   <Cell key={entry.designation} fill={DESIGNATION_COLORS[index % DESIGNATION_COLORS.length]} />
                 ))}
@@ -273,13 +277,13 @@ export default function TeacherStaffDashboardPage() {
       </div>
 
       {!loading && (
-        <ChartCard title="লিঙ্গ অনুযায়ী বণ্টন" subtitle="শিক্ষক ও স্টাফ মিলিয়ে">
+        <ChartCard title={t.genderDistribution} subtitle={t.teacherAndStaff}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={[
-                  { name: "পুরুষ", value: totalMale, key: "male" },
-                  { name: "মহিলা", value: totalFemale, key: "female" },
+                  { name: t.male, value: totalMale, key: "male" },
+                  { name: t.female, value: totalFemale, key: "female" },
                 ].filter((row) => row.value > 0)}
                 dataKey="value"
                 nameKey="name"

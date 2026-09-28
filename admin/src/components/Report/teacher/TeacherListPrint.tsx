@@ -1,4 +1,7 @@
-import { cellValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
 
 type TeacherListPrintProps = {
   rows: Record<string, any>[];
@@ -22,13 +25,14 @@ const TeacherListPrint = ({
   startIndex = 0,
   isFirstPage = true,
 }: TeacherListPrintProps) => {
+  const t = usePrintText(reportText);
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
       <div className="student-report-heading report-block-heading mb-3 text-center">
-        <h1 className="student-report-title text-xl font-bold">শিক্ষক তালিকা</h1>
+        <h1 className="student-report-title text-xl font-bold">{t.title.teacherList}</h1>
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          {selectedDivisionName || "সকল বিভাগ"}
+          {selectedDivisionName || t.allDivisions}
         </p>
       </div>
       )}
@@ -39,29 +43,29 @@ const TeacherListPrint = ({
         {isFirstPage && (
         <thead>
           <tr>
-            <th className="w-16 border border-black px-1 py-2 text-base font-bold">রেজিঃ নম্বর</th>
-            <th className="border border-black px-1 py-2 text-base font-bold">শিক্ষকের নাম</th>
-            <th className="w-20 border border-black px-1 py-2 text-base font-bold">পদবি</th>
-            <th className="w-20 border border-black px-1 py-2 text-base font-bold">ডিপার্টমেন্ট</th>
-            <th className="w-20 border border-black px-1 py-2 text-base font-bold">যোগ্যতা</th>
-            <th className="w-28 border border-black px-1 py-2 text-base font-bold">মোবাইল</th>
-            <th className="w-24 border border-black px-1 py-2 text-base font-bold">যোগদানের তারিখ</th>
+            <th className="w-16 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>
+            <th className="border border-black px-1 py-2 text-base font-bold">{t.col.teacherName}</th>
+            <th className="w-20 border border-black px-1 py-2 text-base font-bold">{t.col.designation}</th>
+            <th className="w-20 border border-black px-1 py-2 text-base font-bold">{t.col.department}</th>
+            <th className="w-20 border border-black px-1 py-2 text-base font-bold">{t.col.qualification}</th>
+            <th className="w-28 border border-black px-1 py-2 text-base font-bold">{t.col.mobile}</th>
+            <th className="w-24 border border-black px-1 py-2 text-base font-bold">{t.col.joiningDate}</th>
           </tr>
         </thead>
         )}
         <tbody>
           {rows.map((row, index) => (
             <tr key={`teacher-list-${startIndex + index}-${row.id || row.teacher_id || index}`}>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
+              <td className="h-8 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>
               <td className="h-8 border border-black px-1 text-start font-semibold text-base">
-                {cellValue(row, "teacher_name")}
+                {printCell(row, "teacher_name")}
               </td>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "designation")}</td>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "department")}</td>
+              <td className="h-8 border border-black px-1 text-base">{printCell(row, "designation")}</td>
+              <td className="h-8 border border-black px-1 text-base">{printCell(row, "department")}</td>
               <td className="h-8 border border-black px-1 text-start text-base">
-                {cellValue(row, "qualification")}
+                {printCell(row, "qualification")}
               </td>
-              <td className="h-8 border border-black px-1 text-base">{cellValue(row, "phone")}</td>
+              <td className="h-8 border border-black px-1 text-base">{printCell(row, "phone")}</td>
               <td className="h-8 border border-black px-1 text-base">{formatJoiningDate(row)}</td>
             </tr>
           ))}

@@ -6,6 +6,8 @@ import { attendanceDeviceApi } from "../../services/attendanceDeviceApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { inputLabelClass } from "./components";
 import type { AttendanceDevice, CreatedDevice } from "./types";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const DEFAULT_PORT = 4370;
 const DEFAULT_POLL_SEC = 30;
@@ -31,6 +33,9 @@ export default function DeviceFormModal({
   onUpdated: (updated: AttendanceDevice) => void;
 }) {
   const editing = !!device;
+  const lang = useLang();
+  const t = useText(attendanceDeviceText).form;
+  const c = useText(commonText);
 
   const [deviceId, setDeviceId] = useState("");
   const [name, setName] = useState("");
@@ -54,19 +59,21 @@ export default function DeviceFormModal({
   }, [open, device]);
 
   const validate = () => {
+    // Port shown without a thousands separator (65535, not 65,535).
+    const localizedMaxPort = formatNumber(65535, lang).replace(/[,٬]/g, "");
     const next: Errors = {};
-    if (!editing && !deviceId.trim()) next.device_id = "ডিভাইস আইডি দিন";
-    if (!name.trim()) next.name = "ডিভাইসের নাম দিন";
+    if (!editing && !deviceId.trim()) next.device_id = t.deviceIdRequired;
+    if (!name.trim()) next.name = t.nameRequired;
     const host = ip.trim();
-    if (!host) next.ip_address = "আইপি অ্যাড্রেস দিন";
+    if (!host) next.ip_address = t.ipRequired;
     else if (!IPV4.test(host) && !HOSTNAME.test(host))
-      next.ip_address = "সঠিক আইপি অ্যাড্রেস দিন (যেমন 192.168.1.201)";
+      next.ip_address = t.ipInvalid;
     const portNum = Number(port);
     if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535)
-      next.port = "১ থেকে ৬৫৫৩৫ এর মধ্যে পোর্ট দিন";
+      next.port = t.portInvalid(formatNumber(1, lang), localizedMaxPort);
     const pollNum = Number(pollSec);
     if (!Number.isInteger(pollNum) || pollNum < 5 || pollNum > 3600)
-      next.poll_interval_sec = "৫ থেকে ৩৬০০ সেকেন্ডের মধ্যে দিন";
+      next.poll_interval_sec = t.pollInvalid(formatNumber(5, lang), formatNumber(3600, lang));
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -84,7 +91,7 @@ export default function DeviceFormModal({
           // Write-only: only sent when the admin typed a new value.
           ...(commPassword ? { comm_password: commPassword } : {}),
         });
-        useToastStore.getState().show("ডিভাইস আপডেট হয়েছে", "success");
+        useToastStore.getState().show(t.updated, "success");
         onUpdated({ ...device, ...updated });
       } else {
         const created = await attendanceDeviceApi.create({
@@ -95,7 +102,7 @@ export default function DeviceFormModal({
           poll_interval_sec: Number(pollSec),
           ...(commPassword ? { comm_password: commPassword } : {}),
         });
-        useToastStore.getState().show("ডিভাইস যোগ করা হয়েছে", "success");
+        useToastStore.getState().show(t.added, "success");
         onCreated(created);
       }
     } catch {
@@ -113,7 +120,7 @@ export default function DeviceFormModal({
   return (
     <Modal
       open={open}
-      title={editing ? "ডিভাইস সম্পাদনা" : "নতুন উপস্থিতি ডিভাইস"}
+      title={editing ? t.editTitle : t.newTitle}
       onClose={onClose}
     >
       <form
@@ -125,33 +132,33 @@ export default function DeviceFormModal({
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className={inputLabelClass}>ডিভাইস আইডি</label>
+            <label className={inputLabelClass}>{t.deviceId}</label>
             <Input
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
-              placeholder="যেমন: 1"
+              placeholder={t.deviceIdPlaceholder}
               disabled={editing}
               invalid={!!errors.device_id}
               autoFocus={!editing}
             />
             {fieldError("device_id")}
             {editing && (
-              <p className="mt-1 text-[11px] text-slate-400">ডিভাইস আইডি পরিবর্তন করা যায় না</p>
+              <p className="mt-1 text-[11px] text-slate-400">{t.deviceIdLocked}</p>
             )}
           </div>
           <div>
-            <label className={inputLabelClass}>নাম</label>
+            <label className={inputLabelClass}>{t.name}</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="যেমন: মেইন গেট K40"
+              placeholder={t.namePlaceholder}
               invalid={!!errors.name}
               autoFocus={editing}
             />
             {fieldError("name")}
           </div>
           <div>
-            <label className={inputLabelClass}>আইপি অ্যাড্রেস</label>
+            <label className={inputLabelClass}>{t.ip}</label>
             <Input
               value={ip}
               onChange={(e) => setIp(e.target.value)}
@@ -162,7 +169,7 @@ export default function DeviceFormModal({
             {fieldError("ip_address")}
           </div>
           <div>
-            <label className={inputLabelClass}>পোর্ট</label>
+            <label className={inputLabelClass}>{t.port}</label>
             <Input
               value={port}
               onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))}
@@ -172,20 +179,20 @@ export default function DeviceFormModal({
             {fieldError("port")}
           </div>
           <div>
-            <label className={inputLabelClass}>কমিউনিকেশন কী (ঐচ্ছিক)</label>
+            <label className={inputLabelClass}>{t.commKey}</label>
             <Input
               type="password"
               value={commPassword}
               onChange={(e) => setCommPassword(e.target.value)}
-              placeholder={editing ? "খালি রাখলে আগেরটিই থাকবে" : "ডিভাইসে সেট করা থাকলে দিন"}
+              placeholder={editing ? t.commKeyKeep : t.commKeyNew}
               autoComplete="new-password"
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              এটি শুধু সেভ হয়, পরে আর দেখানো হয় না
+              {t.commKeyHint}
             </p>
           </div>
           <div>
-            <label className={inputLabelClass}>পোলিং ব্যবধান (সেকেন্ড)</label>
+            <label className={inputLabelClass}>{t.pollInterval}</label>
             <Input
               value={pollSec}
               onChange={(e) => setPollSec(e.target.value.replace(/\D/g, ""))}
@@ -198,10 +205,10 @@ export default function DeviceFormModal({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "সেভ হচ্ছে..." : editing ? "আপডেট করুন" : "যোগ করুন"}
+            {saving ? t.saving : editing ? c.update : c.add}
           </Button>
         </div>
       </form>

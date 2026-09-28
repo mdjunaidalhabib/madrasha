@@ -10,11 +10,16 @@ import {
   type PurchaseRequestStatus,
 } from "../../../services/superAdminBillingApi";
 import { StatusBadge, IconButton, fmtMoney } from "./billingHelpers";
+import { commonText, formatDate, formatDateTime, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 type StatusFilter = PurchaseRequestStatus | "all";
 
 export default function SuperAdminBillingRequestsPage() {
   const { show } = useToastStore();
+  const t = useText(billingText);
+  const c = useText(commonText);
+  const lang = useLang();
 
   const [status, setStatus] = useState<StatusFilter>("PENDING");
   const [rows, setRows] = useState<PurchaseRequest[]>([]);
@@ -32,7 +37,7 @@ export default function SuperAdminBillingRequestsPage() {
       const res = await listPurchaseRequests(status === "all" ? undefined : { status });
       setRows((res?.data || []) as PurchaseRequest[]);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Load failed", "error");
+      show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -51,8 +56,8 @@ export default function SuperAdminBillingRequestsPage() {
   }
 
   const reviewTitle = useMemo(
-    () => (reviewMode === "approve" ? "Approve Request?" : "Reject Request?"),
-    [reviewMode],
+    () => (reviewMode === "approve" ? t.approveTitle : t.rejectTitle),
+    [reviewMode, t],
   );
 
   async function submitReview() {
@@ -61,16 +66,16 @@ export default function SuperAdminBillingRequestsPage() {
     try {
       if (reviewMode === "approve") {
         await approvePurchaseRequest(reviewTarget.id, reviewNote || undefined);
-        show("Request approve হয়েছে", "success");
+        show(t.requestApproved, "success");
       } else {
         await rejectPurchaseRequest(reviewTarget.id, reviewNote || undefined);
-        show("Request reject হয়েছে", "success");
+        show(t.requestRejected, "success");
       }
       setReviewOpen(false);
       setReviewTarget(null);
       await load();
     } catch (e: any) {
-      show(e?.response?.data?.message || "Action failed", "error");
+      show(e?.response?.data?.message || t.actionFailed, "error");
     } finally {
       setReviewLoading(false);
     }
@@ -80,25 +85,25 @@ export default function SuperAdminBillingRequestsPage() {
     <div className="p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold dark:text-slate-100">Purchase Requests</h1>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">{t.requestsTitle}</h1>
           <p className="text-sm text-gray-600 dark:text-slate-400">
-            মাদরাসাগুলোর SMS/Email credit purchase request review ও approve/reject করুন।
+            {t.requestsSubtitle}
           </p>
         </div>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-12">
         <div className="md:col-span-3">
-          <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Status</label>
+          <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.status}</label>
           <select
             className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={status}
             onChange={(e) => setStatus(e.target.value as StatusFilter)}
           >
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="all">All</option>
+            <option value="PENDING">{t.pending}</option>
+            <option value="APPROVED">{t.approved}</option>
+            <option value="REJECTED">{t.rejected}</option>
+            <option value="all">{t.all}</option>
           </select>
         </div>
 
@@ -108,11 +113,11 @@ export default function SuperAdminBillingRequestsPage() {
             disabled={loading}
             className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            {loading ? "Loading..." : "Refresh"}
+            {loading ? c.loading : t.refresh}
           </button>
 
           <div className="text-xs text-gray-500 dark:text-slate-400">
-            Total: <span className="font-medium text-gray-800 dark:text-slate-100">{rows.length}</span>
+            {t.total}: <span className="font-medium text-gray-800 dark:text-slate-100">{rows.length}</span>
           </div>
         </div>
       </div>
@@ -123,7 +128,7 @@ export default function SuperAdminBillingRequestsPage() {
 
         {!loading && rows.length === 0 && (
           <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">কোনো Request পাওয়া যায়নি</div>
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.noRequests}</div>
           </div>
         )}
 
@@ -142,30 +147,30 @@ export default function SuperAdminBillingRequestsPage() {
 
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-slate-300">
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Amount</div>৳ {fmtMoney(r.amount)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.amount}</div>৳ {fmtMoney(r.amount)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Payment Method</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.paymentMethod}</div>
                   {r.paymentMethodLabel}
                 </div>
               </div>
 
               {r.transactionRef && (
-                <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">Ref: {r.transactionRef}</div>
+                <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">{t.ref}: {r.transactionRef}</div>
               )}
-              {r.note && <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Note: {r.note}</div>}
+              {r.note && <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t.note}: {r.note}</div>}
 
               <div className="mt-2 text-xs text-gray-400 dark:text-slate-500">
-                Submitted: {new Date(r.createdAt).toLocaleString()}
+                {t.submitted}: {formatDateTime(r.createdAt, lang)}
               </div>
 
               {r.status === "PENDING" && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <IconButton title="Approve" onClick={() => openReview("approve", r)}>
-                    ✅ Approve
+                  <IconButton title={t.approve} onClick={() => openReview("approve", r)}>
+                    ✅ {t.approve}
                   </IconButton>
-                  <IconButton title="Reject" variant="danger" onClick={() => openReview("reject", r)}>
-                    ❌ Reject
+                  <IconButton title={t.reject} variant="danger" onClick={() => openReview("reject", r)}>
+                    ❌ {t.reject}
                   </IconButton>
                 </div>
               )}
@@ -182,14 +187,14 @@ export default function SuperAdminBillingRequestsPage() {
             <table className="min-w-full text-start text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
-                  <th className="px-4 py-3">Madrasa</th>
-                  <th className="px-4 py-3">Channel</th>
-                  <th className="px-4 py-3">Package</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Payment</th>
-                  <th className="px-4 py-3">Submitted</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-end">Actions</th>
+                  <th className="px-4 py-3">{t.colInstitution}</th>
+                  <th className="px-4 py-3">{t.colChannel}</th>
+                  <th className="px-4 py-3">{t.colPackage}</th>
+                  <th className="px-4 py-3">{t.amount}</th>
+                  <th className="px-4 py-3">{t.colPayment}</th>
+                  <th className="px-4 py-3">{t.submitted}</th>
+                  <th className="px-4 py-3">{t.status}</th>
+                  <th className="px-4 py-3 text-end">{t.colActions}</th>
                 </tr>
               </thead>
 
@@ -205,25 +210,25 @@ export default function SuperAdminBillingRequestsPage() {
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(r.amount)}</td>
                     <td className="px-4 py-3">
                       <div className="text-gray-700">{r.paymentMethodLabel}</div>
-                      {r.transactionRef && <div className="text-xs text-gray-500">Ref: {r.transactionRef}</div>}
+                      {r.transactionRef && <div className="text-xs text-gray-500">{t.ref}: {r.transactionRef}</div>}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-gray-700">{formatDate(r.createdAt, lang)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={r.status} />
                     </td>
                     <td className="px-4 py-3">
                       {r.status === "PENDING" ? (
                         <div className="flex justify-end gap-2">
-                          <IconButton title="Approve" onClick={() => openReview("approve", r)}>
-                            ✅ Approve
+                          <IconButton title={t.approve} onClick={() => openReview("approve", r)}>
+                            ✅ {t.approve}
                           </IconButton>
-                          <IconButton title="Reject" variant="danger" onClick={() => openReview("reject", r)}>
-                            ❌ Reject
+                          <IconButton title={t.reject} variant="danger" onClick={() => openReview("reject", r)}>
+                            ❌ {t.reject}
                           </IconButton>
                         </div>
                       ) : (
                         <div className="text-end text-xs text-gray-400">
-                          {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : ""}
+                          {r.reviewedAt ? formatDateTime(r.reviewedAt, lang) : ""}
                         </div>
                       )}
                     </td>
@@ -233,7 +238,7 @@ export default function SuperAdminBillingRequestsPage() {
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-10 text-center">
-                      <div className="text-sm font-medium text-gray-800">কোনো Request পাওয়া যায়নি</div>
+                      <div className="text-sm font-medium text-gray-800">{t.noRequests}</div>
                     </td>
                   </tr>
                 )}
@@ -254,13 +259,13 @@ export default function SuperAdminBillingRequestsPage() {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600 dark:text-slate-400">Review Note (optional)</label>
+            <label className="text-xs text-gray-600 dark:text-slate-400">{t.reviewNote}</label>
             <textarea
               rows={3}
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
-              placeholder={reviewMode === "approve" ? "যেমন: bKash এ payment verify করা হয়েছে" : "reject করার কারণ লিখুন"}
+              placeholder={reviewMode === "approve" ? t.approveNotePlaceholder : t.rejectNotePlaceholder}
             />
           </div>
 
@@ -271,7 +276,7 @@ export default function SuperAdminBillingRequestsPage() {
               disabled={reviewLoading}
               className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Cancel
+              {c.cancel}
             </button>
 
             <button
@@ -283,7 +288,7 @@ export default function SuperAdminBillingRequestsPage() {
                 reviewMode === "reject" ? "bg-red-600 hover:bg-red-700" : "bg-black hover:bg-black/90",
               ].join(" ")}
             >
-              {reviewLoading ? "Please wait..." : reviewMode === "approve" ? "Approve" : "Reject"}
+              {reviewLoading ? t.pleaseWait : reviewMode === "approve" ? t.approve : t.reject}
             </button>
           </div>
         </div>

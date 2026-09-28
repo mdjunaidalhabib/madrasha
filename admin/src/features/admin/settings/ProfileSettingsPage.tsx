@@ -25,12 +25,15 @@ import {
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, formatDateTime, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { profileText } from "./settingsPages.text";
+import { servicesText } from "../../../services/services.text";
 
 /** Turns a raw User-Agent string into a short, human-readable label - e.g.
  * "Chrome, Windows" - good enough for telling devices apart in the
  * logout-all modal without pulling in a full UA-parsing dependency. */
 function describeDevice(userAgent: string | null): string {
-  if (!userAgent) return "অজানা ডিভাইস";
+  if (!userAgent) return getText(profileText).unknownDevice;
 
   const browser =
     (/Edg\//.test(userAgent) && "Edge") ||
@@ -39,7 +42,7 @@ function describeDevice(userAgent: string | null): string {
     (/CriOS\//.test(userAgent) && "Chrome") ||
     (/Firefox\//.test(userAgent) && "Firefox") ||
     (/Safari\//.test(userAgent) && "Safari") ||
-    "ব্রাউজার";
+    getText(profileText).browser;
 
   const os =
     (/Windows/.test(userAgent) && "Windows") ||
@@ -52,9 +55,9 @@ function describeDevice(userAgent: string | null): string {
   return os ? `${browser}, ${os}` : browser;
 }
 
-function formatSessionDate(value: string): string {
+function formatSessionDate(value: string, lang: Lang): string {
   try {
-    return new Date(value).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" });
+    return formatDateTime(value, lang, { dateStyle: "medium", timeStyle: "short" }) || value;
   } catch {
     return value;
   }
@@ -64,6 +67,9 @@ export default function ProfileSettingsPage() {
   const updateAuthUser = useAuthStore((s) => s.updateUser);
   const authLogout = useAuthStore((s) => s.logout);
   const nav = useNavigate();
+  const t = useText(profileText);
+  const c = useText(commonText);
+  const lang = useLang();
 
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +112,7 @@ export default function ProfileSettingsPage() {
       const data = await getActiveSessions();
       setSessions(data);
     } catch {
-      useToastStore.getState().show("সেশন তালিকা লোড করা যায়নি।", "error");
+      useToastStore.getState().show(t.sessionsLoadFailed, "error");
     } finally {
       setLoadingSessions(false);
     }
@@ -119,7 +125,7 @@ export default function ProfileSettingsPage() {
         const data = await getMyProfile();
         setProfile(data);
       } catch {
-        useToastStore.getState().show("প্রোফাইল লোড করা যায়নি।", "error");
+        useToastStore.getState().show(t.profileLoadFailed, "error");
       } finally {
         setLoading(false);
       }
@@ -136,9 +142,9 @@ export default function ProfileSettingsPage() {
         ...(patch.mobile !== undefined ? { mobile: patch.mobile || null } : {}),
         ...(patch.photo_url !== undefined ? { photo_url: patch.photo_url || null } : {}),
       });
-      useToastStore.getState().show("সংরক্ষণ হয়েছে।", "success");
+      useToastStore.getState().show(getText(servicesText).savedDot, "success");
     } catch {
-      useToastStore.getState().show("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(getText(servicesText).saveFailedRetry, "error");
       throw new Error("save failed");
     }
   };
@@ -155,15 +161,15 @@ export default function ProfileSettingsPage() {
 
   const submitPasswordChange = async () => {
     if (!currentPassword || !newPassword) {
-      useToastStore.getState().show("বর্তমান ও নতুন পাসওয়ার্ড দিন।", "error");
+      useToastStore.getState().show(t.enterBothPasswords, "error");
       return;
     }
     if (newPassword.length < 6) {
-      useToastStore.getState().show("নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।", "error");
+      useToastStore.getState().show(t.newPasswordMin6, "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      useToastStore.getState().show("নতুন পাসওয়ার্ড দুইবার একই দিতে হবে।", "error");
+      useToastStore.getState().show(t.newPasswordMismatch, "error");
       return;
     }
     setChangingPassword(true);
@@ -172,11 +178,11 @@ export default function ProfileSettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      useToastStore.getState().show("পাসওয়ার্ড পরিবর্তন হয়েছে।", "success");
+      useToastStore.getState().show(t.passwordChanged, "success");
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "পাসওয়ার্ড পরিবর্তন করা যায়নি।", "error");
+        .show(err?.response?.data?.message || t.passwordChangeFailed, "error");
     } finally {
       setChangingPassword(false);
     }
@@ -185,7 +191,7 @@ export default function ProfileSettingsPage() {
   const confirmLogout = async () => {
     if (!logoutTarget) return;
     if (!logoutPassword) {
-      useToastStore.getState().show("পাসওয়ার্ড দিন।", "error");
+      useToastStore.getState().show(t.enterPassword, "error");
       return;
     }
     setVerifyingLogoutPassword(true);
@@ -194,7 +200,7 @@ export default function ProfileSettingsPage() {
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "পাসওয়ার্ড সঠিক নয়।", "error");
+        .show(err?.response?.data?.message || t.wrongPassword, "error");
       setVerifyingLogoutPassword(false);
       return;
     }
@@ -209,13 +215,13 @@ export default function ProfileSettingsPage() {
           // Ended our own session - the access token still works for a few
           // minutes, but there's no refresh token left to renew it with, so
           // just sign out locally right away instead of waiting for a 401.
-          useToastStore.getState().show("লগআউট করা হয়েছে।", "success");
+          useToastStore.getState().show(t.loggedOut, "success");
           closeLogoutModal();
           authLogout();
           nav(`/login`);
           return;
         }
-        useToastStore.getState().show("সেশনটি লগআউট করা হয়েছে।", "success");
+        useToastStore.getState().show(t.sessionLoggedOut, "success");
         setSessions((prev) => prev.filter((s) => s.id !== session.id));
         closeLogoutModal();
         return;
@@ -225,15 +231,15 @@ export default function ProfileSettingsPage() {
       await logoutAllDevices(keepCurrent);
       closeLogoutModal();
       if (keepCurrent) {
-        useToastStore.getState().show("অন্য সব ডিভাইস থেকে লগআউট করা হয়েছে।", "success");
+        useToastStore.getState().show(t.loggedOutOthers, "success");
         loadSessions();
         return;
       }
-      useToastStore.getState().show("সব ডিভাইস থেকে লগআউট করা হয়েছে।", "success");
+      useToastStore.getState().show(t.loggedOutAll, "success");
       authLogout();
       nav(`/login`);
     } catch {
-      useToastStore.getState().show("লগআউট করা যায়নি। আবার চেষ্টা করুন।", "error");
+      useToastStore.getState().show(t.logoutFailed, "error");
     } finally {
       setLoggingOut(false);
     }
@@ -242,7 +248,7 @@ export default function ProfileSettingsPage() {
   if (loading || !profile) {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
-        <PageHeader title="প্রোফাইল সেটিংস" />
+        <PageHeader title={t.title} />
         <SkeletonCard lines={2} />
         <SkeletonCard lines={2} />
       </div>
@@ -252,13 +258,13 @@ export default function ProfileSettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="প্রোফাইল সেটিংস"
-        subtitle="আপনার নিজের নাম, মোবাইল নম্বর, ছবি ও পাসওয়ার্ড এখান থেকে আপডেট করুন।"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
-      <SectionCard title="প্রোফাইল ছবি">
+      <SectionCard title={t.profilePhoto}>
         <InlineImageField
-          label="ছবি"
+          label={c.photo}
           value={profile.photo_url}
           folder="profile"
           onSave={savePhoto}
@@ -266,31 +272,31 @@ export default function ProfileSettingsPage() {
       </SectionCard>
 
       <SectionCard
-        title="মূল তথ্য"
-        hint="তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে"
+        title={t.basicInfo}
+        hint={t.basicInfoHint}
       >
         <div className="space-y-2">
           <InlineTextField
-            label="নাম"
+            label={c.name}
             value={profile.name}
             required
             onSave={(v) => patchProfile({ name: v })}
           />
           <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">ইমেইল</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{c.email}</p>
               <p className="mt-0.5 text-sm text-gray-900 dark:text-slate-100">{profile.email}</p>
             </div>
           </div>
           <InlineTextField
-            label="মোবাইল নম্বর"
+            label={t.mobileNumber}
             value={profile.mobile || ""}
-            placeholder="যেমন: 01xxxxxxxxx"
+            placeholder={t.mobilePlaceholder}
             onSave={(v) => patchProfile({ mobile: v })}
           />
           <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">রোল</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.role}</p>
               <p className="mt-0.5 text-sm text-gray-900 dark:text-slate-100">
                 {profile.role_label || profile.role_key}
               </p>
@@ -300,13 +306,13 @@ export default function ProfileSettingsPage() {
       </SectionCard>
 
       <SectionCard
-        title="পাসওয়ার্ড পরিবর্তন"
-        hint="নিরাপত্তার জন্য বর্তমান পাসওয়ার্ড দিয়ে যাচাই করা হবে"
+        title={t.changePassword}
+        hint={t.changePasswordHint}
       >
         <div className="max-w-sm space-y-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
-              বর্তমান পাসওয়ার্ড
+              {t.currentPassword}
             </label>
             <div className="relative">
               <Input
@@ -320,7 +326,7 @@ export default function ProfileSettingsPage() {
                 type="button"
                 onClick={() => setShowCurrentPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                aria-label={showCurrentPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                aria-label={showCurrentPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -328,7 +334,7 @@ export default function ProfileSettingsPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">নতুন পাসওয়ার্ড</label>
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">{t.newPassword}</label>
             <div className="relative">
               <Input
                 type={showNewPassword ? "text" : "password"}
@@ -341,7 +347,7 @@ export default function ProfileSettingsPage() {
                 type="button"
                 onClick={() => setShowNewPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                aria-label={showNewPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                aria-label={showNewPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -350,7 +356,7 @@ export default function ProfileSettingsPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
-              নতুন পাসওয়ার্ড আবার লিখুন
+              {t.retypeNewPassword}
             </label>
             <div className="relative">
               <Input
@@ -364,7 +370,7 @@ export default function ProfileSettingsPage() {
                 type="button"
                 onClick={() => setShowConfirmPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                aria-label={showConfirmPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                aria-label={showConfirmPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -378,20 +384,20 @@ export default function ProfileSettingsPage() {
             onClick={submitPasswordChange}
           >
             <KeyRound size={14} />
-            {changingPassword ? "পরিবর্তন হচ্ছে..." : "পাসওয়ার্ড পরিবর্তন করুন"}
+            {changingPassword ? t.changing : t.changePasswordBtn}
           </Button>
         </div>
       </SectionCard>
 
       <SectionCard
-        title="লগইন সেশন"
-        hint="আপনি বর্তমানে যেসব ডিভাইস/ব্রাউজার থেকে লগইন করা আছেন, তার তালিকা"
+        title={t.loginSessions}
+        hint={t.loginSessionsHint}
       >
         <div className="space-y-4">
           {loadingSessions ? (
             <SkeletonCard lines={3} />
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-slate-400">কোনো সক্রিয় সেশন পাওয়া যায়নি।</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t.noSessions}</p>
           ) : (
             <ul className="space-y-2">
               {sessions.map((session) => (
@@ -405,12 +411,12 @@ export default function ProfileSettingsPage() {
                       {describeDevice(session.device_info)}
                       {session.is_current && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-normal text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                          এই ডিভাইস
+                          {t.thisDevice}
                         </span>
                       )}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                      লগইন: {formatSessionDate(session.created_at)}
+                      {t.loginAt(formatSessionDate(session.created_at, lang))}
                     </p>
                   </div>
                   <button
@@ -419,7 +425,7 @@ export default function ProfileSettingsPage() {
                     className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/40"
                   >
                     <LogOut size={13} />
-                    লগআউট
+                    {c.logout}
                   </button>
                 </li>
               ))}
@@ -435,7 +441,7 @@ export default function ProfileSettingsPage() {
               onClick={() => setLogoutTarget({ kind: "others" })}
             >
               <ShieldOff size={14} />
-              অন্য সব ডিভাইস থেকে লগআউট করুন
+              {t.logoutOthers}
             </Button>
             <Button
               type="button"
@@ -444,12 +450,12 @@ export default function ProfileSettingsPage() {
               onClick={() => setLogoutTarget({ kind: "all" })}
             >
               <ShieldOff size={14} />
-              এই ডিভাইসসহ সব ডিভাইস থেকে লগআউট করুন
+              {t.logoutAllIncluding}
             </Button>
           </div>
 
           <p className="text-xs text-gray-400 dark:text-slate-500">
-            অন্য ডিভাইসে কার্যকর হতে সর্বোচ্চ ১৫ মিনিট সময় লাগতে পারে।
+            {t.takesUpTo15}
           </p>
         </div>
       </SectionCard>
@@ -458,10 +464,10 @@ export default function ProfileSettingsPage() {
         open={logoutTarget !== null}
         title={
           logoutTarget?.kind === "session"
-            ? "সেশন লগআউট"
+            ? t.sessionLogout
             : logoutTarget?.kind === "others"
-              ? "অন্য সব ডিভাইস থেকে লগআউট"
-              : "সব ডিভাইস থেকে লগআউট"
+              ? t.othersLogout
+              : t.allLogout
         }
         onClose={closeLogoutModal}
         maxWidthClassName="max-w-sm"
@@ -471,30 +477,30 @@ export default function ProfileSettingsPage() {
             <p className="text-sm text-gray-600 dark:text-slate-400">
               {logoutTarget?.kind === "session"
                 ? logoutTarget.session.is_current
-                  ? "আপনি নিজের এই ডিভাইস থেকে লগআউট হয়ে যাবেন। নিশ্চিত করছেন?"
-                  : "এই ডিভাইসটি থেকে লগআউট হয়ে যাবে। নিশ্চিত করছেন?"
+                  ? t.confirmSelf
+                  : t.confirmDevice
                 : logoutTarget?.kind === "others"
-                  ? "এই ডিভাইস ছাড়া বাকি সব ডিভাইস/ব্রাউজার থেকে লগআউট হয়ে যাবে। আপনি এখানে লগইন করা থাকবেন। নিশ্চিত করছেন?"
-                  : "আপনি লগইন করা আছেন এমন সব ডিভাইস থেকে (এই ডিভাইসসহ) লগআউট হয়ে যাবেন। নিশ্চিত করছেন?"}
+                  ? t.confirmOthers
+                  : t.confirmAll}
             </p>
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={closeLogoutModal}>
-                বাতিল
+                {c.cancel}
               </Button>
               <Button type="button" variant="danger" onClick={() => setLogoutStep(2)}>
-                পরবর্তী
+                {c.next}
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-slate-400">
-              নিরাপত্তার জন্য নিশ্চিত করতে আপনার পাসওয়ার্ড দিন।
+              {t.confirmPasswordHint}
             </p>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-slate-400">
-                পাসওয়ার্ড
+                {t.password}
               </label>
               <div className="relative">
                 <Input
@@ -510,7 +516,7 @@ export default function ProfileSettingsPage() {
                   type="button"
                   onClick={() => setShowLogoutPassword((v) => !v)}
                   className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                  aria-label={showLogoutPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                  aria-label={showLogoutPassword ? t.hidePassword : t.showPassword}
                   tabIndex={-1}
                 >
                   {showLogoutPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -525,7 +531,7 @@ export default function ProfileSettingsPage() {
                 disabled={verifyingLogoutPassword || loggingOut}
                 onClick={() => setLogoutStep(1)}
               >
-                পেছনে
+                {c.back}
               </Button>
               <Button
                 type="button"
@@ -535,7 +541,7 @@ export default function ProfileSettingsPage() {
                 onClick={confirmLogout}
               >
                 <ShieldOff size={14} />
-                {verifyingLogoutPassword ? "যাচাই হচ্ছে..." : loggingOut ? "লগআউট হচ্ছে..." : "নিশ্চিত করুন"}
+                {verifyingLogoutPassword ? t.verifying : loggingOut ? t.loggingOut : c.confirm}
               </Button>
             </div>
           </div>

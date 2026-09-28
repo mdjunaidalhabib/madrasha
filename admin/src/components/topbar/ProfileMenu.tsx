@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, User } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { logoutSession } from "../../services/profileApi";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { shellText } from "./shell.text";
 
 /** টপবারের প্রোফাইল ছবি - ক্লিক করলে নাম/রোলসহ একটা কার্ড খোলে, ভেতরে
  * "প্রোফাইল" ও "লগআউট" - দুইটা বাটন। */
@@ -10,6 +12,8 @@ export default function ProfileMenu() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const t = useText(shellText);
+  const c = useText(commonText);
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -66,7 +70,7 @@ export default function ProfileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="প্রোফাইল মেনু"
+        aria-label={t.profileMenu}
         className="flex items-center justify-center rounded-full transition hover:opacity-80"
       >
         {avatar}
@@ -109,7 +113,7 @@ export default function ProfileMenu() {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               <User size={15} />
-              প্রোফাইল
+              {t.profile}
             </button>
             <button
               type="button"
@@ -118,7 +122,7 @@ export default function ProfileMenu() {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-600/20 transition hover:bg-rose-500"
             >
               <LogOut size={15} />
-              লগআউট
+              {c.logout}
             </button>
           </div>
         </div>

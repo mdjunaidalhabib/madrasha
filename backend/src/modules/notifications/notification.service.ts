@@ -22,6 +22,7 @@ import {
   NOTIFICATION_EVENTS,
   NotificationEventKey,
 } from "./notification.constants";
+import { t } from "../../shared/i18n";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -42,16 +43,16 @@ export class NotificationService {
    */
   async send(madrasaId: number, sentById: number | undefined, dto: SendNotificationRequestDto) {
     if (!NOTIFICATION_CHANNELS.includes(dto.channel)) {
-      throw new BadRequestError("channel must be SMS or EMAIL");
+      throw new BadRequestError(t({ bn: "channel অবশ্যই SMS অথবা EMAIL হতে হবে", en: "channel must be SMS or EMAIL" }));
     }
     if (!Array.isArray(dto.recipients) || dto.recipients.length === 0) {
-      throw new BadRequestError("recipients must be a non-empty array");
+      throw new BadRequestError(t({ bn: "recipients একটি খালি নয় এমন তালিকা হতে হবে", en: "recipients must be a non-empty array", ar: "يجب أن تكون قائمة المستلمين غير فارغة" }));
     }
     if (!dto.message || !dto.message.trim()) {
-      throw new BadRequestError("message is required");
+      throw new BadRequestError(t({ bn: "বার্তা আবশ্যক", en: "message is required", ar: "الرسالة مطلوبة" }));
     }
     if (dto.channel === "EMAIL" && !dto.subject?.trim()) {
-      throw new BadRequestError("subject is required for EMAIL");
+      throw new BadRequestError(t({ bn: "ইমেইলের জন্য বিষয় (subject) আবশ্যক", en: "subject is required for EMAIL", ar: "الموضوع مطلوب للبريد الإلكتروني" }));
     }
 
     // Resolved once per request (not per recipient) - the platform gateway
@@ -161,7 +162,7 @@ export class NotificationService {
     try {
       return await this.repository.findMany(madrasaId, where, limit);
     } catch (err) {
-      return friendlyFailure("listNotifications error:", err, "Failed to load notification history");
+      return friendlyFailure("listNotifications error:", err, t({ bn: "নোটিফিকেশনের ইতিহাস লোড করা যায়নি", en: "Failed to load notification history", ar: "تعذر تحميل سجل الإشعارات" }));
     }
   }
 
@@ -240,7 +241,7 @@ export class NotificationService {
 
   async updateSetting(madrasaId: number, eventKey: string, dto: NotificationSettingUpdateDto) {
     if (!NOTIFICATION_EVENTS.includes(eventKey as NotificationEventKey)) {
-      throw new BadRequestError("Invalid event key");
+      throw new BadRequestError(t({ bn: "ইভেন্ট কী সঠিক নয়", en: "Invalid event key", ar: "مفتاح الحدث غير صالح" }));
     }
     const existing = await this.repository.findSetting(madrasaId, eventKey);
 
@@ -303,7 +304,7 @@ export class NotificationService {
       return friendlyFailure(
         "getDashboardSummary error:",
         err,
-        "Failed to load notification dashboard summary",
+        t({ bn: "নোটিফিকেশন ড্যাশবোর্ডের সারাংশ লোড করা যায়নি", en: "Failed to load notification dashboard summary", ar: "تعذر تحميل ملخص لوحة الإشعارات" }),
       );
     }
   }

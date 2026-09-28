@@ -12,16 +12,16 @@ import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { StudentFullRecord } from "../../types/student";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, useIsMadrasa, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import { studentsText } from "./students.text";
 import { filterPeopleBySearch } from "../../utils/personSearch";
 import {
   STUDENT_STATUS_BADGE_CLASS,
-  STUDENT_STATUS_LABEL,
   studentStatus,
   studentStatusLabel,
 } from "../../utils/studentStatus";
 import { type Session } from "../../services/sessionApi";
-import { useColumnVisibility, type ColumnOption } from "../../hooks/useColumnVisibility";
+import { useColumnVisibility } from "../../hooks/useColumnVisibility";
 
 type StudentColumnKey =
   | "roll"
@@ -74,66 +74,71 @@ const DEFAULT_VISIBLE_STUDENT_COLUMNS: StudentColumnKey[] = [
   "status",
 ];
 
-const STUDENT_COLUMNS: ColumnOption<StudentColumnKey>[] = [
-  { key: "roll", label: "রোল নম্বর" },
-  { key: "registration", label: "রেজিস্ট্রেশন নম্বর" },
-  { key: "fatherName", label: "বাবার নাম" },
-  { key: "phone", label: "ফোন" },
-  { key: "academicYear", label: "শিক্ষাবর্ষ" },
-  { key: "division", label: "বিভাগ" },
-  { key: "currentClass", label: "বর্তমান শ্রেণি" },
-  { key: "status", label: "স্ট্যাটাস" },
-  { key: "arabicName", label: "আরবি নাম" },
-  { key: "nid", label: "জন্ম সনদ/এনআইডি" },
-  { key: "gender", label: "লিঙ্গ" },
-  { key: "dob", label: "জন্ম তারিখ" },
-  { key: "age", label: "বয়স" },
-  { key: "bloodGroup", label: "রক্তের গ্রুপ" },
-  { key: "residencyType", label: "আবাসনের ধরন" },
-  { key: "isOrphan", label: "এতিম কিনা" },
-  { key: "previousInstitution", label: "পূর্ববর্তী প্রতিষ্ঠান" },
-  { key: "previousResult", label: "পূর্ববর্তী ফলাফল" },
-  { key: "admissionDate", label: "ভর্তির তারিখ" },
-  { key: "fatherArabicName", label: "বাবার আরবি নাম" },
-  { key: "fatherNid", label: "বাবার এনআইডি" },
-  { key: "fatherOccupation", label: "বাবার পেশা" },
-  { key: "motherName", label: "মায়ের নাম" },
-  { key: "motherNid", label: "মায়ের এনআইডি" },
-  { key: "motherOccupation", label: "মায়ের পেশা" },
-  { key: "guardianPhone2", label: "অভিভাবকের ফোন ২" },
-  { key: "altGuardianName", label: "বিকল্প অভিভাবকের নাম" },
-  { key: "altGuardianRelation", label: "সম্পর্ক" },
-  { key: "altGuardianPhone", label: "বিকল্প অভিভাবকের ফোন" },
-  { key: "altGuardianAddress", label: "বিকল্প অভিভাবকের ঠিকানা" },
-  { key: "addressDivision", label: "বিভাগ (ঠিকানা)" },
-  { key: "district", label: "জেলা" },
-  { key: "thana", label: "থানা" },
-  { key: "village", label: "গ্রাম" },
-  { key: "admissionStatus", label: "ভর্তির আবেদনের অবস্থা" },
-  { key: "admissionType", label: "ভর্তির ধরন" },
+// Column labels come from studentsText.columns (current UI language).
+const STUDENT_COLUMN_KEYS: StudentColumnKey[] = [
+  "roll",
+  "registration",
+  "fatherName",
+  "phone",
+  "academicYear",
+  "division",
+  "currentClass",
+  "status",
+  "arabicName",
+  "nid",
+  "gender",
+  "dob",
+  "age",
+  "bloodGroup",
+  "residencyType",
+  "isOrphan",
+  "previousInstitution",
+  "previousResult",
+  "admissionDate",
+  "fatherArabicName",
+  "fatherNid",
+  "fatherOccupation",
+  "motherName",
+  "motherNid",
+  "motherOccupation",
+  "guardianPhone2",
+  "altGuardianName",
+  "altGuardianRelation",
+  "altGuardianPhone",
+  "altGuardianAddress",
+  "addressDivision",
+  "district",
+  "thana",
+  "village",
+  "admissionStatus",
+  "admissionType",
 ];
-const STUDENT_COLUMN_KEYS = STUDENT_COLUMNS.map((c) => c.key);
-const STUDENT_COLUMN_LABEL_MAP = new Map(STUDENT_COLUMNS.map((c) => [c.key, c.label]));
+/** Madrasa-only columns (Arabic names) - hidden from the menu/table/export elsewhere. */
+const MADRASA_ONLY_COLUMNS = new Set<StudentColumnKey>(["arabicName", "fatherArabicName"]);
+
+// Plain helpers (used during render, so getText reads the current UI language).
+const txt = () => getText(studentsText);
 
 const genderLabel = (v?: number | string | null) => {
   const n = Number(v);
-  return n === 1 ? "ছেলে" : n === 2 ? "মেয়ে" : "নেই";
+  return n === 1 ? txt().male : n === 2 ? txt().female : txt().none;
 };
 
 const residencyLabel = (v?: number | string | null) => {
   const n = Number(v);
-  return n === 1 ? "আবাসিক" : n === 2 ? "অনাবাসিক" : "নেই";
+  return n === 1 ? txt().residential : n === 2 ? txt().nonResidential : txt().none;
 };
 
-const orphanLabel = (v?: number | string | null) => (Number(v) === 1 ? "হ্যাঁ" : "না");
+const orphanLabel = (v?: number | string | null) => (Number(v) === 1 ? getText(commonText).yes : getText(commonText).no);
 
+// Values are backend enums; only the displayed label is translated.
 const admissionStatusLabel = (v?: string | null) =>
-  v === "APPROVED" ? "অনুমোদিত" : v === "REJECTED" ? "বাতিল" : v === "PENDING" ? "পেন্ডিং" : "নেই";
+  v === "APPROVED" ? txt().approved : v === "REJECTED" ? txt().rejected : v === "PENDING" ? txt().pending : txt().none;
 
 const admissionTypeLabel = (v?: string | null) =>
-  v === "RE_ADMISSION" ? "পুনঃভর্তি" : v === "NEW" ? "নতুন" : "নেই";
+  v === "RE_ADMISSION" ? txt().readmission : v === "NEW" ? txt().newAdmission : txt().none;
 
-const orNone = (v: unknown) => (v === null || v === undefined || v === "" ? "নেই" : String(v));
+const orNone = (v: unknown) => (v === null || v === undefined || v === "" ? txt().none : String(v));
 
 type Division = {
   division_id: number;
@@ -192,6 +197,19 @@ type Student = {
 };
 
 const StudentListPage = () => {
+  const t = useText(studentsText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const isMadrasa = useIsMadrasa();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
+  const studentColumns = useMemo(
+    () =>
+      STUDENT_COLUMN_KEYS.filter((key) => isMadrasa || !MADRASA_ONLY_COLUMNS.has(key)).map((key) => ({
+        key,
+        label: t.columns[key],
+      })),
+    [t, isMadrasa],
+  );
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // ফিল্টারগুলো URL-এ রাখা হয় (?session=&division=&class=&gender=&q=&page=&size=)
@@ -280,7 +298,7 @@ const StudentListPage = () => {
     } catch (err) {
       logger.error("LOAD STUDENTS ERROR:", err);
       setStudents([]);
-      setError("ছাত্র তালিকা লোড করতে সমস্যা হয়েছে");
+      setError(getText(studentsText).loadFailed);
     } finally {
       setLoading(false);
     }
@@ -385,7 +403,7 @@ const StudentListPage = () => {
   const getDivisionName = useCallback(
     (divisionId?: number | string) => {
       const division = divisions.find((item) => String(item.division_id) === String(divisionId));
-      return division?.division_name_bn || "নেই";
+      return division?.division_name_bn || txt().none;
     },
     [divisions],
   );
@@ -393,7 +411,7 @@ const StudentListPage = () => {
   const getClassName = useCallback(
     (classId?: number | string, fallback?: string) => {
       const classItem = classes.find((item) => String(item.class_id) === String(classId));
-      return classItem?.class_name_bn || fallback || "নেই";
+      return classItem?.class_name_bn || fallback || txt().none;
     },
     [classes],
   );
@@ -441,7 +459,9 @@ const StudentListPage = () => {
   };
 
   // দৃশ্যমান কলামগুলো ব্যবহারকারীর ঠিক করা ক্রমে — টেবিলের হেডার/সেল এই ক্রমেই বসে।
-  const orderedVisibleColumns = columnOrder.filter((key) => visibleColumns.has(key));
+  const orderedVisibleColumns = columnOrder.filter(
+    (key) => visibleColumns.has(key) && (isMadrasa || !MADRASA_ONLY_COLUMNS.has(key)),
+  );
 
   const filteredStudents = useMemo(() => {
     const searched = filterPeopleBySearch(students, search, (student) => ({
@@ -566,7 +586,7 @@ const StudentListPage = () => {
       <span
         className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STUDENT_STATUS_BADGE_CLASS[status]}`}
       >
-        {STUDENT_STATUS_LABEL[status]}
+        {studentStatusLabel(isActive)}
       </span>
     );
   };
@@ -576,20 +596,20 @@ const StudentListPage = () => {
     if (ids.length === 0) return;
 
     useConfirmStore.getState().show({
-      title: "নির্বাচিত শিক্ষার্থীদের ট্র্যাশে পাঠাবেন?",
-      message: `${toBanglaDigits(ids.length)} জন শিক্ষার্থীকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।`,
-      confirmText: "ট্র্যাশে পাঠান",
+      title: t.trashTitle,
+      message: t.trashMessage(toBanglaDigits(ids.length)),
+      confirmText: t.sendToTrash,
       danger: true,
       onConfirm: async () => {
         try {
           setBulkBusy(true);
           await api.delete("/students/bulk", { data: { ids: ids.map(Number) } });
-          useToastStore.getState().show("ট্র্যাশে পাঠানো হয়েছে", "success");
+          useToastStore.getState().show(getText(studentsText).sentToTrash, "success");
           setStudents((prev) => prev.filter((s) => !selectedIds.has(String(s.id))));
           setSelectedIds(new Set());
         } catch (err) {
           logger.error("BULK DELETE STUDENTS ERROR:", err);
-          useToastStore.getState().show("মুছে ফেলা যায়নি", "error");
+          useToastStore.getState().show(getText(commonText).deleteFailed, "error");
         } finally {
           setBulkBusy(false);
         }
@@ -600,22 +620,22 @@ const StudentListPage = () => {
   // এক্সেল/সিএসভি এক্সপোর্টে সবসময় ছাত্রের সব তথ্য (কোন কলাম টেবিলে দেখানো
   // হচ্ছে তার উপর নির্ভর না করে) — নির্দিষ্ট কিছু কলামে সীমাবদ্ধ রাখা হয় না।
   const exportColumns = [
-    { header: "নাম", key: "name" },
-    ...STUDENT_COLUMNS.map((col) => ({ header: col.label, key: col.key })),
+    { header: c.name, key: "name" },
+    ...studentColumns.map((col) => ({ header: col.label, key: col.key })),
   ];
 
   const exportStudents = useMemo(() => {
     return filteredStudents.map((student) => {
       const row: Record<string, string> = {
-        name: student.name_bn || student.name || "নেই",
+        name: student.name_bn || student.name || txt().none,
       };
-      STUDENT_COLUMNS.forEach((col) => {
+      studentColumns.forEach((col) => {
         row[col.key] = columnValueGetters[col.key](student);
       });
       return row;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStudents, getDivisionName, getClassName]);
+  }, [filteredStudents, getDivisionName, getClassName, studentColumns]);
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
@@ -623,8 +643,8 @@ const StudentListPage = () => {
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছাত্র তালিকা</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">মোট ছাত্র: {filteredStudents.length} জন</p>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t.totalStudents(toBanglaDigits(filteredStudents.length))}</p>
           </div>
 
           <button
@@ -632,7 +652,7 @@ const StudentListPage = () => {
             onClick={() => navigate(`/students/new`)}
             className="h-10 w-full rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 md:w-auto"
           >
-            + নতুন ছাত্র ভর্তি
+            {t.newAdmission2}
           </button>
         </div>
 
@@ -642,7 +662,7 @@ const StudentListPage = () => {
             <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
               <input
                 type="text"
-                placeholder="রেজিস্ট্রেশন, রোল বা নাম দিয়ে সার্চ করুন"
+                placeholder={t.searchPlaceholder}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="col-span-full h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[190px]"
@@ -654,7 +674,7 @@ const StudentListPage = () => {
                 onChange={setSelectedSessionId}
                 wrapperClassName="w-full sm:w-[125px]"
               >
-                <option value="">সব সেশন</option>
+                <option value="">{t.allSessions}</option>
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -670,7 +690,7 @@ const StudentListPage = () => {
                 }}
                 wrapperClassName="w-full sm:w-[125px]"
               >
-                <option value="">সব বিভাগ</option>
+                <option value="">{t.allDivisions}</option>
 
                 {divisions.map((division) => (
                   <option key={division.division_id} value={division.division_id}>
@@ -687,10 +707,10 @@ const StudentListPage = () => {
               >
                 <option value="">
                   {classLoading
-                    ? "শ্রেণি লোড হচ্ছে..."
+                    ? t.loadingClasses
                     : selectedDivision
-                      ? "সব শ্রেণি"
-                      : "আগে বিভাগ নির্বাচন করুন"}
+                      ? t.allClasses
+                      : t.selectDivisionFirst}
                 </option>
 
                 {classes.map((classItem) => (
@@ -701,9 +721,9 @@ const StudentListPage = () => {
               </FilterSelect>
 
               <FilterSelect value={selectedGender} onChange={setSelectedGender} wrapperClassName="w-full sm:w-auto">
-                <option value="">সব লিঙ্গ</option>
-                <option value={1}>ছেলে</option>
-                <option value={2}>মেয়ে</option>
+                <option value="">{t.allGenders}</option>
+                <option value={1}>{t.male}</option>
+                <option value={2}>{t.female}</option>
               </FilterSelect>
             </div>
 
@@ -713,11 +733,11 @@ const StudentListPage = () => {
                 onClick={() => setBulkUpdateOpen(true)}
                 className="h-9 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
               >
-                বাল্ক আপডেট
+                {t.bulkUpdate}
               </button>
 
               <ColumnVisibilityMenu
-                columns={STUDENT_COLUMNS}
+                columns={studentColumns}
                 visible={visibleColumns}
                 onToggle={toggleColumn}
                 onReset={resetColumns}
@@ -726,7 +746,7 @@ const StudentListPage = () => {
               />
 
               <DataExportPrintActions
-                title="ছাত্র তালিকা"
+                title={t.title}
                 fileName="student-list"
                 columns={exportColumns}
                 data={exportStudents}
@@ -739,7 +759,7 @@ const StudentListPage = () => {
         {selectedIds.size > 0 && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
             <p className="text-sm font-medium text-red-700 dark:text-red-400">
-              {toBanglaDigits(selectedIds.size)} জন নির্বাচিত হয়েছে
+              {t.selectedN(toBanglaDigits(selectedIds.size))}
             </p>
             <button
               type="button"
@@ -747,7 +767,7 @@ const StudentListPage = () => {
               disabled={bulkBusy}
               className="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
             >
-              {bulkBusy ? "পাঠানো হচ্ছে..." : "ট্র্যাশে পাঠান"}
+              {bulkBusy ? t.sending : t.sendToTrash}
             </button>
           </div>
         )}
@@ -763,7 +783,7 @@ const StudentListPage = () => {
           <SkeletonTable rows={8} columns={3 + visibleColumns.size} />
         ) : filteredStudents.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-            কোন ছাত্র পাওয়া যায়নি
+            {t.noStudents}
           </div>
         ) : (
           <>
@@ -784,38 +804,38 @@ const StudentListPage = () => {
                       />
                       <div>
                         <p className="text-base font-semibold text-gray-800 dark:text-slate-100">
-                          {student.name_bn || student.name || "নেই"}
+                          {student.name_bn || student.name || t.none}
                         </p>
                         <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                          রেজিস্ট্রেশন: {student.registration_no || "নেই"}
+                          {t.registrationLabel} {student.registration_no || t.none}
                         </p>
                         <div className="mt-1">{statusBadge(student.is_active)}</div>
                       </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-                      রোল {student.roll || "নেই"}
+                      {t.roll(String(student.roll || t.none))}
                     </span>
                   </div>
 
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     <div>
-                      <dt className="text-xs text-gray-400 dark:text-slate-500">বাবার নাম</dt>
-                      <dd className="text-gray-700 dark:text-slate-300">{student.father_name || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">{t.columns.fatherName}</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.father_name || t.none}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400 dark:text-slate-500">ফোন</dt>
-                      <dd className="text-gray-700 dark:text-slate-300">{student.guardian_phone || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">{t.columns.phone}</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.guardian_phone || t.none}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400 dark:text-slate-500">শিক্ষাবর্ষ</dt>
-                      <dd className="text-gray-700 dark:text-slate-300">{student.academic_year || "নেই"}</dd>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">{t.columns.academicYear}</dt>
+                      <dd className="text-gray-700 dark:text-slate-300">{student.academic_year || t.none}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400 dark:text-slate-500">বিভাগ</dt>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">{t.columns.division}</dt>
                       <dd className="text-gray-700 dark:text-slate-300">{getDivisionName(student.division_id)}</dd>
                     </div>
                     <div className="col-span-2">
-                      <dt className="text-xs text-gray-400 dark:text-slate-500">বর্তমান শ্রেণি</dt>
+                      <dt className="text-xs text-gray-400 dark:text-slate-500">{t.columns.currentClass}</dt>
                       <dd className="text-gray-700 dark:text-slate-300">
                         {getClassName(
                           student.class_id,
@@ -831,7 +851,7 @@ const StudentListPage = () => {
                       onClick={() => navigate(studentPath(student))}
                       className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                     >
-                      প্রোফাইল
+                      {t.profile}
                     </button>
                   </div>
                 </div>
@@ -852,13 +872,13 @@ const StudentListPage = () => {
                           className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         />
                       </th>
-                      <th className="border p-2.5 dark:border-slate-700">নাম</th>
+                      <th className="border p-2.5 dark:border-slate-700">{c.name}</th>
                       {orderedVisibleColumns.map((key) => (
                         <th key={key} className="border p-2.5 dark:border-slate-700">
-                          {STUDENT_COLUMN_LABEL_MAP.get(key)}
+                          {t.columns[key]}
                         </th>
                       ))}
-                      <th className="border p-2.5 dark:border-slate-700">একশন</th>
+                      <th className="border p-2.5 dark:border-slate-700">{c.actions}</th>
                     </tr>
                   </thead>
 
@@ -874,7 +894,7 @@ const StudentListPage = () => {
                           />
                         </td>
 
-                        <td className="border p-2.5 dark:border-slate-700">{student.name_bn || student.name || "নেই"}</td>
+                        <td className="border p-2.5 dark:border-slate-700">{student.name_bn || student.name || t.none}</td>
 
                         {orderedVisibleColumns.map((key) => (
                           <td key={key} className="border p-2.5 dark:border-slate-700">
@@ -889,7 +909,7 @@ const StudentListPage = () => {
                               onClick={() => navigate(studentPath(student))}
                               className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
                             >
-                              প্রোফাইল
+                              {t.profile}
                             </button>
                           </div>
                         </td>
@@ -908,8 +928,7 @@ const StudentListPage = () => {
             <div className="mt-3 flex flex-col items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 shadow-sm dark:bg-slate-900 sm:flex-row">
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                 <span>
-                  দেখাচ্ছে {toBanglaDigits(rangeStart)}–{toBanglaDigits(rangeEnd)}, মোট{" "}
-                  {toBanglaDigits(filteredStudents.length)} জন
+                  {t.showing(toBanglaDigits(rangeStart), toBanglaDigits(rangeEnd), toBanglaDigits(filteredStudents.length))}
                 </span>
                 <select
                   value={pageSize}
@@ -918,7 +937,7 @@ const StudentListPage = () => {
                 >
                   {[20, 50, 100].map((size) => (
                     <option key={size} value={size}>
-                      পাতায় {toBanglaDigits(size)} জন
+                      {t.perPage(toBanglaDigits(size))}
                     </option>
                   ))}
                 </select>
@@ -931,10 +950,10 @@ const StudentListPage = () => {
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   className="h-6 rounded-md border border-gray-300 px-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
-                  আগের
+                  {t.prevPage}
                 </button>
                 <span className="text-xs text-gray-600 dark:text-slate-400">
-                  পাতা {toBanglaDigits(currentPage)} / {toBanglaDigits(totalPages)}
+                  {t.pageOf(toBanglaDigits(currentPage), toBanglaDigits(totalPages))}
                 </span>
                 <button
                   type="button"
@@ -942,7 +961,7 @@ const StudentListPage = () => {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   className="h-6 rounded-md border border-gray-300 px-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
-                  পরের
+                  {t.nextPage}
                 </button>
               </div>
             </div>

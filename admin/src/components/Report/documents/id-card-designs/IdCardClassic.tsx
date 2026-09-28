@@ -1,4 +1,7 @@
-import { cellValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "../../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../../report.text";
 
 type Props = {
   row: Record<string, any>;
@@ -8,7 +11,9 @@ type Props = {
 const HEADER_PATTERN =
   "repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 8px, transparent 8px 16px), linear-gradient(180deg, #8a2632, #6c1d27)";
 
-const IdCardClassic = ({ row, madrasaName }: Props) => (
+const IdCardClassic = ({ row, madrasaName }: Props) => {
+  const t = usePrintText(reportText);
+  return (
   <div className="print-page-break relative flex h-[85.6mm] w-[54mm] flex-col overflow-hidden rounded-xl border border-[#d8cba3] bg-[#f7f2e6]">
     <div
       className="relative flex shrink-0 flex-col items-center pt-[3mm]"
@@ -16,7 +21,7 @@ const IdCardClassic = ({ row, madrasaName }: Props) => (
     >
       <p className="text-[7px] leading-none text-[#e9c98f]">بسم الله الرحمن الرحيم</p>
       <p className="mt-[1.5mm] truncate px-[3mm] text-center text-[12px] font-bold leading-tight text-[#fbf1de]">
-        {madrasaName || "শিক্ষার্থী পরিচয়পত্র"}
+        {madrasaName || t.title.studentIdCard}
       </p>
       <p className="mt-[1mm] text-[7px] uppercase tracking-[0.22em] text-[#e9c98f]">
         Student ID Card
@@ -32,42 +37,42 @@ const IdCardClassic = ({ row, madrasaName }: Props) => (
             className="h-full w-full object-cover"
           />
         ) : (
-          "ছবি"
+          t.col.photo
         )}
       </div>
     </div>
 
     <div className="flex flex-1 flex-col items-center px-[4mm] pb-[1mm] pt-[13mm] text-center">
       <h4 className="w-full truncate text-[12.5px] font-bold text-[#3d2a1a]">
-        {cellValue(row, "student_name")}
+        {printCell(row, "student_name")}
       </h4>
 
       <div className="mt-[2.5mm] flex w-full flex-col gap-[1.6mm]">
         <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cbb98a] pb-[1mm] text-[8.5px] text-[#55432c]">
-          <span className="shrink-0">রেজি. নং</span>
+          <span className="shrink-0">{t.col.regNoShort}</span>
           <b className="min-w-0 truncate font-bold text-[#7a1f2b]">
-            {cellValue(row, "registration_no")}
+            {printCell(row, "registration_no")}
           </b>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cbb98a] pb-[1mm] text-[8.5px] text-[#55432c]">
-          <span className="shrink-0">রোল নং</span>
-          <b className="min-w-0 truncate font-bold text-[#7a1f2b]">{cellValue(row, "roll")}</b>
+          <span className="shrink-0">{t.col.rollNoShort}</span>
+          <b className="min-w-0 truncate font-bold text-[#7a1f2b]">{printCell(row, "roll")}</b>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cbb98a] pb-[1mm] text-[8.5px] text-[#55432c]">
-          <span className="shrink-0">শ্রেণি</span>
+          <span className="shrink-0">{t.col.class}</span>
           <b className="min-w-0 truncate font-bold text-[#7a1f2b]">
-            {cellValue(row, "class_name")}
-            {row.division_name ? ` (${cellValue(row, "division_name")})` : ""}
+            {printCell(row, "class_name")}
+            {row.division_name ? ` (${printCell(row, "division_name")})` : ""}
           </b>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cbb98a] pb-[1mm] text-[8.5px] text-[#55432c]">
-          <span className="shrink-0">পিতা</span>
-          <b className="min-w-0 truncate font-bold text-[#7a1f2b]">{cellValue(row, "father_name")}</b>
+          <span className="shrink-0">{t.col.father}</span>
+          <b className="min-w-0 truncate font-bold text-[#7a1f2b]">{printCell(row, "father_name")}</b>
         </div>
         <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cbb98a] pb-[1mm] text-[8.5px] text-[#55432c]">
-          <span className="shrink-0">মোবাইল</span>
+          <span className="shrink-0">{t.col.mobile}</span>
           <b className="min-w-0 truncate font-bold text-[#7a1f2b]">
-            {cellValue(row, "guardian_phone")}
+            {printCell(row, "guardian_phone")}
           </b>
         </div>
       </div>
@@ -77,10 +82,11 @@ const IdCardClassic = ({ row, madrasaName }: Props) => (
       className="flex shrink-0 items-center justify-between px-[3mm] text-[7.5px] text-[#f1dcb8]"
       style={{ height: "10mm", background: "linear-gradient(180deg, #6c1d27, #571620)" }}
     >
-      <span>সেশন {toBanglaDigits(cellValue(row, "academic_year"))}</span>
-      <span className="border-t border-[#e9c98f] pt-[0.5mm]">অধ্যক্ষের স্বাক্ষর</span>
+      <span>{t.col.sessionShort} {toBanglaDigits(printCell(row, "academic_year"))}</span>
+      <span className="border-t border-[#e9c98f] pt-[0.5mm]">{t.sign.head}</span>
     </div>
   </div>
 );
+};
 
 export default IdCardClassic;

@@ -13,18 +13,20 @@ import {
   type DefaultFeeFrequency,
   type DefaultFeeStructureDto,
 } from "../../../services/superAdminCatalogApi";
+import { INSTITUTION_TYPE_LABELS, commonText, formatCurrency, formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { feeTemplatesText } from "./feeTemplates.text";
 
-const FREQUENCY_LABELS: Record<DefaultFeeFrequency, string> = {
-  ONE_TIME: "একবার",
-  MONTHLY: "মাসিক",
-  YEARLY: "বাৎসরিক",
-};
+const FREQUENCIES: DefaultFeeFrequency[] = ["ONE_TIME", "MONTHLY", "YEARLY"];
 
 type FeeFormValues = { name: string; amount: string; frequency: DefaultFeeFrequency };
 const emptyFeeForm: FeeFormValues = { name: "", amount: "", frequency: "MONTHLY" };
 
 export default function SuperAdminDefaultFeeStructuresPage() {
   const { show } = useToastStore();
+  const t = useText(feeTemplatesText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const FREQUENCY_LABELS: Record<DefaultFeeFrequency, string> = t.frequency;
 
   const [divisions, setDivisions] = useState<CatalogDivisionDto[]>([]);
   const [division, setDivision] = useState("");
@@ -50,7 +52,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
       const res = await catalogDivisionApi.list();
       setDivisions(res.data?.data || []);
     } catch {
-      show("বিভাগ লোড করা যায়নি", "error");
+      show(getText(feeTemplatesText).divisionsLoadFailed, "error");
     }
   }, [show]);
 
@@ -69,7 +71,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
       const res = await catalogClassApi.list(Number(divisionId), false);
       setClasses(res.data?.data || []);
     } catch {
-      show("শ্রেণি লোড করা যায়নি", "error");
+      show(getText(feeTemplatesText).classesLoadFailed, "error");
       setClasses([]);
     } finally {
       setClassLoading(false);
@@ -82,7 +84,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
       const res = await defaultFeeStructureApi.list();
       setItems(res.data?.data || []);
     } catch {
-      show("ফি টেমপ্লেট লোড করা যায়নি", "error");
+      show(getText(feeTemplatesText).itemsLoadFailed, "error");
       setItems([]);
     } finally {
       setLoadingItems(false);
@@ -95,7 +97,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
 
   const handleAdd = async () => {
     if (!addForm.name.trim() || !addForm.amount) {
-      show("নাম ও পরিমাণ দিন", "error");
+      show(t.nameAmountRequired, "error");
       return;
     }
     try {
@@ -106,11 +108,11 @@ export default function SuperAdminDefaultFeeStructuresPage() {
         amount: Number(addForm.amount),
         frequency: addForm.frequency,
       });
-      show("ফি টেমপ্লেট তৈরি হয়েছে", "success");
+      show(t.created, "success");
       setAddForm(emptyFeeForm);
       await loadItems();
     } catch (err: any) {
-      show(err?.response?.data?.message || "ফি টেমপ্লেট তৈরি করতে সমস্যা হয়েছে", "error");
+      show(err?.response?.data?.message || t.createFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -124,7 +126,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
   const handleUpdate = async () => {
     if (!editTarget) return;
     if (!editForm.name.trim() || !editForm.amount) {
-      show("নাম ও পরিমাণ দিন", "error");
+      show(t.nameAmountRequired, "error");
       return;
     }
     try {
@@ -134,11 +136,11 @@ export default function SuperAdminDefaultFeeStructuresPage() {
         amount: Number(editForm.amount),
         frequency: editForm.frequency,
       });
-      show("ফি টেমপ্লেট আপডেট হয়েছে", "success");
+      show(t.updated, "success");
       setEditTarget(null);
       await loadItems();
     } catch (err: any) {
-      show(err?.response?.data?.message || "ফি টেমপ্লেট আপডেট করতে সমস্যা হয়েছে", "error");
+      show(err?.response?.data?.message || t.updateFailed, "error");
     } finally {
       setEditSaving(false);
     }
@@ -149,11 +151,11 @@ export default function SuperAdminDefaultFeeStructuresPage() {
     setDeleting(true);
     try {
       await defaultFeeStructureApi.remove(deleteTarget.id);
-      show("ফি টেমপ্লেট মুছে ফেলা হয়েছে", "success");
+      show(t.deleted, "success");
       setDeleteTarget(null);
       setItems((prev) => prev.filter((row) => row.id !== deleteTarget.id));
     } catch (err: any) {
-      show(err?.response?.data?.message || "মুছে ফেলা যায়নি", "error");
+      show(err?.response?.data?.message || c.deleteFailed, "error");
     } finally {
       setDeleting(false);
     }
@@ -172,13 +174,13 @@ export default function SuperAdminDefaultFeeStructuresPage() {
 
     for (const row of items) {
       if (!row.class_id) continue;
-      const divisionLabel = row.division_label || "অন্যান্য";
+      const divisionLabel = row.division_label || t.other;
       if (!divisionMap.has(divisionLabel)) {
         divisionMap.set(divisionLabel, { label: divisionLabel, classMap: new Map() });
       }
       const div = divisionMap.get(divisionLabel)!;
       const classKey = String(row.class_id);
-      const classLabel = row.class_name || `শ্রেণি #${row.class_id}`;
+      const classLabel = row.class_name || t.classNo(String(row.class_id));
       if (!div.classMap.has(classKey)) {
         div.classMap.set(classKey, { key: classKey, label: classLabel, items: [] });
       }
@@ -197,20 +199,20 @@ export default function SuperAdminDefaultFeeStructuresPage() {
     if (genericItems.length) {
       result.push({
         key: "generic",
-        label: "সাধারণ (সব শ্রেণির জন্য)",
-        classGroups: [{ key: "generic-items", label: "সাধারণ", items: genericItems }],
+        label: t.genericGroup,
+        classGroups: [{ key: "generic-items", label: t.generic, items: genericItems }],
       });
     }
     return [...result, ...divisionGroups];
-  }, [items]);
+  }, [items, t]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ফি টেমপ্লেট</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            নতুন মাদ্রাসা তৈরির সময় এই ফি কাঠামোগুলো স্বয়ংক্রিয়ভাবে কপি হয়ে যায়
+            {t.subtitle}
           </p>
         </div>
 
@@ -226,10 +228,10 @@ export default function SuperAdminDefaultFeeStructuresPage() {
               }}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
             >
-              <option value="">বিভাগ (ফিল্টার)</option>
+              <option value="">{t.divisionFilter}</option>
               {divisions.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.label || d.name}
+                  {d.label || d.name} ({INSTITUTION_TYPE_LABELS[d.institution_type ?? "MADRASA"][lang]})
                 </option>
               ))}
             </select>
@@ -239,7 +241,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
               disabled={!division || classLoading}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 sm:w-[180px]"
             >
-              <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি (ফিল্টার)"}</option>
+              <option value="">{classLoading ? c.loading : t.classFilter}</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label || c.name}
@@ -251,19 +253,19 @@ export default function SuperAdminDefaultFeeStructuresPage() {
 
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
-            নতুন ফি টেমপ্লেট তৈরি করুন {classId ? "(নির্বাচিত শ্রেণির জন্য)" : "(সব শ্রেণির জন্য)"}
+            {t.createHeading} {classId ? t.forSelectedClass : t.forAllClasses}
           </h2>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <input
               type="text"
-              placeholder="নাম (যেমন: মাসিক বেতন)"
+              placeholder={t.namePlaceholder}
               value={addForm.name}
               onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[200px]"
             />
             <input
               type="number"
-              placeholder="পরিমাণ (৳)"
+              placeholder={t.amountTaka}
               value={addForm.amount}
               onChange={(e) => setAddForm((p) => ({ ...p, amount: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
@@ -273,7 +275,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
               onChange={(e) => setAddForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[130px]"
             >
-              {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
+              {FREQUENCIES.map((f) => (
                 <option key={f} value={f}>
                   {FREQUENCY_LABELS[f]}
                 </option>
@@ -285,7 +287,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
               onClick={handleAdd}
               className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
             >
-              তৈরি করুন
+              {c.create}
             </button>
           </div>
         </div>
@@ -294,7 +296,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
           {loadingItems ? (
             <SkeletonList items={6} />
           ) : items.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো ফি টেমপ্লেট নেই</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">{t.empty}</div>
           ) : (
             <div className="space-y-5">
               {groupedItems.map((div) => (
@@ -306,7 +308,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <h4 className="truncate text-sm font-semibold text-gray-800 dark:text-slate-200">{group.label}</h4>
                           <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                            {group.items.length}টি
+                            {t.count(formatNumber(group.items.length, lang))}
                           </span>
                         </div>
                         <div className="flex flex-col gap-1.5">
@@ -317,7 +319,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="truncate font-medium text-gray-800 dark:text-slate-200">
-                                  {item.name} <span className="font-normal text-gray-500 dark:text-slate-400">৳{item.amount}</span>
+                                  {item.name} <span className="font-normal text-gray-500 dark:text-slate-400">{formatCurrency(item.amount, lang)}</span>
                                 </div>
                                 <div className="mt-1 flex flex-wrap gap-1">
                                   <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-slate-800 dark:text-slate-400">
@@ -328,7 +330,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
                               <div className="flex shrink-0 gap-0.5">
                                 <button
                                   type="button"
-                                  title="এডিট"
+                                  title={c.edit}
                                   onClick={() => openEditModal(item)}
                                   className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                                 >
@@ -336,7 +338,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  title="মুছুন"
+                                  title={c.delete}
                                   onClick={() => setDeleteTarget(item)}
                                   className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                                 >
@@ -359,12 +361,12 @@ export default function SuperAdminDefaultFeeStructuresPage() {
       {/* Edit fee template modal */}
       <Modal
         open={!!editTarget}
-        title={`ফি টেমপ্লেট এডিট করুন — ${editTarget?.name || ""}`}
+        title={t.editTitle(editTarget?.name || "")}
         onClose={() => setEditTarget(null)}
       >
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নাম</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.name}</label>
             <input
               type="text"
               value={editForm.name}
@@ -373,7 +375,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">পরিমাণ (৳)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.amountTaka}</label>
             <input
               type="number"
               value={editForm.amount}
@@ -382,13 +384,13 @@ export default function SuperAdminDefaultFeeStructuresPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">ফ্রিকোয়েন্সি</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.frequencyLabel}</label>
             <select
               value={editForm.frequency}
               onChange={(e) => setEditForm((p) => ({ ...p, frequency: e.target.value as DefaultFeeFrequency }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              {(Object.keys(FREQUENCY_LABELS) as DefaultFeeFrequency[]).map((f) => (
+              {FREQUENCIES.map((f) => (
                 <option key={f} value={f}>
                   {FREQUENCY_LABELS[f]}
                 </option>
@@ -402,7 +404,7 @@ export default function SuperAdminDefaultFeeStructuresPage() {
             onClick={() => setEditTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -410,17 +412,17 @@ export default function SuperAdminDefaultFeeStructuresPage() {
             onClick={handleUpdate}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {editSaving ? c.saving : c.save}
           </button>
         </div>
       </Modal>
 
       <ConfirmModal
         open={!!deleteTarget}
-        title="মুছে ফেলুন?"
-        message={`"${deleteTarget?.name ?? ""}" ফি টেমপ্লেটটি মুছে ফেলতে চান?`}
-        confirmText="মুছে ফেলুন"
-        cancelText="বাতিল"
+        title={t.deleteTitle}
+        message={t.deleteMessage(deleteTarget?.name ?? "")}
+        confirmText={c.delete}
+        cancelText={c.cancel}
         danger
         loading={deleting}
         onClose={() => {

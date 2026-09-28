@@ -21,6 +21,8 @@ import {
   type PaymentMethod,
   type PaymentMethodSetting,
 } from "../../services/phase2Api";
+import { commonText, formatDate, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examFeeBulkText } from "./ExamFeeBulkCollectModal.text";
 
 type Props = {
   open: boolean;
@@ -34,14 +36,7 @@ type Props = {
 
 type Step = "select" | "confirm" | "result";
 
-const METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: "ক্যাশ (হাতে নগদ)",
-  BKASH: "বিকাশ",
-  NAGAD: "নগদ",
-  BANK: "ব্যাংক",
-  ONLINE: "অনলাইন",
-};
-const METHODS = Object.keys(METHOD_LABELS) as PaymentMethod[];
+const METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "ONLINE"];
 
 // Local (not UTC) calendar date — the office's "today", used as the max too.
 const localToday = () => {
@@ -49,7 +44,9 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const bn = (n: number) => n.toLocaleString("bn-BD");
+// Digits follow the current UI language (the modal re-renders on a language
+// switch because it subscribes via useText).
+const bn = (n: number) => formatNumber(n, getLang());
 const taka = (n: number) => `৳${bn(n)}`;
 
 // Bangla-digit roll searches ("১২") should match roll 12 too.
@@ -71,6 +68,10 @@ const inputCls =
 const labelCls = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400";
 
 const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods }: Props) => {
+  const t = useText(examFeeBulkText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const METHOD_LABELS = t.methods;
   const [overview, setOverview] = useState<ExamFeeOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState(false);
@@ -113,12 +114,12 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         const cls = classById.get(c.class_id);
         return {
           class_id: c.class_id,
-          name: cls?.class_name_bn || `শ্রেণি #${c.class_id}`,
+          name: cls?.class_name_bn || t.classFallback(String(c.class_id)),
           division: cls?.division_name_bn || "",
           amount: c.amount,
         };
       });
-  }, [examOptions, examId, overview]);
+  }, [examOptions, examId, overview, t]);
 
   const classGroups = useMemo(() => {
     const groups = new Map<string, typeof classOptions>();
@@ -197,7 +198,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
       setSheet(null);
       setSelected(new Set());
       setSheetError(true);
-      useToastStore.getState().show(errMessage(err, "তালিকা লোড করা যায়নি"), "error");
+      useToastStore.getState().show(errMessage(err, getText(examFeeBulkText).listLoadFailed), "error");
     } finally {
       if (requestId === sheetRequestRef.current) setSheetLoading(false);
     }
@@ -257,11 +258,11 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
 
   const requestConfirm = () => {
     if (selectedRows.length === 0) {
-      useToastStore.getState().show("অন্তত একজন ছাত্র নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.selectAtLeastOne, "error");
       return;
     }
     if (dateInvalid) {
-      useToastStore.getState().show("সঠিক তারিখ দিন — ভবিষ্যতের তারিখ দেওয়া যাবে না", "error");
+      useToastStore.getState().show(t.invalidDate, "error");
       return;
     }
     setStep("confirm");
@@ -293,13 +294,16 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         collectedRef.current = true;
         useToastStore
           .getState()
-          .show(`${bn(data.succeeded.length)} জনের পরীক্ষার ফি গ্রহণ হয়েছে (${taka(Number(data.total_collected || 0))})`, "success");
+          .show(
+            getText(examFeeBulkText).collectedToast(bn(data.succeeded.length), taka(Number(data.total_collected || 0))),
+            "success",
+          );
       } else {
-        useToastStore.getState().show("কোনো ফি গ্রহণ করা যায়নি — কারণগুলো দেখুন", "error");
+        useToastStore.getState().show(getText(examFeeBulkText).noneCollectedToast, "error");
       }
     } catch (err) {
       logger.error("EXAM FEE BULK PAY ERROR:", err);
-      useToastStore.getState().show(errMessage(err, "ফি গ্রহণ করা যায়নি, আবার চেষ্টা করুন"), "error");
+      useToastStore.getState().show(errMessage(err, getText(examFeeBulkText).collectFailed), "error");
       setStep("select");
     } finally {
       submittingRef.current = false;
@@ -329,7 +333,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
   const renderPicker = () => (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
-        <label className={labelCls}>পরীক্ষা</label>
+        <label className={labelCls}>{t.exam}</label>
         <select
           value={examId}
           onChange={(e) => {
@@ -342,20 +346,20 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
             <option key={exam.id} value={exam.id}>
               {exam.name}
               {exam.year ? ` (${exam.year})` : ""}
-              {!exam.is_active ? " — নিষ্ক্রিয়" : ""}
+              {!exam.is_active ? t.inactiveSuffix : ""}
             </option>
           ))}
         </select>
       </div>
       <div>
-        <label className={labelCls}>শ্রেণি</label>
+        <label className={labelCls}>{t.classLabel}</label>
         <select
           value={classId}
           onChange={(e) => setClassId(e.target.value ? Number(e.target.value) : "")}
           disabled={classOptions.length === 0}
           className={`${inputCls} h-10 text-base`}
         >
-          <option value="">শ্রেণি নির্বাচন করুন</option>
+          <option value="">{t.selectClass}</option>
           {classGroups.map(([division, items]) =>
             division ? (
               <optgroup key={division} label={division}>
@@ -393,24 +397,24 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
     if (classId === "") {
       return renderCentered(
         <Users size={28} className="text-gray-300 dark:text-slate-600" />,
-        "শ্রেণি নির্বাচন করুন",
-        "শ্রেণি বাছাই করলে যাদের পরীক্ষার ফি বাকি আছে তাদের তালিকা এখানে দেখাবে।",
+        t.selectClass,
+        t.selectClassHint,
       );
     }
     if (sheetLoading) {
-      return renderCentered(<Loader2 size={26} className="animate-spin text-blue-500" />, "তালিকা লোড হচ্ছে...");
+      return renderCentered(<Loader2 size={26} className="animate-spin text-blue-500" />, t.listLoading);
     }
     if (sheetError || !sheet) {
       return renderCentered(
         <AlertTriangle size={28} className="text-amber-500" />,
-        "তালিকা লোড করা যায়নি",
+        t.listLoadFailed,
         undefined,
         <button
           type="button"
           onClick={loadSheet}
           className="mt-1 h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          আবার চেষ্টা করুন
+          {t.retry}
         </button>,
       );
     }
@@ -418,12 +422,12 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
       return sheet.paid_count > 0
         ? renderCentered(
             <CheckCircle2 size={32} className="text-emerald-500" />,
-            "এই শ্রেণির সবাই ফি দিয়েছে",
-            `${bn(sheet.paid_count)} জন ইতিমধ্যে ${sheet.exam.name}-এর ফি পরিশোধ করেছে।`,
+            t.allPaidTitle,
+            t.allPaidHint(bn(sheet.paid_count), sheet.exam.name),
           )
         : renderCentered(
             <ClipboardList size={28} className="text-gray-300 dark:text-slate-600" />,
-            "এই শ্রেণিতে কোনো বকেয়া পরীক্ষার ফি নেই",
+            t.noDueTitle,
           );
     }
 
@@ -433,10 +437,10 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="rounded-full bg-rose-50 px-2.5 py-1 font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-              বাকি: {bn(rows.length)} জন · {taka(Number(sheet.totals?.due ?? 0))}
+              {t.dueBadge(bn(rows.length), taka(Number(sheet.totals?.due ?? 0)))}
             </span>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-              ইতিমধ্যে পরিশোধ করেছে: {bn(sheet.paid_count)} জন
+              {t.paidBadge(bn(sheet.paid_count))}
             </span>
           </div>
           <div className="relative sm:w-64">
@@ -448,7 +452,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="নাম বা রোল দিয়ে খুঁজুন"
+              placeholder={t.searchPlaceholder}
               className={`${inputCls} ps-8`}
             />
           </div>
@@ -465,21 +469,21 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                     checked={allVisibleSelected}
                     onChange={toggleAllVisible}
                     disabled={filteredRows.length === 0}
-                    aria-label="সবাইকে নির্বাচন করুন"
-                    title="সবাইকে নির্বাচন / বাদ দিন"
+                    aria-label={t.selectAllAria}
+                    title={t.selectAllTitle}
                     className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                   />
                 </th>
-                <th className="w-16 px-2 py-2.5">রোল</th>
-                <th className="px-2 py-2.5">নাম</th>
-                <th className="px-3 py-2.5 text-end">বাকি</th>
+                <th className="w-16 px-2 py-2.5">{t.roll}</th>
+                <th className="px-2 py-2.5">{c.name}</th>
+                <th className="px-3 py-2.5 text-end">{t.due}</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-8 text-center text-gray-400 dark:text-slate-500">
-                    "{search}" — কাউকে পাওয়া যায়নি
+                    {t.nobodyFound(search)}
                   </td>
                 </tr>
               ) : (
@@ -501,7 +505,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleRow(r.invoice_id)}
-                          aria-label={`${r.name_bn} নির্বাচন`}
+                          aria-label={t.selectRowAria(r.name_bn)}
                           className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
                         />
                       </td>
@@ -512,9 +516,9 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                         <div className="font-medium text-gray-800 dark:text-slate-100">{r.name_bn}</div>
                         {partlyPaid && (
                           <div className="text-[11px] text-amber-600 dark:text-amber-400">
-                            মোট {taka(Number(r.amount))}
-                            {Number(r.paid) > 0 ? ` · আগে দিয়েছে ${taka(Number(r.paid))}` : ""}
-                            {Number(r.waived) > 0 ? ` · মওকুফ ${taka(Number(r.waived))}` : ""}
+                            {t.totalAmount(taka(Number(r.amount)))}
+                            {Number(r.paid) > 0 ? t.paidBefore(taka(Number(r.paid))) : ""}
+                            {Number(r.waived) > 0 ? t.waived(taka(Number(r.waived))) : ""}
                           </div>
                         )}
                       </td>
@@ -535,7 +539,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
 
         <p className="flex items-start gap-1.5 text-xs text-gray-500 dark:text-slate-400">
           <Info size={13} className="mt-0.5 shrink-0" />
-          এখানে শুধু সম্পূর্ণ বাকি গ্রহণ করা হয়। আংশিক পরিশোধের জন্য ছাত্র খুঁজে আলাদাভাবে ফি গ্রহণ করুন।
+          {t.fullDueOnly}
         </p>
       </div>
     );
@@ -551,12 +555,12 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <div>
               <div className="text-base font-bold">
-                {bn(selectedRows.length)} জনের মোট {taka(selectedTotal)} গ্রহণ করবেন?
+                {t.confirmQuestion(bn(selectedRows.length), taka(selectedTotal))}
               </div>
               <div className="mt-0.5 text-xs opacity-90">
                 {sheet.exam.name} · {sheet.class.name_bn} · {METHOD_LABELS[form.method]} ·{" "}
-                {new Date(`${form.paid_at}T00:00:00`).toLocaleDateString("bn-BD")}
-                {notifyGuardian ? " · অভিভাবককে SMS যাবে" : " · SMS যাবে না"}
+                {formatDate(`${form.paid_at}T00:00:00`, lang)}
+                {notifyGuardian ? t.smsWillGo : t.smsWontGo}
               </div>
             </div>
           </div>
@@ -567,8 +571,8 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
               onClick={() => setStep("select")}
               className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              <ArrowLeft size={14} />
-              ফিরে যান
+              <ArrowLeft size={14} className="rtl:rotate-180" />
+              {t.goBack}
             </button>
             <button
               type="button"
@@ -577,7 +581,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
               className="flex h-10 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-70"
             >
               {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-              {submitting ? "গ্রহণ করা হচ্ছে..." : "হ্যাঁ, গ্রহণ করুন"}
+              {submitting ? t.collecting : t.yesCollect}
             </button>
           </div>
         </div>
@@ -588,7 +592,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <div>
-            <label className={labelCls}>পদ্ধতি</label>
+            <label className={labelCls}>{t.method}</label>
             <select
               value={form.method}
               onChange={(e) => setForm((f) => ({ ...f, method: e.target.value as PaymentMethod }))}
@@ -602,7 +606,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
             </select>
           </div>
           <div>
-            <label className={labelCls}>তারিখ</label>
+            <label className={labelCls}>{c.date}</label>
             <input
               type="date"
               value={form.paid_at}
@@ -613,13 +617,13 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
           </div>
           {configuredMethods.length > 0 && (
             <div>
-              <label className={labelCls}>চ্যানেল (ঐচ্ছিক)</label>
+              <label className={labelCls}>{t.channelOptional}</label>
               <select
                 value={form.payment_method_setting_id}
                 onChange={(e) => setForm((f) => ({ ...f, payment_method_setting_id: e.target.value }))}
                 className={inputCls}
               >
-                <option value="">নির্বাচন করুন</option>
+                <option value="">{c.select}</option>
                 {configuredMethods.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
@@ -631,7 +635,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
           )}
           {form.method !== "CASH" && (
             <div>
-              <label className={labelCls}>ট্রানজেকশন রেফ (ঐচ্ছিক)</label>
+              <label className={labelCls}>{t.transactionRefOptional}</label>
               <input
                 type="text"
                 value={form.transaction_ref}
@@ -645,7 +649,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
               type="text"
               value={form.note}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              placeholder="নোট (ঐচ্ছিক)"
+              placeholder={t.noteOptional}
               className={inputCls}
             />
           </div>
@@ -654,7 +658,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         <div className="flex flex-col gap-2.5 border-t border-gray-100 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1.5">
             <div className="text-sm text-gray-600 dark:text-slate-400">
-              নির্বাচিত <b className="text-gray-900 dark:text-slate-100">{bn(selectedRows.length)} জন</b> · মোট{" "}
+              {t.selectedLabel} <b className="text-gray-900 dark:text-slate-100">{t.selectedSummary(bn(selectedRows.length))}</b> · {t.total}{" "}
               <b className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{taka(selectedTotal)}</b>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
@@ -664,7 +668,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
                 onChange={(e) => setNotifyGuardian(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
               />
-              অভিভাবককে SMS পাঠান
+              {t.smsGuardian}
             </label>
           </div>
           <button
@@ -674,7 +678,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
             className="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <Wallet size={15} />
-            ফি গ্রহণ করুন
+            {t.collectFee}
           </button>
         </div>
       </div>
@@ -695,11 +699,11 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         >
           {ok > 0 ? <CheckCircle2 size={36} /> : <AlertTriangle size={36} />}
           <div className="text-lg font-bold">
-            {ok > 0 ? `${bn(ok)} জনের ফি গ্রহণ হয়েছে` : "কোনো ফি গ্রহণ হয়নি"}
+            {ok > 0 ? t.collectedResult(bn(ok)) : t.noneCollected}
           </div>
           {ok > 0 && (
             <div className="text-sm">
-              মোট সংগৃহীত <b className="text-xl font-extrabold">{taka(Number(result.total_collected || 0))}</b>
+              {t.totalCollected} <b className="text-xl font-extrabold">{taka(Number(result.total_collected || 0))}</b>
             </div>
           )}
           {sheet && (
@@ -713,7 +717,7 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
           <div className="rounded-xl ring-1 ring-rose-200 dark:ring-rose-900">
             <div className="flex items-center gap-1.5 border-b border-rose-100 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
               <AlertTriangle size={14} />
-              {bn(result.failed.length)} জনের ফি গ্রহণ করা যায়নি
+              {t.failedHeader(bn(result.failed.length))}
             </div>
             <ul className="max-h-60 divide-y divide-gray-100 overflow-y-auto dark:divide-slate-800">
               {result.failed.map((f) => (
@@ -732,14 +736,14 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
             onClick={startAnother}
             className="h-10 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            {result.failed.length > 0 ? "তালিকায় ফিরে যান" : "আরেকটি শ্রেণি"}
+            {result.failed.length > 0 ? t.backToList : t.anotherClass}
           </button>
           <button
             type="button"
             onClick={handleClose}
             className="h-10 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            বন্ধ করুন
+            {c.close}
           </button>
         </div>
       </div>
@@ -748,27 +752,27 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
 
   const renderBody = () => {
     if (overviewLoading && !overview) {
-      return renderCentered(<Loader2 size={26} className="animate-spin text-blue-500" />, "লোড হচ্ছে...");
+      return renderCentered(<Loader2 size={26} className="animate-spin text-blue-500" />, c.loading);
     }
     if (overviewError) {
       return renderCentered(
         <AlertTriangle size={28} className="text-amber-500" />,
-        "পরীক্ষার তালিকা লোড করা যায়নি",
+        t.examListLoadFailed,
         undefined,
         <button
           type="button"
           onClick={loadOverview}
           className="mt-1 h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          আবার চেষ্টা করুন
+          {t.retry}
         </button>,
       );
     }
     if (examOptions.length === 0) {
       return renderCentered(
         <ClipboardList size={30} className="text-gray-300 dark:text-slate-600" />,
-        "কোনো পরীক্ষার ফি চালু নেই",
-        "ফি সেটাপ → পরীক্ষার ফি থেকে পরিমাণ বসিয়ে ফি চালু করলে এখানে শ্রেণিভিত্তিক গ্রহণ করা যাবে।",
+        t.noExamFee,
+        t.noExamFeeHint,
       );
     }
     if (step === "result") return renderResult();
@@ -791,10 +795,10 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
 
   const title =
     step === "result"
-      ? "পরীক্ষার ফি — ফলাফল"
+      ? t.titleResult
       : selectedExam && selectedClass
-        ? `পরীক্ষার ফি — ${selectedClass.name}`
-        : "পরীক্ষার ফি — শ্রেণিভিত্তিক গ্রহণ";
+        ? t.titleClass(selectedClass.name)
+        : t.titleDefault;
 
   return (
     <Modal open={open} title={title} onClose={handleClose} maxWidthClassName="max-w-3xl">

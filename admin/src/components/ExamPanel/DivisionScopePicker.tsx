@@ -1,5 +1,7 @@
 import { Check, Layers } from "lucide-react";
+import { useText } from "@madrasha/shared-ui/src/i18n";
 import type { ExamDivisionRef } from "./examDivisionScope";
+import { examPanelText } from "./examPanel.text";
 
 interface DivisionScopePickerProps {
   divisions: ExamDivisionRef[];
@@ -19,6 +21,7 @@ const chipOff =
  * Picking every division individually collapses back to সকল বিভাগ, matching
  * the backend's normalisation. */
 export default function DivisionScopePicker({ divisions, value, onChange, disabled }: DivisionScopePickerProps) {
+  const t = useText(examPanelText);
   const isAll = value.length === 0;
 
   const toggle = (id: number) => {
@@ -30,9 +33,9 @@ export default function DivisionScopePicker({ divisions, value, onChange, disabl
     <div className="space-y-1.5">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
         <Layers size={14} className="text-blue-600" />
-        কোন বিভাগের পরীক্ষা?
+        {t.whichDivisions}
       </p>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="বিভাগ নির্বাচন">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.selectDivision}>
         <button
           type="button"
           disabled={disabled}
@@ -41,7 +44,7 @@ export default function DivisionScopePicker({ divisions, value, onChange, disabl
           className={`${chipBase} ${isAll ? chipOn : chipOff}`}
         >
           {isAll && <Check size={12} />}
-          সকল বিভাগ
+          {t.allDivisions}
         </button>
         {divisions.map((d) => {
           const on = !isAll && value.includes(d.division_id);
@@ -62,7 +65,7 @@ export default function DivisionScopePicker({ divisions, value, onChange, disabl
       </div>
       {!isAll && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          শুধু নির্বাচিত বিভাগের শ্রেণিগুলোর রুটিন, নম্বর ও ফলাফল এই পরীক্ষায় হবে।
+          {t.scopeHint}
         </p>
       )}
     </div>

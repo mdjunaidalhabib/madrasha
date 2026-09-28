@@ -1,4 +1,6 @@
 import ExcelUpload from "../common/ExcelUpload";
+import { useText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
 
 export interface ExcelAdmissionRow {
   name_bn?: string;
@@ -90,11 +92,14 @@ const BulkAdmissionModal = ({
   onSubmit,
   onDownloadTemplate,
 }: BulkAdmissionModalProps) => {
+  const t = useText(admissionText);
+  const c = useText(commonText);
+  const isMadrasa = useIsMadrasa();
   if (!open) return null;
 
   const getGenderName = (gender: any) => {
-    if (Number(gender) === 1) return "ছেলে";
-    if (Number(gender) === 2) return "মেয়ে";
+    if (Number(gender) === 1) return t.male;
+    if (Number(gender) === 2) return t.female;
     return "-";
   };
 
@@ -108,31 +113,32 @@ const BulkAdmissionModal = ({
     return cls?.class_name_bn || id || "-";
   };
 
+  // Arabic-name columns are madrasa-only (the cells below are gated the same way).
   const previewColumns = [
-    "SL",
-    "Name BN",
-    "Arabic Name",
-    "NID",
-    "Gender",
-    "DOB",
-    "Roll",
-    "সেশন",
-    "Academic Division",
-    "Previous Class",
-    "Current Class",
-    "Guardian Phone",
-    "Father Name",
-    "Father Arabic Name",
-    "Father NID",
-    "Father Occupation",
-    "Mother Name",
-    "Mother NID",
-    "Mother Occupation",
-    "Division",
-    "District",
-    "Thana",
-    "Village",
-    "Image",
+    c.serial,
+    t.colNameBn,
+    ...(isMadrasa ? [t.colArabicName] : []),
+    t.colNid,
+    t.gender,
+    t.colDob,
+    c.roll,
+    t.session,
+    t.colAcademicDivision,
+    t.previousClass,
+    t.currentClass,
+    t.colGuardianPhone,
+    c.fatherName,
+    ...(isMadrasa ? [t.colFatherArabicName] : []),
+    t.fatherNid,
+    t.fatherOccupation,
+    c.motherName,
+    t.motherNid,
+    t.motherOccupation,
+    t.colDivision,
+    t.colDistrict,
+    t.colThana,
+    t.village,
+    c.photo,
   ];
 
   return (
@@ -140,9 +146,9 @@ const BulkAdmissionModal = ({
       <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Bulk Admission Upload</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.bulkTitle}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Excel file upload করে একসাথে student admission করুন
+              {t.bulkSubtitle}
             </p>
           </div>
 
@@ -161,12 +167,11 @@ const BulkAdmissionModal = ({
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                    Bulk Admission সম্পন্ন হয়েছে
+                    {t.bulkDone}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    নতুন ভর্তি:{" "}
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">{result.inserted}</span> | সেশন
-                    আপডেট (পুনঃভর্তি):{" "}
+                    {t.newAdmissions}{" "}
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">{result.inserted}</span> | {t.sessionUpdates}{" "}
                     <span className="font-semibold text-amber-700 dark:text-amber-400">{result.updated}</span>
                   </p>
                 </div>
@@ -176,7 +181,7 @@ const BulkAdmissionModal = ({
                   onClick={onClear}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  আরেকটি Excel Upload করুন
+                  {t.uploadAnother}
                 </button>
               </div>
 
@@ -186,25 +191,25 @@ const BulkAdmissionModal = ({
                     <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
                       <tr>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          SL
+                          {c.serial}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          Name
+                          {c.name}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          রেজিস্ট্রেশন
+                          {t.registration}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          NID
+                          {t.colNid}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          অবস্থা
+                          {t.state}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          সেশন
+                          {t.session}
                         </th>
                         <th className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                          রোল
+                          {c.roll}
                         </th>
                       </tr>
                     </thead>
@@ -223,11 +228,11 @@ const BulkAdmissionModal = ({
                           <td className="whitespace-nowrap px-3 py-3">
                             {row.action === "update" ? (
                               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                                সেশন আপডেট (পুনঃভর্তি)
+                                {t.sessionUpdateBadge}
                               </span>
                             ) : (
                               <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                নতুন ভর্তি
+                                {t.newAdmissionBadge}
                               </span>
                             )}
                           </td>
@@ -259,14 +264,13 @@ const BulkAdmissionModal = ({
             <>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">Upload Excel Sheet</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t.uploadExcelSheet}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Required fields template-এ red color এবং * mark থাকবে
+                    {t.requiredFieldsHint}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Gender: 1 = ছেলে, 2 = মেয়ে</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.genderHint}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    academic_division/current_class/previous_class এ ID দিতে হবে, preview-তে নাম
-                    দেখা যাবে
+                    {t.idHint}
                   </p>
                 </div>
 
@@ -275,12 +279,12 @@ const BulkAdmissionModal = ({
                   onClick={onDownloadTemplate}
                   className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
                 >
-                  Download Template
+                  {t.downloadTemplate}
                 </button>
               </div>
 
               <ExcelUpload<ExcelAdmissionRow>
-                buttonText="Upload Admission Excel"
+                buttonText={t.uploadAdmissionExcel}
                 onDataUpload={onDataUpload}
                 disabled={loading}
                 requiredColumns={requiredColumns}
@@ -292,9 +296,9 @@ const BulkAdmissionModal = ({
             <div>
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Preview Students</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.previewStudents}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Total {excelStudents.length} student found
+                    {t.studentsFound(String(excelStudents.length))}
                   </p>
                 </div>
 
@@ -303,7 +307,7 @@ const BulkAdmissionModal = ({
                   onClick={onClear}
                   className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
-                  Clear Uploaded Data
+                  {t.clearUploaded}
                 </button>
               </div>
 
@@ -335,9 +339,11 @@ const BulkAdmissionModal = ({
                               {student.name_bn || student.name || "-"}
                             </td>
 
-                            <td className="whitespace-nowrap px-3 py-3">
-                              {student.arabic_name || "-"}
-                            </td>
+                            {isMadrasa && (
+                              <td className="whitespace-nowrap px-3 py-3">
+                                {student.arabic_name || "-"}
+                              </td>
+                            )}
 
                             <td className="whitespace-nowrap px-3 py-3">{student.nid || "-"}</td>
 
@@ -349,7 +355,7 @@ const BulkAdmissionModal = ({
 
                             <td className="whitespace-nowrap px-3 py-3 font-semibold text-blue-700">
                               <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
-                                অটো
+                                {t.auto}
                               </span>
                             </td>
 
@@ -377,9 +383,11 @@ const BulkAdmissionModal = ({
                               {student.father_name || "-"}
                             </td>
 
-                            <td className="whitespace-nowrap px-3 py-3">
-                              {student.father_arabic_name || "-"}
-                            </td>
+                            {isMadrasa && (
+                              <td className="whitespace-nowrap px-3 py-3">
+                                {student.father_arabic_name || "-"}
+                              </td>
+                            )}
 
                             <td className="whitespace-nowrap px-3 py-3">
                               {student.father_nid || "-"}
@@ -416,7 +424,7 @@ const BulkAdmissionModal = ({
                             </td>
 
                             <td className="whitespace-nowrap px-3 py-3">
-                              {student.image ? "Uploaded" : "-"}
+                              {student.image ? t.uploaded : "-"}
                             </td>
                           </tr>
                         );
@@ -432,7 +440,7 @@ const BulkAdmissionModal = ({
                 disabled={loading}
                 className="mt-5 w-full rounded-xl bg-green-600 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-60"
               >
-                {loading ? "Submitting..." : "Submit All Students"}
+                {loading ? t.submitting : t.submitAll}
               </button>
             </div>
           )}

@@ -1,3 +1,6 @@
+import { getText } from "@madrasha/shared-ui/src/i18n";
+import { studentStatusText } from "./studentStatus.text";
+
 /** students.is_active: 1 = সক্রিয়, 0 = বহিষ্কৃত, 2 = নিষ্ক্রিয় (সাময়িক; ফেরত সক্রিয় করা যায়)। */
 export type StudentStatus = "ACTIVE" | "EXPELLED" | "INACTIVE";
 
@@ -14,7 +17,8 @@ export const STUDENT_STATUS_LABEL: Record<StudentStatus, string> = {
   INACTIVE: "নিষ্ক্রিয়",
 };
 
-export const studentStatusLabel = (isActive: unknown) => STUDENT_STATUS_LABEL[studentStatus(isActive)];
+/** Label in the current UI language (STUDENT_STATUS_LABEL is the Bangla original). */
+export const studentStatusLabel = (isActive: unknown) => getText(studentStatusText)[studentStatus(isActive)];
 
 /** Badge colors per status (border + bg + text, light & dark). */
 export const STUDENT_STATUS_BADGE_CLASS: Record<StudentStatus, string> = {

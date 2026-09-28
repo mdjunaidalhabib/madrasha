@@ -1,4 +1,5 @@
 import api, { cachedGet } from "./adminApi";
+import type { InstitutionType } from "@madrasha/shared-ui/src/i18n";
 
 // Global (platform-wide, not per-tenant) academic catalog — Division/Class/
 // Book — plus the Default Fee Structure templates copied into a new
@@ -10,6 +11,8 @@ export interface CatalogDivisionDto {
   key_name: string | null;
   name: string | null;
   label: string | null;
+  /** Which institution type's catalogue this division belongs to. */
+  institution_type: InstitutionType;
 }
 
 export interface CatalogClassDto {
@@ -45,8 +48,9 @@ export interface DefaultFeeStructureDto {
 
 export const catalogDivisionApi = {
   list: () => cachedGet<{ data: CatalogDivisionDto[] }>("/super/divisions"),
-  create: (payload: { name_bn: string }) => api.post("/super/divisions", payload),
-  update: (id: number, payload: { name_bn: string }) => api.put(`/super/divisions/${id}`, payload),
+  create: (payload: { name_bn: string; institution_type?: InstitutionType }) => api.post("/super/divisions", payload),
+  update: (id: number, payload: { name_bn: string; institution_type?: InstitutionType }) =>
+    api.put(`/super/divisions/${id}`, payload),
   remove: (id: number) => api.delete(`/super/divisions/${id}`),
   reorder: (divisionIds: number[]) => api.put("/super/divisions/reorder", { division_ids: divisionIds }),
 };

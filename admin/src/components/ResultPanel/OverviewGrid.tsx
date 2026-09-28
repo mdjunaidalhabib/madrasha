@@ -1,5 +1,7 @@
 import { examCoversDivision } from "../ExamPanel/examDivisionScope";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { getText, localizeDigits, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 
 interface Division {
   division_id: number;
@@ -37,23 +39,24 @@ interface Props {
   onSelect: (examId: number, classId: number) => void;
 }
 
-const getBadge = (s?: StatusItem) => {
+const getBadge = (s: StatusItem | undefined, lang: Lang) => {
+  const t = getText(resultPanelText).overview;
   if (!s) {
-    return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
+    return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
   }
   if (s.publish_status === "PUBLISHED") {
-    return { label: "✅ প্রকাশিত", classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
+    return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
   }
   if (s.entered_students > 0 && s.total_students > 0 && s.entered_students >= s.total_students) {
-    return { label: "🟢 এন্ট্রি সম্পন্ন", classes: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800" };
+    return { label: t.complete, classes: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800" };
   }
   if (s.entered_students > 0) {
     return {
-      label: `🟡 আংশিক (${s.entered_students}/${s.total_students})`,
+      label: t.partial(localizeDigits(s.entered_students, lang), localizeDigits(s.total_students, lang)),
       classes: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-800",
     };
   }
-  return { label: "⚪ এন্ট্রি হয়নি", classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
+  return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
 };
 
 export default function OverviewGrid({
@@ -64,6 +67,8 @@ export default function OverviewGrid({
   loading = false,
   onSelect,
 }: Props) {
+  const lang = useLang();
+  const t = useText(resultPanelText).overview;
   if (loading) {
     return <SkeletonList items={6} />;
   }
@@ -71,7 +76,7 @@ export default function OverviewGrid({
   if (exams.length === 0 || divisions.length === 0) {
     return (
       <div className="bg-white shadow-md rounded-xl p-6 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-        কোনো পরীক্ষা বা বিভাগ পাওয়া যায়নি। প্রথমে পরীক্ষা ও বিভাগ যোগ করুন।
+        {t.empty}
       </div>
     );
   }
@@ -99,7 +104,7 @@ export default function OverviewGrid({
                   <div className="grid grid-cols-2 gap-3">
                     {divClasses.map((c) => {
                       const status = statusMap.get(`${exam.id}-${c.class_id}`);
-                      const badge = getBadge(status);
+                      const badge = getBadge(status, lang);
 
                       return (
                         <button

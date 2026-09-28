@@ -1,10 +1,12 @@
 import { ExternalLink, MapPin, Navigation } from "lucide-react";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 
 export default function MapPreview({
   href,
   title,
   address,
-  label = "ম্যাপে দেখুন",
+  label,
   className = "",
   compact = false,
 }: {
@@ -15,12 +17,13 @@ export default function MapPreview({
   className?: string;
   compact?: boolean;
 }) {
+  const t = useText(websiteText);
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
-      aria-label="Google Maps-এ লোকেশন দেখুন"
+      aria-label={t.viewOnGoogleMaps}
       className={`group relative block overflow-hidden bg-[#f1efe9] ${className}`}
     >
       {/* No Google Maps iframe on the public site (each embed is ~1-2 MB of
@@ -55,7 +58,7 @@ export default function MapPreview({
           {address && <span className="mt-0.5 line-clamp-2 block text-xs text-slate-500">{address}</span>}
           <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#1a73e8]">
             <Navigation size={12} />
-            দিকনির্দেশনা
+            {t.directions}
           </span>
         </span>
       )}
@@ -83,7 +86,7 @@ export default function MapPreview({
         }`}
       >
         <MapPin size={compact ? 13 : 16} />
-        {label}
+        {label ?? t.viewOnMap}
         <ExternalLink size={compact ? 11 : 14} className="opacity-70" />
       </span>
     </a>

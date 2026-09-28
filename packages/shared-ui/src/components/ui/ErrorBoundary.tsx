@@ -1,6 +1,14 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import ErrorState from "./ErrorState";
 import { logger } from "../../utils/logger";
+import { useText } from "../../i18n";
+import { uiText } from "./ui.text";
+
+// Function wrapper so the fallback re-renders in the current UI language.
+function CrashFallback({ onRetry }: { onRetry: () => void }) {
+  const t = useText(uiText);
+  return <ErrorState title={t.pageCrashedTitle} message={t.pageCrashedMessage} onRetry={onRetry} />;
+}
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean };
@@ -20,11 +28,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-gray-50 p-6 dark:bg-slate-950">
-          <ErrorState
-            title="Page crashed"
-            message="Reload the page or go back and try again."
-            onRetry={() => this.setState({ hasError: false })}
-          />
+          <CrashFallback onRetry={() => this.setState({ hasError: false })} />
         </div>
       );
     }

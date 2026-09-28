@@ -7,8 +7,11 @@ import { useTenantSlug } from "../../utils/useTenantSlug";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import TableSkeleton from "@madrasha/shared-ui/src/components/ui/TableSkeleton";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianResultsPage() {
+  const t = useText(guardianText);
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const madrasaSlug = useTenantSlug();
   const base = getTenantGuardianBase(madrasaSlug);
@@ -26,30 +29,30 @@ export default function GuardianResultsPage() {
   }, [selectedStudentId]);
 
   if (!selectedStudentId) {
-    return <EmptyState title="কোনো সন্তান যুক্ত নেই" />;
+    return <EmptyState title={t.noChild} />;
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="ফলাফল" subtitle="প্রকাশিত পরীক্ষার ফলাফল" />
+      <PageHeader title={t.results} subtitle={t.resultsSubtitle} />
 
       {loading ? (
         <TableSkeleton rows={5} />
       ) : results.length === 0 ? (
-        <EmptyState title="এখনো কোনো ফলাফল প্রকাশিত হয়নি" hint="পরীক্ষার ফলাফল প্রকাশিত হলে এখানে দেখা যাবে।" />
+        <EmptyState title={t.noResults} hint={t.noResultsHint} />
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-slate-50 text-start text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">পরীক্ষা</th>
-                  <th className="px-5 py-3">শ্রেণি</th>
-                  <th className="px-5 py-3">মোট নম্বর</th>
-                  <th className="px-5 py-3">গড়</th>
-                  <th className="px-5 py-3">গ্রেড</th>
-                  <th className="px-5 py-3">মেধাক্রম</th>
-                  <th className="px-5 py-3">মার্কশিট</th>
+                  <th className="px-5 py-3">{t.exam}</th>
+                  <th className="px-5 py-3">{t.class}</th>
+                  <th className="px-5 py-3">{t.totalMarks}</th>
+                  <th className="px-5 py-3">{t.average}</th>
+                  <th className="px-5 py-3">{t.grade}</th>
+                  <th className="px-5 py-3">{t.rank}</th>
+                  <th className="px-5 py-3">{t.marksheet}</th>
                 </tr>
               </thead>
               <tbody>
@@ -66,7 +69,7 @@ export default function GuardianResultsPage() {
                         to={`${base}/results/${row.resultMasterId}`}
                         className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
-                        মার্কশিট দেখুন
+                        {t.viewMarksheet}
                       </Link>
                     </td>
                   </tr>

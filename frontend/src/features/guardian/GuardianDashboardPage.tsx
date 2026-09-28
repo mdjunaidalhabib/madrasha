@@ -6,8 +6,12 @@ import { useTenantSlug } from "../../utils/useTenantSlug";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianDashboardPage() {
+  const t = useText(guardianText);
+  const lang = useLang();
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const children = useGuardianAuthStore((s) => s.children);
   const madrasaSlug = useTenantSlug();
@@ -45,19 +49,19 @@ export default function GuardianDashboardPage() {
   }, [selectedStudentId]);
 
   if (!selectedStudentId) {
-    return <EmptyState title="কোনো সন্তান যুক্ত নেই" hint="এই লগইনের সাথে কোনো শিক্ষার্থী যুক্ত পাওয়া যায়নি।" />;
+    return <EmptyState title={t.noChild} hint={t.noChildHint} />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={child ? child.nameBn : "ড্যাশবোর্ড"}
-        subtitle={child ? `${child.className || ""} · রোল ${child.roll ?? "-"}` : undefined}
+        title={child ? child.nameBn : t.dashboard}
+        subtitle={child ? `${child.className || ""} · ${t.roll} ${localizeDigits(child.roll ?? "-", lang)}` : undefined}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
-          label="এই মাসের হাজিরা %"
+          label={t.monthAttendancePct}
           value={loading ? "" : data?.attendance?.summary?.percentage ?? 0}
           variant="percentage"
           tone="emerald"
@@ -65,21 +69,21 @@ export default function GuardianDashboardPage() {
           to={`${base}/attendance`}
         />
         <StatTile
-          label="প্রকাশিত ফলাফল"
+          label={t.publishedResults}
           value={loading ? "" : (data?.results?.length ?? 0)}
           tone="indigo"
           loading={loading}
           to={`${base}/results`}
         />
         <StatTile
-          label="আসন্ন পরীক্ষা"
+          label={t.upcomingExams}
           value={loading ? "" : (data?.upcomingExamsCount ?? 0)}
           tone="amber"
           loading={loading}
           to={`${base}/exam-routine`}
         />
         <StatTile
-          label="বকেয়া ফি"
+          label={t.dueFees}
           value={loading ? "" : (data?.fees?.summary?.totalDue ?? 0)}
           variant="currency"
           tone="rose"

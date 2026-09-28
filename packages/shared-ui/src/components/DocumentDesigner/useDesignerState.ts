@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { createLayer } from "./types";
 import type { CanvasBackground, DocumentLayer, LayerType } from "./types";
+import { getPrintText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 export interface DesignerState {
   width: number;
@@ -10,15 +12,20 @@ export interface DesignerState {
   selectedLayerId: string | null;
 }
 
-const DEFAULT_CONTENT_BY_TYPE: Record<LayerType, unknown> = {
-  text: { text: "টেক্সট" },
-  image: { alt: "ছবি" },
-  photo: { field: "image", fit: "cover" },
-  qrcode: { field: "registration_no" },
-  barcode: { field: "registration_no" },
-  logo: { alt: "লোগো" },
-  signature: { alt: "স্বাক্ষর" },
-  shape: { shape: "rectangle", fill: "#e2e8f0" },
+// Starter content is printed document content, so it follows the print
+// (institution default) language.
+const defaultContentByType = (): Record<LayerType, unknown> => {
+  const names = getPrintText(designerText).layerTypes;
+  return {
+    text: { text: names.text },
+    image: { alt: names.image },
+    photo: { field: "image", fit: "cover" },
+    qrcode: { field: "registration_no" },
+    barcode: { field: "registration_no" },
+    logo: { alt: names.logo },
+    signature: { alt: names.signature },
+    shape: { shape: "rectangle", fill: "#e2e8f0" },
+  };
 };
 
 let layerCounter = 0;
@@ -64,7 +71,7 @@ export function useDesignerState(initial: DesignerState) {
       y: 20,
       width: type === "text" ? 160 : 80,
       height: type === "text" ? 24 : 80,
-      content: DEFAULT_CONTENT_BY_TYPE[type],
+      content: defaultContentByType()[type],
     });
     setState((s) => ({ ...s, layers: [...s.layers, layer], selectedLayerId: layer.id }));
     return layer.id;

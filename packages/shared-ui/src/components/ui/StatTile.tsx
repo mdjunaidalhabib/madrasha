@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { formatNumber, localizeDigits, useLang, type Lang } from "../../i18n";
 
 type StatTileVariant = "count" | "currency" | "percentage";
 type StatTileTone = "blue" | "indigo" | "emerald" | "rose" | "amber" | "slate";
@@ -43,14 +44,14 @@ const TONE_CLASSES: Record<StatTileTone, { bg: string; text: string; iconBg: str
   },
 };
 
-const formatValue = (value: number | string, variant: StatTileVariant) => {
+const formatValue = (value: number | string, variant: StatTileVariant, lang: Lang) => {
   if (variant === "currency") {
-    return `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
+    return `৳ ${formatNumber(Number(value || 0), lang)}`;
   }
   if (variant === "percentage") {
-    return `${Number(value || 0).toLocaleString("bn-BD")}%`;
+    return `${formatNumber(Number(value || 0), lang)}%`;
   }
-  return typeof value === "number" ? value.toLocaleString("bn-BD") : value;
+  return typeof value === "number" ? formatNumber(value, lang) : localizeDigits(value, lang);
 };
 
 type StatTileSize = "md" | "sm";
@@ -78,6 +79,7 @@ export default function StatTile({
   size = "md",
   icon,
 }: StatTileProps) {
+  const lang = useLang();
   const { bg, text, iconBg, accent } = TONE_CLASSES[tone];
   const compact = size === "sm";
 
@@ -109,7 +111,7 @@ export default function StatTile({
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
           <p className="mt-1.5 break-words text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-            {formatValue(value, variant)}
+            {formatValue(value, variant, lang)}
           </p>
           {subLabel && <p className="mt-1 truncate text-[11px] text-slate-400 dark:text-slate-500">{subLabel}</p>}
         </div>
@@ -135,7 +137,7 @@ export default function StatTile({
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
         {icon && <span className={`shrink-0 ${text}`}>{icon}</span>}
       </div>
-      <p className={`mt-2 break-words text-2xl font-bold tabular-nums ${text}`}>{formatValue(value, variant)}</p>
+      <p className={`mt-2 break-words text-2xl font-bold tabular-nums ${text}`}>{formatValue(value, variant, lang)}</p>
       {subLabel && <p className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{subLabel}</p>}
     </>
   );

@@ -3,6 +3,8 @@ import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { getMadrasaCleanStats, type MadrasaCleanStats } from "../../services/superAdminApi";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { superAdminText } from "./superAdmin.text";
 
 type CleanMode = "operational" | "full";
 
@@ -29,6 +31,10 @@ export default function CleanMadrasaModal({
   onConfirm: (payload: { mode: CleanMode; confirm_name: string; password: string }) => void;
   onClose: () => void;
 }) {
+  const t = useText(superAdminText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const n = (v: number) => formatNumber(v, lang);
   const [mode, setMode] = useState<CleanMode>("operational");
   const [stats, setStats] = useState<MadrasaCleanStats>(EMPTY_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -81,9 +87,9 @@ export default function CleanMadrasaModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:p-6">
-        <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">"{madrasaName}" এর ডেটা ক্লিন করুন</h3>
+        <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">{t.cleanTitle(madrasaName)}</h3>
         <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
-          এই কাজ অপরিবর্তনীয় - মুছে যাওয়া ডেটা আর ফিরিয়ে আনা যাবে না।
+          {t.cleanIrreversible}
         </p>
 
         {/* Mode selection */}
@@ -104,12 +110,10 @@ export default function CleanMadrasaModal({
             />
             <div>
               <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                শুধু অপারেশনাল ডেটা
+                {t.modeOperational}
               </div>
               <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                ছাত্র, ভর্তি, ফি স্ট্রাকচার/ইনভয়েস/পেমেন্ট, একাউন্ট, উপস্থিতি, পরীক্ষা/রেজাল্ট/রুটিন,
-                লাইব্রেরি ইস্যু, নোটিফিকেশন ও অ্যাক্টিভিটি লগ মুছে যাবে। মাদ্রাসার সেটিংস, বিভাগ/শ্রেণি/বিষয়
-                কাঠামো, স্টাফ/শিক্ষক/ইউজার লগইন ও রোল-পারমিশন অক্ষত থাকবে।
+                {t.modeOperationalDesc}
               </div>
             </div>
           </label>
@@ -130,12 +134,10 @@ export default function CleanMadrasaModal({
             />
             <div>
               <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                একদম সব কিছু (ফ্যাক্টরি রিসেট)
+                {t.modeFull}
               </div>
               <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                উপরের সব কিছুসহ সেটিংস, বিভাগ/শ্রেণি/বিষয় কাঠামো, স্টাফ/শিক্ষক, ওয়েবসাইট/ব্র্যান্ডিং, নথি
-                টেমপ্লেট এবং প্রতিটি ইউজার লগইন-ও মুছে যাবে। শুধু মাদ্রাসার নাম/স্লাগ/প্ল্যান থাকবে -
-                এরপর কেউ লগইন করতে পারবে না, যতক্ষণ না আপনি নতুন করে একটা ইউজার তৈরি করে দেন।
+                {t.modeFullDesc}
               </div>
             </div>
           </label>
@@ -144,15 +146,15 @@ export default function CleanMadrasaModal({
         {/* Stats preview */}
         <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-3 text-sm dark:bg-slate-800 dark:text-slate-200 sm:grid-cols-3">
           {statsLoading ? (
-            <span className="col-span-full text-gray-500 dark:text-slate-400">লোড হচ্ছে...</span>
+            <span className="col-span-full text-gray-500 dark:text-slate-400">{c.loading}</span>
           ) : (
             <>
-              <span>ছাত্র: {stats.students}</span>
-              <span>ইনভয়েস: {stats.invoices}</span>
-              <span>পরীক্ষা: {stats.exams}</span>
-              <span>উপস্থিতি: {stats.attendanceRecords}</span>
-              <span>ইউজার: {stats.users}</span>
-              <span>স্টাফ/শিক্ষক: {stats.staff + stats.teachers}</span>
+              <span>{t.statStudents}: {n(stats.students)}</span>
+              <span>{t.statInvoices}: {n(stats.invoices)}</span>
+              <span>{t.statExams}: {n(stats.exams)}</span>
+              <span>{t.statAttendance}: {n(stats.attendanceRecords)}</span>
+              <span>{t.statUsers}: {n(stats.users)}</span>
+              <span>{t.statStaff}: {n(stats.staff + stats.teachers)}</span>
             </>
           )}
         </div>
@@ -160,13 +162,13 @@ export default function CleanMadrasaModal({
         {/* Confirm 1: typed name */}
         <div className="mt-4">
           <label className="mb-1 flex flex-wrap items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-            নিশ্চিত করতে মাদ্রাসার নাম হুবহু লিখুন: <span className="font-semibold">{madrasaName}</span>
+            {t.typeNameToConfirm} <span className="font-semibold">{madrasaName}</span>
             <button
               type="button"
               onClick={copyName}
               className="inline-flex items-center rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              title="নাম কপি করুন"
-              aria-label="নাম কপি করুন"
+              title={t.copyName}
+              aria-label={t.copyName}
               tabIndex={-1}
             >
               {nameCopied ? <Check size={14} className="text-green-600 dark:text-green-400" /> : <Copy size={14} />}
@@ -193,13 +195,13 @@ export default function CleanMadrasaModal({
             onChange={(e) => setAcknowledged(e.target.checked)}
             disabled={busy}
           />
-          আমি নিশ্চিত যে এই ডেটা স্থায়ীভাবে মুছে ফেলতে চাই এবং জানি এটা আর ফিরিয়ে আনা যাবে না।
+          {t.acknowledge}
         </label>
 
         {/* Password re-verify */}
         <div className="mt-3">
           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-            আপনার সুপার অ্যাডমিন পাসওয়ার্ড দিন
+            {t.enterSuperAdminPassword}
           </label>
           <div className="relative">
             <input
@@ -218,7 +220,7 @@ export default function CleanMadrasaModal({
               type="button"
               onClick={() => setPasswordVisible((v) => !v)}
               className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-              aria-label={passwordVisible ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+              aria-label={passwordVisible ? t.hidePassword : t.showPassword}
               tabIndex={-1}
             >
               {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -228,7 +230,7 @@ export default function CleanMadrasaModal({
 
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button
             variant="danger"
@@ -238,10 +240,10 @@ export default function CleanMadrasaModal({
             {busy ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                ক্লিন করা হচ্ছে...
+                {t.cleaning}
               </span>
             ) : (
-              "ডেটা ক্লিন করুন"
+              t.cleanDataButton
             )}
           </Button>
         </div>

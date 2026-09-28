@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { guardianService } from "./guardian.service";
+import { t } from "../../shared/i18n";
 
 const respondWithError = (res: Response, error: unknown, logTag: string) => {
   if (error instanceof ApiError) {
@@ -30,7 +31,7 @@ export const guardianChangePassword = async (req: Request, res: Response) => {
     const madrasa_id = req.tenant!.madrasa_id;
     const guardianId = req.guardian!.guardianId;
     await guardianService.changePassword(guardianId, madrasa_id, req.body.new_password);
-    res.json({ success: true, message: "Password updated successfully" });
+    res.json({ success: true, message: t({ bn: "পাসওয়ার্ড আপডেট হয়েছে", en: "Password updated successfully", ar: "تم تحديث كلمة المرور بنجاح" }) });
   } catch (err) {
     respondWithError(res, err, "GUARDIAN CHANGE PASSWORD ERROR:");
   }

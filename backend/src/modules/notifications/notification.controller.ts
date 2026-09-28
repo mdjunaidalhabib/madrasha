@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { notificationService } from "./notification.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -12,7 +13,7 @@ const getMadrasaId = (req: Request): number => {
 
 export const sendNotification = asyncHandler(async (req: Request, res: Response) => {
   const data = await notificationService.send(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.success(res, { message: "Notification(s) processed", data });
+  return ApiResponse.success(res, { message: t({ bn: "নোটিফিকেশন প্রক্রিয়া করা হয়েছে", en: "Notification(s) processed", ar: "تمت معالجة الإشعارات" }), data });
 });
 
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
@@ -53,10 +54,10 @@ export const updateNotificationSetting = asyncHandler(async (req: Request, res: 
     req.params.eventKey,
     req.body,
   );
-  return ApiResponse.success(res, { message: "Setting saved", data });
+  return ApiResponse.success(res, { message: t({ bn: "সেটিং সংরক্ষণ করা হয়েছে", en: "Setting saved", ar: "تم حفظ الإعداد" }), data });
 });
 
 export const updateNotificationMasterSetting = asyncHandler(async (req: Request, res: Response) => {
   const data = await notificationService.setMasterEnabled(getMadrasaId(req), !!req.body.enabled);
-  return ApiResponse.success(res, { message: "Setting saved", data });
+  return ApiResponse.success(res, { message: t({ bn: "সেটিং সংরক্ষণ করা হয়েছে", en: "Setting saved", ar: "تم حفظ الإعداد" }), data });
 });

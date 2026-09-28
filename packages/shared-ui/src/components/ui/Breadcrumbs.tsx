@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
+import { useText } from "../../i18n";
+import { uiText } from "./ui.text";
 
 export type BreadcrumbItem = {
   label: string;
@@ -15,16 +17,17 @@ type BreadcrumbsProps = {
 // except the last (the current page) links back to that step; the last one
 // is plain text since linking to the page you're already on is a no-op.
 export default function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const t = useText(uiText);
   if (!items.length) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1.5 text-xs md:mb-4 md:text-sm">
+    <nav aria-label={t.breadcrumb} className="mb-2 flex items-center gap-1.5 text-xs md:mb-4 md:text-sm">
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         return (
           <Fragment key={`${item.label}-${index}`}>
             {index > 0 && (
-              <ChevronRight size={13} className="shrink-0 text-slate-300 dark:text-slate-600" />
+              <ChevronRight size={13} className="shrink-0 text-slate-300 rtl:rotate-180 dark:text-slate-600" />
             )}
             {isLast || !item.to ? (
               <span

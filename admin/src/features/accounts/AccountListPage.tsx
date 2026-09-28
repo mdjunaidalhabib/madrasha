@@ -13,14 +13,16 @@ import { useAccountOptions } from "./useAccountOptions";
 import { AccountRow, AccountType, daysAgoInput, formatDateInput, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
 import AccountReceiptModal from "./AccountReceiptModal";
 import AccountEditModal from "./AccountEditModal";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 const datePresets = [
-  { key: "all", label: "সব", days: null },
-  { key: "today", label: "আজ", days: 0 },
-  { key: "3d", label: "গত ৩ দিন", days: 3 },
-  { key: "7d", label: "গত ৭ দিন", days: 7 },
-  { key: "15d", label: "গত ১৫ দিন", days: 15 },
-  { key: "30d", label: "গত ৩০ দিন", days: 30 },
+  { key: "all", days: null },
+  { key: "today", days: 0 },
+  { key: "3d", days: 3 },
+  { key: "7d", days: 7 },
+  { key: "15d", days: 15 },
+  { key: "30d", days: 30 },
 ] as const;
 
 const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
@@ -31,6 +33,9 @@ const FieldLabel = ({ children, required = false }: { children: string; required
 
 export default function AccountListPage() {
   const toast = useToastStore();
+  const t = useText(accountsText);
+  const c = useText(commonText);
+  const lang = useLang();
   const { incomeFunds, expenseGroups } = useAccountOptions();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get("type");
@@ -133,17 +138,17 @@ export default function AccountListPage() {
 
   const handleDelete = (row: AccountRow) => {
     useConfirmStore.getState().show({
-      title: "এন্ট্রি ডিলিট করুন",
-      message: `"${partyName(row)}" এর ${money(row.amount)} টাকার এন্ট্রিটি মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteEntryTitle,
+      message: t.deleteEntryMessage(partyName(row), money(row.amount)),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/accounts/${row.id}`);
-          toast.push("success", "এন্ট্রি মুছে ফেলা হয়েছে");
+          toast.push("success", t.entryDeleted);
           setRows((prev) => prev.filter((r) => r.id !== row.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || t.deleteFailed;
           toast.push("error", msg);
         }
       },
@@ -172,20 +177,20 @@ export default function AccountListPage() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
     useConfirmStore.getState().show({
-      title: "নির্বাচিত এন্ট্রি ডিলিট করুন",
-      message: `${ids.length} টি এন্ট্রি (মোট ${money(selectedTotal)}) স্থায়ীভাবে মুছে ফেলতে চান? এই কাজ আর ফিরিয়ে নেওয়া যাবে না।`,
-      confirmText: "সব ডিলিট করুন",
+      title: t.bulkDeleteTitle,
+      message: t.bulkDeleteMessage(formatNumber(ids.length, lang), money(selectedTotal)),
+      confirmText: t.deleteAll,
       danger: true,
       onConfirm: async () => {
         try {
           setBulkDeleting(true);
           const res = await api.post("/accounts/bulk-delete", { ids });
           const count = res.data?.count ?? res.data?.data?.count ?? ids.length;
-          toast.push("success", `${count} টি এন্ট্রি মুছে ফেলা হয়েছে`);
+          toast.push("success", t.bulkDeleted(formatNumber(count, lang)));
           setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
           setSelectedIds(new Set());
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || t.deleteFailed;
           toast.push("error", msg);
         } finally {
           setBulkDeleting(false);
@@ -196,7 +201,7 @@ export default function AccountListPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="সকল লেনদেন" subtitle="সব আয় ও ব্যয় এন্ট্রি — এডিট ও ডিলিট করুন" />
+      <PageHeader title={t.listTitle} subtitle={t.listSubtitle} />
 
       <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {datePresets.map((preset) => (
@@ -210,32 +215,32 @@ export default function AccountListPage() {
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             }`}
           >
-            {preset.label}
+            {t.presets[preset.key]}
           </button>
         ))}
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div>
-          <FieldLabel>ধরন</FieldLabel>
+          <FieldLabel>{t.type}</FieldLabel>
           <select
             className="h-10 w-40 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={typeFilter}
             onChange={(e) => handleTypeFilterChange(e.target.value as "" | AccountType)}
           >
-            <option value="">সব</option>
-            <option value="income">আয়</option>
-            <option value="expense">ব্যয়</option>
+            <option value="">{t.presets.all}</option>
+            <option value="income">{t.income}</option>
+            <option value="expense">{t.expense}</option>
           </select>
         </div>
         <div>
-          <FieldLabel>খাত</FieldLabel>
+          <FieldLabel>{t.category}</FieldLabel>
           <select
             className="h-10 w-48 rounded border px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="">সব খাত</option>
+            <option value="">{t.allCategories}</option>
             {categoryFilterOptions.map((category) => (
               <option key={category} value={category}>
                 {category}
@@ -244,29 +249,29 @@ export default function AccountListPage() {
           </select>
         </div>
         <div>
-          <FieldLabel>ফান্ড খুঁজুন</FieldLabel>
+          <FieldLabel>{t.searchFund}</FieldLabel>
           <Input
             type="text"
-            placeholder="ফান্ডের নাম লিখুন"
+            placeholder={t.fundNamePlaceholder}
             className="h-10 w-44"
             value={fundFilter}
             onChange={(e) => setFundFilter(e.target.value)}
           />
         </div>
         <div>
-          <FieldLabel>শুরুর তারিখ</FieldLabel>
+          <FieldLabel>{t.startDate}</FieldLabel>
           <Input type="date" className="h-10 w-40" value={from} onChange={(e) => handleFromChange(e.target.value)} />
         </div>
         <div>
-          <FieldLabel>শেষ তারিখ</FieldLabel>
+          <FieldLabel>{t.endDate}</FieldLabel>
           <Input type="date" className="h-10 w-40" value={to} onChange={(e) => handleToChange(e.target.value)} />
         </div>
         <div className="ms-auto flex flex-wrap gap-3 text-sm">
           <span className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-            মোট আয়: {money(totals.income)}
+            {t.totalIncome}: {money(totals.income)}
           </span>
           <span className="rounded-lg bg-rose-50 px-3 py-2 font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-            মোট ব্যয়: {money(totals.expense)}
+            {t.totalExpense}: {money(totals.expense)}
           </span>
         </div>
       </div>
@@ -274,7 +279,7 @@ export default function AccountListPage() {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/30">
           <span className="text-sm font-medium text-rose-700 dark:text-rose-400">
-            {selectedIds.size} টি এন্ট্রি নির্বাচিত (মোট {money(selectedTotal)})
+            {t.selectedSummary(formatNumber(selectedIds.size, lang), money(selectedTotal))}
           </span>
           <div className="flex gap-2">
             <button
@@ -282,7 +287,7 @@ export default function AccountListPage() {
               onClick={() => setSelectedIds(new Set())}
               className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/50"
             >
-              নির্বাচন বাতিল
+              {t.clearSelection}
             </button>
             <button
               type="button"
@@ -290,7 +295,7 @@ export default function AccountListPage() {
               onClick={handleBulkDelete}
               className="rounded-lg bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
             >
-              {bulkDeleting ? "মুছে ফেলা হচ্ছে..." : "নির্বাচিত এন্ট্রি মুছুন"}
+              {bulkDeleting ? t.deleting : t.deleteSelected}
             </button>
           </div>
         </div>
@@ -302,7 +307,7 @@ export default function AccountListPage() {
             <SkeletonList items={6} />
           </div>
         ) : rows.length === 0 ? (
-          <EmptyState title="কোনো এন্ট্রি পাওয়া যায়নি" />
+          <EmptyState title={t.noEntries} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[950px] text-sm">
@@ -313,17 +318,17 @@ export default function AccountListPage() {
                       type="checkbox"
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
-                      aria-label="সব নির্বাচন করুন"
+                      aria-label={t.selectAll}
                     />
                   </th>
-                  <th className="px-4 py-3">তারিখ</th>
-                  <th className="px-4 py-3">নং</th>
-                  <th className="px-4 py-3">ধরন</th>
-                  <th className="px-4 py-3">ফান্ড / খাত</th>
-                  <th className="px-4 py-3">নাম</th>
-                  <th className="px-4 py-3">পরিমাণ</th>
-                  <th className="px-4 py-3">মাধ্যম</th>
-                  <th className="px-4 py-3 text-end">অ্যাকশন</th>
+                  <th className="px-4 py-3">{c.date}</th>
+                  <th className="px-4 py-3">{t.no}</th>
+                  <th className="px-4 py-3">{t.type}</th>
+                  <th className="px-4 py-3">{t.fundCategory}</th>
+                  <th className="px-4 py-3">{c.name}</th>
+                  <th className="px-4 py-3">{c.amount}</th>
+                  <th className="px-4 py-3">{t.method}</th>
+                  <th className="px-4 py-3 text-end">{c.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,7 +344,7 @@ export default function AccountListPage() {
                         type="checkbox"
                         checked={selectedIds.has(row.id)}
                         onChange={() => toggleSelectRow(row.id)}
-                        aria-label="এন্ট্রি নির্বাচন করুন"
+                        aria-label={t.selectEntry}
                       />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
@@ -354,7 +359,7 @@ export default function AccountListPage() {
                           row.type === "income" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
                         }`}
                       >
-                        {row.type === "income" ? "আয়" : "ব্যয়"}
+                        {row.type === "income" ? t.income : t.expense}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
@@ -375,7 +380,7 @@ export default function AccountListPage() {
                           type="button"
                           onClick={() => setPrintingRow(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-500 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
-                          title={row.type === "income" ? "রশিদ প্রিন্ট" : "ভাউচার প্রিন্ট"}
+                          title={row.type === "income" ? t.printReceipt : t.printVoucher}
                         >
                           <Printer size={16} />
                         </button>
@@ -383,7 +388,7 @@ export default function AccountListPage() {
                           type="button"
                           onClick={() => setEditing(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                          title="এডিট"
+                          title={c.edit}
                         >
                           <Pencil size={16} />
                         </button>
@@ -391,7 +396,7 @@ export default function AccountListPage() {
                           type="button"
                           onClick={() => handleDelete(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                          title="মুছুন"
+                          title={c.delete}
                         >
                           <Trash2 size={16} />
                         </button>

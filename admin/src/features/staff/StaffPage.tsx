@@ -6,6 +6,8 @@ import AddressInfo from "../../components/staff-admission/AddressInfo";
 import SubmitButton from "../../components/teachers-admission/SubmitButton";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../teachers/teacherStaff.text";
 
 export interface StaffFormData {
   name_bn: string;
@@ -102,6 +104,7 @@ const calculateAge = (dob?: string) => {
 };
 
 const StaffPage: React.FC = () => {
+  const t = useText(teacherStaffText);
   const [formData, setFormData] = useState<StaffFormData>(initialState);
   const [errors, setErrors] = useState<StaffFormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -109,7 +112,7 @@ const StaffPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: StaffFormErrors = {};
 
-    if (!formData.name_bn.trim()) newErrors.name_bn = "স্টাফের নাম দিন";
+    if (!formData.name_bn.trim()) newErrors.name_bn = getText(teacherStaffText).enterStaffName;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -158,11 +161,11 @@ const StaffPage: React.FC = () => {
     try {
       setLoading(true);
       await api.post("/staff", makePayload(formData));
-      useToastStore.getState().show("স্টাফ সফলভাবে যোগ করা হয়েছে ✅", "success");
+      useToastStore.getState().show(getText(teacherStaffText).staffAdded, "success");
       setFormData(initialState);
       setErrors({});
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || "স্টাফ যোগ করতে ব্যর্থ ❌", "error");
+      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).staffAddFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -170,7 +173,7 @@ const StaffPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-center mb-6 dark:text-slate-100">নতুন স্টাফ নিবন্ধন</h1>
+      <h1 className="text-3xl font-bold text-center mb-6 dark:text-slate-100">{t.staffRegistration}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <StaffImageUpload formData={formData} setFormData={setFormData} />
@@ -181,7 +184,7 @@ const StaffPage: React.FC = () => {
 
         <AddressInfo formData={formData} setFormData={setFormData} />
 
-        <SubmitButton loading={loading} text="স্টাফ সংরক্ষণ করুন" />
+        <SubmitButton loading={loading} text={t.saveStaff} />
       </form>
     </div>
   );

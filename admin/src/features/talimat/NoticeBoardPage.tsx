@@ -4,7 +4,8 @@ import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, usePrintLang, usePrintText, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { noticeText } from "./talimatMisc.text";
 import { noticeApi, type NoticeDto } from "../../services/noticeApi";
 import { ReportBackground, ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
 import LetterDocument from "../../components/Report/documents/engine/LetterDocument";
@@ -20,12 +21,12 @@ import { useLetterDesign } from "../../components/Report/documents/engine/useLet
 // Transfer Letter, so it automatically carries the madrasa's logo, name and
 // address — no more blank preview / missing letterhead.
 
-const formatDate = (iso: string) => {
+const formatDate = (iso: string, lang: Lang) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return toBanglaDigits(`${dd}/${mm}/${d.getFullYear()}`);
+  return localizeDigits(`${dd}/${mm}/${d.getFullYear()}`, lang);
 };
 
 const NOTICE_PRINT_STYLE_ID = "notice-board-a4-print-style";
@@ -47,6 +48,9 @@ const printNotice = () => {
 
 function NoticeLetter({ title, body }: { title: string; body: string }) {
   const { design, backgroundImage } = useLetterDesign();
+  // Printed notice follows the institution's default language.
+  const pt = usePrintText(noticeText);
+  const { lang, dir } = usePrintLang();
   return (
     // Card border/rounding/padding live on this OUTER wrapper only, for the
     // on-screen preview look - they must never sit on the .print-area div
@@ -55,7 +59,7 @@ function NoticeLetter({ title, body }: { title: string; body: string }) {
     // that border and card background onto the actual page. The printed
     // page should be a plain white sheet, same as Sanad/Testimonial.
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-      <div className="print-area relative">
+      <div lang={lang} dir={dir} className="print-area relative">
         <ReportBackground />
         <ReportWatermark />
         <ReportBrandHeader />
@@ -63,7 +67,7 @@ function NoticeLetter({ title, body }: { title: string; body: string }) {
           <LetterDocument
             row={{}}
             showBismillah
-            heading={title || "নোটিশ"}
+            heading={title || pt.notice}
             headingClassName="mb-8 text-center text-2xl font-bold"
             bodyClassName="whitespace-pre-line text-lg leading-9 text-slate-800"
             template={body}
@@ -71,8 +75,8 @@ function NoticeLetter({ title, body }: { title: string; body: string }) {
             backgroundImage={backgroundImage}
             footer={
               <div className="mt-16 flex justify-between text-sm font-semibold">
-                <span>তারিখ: ........................</span>
-                <span>প্রধান শিক্ষকের স্বাক্ষর ও সীল</span>
+                <span>{pt.dateLine}</span>
+                <span>{pt.headSignature}</span>
               </div>
             }
           />
@@ -87,6 +91,8 @@ type EditorState = { id: number | null; title: string; body: string };
 const EMPTY_EDITOR: EditorState = { id: null, title: "", body: "" };
 
 export default function NoticeBoardPage() {
+  const t = useText(noticeText);
+  const lang = useLang();
   const [notices, setNotices] = useState<NoticeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -105,7 +111,7 @@ export default function NoticeBoardPage() {
       const res = await noticeApi.list();
       setNotices(res.data?.data || []);
     } catch {
-      setError("নোটিশ লোড করা যায়নি। আবার চেষ্টা করুন।");
+      setError(t.loadError);
     } finally {
       setLoading(false);
     }
@@ -135,7 +141,7 @@ export default function NoticeBoardPage() {
     const title = editor.title.trim();
     const body = editor.body.trim();
     if (!title || !body) {
-      setSaveError("শিরোনাম ও নোটিশের লেখা দুটোই দিতে হবে।");
+      setSaveError(t.bothRequired);
       return;
     }
 
@@ -150,20 +156,20 @@ export default function NoticeBoardPage() {
       setEditor(null);
       await loadNotices();
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message || "নোটিশ সেভ করা যায়নি। আবার চেষ্টা করুন।");
+      setSaveError(err?.response?.data?.message || t.saveError);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (notice: NoticeDto) => {
-    if (!window.confirm(`"${notice.title}" নোটিশটি মুছে ফেলতে চান?`)) return;
+    if (!window.confirm(t.confirmDelete(notice.title))) return;
     setDeletingId(notice.id);
     try {
       await noticeApi.delete(notice.id);
       setNotices((prev) => prev.filter((n) => n.id !== notice.id));
     } catch {
-      window.alert("নোটিশ মুছে ফেলা যায়নি। আবার চেষ্টা করুন।");
+      window.alert(t.deleteError);
     } finally {
       setDeletingId(null);
     }
@@ -172,11 +178,11 @@ export default function NoticeBoardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="নোটিশ বোর্ড"
-        subtitle="দেয়ালে টানানোর জন্য একাধিক নোটিশ লিখে সেভ করুন — দরকারমতো যেকোনোটি বেছে প্রিন্ট করুন"
+        title={t.title}
+        subtitle={t.subtitle}
         actions={
           <Button onClick={openNewEditor}>
-            <Plus size={16} className="me-1 inline" /> নতুন নোটিশ
+            <Plus size={16} className="me-1 inline" /> {t.newNotice}
           </Button>
         }
       />
@@ -197,7 +203,7 @@ export default function NoticeBoardPage() {
 
       {!loading && !error && notices.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          এখনো কোনো নোটিশ তৈরি করা হয়নি। "নতুন নোটিশ" বাটনে ক্লিক করে প্রথম নোটিশটি লিখুন।
+          {t.empty}
         </div>
       )}
 
@@ -215,15 +221,15 @@ export default function NoticeBoardPage() {
                 {notice.body}
               </p>
               <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
-                সর্বশেষ আপডেট: {formatDate(notice.updatedAt)}
+                {t.lastUpdated(formatDate(notice.updatedAt, lang))}
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => setPrintingNotice(notice)}>
-                  <Printer size={14} className="me-1 inline" /> প্রিভিউ / প্রিন্ট
+                  <Printer size={14} className="me-1 inline" /> {t.previewPrint}
                 </Button>
                 <Button variant="secondary" onClick={() => openEditEditor(notice)}>
-                  <Pencil size={14} className="me-1 inline" /> এডিট
+                  <Pencil size={14} className="me-1 inline" /> {t.edit}
                 </Button>
                 <Button
                   variant="danger"
@@ -231,7 +237,7 @@ export default function NoticeBoardPage() {
                   onClick={() => handleDelete(notice)}
                 >
                   <Trash2 size={14} className="me-1 inline" />
-                  {deletingId === notice.id ? "মুছা হচ্ছে..." : "মুছুন"}
+                  {deletingId === notice.id ? t.deleting : t.delete}
                 </Button>
               </div>
             </div>
@@ -242,7 +248,7 @@ export default function NoticeBoardPage() {
       {/* এডিটর: শিরোনাম + লেখা, পাশে লেটারহেড-সহ লাইভ প্রিভিউ */}
       <Modal
         open={!!editor}
-        title={editor?.id ? "নোটিশ এডিট করুন" : "নতুন নোটিশ লিখুন"}
+        title={editor?.id ? t.editNotice : t.writeNotice}
         onClose={closeEditor}
         maxWidthClassName="max-w-4xl"
       >
@@ -250,23 +256,23 @@ export default function NoticeBoardPage() {
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">নোটিশের শিরোনাম</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">{t.noticeTitle}</label>
                 <input
                   type="text"
                   value={editor.title}
                   onChange={(e) => setEditor((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
-                  placeholder="যেমন: ঈদের ছুটি সংক্রান্ত নোটিশ"
+                  placeholder={t.titlePlaceholder}
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">নোটিশের লেখা</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">{t.noticeBody}</label>
                 <textarea
                   value={editor.body}
                   onChange={(e) => setEditor((prev) => (prev ? { ...prev, body: e.target.value } : prev))}
                   rows={12}
-                  placeholder="এখানে নোটিশের পুরো লেখা লিখুন..."
+                  placeholder={t.bodyPlaceholder}
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm leading-6 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -275,21 +281,21 @@ export default function NoticeBoardPage() {
 
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={closeEditor} disabled={saving}>
-                  <X size={14} className="me-1 inline" /> বাতিল
+                  <X size={14} className="me-1 inline" /> {t.cancel}
                 </Button>
                 <Button onClick={handleSave} disabled={saving}>
-                  {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+                  {saving ? t.saving : t.save}
                 </Button>
               </div>
             </div>
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                প্রিভিউ
+                {t.preview}
               </p>
               <div className="overflow-auto rounded-xl bg-slate-100 p-4" style={{ maxHeight: 520 }}>
                 <div style={{ width: 420 }}>
-                  <NoticeLetter title={editor.title || "নোটিশ"} body={editor.body} />
+                  <NoticeLetter title={editor.title || t.notice} body={editor.body} />
                 </div>
               </div>
             </div>
@@ -300,7 +306,7 @@ export default function NoticeBoardPage() {
       {/* প্রিভিউ / প্রিন্ট মোডাল */}
       <Modal
         open={!!printingNotice}
-        title="নোটিশ প্রিন্ট প্রিভিউ"
+        title={t.printPreview}
         onClose={() => setPrintingNotice(null)}
         maxWidthClassName="max-w-lg"
       >
@@ -309,10 +315,10 @@ export default function NoticeBoardPage() {
             <NoticeLetter title={printingNotice.title} body={printingNotice.body} />
             <div className="no-print mt-4 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPrintingNotice(null)}>
-                বন্ধ করুন
+                {t.close}
               </Button>
               <Button onClick={printNotice}>
-                <Printer size={16} className="me-1 inline" /> প্রিন্ট করুন
+                <Printer size={16} className="me-1 inline" /> {t.print}
               </Button>
             </div>
           </>

@@ -4,6 +4,7 @@ import { logger } from "../../shared/logger/logger";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
 import { examFeeRepository, ExamFeeRepository } from "./exam-fee.repository";
 import { feeService } from "./fee.service";
+import { t } from "../../shared/i18n";
 
 type ExamRow = Awaited<ReturnType<ExamFeeRepository["findExams"]>>[number];
 type FeeRow = Awaited<ReturnType<ExamFeeRepository["findExamFeeRows"]>>[number];
@@ -28,7 +29,7 @@ const isFeeLive = (exam: ExamRow, rows: FeeRow[]) => exam.isActive && rows.some(
 const parseAmount = (value: ExamFeeAmountInput["amount"]): number | null => {
   if (value === null || value === undefined || String(value).trim() === "") return null;
   const amount = Number(value);
-  if (!Number.isFinite(amount) || amount < 0) throw new BadRequestError("ফি-এর পরিমাণ সঠিক নয়");
+  if (!Number.isFinite(amount) || amount < 0) throw new BadRequestError(t({ bn: "ফি-এর পরিমাণ সঠিক নয়", en: "Invalid fee amount", ar: "مبلغ الرسوم غير صالح" }));
   return amount === 0 ? null : Math.round(amount * 100) / 100;
 };
 
@@ -105,10 +106,10 @@ export class ExamFeeService {
    * exam's fee state; if that fee is already live their students are billed
    * immediately. */
   async setAmounts(madrasaId: number, examId: number, items: ExamFeeAmountInput[]) {
-    if (!Array.isArray(items) || items.length === 0) throw new BadRequestError("amounts is required");
+    if (!Array.isArray(items) || items.length === 0) throw new BadRequestError(t({ bn: "amounts আবশ্যক", en: "amounts is required", ar: "المبالغ مطلوبة" }));
 
     const [exam] = await this.repository.findExams(madrasaId, examId);
-    if (!exam) throw new NotFoundError("Exam not found");
+    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
 
     // A pre-dynamic "every class" row must be split first (or, if already
     // billed, blocks per-class amounts - they would double-bill).
@@ -116,7 +117,7 @@ export class ExamFeeService {
     const legacy = rows.find((r) => r.classId === null);
     if (legacy && legacy._count.invoices > 0) {
       throw new ConflictError(
-        "এই পরীক্ষার পুরনো 'সব শ্রেণির জন্য' ফি থেকে ইতিমধ্যে ইনভয়েস তৈরি হয়েছে — শ্রেণিভিত্তিক ফি বসানো যাবে না",
+        t({ bn: "এই পরীক্ষার পুরনো 'সব শ্রেণির জন্য' ফি থেকে ইতিমধ্যে ইনভয়েস তৈরি হয়েছে — শ্রেণিভিত্তিক ফি বসানো যাবে না", en: "Invoices have already been created from this exam's old 'all classes' fee — class-wise fees cannot be set", ar: "تم إنشاء فواتير بالفعل من رسوم هذا الامتحان القديمة 'لجميع الصفوف' — لا يمكن تعيين رسوم لكل صف" }),
       );
     }
     if (legacy) {
@@ -130,15 +131,19 @@ export class ExamFeeService {
 
     const plan = items.map((item) => {
       const cls = classById.get(Number(item.class_id));
-      if (!cls) throw new BadRequestError("নির্বাচিত শ্রেণিটি সক্রিয় নেই");
+      if (!cls) throw new BadRequestError(t({ bn: "নির্বাচিত শ্রেণিটি সক্রিয় নেই", en: "The selected class is not active", ar: "الصف المختار غير نشط" }));
       if (!examCoversDivision(exam, cls.divisionId)) {
-        throw new BadRequestError(`"${exam.name}" পরীক্ষাটি ${cls.className ?? "এই"} শ্রেণির বিভাগের জন্য নির্ধারিত নয়`);
+        throw new BadRequestError(cls.className
+          ? t({ bn: `"${exam.name}" পরীক্ষাটি ${cls.className} শ্রেণির বিভাগের জন্য নির্ধারিত নয়`, en: `The exam "${exam.name}" is not scheduled for the division of class ${cls.className}`, ar: `الامتحان "${exam.name}" غير مخصص لقسم الصف ${cls.className}` })
+          : t({ bn: `"${exam.name}" পরীক্ষাটি এই শ্রেণির বিভাগের জন্য নির্ধারিত নয়`, en: `The exam "${exam.name}" is not scheduled for this class's division`, ar: `الامتحان "${exam.name}" غير مخصص لقسم هذا الصف` }));
       }
       const amount = parseAmount(item.amount);
       const row = rows.find((r) => r.classId === cls.classId);
       if (amount === null && row && row._count.invoices > 0) {
         throw new ConflictError(
-          `${cls.className ?? "এই"} শ্রেণির জন্য এই পরীক্ষার ফি-এর ইনভয়েস তৈরি হয়ে গেছে — ফি মুছে ফেলা যাবে না`,
+          cls.className
+            ? t({ bn: `${cls.className} শ্রেণির জন্য এই পরীক্ষার ফি-এর ইনভয়েস তৈরি হয়ে গেছে — ফি মুছে ফেলা যাবে না`, en: `Invoices for this exam fee have already been created for class ${cls.className} — the fee cannot be removed`, ar: `تم إنشاء فواتير رسوم هذا الامتحان للصف ${cls.className} — لا يمكن حذف الرسوم` })
+            : t({ bn: "এই শ্রেণির জন্য এই পরীক্ষার ফি-এর ইনভয়েস তৈরি হয়ে গেছে — ফি মুছে ফেলা যাবে না", en: "Invoices for this exam fee have already been created for this class — the fee cannot be removed", ar: "تم إنشاء فواتير رسوم هذا الامتحان لهذا الصف — لا يمكن حذف الرسوم" }),
         );
       }
       return { cls, amount, row };
@@ -240,7 +245,7 @@ export class ExamFeeService {
    *    are withdrawn (see deactivateFee); on again re-issues them. */
   async setFeeActive(madrasaId: number, examId: number, active: boolean) {
     const [exam] = await this.repository.findExams(madrasaId, examId);
-    if (!exam) throw new NotFoundError("Exam not found");
+    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
 
     if (!active) {
       const off = await this.deactivateFee(madrasaId, examId);
@@ -249,7 +254,7 @@ export class ExamFeeService {
 
     if (!exam.isActive) {
       throw new BadRequestError(
-        `"${exam.name}" পরীক্ষাটি বন্ধ আছে — তা'লীমাত থেকে পরীক্ষা চালু হলে তবেই এর ফি চালু করা যাবে`,
+        t({ bn: `"${exam.name}" পরীক্ষাটি বন্ধ আছে — পরীক্ষা বিভাগ থেকে পরীক্ষা চালু হলে তবেই এর ফি চালু করা যাবে`, en: `The exam "${exam.name}" is turned off — its fee can be enabled only after the exam is turned on from the exam department`, ar: `الامتحان "${exam.name}" متوقف — لا يمكن تفعيل رسومه إلا بعد تفعيل الامتحان من قسم الامتحانات` }),
       );
     }
 
@@ -266,7 +271,7 @@ export class ExamFeeService {
     const covered = new Set(classes.filter((c) => examCoversDivision(exam, c.divisionId)).map((c) => c.classId));
     const inScope = rows.filter((r) => (r.classId === null ? r._count.invoices > 0 : covered.has(r.classId)));
     if (!inScope.length) {
-      throw new BadRequestError(`"${exam.name}" পরীক্ষার কোনো শ্রেণির ফি নির্ধারণ করা নেই — আগে ফি-এর পরিমাণ বসান`);
+      throw new BadRequestError(t({ bn: `"${exam.name}" পরীক্ষার কোনো শ্রেণির ফি নির্ধারণ করা নেই — আগে ফি-এর পরিমাণ বসান`, en: `No class fee is set for the exam "${exam.name}" — set the fee amounts first`, ar: `لم يتم تحديد رسوم أي صف للامتحان "${exam.name}" — حدد مبالغ الرسوم أولًا` }));
     }
     for (const row of inScope) {
       if (!row.isActive) await this.repository.updateRow(row.id, madrasaId, { isActive: true });
@@ -345,7 +350,7 @@ export class ExamFeeService {
   ) {
     // The class's own বিভাগ session if it has one, else the general one.
     const session = await this.sessions.findCurrentSession(madrasaId, cls.divisionId);
-    if (!session) throw new BadRequestError("কোনো চলমান সেশন নেই — আগে সেশন সেটাপ করুন");
+    if (!session) throw new BadRequestError(t({ bn: "কোনো চলমান সেশন নেই — আগে সেশন সেটাপ করুন", en: "There is no current session — set up a session first", ar: "لا يوجد عام دراسي حالي — قم بإعداد العام الدراسي أولًا" }));
     return this.repository.createRow({
       madrasaId,
       examId: exam.id,

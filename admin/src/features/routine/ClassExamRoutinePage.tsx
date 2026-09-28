@@ -26,6 +26,18 @@ import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { ReportBackground, ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
 import { examScopeLabel, examsForDivision, useClearMismatchedExam } from "../../components/ExamPanel/examDivisionScope";
+import {
+  commonText,
+  formatDate,
+  getText,
+  localizeDigits,
+  useLang,
+  usePrintLang,
+  usePrintText,
+  useText,
+  type Lang,
+} from "@madrasha/shared-ui/src/i18n";
+import { routineText } from "./routine.text";
 
 type Division = { division_id: number; division_name_bn: string };
 type ClassItem = { class_id: number; class_name_bn: string };
@@ -88,12 +100,12 @@ type ExamRoutineOverviewRow = {
   status: "NONE" | "DRAFT" | "PUBLISHED" | "CANCELLED" | "MIXED";
 };
 
-const DAY_LABELS = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র", "শনি"];
-const EXAM_ROUTINE_STATUS_LABELS: Record<string, string> = {
-  DRAFT: "খসড়া",
-  PUBLISHED: "প্রকাশিত",
-  CANCELLED: "বাতিল",
-};
+// Display labels come from routineText (keys = backend status codes).
+const examRoutineStatusLabels = (t: typeof routineText.bn): Record<string, string> => ({
+  DRAFT: t.statusDraft,
+  PUBLISHED: t.statusPublished,
+  CANCELLED: t.statusCancelled,
+});
 const EXAM_ROUTINE_STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   PUBLISHED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
@@ -104,11 +116,11 @@ const EXAM_ROUTINE_STATUS_STYLES: Record<string, string> = {
 // DRAFT/PUBLISHED/CANCELLED-এর পাশাপাশি "রুটিন নেই" ও "আংশিক" (মিশ্র স্ট্যাটাস)
 // দুটো বাড়তি অবস্থাও লাগে, তাই আলাদা ম্যাপ (রেজাল্ট প্যানেলের ওভারভিউ পেজের
 // ধাঁচেই)।
-const OVERVIEW_STATUS_LABELS: Record<string, string> = {
-  ...EXAM_ROUTINE_STATUS_LABELS,
-  NONE: "রুটিন নেই",
-  MIXED: "আংশিক",
-};
+const overviewStatusLabels = (t: typeof routineText.bn): Record<string, string> => ({
+  ...examRoutineStatusLabels(t),
+  NONE: t.statusNone,
+  MIXED: t.statusMixed,
+});
 const OVERVIEW_STATUS_STYLES: Record<string, string> = {
   ...EXAM_ROUTINE_STATUS_STYLES,
   NONE: "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400",
@@ -156,19 +168,27 @@ function Field({
 
 // পরীক্ষার রুটিনে কোনো dayOfWeek কলাম নেই (শুধু examDate থাকে) — তাই "বার"
 // তারিখ থেকেই বের করতে হয়।
-function getExamDayLabel(examDate: string) {
+function getExamDayLabel(examDate: string, days: string[]) {
   const d = new Date(examDate);
   if (Number.isNaN(d.getTime())) return "—";
-  return `${DAY_LABELS[d.getDay()]}বার`;
+  return days[d.getDay()];
 }
 
-function formatExamDateFull(examDate: string) {
+function formatExamDateFull(examDate: string, lang: Lang) {
   const d = new Date(examDate);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("bn-BD", { day: "numeric", month: "long" });
+  return formatDate(d, lang, { day: "numeric", month: "long" });
 }
 
 const ClassExamRoutinePage = () => {
+  const t = useText(routineText);
+  const c = useText(commonText);
+  const lang = useLang();
+  // Printed routine follows the institution's default language.
+  const pt = usePrintText(routineText);
+  const { lang: printLang, dir: printDir } = usePrintLang();
+  const EXAM_ROUTINE_STATUS_LABELS = examRoutineStatusLabels(t);
+  const OVERVIEW_STATUS_LABELS = overviewStatusLabels(t);
   const [tab, setTab] = useState<"class" | "exam">("class");
 
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -409,7 +429,7 @@ const ClassExamRoutinePage = () => {
     for (const row of classOverview) {
       const divId = row.divisionId ?? -1;
       if (!map.has(divId)) {
-        map.set(divId, { divisionId: divId, divisionName: row.divisionName || "বিভাগ নির্ধারিত নেই", rows: [] });
+        map.set(divId, { divisionId: divId, divisionName: row.divisionName || getText(routineText).noDivisionAssigned, rows: [] });
       }
       map.get(divId)!.rows.push(row);
     }
@@ -445,7 +465,7 @@ const ClassExamRoutinePage = () => {
       if (!examGroup.divisionMap.has(divId)) {
         examGroup.divisionMap.set(divId, {
           divisionId: divId,
-          divisionName: row.divisionName || "বিভাগ নির্ধারিত নেই",
+          divisionName: row.divisionName || getText(routineText).noDivisionAssigned,
           rows: [],
         });
       }
@@ -494,19 +514,18 @@ const ClassExamRoutinePage = () => {
 
   const handleAddClassRoutine = async () => {
     if (!classId) {
-      useToastStore.getState().show("প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.pickDivisionClassFirst, "error");
       return;
     }
     if (!classForm.subject.trim() || !classForm.start_time || !classForm.end_time) {
-      useToastStore.getState().show("বিষয়, শুরু ও শেষ সময় দিন", "error");
+      useToastStore.getState().show(t.classFieldsRequired, "error");
       return;
     }
     if (classForm.start_time >= classForm.end_time) {
       useToastStore
         .getState()
         .show(
-          `শুরুর সময় (${classForm.start_time}) শেষের সময় (${classForm.end_time}) এর সমান বা পরে হয়ে গেছে। ` +
-            `দুপুর ১২টা = 12:00, রাত ১২টা (মধ্যরাত) = 00:00 — AM/PM ঠিক আছে কিনা আবার দেখুন।`,
+          t.timeOrderError(classForm.start_time, classForm.end_time),
           "error",
         );
       return;
@@ -522,12 +541,12 @@ const ClassExamRoutinePage = () => {
         start_time: classForm.start_time,
         end_time: classForm.end_time,
       });
-      useToastStore.getState().show("রুটিন যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(t.routineAdded, "success");
       setClassForm(emptyClassForm);
       loadClassRoutines();
       loadOverview();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "রুটিন যোগ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.routineAddFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -537,30 +556,29 @@ const ClassExamRoutinePage = () => {
   const handleDeleteClassRoutine = async (id: number) => {
     try {
       await classRoutineApi.remove(id);
-      useToastStore.getState().show("রুটিন মুছে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(t.routineDeleted, "success");
       setClassRoutines((prev) => prev.filter((row) => row.id !== id));
       loadOverview();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.deleteFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   const handleAddExamRoutine = async () => {
     if (!selectedExamId || !classId) {
-      useToastStore.getState().show("প্রথমে পরীক্ষা ও শ্রেণি নির্বাচন করুন", "error");
+      useToastStore.getState().show(t.pickExamClassFirst, "error");
       return;
     }
     if (!examForm.subject.trim() || !examForm.exam_date || !examForm.start_time || !examForm.end_time) {
-      useToastStore.getState().show("বিষয়, তারিখ, শুরু ও শেষ সময় দিন", "error");
+      useToastStore.getState().show(t.examFieldsRequired, "error");
       return;
     }
     if (examForm.start_time >= examForm.end_time) {
       useToastStore
         .getState()
         .show(
-          `শুরুর সময় (${examForm.start_time}) শেষের সময় (${examForm.end_time}) এর সমান বা পরে হয়ে গেছে। ` +
-            `দুপুর ১২টা = 12:00, রাত ১২টা (মধ্যরাত) = 00:00 — AM/PM ঠিক আছে কিনা আবার দেখুন।`,
+          t.timeOrderError(examForm.start_time, examForm.end_time),
           "error",
         );
       return;
@@ -582,12 +600,12 @@ const ClassExamRoutinePage = () => {
         status: examForm.status as any,
         instructions: examForm.instructions.trim() || undefined,
       });
-      useToastStore.getState().show("পরীক্ষার রুটিন যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(t.examRoutineAdded, "success");
       setExamForm(emptyExamForm);
       loadExamRoutines();
       loadOverview();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "রুটিন যোগ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.routineAddFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -605,10 +623,10 @@ const ClassExamRoutinePage = () => {
     setExamRoutines((prev) => prev.map((r) => ({ ...r, status: nextStatus })));
     try {
       await Promise.all(prevRoutines.map((r) => examRoutineApi.update(r.id, { status: nextStatus as any })));
-      useToastStore.getState().show("স্ট্যাটাস আপডেট হয়েছে", "success");
+      useToastStore.getState().show(t.statusUpdated, "success");
       loadOverview();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.statusUpdateFailed;
       useToastStore.getState().show(msg, "error");
       loadExamRoutines();
     } finally {
@@ -619,11 +637,11 @@ const ClassExamRoutinePage = () => {
   const handleDeleteExamRoutine = async (id: number) => {
     try {
       await examRoutineApi.remove(id);
-      useToastStore.getState().show("রুটিন মুছে ফেলা হয়েছে", "success");
+      useToastStore.getState().show(t.routineDeleted, "success");
       setExamRoutines((prev) => prev.filter((row) => row.id !== id));
       loadOverview();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.deleteFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -632,8 +650,8 @@ const ClassExamRoutinePage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">ক্লাস ও পরীক্ষার রুটিন</h1>
-          <p className="mt-1 text-base text-gray-500 dark:text-slate-400">সাপ্তাহিক ক্লাস রুটিন ও পরীক্ষার সময়সূচি তৈরি করুন</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">{t.pageTitle}</h1>
+          <p className="mt-1 text-base text-gray-500 dark:text-slate-400">{t.pageSubtitle}</p>
         </div>
 
         {/* Tabs + রুটিন তৈরি করার বাটন */}
@@ -649,7 +667,7 @@ const ClassExamRoutinePage = () => {
               }`}
             >
               <CalendarDays size={15} />
-              ক্লাস রুটিন
+              {t.classRoutine}
             </button>
             <button
               type="button"
@@ -661,7 +679,7 @@ const ClassExamRoutinePage = () => {
               }`}
             >
               <ClipboardList size={15} />
-              পরীক্ষার রুটিন
+              {t.examRoutine}
             </button>
           </div>
 
@@ -671,7 +689,7 @@ const ClassExamRoutinePage = () => {
             className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700"
           >
             <Plus size={16} />
-            রুটিন তৈরি করুন
+            {t.createRoutine}
           </button>
         </div>
 
@@ -682,7 +700,7 @@ const ClassExamRoutinePage = () => {
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
           <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
             <ClipboardList size={15} className="text-blue-600 dark:text-blue-400" />
-            {tab === "class" ? "কোন ক্লাসের রুটিন তৈরি হয়েছে" : "কোন ক্লাসের পরীক্ষার রুটিন তৈরি হয়েছে"}
+            {tab === "class" ? t.classOverviewTitle : t.examOverviewTitle}
           </h2>
 
           {overviewLoading ? (
@@ -690,7 +708,7 @@ const ClassExamRoutinePage = () => {
           ) : tab === "class" ? (
             classOverviewGrouped.length === 0 ? (
               <p className="py-4 text-center text-base text-gray-400 dark:text-slate-500">
-                কোনো সক্রিয় শ্রেণি পাওয়া যায়নি
+                {t.noActiveClass}
               </p>
             ) : (
               <div className="flex flex-col gap-4">
@@ -722,7 +740,7 @@ const ClassExamRoutinePage = () => {
                                 has ? EXAM_ROUTINE_STATUS_STYLES.PUBLISHED : OVERVIEW_STATUS_STYLES.NONE
                               }`}
                             >
-                              {has ? `রুটিন আছে (${row.periodCount})` : "রুটিন নেই"}
+                              {has ? t.hasRoutine(localizeDigits(row.periodCount, lang)) : t.statusNone}
                             </span>
                           </button>
                         );
@@ -734,7 +752,7 @@ const ClassExamRoutinePage = () => {
             )
           ) : examOverviewGrouped.length === 0 ? (
             <p className="py-4 text-center text-base text-gray-400 dark:text-slate-500">
-              কোনো সক্রিয় পরীক্ষা পাওয়া যায়নি
+              {t.noActiveExam}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
@@ -795,14 +813,14 @@ const ClassExamRoutinePage = () => {
           জন্যই আলাদা থাকে (রেজাল্ট প্যানেলের Preview vs Entry পেজের ধাঁচে)। */}
       <Modal
         open={showEntryModal}
-        title={tab === "class" ? "ক্লাস রুটিন এন্ট্রি" : "পরীক্ষার রুটিন এন্ট্রি"}
+        title={tab === "class" ? t.classEntryTitle : t.examEntryTitle}
         onClose={() => setShowEntryModal(false)}
         maxWidthClassName="max-w-4xl"
       >
         {/* Division/Class/Exam picker (shared) */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="বিভাগ">
+            <Field label={t.division}>
               <select
                 value={division}
                 onChange={(event) => {
@@ -812,7 +830,7 @@ const ClassExamRoutinePage = () => {
                 }}
                 className={inputClass}
               >
-                <option value="">বিভাগ নির্বাচন করুন</option>
+                <option value="">{t.selectDivision}</option>
                 {divisions.map((d) => (
                   <option key={d.division_id} value={d.division_id}>
                     {d.division_name_bn}
@@ -821,14 +839,14 @@ const ClassExamRoutinePage = () => {
               </select>
             </Field>
 
-            <Field label="শ্রেণি">
+            <Field label={t.class}>
               <select
                 value={classId}
                 onChange={(event) => setClassId(event.target.value)}
                 disabled={!division || classLoading}
                 className={inputClass}
               >
-                <option value="">{classLoading ? "লোড হচ্ছে..." : "শ্রেণি নির্বাচন করুন"}</option>
+                <option value="">{classLoading ? c.loading : t.selectClass}</option>
                 {classes.map((c) => (
                   <option key={c.class_id} value={c.class_id}>
                     {c.class_name_bn}
@@ -838,14 +856,14 @@ const ClassExamRoutinePage = () => {
             </Field>
 
             {tab === "exam" && (
-              <Field label="পরীক্ষা">
+              <Field label={t.exam}>
                 <select
                   value={selectedExamId}
                   onChange={(event) => setSelectedExamId(event.target.value)}
                   disabled={!classId}
                   className={inputClass}
                 >
-                  <option value="">{classId ? "পরীক্ষা নির্বাচন করুন" : "প্রথমে শ্রেণি নির্বাচন করুন"}</option>
+                  <option value="">{classId ? t.selectExam : t.selectClassFirst}</option>
                   {examsForDivision(exams, division).map((exam) => (
                     <option key={exam.id} value={exam.id}>
                       {exam.name} — {exam.year}
@@ -865,31 +883,31 @@ const ClassExamRoutinePage = () => {
               <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
                 <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
                   <Plus size={15} className="text-blue-600 dark:text-blue-400" />
-                  নতুন ক্লাস রুটিন যোগ করুন
+                  {t.newClassRoutine}
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Field label="বার">
+                  <Field label={t.day}>
                     <select
                       value={classForm.day_of_week}
                       onChange={(e) => setClassForm((p) => ({ ...p, day_of_week: e.target.value }))}
                       className={inputClass}
                     >
-                      {DAY_LABELS.map((label, index) => (
+                      {t.days.map((label, index) => (
                         <option key={index} value={index}>
-                          {label}বার
+                          {label}
                         </option>
                       ))}
                     </select>
                   </Field>
 
-                  <Field label="বিষয়">
+                  <Field label={t.subject}>
                     <select
                       value={classForm.subject}
                       onChange={(e) => setClassForm((p) => ({ ...p, subject: e.target.value }))}
                       className={inputClass}
                     >
                       <option value="">
-                        {classBooks.length ? "বিষয় নির্বাচন করুন" : "কিতাব/বিষয় সেট করা নেই"}
+                        {classBooks.length ? t.selectSubject : t.noSubjects}
                       </option>
                       {classBooks.map((book) => (
                         <option key={book.book_id} value={book.book_name_bn}>
@@ -899,13 +917,13 @@ const ClassExamRoutinePage = () => {
                     </select>
                   </Field>
 
-                  <Field label="শিক্ষক (ঐচ্ছিক)">
+                  <Field label={t.teacherOptional}>
                     <select
                       value={classForm.teacher_id}
                       onChange={(e) => setClassForm((p) => ({ ...p, teacher_id: e.target.value }))}
                       className={inputClass}
                     >
-                      <option value="">শিক্ষক নির্বাচন করুন</option>
+                      <option value="">{t.selectTeacher}</option>
                       {teachers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name_bn}
@@ -914,7 +932,7 @@ const ClassExamRoutinePage = () => {
                     </select>
                   </Field>
 
-                  <Field label="শুরুর সময়">
+                  <Field label={t.startTime}>
                     <input
                       type="time"
                       value={classForm.start_time}
@@ -922,7 +940,7 @@ const ClassExamRoutinePage = () => {
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="শেষের সময়">
+                  <Field label={t.endTime}>
                     <input
                       type="time"
                       value={classForm.end_time}
@@ -939,7 +957,7 @@ const ClassExamRoutinePage = () => {
                       className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                     >
                       <Plus size={15} />
-                      যোগ করুন
+                      {c.add}
                     </button>
                   </div>
                 </div>
@@ -951,14 +969,14 @@ const ClassExamRoutinePage = () => {
               {!classId ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <Layers size={22} className="text-gray-300 dark:text-slate-700" />
-                  রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
+                  {t.pickDivisionClassToView}
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedClassRoutines.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <CalendarDays size={22} className="text-gray-300 dark:text-slate-700" />
-                  এই শ্রেণিতে এখনো কোনো রুটিন যোগ করা হয়নি
+                  {t.noClassRoutine}
                 </div>
               ) : (
                 <>
@@ -979,7 +997,7 @@ const ClassExamRoutinePage = () => {
                       className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       <Eye size={13} />
-                      প্রিভিউ
+                      {t.preview}
                     </button>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -990,7 +1008,7 @@ const ClassExamRoutinePage = () => {
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-sm font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-                          {DAY_LABELS[row.dayOfWeek]}বার
+                          {t.days[row.dayOfWeek]}
                         </span>
                         <div className="min-w-0">
                           <p className="truncate text-base font-semibold text-gray-800 dark:text-slate-100">
@@ -1016,7 +1034,7 @@ const ClassExamRoutinePage = () => {
                         className="flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 sm:w-auto"
                       >
                         <Trash2 size={13} />
-                        মুছুন
+                        {c.delete}
                       </button>
                     </div>
                   ))}
@@ -1032,17 +1050,17 @@ const ClassExamRoutinePage = () => {
               <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
                 <h2 className="mb-3 flex items-center gap-1.5 text-base font-semibold text-gray-700 dark:text-slate-300">
                   <Plus size={15} className="text-blue-600 dark:text-blue-400" />
-                  নতুন পরীক্ষার রুটিন যোগ করুন
+                  {t.newExamRoutine}
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Field label="বিষয়">
+                  <Field label={t.subject}>
                     <select
                       value={examForm.subject}
                       onChange={(e) => setExamForm((p) => ({ ...p, subject: e.target.value }))}
                       className={inputClass}
                     >
                       <option value="">
-                        {classBooks.length ? "বিষয় নির্বাচন করুন" : "কিতাব/বিষয় সেট করা নেই"}
+                        {classBooks.length ? t.selectSubject : t.noSubjects}
                       </option>
                       {classBooks.map((book) => (
                         <option key={book.book_id} value={book.book_name_bn}>
@@ -1052,7 +1070,7 @@ const ClassExamRoutinePage = () => {
                     </select>
                   </Field>
 
-                  <Field label="তারিখ">
+                  <Field label={t.date}>
                     <input
                       type="date"
                       value={examForm.exam_date}
@@ -1061,7 +1079,7 @@ const ClassExamRoutinePage = () => {
                     />
                   </Field>
 
-                  <Field label="শুরুর সময়">
+                  <Field label={t.startTime}>
                     <input
                       type="time"
                       value={examForm.start_time}
@@ -1069,7 +1087,7 @@ const ClassExamRoutinePage = () => {
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="শেষের সময়">
+                  <Field label={t.endTime}>
                     <input
                       type="time"
                       value={examForm.end_time}
@@ -1078,22 +1096,22 @@ const ClassExamRoutinePage = () => {
                     />
                   </Field>
 
-                  <Field label="রুম নং (ফ্রি-টেক্সট, ঐচ্ছিক)">
+                  <Field label={t.roomNoFree}>
                     <input
                       type="text"
-                      placeholder="যেমনঃ ২০৩"
+                      placeholder={t.roomNoPlaceholder}
                       value={examForm.room_no}
                       onChange={(e) => setExamForm((p) => ({ ...p, room_no: e.target.value }))}
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="রুম (তালিকা থেকে, ঐচ্ছিক)">
+                  <Field label={t.roomFromList}>
                     <select
                       value={examForm.room_id}
                       onChange={(e) => setExamForm((p) => ({ ...p, room_id: e.target.value }))}
                       className={inputClass}
                     >
-                      <option value="">রুম নির্বাচন করুন</option>
+                      <option value="">{t.selectRoom}</option>
                       {rooms.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name} ({r.code})
@@ -1101,32 +1119,32 @@ const ClassExamRoutinePage = () => {
                       ))}
                     </select>
                   </Field>
-                  <Field label="সর্বোচ্চ ধারণক্ষমতা (ঐচ্ছিক)">
+                  <Field label={t.maxCapacity}>
                     <input
                       type="number"
                       min={0}
-                      placeholder="যেমনঃ ৪০"
+                      placeholder={t.maxCapacityPlaceholder}
                       value={examForm.max_capacity}
                       onChange={(e) => setExamForm((p) => ({ ...p, max_capacity: e.target.value }))}
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="স্ট্যাটাস">
+                  <Field label={t.status}>
                     <select
                       value={examForm.status}
                       onChange={(e) => setExamForm((p) => ({ ...p, status: e.target.value }))}
                       className={inputClass}
                     >
-                      <option value="DRAFT">খসড়া</option>
-                      <option value="PUBLISHED">প্রকাশিত</option>
-                      <option value="CANCELLED">বাতিল</option>
+                      <option value="DRAFT">{t.statusDraft}</option>
+                      <option value="PUBLISHED">{t.statusPublished}</option>
+                      <option value="CANCELLED">{t.statusCancelled}</option>
                     </select>
                   </Field>
 
-                  <Field label="নির্দেশনা (ঐচ্ছিক)" className="sm:col-span-2 lg:col-span-3">
+                  <Field label={t.instructions} className="sm:col-span-2 lg:col-span-3">
                     <input
                       type="text"
-                      placeholder="যেমনঃ ক্যালকুলেটর সাথে আনা যাবে না"
+                      placeholder={t.instructionsPlaceholder}
                       value={examForm.instructions}
                       onChange={(e) => setExamForm((p) => ({ ...p, instructions: e.target.value }))}
                       className={inputClass}
@@ -1141,7 +1159,7 @@ const ClassExamRoutinePage = () => {
                       className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-base font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                     >
                       <Plus size={15} />
-                      যোগ করুন
+                      {c.add}
                     </button>
                   </div>
                 </div>
@@ -1153,19 +1171,19 @@ const ClassExamRoutinePage = () => {
               {!classId ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <Layers size={22} className="text-gray-300 dark:text-slate-700" />
-                  রুটিন দেখতে প্রথমে বিভাগ ও শ্রেণি নির্বাচন করুন
+                  {t.pickDivisionClassToView}
                 </div>
               ) : !selectedExamId ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <GraduationCap size={22} className="text-gray-300 dark:text-slate-700" />
-                  এবার উপরে থেকে একটি পরীক্ষা নির্বাচন করুন — তাহলে এই শ্রেণির রুটিন দেখা ও যোগ করা যাবে
+                  {t.pickExamHint}
                 </div>
               ) : listLoading ? (
                 <SkeletonList items={6} />
               ) : sortedExamRoutines.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center text-base text-gray-500 dark:text-slate-400">
                   <ClipboardList size={22} className="text-gray-300 dark:text-slate-700" />
-                  এই পরীক্ষা ও শ্রেণির জন্য এখনো কোনো রুটিন যোগ করা হয়নি
+                  {t.noExamRoutine}
                 </div>
               ) : (
                 <>
@@ -1190,11 +1208,11 @@ const ClassExamRoutinePage = () => {
                       <select
                         value={classExamStatus === "MIXED" ? "" : classExamStatus}
                         disabled={statusBusy}
-                        title="রুটিনের স্ট্যাটাস পরিবর্তন করুন"
+                        title={t.changeStatus}
                         onChange={(e) => handleChangeClassExamStatus(e.target.value)}
                         className={`h-8 rounded-full border-0 px-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 ${EXAM_ROUTINE_STATUS_STYLES[classExamStatus] || "bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300"}`}
                       >
-                        {classExamStatus === "MIXED" && <option value="">বিভিন্ন</option>}
+                        {classExamStatus === "MIXED" && <option value="">{t.mixed}</option>}
                         {Object.keys(EXAM_ROUTINE_STATUS_LABELS).map((s) => (
                           <option key={s} value={s}>
                             {EXAM_ROUTINE_STATUS_LABELS[s]}
@@ -1207,31 +1225,31 @@ const ClassExamRoutinePage = () => {
                         className="flex h-8 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         <Eye size={13} />
-                        প্রিভিউ
+                        {t.preview}
                       </button>
                     </div>
                   </div>
                   <p className="mb-1.5 text-center text-sm text-gray-400 dark:text-slate-500 sm:hidden">
-                    ⟷ টেবিলটি পাশে স্ক্রল করে বাকি কলাম দেখুন
+                    {t.scrollHint}
                   </p>
                   <div className="overflow-x-auto rounded-lg border border-gray-300 dark:border-slate-700">
                     <table className="w-full min-w-[700px] border-collapse text-base">
                       <thead>
                         <tr>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                            বার
+                            {t.day}
                           </th>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                            তারিখ ও সময়
+                            {t.dateTime}
                           </th>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                            বিষয়
+                            {t.subject}
                           </th>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-start text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                            রুম / ধারণক্ষমতা
+                            {t.roomCapacity}
                           </th>
                           <th className="border border-gray-300 bg-gray-50 px-3 py-2.5 text-center text-sm font-bold text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                            কার্যক্রম
+                            {t.actions}
                           </th>
                         </tr>
                       </thead>
@@ -1241,11 +1259,11 @@ const ClassExamRoutinePage = () => {
                             <Fragment key={row.id}>
                               <tr className="transition hover:bg-blue-50/50 dark:hover:bg-slate-800/50">
                                 <td className="border border-gray-300 px-3 py-2.5 align-top text-base font-semibold text-indigo-700 dark:border-slate-700 dark:text-indigo-400">
-                                  {getExamDayLabel(row.examDate)}
+                                  {getExamDayLabel(row.examDate, t.days)}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2.5 align-top dark:border-slate-700">
                                   <div className="text-base font-medium text-gray-800 dark:text-slate-100">
-                                    {formatExamDateFull(row.examDate)}
+                                    {formatExamDateFull(row.examDate, lang)}
                                   </div>
                                   <div className="mt-0.5 inline-flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400">
                                     <Clock size={12} />
@@ -1288,7 +1306,7 @@ const ClassExamRoutinePage = () => {
                                       className="flex h-8 items-center justify-center gap-1 rounded-md border border-blue-300 bg-blue-50 px-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400"
                                     >
                                       <UserCheck size={13} />
-                                      পরিদর্শক
+                                      {t.invigilator}
                                     </button>
                                     <button
                                       type="button"
@@ -1296,7 +1314,7 @@ const ClassExamRoutinePage = () => {
                                       className="flex h-8 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
                                     >
                                       <Trash2 size={13} />
-                                      মুছুন
+                                      {c.delete}
                                     </button>
                                   </div>
                                 </td>
@@ -1323,18 +1341,18 @@ const ClassExamRoutinePage = () => {
 
       <Modal
         open={showPreview}
-        title={tab === "class" ? "ক্লাস রুটিন প্রিভিউ" : "পরীক্ষার রুটিন প্রিভিউ"}
+        title={tab === "class" ? t.classPreviewTitle : t.examPreviewTitle}
         onClose={() => setShowPreview(false)}
         maxWidthClassName="max-w-3xl"
       >
-        <div className="print-area relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6">
+        <div lang={printLang} dir={printDir} className="print-area relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6">
           <ReportBackground />
           <ReportWatermark />
           <ReportBrandHeader />
 
           <div className="report-content-body relative text-black">
             <h2 className="mb-1 text-center text-2xl font-bold">
-              {tab === "class" ? "সাপ্তাহিক ক্লাস রুটিন" : "পরীক্ষার রুটিন"}
+              {tab === "class" ? pt.weeklyClassRoutine : pt.examRoutine}
             </h2>
             {tab === "exam" && selectedExam && (
               <p className="mb-3 text-center text-base font-semibold">
@@ -1344,25 +1362,25 @@ const ClassExamRoutinePage = () => {
 
             <div className="mb-3 grid grid-cols-2 text-base">
               <div className="flex min-h-9 items-center border border-black px-2">
-                <b className="me-1">বিভাগ:</b> {selectedDivisionName || "—"}
+                <b className="me-1">{pt.divisionLabel}</b> {selectedDivisionName || "—"}
               </div>
               <div className="flex min-h-9 items-center border border-s-0 border-black px-2">
-                <b className="me-1">শ্রেণি:</b> {selectedClassName || "—"}
+                <b className="me-1">{pt.classLabel}</b> {selectedClassName || "—"}
               </div>
             </div>
 
             <table className="w-full table-fixed border-collapse border border-black text-center">
               <thead>
                 <tr>
-                  <th className="border border-black px-1 py-2 text-base font-bold">বার</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">{pt.day}</th>
                   {tab === "exam" && (
-                    <th className="border border-black px-1 py-2 text-base font-bold">তারিখ</th>
+                    <th className="border border-black px-1 py-2 text-base font-bold">{pt.date}</th>
                   )}
-                  <th className="border border-black px-1 py-2 text-base font-bold">শুরু</th>
-                  <th className="border border-black px-1 py-2 text-base font-bold">শেষ</th>
-                  <th className="border border-black px-1 py-2 text-base font-bold">বিষয়</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">{pt.start}</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">{pt.end}</th>
+                  <th className="border border-black px-1 py-2 text-base font-bold">{pt.subject}</th>
                   <th className="border border-black px-1 py-2 text-base font-bold">
-                    {tab === "class" ? "শিক্ষক" : "রুম"}
+                    {tab === "class" ? pt.teacher : pt.room}
                   </th>
                 </tr>
               </thead>
@@ -1370,11 +1388,11 @@ const ClassExamRoutinePage = () => {
                 {(tab === "class" ? sortedClassRoutines : sortedExamRoutines).map((row: any) => (
                   <tr key={row.id}>
                     <td className="border border-black px-1 py-1.5 text-base font-semibold">
-                      {tab === "class" ? `${DAY_LABELS[row.dayOfWeek]}বার` : getExamDayLabel(row.examDate)}
+                      {tab === "class" ? pt.days[row.dayOfWeek] : getExamDayLabel(row.examDate, pt.days)}
                     </td>
                     {tab === "exam" && (
                       <td className="border border-black px-1 py-1.5 text-base">
-                        {formatExamDateFull(row.examDate)}
+                        {formatExamDateFull(row.examDate, printLang)}
                       </td>
                     )}
                     <td className="border border-black px-1 py-1.5 text-base">{row.startTime}</td>
@@ -1394,11 +1412,11 @@ const ClassExamRoutinePage = () => {
 
         <div className="no-print mt-4 flex justify-end gap-2 px-1 pb-1">
           <Button variant="secondary" onClick={() => setShowPreview(false)}>
-            বন্ধ করুন
+            {c.close}
           </Button>
           <Button onClick={() => window.print()}>
             <Printer size={16} className="me-1 inline" />
-            প্রিন্ট করুন
+            {t.printAction}
           </Button>
         </div>
       </Modal>

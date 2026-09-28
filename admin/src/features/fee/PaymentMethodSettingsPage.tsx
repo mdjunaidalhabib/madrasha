@@ -15,14 +15,10 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../components/settings/SectionCard";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { commonText, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { paymentMethodText } from "./fee.text";
 
-const METHOD_TYPE_LABELS: Record<PaymentMethodType, string> = {
-  CASH: "নগদ",
-  BKASH: "বিকাশ",
-  NAGAD: "নগদ (Nagad)",
-  BANK: "ব্যাংক",
-  OTHER: "অন্যান্য",
-};
+const METHOD_TYPES: PaymentMethodType[] = ["CASH", "BKASH", "NAGAD", "BANK", "OTHER"];
 
 const METHOD_TYPE_ICONS: Record<PaymentMethodType, typeof Wallet> = {
   CASH: Banknote,
@@ -94,24 +90,25 @@ function MethodFormFields({
   form: MethodForm;
   onChange: (patch: Partial<MethodForm>) => void;
 }) {
+  const t = useText(paymentMethodText);
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
-        <label className={fieldLabelClass}>ধরন</label>
+        <label className={fieldLabelClass}>{t.type}</label>
         <select
           value={form.method_type}
           onChange={(e) => onChange({ method_type: e.target.value as PaymentMethodType })}
           className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
-          {(Object.keys(METHOD_TYPE_LABELS) as PaymentMethodType[]).map((type) => (
+          {METHOD_TYPES.map((type) => (
             <option key={type} value={type}>
-              {METHOD_TYPE_LABELS[type]}
+              {t.types[type]}
             </option>
           ))}
         </select>
       </div>
       <div>
-        <label className={fieldLabelClass}>লেবেল (যেমন: বিকাশ - পার্সোনাল)</label>
+        <label className={fieldLabelClass}>{t.label}</label>
         <Input
           type="text"
           value={form.label}
@@ -120,17 +117,17 @@ function MethodFormFields({
         />
       </div>
       <div>
-        <label className={fieldLabelClass}>অ্যাকাউন্ট/নম্বর</label>
+        <label className={fieldLabelClass}>{t.accountNumber}</label>
         <Input
           type="text"
           value={form.account_number}
           onChange={(e) => onChange({ account_number: e.target.value })}
-          placeholder="017XXXXXXXX / হিসাব নম্বর"
+          placeholder={t.accountNumberPlaceholder}
           className="h-10"
         />
       </div>
       <div>
-        <label className={fieldLabelClass}>নামে (Account Name)</label>
+        <label className={fieldLabelClass}>{t.accountName}</label>
         <Input
           type="text"
           value={form.account_name}
@@ -142,7 +139,7 @@ function MethodFormFields({
       {form.method_type === "BANK" && (
         <>
           <div>
-            <label className={fieldLabelClass}>ব্যাংকের নাম</label>
+            <label className={fieldLabelClass}>{t.bankName}</label>
             <Input
               type="text"
               value={form.bank_name}
@@ -151,7 +148,7 @@ function MethodFormFields({
             />
           </div>
           <div>
-            <label className={fieldLabelClass}>শাখা</label>
+            <label className={fieldLabelClass}>{t.branch}</label>
             <Input
               type="text"
               value={form.branch}
@@ -163,12 +160,12 @@ function MethodFormFields({
       )}
 
       <div className="sm:col-span-2">
-        <label className={fieldLabelClass}>নির্দেশনা (ঐচ্ছিক)</label>
+        <label className={fieldLabelClass}>{t.instructions}</label>
         <textarea
           value={form.instructions}
           onChange={(e) => onChange({ instructions: e.target.value })}
           rows={2}
-          placeholder="যেমন: Send Money করুন, তারপর ট্রানজেকশন আইডি অফিসে জানান"
+          placeholder={t.instructionsPlaceholder}
           className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -183,6 +180,8 @@ function MethodFormFields({
  * show up as a picklist when recording a payment in Fee Management..
  */
 const PaymentMethodSettingsPage = () => {
+  const t = useText(paymentMethodText);
+  const c = useText(commonText);
   const [methods, setMethods] = useState<PaymentMethodSetting[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<MethodForm>(emptyForm);
@@ -211,17 +210,17 @@ const PaymentMethodSettingsPage = () => {
 
   const handleCreate = async () => {
     if (!form.label.trim()) {
-      useToastStore.getState().show("একটা নাম/লেবেল দিন (যেমন: বিকাশ - পার্সোনাল)", "error");
+      useToastStore.getState().show(getText(paymentMethodText).enterLabel, "error");
       return;
     }
     try {
       setCreating(true);
       await paymentMethodSettingApi.create(toPayload(form));
-      useToastStore.getState().show("পেমেন্ট পদ্ধতি যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(paymentMethodText).added, "success");
       setForm(emptyForm);
       loadMethods();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সংরক্ষণ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(paymentMethodText).saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCreating(false);
@@ -241,17 +240,17 @@ const PaymentMethodSettingsPage = () => {
   const saveEdit = async () => {
     if (!editingId || !editForm) return;
     if (!editForm.label.trim()) {
-      useToastStore.getState().show("একটা নাম/লেবেল দিন (যেমন: বিকাশ - পার্সোনাল)", "error");
+      useToastStore.getState().show(getText(paymentMethodText).enterLabel, "error");
       return;
     }
     try {
       setSavingEdit(true);
       await paymentMethodSettingApi.update(editingId, toPayload(editForm));
-      useToastStore.getState().show("পেমেন্ট পদ্ধতি আপডেট হয়েছে", "success");
+      useToastStore.getState().show(getText(paymentMethodText).updated, "success");
       cancelEdit();
       loadMethods();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সংরক্ষণ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(paymentMethodText).saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSavingEdit(false);
@@ -265,25 +264,25 @@ const PaymentMethodSettingsPage = () => {
         prev.map((m) => (m.id === method.id ? { ...m, isActive: !m.isActive } : m)),
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(paymentMethodText).updateFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   const handleDelete = (method: PaymentMethodSetting) => {
     useConfirmStore.getState().show({
-      title: "পেমেন্ট পদ্ধতি ডিলিট করুন",
-      message: `"${method.label}" পদ্ধতিটি স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(method.label),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await paymentMethodSettingApi.remove(method.id);
-          useToastStore.getState().show("পেমেন্ট পদ্ধতি মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(paymentMethodText).deleted, "success");
           setMethods((prev) => prev.filter((m) => m.id !== method.id));
           if (editingId === method.id) cancelEdit();
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || getText(paymentMethodText).deleteFailed;
           useToastStore.getState().show(msg, "error");
         }
       },
@@ -293,27 +292,27 @@ const PaymentMethodSettingsPage = () => {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="পেমেন্ট পদ্ধতি সেটআপ"
-        subtitle="এখানে যেসব ম্যানুয়াল পেমেন্ট চ্যানেল (বিকাশ নম্বর, ব্যাংক অ্যাকাউন্ট, নগদ) যোগ করবেন, সেগুলো ফি পেমেন্ট রেকর্ড করার সময় বেছে নেওয়া যাবে। এখানে কোনো পেমেন্ট গেটওয়ে/অটো পেমেন্ট সিস্টেম নেই — এটি সম্পূর্ণ ম্যানুয়াল।"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
-      <SectionCard title="নতুন পেমেন্ট পদ্ধতি যোগ করুন">
+      <SectionCard title={t.addTitle}>
         <MethodFormFields form={form} onChange={(patch) => setForm((p) => ({ ...p, ...patch }))} />
         <div className="mt-4 flex justify-end border-t border-gray-100 pt-4 dark:border-slate-800">
           <Button disabled={creating} onClick={handleCreate} className="gap-1.5">
             {!creating && <Plus size={15} />}
-            {creating ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+            {creating ? c.saving : c.add}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title="সব পেমেন্ট পদ্ধতি" hint="যেকোনো পদ্ধতির পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে">
+      <SectionCard title={t.allTitle} hint={t.allHint}>
         {loading ? (
           <SkeletonList items={4} />
         ) : methods.length === 0 ? (
           <EmptyState
-            title="এখনো কোনো পেমেন্ট পদ্ধতি যোগ করা হয়নি"
-            hint="উপরের ফর্ম থেকে প্রথম পেমেন্ট পদ্ধতিটি যোগ করুন।"
+            title={t.emptyTitle}
+            hint={t.emptyHint}
           />
         ) : (
           <div className="space-y-3">
@@ -327,10 +326,10 @@ const PaymentMethodSettingsPage = () => {
                     />
                     <div className="mt-3 flex justify-end gap-2">
                       <Button type="button" variant="secondary" disabled={savingEdit} onClick={cancelEdit}>
-                        বাতিল
+                        {c.cancel}
                       </Button>
                       <Button type="button" disabled={savingEdit} onClick={saveEdit}>
-                        {savingEdit ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+                        {savingEdit ? c.saving : c.save}
                       </Button>
                     </div>
                   </div>
@@ -353,11 +352,11 @@ const PaymentMethodSettingsPage = () => {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-semibold text-gray-900 dark:text-slate-100">{method.label}</span>
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                          {METHOD_TYPE_LABELS[method.methodType]}
+                          {t.types[method.methodType]}
                         </span>
                         {!method.isActive && (
                           <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-                            নিষ্ক্রিয়
+                            {c.inactive}
                           </span>
                         )}
                       </div>
@@ -380,7 +379,7 @@ const PaymentMethodSettingsPage = () => {
                       type="button"
                       onClick={() => startEdit(method)}
                       className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-                      title="সম্পাদনা"
+                      title={c.edit}
                     >
                       <Pencil size={14} />
                     </button>
@@ -388,7 +387,7 @@ const PaymentMethodSettingsPage = () => {
                       type="button"
                       onClick={() => handleDelete(method)}
                       className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-                      title="মুছুন"
+                      title={c.delete}
                     >
                       <Trash2 size={14} />
                     </button>

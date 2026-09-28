@@ -1,4 +1,7 @@
-import { cellValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
 
 type ResidentialAttendancePrintProps = {
   rows: Record<string, any>[];
@@ -10,7 +13,7 @@ type ResidentialAttendancePrintProps = {
 
 const getRowValue = (row: Record<string, any>, keys: string[]) => {
   for (const key of keys) {
-    const value = row[key] || cellValue(row, key);
+    const value = row[key] || printCell(row, key);
     if (value) return value;
   }
 
@@ -24,22 +27,23 @@ const ResidentialAttendancePrint = ({
   startIndex = 0,
   isFirstPage = true,
 }: ResidentialAttendancePrintProps) => {
+  const t = usePrintText(reportText);
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
   const firstRow = rows[0] || {};
   const divisionName =
     getRowValue(firstRow, ["division_name", "division_name_bn", "divisionName", "division"]) ||
     selectedDivisionName ||
-    "সকল বিভাগ";
+    t.allDivisions;
   const className =
     getRowValue(firstRow, ["class_name", "class_name_bn", "className", "class"]) ||
     selectedClassName ||
-    "সকল শ্রেণি";
+    t.allClasses;
 
   return (
     <div className="attendance-a4 mx-auto w-full bg-white text-slate-900">
       <div className={isFirstPage ? "" : "mt-5"}>
         <div className="report-block-heading mb-2 text-center">
-          {isFirstPage && <h1 className="mb-4 text-xl font-bold">আবাসিক শিক্ষার্থী হাজিরা খাতা</h1>}
+          {isFirstPage && <h1 className="mb-4 text-xl font-bold">{t.title.residentialAttendance}</h1>}
 
           <div
             className={
@@ -53,7 +57,7 @@ const ResidentialAttendancePrint = ({
                   : "inline-flex h-7 items-center border border-slate-900 px-2 text-start whitespace-nowrap"
               }
             >
-              বিভাগ: {divisionName}
+              {t.divisionLabel} {divisionName}
             </div>
 
             <div
@@ -63,17 +67,17 @@ const ResidentialAttendancePrint = ({
                   : "inline-flex h-7 items-center border border-slate-900 px-2 text-start whitespace-nowrap"
               }
             >
-              শ্রেণি: {className}
+              {t.classLabel} {className}
             </div>
 
             {isFirstPage && (
               <>
                 <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
-                  বছর: ........................
+                  {t.yearLabel} ........................
                 </div>
 
                 <div className="flex h-8 items-center border border-slate-900 px-1 text-start">
-                  মাস: ........................
+                  {t.monthLabel} ........................
                 </div>
               </>
             )}
@@ -84,14 +88,14 @@ const ResidentialAttendancePrint = ({
           {isFirstPage && (
             <thead>
               <tr>
-                <th className="w-12 border border-slate-900 p-0.5 text-base font-bold">রোল</th>
+                <th className="w-12 border border-slate-900 p-0.5 text-base font-bold">{t.col.roll}</th>
 
                 <th className="w-16 border border-slate-900 p-0.5 text-base font-bold">
-                  রেজিঃ নম্বর
+                  {t.col.regNo}
                 </th>
 
                 <th className="w-32 border border-slate-900 p-0.5 text-base font-bold">
-                  শিক্ষার্থীর নাম
+                  {t.col.studentName}
                 </th>
 
                 {days.map((day) => (
@@ -109,15 +113,15 @@ const ResidentialAttendancePrint = ({
             {rows.map((row, index) => (
               <tr key={`attendance-${startIndex + index}-${row.id || index}`}>
                 <td className="h-7 w-12 border border-slate-900 p-0 text-base">
-                  {cellValue(row, "roll")}
+                  {printCell(row, "roll")}
                 </td>
 
                 <td className="h-7 w-16 border border-slate-900 p-0 text-base">
-                  {cellValue(row, "registration_no")}
+                  {printCell(row, "registration_no")}
                 </td>
 
                 <td className="h-7 w-32 border border-slate-900 ps-3 pe-2 text-start text-base font-semibold">
-                  {cellValue(row, "student_name")}
+                  {printCell(row, "student_name")}
                 </td>
 
                 {days.map((day) => (

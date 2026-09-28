@@ -6,12 +6,13 @@ import {
   DefaultFeeStructureRepository,
 } from "./default-fee-structure.repository";
 import { CreateDefaultFeeStructureRequestDto, UpdateDefaultFeeStructureRequestDto } from "./default-fee-structure.dto";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
 const toAmount = (value: unknown): number => {
   const amount = Number(value);
-  if (Number.isNaN(amount) || amount <= 0) throw new BadRequestError("amount must be a positive number");
+  if (Number.isNaN(amount) || amount <= 0) throw new BadRequestError(t({ bn: "পরিমাণ অবশ্যই ধনাত্মক সংখ্যা হতে হবে", en: "amount must be a positive number" }));
   return amount;
 };
 
@@ -40,10 +41,10 @@ export class DefaultFeeStructureService {
 
   async create(dto: CreateDefaultFeeStructureRequestDto) {
     if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency)) {
-      throw new BadRequestError("name, amount and frequency are required");
+      throw new BadRequestError(t({ bn: "নাম, পরিমাণ ও ফ্রিকোয়েন্সি আবশ্যক", en: "name, amount and frequency are required", ar: "الاسم والمبلغ والتكرار مطلوبة" }));
     }
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-      throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
+      throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
     }
     const amount = toAmount(dto.amount);
 
@@ -58,11 +59,11 @@ export class DefaultFeeStructureService {
 
   async update(id: number, dto: UpdateDefaultFeeStructureRequestDto) {
     const existing = await this.repository.findById(id);
-    if (!existing) throw new NotFoundError("ফি টেমপ্লেট পাওয়া যায়নি");
+    if (!existing) throw new NotFoundError(t({ bn: "ফি টেমপ্লেট পাওয়া যায়নি", en: "Fee template not found" }));
 
     const data: Prisma.DefaultFeeStructureUpdateInput = {};
     if (dto.name !== undefined) {
-      if (isEmpty(dto.name)) throw new BadRequestError("name cannot be empty");
+      if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম খালি রাখা যাবে না", en: "name cannot be empty", ar: "لا يمكن أن يكون الاسم فارغًا" }));
       data.name = String(dto.name).trim();
     }
     if (dto.amount !== undefined) data.amount = toAmount(dto.amount);
@@ -70,11 +71,11 @@ export class DefaultFeeStructureService {
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
     if (dto.frequency !== undefined) {
       if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-        throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
+        throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
       }
       data.frequency = dto.frequency as any;
     }
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     await this.repository.update(id, data);
   }
@@ -84,7 +85,7 @@ export class DefaultFeeStructureService {
       await this.repository.delete(id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("ফি টেমপ্লেট পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "ফি টেমপ্লেট পাওয়া যায়নি", en: "Fee template not found" }));
       }
       throw err;
     }

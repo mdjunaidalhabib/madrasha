@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 
 /**
  * Same read-only/click-to-edit pattern as InlineTextField, but for a small
@@ -28,6 +30,8 @@ export default function InlineListField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>(values.length ? values : [""]);
   const [saving, setSaving] = useState(false);
+  const t = useText(settingsUiText);
+  const c = useText(commonText);
 
   const startEdit = () => {
     setDraft(values.length ? values : [""]);
@@ -76,14 +80,14 @@ export default function InlineListField({
               ))}
             </div>
           ) : (
-            <p className="mt-0.5 text-sm text-gray-400 dark:text-slate-500">যোগ করা হয়নি</p>
+            <p className="mt-0.5 text-sm text-gray-400 dark:text-slate-500">{t.notAdded}</p>
           )}
         </div>
         <button
           type="button"
           onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
+          title={t.editTitle}
         >
           <Pencil size={14} />
         </button>
@@ -111,7 +115,7 @@ export default function InlineListField({
               onClick={() => removeAt(index)}
               disabled={draft.length <= 1}
               className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-              title="মুছুন"
+              title={c.delete}
             >
               <Trash2 size={14} />
             </button>
@@ -125,16 +129,16 @@ export default function InlineListField({
           onClick={addRow}
           className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
         >
-          <Plus size={13} /> আরেকটি যোগ করুন
+          <Plus size={13} /> {t.addAnother}
         </button>
       )}
 
       <div className="mt-3 flex justify-end gap-2">
         <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
-          বাতিল
+          {c.cancel}
         </Button>
         <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          {saving ? c.saving : c.save}
         </Button>
       </div>
     </div>

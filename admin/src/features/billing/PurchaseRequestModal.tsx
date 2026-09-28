@@ -3,6 +3,8 @@ import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { billingApi, type MessagePackage } from "../../services/billingApi";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { getText, useLang, useText, formatNumber } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 interface PurchaseRequestModalProps {
   pkg: MessagePackage | null;
@@ -11,6 +13,8 @@ interface PurchaseRequestModalProps {
 }
 
 const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalProps) => {
+  const tx = useText(billingText);
+  const lang = useLang();
   const [paymentMethodLabel, setPaymentMethodLabel] = useState("");
   const [transactionRef, setTransactionRef] = useState("");
   const [note, setNote] = useState("");
@@ -25,7 +29,7 @@ const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalP
   const handleSubmit = async () => {
     if (!pkg) return;
     if (!paymentMethodLabel.trim()) {
-      useToastStore.getState().show("পেমেন্ট মেথড লিখুন", "error");
+      useToastStore.getState().show(getText(billingText).enterPaymentMethod, "error");
       return;
     }
 
@@ -41,14 +45,14 @@ const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalP
       useToastStore
         .getState()
         .show(
-          `ক্রয়ের অনুরোধ পাঠানো হয়েছে — Super Admin অনুমোদন করলে ${pkg.channel === "SMS" ? "SMS" : "ইমেইল"} যোগ হবে`,
+          getText(billingText).requestSent(pkg.channel === "SMS" ? "SMS" : getText(billingText).email),
           "success",
         );
       onSuccess();
       onClose();
     } catch (err: any) {
       logger.error("CREATE PURCHASE REQUEST ERROR:", err);
-      const msg = err?.response?.data?.message || "অনুরোধ পাঠাতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(billingText).requestFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSubmitting(false);
@@ -56,33 +60,33 @@ const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalP
   };
 
   return (
-    <Modal open={!!pkg} title="প্যাকেজ কেনার অনুরোধ" onClose={onClose} maxWidthClassName="max-w-md">
+    <Modal open={!!pkg} title={tx.requestTitle} onClose={onClose} maxWidthClassName="max-w-md">
       {pkg && (
         <div className="flex flex-col gap-3">
           <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
             <p className="font-semibold text-gray-800 dark:text-slate-100">{pkg.name}</p>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-              {pkg.credit.toLocaleString("bn-BD")} টি {pkg.channel === "SMS" ? "SMS" : "ইমেইল"} · {pkg.validityDays}{" "}
-              দিন মেয়াদ · ৳{Number(pkg.price).toLocaleString("bn-BD")}
+              {tx.creditCount(formatNumber(pkg.credit, lang), pkg.channel === "SMS" ? "SMS" : tx.email)} ·{" "}
+              {tx.validity(formatNumber(pkg.validityDays, lang))} · ৳{formatNumber(Number(pkg.price), lang)}
             </p>
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              পেমেন্ট মেথড <span className="text-red-500">*</span>
+              {tx.paymentMethod} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={paymentMethodLabel}
               onChange={(e) => setPaymentMethodLabel(e.target.value)}
-              placeholder="যেমন: বিকাশ, নগদ, ব্যাংক ট্রান্সফার"
+              placeholder={tx.paymentMethodPlaceholder}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              ট্রানজেকশন আইডি (ঐচ্ছিক)
+              {tx.transactionIdOptional}
             </label>
             <input
               type="text"
@@ -94,7 +98,7 @@ const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalP
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              নোট (ঐচ্ছিক)
+              {tx.noteOptional}
             </label>
             <textarea
               value={note}
@@ -110,7 +114,7 @@ const PurchaseRequestModal = ({ pkg, onClose, onSuccess }: PurchaseRequestModalP
             onClick={handleSubmit}
             className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
           >
-            {submitting ? "পাঠানো হচ্ছে..." : "অনুরোধ পাঠান"}
+            {submitting ? tx.sending : tx.sendRequest}
           </button>
         </div>
       )}

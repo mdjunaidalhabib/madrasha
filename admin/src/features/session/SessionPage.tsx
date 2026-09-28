@@ -7,6 +7,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, formatDate as formatLocalDate, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { sessionText } from "./session.text";
 
 type Division = { division_id: number; division_name_bn: string };
 
@@ -24,14 +26,17 @@ const GENERIC_DIVISION_KEY = "generic";
 
 const emptyForm = { name: "", division_id: "", start_date: "", end_date: "" };
 
-const formatDate = (value: string) => {
+const formatDate = (value: string, lang: Lang) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
+  return formatLocalDate(date, lang, { year: "numeric", month: "short", day: "numeric" });
 };
 
 const SessionPage = () => {
   const navigate = useNavigate();
+  const t = useText(sessionText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [form, setForm] = useState(emptyForm);
@@ -95,25 +100,25 @@ const SessionPage = () => {
           items[0]?.division?.nameBn ||
           items[0]?.division?.name ||
           divisions.find((d) => d.division_id === divisionId)?.division_name_bn ||
-          `বিভাগ #${divisionId}`;
+          t.divisionN(String(divisionId));
         return { key: String(divisionId), label, items };
       })
       .sort((a, b) => a.label.localeCompare(b.label, "bn"));
 
     const groups: Group[] = [];
     if (generic.length > 0) {
-      groups.push({ key: GENERIC_DIVISION_KEY, label: "সাধারণ (সকল বিভাগ)", items: generic });
+      groups.push({ key: GENERIC_DIVISION_KEY, label: t.generic, items: generic });
     }
     return [...groups, ...divisionGroups];
-  }, [sessions, divisions]);
+  }, [sessions, divisions, t]);
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.start_date || !form.end_date) {
-      useToastStore.getState().show("নাম, শুরুর তারিখ ও শেষের তারিখ দিন", "error");
+      useToastStore.getState().show(getText(sessionText).fillRequired, "error");
       return;
     }
     if (form.start_date >= form.end_date) {
-      useToastStore.getState().show("শুরুর তারিখ শেষের তারিখের আগে হতে হবে", "error");
+      useToastStore.getState().show(getText(sessionText).startBeforeEnd, "error");
       return;
     }
     try {
@@ -124,11 +129,11 @@ const SessionPage = () => {
         end_date: form.end_date,
         division_id: form.division_id ? Number(form.division_id) : null,
       });
-      useToastStore.getState().show("সেশন তৈরি হয়েছে", "success");
+      useToastStore.getState().show(getText(sessionText).created, "success");
       setForm(emptyForm);
       loadSessions();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সেশন তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(sessionText).createFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -148,11 +153,11 @@ const SessionPage = () => {
   const handleUpdate = async () => {
     if (!editTarget) return;
     if (!editForm.name.trim() || !editForm.start_date || !editForm.end_date) {
-      useToastStore.getState().show("নাম, শুরুর তারিখ ও শেষের তারিখ দিন", "error");
+      useToastStore.getState().show(getText(sessionText).fillRequired, "error");
       return;
     }
     if (editForm.start_date >= editForm.end_date) {
-      useToastStore.getState().show("শুরুর তারিখ শেষের তারিখের আগে হতে হবে", "error");
+      useToastStore.getState().show(getText(sessionText).startBeforeEnd, "error");
       return;
     }
     try {
@@ -163,11 +168,11 @@ const SessionPage = () => {
         end_date: editForm.end_date,
         division_id: editForm.division_id ? Number(editForm.division_id) : null,
       });
-      useToastStore.getState().show("সেশন আপডেট হয়েছে", "success");
+      useToastStore.getState().show(getText(sessionText).updated, "success");
       setEditTarget(null);
       loadSessions();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সেশন আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(sessionText).updateFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setEditSaving(false);
@@ -177,27 +182,27 @@ const SessionPage = () => {
   const handleSetCurrent = async (session: Session) => {
     try {
       await sessionApi.setCurrent(session.id);
-      useToastStore.getState().show(`"${session.name}" এখন সক্রিয় সেশন`, "success");
+      useToastStore.getState().show(getText(sessionText).nowActive(session.name), "success");
       loadSessions();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সক্রিয় সেশন সেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(sessionText).setActiveFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   const handleDelete = (session: Session) => {
     useConfirmStore.getState().show({
-      title: "সেশন মুছে ফেলবেন?",
-      message: `"${session.name}" সেশনটি স্থায়ীভাবে মুছে যাবে। এটি আর ফিরিয়ে আনা যাবে না।`,
-      confirmText: "মুছে ফেলুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(session.name),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await sessionApi.remove(session.id);
-          useToastStore.getState().show("সেশন মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(sessionText).deleted, "success");
           setSessions((prev) => prev.filter((s) => s.id !== session.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || getText(sessionText).deleteFailed;
           // ট্র্যাশে থাকা ছাত্র এবং বাতিল হওয়া আবেদন কোনোটাই ছাত্র-তালিকায়
           // দেখা যায় না, তাই প্রতিটার জন্য আলাদা "কোথায় গিয়ে ঠিক করবে" পথ -
           // ট্র্যাশ পেজ, সরাসরি এক-ক্লিক মুছে ফেলা, বা ছাত্র তালিকা। ইনভয়েস
@@ -225,18 +230,18 @@ const SessionPage = () => {
 
   const handleCleanupFeeStructures = (session: Session) => {
     useConfirmStore.getState().show({
-      title: "ফি কাঠামো মুছে ফেলবেন?",
-      message: `"${session.name}" সেশনের ফি কাঠামোগুলো (কোনো ইনভয়েস তৈরি হয়নি এমনগুলো) স্থায়ীভাবে মুছে যাবে। এটি আর ফিরিয়ে আনা যাবে না।`,
-      confirmText: "মুছে ফেলুন",
+      title: t.feeDeleteTitle,
+      message: t.feeDeleteMessage(session.name),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await sessionApi.removeUnusedFeeStructures(session.id);
           useToastStore
             .getState()
-            .show("ফি কাঠামোগুলো মুছে ফেলা হয়েছে — এখন সেশনটি আবার মুছে ফেলার চেষ্টা করুন", "success");
+            .show(getText(sessionText).feeDeleted, "success");
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || getText(sessionText).deleteFailed;
           useToastStore.getState().show(msg, "error");
         }
       },
@@ -247,19 +252,18 @@ const SessionPage = () => {
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">সেশন সেটাপ</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            শিক্ষাবর্ষ/সেশন তৈরি করুন — প্রতিটি সেশনের শুরু ও শেষের তারিখ অনুযায়ী মাসিক ফি
-            স্বয়ংক্রিয়ভাবে হিসাব হবে
+            {t.subtitle}
           </p>
         </div>
 
         <div className="mb-4 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">নতুন সেশন তৈরি করুন</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">{t.newSession}</h2>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <input
               type="text"
-              placeholder="সেশনের নাম (যেমন: ২০২৬)"
+              placeholder={t.namePlaceholder}
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[180px]"
@@ -269,7 +273,7 @@ const SessionPage = () => {
               onChange={(e) => setForm((p) => ({ ...p, division_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[170px]"
             >
-              <option value="">সাধারণ (সকল বিভাগ)</option>
+              <option value="">{t.generic}</option>
               {divisions.map((d) => (
                 <option key={d.division_id} value={d.division_id}>
                   {d.division_name_bn}
@@ -294,14 +298,14 @@ const SessionPage = () => {
               onClick={handleCreate}
               className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
             >
-              তৈরি করুন
+              {c.create}
             </button>
           </div>
         </div>
 
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {sessions.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">কোনো সেশন নেই</div>
+            <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">{t.noSessions}</div>
           ) : (
             <div className="flex flex-col gap-5">
               {groupedSessions.map((group) => (
@@ -318,29 +322,29 @@ const SessionPage = () => {
                             <span className="font-medium text-gray-800 dark:text-slate-200">{session.name}</span>
                             {session.isActive && (
                               <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                সক্রিয়
+                                {c.active}
                               </span>
                             )}
                           </div>
                           <div className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                            {formatDate(session.startDate)} – {formatDate(session.endDate)}
+                            {formatDate(session.startDate, lang)} – {formatDate(session.endDate, lang)}
                           </div>
                         </div>
                         <div className="flex shrink-0 gap-0.5">
                           {!session.isActive && (
                             <button
                               type="button"
-                              title="সক্রিয় সেশন হিসেবে সেট করুন"
+                              title={t.setActiveTitle}
                               onClick={() => handleSetCurrent(session)}
                               className="flex shrink-0 items-center gap-1 rounded-md border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-950/40"
                             >
                               <Star size={12} />
-                              সক্রিয় করুন
+                              {t.makeActive}
                             </button>
                           )}
                           <button
                             type="button"
-                            title="এডিট"
+                            title={c.edit}
                             onClick={() => openEditModal(session)}
                             className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
                           >
@@ -348,7 +352,7 @@ const SessionPage = () => {
                           </button>
                           <button
                             type="button"
-                            title="মুছুন"
+                            title={c.delete}
                             onClick={() => handleDelete(session)}
                             className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                           >
@@ -365,10 +369,10 @@ const SessionPage = () => {
         </div>
       </div>
 
-      <Modal open={!!editTarget} title={`সেশন এডিট করুন — ${editTarget?.name || ""}`} onClose={() => setEditTarget(null)}>
+      <Modal open={!!editTarget} title={t.editTitle(editTarget?.name || "")} onClose={() => setEditTarget(null)}>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">নাম</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{c.name}</label>
             <input
               type="text"
               value={editForm.name}
@@ -377,13 +381,13 @@ const SessionPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">বিভাগ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.division}</label>
             <select
               value={editForm.division_id}
               onChange={(e) => setEditForm((p) => ({ ...p, division_id: e.target.value }))}
               className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">সাধারণ (সকল বিভাগ)</option>
+              <option value="">{t.generic}</option>
               {divisions.map((d) => (
                 <option key={d.division_id} value={d.division_id}>
                   {d.division_name_bn}
@@ -392,7 +396,7 @@ const SessionPage = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শুরুর তারিখ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.startDate}</label>
             <input
               type="date"
               value={editForm.start_date}
@@ -401,7 +405,7 @@ const SessionPage = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">শেষের তারিখ</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.endDate}</label>
             <input
               type="date"
               value={editForm.end_date}
@@ -416,7 +420,7 @@ const SessionPage = () => {
             onClick={() => setEditTarget(null)}
             className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             type="button"
@@ -424,12 +428,12 @@ const SessionPage = () => {
             onClick={handleUpdate}
             className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {editSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {editSaving ? c.saving : c.save}
           </button>
         </div>
       </Modal>
 
-      <Modal open={!!blockedDelete} title="মুছে ফেলা যাচ্ছে না" onClose={() => setBlockedDelete(null)}>
+      <Modal open={!!blockedDelete} title={t.cannotDelete} onClose={() => setBlockedDelete(null)}>
         <p className="text-sm text-gray-700 dark:text-slate-300">{blockedDelete?.message}</p>
         <div className="mt-4 flex justify-end gap-2">
           {blockedDelete?.action === "fee_locked" ? (
@@ -438,7 +442,7 @@ const SessionPage = () => {
               onClick={() => setBlockedDelete(null)}
               className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
             >
-              বুঝেছি
+              {t.understood}
             </button>
           ) : (
             <>
@@ -447,7 +451,7 @@ const SessionPage = () => {
                 onClick={() => setBlockedDelete(null)}
                 className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                বাতিল
+                {c.cancel}
               </button>
               <button
                 type="button"
@@ -468,12 +472,12 @@ const SessionPage = () => {
                 className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
               >
                 {blockedDelete?.action === "trash"
-                  ? "ট্র্যাশে যান"
+                  ? t.goToTrash
                   : blockedDelete?.action === "rejected"
-                    ? "বাতিল আবেদন দেখুন"
+                    ? t.viewRejected
                     : blockedDelete?.action === "fee_structures"
-                      ? "ফি কাঠামো মুছে ফেলুন"
-                      : "ছাত্র তালিকায় যান"}
+                      ? t.deleteFeeStructures
+                      : t.goToStudents}
               </button>
             </>
           )}

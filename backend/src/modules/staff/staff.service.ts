@@ -6,6 +6,7 @@ import { STAFF_FIELD_MAP, STAFF_DATE_FIELDS, STAFF_NUMBER_FIELDS } from "./staff
 import { StaffNotFoundError } from "./staff.types";
 import { StaffPayloadDto } from "./staff.dto";
 import { toStaffApiDto } from "./staff.mapper";
+import { t } from "../../shared/i18n";
 
 const toSnakeCase = (obj: Record<string, unknown> = {}) => {
   const newObj: Record<string, unknown> = {};
@@ -166,7 +167,7 @@ export class StaffService {
 
     const fields = Object.keys(filtered).filter((key) => STAFF_FIELD_MAP[key]);
     if (!fields.length) {
-      throw new BadRequestError("No data to update");
+      throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো তথ্য নেই", en: "No data to update", ar: "لا توجد بيانات للتحديث" }));
     }
 
     const data: Record<string, any> = {};
@@ -239,12 +240,12 @@ export class StaffService {
    * TeacherService.updateNamesBulk. */
   async updateNamesBulk(madrasaId: number | undefined, items: StaffNamesItem[]) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!items.length) throw new BadRequestError("items is required");
+    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required", ar: "items مطلوبة" }));
 
     const ids = items.map((i) => Number(i.id));
     const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
     const missing = ids.filter((id) => !found.has(id));
-    if (missing.length) throw new BadRequestError(`Staff not found: ${missing.join(", ")}`);
+    if (missing.length) throw new BadRequestError(t({ bn: `স্টাফ পাওয়া যায়নি: ${missing.join(", ")}`, en: `Staff not found: ${missing.join(", ")}`, ar: `لم يتم العثور على الموظفين: ${missing.join(", ")}` }));
 
     const updates = items.map((item) => {
       const data: Record<string, string | null> = {};
@@ -252,7 +253,7 @@ export class StaffService {
         const raw = (item as Record<string, unknown>)[key];
         if (raw === undefined) continue;
         const value = typeof raw === "string" ? raw.trim() : null;
-        if (key === "name_bn" && !value) throw new BadRequestError("বাংলা নাম আবশ্যক");
+        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required", ar: "الاسم بالبنغالية مطلوب" }));
         data[column] = value || null;
       }
       return { id: Number(item.id), data };

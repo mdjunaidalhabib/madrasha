@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { billingApi, type SmsEncoding, type SmsPreviewResult, type SubscriptionSummaryDto } from "../../services/billingApi";
 import { type NotificationChannel } from "../../services/phase4Api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useLang, useText, formatNumber } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 interface MessageCreditNoticeProps {
   channel: NotificationChannel;
@@ -39,6 +41,9 @@ const StatTile = ({ label, value }: { label: string; value: string | number }) =
  * live SMS segment/cost preview (debounced, server-authoritative). Purely
  * UX-level guidance - the backend already enforces the real credit check. */
 const MessageCreditNotice = ({ channel, message, onDisabledChange }: MessageCreditNoticeProps) => {
+  const tx = useText(billingText);
+  const lang = useLang();
+  const channelLabel = channel === "SMS" ? "SMS" : tx.email;
   const [subscription, setSubscription] = useState<SubscriptionSummaryDto | null>(null);
   const [loadingSub, setLoadingSub] = useState(true);
   const [preview, setPreview] = useState<SmsPreviewResult | null>(null);
@@ -106,17 +111,16 @@ const MessageCreditNotice = ({ channel, message, onDisabledChange }: MessageCred
           }`}
         >
           {!subscription.active
-            ? `${channel === "SMS" ? "SMS" : "ইমেইল"} প্যাকেজ সক্রিয় নেই — মেসেজ পাঠানো যাবে না, আগে প্যাকেজ কিনুন`
+            ? tx.packageInactive(channelLabel)
             : subscription.remainingCredit <= 0
-              ? `আপনার ${channel === "SMS" ? "SMS" : "ইমেইল"} শেষ হয়ে গেছে — নতুন প্যাকেজ কিনুন`
-              : `আপনার কাছে আছে: ${subscription.remainingCredit.toLocaleString("bn-BD")} টি ${channel === "SMS" ? "SMS" : "ইমেইল"}`}
+              ? tx.creditExhausted(channelLabel)
+              : tx.creditRemaining(formatNumber(subscription.remainingCredit, lang), channelLabel)}
         </div>
       )}
 
       {channel === "SMS" && (
         <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-          শুধু ইংরেজি/সংখ্যা দিয়ে লিখলে ১৬০ অক্ষর পর্যন্ত = ১টি SMS, তারপর প্রতি ১৫৩ অক্ষরে আরেকটি SMS যোগ হয়। মেসেজে
-          বাংলা অক্ষর, আরবি বা ইমোজি থাকলে ৭০ অক্ষর পর্যন্ত = ১টি SMS, তারপর প্রতি ৬৭ অক্ষরে আরেকটি SMS যোগ হয়।
+          {tx.smsRules}
         </div>
       )}
 
@@ -132,13 +136,13 @@ const MessageCreditNotice = ({ channel, message, onDisabledChange }: MessageCred
           return (
             <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                <StatTile label="ভাষা" value={encoding === "UNICODE" ? "বাংলা/বিশেষ" : "ইংরেজি"} />
-                <StatTile label="SMS Length" value={stillLoading ? "..." : characterCount} />
-                <StatTile label="Per SMS Length" value={perSmsLength(encoding, segmentCount)} />
-                <StatTile label="SMS Count" value={stillLoading ? "..." : segmentCount} />
+                <StatTile label={tx.language} value={encoding === "UNICODE" ? tx.encodingUnicode : tx.encodingGsm} />
+                <StatTile label={tx.smsLength} value={stillLoading ? "..." : characterCount} />
+                <StatTile label={tx.perSmsLength} value={perSmsLength(encoding, segmentCount)} />
+                <StatTile label={tx.smsCount} value={stillLoading ? "..." : segmentCount} />
               </div>
               <p className="mt-1.5 text-xs text-blue-700 dark:text-blue-300">
-                আনুমানিক খরচ: <strong>৳{stillLoading ? "..." : cost.toLocaleString("bn-BD")}</strong>
+                {tx.estimatedCost} <strong>৳{stillLoading ? "..." : formatNumber(cost, lang)}</strong>
               </p>
             </div>
           );

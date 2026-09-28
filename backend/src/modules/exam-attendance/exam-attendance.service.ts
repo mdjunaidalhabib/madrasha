@@ -3,6 +3,7 @@ import { logger } from "../../shared/logger/logger";
 import { examAttendanceRepository, ExamAttendanceRepository } from "./exam-attendance.repository";
 import { BulkMarkExamAttendanceRequestDto, UpdateExamAttendanceRequestDto } from "./exam-attendance.dto";
 import { EXAM_ATTENDANCE_STATUSES } from "./exam-attendance.constants";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -19,7 +20,7 @@ const MAX_BULK_ENTRIES = 200;
 const validateStatus = (status: unknown): string => {
   const value = String(status).toUpperCase();
   if (!EXAM_ATTENDANCE_STATUSES.includes(value as (typeof EXAM_ATTENDANCE_STATUSES)[number])) {
-    throw new BadRequestError(`status must be one of ${EXAM_ATTENDANCE_STATUSES.join(", ")}`);
+    throw new BadRequestError(t({ bn: `status অবশ্যই এগুলোর একটি হতে হবে: ${EXAM_ATTENDANCE_STATUSES.join(", ")}`, en: `status must be one of ${EXAM_ATTENDANCE_STATUSES.join(", ")}`, ar: `يجب أن تكون الحالة إحدى القيم: ${EXAM_ATTENDANCE_STATUSES.join(", ")}` }));
   }
   return value;
 };
@@ -29,7 +30,7 @@ export class ExamAttendanceService {
 
   async listByRoutine(madrasaId: number, examRoutineId: number, status?: string, search?: string) {
     const routine = await this.repository.findRoutineForAttendance(examRoutineId, madrasaId);
-    if (!routine) throw new NotFoundError("Exam routine not found");
+    if (!routine) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
 
     try {
       return await this.repository.findRosterForRoutine(
@@ -42,7 +43,7 @@ export class ExamAttendanceService {
         search?.trim() || undefined,
       );
     } catch (err) {
-      return friendlyFailure("listByRoutine error:", err, "Failed to load exam attendance");
+      return friendlyFailure("listByRoutine error:", err, t({ bn: "পরীক্ষার হাজিরা লোড করা যায়নি", en: "Failed to load exam attendance", ar: "تعذر تحميل حضور الامتحان" }));
     }
   }
 
@@ -52,19 +53,19 @@ export class ExamAttendanceService {
   private async assertNotLocked(madrasaId: number, examRoutineId: number) {
     const lockedCount = await this.repository.isRoutineLocked(madrasaId, examRoutineId);
     if (lockedCount > 0) {
-      throw new LockedError("This exam slot's attendance has been locked and can no longer be edited");
+      throw new LockedError(t({ bn: "এই পরীক্ষার স্লটের হাজিরা লক করা হয়েছে, আর সম্পাদনা করা যাবে না", en: "This exam slot's attendance has been locked and can no longer be edited", ar: "تم قفل حضور فترة الامتحان هذه ولا يمكن تعديله بعد الآن" }));
     }
   }
 
   async bulkMark(madrasaId: number, markedById: number | null, dto: BulkMarkExamAttendanceRequestDto) {
     if (isEmpty(dto.exam_routine_id) || !Array.isArray(dto.entries)) {
-      throw new BadRequestError("exam_routine_id and entries are required");
+      throw new BadRequestError(t({ bn: "exam_routine_id ও entries আবশ্যক", en: "exam_routine_id and entries are required", ar: "exam_routine_id و entries مطلوبة" }));
     }
     const examRoutineId = Number(dto.exam_routine_id);
     await this.assertNotLocked(madrasaId, examRoutineId);
 
     const routine = await this.repository.findRoutineForAttendance(examRoutineId, madrasaId);
-    if (!routine) throw new NotFoundError("Exam routine not found");
+    if (!routine) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
 
     // Load this routine's eligible roster up front - every exam_candidate_id
     // coming from the request body (entries[] below) must be cross-checked
@@ -86,11 +87,11 @@ export class ExamAttendanceService {
     const entries = new Map<number, { status: string; remarks: string | null }>();
     for (const entry of dto.entries) {
       if (isEmpty(entry.exam_candidate_id) || isEmpty(entry.status)) {
-        throw new BadRequestError("Each entry requires exam_candidate_id and status");
+        throw new BadRequestError(t({ bn: "প্রতিটি এন্ট্রিতে exam_candidate_id ও status আবশ্যক", en: "Each entry requires exam_candidate_id and status", ar: "كل قيد يتطلب exam_candidate_id والحالة" }));
       }
       const examCandidateId = Number(entry.exam_candidate_id);
       if (!rosterIds.has(examCandidateId)) {
-        throw new BadRequestError(`exam_candidate_id ${examCandidateId} is not on this routine's roster`);
+        throw new BadRequestError(t({ bn: `exam_candidate_id ${examCandidateId} এই রুটিনের তালিকায় নেই`, en: `exam_candidate_id ${examCandidateId} is not on this routine's roster`, ar: `exam_candidate_id ${examCandidateId} غير موجود في قائمة هذا الجدول` }));
       }
       entries.set(examCandidateId, {
         status: validateStatus(entry.status),
@@ -105,7 +106,7 @@ export class ExamAttendanceService {
     }
 
     if (entries.size > MAX_BULK_ENTRIES) {
-      throw new BadRequestError(`একসাথে সর্বোচ্চ ${MAX_BULK_ENTRIES}টি এন্ট্রি প্রক্রিয়া করা যায়।`);
+      throw new BadRequestError(t({ bn: `একসাথে সর্বোচ্চ ${MAX_BULK_ENTRIES}টি এন্ট্রি প্রক্রিয়া করা যায়।`, en: `At most ${MAX_BULK_ENTRIES} entries can be processed at once.`, ar: `يمكن معالجة ${MAX_BULK_ENTRIES} قيد كحد أقصى دفعة واحدة.` }));
     }
 
     let marked = 0;
@@ -125,14 +126,14 @@ export class ExamAttendanceService {
         else rejectedLocked.push(examCandidateId);
       }
     } catch (err) {
-      return friendlyFailure("bulkMark error:", err, "Failed to mark exam attendance");
+      return friendlyFailure("bulkMark error:", err, t({ bn: "পরীক্ষার হাজিরা সংরক্ষণ করা যায়নি", en: "Failed to mark exam attendance", ar: "تعذر تسجيل حضور الامتحان" }));
     }
 
     // A concurrent lock() mid-batch (see upsertEntry's WHERE is_locked =
     // false guard) can reject some entries partway through - surface that
     // instead of silently reporting the whole batch as marked.
     if (rejectedLocked.length && marked === 0) {
-      throw new LockedError("This exam slot's attendance has been locked and can no longer be edited");
+      throw new LockedError(t({ bn: "এই পরীক্ষার স্লটের হাজিরা লক করা হয়েছে, আর সম্পাদনা করা যাবে না", en: "This exam slot's attendance has been locked and can no longer be edited", ar: "تم قفل حضور فترة الامتحان هذه ولا يمكن تعديله بعد الآن" }));
     }
 
     return { marked, locked_skipped: rejectedLocked.length };
@@ -140,13 +141,13 @@ export class ExamAttendanceService {
 
   async updateOne(id: number, madrasaId: number, dto: UpdateExamAttendanceRequestDto) {
     const existing = await this.repository.findById(id, madrasaId);
-    if (!existing) throw new NotFoundError("Exam attendance record not found");
+    if (!existing) throw new NotFoundError(t({ bn: "পরীক্ষার হাজিরার রেকর্ড পাওয়া যায়নি", en: "Exam attendance record not found", ar: "لم يتم العثور على سجل حضور الامتحان" }));
     await this.assertNotLocked(madrasaId, existing.examRoutineId);
 
     const data: Record<string, unknown> = {};
     if (dto.status !== undefined) data.status = validateStatus(dto.status);
     if (dto.remarks !== undefined) data.remarks = dto.remarks?.trim() || null;
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
     data.markedAt = new Date();
 
     try {
@@ -156,31 +157,31 @@ export class ExamAttendanceService {
         // update now most likely means a concurrent lock() landed in
         // between (see updateOne's WHERE is_locked = false guard), not that
         // the record vanished.
-        throw new LockedError("This exam slot's attendance has been locked and can no longer be edited");
+        throw new LockedError(t({ bn: "এই পরীক্ষার স্লটের হাজিরা লক করা হয়েছে, আর সম্পাদনা করা যাবে না", en: "This exam slot's attendance has been locked and can no longer be edited", ar: "تم قفل حضور فترة الامتحان هذه ولا يمكن تعديله بعد الآن" }));
       }
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof LockedError) throw err;
-      return friendlyFailure("updateOne error:", err, "Failed to update exam attendance");
+      return friendlyFailure("updateOne error:", err, t({ bn: "পরীক্ষার হাজিরা আপডেট করা যায়নি", en: "Failed to update exam attendance", ar: "تعذر تحديث حضور الامتحان" }));
     }
   }
 
   async lock(madrasaId: number, examRoutineId: number, lockedById: number | null) {
     try {
       const result = await this.repository.lockRoutine(madrasaId, examRoutineId, lockedById);
-      if (!result.count) throw new NotFoundError("No exam attendance records found for this routine to lock");
+      if (!result.count) throw new NotFoundError(t({ bn: "লক করার মতো এই রুটিনের কোনো হাজিরার রেকর্ড নেই", en: "No exam attendance records found for this routine to lock", ar: "لا توجد سجلات حضور لهذا الجدول لقفلها" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("lock error:", err, "Failed to lock exam attendance");
+      return friendlyFailure("lock error:", err, t({ bn: "পরীক্ষার হাজিরা লক করা যায়নি", en: "Failed to lock exam attendance", ar: "تعذر قفل حضور الامتحان" }));
     }
   }
 
   async unlock(madrasaId: number, examRoutineId: number) {
     try {
       const result = await this.repository.unlockRoutine(madrasaId, examRoutineId);
-      if (!result.count) throw new NotFoundError("No exam attendance records found for this routine to unlock");
+      if (!result.count) throw new NotFoundError(t({ bn: "আনলক করার মতো এই রুটিনের কোনো হাজিরার রেকর্ড নেই", en: "No exam attendance records found for this routine to unlock", ar: "لا توجد سجلات حضور لهذا الجدول لفتح قفلها" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("unlock error:", err, "Failed to unlock exam attendance");
+      return friendlyFailure("unlock error:", err, t({ bn: "পরীক্ষার হাজিরা আনলক করা যায়নি", en: "Failed to unlock exam attendance", ar: "تعذر فتح قفل حضور الامتحان" }));
     }
   }
 }

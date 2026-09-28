@@ -3,12 +3,10 @@ import type { ReportColumn } from "../../../features/reports/types";
 import { cachedGet } from "../../../services/api";
 import { pickGradeScale, type ScaleGrade } from "../../ResultPanel/useClassGrading";
 import { withoutFailGrades } from "../../ExamPanel/failGrade";
-import {
-  cellValue,
-  formatMeritRank,
-  formatReportValue,
-  toBanglaDigits,
-} from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printMeritRank, printValue } from "../printFormat";
+import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText, type ReportText } from "../report.text";
 
 type GradeItem = {
   id: string | number;
@@ -38,25 +36,26 @@ const extractGradeArray = (res: any) => {
 };
 
 // Every column a user can pick from the "কলাম" menu, in the order they start
-// out in - the default-visible subset is ACADEMIC_RESULT_COLUMNS below.
+// out in - the default-visible subset is buildAcademicResultColumns below.
 // eslint-disable-next-line react-refresh/only-export-components
-export const ACADEMIC_RESULT_COLUMN_OPTIONS: ReportColumn[] = [
-  { header: "রোল নম্বর", key: "roll", className: "min-w-24 text-center" },
-  { header: "রেজিঃ নম্বর", key: "registration_no", className: "min-w-28 text-center" },
-  { header: "শিক্ষার্থীর নাম", key: "student_name", className: "min-w-48" },
-  { header: "বাবার নাম", key: "father_name", className: "min-w-40" },
-  { header: "শ্রেণি", key: "class_name", className: "min-w-24 text-center" },
-  { header: "বিভাগ", key: "division_name", className: "min-w-24 text-center" },
-  { header: "শিক্ষাবর্ষ", key: "academic_year", className: "min-w-24 text-center" },
-  { header: "মোট", key: "total", className: "min-w-20 text-center" },
-  { header: "গড়", key: "average", className: "min-w-20 text-center" },
-  { header: "গ্রেড", key: "madrasa_grade", className: "min-w-28 text-center" },
-  { header: "স্ট্যাটাস", key: "status", className: "min-w-24 text-center" },
+// Headers come from the given dictionary (print or UI language) - see report.text.ts.
+export const buildAcademicResultColumnOptions = (t: Pick<ReportText, "col">): ReportColumn[] => [
+  { header: t.col.rollNo, key: "roll", className: "min-w-24 text-center" },
+  { header: t.col.regNo, key: "registration_no", className: "min-w-28 text-center" },
+  { header: t.col.studentName, key: "student_name", className: "min-w-48" },
+  { header: t.col.fatherName, key: "father_name", className: "min-w-40" },
+  { header: t.col.class, key: "class_name", className: "min-w-24 text-center" },
+  { header: t.col.division, key: "division_name", className: "min-w-24 text-center" },
+  { header: t.col.session, key: "academic_year", className: "min-w-24 text-center" },
+  { header: t.col.total, key: "total", className: "min-w-20 text-center" },
+  { header: t.col.average, key: "average", className: "min-w-20 text-center" },
+  { header: t.col.grade, key: "madrasa_grade", className: "min-w-28 text-center" },
+  { header: t.col.status, key: "status", className: "min-w-24 text-center" },
   // Zero-width space between মেধা and ক্রম gives the browser a clean wrap
   // point (matching রোল/নম্বর's natural space-driven wrap) instead of
   // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
   // when the column is too narrow for one line.
-  { header: "মেধা​ক্রম", key: "rank_no", className: "min-w-24 text-center" },
+  { header: t.col.rankWrap, key: "rank_no", className: "min-w-24 text-center" },
 ];
 
 const DEFAULT_RESULT_COLUMN_KEYS = new Set([
@@ -71,9 +70,8 @@ const DEFAULT_RESULT_COLUMN_KEYS = new Set([
 
 // What the report shows until the user changes it from the "কলাম" menu.
 // eslint-disable-next-line react-refresh/only-export-components
-export const ACADEMIC_RESULT_COLUMNS: ReportColumn[] = ACADEMIC_RESULT_COLUMN_OPTIONS.filter(
-  (column) => DEFAULT_RESULT_COLUMN_KEYS.has(column.key),
-);
+export const buildAcademicResultColumns = (t: Pick<ReportText, "col">): ReportColumn[] =>
+  buildAcademicResultColumnOptions(t).filter((column) => DEFAULT_RESULT_COLUMN_KEYS.has(column.key));
 
 type ResultStats = { total: number; pass: number; fail: number; absent: number };
 
@@ -120,13 +118,13 @@ const formatAverage = (row: Record<string, any>) => {
   const value = row?.average;
   if (value === null || value === undefined || value === "") return "—";
   const num = Number(value);
-  return Number.isFinite(num) ? toBanglaDigits(num.toFixed(2)) : formatReportValue(value);
+  return Number.isFinite(num) ? toBanglaDigits(num.toFixed(2)) : printValue(value);
 };
 
 const rawValue = (row: Record<string, any>, keys: string[]) => {
   for (const key of keys) {
     const value = row?.[key];
-    if (value !== null && value !== undefined && value !== "") return formatReportValue(value, key);
+    if (value !== null && value !== undefined && value !== "") return printValue(value, key);
   }
   return "";
 };
@@ -208,7 +206,7 @@ const AcademicResultPrint = ({
   selectedDivisionName = "",
   selectedDivisionId = null,
   selectedClassName = "",
-  columns = ACADEMIC_RESULT_COLUMNS,
+  columns = [],
   isFirstPage = true,
   isLastPage = true,
   repeatHeader = false,
@@ -216,13 +214,15 @@ const AcademicResultPrint = ({
   resultStats,
 }: AcademicResultPrintProps) => {
   const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
+  const t = usePrintText(reportText);
+  const isMadrasa = useIsMadrasa();
 
-  const configuredColumns = columns.length ? columns : ACADEMIC_RESULT_COLUMNS;
+  const configuredColumns = columns.length ? columns : buildAcademicResultColumns(t);
   const firstRow = rows[0] || {};
   const divisionName =
     selectedDivisionName ||
     rawValue(firstRow, ["division_name", "division_name_bn"]) ||
-    "সকল বিভাগ";
+    t.allDivisions;
 
   // Grade scales are per-division (a division without its own scale uses the
   // madrasa-wide default). `GET /madrasa-grades` returns only the default
@@ -259,11 +259,11 @@ const AcademicResultPrint = ({
     };
   }, [selectedDivisionId]);
   const className =
-    selectedClassName || rawValue(firstRow, ["class_name", "class_name_bn"]) || "সকল শ্রেণি";
-  const examName = rawValue(firstRow, ["exam_name"]) || "সকল পরীক্ষা";
+    selectedClassName || rawValue(firstRow, ["class_name", "class_name_bn"]) || t.allClasses;
+  const examName = rawValue(firstRow, ["exam_name"]) || t.allExams;
   const examYear = rawValue(firstRow, ["exam_year", "academic_year"]) || "................";
   const examNameWithYear = `${examName} - ${examYear}`;
-  const contextLine = `জামাতঃ ${className}`;
+  const contextLine = `${isMadrasa ? t.jamat : t.classTerm}${t.colon} ${className}`;
   const madrasaName = rawValue(firstRow, [
     "madrasa_name",
     "institute_name",
@@ -288,7 +288,7 @@ const AcademicResultPrint = ({
       if (!subjectMap.has(key)) {
         subjectMap.set(key, {
           key,
-          name: subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`,
+          name: subject.subject_name || t.subjectN(toBanglaDigits(index + 1)),
           isMiyari: Boolean(subject.is_miyari),
           fullMark: Number(subject.full_marks ?? 100) || 100,
         });
@@ -320,18 +320,18 @@ const AcademicResultPrint = ({
       (item, index) => getSubjectKey(item, index) === subjectKey,
     );
     if (!subject) return "—";
-    if (subject.is_absent) return "অনু";
+    if (subject.is_absent) return t.absentShort;
     const mark = subject.mark;
-    return mark === null || mark === undefined || mark === "" ? "—" : formatReportValue(mark);
+    return mark === null || mark === undefined || mark === "" ? "—" : printValue(mark);
   };
 
   const getValue = (row: Record<string, any>, column: PrintableColumn) => {
     if (column.subjectKey) return getMark(row, column.subjectKey);
     if (column.key === "average") return formatAverage(row);
     if (column.key === "class_name") {
-      return cellValue(row, "class_name") || cellValue(row, "class_name_bn");
+      return printCell(row, "class_name") || printCell(row, "class_name_bn");
     }
-    if (column.key === "rank_no") return formatMeritRank(row?.rank_no);
+    if (column.key === "rank_no") return printMeritRank(row?.rank_no);
     // The স্ট্যাটাস column is narrow (matches মোট/গড়/গ্রেড's width), and
     // "অনুপস্থিত" alone doesn't fit on one line there, wrapping to a
     // second line and breaking the row height/alignment. Every other
@@ -341,9 +341,9 @@ const AcademicResultPrint = ({
     // wider reports (attendance sheets, etc.) that use the same "ABSENT"
     // status still print the full word where they have room for it.
     if (column.key === "status" && String(row?.status || "").toUpperCase() === "ABSENT") {
-      return "অনু";
+      return t.absentShort;
     }
-    return cellValue(row, column.key);
+    return printCell(row, column.key);
   };
 
   // "রাসিব" is this madrasa's fail-grade name (min_mark 0) - a grade *scale*
@@ -373,27 +373,27 @@ const AcademicResultPrint = ({
                   <div
                     className={`academic-result-info-box ${hasGrades ? "academic-result-info-box-divider" : ""}`}
                   >
-                    <p className="academic-result-info-box-title font-bold">ফলাফল সারসংক্ষেপ</p>
+                    <p className="academic-result-info-box-title font-bold">{t.title.resultSummary}</p>
                     <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
-                      <span className="whitespace-nowrap">মোট:</span>
+                      <span className="whitespace-nowrap">{t.col.total}:</span>
                       <span className="shrink-0">{toBanglaDigits(resultStats!.total)}</span>
                     </div>
                     <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
-                      <span className="whitespace-nowrap">পাশ:</span>
+                      <span className="whitespace-nowrap">{t.col.pass}:</span>
                       <span className="shrink-0">
                         {toBanglaDigits(resultStats!.pass)} (
                         {formatPercent(resultStats!.pass, resultStats!.total)}%)
                       </span>
                     </div>
                     <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
-                      <span className="whitespace-nowrap">ফেল:</span>
+                      <span className="whitespace-nowrap">{t.col.fail}:</span>
                       <span className="shrink-0">
                         {toBanglaDigits(resultStats!.fail)} (
                         {formatPercent(resultStats!.fail, resultStats!.total)}%)
                       </span>
                     </div>
                     <div className="academic-result-info-box-row flex items-baseline justify-between gap-3">
-                      <span className="whitespace-nowrap">অনুপস্থিত:</span>
+                      <span className="whitespace-nowrap">{t.col.absent}:</span>
                       <span className="shrink-0">
                         {toBanglaDigits(resultStats!.absent)} (
                         {formatPercent(resultStats!.absent, resultStats!.total)}%)
@@ -404,7 +404,7 @@ const AcademicResultPrint = ({
 
                 {hasGrades && (
                   <div className="academic-result-info-box">
-                    <p className="academic-result-info-box-title font-bold">গ্রেড স্কেল</p>
+                    <p className="academic-result-info-box-title font-bold">{t.title.gradeScale}</p>
                     {sortByMinDesc(visibleMadrasaGrades).map((g) => {
                       const { min } = getGradeRange(g);
                       return (
@@ -437,7 +437,7 @@ const AcademicResultPrint = ({
                 madrasaName ? "mt-2 text-xl" : "text-2xl"
               }`}
             >
-              ফলাফল পত্র
+              {t.title.resultSheet}
             </h2>
             <p className="academic-result-exam-name mt-1 text-base font-bold text-black">
               {examNameWithYear}
@@ -467,7 +467,7 @@ const AcademicResultPrint = ({
                     <th
                       key={`academic-subject-serial-${column.key}`}
                       className="academic-result-subject-serial border border-black text-base text-black"
-                      title={`বিষয় ${subjectSerialMap.get(column.key) || ""}`}
+                      title={t.subjectN(subjectSerialMap.get(column.key) || "")}
                     >
                       {subjectSerialMap.get(column.key)}
                     </th>
@@ -578,7 +578,7 @@ const AcademicResultPrint = ({
       {isLastPage && (
         <div className="academic-result-signature report-block-signature flex justify-end">
           <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-            মুহতামিমের স্বাক্ষর
+            {t.sign.head}
           </div>
         </div>
       )}

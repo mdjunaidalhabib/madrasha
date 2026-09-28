@@ -1,5 +1,7 @@
 import type { UploadFolder } from "../../services/phase4Api";
 import PhotoFieldCard from "../photo/PhotoFieldCard";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
 interface Props {
   data: any;
@@ -14,14 +16,17 @@ const ImageUploadProfile: React.FC<Props> = ({
   setData,
   isEditMode = false,
   folder = "teachers",
-}) => (
+}) => {
+  const t = useText(teacherStaffText);
+  return (
   <PhotoFieldCard
-    label={folder === "staff" ? "স্টাফের ছবি" : "শিক্ষকের ছবি"}
+    label={folder === "staff" ? t.staffPhoto : t.teacherPhoto}
     folder={folder}
     editable={isEditMode}
     value={data?.image}
     onChange={(image) => setData((prev: any) => ({ ...prev, image }))}
   />
-);
+  );
+};
 
 export default ImageUploadProfile;

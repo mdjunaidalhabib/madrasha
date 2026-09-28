@@ -12,6 +12,7 @@ import {
 } from "../document-templates/document-templates.mapper";
 import { TemplateActor } from "../document-templates/document-templates.types";
 import { uploadPlatformBackground } from "./platform-cloudinary.util";
+import { t } from "../../shared/i18n";
 
 const SUPER_ADMIN_CONTEXT = { kind: "super_admin" as const };
 
@@ -39,7 +40,7 @@ export const createSystemTemplate = asyncHandler(async (req: Request, res: Respo
     description: body.description,
     sourceTemplateId: body.source_template_id ? Number(body.source_template_id) : undefined,
   });
-  return ApiResponse.created(res, toTemplateDetailDto(detail), "System template created");
+  return ApiResponse.created(res, toTemplateDetailDto(detail), t({ bn: "সিস্টেম টেমপ্লেট তৈরি হয়েছে", en: "System template created" }));
 });
 
 export const saveSystemDraft = asyncHandler(async (req: Request, res: Response) => {
@@ -48,7 +49,7 @@ export const saveSystemDraft = asyncHandler(async (req: Request, res: Response) 
     SUPER_ADMIN_CONTEXT,
     req.body || {},
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: "Draft saved" });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "খসড়া সংরক্ষণ করা হয়েছে", en: "Draft saved", ar: "تم حفظ المسودة" }) });
 });
 
 export const publishSystemTemplate = asyncHandler(async (req: Request, res: Response) => {
@@ -57,7 +58,7 @@ export const publishSystemTemplate = asyncHandler(async (req: Request, res: Resp
     SUPER_ADMIN_CONTEXT,
     superAdminActor(req),
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: "Template published" });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট প্রকাশিত হয়েছে", en: "Template published", ar: "تم نشر القالب" }) });
 });
 
 export const updateSystemTemplateMeta = asyncHandler(async (req: Request, res: Response) => {
@@ -68,23 +69,23 @@ export const updateSystemTemplateMeta = asyncHandler(async (req: Request, res: R
     superAdminActor(req),
     { name: body.name, description: body.description, isActive: body.is_active },
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: "Template updated" });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট আপডেট হয়েছে", en: "Template updated", ar: "تم تحديث القالب" }) });
 });
 
 export const deleteSystemTemplate = asyncHandler(async (req: Request, res: Response) => {
   await documentTemplateService.deleteTemplate(Number(req.params.id), SUPER_ADMIN_CONTEXT, superAdminActor(req));
-  return ApiResponse.success(res, { message: "Template deleted" });
+  return ApiResponse.success(res, { message: t({ bn: "টেমপ্লেট মুছে ফেলা হয়েছে", en: "Template deleted", ar: "تم حذف القالب" }) });
 });
 
 export const setSystemDefaultTemplate = asyncHandler(async (req: Request, res: Response) => {
   const detail = await documentTemplateService.setSystemDefault(Number(req.params.id), Number(req.user!.id));
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: "System default updated" });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "সিস্টেম ডিফল্ট আপডেট হয়েছে", en: "System default updated" }) });
 });
 
 export const uploadSystemTemplateBackground = asyncHandler(async (req: Request, res: Response) => {
   const image = req.body?.image;
   if (!image || typeof image !== "string" || !image.startsWith("data:image/")) {
-    throw new BadRequestError("image must be a base64 data URI (data:image/...)");
+    throw new BadRequestError(t({ bn: "ছবি অবশ্যই base64 data URI (data:image/...) হতে হবে", en: "image must be a base64 data URI (data:image/...)" }));
   }
 
   const result = await uploadPlatformBackground(image);

@@ -14,6 +14,8 @@ import { hasOwnGrading, parseDivisionList, type DivisionFailMark } from "../../.
 import type { GradeItem } from "../../../components/ExamPanel/GradeList";
 import { failGradeName, withoutFailGrades } from "../../../components/ExamPanel/failGrade";
 import PendingRecalculationBanner from "../../../components/ResultPanel/PendingRecalculationBanner";
+import { commonText, useIsMadrasa, useText } from "@madrasha/shared-ui/src/i18n";
+import { talimatSettingsText } from "./talimatSettings.text";
 
 type GradeKind = "madrasa" | "general";
 
@@ -30,9 +32,9 @@ type HubData = {
   ownMadrasa: GradeItem[];
 };
 
-const KIND_TABS: { key: GradeKind; label: string; icon: string }[] = [
-  { key: "madrasa", label: "মাদরাসা গ্রেড", icon: "🕌" },
-  { key: "general", label: "সাধারণ গ্রেড", icon: "📊" },
+const KIND_TABS: { key: GradeKind; labelKey: "madrasaGrade" | "generalGrade"; icon: string }[] = [
+  { key: "madrasa", labelKey: "madrasaGrade", icon: "🕌" },
+  { key: "general", labelKey: "generalGrade", icon: "📊" },
 ];
 
 const parseScope = (raw: string | null): GradeScope => {
@@ -41,8 +43,9 @@ const parseScope = (raw: string | null): GradeScope => {
 };
 
 function HubSkeleton() {
+  const c = useText(commonText);
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="লোড হচ্ছে">
+    <div className="space-y-4" aria-busy="true" aria-label={c.loading}>
       <Skeleton className="h-36 w-full rounded-2xl" />
       <Skeleton className="h-10 w-64 rounded-xl" />
       <Skeleton className="h-32 w-full rounded-2xl" />
@@ -57,7 +60,13 @@ export default function GradeSettingsPage() {
 
   const [data, setData] = useState<HubData | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [kind, setKind] = useState<GradeKind>("madrasa");
+  const [kindState, setKind] = useState<GradeKind>("madrasa");
+  const tx = useText(talimatSettingsText);
+  // Madrasa grades (মুমতাজ, জায়্যিদ...) exist only for madrasas - schools and
+  // colleges only ever see the general scale. UI only; payloads are unchanged.
+  const isMadrasa = useIsMadrasa();
+  const kind: GradeKind = isMadrasa ? kindState : "general";
+  const kindTabs = isMadrasa ? KIND_TABS : KIND_TABS.filter((tab) => tab.key === "general");
   const requestId = useRef(0);
   const scopeRef = useRef<GradeScope>(scope);
   scopeRef.current = scope;
@@ -141,15 +150,15 @@ export default function GradeSettingsPage() {
   if (loadError && !data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="গ্রেডিং সিস্টেম" subtitle="বিভাগভিত্তিক ফেল মার্ক ও গ্রেড স্কেল ব্যবস্থাপনা" />
+        <PageHeader title={tx.gradeTitle} subtitle={tx.gradeSubtitle} />
         <ErrorState
-          title="তথ্য লোড করা যায়নি"
-          message="গ্রেডিং সেটিং আনতে সমস্যা হয়েছে। আবার চেষ্টা করুন।"
+          title={tx.loadErrorTitle}
+          message={tx.gradeLoadError}
           onRetry={() => {
             setLoadError(false);
             load(scope);
           }}
-          retryText="আবার চেষ্টা করুন"
+          retryText={tx.retry}
         />
       </div>
     );
@@ -162,11 +171,11 @@ export default function GradeSettingsPage() {
   const madrasaGrades = withoutFailGrades("madrasa", data ? (own ? data.ownMadrasa : data.defaultMadrasa) : []);
   const generalGrades = withoutFailGrades("general", data ? (own ? data.ownGeneral : data.defaultGeneral) : []);
   const shownGrades = kind === "madrasa" ? madrasaGrades : generalGrades;
-  const kindLabel = kind === "madrasa" ? "মাদরাসা গ্রেড" : "সাধারণ গ্রেড";
+  const kindLabel = kind === "madrasa" ? tx.madrasaGrade : tx.generalGrade;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="গ্রেডিং সিস্টেম" subtitle="বিভাগভিত্তিক ফেল মার্ক ও গ্রেড স্কেল ব্যবস্থাপনা" />
+      <PageHeader title={tx.gradeTitle} subtitle={tx.gradeSubtitle} />
       {banner}
 
       {!data ? (
@@ -188,8 +197,8 @@ export default function GradeSettingsPage() {
                 <ScopeSummaryCard division={activeDivision} defaultFailMark={data.failMark} reload={reload} />
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="tablist" aria-label="গ্রেডের ধরন">
-                    {KIND_TABS.map((t) => (
+                  <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="tablist" aria-label={tx.gradeKind}>
+                    {kindTabs.map((t) => (
                       <button
                         key={t.key}
                         type="button"
@@ -203,14 +212,14 @@ export default function GradeSettingsPage() {
                         }`}
                       >
                         <span aria-hidden="true">{t.icon}</span>
-                        {t.label}
+                        {tx[t.labelKey]}
                       </button>
                     ))}
                   </div>
                   {inherited && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
                       <Lock size={13} />
-                      ডিফল্ট গ্রেড স্কেল — নিজস্ব গ্রেডিং চালু করলে এখানে সম্পাদনা করা যাবে
+                      {tx.inheritedNote}
                     </span>
                   )}
                 </div>
@@ -222,8 +231,8 @@ export default function GradeSettingsPage() {
                   failLabel={failGradeName(kind)}
                   title={
                     inherited
-                      ? `${kindLabel} স্কেল প্রিভিউ (ডিফল্ট থেকে পাওয়া)`
-                      : `${kindLabel} স্কেল প্রিভিউ`
+                      ? tx.scalePreviewInherited(kindLabel)
+                      : tx.scalePreview(kindLabel)
                   }
                 />
 

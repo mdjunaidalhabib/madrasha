@@ -1,10 +1,10 @@
 import { useState } from "react";
 import {
-  toBanglaDigits,
   normalizeBanglaDigits,
   ABSENT_MARK,
-  ABSENT_MARK_LABEL,
 } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 
 interface SummaryMark {
   book_id: number;
@@ -56,6 +56,11 @@ export default function StudentMarksEditModal({
   onClose,
   onSave,
 }: Props) {
+  const lang = useLang();
+  const rt = useText(resultPanelText);
+  const t = rt.studentEdit;
+  const c = useText(commonText);
+  const num = (value: number | string) => localizeDigits(value, lang);
   const initial: Record<number, number> = {};
   books.forEach((b) => {
     const found = student.marks?.find((m) => m.book_id === b.book_id);
@@ -104,7 +109,7 @@ export default function StudentMarksEditModal({
   };
 
   const bookLabel = (b: Book) =>
-    b.book_name_bn || b.name_bn || b.book_name || `Book ${b.book_id}`;
+    b.book_name_bn || b.name_bn || b.book_name || t.bookFallback(num(b.book_id));
 
   // Same pass/fail color logic as the bulk entry table, so single-student
   // edit visually matches full-class entry. A subject's own pass_mark
@@ -140,16 +145,16 @@ export default function StudentMarksEditModal({
             <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-100">
               {correctionMode
                 ? directApply
-                  ? "📝 ফলাফল সংশোধন"
-                  : "📝 ফলাফল সংশোধনের অনুরোধ"
-                : "✏️ শুধুমাত্র এর নাম্বার এডিট"}
+                  ? t.correctTitle
+                  : t.requestTitle
+                : t.editTitle}
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400">{student.name_bn}</p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none dark:text-slate-500 dark:hover:text-slate-300"
-            aria-label="Close"
+            aria-label={c.close}
           >
             ×
           </button>
@@ -158,8 +163,8 @@ export default function StudentMarksEditModal({
         {correctionMode && (
           <p className="mb-3 shrink-0 rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
             {directApply
-              ? "এই ফলাফল প্রকাশিত। আপনার অধিকারে সংশোধন এখনই ফলাফলে প্রয়োগ হবে এবং মোট, গড়, গ্রেড ও মেধাক্রম নতুন করে হিসাব হবে। কারণসহ সবকিছু অডিট লগে সংরক্ষিত থাকবে।"
-              : "এই ফলাফল প্রকাশিত হয়ে গেছে। এখানে বদলানো নম্বর সরাসরি সেভ হবে না — সংশোধনের অনুরোধ হিসেবে জমা হবে এবং অনুমোদনের পর ফলাফলে প্রয়োগ হবে।"}
+              ? t.directNote
+              : t.requestNote}
           </p>
         )}
 
@@ -167,8 +172,8 @@ export default function StudentMarksEditModal({
         <table className="w-full border text-sm dark:border-slate-700">
           <thead className="bg-gray-100 dark:bg-slate-800">
             <tr>
-              <th className="border px-3 py-2 text-start dark:border-slate-700">বিষয়</th>
-              <th className="border px-3 py-2 dark:border-slate-700">নাম্বার</th>
+              <th className="border px-3 py-2 text-start dark:border-slate-700">{t.subject}</th>
+              <th className="border px-3 py-2 dark:border-slate-700">{t.mark}</th>
             </tr>
           </thead>
           <tbody>
@@ -185,20 +190,20 @@ export default function StudentMarksEditModal({
                         {b.pass_mark != null ? (
                           <span
                             className="ms-1 text-[10px] font-semibold text-sky-700 dark:text-sky-400"
-                            title="এই বিষয়ের জন্য আলাদা পাস মার্ক সেট করা আছে"
+                            title={t.passMarkTitle}
                           >
-                            (পাস {b.pass_mark})
+                            {t.pass(num(b.pass_mark))}
                           </span>
                         ) : null}
                       </span>
-                      <span className="text-xs text-gray-400 dark:text-slate-500">/ {max}</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">/ {num(max)}</span>
                     </div>
                   </td>
                   <td className="border px-2 py-1 dark:border-slate-700">
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="০"
+                      placeholder={num(0)}
                       disabled={saving}
                       className={`w-20 mx-auto block border rounded px-2 py-1 text-center font-medium outline-none transition focus:ring-2 ${
                         saving
@@ -207,9 +212,9 @@ export default function StudentMarksEditModal({
                       }`}
                       value={
                         value === ABSENT_MARK
-                          ? ABSENT_MARK_LABEL
+                          ? rt.absentShort
                           : value != null
-                            ? toBanglaDigits(value)
+                            ? num(value)
                             : ""
                       }
                       onChange={(e) => handleChange(b.book_id, e.target.value, max)}
@@ -225,21 +230,21 @@ export default function StudentMarksEditModal({
 
         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 shrink-0 dark:text-slate-400">
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> Fail
+            <span className="w-3 h-3 rounded bg-red-50 border border-red-400 inline-block dark:bg-red-950/40 dark:border-red-700" /> {t.fail}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block dark:bg-green-950/40 dark:border-green-700" /> Pass
+            <span className="w-3 h-3 rounded bg-green-50 border border-green-400 inline-block dark:bg-green-950/40 dark:border-green-700" /> {t.passLegend}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber-50 border border-amber-400 inline-block dark:bg-amber-950/40 dark:border-amber-700" />{" "}
-            অনুপস্থিত ("-" চাপুন)
+            {t.absentLegend}
           </span>
         </div>
 
         {correctionMode && (
           <div className="mt-3 shrink-0">
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              সংশোধনের কারণ (আবশ্যক)
+              {t.reasonLabel}
             </label>
             <textarea
               rows={2}
@@ -251,9 +256,9 @@ export default function StudentMarksEditModal({
                   ? "border-red-400 focus:ring-red-400 dark:border-red-700"
                   : "border-gray-300 focus:ring-blue-400 dark:border-slate-600"
               }`}
-              placeholder="যেমন: নম্বর তোলার সময় ভুল হয়েছিল..."
+              placeholder={t.reasonPlaceholder}
             />
-            {reasonInvalid && <p className="mt-1 text-xs text-red-600 dark:text-red-400">কারণ লেখা আবশ্যক</p>}
+            {reasonInvalid && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{t.reasonRequired}</p>}
           </div>
         )}
 
@@ -263,7 +268,7 @@ export default function StudentMarksEditModal({
             disabled={saving}
             className="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
-            বাতিল
+            {c.cancel}
           </button>
           <button
             onClick={handleSubmit}
@@ -273,14 +278,14 @@ export default function StudentMarksEditModal({
             {saving
               ? correctionMode
                 ? directApply
-                  ? "প্রয়োগ হচ্ছে..."
-                  : "জমা হচ্ছে..."
-                : "সেভ হচ্ছে..."
+                  ? t.applying
+                  : t.submitting
+                : t.saving
               : correctionMode
                 ? directApply
-                  ? "সংশোধন প্রয়োগ করুন"
-                  : "অনুরোধ পাঠান"
-                : "সেভ করুন"}
+                  ? t.applyCorrection
+                  : t.sendRequest
+                : t.save}
           </button>
         </div>
       </div>

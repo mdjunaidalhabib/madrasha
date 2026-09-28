@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 export const textAreaClass =
@@ -35,6 +37,8 @@ export default function InlineTextField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || "");
   const [saving, setSaving] = useState(false);
+  const t = useText(settingsUiText);
+  const c = useText(commonText);
 
   const startEdit = () => {
     setDraft(value || "");
@@ -45,7 +49,7 @@ export default function InlineTextField({
 
   const save = async () => {
     if (required && !draft.trim()) {
-      useToastStore.getState().show(`${label} খালি রাখা যাবে না।`, "error");
+      useToastStore.getState().show(t.cannotBeEmpty(label), "error");
       return;
     }
     setSaving(true);
@@ -74,7 +78,7 @@ export default function InlineTextField({
             </span>
           ) : (
             <p className="mt-0.5 whitespace-pre-line break-words text-sm text-gray-900 dark:text-slate-100">
-              {value?.trim() ? value : <span className="text-gray-400 dark:text-slate-500">যোগ করা হয়নি</span>}
+              {value?.trim() ? value : <span className="text-gray-400 dark:text-slate-500">{t.notAdded}</span>}
             </p>
           )}
         </div>
@@ -82,7 +86,7 @@ export default function InlineTextField({
           type="button"
           onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-          title="সম্পাদনা"
+          title={t.editTitle}
         >
           <Pencil size={14} />
         </button>
@@ -116,10 +120,10 @@ export default function InlineTextField({
       )}
       <div className="mt-3 flex justify-end gap-2">
         <Button type="button" variant="secondary" disabled={saving} onClick={cancel}>
-          বাতিল
+          {c.cancel}
         </Button>
         <Button type="button" disabled={saving} onClick={save}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          {saving ? c.saving : c.save}
         </Button>
       </div>
     </div>

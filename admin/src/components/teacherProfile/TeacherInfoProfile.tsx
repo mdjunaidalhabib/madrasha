@@ -4,6 +4,9 @@ import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePi
 import ExperiencePicker from "../../components/ExperiencePicker/ExperiencePicker";
 import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { localizeDigits, useLang } from "@madrasha/shared-ui/src/i18n";
+import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
 const TeacherInfoProfile = ({
   data,
@@ -13,6 +16,9 @@ const TeacherInfoProfile = ({
   setEditableField,
   isEditMode,
 }: any) => {
+  const t = useText(teacherStaffText);
+  const lang = useLang();
+  const isMadrasa = useIsMadrasa();
   const [divisions, setDivisions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -61,20 +67,20 @@ const TeacherInfoProfile = ({
     const year = Number(y || 0);
     const month = Number(m || 0);
 
-    if (!year && !month) return "0 বছর";
-    if (!year) return `${month} মাস`;
-    if (!month) return `${year} বছর`;
-    return `${year} বছর ${month} মাস`;
+    if (!year && !month) return t.years(localizeDigits(0, lang));
+    if (!year) return t.months(localizeDigits(month, lang));
+    if (!month) return t.years(localizeDigits(year, lang));
+    return t.yearsMonths(localizeDigits(year, lang), localizeDigits(month, lang));
   };
 
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl mb-4 font-semibold text-gray-700 border-b pb-2 dark:text-slate-200 dark:border-slate-700">শিক্ষকের তথ্য</h2>
+      <h2 className="text-xl mb-4 font-semibold text-gray-700 border-b pb-2 dark:text-slate-200 dark:border-slate-700">{t.teacherInfo}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* NAME BN */}
         <Field
-          label="নাম (বাংলা)"
+          label={t.nameBn}
           name="name_bn"
           value={data?.name_bn || ""}
           onChange={handleChange}
@@ -83,18 +89,20 @@ const TeacherInfoProfile = ({
         />
 
         {/* NAME AR */}
-        <Field
-          label="নাম (আরবি)"
-          name="name_ar"
-          value={data?.name_ar || ""}
-          onChange={handleChange}
-          scriptLang="ar"
-          {...{ editableField, setEditableField, isEditMode }}
-        />
+        {isMadrasa && (
+          <Field
+            label={t.nameAr}
+            name="name_ar"
+            value={data?.name_ar || ""}
+            onChange={handleChange}
+            scriptLang="ar"
+            {...{ editableField, setEditableField, isEditMode }}
+          />
+        )}
 
         {/* NAME EN */}
         <Field
-          label="নাম (ইংরেজি)"
+          label={t.nameEn}
           name="name_en"
           value={data?.name_en || ""}
           onChange={handleChange}
@@ -114,13 +122,13 @@ const TeacherInfoProfile = ({
 
         {/* GENDER */}
         <Field
-          label="লিঙ্গ"
+          label={t.fields.gender}
           name="gender"
           value={data?.gender ?? ""}
           type="select"
           options={[
-            { label: "পুরুষ", value: "1" },
-            { label: "মহিলা", value: "2" },
+            { label: t.male, value: "1" },
+            { label: t.female, value: "2" },
           ]}
           onChange={handleChange}
           {...{ isEditMode }}
@@ -128,18 +136,18 @@ const TeacherInfoProfile = ({
 
         {/* DOB */}
         <CustomDatePicker
-          label="জন্ম তারিখ"
+          label={t.fields.dob}
           value={data?.dob || ""}
           isEditMode={isEditMode}
           onChange={(date) => setFormData((prev: any) => ({ ...prev, dob: date }))}
         />
 
         {/* AGE */}
-        <Field label="বয়স" name="age" value={data?.age || ""} />
+        <Field label={t.fields.age} name="age" value={data?.age || ""} />
 
         {/* PHONE */}
         <Field
-          label="মোবাইল"
+          label={t.fields.mobile}
           name="phone"
           value={data?.phone || ""}
           onChange={handleChange}
@@ -149,7 +157,7 @@ const TeacherInfoProfile = ({
 
         {/* EMAIL */}
         <Field
-          label="ইমেইল"
+          label={t.fields.email}
           name="email"
           value={data?.email || ""}
           onChange={handleChange}
@@ -158,7 +166,7 @@ const TeacherInfoProfile = ({
 
         {/* DESIGNATION */}
         <Field
-          label="পদবি"
+          label={t.fields.designation}
           name="designation"
           value={data?.designation || ""}
           onChange={handleChange}
@@ -167,7 +175,7 @@ const TeacherInfoProfile = ({
 
         {/* ACADEMIC DIVISION */}
         <Field
-          label="একাডেমিক বিভাগ"
+          label={t.fields.academic_division}
           name="academic_division"
           value={data?.academic_division || data?.division_id || data?.department || ""}
           type="select"
@@ -181,7 +189,7 @@ const TeacherInfoProfile = ({
 
         {/* QUALIFICATION */}
         <Field
-          label="যোগ্যতা"
+          label={t.fields.qualification}
           name="qualification"
           value={data?.qualification || ""}
           onChange={handleChange}
@@ -193,7 +201,7 @@ const TeacherInfoProfile = ({
         ========================= */}
         {isEditMode ? (
           <ExperiencePicker
-            label="অভিজ্ঞতা"
+            label={t.experience}
             year={data?.experience_year || ""}
             month={data?.experience_month || ""}
             onChange={(year, month) =>
@@ -206,7 +214,7 @@ const TeacherInfoProfile = ({
           />
         ) : (
           <Field
-            label="অভিজ্ঞতা"
+            label={t.experience}
             name="experience"
             value={formatExperience(data?.experience_year, data?.experience_month)}
           />
@@ -214,7 +222,7 @@ const TeacherInfoProfile = ({
 
         {/* JOINING DATE */}
         <CustomDatePicker
-          label="যোগদানের তারিখ"
+          label={t.fields.joining_date}
           value={data?.joining_date || ""}
           isEditMode={isEditMode}
           onChange={(date) =>
@@ -227,7 +235,7 @@ const TeacherInfoProfile = ({
 
         {/* SALARY */}
         <Field
-          label="বেতন"
+          label={t.fields.salary}
           name="salary"
           value={data?.salary || ""}
           onChange={handleChange}

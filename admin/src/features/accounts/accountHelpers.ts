@@ -1,3 +1,5 @@
+import { formatCurrency, getLang, type Lang } from "@madrasha/shared-ui/src/i18n";
+
 export type AccountType = "income" | "expense";
 
 export type AccountRow = {
@@ -18,7 +20,8 @@ export type AccountRow = {
   entryTime: string | null;
 };
 
-export const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
+/** Money in `lang` (defaults to the current UI language). Print output passes the print language. */
+export const money = (value: number | string, lang: Lang = getLang()) => formatCurrency(Number(value || 0), lang);
 
 export const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 

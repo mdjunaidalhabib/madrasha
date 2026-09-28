@@ -13,6 +13,8 @@ import {
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { createMadrasaText } from "./createMadrasa.text";
 
 type Props = {
   madrasaId: number;
@@ -28,6 +30,8 @@ type FormState = typeof emptyForm;
 
 export default function MadrasaUsersSection({ madrasaId }: Props) {
   const { show } = useToastStore();
+  const t = useText(createMadrasaText);
+  const c = useText(commonText);
 
   const [roles, setRoles] = useState<MadrasaRoleItem[]>([]);
   const [users, setUsers] = useState<MadrasaUserItem[]>([]);
@@ -65,10 +69,10 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
   const saveCredentials = async (u: MadrasaUserItem) => {
     const name = credName.trim();
     const email = credEmail.trim();
-    if (!name) return show("নাম দিন", "error");
-    if (!email) return show("Email দিন", "error");
+    if (!name) return show(t.errName, "error");
+    if (!email) return show(t.errEmail, "error");
     if (credPassword && credPassword.length < 6) {
-      return show("Password কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+      return show(t.errPasswordMin, "error");
     }
 
     setSavingCreds(true);
@@ -78,11 +82,11 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
         email,
         ...(credPassword ? { password: credPassword } : {}),
       });
-      show("ক্রেডেনশিয়াল আপডেট হয়েছে", "success");
+      show(t.credentialsUpdated, "success");
       setEditingUserId(null);
       await load();
     } catch (err: any) {
-      show(err?.response?.data?.message || "আপডেট করা যায়নি", "error");
+      show(err?.response?.data?.message || t.updateFailed, "error");
     } finally {
       setSavingCreds(false);
     }
@@ -139,9 +143,9 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
   const onAddUser = async (role: MadrasaRoleItem) => {
     const form = forms[role.id] || emptyForm;
 
-    if (!form.name.trim()) return show("User নাম দিন", "error");
-    if (!form.email.trim()) return show("Email দিন", "error");
-    if (form.password.length < 6) return show("Password কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+    if (!form.name.trim()) return show(t.enterUserName, "error");
+    if (!form.email.trim()) return show(t.errEmail, "error");
+    if (form.password.length < 6) return show(t.errPasswordMin, "error");
 
     setSavingRoleId(role.id);
     try {
@@ -152,11 +156,11 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
         role_id: role.id,
       });
 
-      show(`${role.name || role.key} যোগ করা হয়েছে`, "success");
+      show(t.roleAdded(role.name || role.key || ""), "success");
       setForms((prev) => ({ ...prev, [role.id]: emptyForm }));
       await load();
     } catch (err: any) {
-      show(err?.response?.data?.message || "User যোগ করা যায়নি", "error");
+      show(err?.response?.data?.message || t.addUserFailed, "error");
     } finally {
       setSavingRoleId(null);
     }
@@ -167,19 +171,20 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
     // reason to even offer the option for the default user in the UI.
     if (u.role_key === DEFAULT_PROTECTED_ROLE_KEY) return;
 
+    const tx = getText(createMadrasaText);
     useConfirmStore.getState().show({
-      title: "Delete User",
-      message: `"${u.name}" (${u.email}) কে ডিলিট করতে চান?`,
-      confirmText: "Delete",
+      title: tx.deleteUserTitle,
+      message: tx.deleteUserMessage(u.name, u.email),
+      confirmText: getText(commonText).delete,
       danger: true,
       onConfirm: async () => {
         setBusyUserId(u.id);
         try {
           await deleteMadrasaUser(madrasaId, u.id);
-          show("User ডিলিট হয়েছে", "success");
+          show(tx.userDeleted, "success");
           await load();
         } catch (err: any) {
-          show(err?.response?.data?.message || "Delete failed", "error");
+          show(err?.response?.data?.message || getText(commonText).deleteFailed, "error");
         } finally {
           setBusyUserId(null);
         }
@@ -189,13 +194,13 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold dark:text-slate-100">Users</h3>
+      <h3 className="text-lg font-semibold dark:text-slate-100">{t.users}</h3>
 
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Loading users...</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{t.loadingUsers}</p>
       ) : !visibleRoles.length ? (
         <div className="rounded-lg border p-4 dark:border-slate-700">
-          <p className="text-sm text-gray-500 dark:text-slate-400">No roles found for this madrasa.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t.noRoles}</p>
         </div>
       ) : (
         visibleRoles.map((role) => {
@@ -211,7 +216,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                 <span className="font-medium dark:text-slate-200">{role.name || role.key}</span>
 
                 {isDefault && (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Required</span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">{t.required}</span>
                 )}
               </div>
 
@@ -225,11 +230,11 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       <span className="font-medium text-gray-900 dark:text-slate-100">{existingUser.name}</span>
                       {existingUser.is_active ? (
                         <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-400">
-                          Active
+                          {c.active}
                         </span>
                       ) : (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400">
-                          Inactive
+                          {c.inactive}
                         </span>
                       )}
                     </div>
@@ -239,14 +244,14 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                   {isDefault ? (
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <span className="text-xs text-gray-400 dark:text-slate-500">
-                        Default user — cannot be deleted
+                        {t.defaultUserLocked}
                       </span>
                       <Button
                         variant="secondary"
                         onClick={() => startEditCredentials(existingUser)}
                         className="whitespace-nowrap"
                       >
-                        ইমেইল/পাসওয়ার্ড পরিবর্তন
+                        {t.changeCredentials}
                       </Button>
                     </div>
                   ) : (
@@ -256,7 +261,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       disabled={isDeleting}
                       className="self-start sm:self-auto"
                     >
-                      {isDeleting ? "..." : "Delete"}
+                      {isDeleting ? "..." : c.delete}
                     </Button>
                   )}
                 </div>
@@ -265,7 +270,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
               {existingUser && editingUserId === existingUser.id && (
                 <div className="space-y-2 rounded-lg border bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                   <input
-                    placeholder="Name"
+                    placeholder={t.name}
                     autoComplete="off"
                     value={credName}
                     onChange={(e) => setCredName(e.target.value)}
@@ -274,7 +279,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t.email}
                     autoComplete="off"
                     value={credEmail}
                     onChange={(e) => setCredEmail(e.target.value)}
@@ -284,7 +289,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                   <div className="relative">
                     <input
                       type={credVisible ? "text" : "password"}
-                      placeholder="নতুন Password (খালি রাখলে অপরিবর্তিত থাকবে)"
+                      placeholder={t.newPasswordPlaceholder}
                       autoComplete="new-password"
                       value={credPassword}
                       onChange={(e) => setCredPassword(e.target.value)}
@@ -295,7 +300,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       type="button"
                       onClick={() => setCredVisible((v) => !v)}
                       className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                      aria-label={credVisible ? "Hide password" : "Show password"}
+                      aria-label={credVisible ? t.hidePassword : t.showPassword}
                       tabIndex={-1}
                     >
                       {credVisible ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -304,10 +309,10 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" onClick={cancelEditCredentials} disabled={savingCreds}>
-                      Cancel
+                      {c.cancel}
                     </Button>
                     <Button onClick={() => saveCredentials(existingUser)} disabled={savingCreds}>
-                      {savingCreds ? "Saving..." : "Save"}
+                      {savingCreds ? c.saving : c.save}
                     </Button>
                   </div>
                 </div>
@@ -317,7 +322,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                 /* No account yet for this role — offer the add-user form. */
                 <div className="space-y-2">
                   <input
-                    placeholder="Name"
+                    placeholder={t.name}
                     autoComplete="off"
                     value={form.name}
                     onChange={(e) => updateForm(role.id, "name", e.target.value)}
@@ -326,7 +331,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
 
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t.email}
                     autoComplete="off"
                     value={form.email}
                     onChange={(e) => updateForm(role.id, "email", e.target.value)}
@@ -336,7 +341,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                   <div className="relative">
                     <input
                       type={visiblePasswords[role.id] ? "text" : "password"}
-                      placeholder="Password"
+                      placeholder={t.password}
                       autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => updateForm(role.id, "password", e.target.value)}
@@ -347,7 +352,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                       type="button"
                       onClick={() => toggleVisible(role.id)}
                       className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                      aria-label={visiblePasswords[role.id] ? "Hide password" : "Show password"}
+                      aria-label={visiblePasswords[role.id] ? t.hidePassword : t.showPassword}
                       tabIndex={-1}
                     >
                       {visiblePasswords[role.id] ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -359,7 +364,7 @@ export default function MadrasaUsersSection({ madrasaId }: Props) {
                     disabled={isSaving}
                     className="w-full sm:w-auto"
                   >
-                    {isSaving ? "Adding..." : `+ Add ${role.name || role.key}`}
+                    {isSaving ? t.adding : t.addRole(role.name || role.key || "")}
                   </Button>
                 </div>
               )}

@@ -8,8 +8,12 @@ import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { commonText, formatNumber, getLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examFeeTableText } from "./ExamFeeTable.text";
 
-const toBn = (n: number) => n.toLocaleString("bn-BD");
+// Digits follow the current UI language (the table re-renders on a language
+// switch because it subscribes via useText).
+const toBn = (n: number) => formatNumber(n, getLang());
 
 /** One tint per বিভাগ (by the madrasa's division order), so the same বিভাগ
  * looks the same on every exam card. Full class strings for Tailwind. */
@@ -62,6 +66,8 @@ const cellKey = (examId: number, classId: number) => `${examId}:${classId}`;
  * behind it are kept in step by the backend (ExamFeeService).
  */
 export default function ExamFeeTable() {
+  const t = useText(examFeeTableText);
+  const c = useText(commonText);
   const [data, setData] = useState<ExamFeeOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState<Drafts>({});
@@ -97,11 +103,11 @@ export default function ExamFeeTable() {
   const divisionTint = useMemo(() => {
     const order = new Map<string, number>();
     for (const c of data?.classes ?? []) {
-      const name = c.division_name_bn || "অন্যান্য";
+      const name = c.division_name_bn || t.other;
       if (!order.has(name)) order.set(name, order.size);
     }
     return (name: string) => DIVISION_TINTS[(order.get(name) ?? 0) % DIVISION_TINTS.length];
-  }, [data]);
+  }, [data, t]);
 
   const isDirty = (examId: number, cell: ExamFeeExam["cells"][number]) => {
     const draft = drafts[cellKey(examId, cell.class_id)];
@@ -136,7 +142,7 @@ export default function ExamFeeTable() {
     if (current && current.id !== exam.id && dirtyCells(current).length) {
       useToastStore
         .getState()
-        .show(`আগে "${current.name}" এর পরিবর্তন সংরক্ষণ বা বাতিল করুন`, "error");
+        .show(t.saveOrCancelFirst(current.name), "error");
       return;
     }
     if (current) clearDrafts(current);
@@ -160,7 +166,7 @@ export default function ExamFeeTable() {
       return { class_id: cell.class_id, amount: raw === "" ? null : Number(raw) };
     });
     if (amounts.some((a) => a.amount !== null && (!Number.isFinite(a.amount) || a.amount < 0))) {
-      useToastStore.getState().show("সঠিক পরিমাণ লিখুন", "error");
+      useToastStore.getState().show(t.invalidAmount, "error");
       return;
     }
 
@@ -172,8 +178,8 @@ export default function ExamFeeTable() {
         .getState()
         .show(
           result?.invoicesCreated
-            ? `"${exam.name}" এর ফি সংরক্ষণ হয়েছে — ${toBn(result.invoicesCreated)}টি ইনভয়েস তৈরি হয়েছে`
-            : `"${exam.name}" এর ফি সংরক্ষণ হয়েছে`,
+            ? t.savedWithInvoices(exam.name, toBn(result.invoicesCreated))
+            : t.saved(exam.name),
           "success",
         );
       clearDrafts(exam);
@@ -182,7 +188,7 @@ export default function ExamFeeTable() {
     } catch (err: any) {
       useToastStore
         .getState()
-        .show(err?.response?.data?.message || "ফি সংরক্ষণ করা যায়নি", "error");
+        .show(err?.response?.data?.message || t.saveFailed, "error");
     } finally {
       setSavingExamId(null);
     }
@@ -197,22 +203,20 @@ export default function ExamFeeTable() {
       useToastStore
         .getState()
         .show(
-          `"${exam.name}" পরীক্ষাটি বন্ধ আছে — তা'লীমাত পরীক্ষা চালু করলে তবেই ফি চালু করা যাবে`,
+          t.examOffCannotEnable(exam.name),
           "error",
         );
       return;
     }
     if (next && dirtyCells(exam).length) {
-      useToastStore.getState().show("আগে অসংরক্ষিত ফি সংরক্ষণ বা বাতিল করুন", "error");
+      useToastStore.getState().show(t.unsavedFirst, "error");
       return;
     }
 
     useConfirmStore.getState().show({
-      title: next ? "পরীক্ষার ফি চালু করবেন?" : "পরীক্ষার ফি বন্ধ করবেন?",
-      message: next
-        ? `"${exam.name}" পরীক্ষার ফি চালু হবে: বিদ্যমান সব ছাত্রের ইনভয়েস তৈরি হবে এবং অভিভাবকদের এসএমএস পাঠানো হবে।`
-        : `"${exam.name}" পরীক্ষার ফি বন্ধ হবে — ছাত্রদের যে ইনভয়েস এখনো পরিশোধ হয়নি সেগুলো বাতিল হয়ে যাবে। যেসব ইনভয়েসে টাকা জমা বা মওকুফ হয়েছে সেগুলো থাকবে। আবার চালু করলে ইনভয়েস নতুন করে তৈরি হবে।`,
-      confirmText: next ? "চালু করুন" : "বন্ধ করুন",
+      title: next ? t.enableTitle : t.disableTitle,
+      message: next ? t.enableMessage(exam.name) : t.disableMessage(exam.name),
+      confirmText: next ? t.enable : t.disable,
       danger: !next,
       onConfirm: async () => {
         try {
@@ -223,13 +227,9 @@ export default function ExamFeeTable() {
             .getState()
             .show(
               next
-                ? `ফি চালু হয়েছে — ${toBn(result?.invoicesCreated ?? 0)}টি ইনভয়েস তৈরি, ${toBn(
-                    result?.studentsNotified ?? 0,
-                  )} জন অভিভাবককে এসএমএস`
-                : `"${exam.name}" পরীক্ষার ফি বন্ধ হয়েছে — ${toBn(result?.invoicesRemoved ?? 0)}টি ইনভয়েস বাতিল${
-                    result?.invoicesKept
-                      ? `, টাকা জমা/মওকুফ থাকায় ${toBn(result.invoicesKept)}টি রাখা হয়েছে`
-                      : ""
+                ? t.enabledToast(toBn(result?.invoicesCreated ?? 0), toBn(result?.studentsNotified ?? 0))
+                : `${t.disabledToast(exam.name, toBn(result?.invoicesRemoved ?? 0))}${
+                    result?.invoicesKept ? t.keptSuffix(toBn(result.invoicesKept)) : ""
                   }`,
               "success",
             );
@@ -238,7 +238,7 @@ export default function ExamFeeTable() {
           useToastStore
             .getState()
             .show(
-              err?.response?.data?.message || (next ? "ফি চালু করা যায়নি" : "ফি বন্ধ করা যায়নি"),
+              err?.response?.data?.message || (next ? t.enableFailed : t.disableFailed),
               "error",
             );
         } finally {
@@ -286,7 +286,7 @@ export default function ExamFeeTable() {
           <input
             type="text"
             inputMode="decimal"
-            placeholder="পরিমাণ"
+            placeholder={t.amount}
             value={bulkValue[bulkKey] ?? ""}
             onChange={(e) =>
               setBulkValue((prev) => ({
@@ -307,7 +307,7 @@ export default function ExamFeeTable() {
             title={label}
             className="border-s border-gray-300 bg-gray-50 px-2.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
-            প্রয়োগ
+            {t.apply}
           </button>
         </div>
         {canClear && (
@@ -315,8 +315,8 @@ export default function ExamFeeTable() {
             type="button"
             disabled={savingExamId === exam.id}
             onClick={() => clearDrafts(exam, cells, bulkKey)}
-            title={`${scopeName} পরিবর্তন মুছুন (আগের সংরক্ষিত ফি ফিরে আসবে)`}
-            aria-label={`${scopeName} পরিবর্তন মুছুন`}
+            title={t.clearTitle(scopeName)}
+            aria-label={t.clearAria(scopeName)}
             className={`flex shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:border-rose-900 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 ${
               compact ? "h-7 w-7" : "h-8 w-8"
             }`}
@@ -336,10 +336,10 @@ export default function ExamFeeTable() {
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClipboardList size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">পরীক্ষার ফি</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{t.title}</h2>
           {exams.length > 0 && (
             <span className="text-xs text-gray-500 dark:text-slate-400">
-              {toBn(exams.length)}টি পরীক্ষা · {toBn(activeCount)}টির ফি চালু
+              {t.summary(toBn(exams.length), toBn(activeCount))}
             </span>
           )}
         </div>
@@ -348,13 +348,11 @@ export default function ExamFeeTable() {
           className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
         >
           <Settings2 size={14} />
-          পরীক্ষা ও বিভাগ ব্যবস্থাপনা
+          {t.manageLink}
         </Link>
       </div>
       <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
-        পরীক্ষার বিভাগের শ্রেণিগুলো নিজে থেকেই আসে। প্রতিটি পরীক্ষার ফি এখান থেকে আলাদাভাবে
-        চালু/বন্ধ করুন — চালু করলে সব ছাত্রের ইনভয়েস তৈরি হয় ও অভিভাবকদের এসএমএস যায়। তা'লীমাত
-        পরীক্ষা বন্ধ করলে তার ফি-ও বন্ধ হয়ে যায়, আবার চালু হলে এখান থেকে ফি চালু করতে হয়।
+        {t.intro}
       </p>
 
       {loading && !data ? (
@@ -365,7 +363,7 @@ export default function ExamFeeTable() {
         </div>
       ) : exams.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-xs text-gray-500 dark:border-slate-700 dark:text-slate-400">
-          এখনো কোনো পরীক্ষা তৈরি করা হয়নি — পরীক্ষা তৈরি করলে এখানে তার ফি নির্ধারণ করা যাবে।
+          {t.noExams}
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -382,7 +380,7 @@ export default function ExamFeeTable() {
             // Cells grouped under their division, in table order.
             const groups: { divisionName: string; cells: typeof exam.cells }[] = [];
             for (const cell of exam.cells) {
-              const name = classById.get(cell.class_id)?.division_name_bn || "অন্যান্য";
+              const name = classById.get(cell.class_id)?.division_name_bn || t.other;
               const last = groups[groups.length - 1];
               if (last && last.divisionName === name) last.cells.push(cell);
               else groups.push({ divisionName: name, cells: [cell] });
@@ -434,7 +432,7 @@ export default function ExamFeeTable() {
                     <p className="truncate text-[11px] text-gray-500 dark:text-slate-400">
                       {exam.year}
                       {canEdit &&
-                        ` · ${toBn(setCount)}/${toBn(exam.cells.length)} শ্রেণির ফি নির্ধারিত`}
+                        t.classesSet(toBn(setCount), toBn(exam.cells.length))}
                     </p>
                   </div>
 
@@ -442,8 +440,8 @@ export default function ExamFeeTable() {
                     <button
                       type="button"
                       onClick={() => startEdit(exam)}
-                      title={`"${exam.name}" এর ফি সম্পাদনা করুন`}
-                      aria-label={`"${exam.name}" এর ফি সম্পাদনা করুন`}
+                      title={t.editFee(exam.name)}
+                      aria-label={t.editFee(exam.name)}
                       className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-600 transition hover:bg-blue-100/70 dark:text-blue-400 dark:hover:bg-blue-950/40"
                     >
                       <Pencil size={14} />
@@ -453,10 +451,10 @@ export default function ExamFeeTable() {
                   {feeState === "locked" ? (
                     <span
                       className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-gray-300 bg-white px-2 text-[11px] font-medium text-gray-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400"
-                      title="তা'লীমাত পরীক্ষাটি বন্ধ রেখেছে — পরীক্ষা চালু হলে ফি চালু করা যাবে"
+                      title={t.lockedTitle}
                     >
                       <Lock size={11} />
-                      পরীক্ষা বন্ধ
+                      {t.examOff}
                     </span>
                   ) : (
                     <label
@@ -466,7 +464,7 @@ export default function ExamFeeTable() {
                           : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
                       }`}
                     >
-                      {feeState === "live" ? "ফি চালু" : "ফি বন্ধ"}
+                      {feeState === "live" ? t.feeOn : t.feeOff}
                       <ToggleSwitch
                         size="sm"
                         checked={exam.fee_active}
@@ -474,8 +472,8 @@ export default function ExamFeeTable() {
                         onChange={() => toggleFee(exam)}
                         title={
                           feeState === "live"
-                            ? "ফি বন্ধ করুন"
-                            : "ফি চালু করুন (অভিভাবকদের এসএমএস যাবে)"
+                            ? t.turnOff
+                            : t.turnOn
                         }
                       />
                     </label>
@@ -485,23 +483,18 @@ export default function ExamFeeTable() {
                 {feeState === "locked" && (
                   <div className="flex items-start gap-1.5 border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] leading-snug text-gray-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
                     <Lock size={11} className="mt-0.5 shrink-0" />
-                    তা'লীমাত পরীক্ষা চালু করলে ফি চালু করা যাবে — পরিমাণ আগেই ঠিক রাখতে পারেন।
+                    {t.lockedNote}
                   </div>
                 )}
 
                 {legacyLocked ? (
                   <div className="flex items-start gap-2 px-3 py-3 text-xs text-amber-700 dark:text-amber-400">
                     <Lock size={14} className="mt-0.5 shrink-0" />
-                    <span>
-                      পুরনো নিয়মে এই পরীক্ষার ফি সব শ্রেণির জন্য ৳
-                      {toBn(exam.legacy_all_classes_amount!)} হিসেবে বিল হয়ে গেছে, তাই
-                      শ্রেণিভিত্তিক ফি বসানো যাবে না। এই ফি শুধু পরীক্ষার নিজের বিভাগের ছাত্রদের বিল
-                      হয়।
-                    </span>
+                    <span>{t.legacyNote(toBn(exam.legacy_all_classes_amount!))}</span>
                   </div>
                 ) : exam.cells.length === 0 ? (
                   <div className="px-3 py-4 text-center text-xs text-gray-400 dark:text-slate-500">
-                    এই পরীক্ষার বিভাগে কোনো সক্রিয় শ্রেণি নেই
+                    {t.noActiveClasses}
                   </div>
                 ) : (
                   <div className="space-y-2 p-2">
@@ -521,7 +514,7 @@ export default function ExamFeeTable() {
                               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tint.dot}`} />
                               <span className="truncate">{group.divisionName}</span>
                               <span className="shrink-0 font-normal opacity-70">
-                                {toBn(group.cells.length)}টি
+                                {t.countSuffix(toBn(group.cells.length))}
                               </span>
                             </span>
                             {editing &&
@@ -530,8 +523,8 @@ export default function ExamFeeTable() {
                                 exam,
                                 group.cells,
                                 `${exam.id}:${group.divisionName}`,
-                                `${group.divisionName} বিভাগের সব শ্রেণির জন্য একই পরিমাণ`,
-                                `${group.divisionName} বিভাগের`,
+                                t.divisionBulkLabel(group.divisionName),
+                                t.divisionScope(group.divisionName),
                                 true,
                               )}
                           </div>
@@ -544,7 +537,7 @@ export default function ExamFeeTable() {
                               const changed = isDirty(exam.id, cell);
                               const className =
                                 classById.get(cell.class_id)?.class_name_bn ||
-                                `শ্রেণি #${cell.class_id}`;
+                                t.classFallback(String(cell.class_id));
                               return (
                                 <li
                                   key={cell.class_id}
@@ -564,9 +557,9 @@ export default function ExamFeeTable() {
                                   {billed && (
                                     <span
                                       className="shrink-0 text-[10px] text-gray-400 dark:text-slate-500"
-                                      title="এই ফি থেকে তৈরি ইনভয়েস"
+                                      title={t.invoicesFromFee}
                                     >
-                                      {toBn(cell.invoice_count)} ইনভয়েস
+                                      {t.invoiceCount(toBn(cell.invoice_count))}
                                     </span>
                                   )}
                                   {!editing ? (
@@ -579,7 +572,7 @@ export default function ExamFeeTable() {
                                           : "text-gray-300 dark:text-slate-600"
                                       }`}
                                       title={
-                                        cell.amount === null ? "ফি নির্ধারণ করা নেই" : undefined
+                                        cell.amount === null ? t.notSet : undefined
                                       }
                                     >
                                       {cell.amount !== null ? `৳${toBn(cell.amount)}` : "—"}
@@ -594,7 +587,7 @@ export default function ExamFeeTable() {
                                         inputMode="decimal"
                                         placeholder="—"
                                         value={value}
-                                        aria-label={`${className} — ফি`}
+                                        aria-label={t.feeAria(className)}
                                         onChange={(e) =>
                                           setDrafts((prev) => ({
                                             ...prev,
@@ -613,7 +606,7 @@ export default function ExamFeeTable() {
                                         }`}
                                         title={
                                           billed
-                                            ? "ইনভয়েস হয়ে গেছে — পরিমাণ বদলালে শুধু নতুন ইনভয়েসে প্রযোজ্য হবে"
+                                            ? t.billedHint
                                             : undefined
                                         }
                                       />
@@ -636,8 +629,8 @@ export default function ExamFeeTable() {
                       exam,
                       exam.cells,
                       String(exam.id),
-                      "সব শ্রেণির জন্য একই পরিমাণ",
-                      "সব শ্রেণির",
+                      t.allBulkLabel,
+                      t.allScope,
                       true,
                     )}
                     <div className="ms-auto flex items-center gap-1.5">
@@ -645,11 +638,11 @@ export default function ExamFeeTable() {
                         type="button"
                         disabled={saving}
                         onClick={() => cancelEdit(exam)}
-                        title="সম্পাদনা বাতিল — আগের সংরক্ষিত ফি থাকবে"
+                        title={t.cancelEditTitle}
                         className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         <RotateCcw size={12} />
-                        বাতিল
+                        {c.cancel}
                       </button>
                       <button
                         type="button"
@@ -659,10 +652,10 @@ export default function ExamFeeTable() {
                       >
                         <Save size={12} />
                         {saving
-                          ? "সংরক্ষণ হচ্ছে..."
+                          ? c.saving
                           : dirty > 0
-                            ? `সংরক্ষণ (${toBn(dirty)})`
-                            : "সংরক্ষণ"}
+                            ? t.saveCount(toBn(dirty))
+                            : t.save}
                       </button>
                     </div>
                   </div>

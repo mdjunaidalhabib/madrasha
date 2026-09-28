@@ -14,6 +14,8 @@ import {
   type PackageType,
 } from "../../../services/superAdminBillingApi";
 import { Badge, TypeBadge, IconButton, fmtMoney, fmtInt, sanitizeDecimalText } from "./billingHelpers";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { billingText } from "./billing.text";
 
 type PackageForm = {
   name: string;
@@ -33,13 +35,11 @@ const emptyForm: PackageForm = {
   type: "PACKAGE",
 };
 
-const creditLabel: Record<BillingChannel, string> = {
-  SMS: "SMS Credit",
-  EMAIL: "Email Credit",
-};
-
 export default function BillingPackagesPanel({ channel }: { channel: BillingChannel }) {
   const { show } = useToastStore();
+  const t = useText(billingText);
+  const c = useText(commonText);
+  const creditLabel: Record<BillingChannel, string> = { SMS: t.smsCredit, EMAIL: t.emailCredit };
 
   const [rows, setRows] = useState<MessagePackage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,8 +56,8 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
   const [target, setTarget] = useState<MessagePackage | null>(null);
 
   const modalTitle = useMemo(
-    () => (editing ? `Edit ${channel} Package — #${editing.id}` : `New ${channel} Package`),
-    [editing, channel],
+    () => (editing ? t.editPackageTitle(channel, String(editing.id)) : t.newPackageTitle(channel)),
+    [editing, channel, t],
   );
 
   const visibleRows = useMemo(() => {
@@ -72,7 +72,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       const res = await listPackages(channel);
       setRows((res?.data || []) as MessagePackage[]);
     } catch (e: any) {
-      show(e?.response?.data?.message || "Load failed", "error");
+      show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -107,11 +107,11 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
   function validate(): string | null {
     const priceNum = Number(priceText || 0);
 
-    if (!form.name.trim()) return "প্যাকেজের নাম দিন";
-    if (Number.isNaN(priceNum) || priceNum < 0) return "Price 0 বা তার বেশি হতে হবে";
-    if (!Number.isFinite(form.credit) || form.credit <= 0) return "Credit 0 এর বেশি হতে হবে";
+    if (!form.name.trim()) return t.errPackageName;
+    if (Number.isNaN(priceNum) || priceNum < 0) return t.errPrice;
+    if (!Number.isFinite(form.credit) || form.credit <= 0) return t.errCredit;
     if (form.type === "PACKAGE" && form.validityDays <= 0)
-      return "Validity days 1 বা তার বেশি হতে হবে";
+      return t.errValidity;
 
     return null;
   }
@@ -139,16 +139,16 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
 
       if (editing) {
         await updatePackage(editing.id, payload);
-        show("Package আপডেট হয়েছে", "success");
+        show(t.packageUpdated, "success");
       } else {
         await createPackage(payload);
-        show("Package তৈরি হয়েছে", "success");
+        show(t.packageCreated, "success");
       }
 
       setOpen(false);
       await load();
     } catch (e2: any) {
-      show(e2?.response?.data?.message || "Save failed", "error");
+      show(e2?.response?.data?.message || t.saveFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -157,10 +157,10 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
   async function onToggle(id: number) {
     try {
       await togglePackage(id);
-      show("Status updated", "success");
+      show(t.statusUpdated, "success");
       await load();
     } catch (e: any) {
-      show(e?.response?.data?.message || "Toggle failed", "error");
+      show(e?.response?.data?.message || t.toggleFailed, "error");
     }
   }
 
@@ -174,11 +174,11 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
     setConfirmLoading(true);
     try {
       await deletePackage(target.id);
-      show("Package delete হয়েছে", "success");
+      show(t.packageDeleted, "success");
       setConfirmOpen(false);
       await load();
     } catch (e: any) {
-      show(e?.response?.data?.message || "Delete failed — সম্ভবত এই package এখনও কোনো চলমান subscription এ ব্যবহৃত হচ্ছে", "error");
+      show(e?.response?.data?.message || t.packageDeleteFailed, "error");
     } finally {
       setConfirmLoading(false);
       setTarget(null);
@@ -190,9 +190,9 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold dark:text-slate-100">{channel} Packages</h1>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">{t.packagesTitle(channel)}</h1>
           <p className="text-sm text-gray-600 dark:text-slate-400">
-            মাদরাসাগুলোর জন্য {channel === "SMS" ? "SMS" : "Email"} credit প্যাকেজ ও রিচার্জ ম্যানেজ করুন।
+            {t.packagesSubtitle(channel === "SMS" ? "SMS" : "Email")}
           </p>
         </div>
 
@@ -201,7 +201,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
             onClick={openCreate}
             className="flex-1 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 sm:flex-none"
           >
-            + New Package
+            {t.newPackage}
           </button>
         </div>
       </div>
@@ -209,15 +209,15 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       {/* Filters */}
       <div className="mt-5 grid gap-3 md:grid-cols-12">
         <div className="md:col-span-3">
-          <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">Status</label>
+          <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.status}</label>
           <select
             className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "1" | "0")}
           >
-            <option value="all">All</option>
-            <option value="1">Active</option>
-            <option value="0">Inactive</option>
+            <option value="all">{t.all}</option>
+            <option value="1">{t.active}</option>
+            <option value="0">{t.inactive}</option>
           </select>
         </div>
 
@@ -227,11 +227,11 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
             disabled={loading}
             className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            {loading ? "Loading..." : "Refresh"}
+            {loading ? c.loading : t.refresh}
           </button>
 
           <div className="text-xs text-gray-500 dark:text-slate-400">
-            Total: <span className="font-medium text-gray-800 dark:text-slate-100">{visibleRows.length}</span>
+            {t.total}: <span className="font-medium text-gray-800 dark:text-slate-100">{visibleRows.length}</span>
           </div>
         </div>
       </div>
@@ -242,8 +242,8 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
 
         {!loading && visibleRows.length === 0 && (
           <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">কোনো Package পাওয়া যায়নি</div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">নতুন Package যোগ করতে "New Package" চাপুন</div>
+            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.noPackages}</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">{t.noPackagesHint}</div>
           </div>
         )}
 
@@ -258,7 +258,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                   <div className="mt-1 flex items-center gap-2">
                     <TypeBadge type={p.type} />
                     {p.type === "PACKAGE" && (
-                      <span className="text-xs text-gray-500 dark:text-slate-400">{p.validityDays} days</span>
+                      <span className="text-xs text-gray-500 dark:text-slate-400">{t.days(fmtInt(p.validityDays))}</span>
                     )}
                   </div>
                 </div>
@@ -271,19 +271,19 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                   {fmtInt(p.credit)}
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">Price</div>৳ {fmtMoney(p.price)}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <IconButton title="Edit" onClick={() => openEdit(p)}>
-                  ✏️ Edit
+                <IconButton title={t.edit} onClick={() => openEdit(p)}>
+                  ✏️ {t.edit}
                 </IconButton>
-                <IconButton title="Toggle" onClick={() => onToggle(p.id)}>
-                  🔁 Toggle
+                <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
+                  🔁 {t.toggle}
                 </IconButton>
-                <IconButton title="Delete" variant="danger" onClick={() => openDeleteConfirm(p)}>
-                  🗑 Delete
+                <IconButton title={t.delete} variant="danger" onClick={() => openDeleteConfirm(p)}>
+                  🗑 {t.delete}
                 </IconButton>
               </div>
             </div>
@@ -300,13 +300,13 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
                   <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">{t.colName}</th>
+                  <th className="px-4 py-3">{t.colType}</th>
                   <th className="px-4 py-3">{creditLabel[channel]}</th>
-                  <th className="px-4 py-3">Validity</th>
-                  <th className="px-4 py-3">Price</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-end">Actions</th>
+                  <th className="px-4 py-3">{t.colValidity}</th>
+                  <th className="px-4 py-3">{t.price}</th>
+                  <th className="px-4 py-3">{t.status}</th>
+                  <th className="px-4 py-3 text-end">{t.colActions}</th>
                 </tr>
               </thead>
 
@@ -323,7 +323,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                     </td>
                     <td className="px-4 py-3 text-gray-700">{fmtInt(p.credit)}</td>
                     <td className="px-4 py-3 text-gray-700">
-                      {p.type === "PACKAGE" ? `${p.validityDays} days` : "—"}
+                      {p.type === "PACKAGE" ? t.days(fmtInt(p.validityDays)) : "—"}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       ৳ {fmtMoney(p.price)} {p.currency !== "BDT" ? p.currency : ""}
@@ -333,14 +333,14 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <IconButton title="Edit" onClick={() => openEdit(p)}>
-                          ✏️ Edit
+                        <IconButton title={t.edit} onClick={() => openEdit(p)}>
+                          ✏️ {t.edit}
                         </IconButton>
-                        <IconButton title="Toggle" onClick={() => onToggle(p.id)}>
-                          🔁 Toggle
+                        <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
+                          🔁 {t.toggle}
                         </IconButton>
-                        <IconButton title="Delete" variant="danger" onClick={() => openDeleteConfirm(p)}>
-                          🗑 Delete
+                        <IconButton title={t.delete} variant="danger" onClick={() => openDeleteConfirm(p)}>
+                          🗑 {t.delete}
                         </IconButton>
                       </div>
                     </td>
@@ -350,8 +350,8 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                 {visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-10 text-center">
-                      <div className="text-sm font-medium text-gray-800">কোনো Package পাওয়া যায়নি</div>
-                      <div className="text-xs text-gray-500">নতুন Package যোগ করতে "New Package" চাপুন</div>
+                      <div className="text-sm font-medium text-gray-800">{t.noPackages}</div>
+                      <div className="text-xs text-gray-500">{t.noPackagesHint}</div>
                     </td>
                   </tr>
                 )}
@@ -365,17 +365,17 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       <Modal open={open} title={modalTitle} onClose={() => setOpen(false)}>
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600">Package Name</label>
+            <label className="text-xs text-gray-600">{t.packageName}</label>
             <input
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-              placeholder={channel === "SMS" ? "e.g. 5,000 SMS / 90 days" : "e.g. 10,000 Emails / 30 days"}
+              placeholder={channel === "SMS" ? t.smsNamePlaceholder : t.emailNamePlaceholder}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600">Description (optional)</label>
+            <label className="text-xs text-gray-600">{t.descriptionOptional}</label>
             <input
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
               value={form.description}
@@ -384,7 +384,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600">Type</label>
+            <label className="text-xs text-gray-600">{t.typeLabel}</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -396,7 +396,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                     : "bg-white text-gray-700 hover:bg-gray-50",
                 ].join(" ")}
               >
-                Package
+                {t.typePackage}
               </button>
               <button
                 type="button"
@@ -408,11 +408,11 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
                     : "bg-white text-gray-700 hover:bg-gray-50",
                 ].join(" ")}
               >
-                Recharge
+                {t.typeRecharge}
               </button>
             </div>
             <p className="text-[11px] text-gray-400">
-              Package মেয়াদ সহ আসে (validity days); Recharge শুধু credit যোগ করে, মেয়াদ ছাড়া।
+              {t.typeHint}
             </p>
           </div>
 
@@ -430,7 +430,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
 
             <div className="grid gap-2">
               <label className="text-xs text-gray-600">
-                Validity Days {form.type === "RECHARGE" && <span className="text-gray-400">(N/A)</span>}
+                {t.validityDays} {form.type === "RECHARGE" && <span className="text-gray-400">{t.notApplicable}</span>}
               </label>
               <input
                 type="number"
@@ -444,7 +444,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
 
             <div className="grid gap-2">
               <label className="text-xs text-gray-600">
-                Price (৳) <span className="text-[11px] text-gray-400">(৳ {fmtMoney(priceText)})</span>
+                {t.priceTaka} <span className="text-[11px] text-gray-400">(৳ {fmtMoney(priceText)})</span>
               </label>
               <input
                 inputMode="decimal"
@@ -459,7 +459,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
             </div>
 
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">Currency</label>
+              <label className="text-xs text-gray-600">{t.currency}</label>
               <input
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
                 value={form.currency}
@@ -474,7 +474,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
               onClick={() => setOpen(false)}
               className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50"
             >
-              Cancel
+              {c.cancel}
             </button>
 
             <button
@@ -482,7 +482,7 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
               disabled={saving}
               className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
             >
-              {saving ? "Saving..." : editing ? "Update" : "Create"}
+              {saving ? c.saving : editing ? c.update : c.create}
             </button>
           </div>
         </form>
@@ -491,10 +491,10 @@ export default function BillingPackagesPanel({ channel }: { channel: BillingChan
       {/* Delete Confirm */}
       <ConfirmModal
         open={confirmOpen}
-        title="Delete Package?"
-        message={`Package "${target?.name ?? ""}" স্থায়ীভাবে delete হবে। এটি কোনো চলমান subscription এ ব্যবহৃত থাকলে delete ব্যর্থ হবে।`}
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t.deletePackageTitle}
+        message={t.deletePackageMessage(target?.name ?? "")}
+        confirmText={c.delete}
+        cancelText={c.cancel}
         danger
         loading={confirmLoading}
         onClose={() => {

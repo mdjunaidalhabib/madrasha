@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../../report.text";
 import { useBrandingStore } from "../../../../store/brandingStore";
 import { useIdCardBackStore } from "../../../../store/idCardBackStore";
 
@@ -19,6 +21,7 @@ export const useIdCardBackRows = (rows: Record<string, any>[], enabled: boolean)
   const settings = useIdCardBackStore((s) => s.settings);
   const fetchSettings = useIdCardBackStore((s) => s.fetchSettings);
   const branding = useBrandingStore((s) => s.branding);
+  const t = usePrintText(reportText);
 
   useEffect(() => {
     if (enabled) fetchSettings();
@@ -28,14 +31,14 @@ export const useIdCardBackRows = (rows: Record<string, any>[], enabled: boolean)
     if (!enabled) return rows;
 
     const phone = branding?.phones?.filter(Boolean).join(", ");
-    const defaultReturn = [branding?.address, phone ? `ফোন: ${phone}` : ""].filter(Boolean).join("\n");
+    const defaultReturn = [branding?.address, phone ? `${t.phoneLabel} ${phone}` : ""].filter(Boolean).join("\n");
     const extra = {
       id_issue_date: formatCardDate(settings?.issue_date),
       id_expiry_date: formatCardDate(settings?.expiry_date),
-      principal_title: settings?.principal_title || "অধ্যক্ষ",
+      principal_title: settings?.principal_title || t.headTitle,
       principal_signature: settings?.principal_signature || "",
       id_lost_return: settings?.lost_return_text || defaultReturn || " ",
     };
     return rows.map((row) => ({ ...row, ...extra }));
-  }, [rows, enabled, settings, branding]);
+  }, [rows, enabled, settings, branding, t]);
 };

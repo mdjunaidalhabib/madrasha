@@ -3,19 +3,19 @@ import { INCOME_VALIDATION_MESSAGE, EXPENSE_VALIDATION_MESSAGE, FUND_VALIDATION_
 
 export class IncomeValidationError extends BadRequestError {
   constructor() {
-    super(INCOME_VALIDATION_MESSAGE);
+    super(INCOME_VALIDATION_MESSAGE());
   }
 }
 
 export class ExpenseValidationError extends BadRequestError {
   constructor() {
-    super(EXPENSE_VALIDATION_MESSAGE);
+    super(EXPENSE_VALIDATION_MESSAGE());
   }
 }
 
 export class FundValidationError extends BadRequestError {
   constructor() {
-    super(FUND_VALIDATION_MESSAGE);
+    super(FUND_VALIDATION_MESSAGE());
   }
 }
 

@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { examRoomService } from "./exam-room.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -18,15 +19,15 @@ export const getExamRooms = asyncHandler(async (req: Request, res: Response) => 
 
 export const createExamRoom = asyncHandler(async (req: Request, res: Response) => {
   await examRoomService.createRoom(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Exam room added successfully");
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার কক্ষ যোগ করা হয়েছে", en: "Exam room added successfully", ar: "تمت إضافة قاعة الامتحان بنجاح" }));
 });
 
 export const updateExamRoom = asyncHandler(async (req: Request, res: Response) => {
   await examRoomService.updateRoom(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Exam room updated successfully");
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার কক্ষ আপডেট হয়েছে", en: "Exam room updated successfully", ar: "تم تحديث قاعة الامتحان بنجاح" }));
 });
 
 export const deactivateExamRoom = asyncHandler(async (req: Request, res: Response) => {
   await examRoomService.deactivateRoom(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, "Exam room deactivated successfully");
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার কক্ষ নিষ্ক্রিয় করা হয়েছে", en: "Exam room deactivated successfully", ar: "تم تعطيل قاعة الامتحان بنجاح" }));
 });

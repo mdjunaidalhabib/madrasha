@@ -10,6 +10,8 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { AccountRow, AccountType, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
 import AccountReceiptModal from "./AccountReceiptModal";
 import AccountEditModal from "./AccountEditModal";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 const RECENT_LIMIT = 8;
 
@@ -20,6 +22,9 @@ type Props = {
 
 export default function AccountRecentPanel({ type, refreshKey }: Props) {
   const toast = useToastStore();
+  const t = useText(accountsText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [rows, setRows] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [printingRow, setPrintingRow] = useState<AccountRow | null>(null);
@@ -43,17 +48,17 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
 
   const handleDelete = (row: AccountRow) => {
     useConfirmStore.getState().show({
-      title: "এন্ট্রি ডিলিট করুন",
-      message: `"${partyName(row)}" এর ${money(row.amount)} টাকার এন্ট্রিটি মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteEntryTitle,
+      message: t.deleteEntryMessage(partyName(row), money(row.amount)),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/accounts/${row.id}`);
-          toast.push("success", "এন্ট্রি মুছে ফেলা হয়েছে");
+          toast.push("success", t.entryDeleted);
           setRows((prev) => prev.filter((r) => r.id !== row.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || t.deleteFailed;
           toast.push("error", msg);
         }
       },
@@ -65,19 +70,19 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            সাম্প্রতিক {isIncome ? "আয়" : "ব্যয়"}
+            {t.recentOf(isIncome ? t.income : t.expense)}
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">সর্বশেষ {RECENT_LIMIT}টি এন্ট্রি</p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{t.lastNEntries(formatNumber(RECENT_LIMIT, lang))}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" variant="secondary" onClick={() => window.print()} disabled={!rows.length}>
-            <Printer size={16} className="me-1 inline" /> প্রিন্ট
+            <Printer size={16} className="me-1 inline" /> {c.print}
           </Button>
           <Link
             className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
             to={`/accounts/transactions?type=${type}`}
           >
-            সব দেখুন
+            {t.viewAll}
           </Link>
         </div>
       </div>
@@ -88,19 +93,19 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
             <SkeletonList items={4} />
           </div>
         ) : rows.length === 0 ? (
-          <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">কোনো এন্ট্রি পাওয়া যায়নি</p>
+          <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">{t.noEntries}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3">তারিখ</th>
-                  <th className="px-4 py-3">নং</th>
-                  <th className="px-4 py-3">নাম</th>
-                  <th className="px-4 py-3">খাত</th>
-                  <th className="px-4 py-3">পরিমাণ</th>
-                  <th className="px-4 py-3">মাধ্যম</th>
-                  <th className="px-4 py-3 text-end no-print">অ্যাকশন</th>
+                  <th className="px-4 py-3">{c.date}</th>
+                  <th className="px-4 py-3">{t.no}</th>
+                  <th className="px-4 py-3">{c.name}</th>
+                  <th className="px-4 py-3">{t.category}</th>
+                  <th className="px-4 py-3">{c.amount}</th>
+                  <th className="px-4 py-3">{t.method}</th>
+                  <th className="px-4 py-3 text-end no-print">{c.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,7 +134,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
                           type="button"
                           onClick={() => setPrintingRow(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-500 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
-                          title={isIncome ? "রশিদ প্রিন্ট" : "ভাউচার প্রিন্ট"}
+                          title={isIncome ? t.printReceipt : t.printVoucher}
                         >
                           <Printer size={16} />
                         </button>
@@ -137,7 +142,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
                           type="button"
                           onClick={() => setEditingRow(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                          title="এডিট"
+                          title={c.edit}
                         >
                           <Pencil size={16} />
                         </button>
@@ -145,7 +150,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
                           type="button"
                           onClick={() => handleDelete(row)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                          title="মুছুন"
+                          title={c.delete}
                         >
                           <Trash2 size={16} />
                         </button>

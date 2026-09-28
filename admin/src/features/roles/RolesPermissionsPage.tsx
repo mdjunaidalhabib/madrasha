@@ -12,6 +12,12 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import SectionCard from "../../components/settings/SectionCard";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { rolesText } from "./roles.text";
+import { sidebarText, sidebarModuleLabel } from "../../components/sidebar/sidebar.text";
+
+/** Group key for catalog permissions that match no known module. */
+const OTHER_GROUP = "__other";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -67,18 +73,26 @@ const matchesPrefix = (keyName: string, prefixes: string[]) =>
  * under a catch-all "অন্যান্য" group instead of silently disappearing. */
 const groupByModule = (permissions: PermissionCatalogItem[]) => {
   const groups: [string, PermissionCatalogItem[]][] = MODULE_GROUPS.map((m) => [
-    m.label,
+    m.key,
     permissions.filter((p) => matchesPrefix(p.keyName || "", m.prefixes)),
   ]);
 
   const claimed = new Set(MODULE_GROUPS.flatMap((m) => permissions.filter((p) => matchesPrefix(p.keyName || "", m.prefixes)).map((p) => p.id)));
   const unclaimed = permissions.filter((p) => !claimed.has(p.id));
-  if (unclaimed.length) groups.push(["অন্যান্য", unclaimed]);
+  if (unclaimed.length) groups.push([OTHER_GROUP, unclaimed]);
 
   return groups.filter(([, perms]) => perms.length > 0);
 };
 
 const RolesPermissionsPage = () => {
+  const t = useText(rolesText);
+  const c = useText(commonText);
+  const st = useText(sidebarText);
+  const lang = useLang();
+  const groupLabel = (key: string) =>
+    key === OTHER_GROUP
+      ? t.other
+      : sidebarModuleLabel(st, key, MODULE_GROUPS.find((m) => m.key === key)?.label || key);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [permissions, setPermissions] = useState<PermissionCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -113,17 +127,17 @@ const RolesPermissionsPage = () => {
 
   const handleCreateRole = async () => {
     if (!newRoleName.trim()) {
-      useToastStore.getState().show("রোলের নাম দিন", "error");
+      useToastStore.getState().show(t.enterRoleName, "error");
       return;
     }
     try {
       setCreating(true);
       await roleApi.create({ name_bn: newRoleName.trim() });
-      useToastStore.getState().show("রোল তৈরি হয়েছে", "success");
+      useToastStore.getState().show(t.roleCreated, "success");
       setNewRoleName("");
       load();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "রোল তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.roleCreateFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCreating(false);
@@ -160,11 +174,11 @@ const RolesPermissionsPage = () => {
     try {
       setSaving(true);
       await roleApi.update(editingRole.id, { permission_keys: Array.from(selectedKeys) });
-      useToastStore.getState().show("পারমিশন সংরক্ষণ করা হয়েছে", "success");
+      useToastStore.getState().show(t.permissionsSaved, "success");
       setEditingRole(null);
       load();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "সংরক্ষণ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.saveFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setSaving(false);
@@ -173,17 +187,17 @@ const RolesPermissionsPage = () => {
 
   const handleDelete = (role: RoleItem) => {
     useConfirmStore.getState().show({
-      title: "রোল ডিলিট করুন",
-      message: `"${role.name_bn}" রোলটি স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(role.name_bn ?? ""),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await roleApi.remove(role.id);
-          useToastStore.getState().show("রোল মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(t.roleDeleted, "success");
           setRoles((prev) => prev.filter((r) => r.id !== role.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || c.deleteFailed;
           useToastStore.getState().show(msg, "error");
         }
       },
@@ -193,31 +207,31 @@ const RolesPermissionsPage = () => {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="রোল ও পারমিশন"
-        subtitle="নতুন রোল তৈরি করুন এবং প্রতিটা রোলের জন্য কোন কোন মডিউলে অ্যাক্সেস থাকবে তা নির্ধারণ করুন"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
-      <SectionCard title="নতুন রোল তৈরি করুন">
+      <SectionCard title={t.createRole}>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             type="text"
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
-            placeholder="রোলের নাম (যেমন: ক্লাস টিচার)"
+            placeholder={t.roleNamePlaceholder}
             className="sm:max-w-xs"
           />
           <Button disabled={creating} onClick={handleCreateRole} className="gap-1.5">
             {!creating && <Plus size={15} />}
-            {creating ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+            {creating ? t.creating : c.create}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title="সব রোল">
+      <SectionCard title={t.allRoles}>
         {loading ? (
           <SkeletonList items={6} />
         ) : roles.length === 0 ? (
-          <EmptyState title="কোনো রোল নেই" />
+          <EmptyState title={t.noRoles} />
         ) : (
           <div className="space-y-3">
             {roles.map((role) => {
@@ -233,20 +247,19 @@ const RolesPermissionsPage = () => {
                     <span className="font-semibold text-gray-900 dark:text-slate-100">{role.name_bn}</span>
                     {role.is_protected && (
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-800 dark:text-slate-400">
-                        ডিফল্ট রোল
+                        {t.defaultRole}
                       </span>
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
                     {isMuhtamim
-                      ? "সকল পারমিশন (সবসময়, পরিবর্তনযোগ্য নয়)"
-                      : `${role.permission_keys.length} টি পারমিশন`}{" "}
-                    · {role.user_count} জন ইউজার
+                      ? t.allPermissions
+                      : t.permissionCount(localizeDigits(role.permission_keys.length, lang))}{" "}
+                    · {t.userCount(localizeDigits(role.user_count, lang))}
                   </p>
                   {isTalimat && (
                     <p className="mt-0.5 text-xs text-teal-700 dark:text-teal-400">
-                      পরীক্ষা বিভাগের (পরীক্ষা, নম্বর, ফলাফল, রুটিন) সব পারমিশন এই রোল স্বয়ংক্রিয়ভাবে পায় — আলাদা করে দিতে হয় না।
-                      নিচের তালিকা শুধু অন্য বিভাগের অ্যাক্সেসের জন্য।
+                      {t.academicAutoNote}
                     </p>
                   )}
                 </div>
@@ -255,19 +268,19 @@ const RolesPermissionsPage = () => {
                   <button
                     type="button"
                     disabled={isMuhtamim}
-                    title={isMuhtamim ? "মুহতামিম সবসময় সম্পূর্ণ অ্যাক্সেস পাবেন — এটি পরিবর্তনযোগ্য নয়" : undefined}
+                    title={isMuhtamim ? t.headAlwaysFull : undefined}
                     onClick={() => openEditModal(role)}
                     className="flex h-8 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
                   >
                     <Pencil size={12} />
-                    পারমিশন সেট করুন
+                    {t.setPermissions}
                   </button>
                   {!role.is_protected && (
                     <button
                       type="button"
                       disabled={role.user_count > 0}
                       onClick={() => handleDelete(role)}
-                      title={role.user_count > 0 ? "এই রোলে ইউজার আছে বলে মুছা যাবে না" : "মুছুন"}
+                      title={role.user_count > 0 ? t.cannotDeleteHasUsers : c.delete}
                       className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 sm:disabled:opacity-0 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={16} />
@@ -284,7 +297,7 @@ const RolesPermissionsPage = () => {
       {/* Permission matrix modal */}
       <Modal
         open={!!editingRole}
-        title={`পারমিশন সেট করুন — ${editingRole?.name_bn || ""}`}
+        title={t.setPermissionsFor(editingRole?.name_bn || "")}
         onClose={() => setEditingRole(null)}
       >
         <div className="max-h-[60vh] overflow-y-auto">
@@ -306,7 +319,7 @@ const RolesPermissionsPage = () => {
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm font-semibold capitalize text-gray-800 dark:text-slate-200">
-                      {moduleName}
+                      {groupLabel(moduleName)}
                     </span>
                     <div className="flex items-center gap-2">
                       <span
@@ -318,15 +331,15 @@ const RolesPermissionsPage = () => {
                               : "text-gray-400 dark:text-slate-500"
                         }`}
                       >
-                        {allSelected ? "পুরো মডিউল চালু" : someSelected ? "আংশিক চালু" : "বন্ধ"}
+                        {allSelected ? t.fullModuleOn : someSelected ? t.partiallyOn : t.off}
                       </span>
                       <ToggleSwitch
                         checked={allSelected}
                         onChange={() => toggleModuleAll(moduleKeys, allSelected)}
                         title={
                           allSelected
-                            ? "পুরো মডিউলের সব পারমিশন বন্ধ করুন"
-                            : "পুরো মডিউলের সব পারমিশন চালু করুন"
+                            ? t.turnModuleOff
+                            : t.turnModuleOn
                         }
                       />
                     </div>
@@ -352,10 +365,10 @@ const RolesPermissionsPage = () => {
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => setEditingRole(null)}>
-            বাতিল
+            {c.cancel}
           </Button>
           <Button type="button" disabled={saving} onClick={handleSavePermissions}>
-            {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            {saving ? c.saving : c.save}
           </Button>
         </div>
       </Modal>

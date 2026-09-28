@@ -1,4 +1,6 @@
-import { cellValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
 
 type DigitalAttendancePrintProps = {
   rows: Record<string, any>[];
@@ -14,16 +16,18 @@ const DigitalAttendancePrint = ({
   selectedClassName = "",
   startIndex = 0,
   isFirstPage = true,
-}: DigitalAttendancePrintProps) => (
+}: DigitalAttendancePrintProps) => {
+  const t = usePrintText(reportText);
+  return (
   <div className="mx-auto w-full bg-white text-black">
     {isFirstPage && (
       <div className="report-block-heading mb-4 text-center">
-        <h1 className="text-2xl font-extrabold tracking-tight text-black">ডিজিটাল হাজিরা রিপোর্ট</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-black">{t.title.digitalAttendance}</h1>
         <p className="mt-1 text-base font-bold text-black">
-          বিভাগ: {selectedDivisionName || "সকল বিভাগ"}
+          {t.divisionLabel} {selectedDivisionName || t.allDivisions}
         </p>
         <p className="text-base font-bold text-black">
-          শ্রেণি: {selectedClassName || "সকল শ্রেণি"}
+          {t.classLabel} {selectedClassName || t.allClasses}
         </p>
       </div>
     )}
@@ -32,14 +36,14 @@ const DigitalAttendancePrint = ({
       {isFirstPage && (
         <thead>
           <tr className="bg-slate-100">
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">রোল</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">রেজিস্ট্রেশন নম্বর</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">শিক্ষার্থীর নাম</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">শ্রেণি</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">তারিখ</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">ইন টাইম</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">আউট টাইম</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">স্ট্যাটাস</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.roll}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.regNoFull}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.studentName}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.class}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.date}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.inTime}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.outTime}</th>
+            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.status}</th>
           </tr>
         </thead>
       )}
@@ -47,26 +51,27 @@ const DigitalAttendancePrint = ({
         {rows.map((row, index) => (
           <tr key={`digital-${row.id || row.student_id || index}`}>
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
-              {cellValue(row, "roll")}
+              {printCell(row, "roll")}
             </td>
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
-              {cellValue(row, "registration_no")}
+              {printCell(row, "registration_no")}
             </td>
             <td className="border border-slate-600 py-2 ps-3 pe-2 text-start text-base font-semibold">
-              {cellValue(row, "student_name")}
+              {printCell(row, "student_name")}
             </td>
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
-              {cellValue(row, "class_name")}
+              {printCell(row, "class_name")}
             </td>
-            <td className="border border-slate-600 px-2 py-2 text-base">{cellValue(row, "date")}</td>
-            <td className="border border-slate-600 px-2 py-2 text-base">{cellValue(row, "check_in")}</td>
-            <td className="border border-slate-600 px-2 py-2 text-base">{cellValue(row, "check_out")}</td>
-            <td className="border border-slate-600 px-2 py-2 text-base">{cellValue(row, "status")}</td>
+            <td className="border border-slate-600 px-2 py-2 text-base">{printCell(row, "date")}</td>
+            <td className="border border-slate-600 px-2 py-2 text-base">{printCell(row, "check_in")}</td>
+            <td className="border border-slate-600 px-2 py-2 text-base">{printCell(row, "check_out")}</td>
+            <td className="border border-slate-600 px-2 py-2 text-base">{printCell(row, "status")}</td>
           </tr>
         ))}
       </tbody>
     </table>
   </div>
 );
+};
 
 export default DigitalAttendancePrint;

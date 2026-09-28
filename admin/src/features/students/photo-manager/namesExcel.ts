@@ -1,7 +1,9 @@
 import { downloadLockedWorkbook } from "../../../utils/excelSheetLock";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { getText, getInstitution } from "@madrasha/shared-ui/src/i18n";
+import { peopleToolsText } from "./peopleTools.text";
 import type { DirectoryPerson, PeopleTab } from "./photoManager";
-import { LANG_LABEL, NAME_LANGS, nameField, savedValue, type NameOwner } from "./names";
+import { NAME_LANGS, nameField, savedValue, type NameOwner } from "./names";
 
 /**
  * Excel round-trip for the নাম (৩ ভাষা) page. The sheet is named after the
@@ -11,31 +13,35 @@ import { LANG_LABEL, NAME_LANGS, nameField, savedValue, type NameOwner } from ".
  */
 
 const OWNERS: NameOwner[] = ["self", "father", "mother"];
-const OWNER_TITLE: Record<PeopleTab, Record<NameOwner, string>> = {
-  students: { self: "শিক্ষার্থী", father: "পিতা", mother: "মাতা" },
-  teachers: { self: "শিক্ষক", father: "পিতা", mother: "মাতা" },
-  staff: { self: "স্টাফ", father: "পিতা", mother: "মাতা" },
+const ownerTitle = (tab: PeopleTab, owner: NameOwner) => {
+  const t = getText(peopleToolsText);
+  return owner === "self" ? t.tabs[tab] : t.owners[owner];
 };
 const SHEET_NAME: Record<PeopleTab, string> = { students: "students", teachers: "teachers", staff: "staff" };
-const TAB_TITLE: Record<PeopleTab, string> = { students: "শিক্ষার্থী", teachers: "শিক্ষক", staff: "স্টাফ" };
+const tabTitle = (tab: PeopleTab) => getText(peopleToolsText).tabs[tab];
 
 type Col = { key: string; label: string; locked: boolean; lang?: "bn" | "ar" | "en"; owner?: NameOwner };
 
-const columnsFor = (tab: PeopleTab): Col[] => [
+// Arabic name columns are madrasa-only.
+const columnsFor = (tab: PeopleTab): Col[] => {
+  const t = getText(peopleToolsText);
+  const langs = getInstitution().type === "MADRASA" ? NAME_LANGS : NAME_LANGS.filter((l) => l !== "ar");
+  return [
   { key: "id", label: "ID", locked: true },
-  { key: "registration_no", label: "রেজি. নং", locked: true },
-  ...(tab === "students" ? [{ key: "roll", label: "রোল", locked: true }] : []),
-  { key: "subtitle", label: tab === "students" ? "শ্রেণি" : "পদবি", locked: true },
+  { key: "registration_no", label: t.colRegNo, locked: true },
+  ...(tab === "students" ? [{ key: "roll", label: t.colRoll, locked: true }] : []),
+  { key: "subtitle", label: tab === "students" ? t.colClass : t.colDesignation, locked: true },
   ...OWNERS.flatMap((owner) =>
-    NAME_LANGS.map((lang) => ({
+    langs.map((lang) => ({
       key: nameField(tab, owner, lang),
-      label: `${OWNER_TITLE[tab][owner]} — ${LANG_LABEL[lang]}`,
+      label: `${ownerTitle(tab, owner)} — ${t.langs[lang]}`,
       locked: false,
       lang,
       owner,
     })),
   ),
-];
+  ];
+};
 
 const border = {
   top: { style: "thin", color: { rgb: "CBD5E1" } },
@@ -59,9 +65,7 @@ export async function downloadNamesTemplate(tab: PeopleTab, people: DirectoryPer
 
   const ws = XLSX.utils.aoa_to_sheet([
     [
-      `নাম (৩ ভাষা) — ${TAB_TITLE[tab]} · ${scopeLabel} · মোট ${toBanglaDigits(people.length)} জন। ` +
-        "ধূসর কলাম (ID, রেজি., রোল, শ্রেণি) লক করা — শুধু নামের ঘরে লেখা যাবে। প্রতিটা নামের কলামে শুধু সেই ভাষায় লিখুন। " +
-        "খালি ঘর রাখলে আগের নাম অপরিবর্তিত থাকবে।",
+      getText(peopleToolsText).excelTitle(tabTitle(tab), scopeLabel, toBanglaDigits(people.length)),
     ],
     cols.map((c) => `${c.label} (${c.key})`),
     ...people.map((p) => cols.map((c) => cellOf(p, c))),
@@ -118,14 +122,14 @@ export async function parseNamesFile(file: File, tab: PeopleTab): Promise<Parsed
   const XLSX = await import("xlsx");
   const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
   const sheetName = wb.SheetNames[0];
-  if (!sheetName) throw new Error("Excel ফাইলে কোনো শিট নেই");
+  if (!sheetName) throw new Error(getText(peopleToolsText).noSheet);
   const otherTab = (Object.keys(SHEET_NAME) as PeopleTab[]).find((t) => SHEET_NAME[t] === sheetName && t !== tab);
-  if (otherTab) throw new Error(`এই ফাইলটি ${TAB_TITLE[otherTab]} ট্যাবের — ${TAB_TITLE[otherTab]} ট্যাবে গিয়ে আপলোড করুন`);
+  if (otherTab) throw new Error(getText(peopleToolsText).wrongTab(tabTitle(otherTab)));
 
   const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: "", raw: false });
   const keyOf = (h: unknown) => /\(([a-z_]+)\)\s*\*?\s*$/i.exec(String(h))?.[1] ?? "";
   const headerIdx = rows.findIndex((r) => r.some((h) => keyOf(h) === "id"));
-  if (headerIdx === -1) throw new Error("ফরম্যাট মেলেনি — এই পেজ থেকে ডাউনলোড করা ফরম্যাট ব্যবহার করুন");
+  if (headerIdx === -1) throw new Error(getText(peopleToolsText).wrongFormat);
 
   const allowed = new Set(columnsFor(tab).filter((c) => !c.locked).map((c) => c.key));
   const keys = rows[headerIdx].map(keyOf);

@@ -20,6 +20,8 @@ import { cachedGet } from "../../services/api";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
+import { useText, useLang, formatNumber } from "@madrasha/shared-ui/src/i18n";
+import { studentsDashboardText } from "./StudentsDashboardPage.text";
 
 type ByClassRow = { classId: number | null; className: string; count: number };
 type StudentsDashboardData = {
@@ -106,9 +108,10 @@ const PremiumStatSkeleton = () => (
   </div>
 );
 
-const bn = (value: number) => Number(value || 0).toLocaleString("bn-BD");
-
 export default function StudentsDashboardPage() {
+  const t = useText(studentsDashboardText);
+  const lang = useLang();
+  const bn = (value: number) => formatNumber(value || 0, lang);
   const [data, setData] = useState<StudentsDashboardData | null>(null);
   const isDark = useThemeStore((s) => s.theme) === "dark";
   const gridColor = isDark ? "#334155" : "#e2e8f0";
@@ -138,9 +141,9 @@ export default function StudentsDashboardPage() {
   const byClass = (data?.byClass || []).slice(0, 8);
   const statusPieData = data
     ? [
-        { name: "অনুমোদিত", value: data.byAdmissionStatus.approved, key: "approved" },
-        { name: "পেন্ডিং", value: data.byAdmissionStatus.pending, key: "pending" },
-        { name: "বাতিল", value: data.byAdmissionStatus.rejected, key: "rejected" },
+        { name: t.approved, value: data.byAdmissionStatus.approved, key: "approved" },
+        { name: t.pending, value: data.byAdmissionStatus.pending, key: "pending" },
+        { name: t.rejected, value: data.byAdmissionStatus.rejected, key: "rejected" },
       ].filter((row) => row.value > 0)
     : [];
 
@@ -153,26 +156,26 @@ export default function StudentsDashboardPage() {
           ) : (
             <>
               <PremiumStat
-                label="মোট সক্রিয় শিক্ষার্থী"
+                label={t.totalActive}
                 value={bn(data.totalActiveStudents)}
                 tone="indigo"
                 icon={<Users size={20} />}
                 to="/students"
               />
               <PremiumStat
-                label="ছাত্র"
+                label={t.male}
                 value={bn(data.byGender.male)}
                 tone="sky"
                 icon={<UsersRound size={20} />}
               />
               <PremiumStat
-                label="ছাত্রী"
+                label={t.female}
                 value={bn(data.byGender.female)}
                 tone="rose"
                 icon={<UsersRound size={20} />}
               />
               <PremiumStat
-                label="পেন্ডিং ভর্তি"
+                label={t.pendingAdmissions}
                 value={bn(data.pendingAdmissionsCount)}
                 tone="amber"
                 icon={<Clock size={20} />}
@@ -184,47 +187,47 @@ export default function StudentsDashboardPage() {
 
         <Card className="flex h-full flex-col justify-center gap-2">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            দ্রুত অ্যাকশন
+            {t.quickActions}
           </p>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
             to="/students/new"
           >
-            <UserPlus size={16} /> নতুন ভর্তি
+            <UserPlus size={16} /> {t.newAdmission}
           </Link>
           <Link
             className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-amber-500"
             to="/students/admissions/pending"
           >
-            <ClipboardCheck size={16} /> পেন্ডিং ভর্তি অনুমোদন
+            <ClipboardCheck size={16} /> {t.approvePending}
           </Link>
           {data && data.byAdmissionStatus.rejected > 0 && (
             <Link
               className="flex items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-rose-600"
               to="/students/admissions/rejected"
             >
-              <ClipboardCheck size={16} /> বাতিল হওয়া আবেদন
+              <ClipboardCheck size={16} /> {t.rejectedApplications}
             </Link>
           )}
           <Link
             className="rounded-xl bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500"
             to="/students"
           >
-            শিক্ষার্থী সমূহ
+            {t.students}
           </Link>
           <Link
             className="rounded-xl bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
             to="/students/promotion"
           >
-            শিক্ষার্থী প্রমোশন
+            {t.promotion}
           </Link>
         </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <ChartCard
-          title="ভর্তির প্রবণতা"
-          subtitle="গত ১২ মাস"
+          title={t.admissionTrend}
+          subtitle={t.last12Months}
           loading={loading}
           empty={!loading && !data?.admissionTrend?.length}
           className="xl:col-span-2"
@@ -235,14 +238,14 @@ export default function StudentsDashboardPage() {
               <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} />
               <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={36} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
-              <Line type="monotone" dataKey="count" name="ভর্তি" stroke="#4f46e5" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="count" name={t.admissions} stroke="#4f46e5" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="ভর্তির অবস্থা"
-          subtitle="সর্বমোট আবেদন"
+          title={t.admissionStatus}
+          subtitle={t.allApplications}
           loading={loading}
           empty={!loading && statusPieData.length === 0}
         >
@@ -261,8 +264,8 @@ export default function StudentsDashboardPage() {
       </div>
 
       <ChartCard
-        title="শ্রেণি অনুযায়ী শিক্ষার্থী"
-        subtitle="সক্রিয় ও অনুমোদিত শিক্ষার্থী সংখ্যা"
+        title={t.byClass}
+        subtitle={t.byClassSubtitle}
         loading={loading}
         empty={!loading && byClass.length === 0}
       >
@@ -272,7 +275,7 @@ export default function StudentsDashboardPage() {
             <XAxis type="number" stroke={axisColor} tick={{ fontSize: 12 }} allowDecimals={false} />
             <YAxis type="category" dataKey="className" stroke={axisColor} tick={{ fontSize: 12 }} width={110} />
             <Tooltip {...tooltipStyle} />
-            <Bar dataKey="count" name="শিক্ষার্থী" radius={[0, 6, 6, 0]}>
+            <Bar dataKey="count" name={t.studentsSeries} radius={[0, 6, 6, 0]}>
               {byClass.map((entry, index) => (
                 <Cell key={entry.classId ?? entry.className} fill={CLASS_COLORS[index % CLASS_COLORS.length]} />
               ))}

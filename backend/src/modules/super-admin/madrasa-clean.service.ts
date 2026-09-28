@@ -11,6 +11,7 @@ import {
   InvalidCleanModeError,
 } from "./madrasa-clean.types";
 import { CleanMadrasaDataRequestDto } from "./madrasa-clean.dto";
+import { t } from "../../shared/i18n";
 
 export class MadrasaCleanService {
   constructor(
@@ -36,7 +37,7 @@ export class MadrasaCleanService {
     const madrasa = await this.repository.findMadrasaForClean(id);
     if (!madrasa) throw new MadrasaNotFoundError();
     if (madrasa.deletedAt) {
-      throw new TrashedMadrasaOperationError("ট্র্যাশে থাকা মাদ্রাসার ডেটা ক্লিন করা যাবে না");
+      throw new TrashedMadrasaOperationError(t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠানের ডেটা ক্লিন করা যাবে না", en: "A trashed institution's data cannot be cleaned" }));
     }
 
     if ((dto.confirm_name || "").trim() !== madrasa.name) {

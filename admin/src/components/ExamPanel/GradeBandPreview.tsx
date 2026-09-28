@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { examPanelText } from "./examPanel.text";
 import { getGradeRange, type GradeItem } from "./GradeList";
 import { withoutFailGrades, type GradeKind } from "./failGrade";
 
@@ -27,7 +28,6 @@ const bandColor = (index: number, total: number) => {
   return `hsl(${hue.toFixed(0)} 72% ${light.toFixed(0)}%)`;
 };
 
-const range = (s: Segment) => `${toBanglaDigits(s.from)}-${toBanglaDigits(s.to)}`;
 
 /** Horizontal 0-100 bar: red "ফেল" block, then every grade band sized in
  * proportion to its mark range. Gaps in the scale (marks no band covers) are
@@ -39,7 +39,7 @@ export default function GradeBandPreview({
   failMark,
   title,
   kind,
-  failLabel = "ফেল",
+  failLabel: failLabelProp,
 }: {
   grades: GradeItem[];
   failMark: number;
@@ -49,6 +49,12 @@ export default function GradeBandPreview({
   /** Label of the automatic red fail block (the fail grade name, e.g. "রাসিব"). */
   failLabel?: string;
 }) {
+  const t = useText(examPanelText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
+  const range = (s: Segment) => `${toBanglaDigits(s.from)}-${toBanglaDigits(s.to)}`;
+  const failLabel = failLabelProp ?? t.fail;
+  const ungraded = t.ungraded;
   const segments = useMemo(() => {
     const bands = (kind ? withoutFailGrades(kind, grades) : grades)
       .map((g) => {
@@ -68,7 +74,7 @@ export default function GradeBandPreview({
 
     bands.forEach((b, i) => {
       if (b.min > cursor) {
-        list.push({ key: `gap-${cursor}`, kind: "gap", label: "গ্রেডহীন", from: cursor, to: b.min - 1 });
+        list.push({ key: `gap-${cursor}`, kind: "gap", label: ungraded, from: cursor, to: b.min - 1 });
       }
       const point = b.g.point !== undefined && b.g.point !== null && b.g.point !== "" ? String(b.g.point) : undefined;
       list.push({
@@ -84,10 +90,10 @@ export default function GradeBandPreview({
     });
 
     if (cursor <= 100) {
-      list.push({ key: `gap-${cursor}`, kind: "gap", label: "গ্রেডহীন", from: cursor, to: 100 });
+      list.push({ key: `gap-${cursor}`, kind: "gap", label: ungraded, from: cursor, to: 100 });
     }
     return list;
-  }, [grades, failMark, kind, failLabel]);
+  }, [grades, failMark, kind, failLabel, ungraded]);
 
   const widthOf = (s: Segment) => ((s.to - s.from + 1) / SCALE) * 100;
   const hasGap = segments.some((s) => s.kind === "gap");
@@ -95,7 +101,7 @@ export default function GradeBandPreview({
   return (
     <section
       className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-5"
-      aria-label={title ?? "গ্রেড স্কেল প্রিভিউ"}
+      aria-label={title ?? t.scalePreview}
     >
       {title && <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">{title}</h3>}
 
@@ -106,7 +112,7 @@ export default function GradeBandPreview({
             return (
               <div
                 key={s.key}
-                title={`${s.label}: ${range(s)}${s.point ? ` · পয়েন্ট ${toBanglaDigits(s.point)}` : ""}`}
+                title={`${s.label}: ${range(s)}${s.point ? ` · ${t.pointN(toBanglaDigits(s.point))}` : ""}`}
                 style={{ width: `${pct}%`, ...(s.kind === "grade" ? { backgroundColor: s.color } : {}) }}
                 className={`flex min-w-0 flex-col items-center justify-center overflow-hidden px-0.5 text-center text-white ${
                   s.kind === "fail"
@@ -142,14 +148,14 @@ export default function GradeBandPreview({
             />
             <span className="font-semibold">{s.label}</span>
             <span className="tabular-nums text-slate-500 dark:text-slate-400">{range(s)}</span>
-            {s.point && <span className="text-slate-500 dark:text-slate-400">· পয়েন্ট {toBanglaDigits(s.point)}</span>}
+            {s.point && <span className="text-slate-500 dark:text-slate-400">· {t.pointN(toBanglaDigits(s.point))}</span>}
           </li>
         ))}
       </ul>
 
       {hasGap && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
-          কিছু নম্বর কোনো গ্রেডের আওতায় পড়ছে না (হ্যাচ করা অংশ) — গ্রেডগুলো ঠিক করুন।
+          {t.gapWarning}
         </p>
       )}
     </section>

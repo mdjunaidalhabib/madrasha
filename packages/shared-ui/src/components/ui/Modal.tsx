@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { commonText, useText } from "../../i18n";
 
 type ModalProps = {
   open: boolean;
@@ -19,6 +20,7 @@ export default function Modal({
   maxWidthClassName = "max-w-xl",
   hideCloseButton = false,
 }: ModalProps) {
+  const c = useText(commonText);
   useEffect(() => {
     if (!open) return;
 
@@ -52,8 +54,8 @@ export default function Modal({
               type="button"
               onClick={onClose}
               className="rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-              aria-label="Close"
-              title="Close"
+              aria-label={c.close}
+              title={c.close}
             >
               ✕
             </button>

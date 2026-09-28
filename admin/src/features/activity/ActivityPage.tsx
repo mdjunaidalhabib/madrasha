@@ -5,15 +5,14 @@ import TableSkeleton from "@madrasha/shared-ui/src/components/ui/TableSkeleton";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
-import { useLanguageStore } from "../../store/languageStore";
-import { LOCALE_MAP, formatNumber } from "../../utils/i18nFormat";
+import { formatDateTime, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import {
   type ActivityLogText,
-  activityLogText,
+  activityText,
   QUICK_DAY_OPTIONS,
   translateActivityAction,
   translateEntityName,
-} from "./activity.translations";
+} from "./activity.text";
 
 const RETENTION_DAYS = 90;
 const DEFAULT_DAYS = 30;
@@ -39,7 +38,7 @@ const COLLAPSED_LINES = 4;
  * collapse behind a "show more" toggle so one bulk import can't flood the table.
  */
 function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
-  const lang = useLanguageStore((s) => s.lang);
+  const lang = useLang();
   const [expanded, setExpanded] = useState(false);
   const [headline, ...lines] = text.split("\n").filter((line) => line.trim());
   const hidden = lines.length - COLLAPSED_LINES;
@@ -91,8 +90,8 @@ function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
 }
 
 export default function ActivityPage() {
-  const lang = useLanguageStore((s) => s.lang);
-  const t = activityLogText[lang];
+  const lang = useLang();
+  const t = useText(activityText);
 
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +169,7 @@ export default function ActivityPage() {
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                 }`}
               >
-                {t.dayOption(n)}
+                {t.dayOption(formatNumber(n, lang))}
               </button>
             ))}
           </div>
@@ -218,13 +217,13 @@ export default function ActivityPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-t dark:border-slate-700">
                   <td className="px-4 py-3">{r.name || t.systemUser}</td>
-                  <td className="px-4 py-3">{translateActivityAction(r.entity, r.action, lang)}</td>
-                  <td className="px-4 py-3">{translateEntityName(r.entity, lang)}</td>
+                  <td className="px-4 py-3">{translateActivityAction(r.entity, r.action, t)}</td>
+                  <td className="px-4 py-3">{translateEntityName(r.entity, t)}</td>
                   <td className="px-4 py-3 align-top">
                     {r.details ? <ActivityDetails text={r.details} t={t} /> : t.noDetails}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString(LOCALE_MAP[lang])}
+                    {formatDateTime(r.created_at, lang)}
                   </td>
                 </tr>
               ))}

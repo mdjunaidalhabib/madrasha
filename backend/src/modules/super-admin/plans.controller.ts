@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { plansService } from "./plans.service";
+import { t } from "../../shared/i18n";
 
 const respondError = (res: Response, error: unknown, logTag: string) => {
   if (error instanceof ApiError) {
@@ -33,7 +34,7 @@ export const listTrashPlans = async (_req: Request, res: Response) => {
 export const createPlanAdmin = async (req: Request, res: Response) => {
   try {
     const id = await plansService.createPlan(req.body);
-    res.status(HttpStatus.CREATED).json({ message: "Plan তৈরি হয়েছে", id });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "প্ল্যান তৈরি হয়েছে", en: "Plan created" }), id });
   } catch (error) {
     respondError(res, error, "createPlanAdmin ERROR:");
   }
@@ -42,7 +43,7 @@ export const createPlanAdmin = async (req: Request, res: Response) => {
 export const updatePlanAdmin = async (req: Request, res: Response) => {
   try {
     await plansService.updatePlan(Number(req.params.id), req.body);
-    res.json({ message: "Plan আপডেট হয়েছে" });
+    res.json({ message: t({ bn: "প্ল্যান আপডেট হয়েছে", en: "Plan updated" }) });
   } catch (error) {
     respondError(res, error, "updatePlanAdmin ERROR:");
   }
@@ -51,7 +52,7 @@ export const updatePlanAdmin = async (req: Request, res: Response) => {
 export const togglePlanAdmin = async (req: Request, res: Response) => {
   try {
     await plansService.togglePlan(Number(req.params.id));
-    res.json({ message: "Plan status updated" });
+    res.json({ message: t({ bn: "প্ল্যানের অবস্থা আপডেট হয়েছে", en: "Plan status updated" }) });
   } catch (error) {
     respondError(res, error, "togglePlanAdmin ERROR:");
   }
@@ -60,7 +61,7 @@ export const togglePlanAdmin = async (req: Request, res: Response) => {
 export const deletePlanAdmin = async (req: Request, res: Response) => {
   try {
     await plansService.deletePlan(Number(req.params.id));
-    res.json({ message: "Plan trash এ পাঠানো হয়েছে" });
+    res.json({ message: t({ bn: "প্ল্যান ট্র্যাশে পাঠানো হয়েছে", en: "Plan moved to trash" }) });
   } catch (error) {
     respondError(res, error, "deletePlanAdmin ERROR:");
   }
@@ -69,7 +70,7 @@ export const deletePlanAdmin = async (req: Request, res: Response) => {
 export const restorePlanAdmin = async (req: Request, res: Response) => {
   try {
     await plansService.restorePlan(Number(req.params.id));
-    res.json({ message: "Plan restore হয়েছে" });
+    res.json({ message: t({ bn: "প্ল্যান পুনরুদ্ধার হয়েছে", en: "Plan restored" }) });
   } catch (error) {
     respondError(res, error, "restorePlanAdmin ERROR:");
   }
@@ -78,7 +79,7 @@ export const restorePlanAdmin = async (req: Request, res: Response) => {
 export const permanentDeletePlanAdmin = async (req: Request, res: Response) => {
   try {
     await plansService.permanentDeletePlan(Number(req.params.id));
-    res.json({ message: "Plan permanently deleted" });
+    res.json({ message: t({ bn: "প্ল্যান স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Plan permanently deleted" }) });
   } catch (error) {
     respondError(res, error, "permanentDeletePlanAdmin ERROR:");
   }

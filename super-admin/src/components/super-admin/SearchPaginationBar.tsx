@@ -1,5 +1,7 @@
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { superAdminText } from "./superAdmin.text";
 
 export default function SearchPaginationBar({
   q,
@@ -24,34 +26,37 @@ export default function SearchPaginationBar({
   prev: () => void;
   next: () => void;
 }) {
+  const t = useText(superAdminText);
+  const c = useText(commonText);
+  const lang = useLang();
   return (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-2">
         <Input
-          placeholder="Search by name/slug..."
+          placeholder={t.searchByNameSlug}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <Button variant="secondary" onClick={clear}>
-          Clear
+          {c.clear}
         </Button>
       </div>
 
       <div className="flex items-center gap-2 text-sm">
         <span className="text-gray-600 dark:text-slate-400">
-          Page <b>{page}</b> / <b>{totalPages}</b>
+          {t.pageOf} <b>{formatNumber(page, lang)}</b> / <b>{formatNumber(totalPages, lang)}</b>
           {total ? (
             <span>
               {" "}
-              • Total: <b>{total}</b>
+              • {t.totalLabel}: <b>{formatNumber(total, lang)}</b>
             </span>
           ) : null}
         </span>
         <Button variant="secondary" disabled={disablePrev} onClick={prev}>
-          Prev
+          {t.prev}
         </Button>
         <Button variant="secondary" disabled={disableNext} onClick={next}>
-          Next
+          {t.next}
         </Button>
       </div>
     </div>

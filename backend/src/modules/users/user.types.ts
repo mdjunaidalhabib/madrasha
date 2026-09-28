@@ -1,4 +1,5 @@
 import { ForbiddenError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 export interface UserListItem {
   id: number;
@@ -14,6 +15,6 @@ export interface UserListItem {
  * can never be removed through the tenant-facing staff management page. */
 export class DefaultUserProtectedError extends ForbiddenError {
   constructor() {
-    super("এটি মাদ্রাসার ডিফল্ট (মুহতামিম) অ্যাকাউন্ট, এটি ডিলিট করা যাবে না।");
+    super(t({ bn: "এটি প্রতিষ্ঠানের ডিফল্ট (প্রধান) অ্যাকাউন্ট, এটি ডিলিট করা যাবে না।", en: "This is the institution's default (head) account and cannot be deleted.", ar: "هذا هو الحساب الافتراضي (الرئيس) للمؤسسة ولا يمكن حذفه." }));
   }
 }

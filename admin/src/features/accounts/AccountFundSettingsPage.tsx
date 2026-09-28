@@ -16,6 +16,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../components/settings/SectionCard";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { commonText, formatNumber, getLang, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { accountsText } from "./accounts.text";
 
 type SectionConfig = {
   type: AccountFundType;
@@ -28,32 +30,14 @@ type SectionConfig = {
   deleteWarningNoun: string;
 };
 
-const SECTIONS: SectionConfig[] = [
-  {
-    type: "income",
-    title: "আয়ের ফান্ড",
-    hint: "প্রতিটা ফান্ডের নিচে তার খাতগুলো যোগ করুন",
-    addPlaceholder: "নতুন ফান্ডের নাম",
-    addButtonLabel: "ফান্ড যোগ করুন",
-    emptyTitle: "এখনো কোনো আয়ের ফান্ড যোগ করা হয়নি",
-    emptyHint: "উপরের ফর্ম থেকে প্রথম ফান্ডটি যোগ করুন।",
-    deleteWarningNoun: "ফান্ডটি",
-  },
-  {
-    type: "expense",
-    title: "ব্যয়ের বিভাগ",
-    hint: "প্রতিটা বিভাগের নিচে তার খাতগুলো যোগ করুন",
-    addPlaceholder: "নতুন বিভাগের নাম",
-    addButtonLabel: "বিভাগ যোগ করুন",
-    emptyTitle: "এখনো কোনো ব্যয়ের বিভাগ যোগ করা হয়নি",
-    emptyHint: "উপরের ফর্ম থেকে প্রথম বিভাগটি যোগ করুন।",
-    deleteWarningNoun: "বিভাগটি",
-  },
-];
+const SECTION_TYPES: AccountFundType[] = ["income", "expense"];
 
 const getErrorMessage = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 
 const AccountFundSettingsPage = () => {
+  const t = useText(accountsText);
+  const c = useText(commonText);
+  const SECTIONS: SectionConfig[] = SECTION_TYPES.map((type) => ({ type, ...t.sections[type] }));
   const [funds, setFunds] = useState<AccountFundItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -111,17 +95,17 @@ const AccountFundSettingsPage = () => {
   const handleCreateFund = async (config: SectionConfig) => {
     const name = newFundName[config.type].trim();
     if (!name) {
-      useToastStore.getState().show("একটা নাম দিন", "error");
+      useToastStore.getState().show(getText(accountsText).enterAName, "error");
       return;
     }
     try {
       setCreatingFundType(config.type);
       await accountFundApi.create({ type: config.type, name });
-      useToastStore.getState().show(`${config.title} যোগ করা হয়েছে`, "success");
+      useToastStore.getState().show(getText(accountsText).addedToast(config.title), "success");
       setNewFundName((p) => ({ ...p, [config.type]: "" }));
       await reloadType(config.type);
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).saveFailed), "error");
     } finally {
       setCreatingFundType(null);
     }
@@ -140,17 +124,17 @@ const AccountFundSettingsPage = () => {
   const saveEditFund = async (fund: AccountFundItem) => {
     const name = editFundName.trim();
     if (!name) {
-      useToastStore.getState().show("একটা নাম দিন", "error");
+      useToastStore.getState().show(getText(accountsText).enterAName, "error");
       return;
     }
     try {
       setSavingFundEdit(true);
       await accountFundApi.update(fund.id, { name });
-      useToastStore.getState().show("সংরক্ষণ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(commonText).saved, "success");
       cancelEditFund();
       await reloadType(fund.type);
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).saveFailed), "error");
     } finally {
       setSavingFundEdit(false);
     }
@@ -163,24 +147,24 @@ const AccountFundSettingsPage = () => {
         prev.map((f) => (f.id === fund.id ? { ...f, isActive: !f.isActive } : f)),
       );
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "আপডেট করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).updateFailed), "error");
     }
   };
 
   const handleDeleteFund = (fund: AccountFundItem, config: SectionConfig) => {
     useConfirmStore.getState().show({
-      title: `${config.title} ডিলিট করুন`,
-      message: `"${fund.name}" ${config.deleteWarningNoun} স্থায়ীভাবে মুছে ফেলতে চান? এর ভেতরের সব খাতও (${fund.categories.length}টি) একসাথে মুছে যাবে।`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle(config.title),
+      message: t.deleteFundMessage(fund.name, config.deleteWarningNoun, formatNumber(fund.categories.length, getLang())),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await accountFundApi.remove(fund.id);
-          useToastStore.getState().show("মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(commonText).deleted, "success");
           setFunds((prev) => prev.filter((f) => f.id !== fund.id));
           if (editingFundId === fund.id) cancelEditFund();
         } catch (err: any) {
-          useToastStore.getState().show(getErrorMessage(err, "মুছতে সমস্যা হয়েছে"), "error");
+          useToastStore.getState().show(getErrorMessage(err, getText(accountsText).deleteFailed), "error");
         }
       },
     });
@@ -191,17 +175,17 @@ const AccountFundSettingsPage = () => {
   const handleCreateCategory = async (fund: AccountFundItem) => {
     const name = (newCategoryName[fund.id] || "").trim();
     if (!name) {
-      useToastStore.getState().show("একটা খাতের নাম দিন", "error");
+      useToastStore.getState().show(getText(accountsText).enterCategoryName, "error");
       return;
     }
     try {
       setCreatingCategoryFundId(fund.id);
       await accountFundApi.createCategory(fund.id, { name });
-      useToastStore.getState().show("খাত যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(accountsText).categoryAdded, "success");
       setNewCategoryName((p) => ({ ...p, [fund.id]: "" }));
       await reloadType(fund.type);
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).saveFailed), "error");
     } finally {
       setCreatingCategoryFundId(null);
     }
@@ -220,17 +204,17 @@ const AccountFundSettingsPage = () => {
   const saveEditCategory = async (fund: AccountFundItem, category: AccountCategoryItem) => {
     const name = editCategoryName.trim();
     if (!name) {
-      useToastStore.getState().show("একটা নাম দিন", "error");
+      useToastStore.getState().show(getText(accountsText).enterAName, "error");
       return;
     }
     try {
       setSavingCategoryEdit(true);
       await accountFundApi.updateCategory(category.id, { name });
-      useToastStore.getState().show("সংরক্ষণ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(commonText).saved, "success");
       cancelEditCategory();
       await reloadType(fund.type);
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).saveFailed), "error");
     } finally {
       setSavingCategoryEdit(false);
     }
@@ -252,20 +236,20 @@ const AccountFundSettingsPage = () => {
         ),
       );
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "আপডেট করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(accountsText).updateFailed), "error");
     }
   };
 
   const handleDeleteCategory = (fund: AccountFundItem, category: AccountCategoryItem) => {
     useConfirmStore.getState().show({
-      title: "খাত ডিলিট করুন",
-      message: `"${category.name}" খাতটি স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteCategoryTitle,
+      message: t.deleteCategoryMessage(category.name),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await accountFundApi.removeCategory(category.id);
-          useToastStore.getState().show("খাত মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(accountsText).categoryDeleted, "success");
           setFunds((prev) =>
             prev.map((f) =>
               f.id === fund.id
@@ -275,7 +259,7 @@ const AccountFundSettingsPage = () => {
           );
           if (editingCategoryId === category.id) cancelEditCategory();
         } catch (err: any) {
-          useToastStore.getState().show(getErrorMessage(err, "মুছতে সমস্যা হয়েছে"), "error");
+          useToastStore.getState().show(getErrorMessage(err, getText(accountsText).deleteFailed), "error");
         }
       },
     });
@@ -299,7 +283,7 @@ const AccountFundSettingsPage = () => {
             disabled={savingCategoryEdit}
             onClick={() => saveEditCategory(fund, category)}
             className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 disabled:opacity-60 dark:hover:bg-emerald-950/40"
-            title="সংরক্ষণ করুন"
+            title={c.save}
           >
             <Check size={14} />
           </button>
@@ -308,7 +292,7 @@ const AccountFundSettingsPage = () => {
             disabled={savingCategoryEdit}
             onClick={cancelEditCategory}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-60 dark:hover:bg-slate-800"
-            title="বাতিল"
+            title={c.cancel}
           >
             <X size={14} />
           </button>
@@ -325,7 +309,7 @@ const AccountFundSettingsPage = () => {
           <span className="truncate text-gray-700 dark:text-slate-300">{category.name}</span>
           {!category.isActive && (
             <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-              নিষ্ক্রিয়
+              {c.inactive}
             </span>
           )}
         </div>
@@ -338,7 +322,7 @@ const AccountFundSettingsPage = () => {
             type="button"
             onClick={() => startEditCategory(category)}
             className="rounded-lg p-1 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-            title="সম্পাদনা"
+            title={c.edit}
           >
             <Pencil size={12} />
           </button>
@@ -346,7 +330,7 @@ const AccountFundSettingsPage = () => {
             type="button"
             onClick={() => handleDeleteCategory(fund, category)}
             className="rounded-lg p-1 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-            title="মুছুন"
+            title={c.delete}
           >
             <Trash2 size={12} />
           </button>
@@ -370,7 +354,7 @@ const AccountFundSettingsPage = () => {
             disabled={savingFundEdit}
             onClick={() => saveEditFund(fund)}
             className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 disabled:opacity-60 dark:hover:bg-emerald-950/40"
-            title="সংরক্ষণ করুন"
+            title={c.save}
           >
             <Check size={16} />
           </button>
@@ -379,7 +363,7 @@ const AccountFundSettingsPage = () => {
             disabled={savingFundEdit}
             onClick={cancelEditFund}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-60 dark:hover:bg-slate-800"
-            title="বাতিল"
+            title={c.cancel}
           >
             <X size={16} />
           </button>
@@ -392,7 +376,7 @@ const AccountFundSettingsPage = () => {
             </span>
             {!fund.isActive && (
               <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-                নিষ্ক্রিয়
+                {c.inactive}
               </span>
             )}
           </div>
@@ -402,7 +386,7 @@ const AccountFundSettingsPage = () => {
               type="button"
               onClick={() => startEditFund(fund)}
               className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-              title="সম্পাদনা"
+              title={c.edit}
             >
               <Pencil size={14} />
             </button>
@@ -410,7 +394,7 @@ const AccountFundSettingsPage = () => {
               type="button"
               onClick={() => handleDeleteFund(fund, config)}
               className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-              title="মুছুন"
+              title={c.delete}
             >
               <Trash2 size={14} />
             </button>
@@ -424,7 +408,7 @@ const AccountFundSettingsPage = () => {
           <Input
             value={newCategoryName[fund.id] || ""}
             onChange={(e) => setNewCategoryName((p) => ({ ...p, [fund.id]: e.target.value }))}
-            placeholder="নতুন খাতের নাম"
+            placeholder={t.newCategoryPlaceholder}
             className="h-7 flex-1 text-xs"
           />
           <Button
@@ -435,7 +419,7 @@ const AccountFundSettingsPage = () => {
             className="h-7 gap-1 px-2 text-xs"
           >
             <Plus size={12} />
-            খাত যোগ করুন
+            {t.addCategory}
           </Button>
         </div>
       </div>
@@ -445,8 +429,8 @@ const AccountFundSettingsPage = () => {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="ফান্ড ও খাত সেটিংস"
-        subtitle="আয়ের ফান্ড ও ব্যয়ের বিভাগ, এবং তাদের খাত এখান থেকে যোগ/এডিট/ডিলিট করুন"
+        title={t.settingsTitle}
+        subtitle={t.settingsSubtitle}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -473,7 +457,7 @@ const AccountFundSettingsPage = () => {
                   className="h-9 shrink-0 gap-1 px-3 text-sm"
                 >
                   <Plus size={14} />
-                  {creatingFundType === config.type ? "সংরক্ষণ হচ্ছে..." : config.addButtonLabel}
+                  {creatingFundType === config.type ? c.saving : config.addButtonLabel}
                 </Button>
               </div>
 

@@ -10,6 +10,7 @@ import {
   UpdateClassRequestDto,
   UpdateDivisionRequestDto,
 } from "./meta.dto";
+import { t } from "../../shared/i18n";
 
 /** Deletes on this shared, global catalog can be blocked by real tenant
  * data (students/teachers/results/... all FK onto Class/Book with
@@ -34,10 +35,10 @@ export class MetaService {
 
   async createDivision(dto: CreateDivisionRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     const existing = await this.repository.findDivisionByNameBn(nameBn);
-    if (existing) throw new ConflictError("এই নামে বিভাগ ইতিমধ্যে আছে");
+    if (existing) throw new ConflictError(t({ bn: "এই নামে বিভাগ ইতিমধ্যে আছে", en: "A division with this name already exists" }));
 
     const maxOrder = await this.repository.findMaxDivisionSortOrder();
     return this.repository.createDivision({
@@ -52,20 +53,20 @@ export class MetaService {
     const rows = await this.repository.findAllDivisionIds();
     const allIds = rows.map((r) => r.id);
     const sameSet = allIds.length === orderedDivisionIds.length && allIds.every((id) => orderedDivisionIds.includes(id));
-    if (!sameSet) throw new BadRequestError("division_ids must match every existing division exactly");
+    if (!sameSet) throw new BadRequestError(t({ bn: "division_ids অবশ্যই বিদ্যমান সব বিভাগের সাথে হুবহু মিলতে হবে", en: "division_ids must match every existing division exactly" }));
 
     await this.repository.reorderDivisions(orderedDivisionIds);
   }
 
   async updateDivision(id: number, dto: UpdateDivisionRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     try {
       await this.repository.updateDivision(id, nameBn, parseInstitutionType(dto.institution_type));
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("বিভাগ পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "বিভাগ পাওয়া যায়নি", en: "Division not found" }));
       }
       throw err;
     }
@@ -76,10 +77,10 @@ export class MetaService {
       await this.repository.deleteDivision(id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("বিভাগ পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "বিভাগ পাওয়া যায়নি", en: "Division not found" }));
       }
       if (isInUseError(err)) {
-        throw new ConflictError("এই বিভাগটি ব্যবহারে আছে (শ্রেণি/ছাত্র/শিক্ষক যুক্ত আছে), মুছে ফেলা যাবে না");
+        throw new ConflictError(t({ bn: "এই বিভাগটি ব্যবহারে আছে (শ্রেণি/শিক্ষার্থী/শিক্ষক যুক্ত আছে), মুছে ফেলা যাবে না", en: "This division is in use (classes/students/teachers are linked) and cannot be deleted" }));
       }
       throw err;
     }
@@ -110,8 +111,8 @@ export class MetaService {
   async createClass(dto: CreateClassRequestDto) {
     const divisionId = Number(dto.division_id);
     const nameBn = String(dto.name_bn || "").trim();
-    if (!divisionId) throw new BadRequestError("division_id is required");
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     const maxOrder = await this.repository.findMaxClassSortOrder(divisionId);
 
@@ -124,7 +125,7 @@ export class MetaService {
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ConflictError("এই বিভাগে এই নামে শ্রেণি ইতিমধ্যে আছে");
+        throw new ConflictError(t({ bn: "এই বিভাগে এই নামে শ্রেণি ইতিমধ্যে আছে", en: "A class with this name already exists in this division" }));
       }
       throw err;
     }
@@ -132,27 +133,27 @@ export class MetaService {
 
   async updateClass(id: number, dto: UpdateClassRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     try {
       await this.repository.updateClass(id, nameBn);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("শ্রেণি পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "শ্রেণি পাওয়া যায়নি", en: "Class not found" }));
       }
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ConflictError("এই বিভাগে এই নামে শ্রেণি ইতিমধ্যে আছে");
+        throw new ConflictError(t({ bn: "এই বিভাগে এই নামে শ্রেণি ইতিমধ্যে আছে", en: "A class with this name already exists in this division" }));
       }
       throw err;
     }
   }
 
   async reorderClasses(divisionId: number, orderedClassIds: number[]) {
-    if (!divisionId) throw new BadRequestError("division_id is required");
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
     const rows = await this.repository.findClassIdsByDivision(divisionId);
     const allIds = rows.map((r) => r.id);
     const sameSet = allIds.length === orderedClassIds.length && allIds.every((id) => orderedClassIds.includes(id));
-    if (!sameSet) throw new BadRequestError("class_ids must match this division's classes exactly");
+    if (!sameSet) throw new BadRequestError(t({ bn: "class_ids অবশ্যই এই বিভাগের শ্রেণিগুলোর সাথে হুবহু মিলতে হবে", en: "class_ids must match this division's classes exactly" }));
 
     await this.repository.reorderClasses(divisionId, orderedClassIds);
   }
@@ -162,7 +163,7 @@ export class MetaService {
       await this.repository.toggleClassActive(id, isActive);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("শ্রেণি পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "শ্রেণি পাওয়া যায়নি", en: "Class not found" }));
       }
       throw err;
     }
@@ -173,11 +174,11 @@ export class MetaService {
       await this.repository.deleteClass(id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("শ্রেণি পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "শ্রেণি পাওয়া যায়নি", en: "Class not found" }));
       }
       if (isInUseError(err)) {
         throw new ConflictError(
-          "এই শ্রেণিটি ব্যবহারে আছে (ছাত্র/শিক্ষক/রেজাল্ট যুক্ত আছে), মুছে ফেলা যাবে না — চাইলে নিষ্ক্রিয় করুন",
+          t({ bn: "এই শ্রেণিটি ব্যবহারে আছে (শিক্ষার্থী/শিক্ষক/রেজাল্ট যুক্ত আছে), মুছে ফেলা যাবে না — চাইলে নিষ্ক্রিয় করুন", en: "This class is in use (students/teachers/results are linked) and cannot be deleted — deactivate it instead" }),
         );
       }
       throw err;
@@ -192,11 +193,11 @@ export class MetaService {
   async createBook(dto: CreateBookRequestDto) {
     const classId = Number(dto.class_id);
     const nameBn = String(dto.name_bn || "").trim();
-    if (!classId) throw new BadRequestError("class_id is required");
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     const existing = await this.repository.findBookByNameBn(classId, nameBn);
-    if (existing) throw new ConflictError("এই শ্রেণিতে এই নামে কিতাব ইতিমধ্যে আছে");
+    if (existing) throw new ConflictError(t({ bn: "এই শ্রেণিতে এই নামে বিষয় ইতিমধ্যে আছে", en: "A subject with this name already exists in this class" }));
 
     const maxOrder = await this.repository.findMaxBookSortOrder(classId);
 
@@ -209,34 +210,34 @@ export class MetaService {
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ConflictError("এই শ্রেণিতে এই নামে কিতাব ইতিমধ্যে আছে");
+        throw new ConflictError(t({ bn: "এই শ্রেণিতে এই নামে বিষয় ইতিমধ্যে আছে", en: "A subject with this name already exists in this class" }));
       }
       throw err;
     }
   }
 
   async reorderBooks(classId: number, orderedBookIds: number[]) {
-    if (!classId) throw new BadRequestError("class_id is required");
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
     const rows = await this.repository.findBookIdsByClass(classId);
     const allIds = rows.map((r) => r.id);
     const sameSet = allIds.length === orderedBookIds.length && allIds.every((id) => orderedBookIds.includes(id));
-    if (!sameSet) throw new BadRequestError("book_ids must match this class's books exactly");
+    if (!sameSet) throw new BadRequestError(t({ bn: "book_ids অবশ্যই এই শ্রেণির বিষয়গুলোর সাথে হুবহু মিলতে হবে", en: "book_ids must match this class's subjects exactly" }));
 
     await this.repository.reorderBooks(classId, orderedBookIds);
   }
 
   async updateBook(id: number, dto: UpdateBookRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError("name_bn is required");
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
 
     try {
       await this.repository.updateBook(id, nameBn);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("কিতাব পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found" }));
       }
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ConflictError("এই শ্রেণিতে এই নামে কিতাব ইতিমধ্যে আছে");
+        throw new ConflictError(t({ bn: "এই শ্রেণিতে এই নামে বিষয় ইতিমধ্যে আছে", en: "A subject with this name already exists in this class" }));
       }
       throw err;
     }
@@ -247,10 +248,10 @@ export class MetaService {
       await this.repository.deleteBook(id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        throw new NotFoundError("কিতাব পাওয়া যায়নি");
+        throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found" }));
       }
       if (isInUseError(err)) {
-        throw new ConflictError("এই কিতাবটি ব্যবহারে আছে (মার্ক/রেজাল্ট যুক্ত আছে), মুছে ফেলা যাবে না");
+        throw new ConflictError(t({ bn: "এই বিষয়টি ব্যবহারে আছে (মার্ক/রেজাল্ট যুক্ত আছে), মুছে ফেলা যাবে না", en: "This subject is in use (marks/results are linked) and cannot be deleted" }));
       }
       throw err;
     }

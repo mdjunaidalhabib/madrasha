@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText, useIsMadrasa, commonText, useLang, LOCALE_MAP } from "@madrasha/shared-ui/src/i18n";
+import { admissionText } from "./admission.text";
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
 
@@ -34,6 +36,10 @@ interface SessionItem {
 }
 
 const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors, isReturning }) => {
+  const t = useText(admissionText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const isMadrasa = useIsMadrasa();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
@@ -80,7 +86,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
   const formatAdmissionDate = (date: string) => {
     if (!date) return "";
-    return new Date(date).toLocaleDateString("en-GB", {
+    return new Date(date).toLocaleDateString(lang === "en" ? "en-GB" : LOCALE_MAP[lang], {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -210,12 +216,12 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
   return (
     <div className="bg-white shadow-lg p-6 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-100 dark:border-slate-700">ছাত্রের তথ্য</h2>
+      <h2 className="text-xl font-semibold mb-6 text-gray-700 border-b pb-3 dark:text-slate-100 dark:border-slate-700">{t.studentInfo}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            ছাত্রের নাম (বাংলা) <span className="text-red-500 dark:text-red-400">*</span>
+            {t.studentNameBn} <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <ScriptInput
             scriptLang="bn"
@@ -227,8 +233,9 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
           <ErrorText field="name" />
         </div>
 
+        {isMadrasa && (
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">ছাত্রের নাম (আরবি)</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.studentNameAr}</label>
           <ScriptInput
             scriptLang="ar"
             name="arabicName"
@@ -238,9 +245,10 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             className={inputClass("arabicName")}
           />
         </div>
+        )}
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">ছাত্রের নাম (ইংরেজি)</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.studentNameEn}</label>
           <ScriptInput
             scriptLang="en"
             name="nameEn"
@@ -252,7 +260,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">NID/জন্ম নিবন্ধন নম্বর</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.nidOrBirthReg}</label>
           <NumericInput
             name="nid"
             value={formData.nid || ""}
@@ -263,7 +271,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            বিভাগ <span className="text-red-500 dark:text-red-400">*</span>
+            {t.division} <span className="text-red-500 dark:text-red-400">*</span>
           </label>
 
           <select
@@ -272,7 +280,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             onChange={handleChange}
             className={inputClass("academicDivision")}
           >
-            <option value="">নির্বাচন করুন</option>
+            <option value="">{c.select}</option>
             {divisions.map((d) => (
               <option key={d.division_id} value={d.division_id}>
                 {d.division_name_bn}
@@ -285,7 +293,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
-            বর্তমান শ্রেণি <span className="text-red-500 dark:text-red-400">*</span>
+            {t.currentClass} <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <select
             name="currentClass"
@@ -294,7 +302,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             disabled={!classes.length || loadingClasses}
             className={inputClass("currentClass")}
           >
-            <option value="">{loadingClasses ? "লোড হচ্ছে..." : "নির্বাচন করুন"}</option>
+            <option value="">{loadingClasses ? c.loading : c.select}</option>
             {classes.map((c) => (
               <option key={c.class_id} value={c.class_id}>
                 {c.class_name_bn}
@@ -305,7 +313,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্বের শ্রেণি</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.previousClass}</label>
           <select
             name="previousClass"
             value={formData.previousClass || ""}
@@ -313,7 +321,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
             disabled={!classes.length || loadingClasses}
             className={inputClass("previousClass")}
           >
-            <option value="">{loadingClasses ? "লোড হচ্ছে..." : "নির্বাচন করুন"}</option>
+            <option value="">{loadingClasses ? c.loading : c.select}</option>
             {classes.map((c) => (
               <option key={c.class_id} value={c.class_id}>
                 {c.class_name_bn}
@@ -323,44 +331,44 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্ববর্তী প্রতিষ্ঠান</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.previousInstitution}</label>
           <input
             name="previousInstitution"
             value={formData.previousInstitution || ""}
             onChange={handleChange}
-            placeholder="পূর্ববর্তী প্রতিষ্ঠানের নাম"
+            placeholder={t.previousInstitutionPlaceholder}
             className={inputClass("previousInstitution")}
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">পূর্বের ফলাফল</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.previousResult}</label>
           <input
             name="previousResult"
             value={formData.previousResult || ""}
             onChange={handleChange}
-            placeholder="যেমন: মুমতায/জায়্যিদ জিদ্দান"
+            placeholder={isMadrasa ? t.previousResultPlaceholder : t.previousResultPlaceholderGeneric}
             className={inputClass("previousResult")}
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">লিঙ্গ</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.gender}</label>
           <select
             name="gender"
             value={formData.gender ?? ""}
             onChange={handleChange}
             className={inputClass("gender")}
           >
-            <option value="">নির্বাচন করুন</option>
-            <option value={1}>ছেলে</option>
-            <option value={2}>মেয়ে</option>
+            <option value="">{c.select}</option>
+            <option value={1}>{t.male}</option>
+            <option value={2}>{t.female}</option>
           </select>
         </div>
 
         <div>
           <CustomDatePicker
-            label="জন্ম তারিখ"
+            label={t.dob}
             value={formData.dob || ""}
             onChange={(date) => {
               setFormData((prev) => ({
@@ -377,15 +385,15 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         {/* শিক্ষাবর্ষ - বিভাগের চলমান সেশন অনুযায়ী সম্পূর্ণ স্বয়ংক্রিয়, ম্যানুয়ালি বদলানো যায় না */}
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">শিক্ষাবর্ষ</label>
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.session}</label>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
+              {t.auto}
             </span>
           </div>
           <input
             type="text"
             value={formData.academicYear || ""}
-            placeholder={selectedDivisionId ? "কোনো সক্রিয় সেশন পাওয়া যায়নি" : "প্রথমে বিভাগ নির্বাচন করুন"}
+            placeholder={selectedDivisionId ? t.noActiveSession : t.selectDivisionFirst}
             readOnly
             aria-readonly="true"
             className={`${inputClass("academicYear")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
@@ -395,16 +403,16 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">রোল নম্বর</label>
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.rollNo}</label>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
+              {t.auto}
             </span>
           </div>
 
           <input
             type="text"
             value={formData.roll || ""}
-            placeholder="শ্রেণি নির্বাচন করলে সম্ভাব্য রোল দেখা যাবে"
+            placeholder={t.rollPlaceholder}
             readOnly
             aria-readonly="true"
             className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
@@ -413,14 +421,14 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির ধরন</label>
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.admissionType}</label>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
+              {t.auto}
             </span>
           </div>
           <input
             type="text"
-            value={isReturning ? "পুনঃভর্তি (পুরাতন)" : "নতুন"}
+            value={isReturning ? t.readmission : t.newAdmission}
             readOnly
             aria-readonly="true"
             className="border rounded-lg px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
@@ -429,9 +437,9 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">ভর্তির তারিখ</label>
+            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.admissionDate}</label>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              স্বয়ংক্রিয়
+              {t.auto}
             </span>
           </div>
           <input
@@ -444,7 +452,7 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">বয়স</label>
+          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.age}</label>
           <input
             name="age"
             value={formData.age || ""}

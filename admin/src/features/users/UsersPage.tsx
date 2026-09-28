@@ -11,6 +11,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../components/settings/SectionCard";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { usersText } from "./users.text";
 
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
@@ -21,6 +23,8 @@ const emptyForm = { name: "", email: "", password: "", role_id: "" };
 const fieldLabelClass = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400";
 
 const UsersPage = () => {
+  const t = useText(usersText);
+  const c = useText(commonText);
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,7 +70,7 @@ const UsersPage = () => {
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.role_id) {
-      useToastStore.getState().show("নাম, ইমেইল, পাসওয়ার্ড ও রোল দিন", "error");
+      useToastStore.getState().show(t.fillRequired, "error");
       return;
     }
     try {
@@ -77,12 +81,12 @@ const UsersPage = () => {
         password: form.password,
         role_id: Number(form.role_id),
       });
-      useToastStore.getState().show("ইউজার তৈরি হয়েছে", "success");
+      useToastStore.getState().show(t.userCreated, "success");
       setForm(emptyForm);
       setShowPassword(false);
       load();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "ইউজার তৈরি করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.createFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCreating(false);
@@ -92,10 +96,10 @@ const UsersPage = () => {
   const handleRoleChange = async (user: UserItem, roleId: number) => {
     try {
       await userAdminApi.update(user.id, { role_id: roleId });
-      useToastStore.getState().show("রোল পরিবর্তন করা হয়েছে", "success");
+      useToastStore.getState().show(t.roleChanged, "success");
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, roleId } : u)));
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "রোল পরিবর্তন করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.roleChangeFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -108,7 +112,7 @@ const UsersPage = () => {
         prev.map((u) => (u.id === user.id ? { ...u, isActive: nextActive ? 1 : 0 } : u)),
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আপডেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.updateFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
@@ -119,31 +123,31 @@ const UsersPage = () => {
   const handleSaveMobile = async (user: UserItem) => {
     try {
       await userAdminApi.update(user.id, { mobile: mobileDraft.trim() });
-      useToastStore.getState().show("মোবাইল নম্বর সংরক্ষণ হয়েছে", "success");
+      useToastStore.getState().show(t.mobileSaved, "success");
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, mobile: mobileDraft.trim() || null } : u)),
       );
       setMobileEditId(null);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "মোবাইল সংরক্ষণ করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.mobileSaveFailed;
       useToastStore.getState().show(msg, "error");
     }
   };
 
   const handleResetPassword = async (user: UserItem) => {
     if (!resetPassword || resetPassword.length < 6) {
-      useToastStore.getState().show("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", "error");
+      useToastStore.getState().show(t.passwordMin6, "error");
       return;
     }
     try {
       setResetSubmitting(true);
       await userAdminApi.resetPassword(user.id, resetPassword);
-      useToastStore.getState().show(`"${user.name}"-এর পাসওয়ার্ড রিসেট হয়েছে`, "success");
+      useToastStore.getState().show(t.passwordReset(user.name), "success");
       setResetTargetId(null);
       setResetPassword("");
       setResetShowPassword(false);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.passwordResetFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setResetSubmitting(false);
@@ -154,10 +158,10 @@ const UsersPage = () => {
     try {
       setUnlockingId(user.id);
       await userAdminApi.unlock(user.id);
-      useToastStore.getState().show(`"${user.name}"-এর অ্যাকাউন্ট আনলক হয়েছে`, "success");
+      useToastStore.getState().show(t.unlocked(user.name), "success");
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, lockedUntil: null } : u)));
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "আনলক করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || t.unlockFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setUnlockingId(null);
@@ -166,17 +170,17 @@ const UsersPage = () => {
 
   const handleDelete = (user: UserItem) => {
     useConfirmStore.getState().show({
-      title: "ইউজার ডিলিট করুন",
-      message: `"${user.name}" (${user.email}) কে স্থায়ীভাবে মুছে ফেলতে চান? তিনি আর এই প্যানেলে লগইন করতে পারবেন না।`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(user.name, user.email),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await userAdminApi.remove(user.id);
-          useToastStore.getState().show("ইউজার মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(t.userDeleted, "success");
           setUsers((prev) => prev.filter((u) => u.id !== user.id));
         } catch (err: any) {
-          const msg = err?.response?.data?.message || "মুছতে সমস্যা হয়েছে";
+          const msg = err?.response?.data?.message || c.deleteFailed;
           useToastStore.getState().show(msg, "error");
         }
       },
@@ -186,17 +190,17 @@ const UsersPage = () => {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="স্টাফ ব্যবস্থাপনা"
-        subtitle="যারা এই প্যানেলে লগইন করবে তাদের অ্যাকাউন্ট তৈরি ও রোল নির্ধারণ করুন"
+        title={t.title}
+        subtitle={t.subtitle}
       />
 
-      <SectionCard title="নতুন ইউজার যোগ করুন">
+      <SectionCard title={t.addNewUser}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className={fieldLabelClass}>নাম</label>
+            <label className={fieldLabelClass}>{c.name}</label>
             <Input
               type="text"
-              placeholder="স্টাফের নাম"
+              placeholder={t.staffName}
               name="staff-name"
               autoComplete="off"
               value={form.name}
@@ -206,10 +210,10 @@ const UsersPage = () => {
           </div>
 
           <div>
-            <label className={fieldLabelClass}>ইমেইল</label>
+            <label className={fieldLabelClass}>{c.email}</label>
             <Input
               type="email"
-              placeholder="লগইন ইমেইল"
+              placeholder={t.loginEmail}
               name="staff-email"
               autoComplete="off"
               value={form.email}
@@ -219,11 +223,11 @@ const UsersPage = () => {
           </div>
 
           <div>
-            <label className={fieldLabelClass}>পাসওয়ার্ড</label>
+            <label className={fieldLabelClass}>{t.password}</label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="কমপক্ষে ৬ অক্ষর"
+                placeholder={t.min6Chars}
                 name="staff-new-password"
                 autoComplete="new-password"
                 value={form.password}
@@ -234,7 +238,7 @@ const UsersPage = () => {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
-                aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -243,13 +247,13 @@ const UsersPage = () => {
           </div>
 
           <div>
-            <label className={fieldLabelClass}>রোল</label>
+            <label className={fieldLabelClass}>{t.role}</label>
             <select
               value={form.role_id}
               onChange={(e) => setForm((p) => ({ ...p, role_id: e.target.value }))}
               className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
-              <option value="">রোল নির্বাচন করুন</option>
+              <option value="">{t.selectRole}</option>
               {assignableRoles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name_bn}
@@ -261,20 +265,20 @@ const UsersPage = () => {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4 dark:border-slate-800">
           <p className="text-xs text-gray-400 dark:text-slate-500">
-            মুহতামিম রোল এখান থেকে দেওয়া যায় না — প্রতিটি মাদ্রাসার একজনই ডিফল্ট মুহতামিম থাকতে পারেন।
+            {t.headRoleNote}
           </p>
           <Button disabled={creating} onClick={handleCreate} className="gap-1.5">
             {!creating && <Plus size={15} />}
-            {creating ? "তৈরি হচ্ছে..." : "যোগ করুন"}
+            {creating ? t.creating : c.add}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title="সব ইউজার">
+      <SectionCard title={t.allUsers}>
         {loading ? (
           <SkeletonList items={6} />
         ) : users.length === 0 ? (
-          <EmptyState title="কোনো ইউজার নেই" />
+          <EmptyState title={t.noUsers} />
         ) : (
           <div className="space-y-3">
             {users.map((user) => (
@@ -292,17 +296,17 @@ const UsersPage = () => {
                     </span>
                     {user.isMuhtamim && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                        ডিফল্ট মুহতামিম
+                        {t.defaultHead}
                       </span>
                     )}
                     {!user.isActive && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                        নিষ্ক্রিয়
+                        {c.inactive}
                       </span>
                     )}
                     {isLocked(user) && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                        <Lock size={10} /> লকড
+                        <Lock size={10} /> {t.locked}
                       </span>
                     )}
                   </div>
@@ -311,7 +315,7 @@ const UsersPage = () => {
                       <>
                         <Input
                           type="text"
-                          placeholder="মোবাইল নম্বর"
+                          placeholder={t.mobileNumber}
                           autoComplete="off"
                           value={mobileDraft}
                           onChange={(e) => setMobileDraft(e.target.value)}
@@ -323,14 +327,14 @@ const UsersPage = () => {
                           onClick={() => handleSaveMobile(user)}
                           className="text-blue-600 hover:underline dark:text-blue-400"
                         >
-                          সংরক্ষণ
+                          {t.save}
                         </button>
                         <button
                           type="button"
                           onClick={() => setMobileEditId(null)}
                           className="text-gray-400 hover:underline"
                         >
-                          বাতিল
+                          {c.cancel}
                         </button>
                       </>
                     ) : (
@@ -342,7 +346,7 @@ const UsersPage = () => {
                         }}
                         className="hover:underline"
                       >
-                        {user.mobile || "মোবাইল যোগ করুন"}
+                        {user.mobile || t.addMobile}
                       </button>
                     )}
                   </div>
@@ -353,7 +357,7 @@ const UsersPage = () => {
                     value={user.roleId}
                     onChange={(e) => handleRoleChange(user, Number(e.target.value))}
                     disabled={user.isMuhtamim}
-                    title={user.isMuhtamim ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন" : undefined}
+                    title={user.isMuhtamim ? t.superAdminOnly : undefined}
                     className="h-9 rounded-lg border border-gray-300 px-2 text-xs outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
                   >
                     {/* মুহতামিমের নিজের রোলটা তালিকায় না থাকলে select-এ ভুল
@@ -375,10 +379,10 @@ const UsersPage = () => {
                     disabled={user.isMuhtamim}
                     title={
                       user.isMuhtamim
-                        ? "শুধু সুপার অ্যাডমিন এটি পরিবর্তন করতে পারবেন"
+                        ? t.superAdminOnly
                         : user.isActive
-                          ? "নিষ্ক্রিয় করুন"
-                          : "সক্রিয় করুন"
+                          ? t.deactivate
+                          : t.activate
                     }
                   />
                   {!user.isMuhtamim && isLocked(user) && (
@@ -387,10 +391,10 @@ const UsersPage = () => {
                       onClick={() => handleUnlock(user)}
                       disabled={unlockingId === user.id}
                       className="inline-flex items-center gap-1 rounded-lg border border-amber-300 px-2 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-60 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40"
-                      title="অ্যাকাউন্ট আনলক করুন"
+                      title={t.unlockAccount}
                     >
                       <Unlock size={14} />
-                      {unlockingId === user.id ? "আনলক হচ্ছে..." : "আনলক"}
+                      {unlockingId === user.id ? t.unlocking : t.unlock}
                     </button>
                   )}
                   {!user.isMuhtamim && (
@@ -402,7 +406,7 @@ const UsersPage = () => {
                         setResetShowPassword(false);
                       }}
                       className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                      title="পাসওয়ার্ড রিসেট করুন"
+                      title={t.resetPassword}
                     >
                       <KeyRound size={16} />
                     </button>
@@ -412,7 +416,7 @@ const UsersPage = () => {
                       type="button"
                       onClick={() => handleDelete(user)}
                       className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-                      title="মুছুন"
+                      title={c.delete}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -425,7 +429,7 @@ const UsersPage = () => {
                   <div className="relative">
                     <Input
                       type={resetShowPassword ? "text" : "password"}
-                      placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)"
+                      placeholder={t.newPasswordMin6}
                       autoComplete="new-password"
                       value={resetPassword}
                       onChange={(e) => setResetPassword(e.target.value)}
@@ -446,14 +450,14 @@ const UsersPage = () => {
                     onClick={() => handleResetPassword(user)}
                     className="h-9 px-3 text-xs"
                   >
-                    {resetSubmitting ? "সংরক্ষণ হচ্ছে..." : "পাসওয়ার্ড সেট করুন"}
+                    {resetSubmitting ? c.saving : t.setPassword}
                   </Button>
                   <button
                     type="button"
                     onClick={() => setResetTargetId(null)}
                     className="text-xs text-gray-400 hover:underline"
                   >
-                    বাতিল
+                    {c.cancel}
                   </button>
                 </div>
               )}

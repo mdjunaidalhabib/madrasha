@@ -28,6 +28,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_TYPES,
 } from "./fee.constants";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) =>
   value === undefined || value === null || String(value).trim() === "";
@@ -40,7 +41,7 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 const toAmount = (value: unknown, label: string): number => {
   const amount = Number(value);
   if (Number.isNaN(amount) || amount <= 0)
-    throw new BadRequestError(`${label} must be a positive number`);
+    throw new BadRequestError(t({ bn: `${label} অবশ্যই ধনাত্মক সংখ্যা হতে হবে`, en: `${label} must be a positive number`, ar: `يجب أن يكون ${label} عددًا موجبًا` }));
   return amount;
 };
 
@@ -201,7 +202,7 @@ export class FeeService {
   ) {
     if (!isEmpty(dto.session_id)) {
       const session = await this.repository.findSessionForTenant(madrasaId, Number(dto.session_id));
-      if (!session) throw new BadRequestError("Selected session not found");
+      if (!session) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found", ar: "لم يتم العثور على العام الدراسي المختار" }));
       return session;
     }
     if (!isEmpty(dto.academic_year)) {
@@ -211,7 +212,7 @@ export class FeeService {
       );
       if (session) return session;
     }
-    throw new BadRequestError("session_id is required");
+    throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required", ar: "session_id مطلوب" }));
   }
 
   /* ================= FEE STRUCTURE ================= */
@@ -243,7 +244,7 @@ export class FeeService {
         return a.id - b.id;
       });
     } catch (err) {
-      return friendlyFailure("listFeeStructures error:", err, "Failed to load fee structures");
+      return friendlyFailure("listFeeStructures error:", err, t({ bn: "ফি কাঠামো লোড করা যায়নি", en: "Failed to load fee structures", ar: "تعذر تحميل هياكل الرسوم" }));
     }
   }
 
@@ -254,7 +255,7 @@ export class FeeService {
     try {
       return await this.repository.findExamsForTenant(madrasaId);
     } catch (err) {
-      return friendlyFailure("listExamsForFeeLinking error:", err, "Failed to load exams");
+      return friendlyFailure("listExamsForFeeLinking error:", err, t({ bn: "পরীক্ষার তালিকা লোড করা যায়নি", en: "Failed to load exams", ar: "تعذر تحميل الامتحانات" }));
     }
   }
 
@@ -269,17 +270,17 @@ export class FeeService {
     const id = Number(examId);
     const exams = await this.repository.findExamsForTenant(madrasaId);
     if (!exams.some((e) => e.id === id)) {
-      throw new BadRequestError("নির্বাচিত পরীক্ষা খুঁজে পাওয়া যায়নি");
+      throw new BadRequestError(t({ bn: "নির্বাচিত পরীক্ষা খুঁজে পাওয়া যায়নি", en: "The selected exam was not found", ar: "لم يتم العثور على الامتحان المختار" }));
     }
     return id;
   }
 
   async createStructure(madrasaId: number, dto: CreateFeeStructureRequestDto) {
     if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency)) {
-      throw new BadRequestError("name, amount and frequency are required");
+      throw new BadRequestError(t({ bn: "নাম, পরিমাণ ও ফ্রিকোয়েন্সি আবশ্যক", en: "name, amount and frequency are required", ar: "الاسم والمبلغ والتكرار مطلوبة" }));
     }
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-      throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
+      throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
     }
     const amount = toAmount(dto.amount, "amount");
     const session = await this.resolveSession(madrasaId, dto);
@@ -297,7 +298,7 @@ export class FeeService {
         examId,
       });
     } catch (err) {
-      return friendlyFailure("createFeeStructure error:", err, "Failed to create fee structure");
+      return friendlyFailure("createFeeStructure error:", err, t({ bn: "ফি কাঠামো তৈরি করা যায়নি", en: "Failed to create fee structure", ar: "تعذر إنشاء هيكل الرسوم" }));
     }
   }
 
@@ -309,7 +310,7 @@ export class FeeService {
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
     if (dto.frequency !== undefined) {
       if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-        throw new BadRequestError("frequency must be ONE_TIME, MONTHLY or YEARLY");
+        throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
       }
       data.frequency = dto.frequency;
     }
@@ -324,33 +325,33 @@ export class FeeService {
     if (dto.exam_id !== undefined) {
       data.examId = await this.resolveExamId(madrasaId, dto.exam_id);
     }
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     // A পরীক্ষার ফি row is switched on only through ইহতেমাম's per-exam
     // switch (ExamFeeService.setFeeActive), which checks the exam is on.
     if (data.isActive === true) {
       const existing = await this.repository.findStructureForTenant(id, madrasaId);
       if (existing?.examId) {
-        throw new BadRequestError("পরীক্ষার ফি 'পরীক্ষার ফি' টেবিলের চালু/বন্ধ সুইচ থেকে চালু করুন");
+        throw new BadRequestError(t({ bn: "পরীক্ষার ফি 'পরীক্ষার ফি' টেবিলের চালু/বন্ধ সুইচ থেকে চালু করুন", en: "Enable exam fees from the on/off switch in the 'Exam fee' table", ar: "فعّل رسوم الامتحان من مفتاح التشغيل/الإيقاف في جدول 'رسوم الامتحان'" }));
       }
     }
 
     try {
       const result = await this.repository.updateStructure(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Fee structure not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ফি কাঠামো পাওয়া যায়নি", en: "Fee structure not found", ar: "لم يتم العثور على هيكل الرسوم" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateFeeStructure error:", err, "Failed to update fee structure");
+      return friendlyFailure("updateFeeStructure error:", err, t({ bn: "ফি কাঠামো আপডেট করা যায়নি", en: "Failed to update fee structure", ar: "تعذر تحديث هيكل الرسوم" }));
     }
   }
 
   async deleteStructure(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteStructure(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Fee structure not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ফি কাঠামো পাওয়া যায়নি", en: "Fee structure not found", ar: "لم يتم العثور على هيكل الرسوم" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteFeeStructure error:", err, "Failed to delete fee structure");
+      return friendlyFailure("deleteFeeStructure error:", err, t({ bn: "ফি কাঠামো মুছে ফেলা যায়নি", en: "Failed to delete fee structure", ar: "تعذر حذف هيكل الرسوم" }));
     }
   }
 
@@ -367,7 +368,7 @@ export class FeeService {
       if (count === 0) await this.repository.seedDefaultCategories(madrasaId);
       return await this.repository.findCategories(madrasaId);
     } catch (err) {
-      return friendlyFailure("getFeeCategories error:", err, "Failed to load fee categories");
+      return friendlyFailure("getFeeCategories error:", err, t({ bn: "ফি ধরণ লোড করা যায়নি", en: "Failed to load fee categories", ar: "تعذر تحميل أنواع الرسوم" }));
     }
   }
 
@@ -384,7 +385,7 @@ export class FeeService {
 
   async createCategory(madrasaId: number, dto: CreateFeeCategoryRequestDto) {
     const name = String(dto.name || "").trim();
-    if (!name) throw new BadRequestError("নাম দিন");
+    if (!name) throw new BadRequestError(t({ bn: "নাম দিন", en: "Enter a name", ar: "أدخل الاسم" }));
 
     try {
       const sortOrder = await this.repository.nextCategorySortOrder(madrasaId);
@@ -395,24 +396,24 @@ export class FeeService {
         sortOrder,
       });
     } catch (err) {
-      return friendlyFailure("createFeeCategory error:", err, "Failed to create fee category");
+      return friendlyFailure("createFeeCategory error:", err, t({ bn: "ফি ধরণ তৈরি করা যায়নি", en: "Failed to create fee category", ar: "تعذر إنشاء نوع الرسوم" }));
     }
   }
 
   async updateCategory(id: number, madrasaId: number, dto: UpdateFeeCategoryRequestDto) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError("Fee category not found");
+    if (!existing) throw new NotFoundError(t({ bn: "ফি ধরণ পাওয়া যায়নি", en: "Fee category not found", ar: "لم يتم العثور على نوع الرسوم" }));
 
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) {
       const name = String(dto.name).trim();
-      if (!name) throw new BadRequestError("নাম দিন");
+      if (!name) throw new BadRequestError(t({ bn: "নাম দিন", en: "Enter a name", ar: "أدخل الاسم" }));
       data.name = name;
     }
     if (dto.is_admission_type !== undefined) data.isAdmissionType = Boolean(dto.is_admission_type);
     if (dto.sort_order !== undefined) data.sortOrder = Number(dto.sort_order);
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     try {
       await this.repository.updateCategory(id, data);
@@ -427,18 +428,18 @@ export class FeeService {
         );
       }
     } catch (err) {
-      return friendlyFailure("updateFeeCategory error:", err, "Failed to update fee category");
+      return friendlyFailure("updateFeeCategory error:", err, t({ bn: "ফি ধরণ আপডেট করা যায়নি", en: "Failed to update fee category", ar: "تعذر تحديث نوع الرسوم" }));
     }
   }
 
   async deleteCategory(id: number, madrasaId: number) {
     const existing = await this.repository.findCategoryForTenant(id, madrasaId);
-    if (!existing) throw new NotFoundError("Fee category not found");
+    if (!existing) throw new NotFoundError(t({ bn: "ফি ধরণ পাওয়া যায়নি", en: "Fee category not found", ar: "لم يتم العثور على نوع الرسوم" }));
 
     try {
       await this.repository.deleteCategory(id);
     } catch (err) {
-      return friendlyFailure("deleteFeeCategory error:", err, "Failed to delete fee category");
+      return friendlyFailure("deleteFeeCategory error:", err, t({ bn: "ফি ধরণ মুছে ফেলা যায়নি", en: "Failed to delete fee category", ar: "تعذر حذف نوع الرسوم" }));
     }
   }
 
@@ -507,7 +508,7 @@ export class FeeService {
    * Invoice rows exist yet at that point (see StudentService.approveAdmission). */
   async previewStudentFees(madrasaId: number, studentId: number) {
     const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
-    if (!student) throw new NotFoundError("Student not found");
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
 
     const structures = await this.repository.findActiveStructuresForBilling(
       madrasaId,
@@ -548,9 +549,9 @@ export class FeeService {
     setById: number | undefined,
   ) {
     const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
-    if (!student) throw new NotFoundError("Student not found");
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
     if (student.admissionStatus !== "PENDING") {
-      throw new BadRequestError("এই সুবিধা শুধুমাত্র পেন্ডিং ভর্তির জন্য প্রযোজ্য");
+      throw new BadRequestError(t({ bn: "এই সুবিধা শুধুমাত্র পেন্ডিং ভর্তির জন্য প্রযোজ্য", en: "This option applies only to pending admissions", ar: "هذا الخيار متاح فقط لطلبات القبول المعلقة" }));
     }
 
     const structures = await this.repository.findActiveStructuresForBilling(
@@ -559,12 +560,12 @@ export class FeeService {
       student.sessionId,
     );
     if (!structures.some((s) => s.id === feeStructureId)) {
-      throw new BadRequestError("এই ছাত্রের জন্য এই ফি প্রযোজ্য নয়");
+      throw new BadRequestError(t({ bn: "এই শিক্ষার্থীর জন্য এই ফি প্রযোজ্য নয়", en: "This fee does not apply to this student", ar: "هذه الرسوم لا تنطبق على هذا الطالب" }));
     }
 
     const amount = Number(dto.amount);
-    if (Number.isNaN(amount) || amount < 0) throw new BadRequestError("সঠিক পরিমাণ দিন");
-    if (amount > 0 && !dto.reason?.trim()) throw new BadRequestError("কারণ লিখুন");
+    if (Number.isNaN(amount) || amount < 0) throw new BadRequestError(t({ bn: "সঠিক পরিমাণ দিন", en: "Enter a valid amount", ar: "أدخل مبلغًا صحيحًا" }));
+    if (amount > 0 && !dto.reason?.trim()) throw new BadRequestError(t({ bn: "কারণ লিখুন", en: "Enter a reason", ar: "أدخل السبب" }));
 
     await this.repository.upsertStudentFeeDiscount(
       madrasaId,
@@ -823,7 +824,7 @@ export class FeeService {
     try {
       return await this.repository.findInvoices(madrasaId, where);
     } catch (err) {
-      return friendlyFailure("listInvoices error:", err, "Failed to load invoices");
+      return friendlyFailure("listInvoices error:", err, t({ bn: "ইনভয়েস লোড করা যায়নি", en: "Failed to load invoices", ar: "تعذر تحميل الفواتير" }));
     }
   }
 
@@ -897,7 +898,7 @@ export class FeeService {
 
       return { students, studentCount: students.length, invoiceCount: invoices.length, totalDue };
     } catch (err) {
-      return friendlyFailure("listOverdueFees error:", err, "Failed to load overdue fees");
+      return friendlyFailure("listOverdueFees error:", err, t({ bn: "বকেয়া ফি লোড করা যায়নি", en: "Failed to load overdue fees", ar: "تعذر تحميل الرسوم المتأخرة" }));
     }
   }
 
@@ -912,7 +913,7 @@ export class FeeService {
       const admissionFeeTypes = await this.getAdmissionCategoryNames(madrasaId);
       return await this.repository.findPendingInvoices(madrasaId, limit, offset, admissionFeeTypes);
     } catch (err) {
-      return friendlyFailure("listPendingInvoices error:", err, "Failed to load pending invoices");
+      return friendlyFailure("listPendingInvoices error:", err, t({ bn: "পেন্ডিং ইনভয়েস লোড করা যায়নি", en: "Failed to load pending invoices", ar: "تعذر تحميل الفواتير المعلقة" }));
     }
   }
 
@@ -929,7 +930,7 @@ export class FeeService {
       return friendlyFailure(
         "clearPendingInvoices error:",
         err,
-        "Failed to clear the pending list",
+        t({ bn: "পেন্ডিং তালিকা ক্লিয়ার করা যায়নি", en: "Failed to clear the pending list", ar: "تعذر مسح القائمة المعلقة" }),
       );
     }
   }
@@ -950,19 +951,19 @@ export class FeeService {
     options: { notifyGuardian?: boolean } = {},
   ) {
     if (isEmpty(dto.amount) || isEmpty(dto.method)) {
-      throw new BadRequestError("টাকার পরিমাণ ও পেমেন্ট পদ্ধতি দিন");
+      throw new BadRequestError(t({ bn: "টাকার পরিমাণ ও পেমেন্ট পদ্ধতি দিন", en: "Enter the amount and payment method", ar: "أدخل المبلغ وطريقة الدفع" }));
     }
     if (!PAYMENT_METHODS.includes(String(dto.method).toUpperCase() as any)) {
-      throw new BadRequestError("সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন");
+      throw new BadRequestError(t({ bn: "সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন", en: "Select a valid payment method", ar: "اختر طريقة دفع صحيحة" }));
     }
     const paymentAmount = toAmount(dto.amount, "amount");
 
     let paidAt = new Date();
     if (!isEmpty(dto.paid_at)) {
       const parsed = new Date(String(dto.paid_at));
-      if (Number.isNaN(parsed.getTime())) throw new BadRequestError("পরিশোধের তারিখ সঠিক নয়");
+      if (Number.isNaN(parsed.getTime())) throw new BadRequestError(t({ bn: "পরিশোধের তারিখ সঠিক নয়", en: "Invalid payment date", ar: "تاريخ الدفع غير صالح" }));
       if (parsed.getTime() > Date.now() + 60_000)
-        throw new BadRequestError("পরিশোধের তারিখ ভবিষ্যতের হতে পারে না");
+        throw new BadRequestError(t({ bn: "পরিশোধের তারিখ ভবিষ্যতের হতে পারে না", en: "Payment date cannot be in the future", ar: "لا يمكن أن يكون تاريخ الدفع في المستقبل" }));
       paidAt = parsed;
     }
 
@@ -972,7 +973,7 @@ export class FeeService {
         Number(dto.payment_method_setting_id),
         madrasaId,
       );
-      if (!setting) throw new NotFoundError("নির্বাচিত পেমেন্ট মাধ্যমটি সেটআপ করা নেই");
+      if (!setting) throw new NotFoundError(t({ bn: "নির্বাচিত পেমেন্ট মাধ্যমটি সেটআপ করা নেই", en: "The selected payment method is not set up", ar: "طريقة الدفع المختارة غير مُعدّة" }));
       methodLabel = setting.label;
     }
 
@@ -984,7 +985,7 @@ export class FeeService {
     const feeCategory = incomeFunds[0]?.categories[0];
     if (!feeFund || !feeCategory) {
       throw new BadRequestError(
-        "হিসাব বিভাগে কোনো আয় ফান্ড/খাত সেটআপ করা নেই - প্রথমে ফান্ড ও খাত সেটিংসে একটি যোগ করুন",
+        t({ bn: "হিসাব বিভাগে কোনো আয় ফান্ড/খাত সেটআপ করা নেই - প্রথমে ফান্ড ও খাত সেটিংসে একটি যোগ করুন", en: "No income fund/category is set up in Accounts - add one in Fund & Category settings first", ar: "لم يتم إعداد أي صندوق/بند دخل في الحسابات - أضف واحدًا من إعدادات الصناديق والبنود أولًا" }),
       );
     }
 
@@ -1000,16 +1001,16 @@ export class FeeService {
     try {
       result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
-        if (!invoice) throw new NotFoundError("ইনভয়েসটি পাওয়া যায়নি");
+        if (!invoice) throw new NotFoundError(t({ bn: "ইনভয়েসটি পাওয়া যায়নি", en: "Invoice not found", ar: "لم يتم العثور على الفاتورة" }));
         if (invoice.status === "PAID")
-          throw new BadRequestError("এই ইনভয়েসটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত");
+          throw new BadRequestError(t({ bn: "এই ইনভয়েসটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত", en: "This invoice is already fully paid", ar: "هذه الفاتورة مدفوعة بالكامل بالفعل" }));
 
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
         const alreadyWaived = Number(invoice.waivedAmount);
         const remaining = invoiceAmount - alreadyPaid - alreadyWaived;
         if (paymentAmount > remaining + 0.01) {
-          throw new BadRequestError(`পরিশোধের পরিমাণ বাকি টাকার (৳${remaining}) চেয়ে বেশি`);
+          throw new BadRequestError(t({ bn: `পরিশোধের পরিমাণ বাকি টাকার (৳${remaining}) চেয়ে বেশি`, en: `The payment amount exceeds the remaining due (৳${remaining})`, ar: `مبلغ الدفع يتجاوز المبلغ المتبقي (৳${remaining})` }));
         }
 
         const newPaidAmount = alreadyPaid + paymentAmount;
@@ -1064,7 +1065,7 @@ export class FeeService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("recordPayment error:", err, "পেমেন্ট রেকর্ড করা যায়নি");
+      return friendlyFailure("recordPayment error:", err, t({ bn: "পেমেন্ট রেকর্ড করা যায়নি", en: "Failed to record the payment", ar: "تعذر تسجيل الدفعة" }));
     }
 
     // Fire-and-forget: notify the guardian and write the activity log entry.
@@ -1136,13 +1137,13 @@ export class FeeService {
   }
 
   private async requireExamAndClass(madrasaId: number, examId: number, classId: number) {
-    if (!examId || !classId) throw new BadRequestError("পরীক্ষা ও শ্রেণি নির্বাচন করুন");
+    if (!examId || !classId) throw new BadRequestError(t({ bn: "পরীক্ষা ও শ্রেণি নির্বাচন করুন", en: "Select an exam and a class", ar: "اختر الامتحان والصف" }));
     const [exam, cls] = await Promise.all([
       this.repository.findExamForTenant(madrasaId, examId),
       this.repository.findClassName(madrasaId, classId),
     ]);
-    if (!exam) throw new NotFoundError("পরীক্ষাটি পাওয়া যায়নি");
-    if (!cls) throw new NotFoundError("শ্রেণিটি পাওয়া যায়নি");
+    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষাটি পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
+    if (!cls) throw new NotFoundError(t({ bn: "শ্রেণিটি পাওয়া যায়নি", en: "Class not found", ar: "لم يتم العثور على الصف" }));
     return { exam, cls };
   }
 
@@ -1200,19 +1201,19 @@ export class FeeService {
   async bulkPayExamFee(madrasaId: number, receivedById: number | undefined, dto: BulkExamFeePaymentRequestDto) {
     const examId = Number(dto?.exam_id);
     const classId = Number(dto?.class_id);
-    if (!examId || !classId) throw new BadRequestError("পরীক্ষা ও শ্রেণি নির্বাচন করুন");
+    if (!examId || !classId) throw new BadRequestError(t({ bn: "পরীক্ষা ও শ্রেণি নির্বাচন করুন", en: "Select an exam and a class", ar: "اختر الامتحان والصف" }));
     if (!Array.isArray(dto.invoice_ids) || dto.invoice_ids.length === 0) {
-      throw new BadRequestError("অন্তত একজন ছাত্র নির্বাচন করুন");
+      throw new BadRequestError(t({ bn: "অন্তত একজন শিক্ষার্থী নির্বাচন করুন", en: "Select at least one student", ar: "اختر طالبًا واحدًا على الأقل" }));
     }
     const invoiceIds = [
       ...new Set(dto.invoice_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0)),
     ];
-    if (invoiceIds.length === 0) throw new BadRequestError("অন্তত একজন ছাত্র নির্বাচন করুন");
-    if (invoiceIds.length > 500) throw new BadRequestError("একবারে সর্বোচ্চ ৫০০টি ইনভয়েস গ্রহণ করা যাবে");
+    if (invoiceIds.length === 0) throw new BadRequestError(t({ bn: "অন্তত একজন শিক্ষার্থী নির্বাচন করুন", en: "Select at least one student", ar: "اختر طالبًا واحدًا على الأقل" }));
+    if (invoiceIds.length > 500) throw new BadRequestError(t({ bn: "একবারে সর্বোচ্চ ৫০০টি ইনভয়েস গ্রহণ করা যাবে", en: "At most 500 invoices can be collected at once", ar: "يمكن تحصيل 500 فاتورة كحد أقصى دفعة واحدة" }));
     // Request-level checks up front, so a bad method fails the whole request
     // once instead of every invoice separately.
     if (isEmpty(dto.method) || !PAYMENT_METHODS.includes(String(dto.method).toUpperCase() as any)) {
-      throw new BadRequestError("সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন");
+      throw new BadRequestError(t({ bn: "সঠিক পেমেন্ট পদ্ধতি নির্বাচন করুন", en: "Select a valid payment method", ar: "اختر طريقة دفع صحيحة" }));
     }
 
     const { exam, cls } = await this.requireExamAndClass(madrasaId, examId, classId);
@@ -1225,17 +1226,17 @@ export class FeeService {
     for (const invoiceId of invoiceIds) {
       const inv = byId.get(invoiceId);
       if (!inv) {
-        failed.push({ invoice_id: invoiceId, student_id: null, name_bn: null, reason: "ইনভয়েসটি পাওয়া যায়নি" });
+        failed.push({ invoice_id: invoiceId, student_id: null, name_bn: null, reason: t({ bn: "ইনভয়েসটি পাওয়া যায়নি", en: "Invoice not found", ar: "لم يتم العثور على الفاتورة" }) });
         continue;
       }
       const who = { invoice_id: invoiceId, student_id: inv.studentId, name_bn: inv.student?.nameBn ?? null };
       if (inv.feeStructure?.examId !== exam.id || inv.feeStructure?.classId !== cls.id) {
-        failed.push({ ...who, reason: "এই ইনভয়েসটি নির্বাচিত পরীক্ষা/শ্রেণির পরীক্ষার ফি নয়" });
+        failed.push({ ...who, reason: t({ bn: "এই ইনভয়েসটি নির্বাচিত পরীক্ষা/শ্রেণির পরীক্ষার ফি নয়", en: "This invoice is not the exam fee of the selected exam/class", ar: "هذه الفاتورة ليست رسوم امتحان للامتحان/الصف المختار" }) });
         continue;
       }
       const due = this.invoiceDue(inv);
       if (due <= 0) {
-        failed.push({ ...who, reason: "ইতিমধ্যে পরিশোধিত" });
+        failed.push({ ...who, reason: t({ bn: "ইতিমধ্যে পরিশোধিত", en: "Already paid", ar: "مدفوعة بالفعل" }) });
         continue;
       }
 
@@ -1299,7 +1300,7 @@ export class FeeService {
     dto: WaiveInvoiceRequestDto,
   ) {
     if (isEmpty(dto.amount) || isEmpty(dto.reason)) {
-      throw new BadRequestError("amount and reason are required");
+      throw new BadRequestError(t({ bn: "পরিমাণ ও কারণ আবশ্যক", en: "amount and reason are required", ar: "المبلغ والسبب مطلوبان" }));
     }
     const waiveAmount = toAmount(dto.amount, "amount");
 
@@ -1307,9 +1308,9 @@ export class FeeService {
     try {
       result = await this.repository.runTransaction(async (tx) => {
         const invoice = await this.repository.findInvoiceForTenantOnTx(tx, invoiceId, madrasaId);
-        if (!invoice) throw new NotFoundError("Invoice not found");
+        if (!invoice) throw new NotFoundError(t({ bn: "ইনভয়েস পাওয়া যায়নি", en: "Invoice not found", ar: "لم يتم العثور على الفاتورة" }));
         if (invoice.status === "PAID")
-          throw new BadRequestError("This invoice is already fully paid");
+          throw new BadRequestError(t({ bn: "এই ইনভয়েসটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত", en: "This invoice is already fully paid", ar: "هذه الفاتورة مدفوعة بالكامل بالفعل" }));
 
         const invoiceAmount = Number(invoice.amount);
         const alreadyPaid = Number(invoice.paidAmount);
@@ -1322,14 +1323,14 @@ export class FeeService {
           const maxWaivable = invoiceAmount - alreadyPaid;
           if (waiveAmount > maxWaivable + 0.01) {
             throw new BadRequestError(
-              `মওকুফের পরিমাণ চালানের বাকি টাকার (${maxWaivable}) চেয়ে বেশি হতে পারবে না`,
+              t({ bn: `মওকুফের পরিমাণ চালানের বাকি টাকার (${maxWaivable}) চেয়ে বেশি হতে পারবে না`, en: `The waiver cannot exceed the invoice's remaining due (${maxWaivable})`, ar: `لا يمكن أن يتجاوز مبلغ الإعفاء المبلغ المتبقي من الفاتورة (${maxWaivable})` }),
             );
           }
           newWaivedAmount = waiveAmount;
         } else {
           const remaining = invoiceAmount - alreadyPaid - alreadyWaived;
           if (waiveAmount > remaining + 0.01) {
-            throw new BadRequestError(`Waiver exceeds the remaining due amount (${remaining})`);
+            throw new BadRequestError(t({ bn: `মওকুফের পরিমাণ বাকি টাকার (${remaining}) চেয়ে বেশি`, en: `Waiver exceeds the remaining due amount (${remaining})`, ar: `مبلغ الإعفاء يتجاوز المبلغ المتبقي (${remaining})` }));
           }
           newWaivedAmount = alreadyWaived + waiveAmount;
         }
@@ -1353,7 +1354,7 @@ export class FeeService {
       });
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof BadRequestError) throw err;
-      return friendlyFailure("waiveInvoice error:", err, "Failed to waive invoice");
+      return friendlyFailure("waiveInvoice error:", err, t({ bn: "ইনভয়েস মওকুফ করা যায়নি", en: "Failed to waive invoice", ar: "تعذر الإعفاء من الفاتورة" }));
     }
 
     // Hand-logged (not the generic body-field auto-logger - see
@@ -1422,7 +1423,7 @@ export class FeeService {
           .reverse(),
       };
     } catch (err) {
-      return friendlyFailure("getDashboardSummary error:", err, "Failed to load fee dashboard summary");
+      return friendlyFailure("getDashboardSummary error:", err, t({ bn: "ফি ড্যাশবোর্ডের সারাংশ লোড করা যায়নি", en: "Failed to load fee dashboard summary", ar: "تعذر تحميل ملخص لوحة الرسوم" }));
     }
   }
 
@@ -1451,7 +1452,7 @@ export class FeeService {
         },
       };
     } catch (err) {
-      return friendlyFailure("getStudentStatement error:", err, "Failed to load account statement");
+      return friendlyFailure("getStudentStatement error:", err, t({ bn: "হিসাব বিবরণী লোড করা যায়নি", en: "Failed to load account statement", ar: "تعذر تحميل كشف الحساب" }));
     }
   }
 
@@ -1464,17 +1465,17 @@ export class FeeService {
       return friendlyFailure(
         "listPaymentMethodSettings error:",
         err,
-        "Failed to load payment methods",
+        t({ bn: "পেমেন্ট পদ্ধতি লোড করা যায়নি", en: "Failed to load payment methods", ar: "تعذر تحميل طرق الدفع" }),
       );
     }
   }
 
   async createPaymentMethodSetting(madrasaId: number, dto: CreatePaymentMethodSettingRequestDto) {
     if (isEmpty(dto.method_type) || isEmpty(dto.label)) {
-      throw new BadRequestError("method_type and label are required");
+      throw new BadRequestError(t({ bn: "method_type ও label আবশ্যক", en: "method_type and label are required", ar: "method_type و label مطلوبان" }));
     }
     if (!PAYMENT_METHOD_TYPES.includes(dto.method_type.toUpperCase() as any)) {
-      throw new BadRequestError(`method_type must be one of: ${PAYMENT_METHOD_TYPES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `method_type অবশ্যই এগুলোর একটি হতে হবে: ${PAYMENT_METHOD_TYPES.join(", ")}`, en: `method_type must be one of: ${PAYMENT_METHOD_TYPES.join(", ")}`, ar: `يجب أن يكون method_type إحدى القيم: ${PAYMENT_METHOD_TYPES.join(", ")}` }));
     }
 
     try {
@@ -1491,7 +1492,7 @@ export class FeeService {
       return friendlyFailure(
         "createPaymentMethodSetting error:",
         err,
-        "Failed to create payment method",
+        t({ bn: "পেমেন্ট পদ্ধতি তৈরি করা যায়নি", en: "Failed to create payment method", ar: "تعذر إنشاء طريقة الدفع" }),
       );
     }
   }
@@ -1504,7 +1505,7 @@ export class FeeService {
     const data: Record<string, unknown> = {};
     if (dto.method_type !== undefined) {
       if (!PAYMENT_METHOD_TYPES.includes(dto.method_type.toUpperCase() as any)) {
-        throw new BadRequestError(`method_type must be one of: ${PAYMENT_METHOD_TYPES.join(", ")}`);
+        throw new BadRequestError(t({ bn: `method_type অবশ্যই এগুলোর একটি হতে হবে: ${PAYMENT_METHOD_TYPES.join(", ")}`, en: `method_type must be one of: ${PAYMENT_METHOD_TYPES.join(", ")}`, ar: `يجب أن يكون method_type إحدى القيم: ${PAYMENT_METHOD_TYPES.join(", ")}` }));
       }
       data.methodType = dto.method_type.toUpperCase();
     }
@@ -1516,17 +1517,17 @@ export class FeeService {
     if (dto.instructions !== undefined) data.instructions = dto.instructions?.trim() || null;
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
 
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     try {
       const result = await this.repository.updatePaymentMethodSetting(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Payment method not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পেমেন্ট পদ্ধতি পাওয়া যায়নি", en: "Payment method not found", ar: "لم يتم العثور على طريقة الدفع" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       return friendlyFailure(
         "updatePaymentMethodSetting error:",
         err,
-        "Failed to update payment method",
+        t({ bn: "পেমেন্ট পদ্ধতি আপডেট করা যায়নি", en: "Failed to update payment method", ar: "تعذر تحديث طريقة الدفع" }),
       );
     }
   }
@@ -1534,13 +1535,13 @@ export class FeeService {
   async deletePaymentMethodSetting(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deletePaymentMethodSetting(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Payment method not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পেমেন্ট পদ্ধতি পাওয়া যায়নি", en: "Payment method not found", ar: "لم يتم العثور على طريقة الدفع" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       return friendlyFailure(
         "deletePaymentMethodSetting error:",
         err,
-        "Failed to delete payment method",
+        t({ bn: "পেমেন্ট পদ্ধতি মুছে ফেলা যায়নি", en: "Failed to delete payment method", ar: "تعذر حذف طريقة الدفع" }),
       );
     }
   }

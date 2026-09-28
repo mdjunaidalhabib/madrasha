@@ -4,6 +4,8 @@ import api from "../../services/api";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+import { authText } from "./auth.text";
 
 export default function ForgotPasswordPage() {
   const [madrasaCode, setMadrasaCode] = useState("");
@@ -16,14 +18,15 @@ export default function ForgotPasswordPage() {
   const [devResetToken, setDevResetToken] = useState<string | null>(null);
 
   const nav = useNavigate();
+  const t = useText(authText);
 
   const handleSubmit = async () => {
     if (!madrasaCode.trim()) {
-      useToastStore.getState().show("মাদরাসা কোড দিন", "error");
+      useToastStore.getState().show(t.enterInstitutionCode, "error");
       return;
     }
     if (!email.trim()) {
-      useToastStore.getState().show("ইমেইল দিন", "error");
+      useToastStore.getState().show(t.enterEmail, "error");
       return;
     }
 
@@ -38,7 +41,7 @@ export default function ForgotPasswordPage() {
       setSubmitted(true);
       setDevResetToken(res.data?.dev_reset_token || null);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "অনুরোধ ব্যর্থ হয়েছে";
+      const msg = err?.response?.data?.message || t.requestFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setLoading(false);
@@ -46,23 +49,26 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+    <div className="relative flex h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-950">
+      <div className="absolute end-4 top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
-        <h2 className="text-xl font-bold dark:text-slate-100">পাসওয়ার্ড ভুলে গেছেন?</h2>
+        <h2 className="text-xl font-bold dark:text-slate-100">{t.forgotPassword}</h2>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          আপনার অ্যাকাউন্টের ইমেইল দিন — একটা রিসেট লিংক পাঠানো হবে।
+          {t.forgotHint}
         </p>
 
         {submitted ? (
           <div className="space-y-3">
             <p className="text-sm text-green-700 dark:text-green-400">
-              যদি এই ইমেইলে অ্যাকাউন্ট থাকে, একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে।
+              {t.resetLinkSent}
             </p>
 
             {devResetToken && (
               <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 <p className="mb-1 font-medium">
-                  ডেভ মোড (এখনো ইমেইল সার্ভিস সেটআপ করা হয়নি):
+                  {t.devMode}
                 </p>
                 <button
                   type="button"
@@ -73,7 +79,7 @@ export default function ForgotPasswordPage() {
                   }
                   className="break-all text-start text-blue-600 underline dark:text-blue-400"
                 >
-                  রিসেট লিংকে যেতে ক্লিক করুন
+                  {t.goToResetLink}
                 </button>
               </div>
             )}
@@ -83,30 +89,30 @@ export default function ForgotPasswordPage() {
               onClick={() => nav("/login")}
               className="w-full text-center text-xs text-blue-600 hover:underline dark:text-blue-400"
             >
-              লগইন পেজে ফিরে যান
+              {t.backToLogin}
             </button>
           </div>
         ) : (
           <>
             <Input
-              placeholder="মাদরাসা কোড"
+              placeholder={t.institutionCode}
               value={madrasaCode}
               onChange={(e) => setMadrasaCode(e.target.value)}
             />
             <Input
-              placeholder="Email"
+              placeholder={t.email}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <Button onClick={handleSubmit} disabled={loading} className="w-full">
-              {loading ? "পাঠানো হচ্ছে..." : "রিসেট লিংক পাঠান"}
+              {loading ? t.sending : t.sendResetLink}
             </Button>
             <button
               type="button"
               onClick={() => nav("/login")}
               className="w-full text-center text-xs text-gray-500 hover:underline dark:text-slate-400"
             >
-              লগইন পেজে ফিরে যান
+              {t.backToLogin}
             </button>
           </>
         )}

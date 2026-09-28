@@ -1,6 +1,8 @@
 import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from "lucide-react";
 import type { ThemeTokens } from "./themes";
 import MapPreview from "./MapPreview";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 
 function waLink(phone?: string | null) {
   const digits = (phone || "").replace(/\D/g, "");
@@ -35,6 +37,7 @@ export default function ContactSection({
   accentSolid: string;
   onAccent: string;
 }) {
+  const t = useText(websiteText);
   const mapsUrl =
     settings.map_url ||
     (madrasa?.address
@@ -59,7 +62,7 @@ export default function ContactSection({
     },
     settings.whatsapp_channel_url && {
       href: settings.whatsapp_channel_url,
-      label: "WhatsApp চ্যানেল",
+      label: t.whatsappChannel,
       icon: <WhatsAppIcon size={16} />,
     },
   ].filter(Boolean) as { href: string; label: string; icon: JSX.Element }[];
@@ -67,19 +70,19 @@ export default function ContactSection({
   const rows = [
     {
       icon: <Phone size={20} />,
-      label: "ফোন",
+      label: t.phone,
       value: madrasa?.phone,
       href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined,
     },
     {
       icon: <Mail size={20} />,
-      label: "ইমেইল",
+      label: t.email,
       value: madrasa?.email,
       href: madrasa?.email ? `mailto:${madrasa.email}` : undefined,
     },
     {
       icon: <MapPin size={20} />,
-      label: "ঠিকানা",
+      label: t.address,
       value: madrasa?.address,
       href: mapsUrl || undefined,
       external: true,
@@ -97,7 +100,7 @@ export default function ContactSection({
             <Phone size={24} />
           </div>
           <h1 className="mt-4 text-2xl font-extrabold md:text-3xl">
-            {pageMap.contact?.title || "যোগাযোগ"}
+            {pageMap.contact?.title || t.contact}
           </h1>
           {pageMap.contact?.content && (
             <p className="mx-auto mt-3 max-w-2xl whitespace-pre-line text-sm leading-7 text-slate-600">
@@ -141,7 +144,7 @@ export default function ContactSection({
                 className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
               >
                 <WhatsAppIcon size={20} />
-                হোয়াটসঅ্যাপে মেসেজ করুন
+                {t.messageOnWhatsApp}
               </a>
             )}
 
@@ -168,7 +171,7 @@ export default function ContactSection({
               href={mapsUrl}
               title={madrasa?.name}
               address={madrasa?.address}
-              label="Google Maps-এ লোকেশন দেখুন"
+              label={t.viewOnGoogleMaps}
               className="h-80 rounded-2xl border border-slate-100 shadow-sm lg:col-span-3 lg:h-full lg:min-h-[420px]"
             />
           )}

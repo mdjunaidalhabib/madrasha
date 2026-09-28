@@ -5,6 +5,8 @@ import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 import { formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { commonUiText } from "./commonUi.text";
 
 // CSS px per mm at 96 DPI (same constant as Report/pagination/pageGeometry's
 // MM_TO_CSS_PX - kept local here rather than importing across the
@@ -51,12 +53,12 @@ const getDefaultMargins = (size: PaperSize): PageMargins => {
   return { top: value, right: value, bottom: value, left: value };
 };
 
-const MARGIN_SIDE_LABELS: Record<MarginSide, string> = {
-  top: "উপর",
-  right: "ডান",
-  bottom: "নিচ",
-  left: "বাম",
-};
+const MARGIN_SIDE_LABEL_KEYS = {
+  top: "marginTop",
+  right: "marginRight",
+  bottom: "marginBottom",
+  left: "marginLeft",
+} as const satisfies Record<MarginSide, string>;
 
 type Props<T> = {
   title: string;
@@ -102,6 +104,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   setupExtras,
   summary,
 }: Props<T>) => {
+  const t = useText(commonUiText);
   const [internalPaperSize, setInternalPaperSize] = useState<PaperSize>("a4");
   const [internalOrientation, setInternalOrientation] = useState<Orientation>("portrait");
   const [internalMargins, setInternalMargins] = useState<PageMargins>(getDefaultMargins("a4"));
@@ -310,7 +313,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     );
 
     if (!pageEls.length) {
-      useToastStore.getState().show("প্রিভিউ প্রস্তুত হয়নি, একটু পর আবার চেষ্টা করুন", "error");
+      useToastStore.getState().show(t.previewNotReady, "error");
       return;
     }
 
@@ -395,7 +398,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
 
       for (let i = 0; i < pageEls.length; i++) {
         if (pdfCancelRef.current) {
-          useToastStore.getState().show("PDF তৈরি বাতিল করা হয়েছে", "error");
+          useToastStore.getState().show(t.pdfCancelled, "error");
           return;
         }
 
@@ -412,7 +415,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         });
 
         if (pdfCancelRef.current) {
-          useToastStore.getState().show("PDF তৈরি বাতিল করা হয়েছে", "error");
+          useToastStore.getState().show(t.pdfCancelled, "error");
           return;
         }
 
@@ -423,10 +426,10 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       }
 
       pdf.save(`${fileName}.pdf`);
-      useToastStore.getState().show(`PDF ডাউনলোড হয়েছে (${fileName}.pdf)`, "success");
+      useToastStore.getState().show(t.pdfDownloaded(`${fileName}.pdf`), "success");
     } catch (error) {
       logger.error("PDF generation failed:", error);
-      useToastStore.getState().show("PDF তৈরি করা যায়নি", "error");
+      useToastStore.getState().show(t.pdfFailed, "error");
     } finally {
       setGeneratingPdf(false);
       setPdfProgress(null);
@@ -444,7 +447,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     // One persistent toast, updated in place as the export moves through its
     // stages (duration 0 = it never auto-dismisses mid-export - the old 3s
     // toast vanished long before a big report finished rendering).
-    const toastId = useToastStore.getState().show("PDF তৈরি হচ্ছে, অপেক্ষা করুন...", "info", {
+    const toastId = useToastStore.getState().show(t.pdfGenerating, "info", {
       duration: 0,
       loading: true,
     });
@@ -489,7 +492,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
       // handling and IDM-style managers can complete.
       setPdfPhase("downloading");
       useToastStore.getState().update(toastId, {
-        message: "ডাউনলোড হচ্ছে...",
+        message: t.downloading,
         type: "info",
         loading: true,
         duration: 0,
@@ -533,13 +536,13 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         toastId,
         completed
           ? {
-              message: `✓ PDF ডাউনলোড সম্পন্ন হয়েছে (${fileName}.pdf)`,
+              message: t.pdfDownloadDone(`${fileName}.pdf`),
               type: "success",
               loading: false,
               duration: 8000,
             }
           : {
-              message: `PDF ডাউনলোড শুরু হয়েছে (${fileName}.pdf) - ব্রাউজারের ডাউনলোড তালিকা দেখুন`,
+              message: t.pdfDownloadStarted(`${fileName}.pdf`),
               type: "info",
               loading: false,
               duration: 8000,
@@ -548,7 +551,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     } catch (error: any) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
         useToastStore.getState().update(toastId, {
-          message: "PDF তৈরি বাতিল করা হয়েছে",
+          message: t.pdfCancelled,
           type: "error",
           loading: false,
           duration: 4000,
@@ -559,7 +562,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         // Errors stay until the user closes them - a failure shouldn't be
         // missable.
         useToastStore.getState().update(toastId, {
-          message: detail || "PDF তৈরি করা যায়নি, আবার চেষ্টা করুন",
+          message: detail || t.pdfFailedRetry,
           type: "error",
           loading: false,
           duration: 0,
@@ -598,33 +601,33 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         onChange={(e) => updateOrientation(e.target.value as Orientation)}
         className={`${selectFieldClass} min-w-[88px] flex-1 sm:flex-none`}
       >
-        <option value="portrait">Portrait</option>
-        <option value="landscape">Landscape</option>
+        <option value="portrait">{t.portrait}</option>
+        <option value="landscape">{t.landscape}</option>
       </select>
 
       <div ref={marginPanelRef} className="relative w-auto">
         <button
           type="button"
           onClick={() => setMarginPanelOpen((open) => !open)}
-          title="মার্জিন - পেজের চার পাশের ফাঁকা জায়গা আলাদাভাবে কম-বেশি করুন"
+          title={t.marginTitle}
           className="flex h-8 w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-600 outline-none transition hover:bg-slate-50 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/50 sm:w-auto"
         >
           <Ruler className="h-3 w-3" />
-          মার্জিন
+          {t.margin}
         </button>
 
         {marginPanelOpen && (
           <div className="absolute end-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-700">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                পেজ মার্জিন (mm)
+                {t.pageMarginMm}
               </span>
               <button
                 type="button"
                 onClick={resetMarginsToDefault}
                 className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
               >
-                ডিফল্ট সেট
+                {t.setDefault}
               </button>
             </div>
 
@@ -632,7 +635,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
               {(["top", "right", "bottom", "left"] as MarginSide[]).map((side) => (
                 <div key={side} className="flex items-center justify-between">
                   <span className="w-9 text-xs text-slate-500 dark:text-slate-400">
-                    {MARGIN_SIDE_LABELS[side]}
+                    {t[MARGIN_SIDE_LABEL_KEYS[side]]}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -698,7 +701,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
             className="flex h-8 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-slate-700 px-3 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 sm:flex-none"
           >
             <Printer className="h-3 w-3" />
-            Print
+            {t.print}
           </button>
 
           <button
@@ -718,8 +721,8 @@ const DataExportPrintActions = <T extends Record<string, any>>({
             )}
             {generatingPdf
               ? pdfPhase === "downloading"
-                ? "ডাউনলোড হচ্ছে..."
-                : `তৈরি হচ্ছে...${pdfProgress ? ` (${pdfProgress.current}/${pdfProgress.total})` : ""}`
+                ? t.downloading
+                : `${t.generating}${pdfProgress ? ` (${pdfProgress.current}/${pdfProgress.total})` : ""}`
               : "PDF"}
           </button>
 
@@ -727,8 +730,8 @@ const DataExportPrintActions = <T extends Record<string, any>>({
             <button
               type="button"
               onClick={handlePdfButtonClick}
-              title="PDF তৈরি বাতিল করুন"
-              aria-label="PDF তৈরি বাতিল করুন"
+              title={t.cancelPdf}
+              aria-label={t.cancelPdf}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400"
             >
               <X className="h-3.5 w-3.5" />

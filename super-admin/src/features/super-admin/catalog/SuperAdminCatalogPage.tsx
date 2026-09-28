@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import ConfirmModal from "@madrasha/shared-ui/src/components/ui/ConfirmModal";
@@ -12,6 +12,18 @@ import {
   type CatalogClassDto,
   type CatalogDivisionDto,
 } from "../../../services/superAdminCatalogApi";
+import {
+  INSTITUTION_TYPES,
+  INSTITUTION_TYPE_LABELS,
+  TERMS,
+  commonText,
+  formatNumber,
+  getText,
+  useLang,
+  useText,
+  type InstitutionType,
+} from "@madrasha/shared-ui/src/i18n";
+import { catalogText } from "./catalog.text";
 
 type ConfirmTarget = { kind: "division" | "class" | "book"; id: number; label: string };
 
@@ -109,6 +121,7 @@ function Row({
   onDragHandlePointerEnd: (e: React.PointerEvent) => void;
   trailing?: React.ReactNode;
 }) {
+  const t = useText(catalogText);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(label);
   const [saving, setSaving] = useState(false);
@@ -168,18 +181,20 @@ function Row({
         onPointerCancel={onDragHandlePointerEnd}
         className="shrink-0 cursor-grab select-none rounded p-1 text-slate-300 active:cursor-grabbing active:bg-slate-100 dark:text-slate-600 dark:active:bg-slate-800"
         style={{ touchAction: "none" }}
-        aria-label="সরান"
+        aria-label={t.drag}
       >
         <GripVertical size={14} />
       </span>
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate px-1 text-start">
         {label}
-        {inactive && <span className="ms-1.5 text-[10px] text-slate-400 dark:text-slate-500">(নিষ্ক্রিয়)</span>}
+        {inactive && <span className="ms-1.5 text-[10px] text-slate-400 dark:text-slate-500">{t.inactiveTag}</span>}
       </button>
       {trailing}
       <button
         type="button"
         onClick={() => setEditing(true)}
+        title={t.edit}
+        aria-label={t.edit}
         className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
       >
         <Pencil size={13} />
@@ -187,6 +202,8 @@ function Row({
       <button
         type="button"
         onClick={onDelete}
+        title={t.delete}
+        aria-label={t.delete}
         className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400"
       >
         <Trash2 size={13} />
@@ -246,6 +263,14 @@ function useDragReorder<T extends { id: number }>(
 
 export default function SuperAdminCatalogPage() {
   const { show } = useToastStore();
+  const t = useText(catalogText);
+  const c = useText(commonText);
+  const lang = useLang();
+
+  // Each institution type has its own catalogue; the tab picks which one is
+  // shown/edited, and new divisions are created under it.
+  const [typeTab, setTypeTab] = useState<InstitutionType>("MADRASA");
+  const terms = TERMS[typeTab][lang];
 
   const [divisions, setDivisions] = useState<CatalogDivisionDto[]>([]);
   const [divisionId, setDivisionId] = useState<number | null>(null);
@@ -269,11 +294,34 @@ export default function SuperAdminCatalogPage() {
       setDivisions(rows);
       setDivisionId((prev) => prev ?? rows[0]?.id ?? null);
     } catch {
-      show("বিভাগ লোড করা যায়নি", "error");
+      show(getText(commonText).loadFailed, "error");
     } finally {
       setLoadingDivisions(false);
     }
   }, [show]);
+
+  // Divisions of the selected type (the full list stays in state because the
+  // reorder endpoint needs every division id).
+  const visibleDivisions = useMemo(
+    () => divisions.filter((d) => (d.institution_type ?? "MADRASA") === typeTab),
+    [divisions, typeTab],
+  );
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<InstitutionType, number> = { MADRASA: 0, SCHOOL: 0, COLLEGE: 0, KINDERGARTEN: 0 };
+    divisions.forEach((d) => {
+      counts[d.institution_type ?? "MADRASA"] += 1;
+    });
+    return counts;
+  }, [divisions]);
+
+  // Keep the selected division inside the visible type's catalogue.
+  useEffect(() => {
+    if (loadingDivisions) return;
+    if (!visibleDivisions.some((d) => d.id === divisionId)) {
+      setDivisionId(visibleDivisions[0]?.id ?? null);
+    }
+  }, [visibleDivisions, divisionId, loadingDivisions]);
 
   const loadClasses = useCallback(
     async (divId: number) => {
@@ -284,7 +332,7 @@ export default function SuperAdminCatalogPage() {
         setClasses(rows);
         setClassId(rows[0]?.id ?? null);
       } catch {
-        show("শ্রেণি লোড করা যায়নি", "error");
+        show(getText(commonText).loadFailed, "error");
       } finally {
         setLoadingClasses(false);
       }
@@ -299,7 +347,7 @@ export default function SuperAdminCatalogPage() {
         const res = await catalogBookApi.list(clsId);
         setBooks(res.data?.data || []);
       } catch {
-        show("কিতাব লোড করা যায়নি", "error");
+        show(getText(commonText).loadFailed, "error");
       } finally {
         setLoadingBooks(false);
       }
@@ -329,7 +377,7 @@ export default function SuperAdminCatalogPage() {
     try {
       await catalogDivisionApi.reorder(ordered.map((d) => d.id));
     } catch {
-      show("বিভাগের ক্রম সংরক্ষণ করা যায়নি", "error");
+      show(t.orderFailed(terms.division), "error");
       loadDivisions();
     }
   });
@@ -339,7 +387,7 @@ export default function SuperAdminCatalogPage() {
     try {
       await catalogClassApi.reorder(divisionId, ordered.map((c) => c.id));
     } catch {
-      show("শ্রেণির ক্রম সংরক্ষণ করা যায়নি", "error");
+      show(t.orderFailed(terms.class), "error");
       loadClasses(divisionId);
     }
   });
@@ -349,7 +397,7 @@ export default function SuperAdminCatalogPage() {
     try {
       await catalogBookApi.reorder(classId, ordered.map((b) => b.id));
     } catch {
-      show("কিতাবের ক্রম সংরক্ষণ করা যায়নি", "error");
+      show(t.orderFailed(terms.subject), "error");
       loadBooks(classId);
     }
   });
@@ -360,22 +408,22 @@ export default function SuperAdminCatalogPage() {
     try {
       if (confirmTarget.kind === "division") {
         await catalogDivisionApi.remove(confirmTarget.id);
-        show("বিভাগ মুছে ফেলা হয়েছে", "success");
+        show(t.deleted(terms.division), "success");
         if (divisionId === confirmTarget.id) setDivisionId(null);
         await loadDivisions();
       } else if (confirmTarget.kind === "class") {
         await catalogClassApi.remove(confirmTarget.id);
-        show("শ্রেণি মুছে ফেলা হয়েছে", "success");
+        show(t.deleted(terms.class), "success");
         if (classId === confirmTarget.id) setClassId(null);
         if (divisionId) await loadClasses(divisionId);
       } else {
         await catalogBookApi.remove(confirmTarget.id);
-        show("কিতাব মুছে ফেলা হয়েছে", "success");
+        show(t.deleted(terms.subject), "success");
         if (classId) await loadBooks(classId);
       }
       setConfirmTarget(null);
     } catch (err: any) {
-      show(err?.response?.data?.message || "মুছে ফেলা যায়নি", "error");
+      show(err?.response?.data?.message || c.deleteFailed, "error");
     } finally {
       setConfirmLoading(false);
     }
@@ -383,20 +431,47 @@ export default function SuperAdminCatalogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="একাডেমিক ক্যাটালগ"
-        subtitle="বিভাগ, শ্রেণি ও কিতাব — সব মাদ্রাসার জন্য শেয়ার্ড global ক্যাটালগ। টেনে (drag) ক্রম সাজানো যায়। নতুন মাদ্রাসা তৈরির সময় এখান থেকে বেছে নেওয়া যায়।"
-      />
+      <PageHeader title={t.title} subtitle={t.subtitle} />
+
+      {/* Institution type tabs */}
+      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label={t.typeTabs}>
+        {INSTITUTION_TYPES.map((type) => {
+          const active = typeTab === type;
+          return (
+            <button
+              key={type}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTypeTab(type)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition ${
+                active
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              {INSTITUTION_TYPE_LABELS[type][lang]}
+              <span
+                className={`rounded-full px-1.5 text-[11px] ${
+                  active ? "bg-white/20" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                }`}
+              >
+                {formatNumber(typeCounts[type], lang)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* DIVISIONS */}
         <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">বিভাগ</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{terms.division}</h2>
           {loadingDivisions ? (
             <SkeletonList items={4} />
           ) : (
             <div className="space-y-1.5">
-              {divisions.map((d) => (
+              {visibleDivisions.map((d) => (
                 <Row
                   key={d.id}
                   id={d.id}
@@ -409,18 +484,46 @@ export default function SuperAdminCatalogPage() {
                   onDragHandlePointerEnd={divisionDrag.onPointerEnd}
                   onSave={async (name) => {
                     await catalogDivisionApi.update(d.id, { name_bn: name });
-                    show("বিভাগ আপডেট হয়েছে", "success");
+                    show(t.updated(terms.division), "success");
                     await loadDivisions();
                   }}
                   onDelete={() => setConfirmTarget({ kind: "division", id: d.id, label: d.label || d.name || "" })}
+                  trailing={
+                    <select
+                      value={d.institution_type ?? "MADRASA"}
+                      title={t.changeType}
+                      aria-label={t.changeType}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={async (e) => {
+                        const next = e.target.value as InstitutionType;
+                        try {
+                          await catalogDivisionApi.update(d.id, {
+                            name_bn: d.label || d.name || "",
+                            institution_type: next,
+                          });
+                          show(t.typeChanged, "success");
+                          await loadDivisions();
+                        } catch (err: any) {
+                          show(err?.response?.data?.message || c.saveFailed, "error");
+                        }
+                      }}
+                      className="shrink-0 cursor-pointer rounded-full border-0 bg-slate-100 py-0.5 pe-5 ps-2 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      {INSTITUTION_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {INSTITUTION_TYPE_LABELS[type][lang]}
+                        </option>
+                      ))}
+                    </select>
+                  }
                 />
               ))}
-              {!divisions.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো বিভাগ নেই</p>}
+              {!visibleDivisions.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">{t.none(terms.division)}</p>}
               <AddRow
-                placeholder="নতুন বিভাগ যোগ করুন"
+                placeholder={t.addNew(terms.division)}
                 onAdd={async (name) => {
-                  await catalogDivisionApi.create({ name_bn: name });
-                  show("বিভাগ তৈরি হয়েছে", "success");
+                  await catalogDivisionApi.create({ name_bn: name, institution_type: typeTab });
+                  show(t.created(terms.division), "success");
                   await loadDivisions();
                 }}
               />
@@ -430,57 +533,57 @@ export default function SuperAdminCatalogPage() {
 
         {/* CLASSES */}
         <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">শ্রেণি</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{terms.class}</h2>
           {!divisionId ? (
-            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">প্রথমে একটি বিভাগ নির্বাচন করুন</p>
+            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t.selectFirst(terms.division)}</p>
           ) : loadingClasses ? (
             <SkeletonList items={4} />
           ) : (
             <div className="space-y-1.5">
-              {classes.map((c) => (
+              {classes.map((cls) => (
                 <Row
-                  key={c.id}
-                  id={c.id}
-                  label={c.label || c.name || ""}
-                  selected={classId === c.id}
-                  inactive={!c.is_active}
-                  dragging={classDrag.dragId === c.id}
-                  onSelect={() => setClassId(c.id)}
-                  onDragHandlePointerDown={classDrag.onPointerDown(c.id)}
+                  key={cls.id}
+                  id={cls.id}
+                  label={cls.label || cls.name || ""}
+                  selected={classId === cls.id}
+                  inactive={!cls.is_active}
+                  dragging={classDrag.dragId === cls.id}
+                  onSelect={() => setClassId(cls.id)}
+                  onDragHandlePointerDown={classDrag.onPointerDown(cls.id)}
                   onDragHandlePointerMove={classDrag.onPointerMove}
                   onDragHandlePointerEnd={classDrag.onPointerEnd}
                   onSave={async (name) => {
-                    await catalogClassApi.update(c.id, { name_bn: name });
-                    show("শ্রেণি আপডেট হয়েছে", "success");
+                    await catalogClassApi.update(cls.id, { name_bn: name });
+                    show(t.updated(terms.class), "success");
                     if (divisionId) await loadClasses(divisionId);
                   }}
-                  onDelete={() => setConfirmTarget({ kind: "class", id: c.id, label: c.label || c.name || "" })}
+                  onDelete={() => setConfirmTarget({ kind: "class", id: cls.id, label: cls.label || cls.name || "" })}
                   trailing={
                     <button
                       type="button"
-                      title={c.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                      title={cls.is_active ? t.deactivate : t.activate}
                       onClick={async () => {
-                        await catalogClassApi.toggleActive(c.id, !c.is_active);
-                        show("শ্রেণির অবস্থা আপডেট হয়েছে", "success");
+                        await catalogClassApi.toggleActive(cls.id, !cls.is_active);
+                        show(t.classStatusUpdated, "success");
                         if (divisionId) await loadClasses(divisionId);
                       }}
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        c.is_active
+                        cls.is_active
                           ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
                           : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                       }`}
                     >
-                      {c.is_active ? "সক্রিয়" : "নিষ্ক্রিয়"}
+                      {cls.is_active ? c.active : c.inactive}
                     </button>
                   }
                 />
               ))}
-              {!classes.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো শ্রেণি নেই</p>}
+              {!classes.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">{t.none(terms.class)}</p>}
               <AddRow
-                placeholder="নতুন শ্রেণি যোগ করুন"
+                placeholder={t.addNew(terms.class)}
                 onAdd={async (name) => {
                   await catalogClassApi.create({ division_id: divisionId, name_bn: name });
-                  show("শ্রেণি তৈরি হয়েছে", "success");
+                  show(t.created(terms.class), "success");
                   if (divisionId) await loadClasses(divisionId);
                 }}
               />
@@ -490,9 +593,9 @@ export default function SuperAdminCatalogPage() {
 
         {/* BOOKS */}
         <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">কিতাব</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{terms.subject}</h2>
           {!classId ? (
-            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">প্রথমে একটি শ্রেণি নির্বাচন করুন</p>
+            <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t.selectFirst(terms.class)}</p>
           ) : loadingBooks ? (
             <SkeletonList items={4} />
           ) : (
@@ -508,18 +611,18 @@ export default function SuperAdminCatalogPage() {
                   onDragHandlePointerEnd={bookDrag.onPointerEnd}
                   onSave={async (name) => {
                     await catalogBookApi.update(b.id, { name_bn: name });
-                    show("কিতাব আপডেট হয়েছে", "success");
+                    show(t.updated(terms.subject), "success");
                     if (classId) await loadBooks(classId);
                   }}
                   onDelete={() => setConfirmTarget({ kind: "book", id: b.id, label: b.label || b.name || "" })}
                 />
               ))}
-              {!books.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">কোনো কিতাব নেই</p>}
+              {!books.length && <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">{t.none(terms.subject)}</p>}
               <AddRow
-                placeholder="নতুন কিতাব যোগ করুন"
+                placeholder={t.addNew(terms.subject)}
                 onAdd={async (name) => {
                   await catalogBookApi.create({ class_id: classId, name_bn: name });
-                  show("কিতাব তৈরি হয়েছে", "success");
+                  show(t.created(terms.subject), "success");
                   if (classId) await loadBooks(classId);
                 }}
               />
@@ -530,10 +633,10 @@ export default function SuperAdminCatalogPage() {
 
       <ConfirmModal
         open={!!confirmTarget}
-        title="মুছে ফেলুন?"
-        message={`"${confirmTarget?.label ?? ""}" মুছে ফেলতে চান? এটি ব্যবহারে থাকলে (কোনো মাদ্রাসা/ছাত্র যুক্ত থাকলে) মুছে ফেলা যাবে না।`}
-        confirmText="মুছে ফেলুন"
-        cancelText="বাতিল"
+        title={t.deleteTitle}
+        message={t.deleteMessage(confirmTarget?.label ?? "")}
+        confirmText={c.delete}
+        cancelText={c.cancel}
         danger
         loading={confirmLoading}
         onClose={() => {

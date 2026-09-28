@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { talimatService } from "./talimat.service";
+import { t } from "../../shared/i18n";
 
 export const createResult = asyncHandler(async (req: Request, res: Response) => {
   const madrasa_id = req.tenant!.madrasa_id;
   await talimatService.createResult(madrasa_id, req.body);
-  res.json({ message: "Result saved" });
+  res.json({ message: t({ bn: "ফলাফল সংরক্ষণ হয়েছে", en: "Result saved", ar: "تم حفظ النتيجة" }) });
 });
 
 export const getMarksheet = asyncHandler(async (req: Request, res: Response) => {

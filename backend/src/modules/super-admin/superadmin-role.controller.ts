@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { roleService } from "../roles/role.service";
+import { t } from "../../shared/i18n";
 
 // roleService's methods already take a plain madrasaId (no dependency on
 // req.tenant), so the super admin panel can call the exact same tenant
@@ -39,7 +40,7 @@ export const listMadrasaRolePermissions = async (req: Request, res: Response) =>
 export const createMadrasaRole = async (req: Request, res: Response) => {
   try {
     const result = await roleService.createRole(Number(req.params.id), req.body);
-    res.status(HttpStatus.CREATED).json({ message: "Role created", data: result });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "রোল তৈরি হয়েছে", en: "Role created" }), data: result });
   } catch (error) {
     respondError(res, error);
   }
@@ -48,7 +49,7 @@ export const createMadrasaRole = async (req: Request, res: Response) => {
 export const updateMadrasaRole = async (req: Request, res: Response) => {
   try {
     await roleService.updateRole(Number(req.params.roleId), Number(req.params.id), req.body);
-    res.json({ message: "Role updated" });
+    res.json({ message: t({ bn: "রোল আপডেট হয়েছে", en: "Role updated" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -57,7 +58,7 @@ export const updateMadrasaRole = async (req: Request, res: Response) => {
 export const deleteMadrasaRole = async (req: Request, res: Response) => {
   try {
     await roleService.deleteRole(Number(req.params.roleId), Number(req.params.id));
-    res.json({ message: "Role deleted" });
+    res.json({ message: t({ bn: "রোল মুছে ফেলা হয়েছে", en: "Role deleted" }) });
   } catch (error) {
     respondError(res, error);
   }

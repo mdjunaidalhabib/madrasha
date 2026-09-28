@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import Card, { CardHeader } from "./Card";
 import { SkeletonChart } from "./Skeleton";
+import { commonText, useText } from "../../i18n";
 
 type ChartCardProps = {
   title: ReactNode;
@@ -25,11 +26,12 @@ export default function ChartCard({
   loading,
   error,
   empty,
-  emptyMessage = "কোনো তথ্য পাওয়া যায়নি",
+  emptyMessage,
   children,
   className = "",
   height = "h-64",
 }: ChartCardProps) {
+  const c = useText(commonText);
   return (
     <Card className={className}>
       <CardHeader title={title} subtitle={subtitle} actions={actions} />
@@ -41,7 +43,7 @@ export default function ChartCard({
         </p>
       ) : empty ? (
         <p className={`flex ${height} items-center justify-center text-sm text-slate-400 dark:text-slate-500`}>
-          {emptyMessage}
+          {emptyMessage ?? c.noData}
         </p>
       ) : (
         <div className={`min-w-0 ${height} w-full`}>{children}</div>

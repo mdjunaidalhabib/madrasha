@@ -1,5 +1,6 @@
 import { Users, CheckCircle2, XCircle, UserX, Award } from "lucide-react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { localizeDigits, useIsMadrasa, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { resultPanelText } from "./resultPanel.text";
 
 type GradeItem = {
   id: string | number;
@@ -24,14 +25,18 @@ const getGradeRange = (grade: GradeItem) => ({
 const sortByMinDesc = (grades: GradeItem[]) =>
   [...grades].sort((a, b) => Number(getGradeRange(b).min ?? 0) - Number(getGradeRange(a).min ?? 0));
 
-const formatPercent = (count: number, total: number) =>
-  total > 0 ? toBanglaDigits(((count / total) * 100).toFixed(1)) : toBanglaDigits("0.0");
+const formatPercent = (count: number, total: number, lang: Lang) =>
+  localizeDigits(total > 0 ? ((count / total) * 100).toFixed(1) : "0.0", lang);
 
 export default function ResultStatsCards({
   statuses,
   generalGrades = [],
   madrasaGrades = [],
 }: Props) {
+  const lang = useLang();
+  const t = useText(resultPanelText).stats;
+  const isMadrasa = useIsMadrasa();
+  const num = (value: number | string) => localizeDigits(value, lang);
   const total = statuses.length;
   const pass = statuses.filter((s) => String(s || "").toUpperCase() === "PASS").length;
   const fail = statuses.filter((s) => String(s || "").toUpperCase() === "FAIL").length;
@@ -41,37 +46,38 @@ export default function ResultStatsCards({
 
   const cards = [
     {
-      label: "মোট শিক্ষার্থী",
-      value: toBanglaDigits(total),
+      label: t.totalStudents,
+      value: num(total),
       sub: null,
       icon: Users,
       className: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-400",
     },
     {
-      label: "পাশ",
-      value: toBanglaDigits(pass),
-      sub: `${formatPercent(pass, total)}%`,
+      label: t.pass,
+      value: num(pass),
+      sub: `${formatPercent(pass, total, lang)}%`,
       icon: CheckCircle2,
       className: "border-green-200 bg-green-50 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-400",
     },
     {
-      label: "ফেল",
-      value: toBanglaDigits(fail),
-      sub: `${formatPercent(fail, total)}%`,
+      label: t.fail,
+      value: num(fail),
+      sub: `${formatPercent(fail, total, lang)}%`,
       icon: XCircle,
       className: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400",
     },
     {
-      label: "অনুপস্থিত",
-      value: toBanglaDigits(absent),
-      sub: `${formatPercent(absent, total)}%`,
+      label: t.absent,
+      value: num(absent),
+      sub: `${formatPercent(absent, total, lang)}%`,
       icon: UserX,
       className: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400",
     },
   ];
 
   const sortedGeneral = sortByMinDesc(generalGrades);
-  const sortedMadrasa = sortByMinDesc(madrasaGrades);
+  // Madrasa grades are shown to madrasas only.
+  const sortedMadrasa = isMadrasa ? sortByMinDesc(madrasaGrades) : [];
 
   return (
     <div className="space-y-3">
@@ -97,12 +103,12 @@ export default function ResultStatsCards({
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <Award size={16} />
-            <p className="text-xs font-semibold">গ্রেড স্কেল — কোন গ্রেড কত নম্বরে</p>
+            <p className="text-xs font-semibold">{t.gradeScale}</p>
           </div>
 
           <div className="space-y-2">
-            {sortedGeneral.length > 0 && <GradeChipRow label="সাধারণ" grades={sortedGeneral} />}
-            {sortedMadrasa.length > 0 && <GradeChipRow label="মাদরাসা" grades={sortedMadrasa} />}
+            {sortedGeneral.length > 0 && <GradeChipRow label={t.general} grades={sortedGeneral} />}
+            {sortedMadrasa.length > 0 && <GradeChipRow label={t.madrasa} grades={sortedMadrasa} />}
           </div>
         </div>
       )}
@@ -116,6 +122,7 @@ export default function ResultStatsCards({
 // than the card) the row scrolls internally instead of being cut off by an
 // ancestor's overflow clipping (e.g. the dashboard shell's scroll container).
 function GradeChipRow({ label, grades }: { label: string; grades: GradeItem[] }) {
+  const lang = useLang();
   return (
     <div className="overflow-x-auto">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -127,7 +134,7 @@ function GradeChipRow({ label, grades }: { label: string; grades: GradeItem[] })
               key={g.id}
               className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
             >
-              {g.name} ({toBanglaDigits(min ?? "-")}-{toBanglaDigits(max ?? "-")})
+              {g.name} ({localizeDigits(min ?? "-", lang)}-{localizeDigits(max ?? "-", lang)})
             </span>
           );
         })}

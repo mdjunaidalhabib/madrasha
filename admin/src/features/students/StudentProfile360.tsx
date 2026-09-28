@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useStudentIdParam } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, localizeDigits, formatCurrency, formatDate } from "@madrasha/shared-ui/src/i18n";
+import { profile360Text } from "./StudentProfile360.text";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
@@ -14,12 +15,13 @@ import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfi
 import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 
+// Tab labels come from profile360Text.tabs.
 const TABS = [
-  { key: "overview", label: "ওভারভিউ", slug: "" },
-  { key: "academic", label: "একাডেমিক", slug: "academic" },
-  { key: "attendance", label: "উপস্থিতি", slug: "attendance" },
-  { key: "financial", label: "আর্থিক", slug: "fees" },
-  { key: "library", label: "লাইব্রেরি", slug: "library" },
+  { key: "overview", slug: "" },
+  { key: "academic", slug: "academic" },
+  { key: "attendance", slug: "attendance" },
+  { key: "financial", slug: "fees" },
+  { key: "library", slug: "library" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -28,40 +30,15 @@ type TabKey = (typeof TABS)[number]["key"];
 const tabFromSlug = (slug: string | undefined): TabKey =>
   (slug && TABS.find((t) => t.slug === slug)?.key) || "overview";
 
-const money = (value: number | string | undefined) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
-
-const dateBn = (value: string | Date | null | undefined) =>
-  value ? new Date(value).toLocaleDateString("bn-BD") : "-";
-
-const ATTENDANCE_STATUS_LABEL: Record<string, string> = {
-  PRESENT: "উপস্থিত",
-  ABSENT: "অনুপস্থিত",
-  LATE: "বিলম্বে",
-  LEAVE: "ছুটি",
-};
-
-const LIBRARY_STATUS_LABEL: Record<string, string> = {
-  BORROWED: "ধারে দেওয়া আছে",
-  RETURNED: "ফেরত দেওয়া হয়েছে",
-  LOST: "হারিয়ে গেছে",
-};
-
-const PROMOTION_STATUS_LABEL: Record<string, string> = {
-  PROMOTED: "উন্নীত",
-  RETAINED: "অবস্থান",
-  TRANSFERRED: "স্থানান্তরিত",
-};
-
-const INVOICE_STATUS_LABEL: Record<string, string> = {
-  UNPAID: "বকেয়া",
-  PARTIALLY_PAID: "আংশিক পরিশোধিত",
-  PAID: "পরিশোধিত",
-  WAIVED: "মওকুফ",
-};
 
 export default function StudentProfile360() {
   const { id: ref } = useParams();
   const id = useStudentIdParam();
+  const tx = useText(profile360Text);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
+  const money = (value: number | string | undefined) => formatCurrency(value || 0, lang);
+  const dateBn = (value: string | Date | null | undefined) => (value ? formatDate(value, lang) : "-");
   const navigate = useNavigate();
 
   const [data, setData] = useState<any>(null);
@@ -87,7 +64,7 @@ export default function StudentProfile360() {
         setData(res.data?.data || null);
       } catch (error) {
         logger.error("FETCH STUDENT PROFILE 360 ERROR:", error);
-        useToastStore.getState().show("প্রোফাইল লোড করা যায়নি", "error");
+        useToastStore.getState().show(getText(profile360Text).loadFailed, "error");
       } finally {
         setLoading(false);
       }
@@ -143,7 +120,7 @@ export default function StudentProfile360() {
   if (!student) {
     return (
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
-        <EmptyState title="শিক্ষার্থী পাওয়া যায়নি" />
+        <EmptyState title={tx.notFound} />
       </div>
     );
   }
@@ -151,10 +128,12 @@ export default function StudentProfile360() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       <PageHeader
-        title={student.nameBn || "শিক্ষার্থী প্রোফাইল"}
-        subtitle={`${className} · রোল ${student.roll ? toBanglaDigits(student.roll) : "নেই"} · রেজি. ${
-          student.registrationNo ? toBanglaDigits(student.registrationNo) : "নেই"
-        }`}
+        title={student.nameBn || tx.profileTitle}
+        subtitle={tx.subtitle(
+          className,
+          student.roll ? toBanglaDigits(student.roll) : tx.none,
+          student.registrationNo ? toBanglaDigits(student.registrationNo) : tx.none,
+        )}
         actions={
           <>
             <button
@@ -162,28 +141,28 @@ export default function StudentProfile360() {
               onClick={() => navigate(`/students/${ref}/edit`, { state: { autoEdit: true } })}
               className="h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              সম্পাদনা
+              {tx.edit}
             </button>
             <button
               type="button"
               onClick={() => navigate(documentsLink("student-id-cards"))}
               className="h-9 rounded-md bg-teal-600 px-3 text-sm font-medium text-white hover:bg-teal-700"
             >
-              আইডি কার্ড প্রিন্ট
+              {tx.printIdCard}
             </button>
             <button
               type="button"
               onClick={() => navigate(documentsLink("student-marksheets", latestPublishedExamId))}
               className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
             >
-              মার্কশিট ডাউনলোড
+              {tx.downloadMarksheet}
             </button>
             <button
               type="button"
               onClick={() => navigate(`/fee-collection?student_id=${student.id}`)}
               className="h-9 rounded-md bg-green-600 px-3 text-sm font-medium text-white hover:bg-green-700"
             >
-              ফি কালেক্ট
+              {tx.collectFee}
             </button>
           </>
         }
@@ -201,41 +180,41 @@ export default function StudentProfile360() {
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
-            {t.label}
+            {tx.tabs[t.key]}
           </button>
         ))}
       </div>
 
       {tab === "overview" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label="হাজিরার হার" value={attendanceSummary?.percentage ?? 0} variant="percentage" tone="blue" />
-          <StatTile label="প্রকাশিত ফলাফল" value={results.length} tone="indigo" />
-          <StatTile label="বকেয়া ফি" value={feeSummary?.totalDue ?? 0} variant="currency" tone="rose" />
-          <StatTile label="লাইব্রেরি রেকর্ড" value={libraryRecords.length} tone="amber" />
+          <StatTile label={tx.attendanceRate} value={attendanceSummary?.percentage ?? 0} variant="percentage" tone="blue" />
+          <StatTile label={tx.publishedResults} value={results.length} tone="indigo" />
+          <StatTile label={tx.dueFee} value={feeSummary?.totalDue ?? 0} variant="currency" tone="rose" />
+          <StatTile label={tx.libraryRecords} value={libraryRecords.length} tone="amber" />
 
           <div className="sm:col-span-2 lg:col-span-4 overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b px-5 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">মৌলিক তথ্য</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.basicInfo}</h2>
             </div>
             <dl className="grid gap-4 p-5 sm:grid-cols-3">
               <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">পিতার নাম</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.fatherName || "নেই"}</dd>
+                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.fatherName}</dt>
+                <dd className="text-gray-700 dark:text-slate-300">{student.fatherName || tx.none}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">অভিভাবকের ফোন</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.guardianPhone || "নেই"}</dd>
+                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.guardianPhone}</dt>
+                <dd className="text-gray-700 dark:text-slate-300">{student.guardianPhone || tx.none}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">শিক্ষাবর্ষ</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.academicYear || "নেই"}</dd>
+                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.session}</dt>
+                <dd className="text-gray-700 dark:text-slate-300">{student.academicYear || tx.none}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">ভর্তির তারিখ</dt>
+                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.admissionDate}</dt>
                 <dd className="text-gray-700 dark:text-slate-300">{dateBn(student.admissionDate)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">অবস্থা</dt>
+                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.state}</dt>
                 <dd className="text-gray-700 dark:text-slate-300">
                   {studentStatusLabel(student.isActive)}
                 </dd>
@@ -247,7 +226,7 @@ export default function StudentProfile360() {
             <div className="sm:col-span-2 lg:col-span-4 space-y-4">
               <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <div className="border-b px-5 py-4 dark:border-slate-700">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">ছবি</h2>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.photo}</h2>
                 </div>
                 <div className="flex justify-center p-5">
                   <div
@@ -256,7 +235,7 @@ export default function StudentProfile360() {
                   >
                     {!fullStudent.image && (
                       <div className="flex h-full items-center justify-center text-center text-sm text-gray-400 dark:text-slate-500">
-                        ছবি নেই
+                        {tx.noPhoto}
                       </div>
                     )}
                   </div>
@@ -296,26 +275,26 @@ export default function StudentProfile360() {
         <div className="space-y-6">
           <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b px-5 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পরীক্ষার ফলাফল</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.examResults}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
                 <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">পরীক্ষা</th>
-                    <th className="px-5 py-3">শ্রেণি</th>
-                    <th className="px-5 py-3">অবস্থা</th>
-                    <th className="px-5 py-3">মোট নম্বর</th>
-                    <th className="px-5 py-3">গড়</th>
-                    <th className="px-5 py-3">গ্রেড</th>
-                    <th className="px-5 py-3">মেধাক্রম</th>
+                    <th className="px-5 py-3">{tx.exam}</th>
+                    <th className="px-5 py-3">{tx.class}</th>
+                    <th className="px-5 py-3">{tx.state}</th>
+                    <th className="px-5 py-3">{tx.totalMarks}</th>
+                    <th className="px-5 py-3">{tx.average}</th>
+                    <th className="px-5 py-3">{tx.grade}</th>
+                    <th className="px-5 py-3">{tx.rank}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-5 py-6 text-center text-slate-400">
-                        কোনো ফলাফল পাওয়া যায়নি
+                        {tx.noResults}
                       </td>
                     </tr>
                   )}
@@ -326,7 +305,7 @@ export default function StudentProfile360() {
                         {row.resultMaster?.class?.nameBn || row.resultMaster?.class?.name || "-"}
                       </td>
                       <td className="px-5 py-3">
-                        {row.resultMaster?.status === "PUBLISHED" ? "প্রকাশিত" : "খসড়া"}
+                        {row.resultMaster?.status === "PUBLISHED" ? tx.published : tx.draft}
                       </td>
                       <td className="px-5 py-3">{row.total}</td>
                       <td className="px-5 py-3">{row.average}</td>
@@ -341,23 +320,23 @@ export default function StudentProfile360() {
 
           <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b px-5 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">পদোন্নতির ইতিহাস</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.promotionHistory}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">শিক্ষাবর্ষ</th>
-                    <th className="px-5 py-3">রোল পরিবর্তন</th>
-                    <th className="px-5 py-3">অবস্থা</th>
-                    <th className="px-5 py-3">তারিখ</th>
+                    <th className="px-5 py-3">{tx.session}</th>
+                    <th className="px-5 py-3">{tx.rollChange}</th>
+                    <th className="px-5 py-3">{tx.state}</th>
+                    <th className="px-5 py-3">{tx.date}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {promotionHistory.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-5 py-6 text-center text-slate-400">
-                        কোনো তথ্য নেই
+                        {tx.noInfo}
                       </td>
                     </tr>
                   )}
@@ -369,7 +348,7 @@ export default function StudentProfile360() {
                       <td className="px-5 py-3">
                         {row.oldRoll} → {row.newRoll ?? "-"}
                       </td>
-                      <td className="px-5 py-3">{PROMOTION_STATUS_LABEL[row.status] || row.status}</td>
+                      <td className="px-5 py-3">{tx.promotionStatus[row.status] || row.status}</td>
                       <td className="px-5 py-3">{dateBn(row.batch?.createdAt)}</td>
                     </tr>
                   ))}
@@ -383,38 +362,38 @@ export default function StudentProfile360() {
       {tab === "attendance" && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label="উপস্থিত" value={attendanceSummary?.PRESENT ?? 0} tone="emerald" />
-            <StatTile label="অনুপস্থিত" value={attendanceSummary?.ABSENT ?? 0} tone="rose" />
-            <StatTile label="বিলম্বে" value={attendanceSummary?.LATE ?? 0} tone="amber" />
-            <StatTile label="হাজিরার হার" value={attendanceSummary?.percentage ?? 0} variant="percentage" tone="blue" />
+            <StatTile label={tx.present} value={attendanceSummary?.PRESENT ?? 0} tone="emerald" />
+            <StatTile label={tx.absent} value={attendanceSummary?.ABSENT ?? 0} tone="rose" />
+            <StatTile label={tx.late} value={attendanceSummary?.LATE ?? 0} tone="amber" />
+            <StatTile label={tx.attendanceRate} value={attendanceSummary?.percentage ?? 0} variant="percentage" tone="blue" />
           </div>
 
           <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b px-5 py-4 dark:border-slate-700">
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                সাম্প্রতিক রেকর্ড (গত ৩০ দিন)
+                {tx.recentRecords}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
                 <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">তারিখ</th>
-                    <th className="px-5 py-3">অবস্থা</th>
+                    <th className="px-5 py-3">{tx.date}</th>
+                    <th className="px-5 py-3">{tx.state}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(attendanceSummary?.recent || []).length === 0 && (
                     <tr>
                       <td colSpan={2} className="px-5 py-6 text-center text-slate-400">
-                        কোনো রেকর্ড নেই
+                        {tx.noRecords}
                       </td>
                     </tr>
                   )}
                   {(attendanceSummary?.recent || []).map((row: any) => (
                     <tr key={row.id} className="border-t dark:border-slate-700">
                       <td className="px-5 py-3">{dateBn(row.date)}</td>
-                      <td className="px-5 py-3">{ATTENDANCE_STATUS_LABEL[row.status] || row.status}</td>
+                      <td className="px-5 py-3">{tx.attendanceStatus[row.status] || row.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -427,32 +406,32 @@ export default function StudentProfile360() {
       {tab === "financial" && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label="মোট বিল" value={feeSummary?.totalBilled ?? 0} variant="currency" tone="slate" />
-            <StatTile label="পরিশোধিত" value={feeSummary?.totalPaid ?? 0} variant="currency" tone="emerald" />
-            <StatTile label="মওকুফ" value={feeSummary?.totalWaived ?? 0} variant="currency" tone="amber" />
-            <StatTile label="বকেয়া" value={feeSummary?.totalDue ?? 0} variant="currency" tone="rose" />
+            <StatTile label={tx.totalBilled} value={feeSummary?.totalBilled ?? 0} variant="currency" tone="slate" />
+            <StatTile label={tx.paid} value={feeSummary?.totalPaid ?? 0} variant="currency" tone="emerald" />
+            <StatTile label={tx.waived} value={feeSummary?.totalWaived ?? 0} variant="currency" tone="amber" />
+            <StatTile label={tx.due} value={feeSummary?.totalDue ?? 0} variant="currency" tone="rose" />
           </div>
 
           <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b px-5 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">সাম্প্রতিক ইনভয়েস</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.recentInvoices}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">খাত</th>
-                    <th className="px-5 py-3">নির্ধারিত তারিখ</th>
-                    <th className="px-5 py-3">পরিমাণ</th>
-                    <th className="px-5 py-3">পরিশোধিত</th>
-                    <th className="px-5 py-3">অবস্থা</th>
+                    <th className="px-5 py-3">{tx.head}</th>
+                    <th className="px-5 py-3">{tx.dueDate}</th>
+                    <th className="px-5 py-3">{tx.amount}</th>
+                    <th className="px-5 py-3">{tx.paid}</th>
+                    <th className="px-5 py-3">{tx.state}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(feeSummary?.recentInvoices || []).length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-5 py-6 text-center text-slate-400">
-                        কোনো ইনভয়েস নেই
+                        {tx.noInvoices}
                       </td>
                     </tr>
                   )}
@@ -462,7 +441,7 @@ export default function StudentProfile360() {
                       <td className="px-5 py-3">{dateBn(invoice.dueDate)}</td>
                       <td className="px-5 py-3">{money(invoice.amount)}</td>
                       <td className="px-5 py-3">{money(invoice.paidAmount)}</td>
-                      <td className="px-5 py-3">{INVOICE_STATUS_LABEL[invoice.status] || invoice.status}</td>
+                      <td className="px-5 py-3">{tx.invoiceStatus[invoice.status] || invoice.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -475,24 +454,24 @@ export default function StudentProfile360() {
       {tab === "library" && (
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="border-b px-5 py-4 dark:border-slate-700">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">লাইব্রেরি রেকর্ড</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.libraryRecords}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
-                  <th className="px-5 py-3">বইয়ের নাম</th>
-                  <th className="px-5 py-3">নেওয়ার তারিখ</th>
-                  <th className="px-5 py-3">ফেরতের তারিখ</th>
-                  <th className="px-5 py-3">অবস্থা</th>
-                  <th className="px-5 py-3">জরিমানা</th>
+                  <th className="px-5 py-3">{tx.bookName}</th>
+                  <th className="px-5 py-3">{tx.borrowedDate}</th>
+                  <th className="px-5 py-3">{tx.returnDate}</th>
+                  <th className="px-5 py-3">{tx.state}</th>
+                  <th className="px-5 py-3">{tx.fine}</th>
                 </tr>
               </thead>
               <tbody>
                 {libraryRecords.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-6 text-center text-slate-400">
-                      কোনো রেকর্ড নেই
+                      {tx.noRecords}
                     </td>
                   </tr>
                 )}
@@ -501,7 +480,7 @@ export default function StudentProfile360() {
                     <td className="px-5 py-3">{record.book?.title}</td>
                     <td className="px-5 py-3">{dateBn(record.borrowedAt)}</td>
                     <td className="px-5 py-3">{dateBn(record.dueDate)}</td>
-                    <td className="px-5 py-3">{LIBRARY_STATUS_LABEL[record.status] || record.status}</td>
+                    <td className="px-5 py-3">{tx.libraryStatus[record.status] || record.status}</td>
                     <td className="px-5 py-3">
                       {money(record.status === "BORROWED" ? record.estimatedFine : record.fineAmount)}
                     </td>

@@ -13,6 +13,7 @@ import { timeRangesOverlap } from "../../shared/utils/time-range.util";
 import { autoRegisterForRoutine } from "../exam-candidate/exam-candidate.hooks";
 import { autoActivateExamForRoutine } from "../ExamPanel/exam.hooks";
 import { assertExamCoversClass } from "../ExamPanel/exam-scope";
+import { t } from "../../shared/i18n";
 
 const isEmpty = (value: unknown) => value === undefined || value === null || String(value).trim() === "";
 
@@ -28,10 +29,10 @@ const validateTimeRange = (start: unknown, end: unknown) => {
   const startStr = String(start || "");
   const endStr = String(end || "");
   if (!TIME_FORMAT_REGEX.test(startStr) || !TIME_FORMAT_REGEX.test(endStr)) {
-    throw new BadRequestError("start_time/end_time must be in HH:mm 24-hour format");
+    throw new BadRequestError(t({ bn: "start_time/end_time অবশ্যই HH:mm (২৪ ঘণ্টা) ফরম্যাটে হতে হবে", en: "start_time/end_time must be in HH:mm 24-hour format", ar: "يجب أن يكون وقت البداية/النهاية بصيغة HH:mm (24 ساعة)" }));
   }
   if (startStr >= endStr) {
-    throw new BadRequestError("start_time must be earlier than end_time");
+    throw new BadRequestError(t({ bn: "শুরুর সময় অবশ্যই শেষের সময়ের আগে হতে হবে", en: "start_time must be earlier than end_time", ar: "يجب أن يكون وقت البداية قبل وقت النهاية" }));
   }
   return { startStr, endStr };
 };
@@ -45,18 +46,18 @@ export class RoutineService {
     try {
       return await this.repository.findClassRoutines(madrasaId, classId);
     } catch (err) {
-      return friendlyFailure("listClassRoutines error:", err, "Failed to load class routine");
+      return friendlyFailure("listClassRoutines error:", err, t({ bn: "ক্লাস রুটিন লোড করা যায়নি", en: "Failed to load class routine", ar: "تعذر تحميل جدول الحصص" }));
     }
   }
 
   async createClassRoutine(madrasaId: number, dto: CreateClassRoutineRequestDto) {
     if (isEmpty(dto.class_id) || isEmpty(dto.subject) || dto.day_of_week === undefined) {
-      throw new BadRequestError("class_id, day_of_week and subject are required");
+      throw new BadRequestError(t({ bn: "class_id, day_of_week ও বিষয় আবশ্যক", en: "class_id, day_of_week and subject are required", ar: "class_id و day_of_week والمادة مطلوبة" }));
     }
 
     const dayOfWeek = Number(dto.day_of_week);
     if (Number.isNaN(dayOfWeek) || dayOfWeek < MIN_DAY_OF_WEEK || dayOfWeek > MAX_DAY_OF_WEEK) {
-      throw new BadRequestError("day_of_week must be between 0 (Sunday) and 6 (Saturday)");
+      throw new BadRequestError(t({ bn: "day_of_week অবশ্যই 0 (রবিবার) থেকে 6 (শনিবার) এর মধ্যে হতে হবে", en: "day_of_week must be between 0 (Sunday) and 6 (Saturday)", ar: "يجب أن يكون اليوم بين 0 (الأحد) و 6 (السبت)" }));
     }
     const { startStr, endStr } = validateTimeRange(dto.start_time, dto.end_time);
 
@@ -70,8 +71,8 @@ export class RoutineService {
         endTime: endStr,
       });
     } catch (err) {
-      if (isDuplicateError(err)) throw new ConflictError("This class routine slot already exists");
-      return friendlyFailure("createClassRoutine error:", err, "Failed to create class routine");
+      if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই ক্লাস রুটিন স্লটটি ইতিমধ্যে আছে", en: "This class routine slot already exists", ar: "فترة جدول الحصص هذه موجودة بالفعل" }));
+      return friendlyFailure("createClassRoutine error:", err, t({ bn: "ক্লাস রুটিন তৈরি করা যায়নি", en: "Failed to create class routine", ar: "تعذر إنشاء جدول الحصص" }));
     }
   }
 
@@ -84,7 +85,7 @@ export class RoutineService {
     if (dto.day_of_week !== undefined) {
       const dayOfWeek = Number(dto.day_of_week);
       if (Number.isNaN(dayOfWeek) || dayOfWeek < MIN_DAY_OF_WEEK || dayOfWeek > MAX_DAY_OF_WEEK) {
-        throw new BadRequestError("day_of_week must be between 0 (Sunday) and 6 (Saturday)");
+        throw new BadRequestError(t({ bn: "day_of_week অবশ্যই 0 (রবিবার) থেকে 6 (শনিবার) এর মধ্যে হতে হবে", en: "day_of_week must be between 0 (Sunday) and 6 (Saturday)", ar: "يجب أن يكون اليوم بين 0 (الأحد) و 6 (السبت)" }));
       }
       data.dayOfWeek = dayOfWeek;
     }
@@ -94,24 +95,24 @@ export class RoutineService {
       data.endTime = endStr;
     }
 
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     try {
       const result = await this.repository.updateClassRoutine(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Class routine not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ক্লাস রুটিন পাওয়া যায়নি", en: "Class routine not found", ar: "لم يتم العثور على جدول الحصص" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateClassRoutine error:", err, "Failed to update class routine");
+      return friendlyFailure("updateClassRoutine error:", err, t({ bn: "ক্লাস রুটিন আপডেট করা যায়নি", en: "Failed to update class routine", ar: "تعذر تحديث جدول الحصص" }));
     }
   }
 
   async deleteClassRoutine(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteClassRoutine(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Class routine not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "ক্লাস রুটিন পাওয়া যায়নি", en: "Class routine not found", ar: "لم يتم العثور على جدول الحصص" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteClassRoutine error:", err, "Failed to delete class routine");
+      return friendlyFailure("deleteClassRoutine error:", err, t({ bn: "ক্লাস রুটিন মুছে ফেলা যায়নি", en: "Failed to delete class routine", ar: "تعذر حذف جدول الحصص" }));
     }
   }
 
@@ -121,7 +122,7 @@ export class RoutineService {
     try {
       return await this.repository.findExamRoutines(madrasaId, examId, classId);
     } catch (err) {
-      return friendlyFailure("listExamRoutines error:", err, "Failed to load exam routine");
+      return friendlyFailure("listExamRoutines error:", err, t({ bn: "পরীক্ষার রুটিন লোড করা যায়নি", en: "Failed to load exam routine", ar: "تعذر تحميل جدول الامتحان" }));
     }
   }
 
@@ -141,7 +142,7 @@ export class RoutineService {
     const clash = others.find((o) => timeRangesOverlap(startTime, endTime, o.startTime, o.endTime));
     if (clash) {
       throw new ConflictError(
-        `This room is already booked for another exam routine (#${clash.id}) at an overlapping time`,
+        t({ bn: `এই কক্ষটি একই সময়ে অন্য একটি পরীক্ষার রুটিনের (#${clash.id}) জন্য বরাদ্দ আছে`, en: `This room is already booked for another exam routine (#${clash.id}) at an overlapping time`, ar: `هذه القاعة محجوزة بالفعل لجدول امتحان آخر (#${clash.id}) في وقت متداخل` }),
       );
     }
   }
@@ -156,26 +157,26 @@ export class RoutineService {
   ) {
     const existing = await this.repository.findDuplicateClassSubject(madrasaId, examId, classId, subject, excludeId);
     if (existing) {
-      throw new ConflictError("This class already has an exam routine for this subject in this exam");
+      throw new ConflictError(t({ bn: "এই পরীক্ষায় এই শ্রেণির এই বিষয়ের রুটিন ইতিমধ্যে আছে", en: "This class already has an exam routine for this subject in this exam", ar: "يوجد لهذا الصف بالفعل جدول امتحان لهذه المادة في هذا الامتحان" }));
     }
   }
 
   private validateStatus(status: unknown): string {
     const value = String(status).toUpperCase();
     if (!EXAM_ROUTINE_STATUSES.includes(value as (typeof EXAM_ROUTINE_STATUSES)[number])) {
-      throw new BadRequestError(`status must be one of ${EXAM_ROUTINE_STATUSES.join(", ")}`);
+      throw new BadRequestError(t({ bn: `status অবশ্যই এগুলোর একটি হতে হবে: ${EXAM_ROUTINE_STATUSES.join(", ")}`, en: `status must be one of ${EXAM_ROUTINE_STATUSES.join(", ")}`, ar: `يجب أن تكون الحالة إحدى القيم: ${EXAM_ROUTINE_STATUSES.join(", ")}` }));
     }
     return value;
   }
 
   async createExamRoutine(madrasaId: number, dto: CreateExamRoutineRequestDto) {
     if (isEmpty(dto.exam_id) || isEmpty(dto.class_id) || isEmpty(dto.subject) || isEmpty(dto.exam_date)) {
-      throw new BadRequestError("exam_id, class_id, subject and exam_date are required");
+      throw new BadRequestError(t({ bn: "exam_id, class_id, বিষয় ও exam_date আবশ্যক", en: "exam_id, class_id, subject and exam_date are required", ar: "exam_id و class_id والمادة و exam_date مطلوبة" }));
     }
     const { startStr, endStr } = validateTimeRange(dto.start_time, dto.end_time);
 
     const examDate = new Date(dto.exam_date);
-    if (Number.isNaN(examDate.getTime())) throw new BadRequestError("exam_date is invalid");
+    if (Number.isNaN(examDate.getTime())) throw new BadRequestError(t({ bn: "পরীক্ষার তারিখ সঠিক নয়", en: "exam_date is invalid", ar: "تاريخ الامتحان غير صالح" }));
 
     const examId = Number(dto.exam_id);
     const classId = Number(dto.class_id);
@@ -205,7 +206,7 @@ export class RoutineService {
         instructions: dto.instructions?.trim() || null,
       });
     } catch (err) {
-      return friendlyFailure("createExamRoutine error:", err, "Failed to create exam routine");
+      return friendlyFailure("createExamRoutine error:", err, t({ bn: "পরীক্ষার রুটিন তৈরি করা যায়নি", en: "Failed to create exam routine", ar: "تعذر إنشاء جدول الامتحان" }));
     }
 
     // Free-exam auto-registration side effect (fee-linked exams opt out
@@ -233,7 +234,7 @@ export class RoutineService {
 
   async updateExamRoutine(id: number, madrasaId: number, dto: UpdateExamRoutineRequestDto) {
     const existing = await this.repository.findExamRoutineById(id, madrasaId);
-    if (!existing) throw new NotFoundError("Exam routine not found");
+    if (!existing) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
 
     const data: Record<string, unknown> = {};
 
@@ -250,7 +251,7 @@ export class RoutineService {
     if (dto.instructions !== undefined) data.instructions = dto.instructions?.trim() || null;
     if (dto.exam_date !== undefined) {
       const examDate = new Date(dto.exam_date);
-      if (Number.isNaN(examDate.getTime())) throw new BadRequestError("exam_date is invalid");
+      if (Number.isNaN(examDate.getTime())) throw new BadRequestError(t({ bn: "পরীক্ষার তারিখ সঠিক নয়", en: "exam_date is invalid", ar: "تاريخ الامتحان غير صالح" }));
       data.examDate = examDate;
     }
     if (dto.start_time !== undefined || dto.end_time !== undefined) {
@@ -262,7 +263,7 @@ export class RoutineService {
       data.endTime = endStr;
     }
 
-    if (!Object.keys(data).length) throw new BadRequestError("No valid data to update");
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
 
     // Re-run conflict checks whenever a field that affects them changes,
     // using the merged (existing + incoming) values.
@@ -299,10 +300,10 @@ export class RoutineService {
 
     try {
       const result = await this.repository.updateExamRoutine(id, madrasaId, data);
-      if (!result.count) throw new NotFoundError("Exam routine not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("updateExamRoutine error:", err, "Failed to update exam routine");
+      return friendlyFailure("updateExamRoutine error:", err, t({ bn: "পরীক্ষার রুটিন আপডেট করা যায়নি", en: "Failed to update exam routine", ar: "تعذر تحديث جدول الامتحان" }));
     }
 
     // Only re-run the free-exam auto-registration side effect when this
@@ -325,10 +326,10 @@ export class RoutineService {
   async deleteExamRoutine(id: number, madrasaId: number) {
     try {
       const result = await this.repository.deleteExamRoutine(id, madrasaId);
-      if (!result.count) throw new NotFoundError("Exam routine not found");
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার রুটিন পাওয়া যায়নি", en: "Exam routine not found", ar: "لم يتم العثور على جدول الامتحان" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("deleteExamRoutine error:", err, "Failed to delete exam routine");
+      return friendlyFailure("deleteExamRoutine error:", err, t({ bn: "পরীক্ষার রুটিন মুছে ফেলা যায়নি", en: "Failed to delete exam routine", ar: "تعذر حذف جدول الامتحان" }));
     }
   }
 
@@ -338,7 +339,7 @@ export class RoutineService {
     try {
       return await this.repository.findClassRoutineOverview(madrasaId);
     } catch (err) {
-      return friendlyFailure("getClassRoutineOverview error:", err, "Failed to load class routine overview");
+      return friendlyFailure("getClassRoutineOverview error:", err, t({ bn: "ক্লাস রুটিনের সারসংক্ষেপ লোড করা যায়নি", en: "Failed to load class routine overview", ar: "تعذر تحميل نظرة عامة على جدول الحصص" }));
     }
   }
 
@@ -346,7 +347,7 @@ export class RoutineService {
     try {
       return await this.repository.findExamRoutineOverview(madrasaId);
     } catch (err) {
-      return friendlyFailure("getExamRoutineOverview error:", err, "Failed to load exam routine overview");
+      return friendlyFailure("getExamRoutineOverview error:", err, t({ bn: "পরীক্ষার রুটিনের সারসংক্ষেপ লোড করা যায়নি", en: "Failed to load exam routine overview", ar: "تعذر تحميل نظرة عامة على جدول الامتحان" }));
     }
   }
 }

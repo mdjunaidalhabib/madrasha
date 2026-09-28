@@ -10,6 +10,9 @@ import {
 } from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { getPrintText, usePrintLang, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "./report.text";
+import { reportUiText } from "./reportUi.text";
 import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins } from "./pagination/pageGeometry";
 import { paginateBlocks, type MeasuredBlock } from "./pagination/paginateBlocks";
 import { splitTextToFit } from "./pagination/splitTextToFit";
@@ -166,7 +169,7 @@ const expandRowsBySubject = (allRows: Record<string, any>[]) => {
     subjects.forEach((subject: Record<string, any>, index: number) => {
       expanded.push({
         ...row,
-        __subject_name: subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`,
+        __subject_name: subject.subject_name || getPrintText(reportText).subjectN(toBanglaDigits(index + 1)),
       });
     });
   });
@@ -601,6 +604,11 @@ const PaginatedReportPreview = ({
   margins: marginsProp,
   emptyMessage,
 }: PaginatedReportPreviewProps) => {
+  // Printed pages follow the institution default language (and its direction);
+  // the "preparing" notice is on-screen chrome in the user UI language.
+  const t = usePrintText(reportText);
+  const ui = useText(reportUiText);
+  const { lang: printLang, dir: printDir } = usePrintLang();
   // A4 ল্যান্ডস্কেপে মার্কশিট = এক কাগজে ২টি A5 (পোর্ট্রেট) মার্কশিট পাশাপাশি। প্রতিটি মার্কশিট
   // এখানে A5 পোর্ট্রেট "লজিক্যাল পাতা" - পেজিনেশন/মাপ/ফন্ট সব A5-এর মতোই হয়; শুধু ভৌত কাগজ
   // (প্রিভিউ স্কেল, প্রিন্ট সাইজ) sheetPaperSize/sheetOrientation থেকে আসে।
@@ -1252,7 +1260,7 @@ const PaginatedReportPreview = ({
         {showsBrandHeader && <ReportBrandHeader />}
         {showPageNumber && (
           <div className="report-page-footer">
-            <span className="report-page-footer-label">পৃষ্ঠা:</span>
+            <span className="report-page-footer-label">{t.pageLabel}</span>
             <span className="report-page-footer-number">
               {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
             </span>
@@ -1285,7 +1293,12 @@ const PaginatedReportPreview = ({
   return (
     <PageGeometryContext.Provider value={pageGeometry}>
       {measureTargets.length > 0 && (
-        <div aria-hidden="true" style={{ position: "fixed", top: 0, left: "-99999px", visibility: "hidden" }}>
+        <div
+          aria-hidden="true"
+          lang={printLang}
+          dir={printDir}
+          style={{ position: "fixed", top: 0, left: "-99999px", visibility: "hidden" }}
+        >
           {measureTargets.map((target) => (
             <div
               key={target.key}
@@ -1339,8 +1352,10 @@ const PaginatedReportPreview = ({
         className="print-preview-viewport"
         data-report-ready={isReportReady ? "true" : "false"}
       >
-        {!fontReady && <div className="print-fonts-loading">রিপোর্ট প্রস্তুত হচ্ছে...</div>}
+        {!fontReady && <div className="print-fonts-loading">{ui.preparing}</div>}
         <div
+          lang={printLang}
+          dir={printDir}
           className="print-area print-pages"
           style={scaleStyle}
           data-fonts-ready={fontReady ? "true" : "false"}
@@ -1370,7 +1385,7 @@ const PaginatedReportPreview = ({
                     <ReportBrandFooter />
                     {showPageNumber && (
                       <div className="report-page-footer">
-                        <span className="report-page-footer-label">পৃষ্ঠা:</span>
+                        <span className="report-page-footer-label">{t.pageLabel}</span>
                         <span className="report-page-footer-number">
                           {toBanglaDigits(physicalIndex + 1)}/{toBanglaDigits(physicalPageCount)}
                         </span>

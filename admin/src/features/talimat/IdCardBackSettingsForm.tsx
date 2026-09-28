@@ -16,6 +16,8 @@ import { hasPermission } from "../../utils/permissions";
 import { EMPTY_ID_CARD_BACK, saveIdCardBack, type IdCardBackSettings } from "../../services/idCardBackApi";
 import { useBackLayout } from "../../components/Report/documents/engine/useDocumentLayout";
 import { formatCardDate } from "../../components/Report/documents/engine/useIdCardBackRows";
+import { commonText, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { idCardBackText } from "./talimatMisc.text";
 
 // শুধু প্রিভিউর নমুনা - কোনো প্রকৃত শিক্ষার্থীর তথ্য নয়, কোথাও সেভ হয় না।
 const SAMPLE_STUDENT = {
@@ -43,6 +45,10 @@ const Field = ({ label, hint, children }: { label: string; hint?: string; childr
  * "পিছনের পাতা" ড্রপডাউন এই ডিফল্ট দিয়ে শুরু হয়, সেখান থেকে অন্য ডিজাইনও বাছা যায়।
  */
 export default function IdCardBackSettingsForm() {
+  const t = useText(idCardBackText);
+  const c = useText(commonText);
+  // The preview shows the printed card, so its defaults follow the print language.
+  const pt = usePrintText(idCardBackText);
   const branding = useBrandingStore((s) => s.branding);
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const settings = useIdCardBackStore((s) => s.settings);
@@ -77,29 +83,29 @@ export default function IdCardBackSettingsForm() {
   const backLayout = useBackLayout(defaultDesignId);
   const previewRow = useMemo(() => {
     const phone = branding?.phones?.filter(Boolean).join(", ");
-    const defaultReturn = [branding?.address, phone ? `ফোন: ${phone}` : ""].filter(Boolean).join("\n");
+    const defaultReturn = [branding?.address, phone ? pt.phone(phone) : ""].filter(Boolean).join("\n");
     return {
       ...SAMPLE_STUDENT,
       madrasa_name: branding?.name || " ",
       madrasa_logo: branding?.report_logo || "",
       id_issue_date: formatCardDate(draft.issue_date),
       id_expiry_date: formatCardDate(draft.expiry_date),
-      principal_title: draft.principal_title?.trim() || "অধ্যক্ষ",
+      principal_title: draft.principal_title?.trim() || pt.principal,
       principal_signature: draft.principal_signature || "",
       id_lost_return: draft.lost_return_text?.trim() || defaultReturn || " ",
     };
-  }, [draft, branding]);
+  }, [draft, branding, pt]);
 
   const handleSave = async () => {
     if (draft.issue_date && draft.expiry_date && draft.expiry_date < draft.issue_date) {
-      useToastStore.getState().show("মেয়াদ শেষের তারিখ ইস্যু তারিখের আগে হতে পারে না", "error");
+      useToastStore.getState().show(t.expiryBeforeIssue, "error");
       return;
     }
     setSaving(true);
     try {
       await saveIdCardBack(draft);
       setSettings(draft);
-      useToastStore.getState().show("আইডি কার্ডের পিছনের তথ্য সেভ হয়েছে", "success");
+      useToastStore.getState().show(t.saved, "success");
     } catch {
       // error toast already shown by the api layer
     } finally {
@@ -109,7 +115,7 @@ export default function IdCardBackSettingsForm() {
 
   if (!loaded && !settings) {
     return (
-      <div className="space-y-4" aria-busy="true" aria-label="লোড হচ্ছে">
+      <div className="space-y-4" aria-busy="true" aria-label={c.loading}>
         <Skeleton className="h-16 w-full rounded-2xl" />
         <Skeleton className="h-80 w-full rounded-2xl" />
       </div>
@@ -120,21 +126,21 @@ export default function IdCardBackSettingsForm() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold dark:text-slate-100">আইডি কার্ড ব্যাক</h2>
+          <h2 className="text-xl font-bold dark:text-slate-100">{t.title}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            আইডি কার্ডের পিছনের পাতায় ছাপা হবে এমন তথ্য - ইস্যু ও মেয়াদের তারিখ, অধ্যক্ষের স্বাক্ষর, হারিয়ে গেলে ফেরতের ঠিকানা
+            {t.subtitle}
           </p>
         </div>
         {canEdit && (
           <Button onClick={handleSave} disabled={saving || !dirty}>
-            {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+            {saving ? t.saving : t.save}
           </Button>
         )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-          <Field label="ডিফল্ট পিছনের ডিজাইন" hint="রিপোর্টে আইডি কার্ড খুললে এই ডিজাইন দিয়ে শুরু হয় - সেখান থেকে চাইলে অন্য ডিজাইনও বাছা যায়">
+          <Field label={t.defaultDesign} hint={t.defaultDesignHint}>
             <select
               className={inputClass}
               value={defaultDesignId}
@@ -145,7 +151,7 @@ export default function IdCardBackSettingsForm() {
               }}
             >
               <option value={DEFAULT_ID_CARD_BACK_ID}>{getDefaultBuiltinBackDesign().name}</option>
-              <optgroup label="রেডিমেড ডিজাইন">
+              <optgroup label={t.readyDesigns}>
                 {listBuiltinBackDesigns().map((design) => (
                   <option key={design.id} value={design.id}>
                     {design.name}
@@ -155,12 +161,12 @@ export default function IdCardBackSettingsForm() {
             </select>
           </Field>
 
-          <Field label="মাদরাসার নাম" hint="প্রতিষ্ঠান ব্র্যান্ডিং সেটিং থেকে আসে - সেখানেই বদলাতে হবে">
+          <Field label={t.institutionName} hint={t.institutionNameHint}>
             <input className={inputClass} value={branding?.name || ""} disabled readOnly />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="কার্ড ইস্যুর তারিখ">
+            <Field label={t.issueDate}>
               <input
                 type="date"
                 className={inputClass}
@@ -169,7 +175,7 @@ export default function IdCardBackSettingsForm() {
                 onChange={(e) => patch({ issue_date: e.target.value || null })}
               />
             </Field>
-            <Field label="মেয়াদ শেষের তারিখ">
+            <Field label={t.expiryDate}>
               <input
                 type="date"
                 className={inputClass}
@@ -181,12 +187,12 @@ export default function IdCardBackSettingsForm() {
             </Field>
           </div>
 
-          <Field label="অধ্যক্ষের পদবি" hint="স্বাক্ষরের নিচে ছাপা হয় - ফাঁকা রাখলে “অধ্যক্ষ”">
+          <Field label={t.principalTitle} hint={t.principalTitleHint}>
             <input
               className={inputClass}
               value={draft.principal_title || ""}
               maxLength={60}
-              placeholder="অধ্যক্ষ"
+              placeholder={pt.principal}
               disabled={!canEdit}
               onChange={(e) => patch({ principal_title: e.target.value })}
             />
@@ -194,10 +200,10 @@ export default function IdCardBackSettingsForm() {
 
           <div className={canEdit ? "" : "pointer-events-none opacity-60"}>
             <BrandImageBox
-              label="অধ্যক্ষের স্বাক্ষর"
-              hint="সাদা বা স্বচ্ছ জমিনে স্বাক্ষরের স্পষ্ট ছবি (PNG/JPG, সর্বোচ্চ ২MB)"
+              label={t.principalSignature}
+              hint={t.signatureHint}
               shape="wide"
-              ratioLabel="অনুপাত ২:১"
+              ratioLabel={t.ratio}
               value={draft.principal_signature}
               onChange={(value) => patch({ principal_signature: value })}
               onRemove={() => patch({ principal_signature: null })}
@@ -205,8 +211,8 @@ export default function IdCardBackSettingsForm() {
           </div>
 
           <Field
-            label="কার্ড হারিয়ে গেলে ফেরত দেওয়ার ঠিকানা"
-            hint="ফাঁকা রাখলে মাদরাসার ঠিকানা ও ফোন নম্বর ছাপা হবে"
+            label={t.returnAddress}
+            hint={t.returnAddressHint}
           >
             <textarea
               className={`${inputClass} h-28 resize-none py-2 leading-relaxed`}
@@ -221,7 +227,7 @@ export default function IdCardBackSettingsForm() {
 
         <aside className="space-y-3">
           <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">প্রিভিউ (নমুনা)</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{t.previewSample}</p>
             <div className="mt-3 flex justify-center overflow-hidden rounded-lg bg-gray-100 p-3 dark:bg-slate-800">
               {backLayout && (
                 <div style={{ width: backLayout.width, height: backLayout.height }} className="shadow-md">
@@ -230,7 +236,7 @@ export default function IdCardBackSettingsForm() {
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-              ছাপতে রিপোর্ট → ডকুমেন্ট → আইডি কার্ড (সামনে-পিছনে) বা আইডি কার্ড ব্যাক (শুধু পিছন)।
+              {t.printHint}
             </p>
           </div>
         </aside>

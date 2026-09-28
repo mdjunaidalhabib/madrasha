@@ -2,16 +2,18 @@ import { Wifi, WifiOff, HelpCircle } from "lucide-react";
 import Badge, { type BadgeTone } from "@madrasha/shared-ui/src/components/ui/Badge";
 import type { AttendanceDevice, DeviceConnectionStatus, PunchSyncStatus, SmsStatus } from "./types";
 import { formatDateTime, relativeTime } from "./utils";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
 
 export const inputLabelClass = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400";
 
 export const selectClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-const DEVICE_STATUS: Record<DeviceConnectionStatus, { label: string; tone: BadgeTone }> = {
-  online: { label: "অনলাইন", tone: "green" },
-  offline: { label: "অফলাইন", tone: "red" },
-  unknown: { label: "অজানা", tone: "slate" },
+const DEVICE_STATUS: Record<DeviceConnectionStatus, BadgeTone> = {
+  online: "green",
+  offline: "red",
+  unknown: "slate",
 };
 
 export function DeviceStatusBadge({
@@ -21,38 +23,41 @@ export function DeviceStatusBadge({
   status: DeviceConnectionStatus;
   inactive?: boolean;
 }) {
-  if (inactive) return <Badge tone="slate">নিষ্ক্রিয়</Badge>;
-  const { label, tone } = DEVICE_STATUS[status] ?? DEVICE_STATUS.unknown;
-  return <Badge tone={tone}>{label}</Badge>;
+  const t = useText(attendanceDeviceText).deviceStatus;
+  if (inactive) return <Badge tone="slate">{t.inactive}</Badge>;
+  const key: DeviceConnectionStatus = status in DEVICE_STATUS ? status : "unknown";
+  return <Badge tone={DEVICE_STATUS[key]}>{t[key]}</Badge>;
 }
 
-const SYNC_STATUS: Record<PunchSyncStatus, { label: string; tone: BadgeTone }> = {
-  PENDING: { label: "অপেক্ষমাণ", tone: "yellow" },
-  SYNCING: { label: "সিঙ্ক হচ্ছে", tone: "blue" },
-  SYNCED: { label: "সিঙ্ক হয়েছে", tone: "green" },
-  FAILED: { label: "ব্যর্থ", tone: "red" },
+const SYNC_STATUS: Record<PunchSyncStatus, BadgeTone> = {
+  PENDING: "yellow",
+  SYNCING: "blue",
+  SYNCED: "green",
+  FAILED: "red",
 };
 
 export function SyncStatusBadge({ status }: { status: PunchSyncStatus | null | undefined }) {
-  const cfg = status ? SYNC_STATUS[status] : undefined;
-  return cfg ? (
-    <Badge tone={cfg.tone}>{cfg.label}</Badge>
+  const t = useText(attendanceDeviceText).syncStatus;
+  const tone = status ? SYNC_STATUS[status] : undefined;
+  return status && tone ? (
+    <Badge tone={tone}>{t[status]}</Badge>
   ) : (
     <span className="text-slate-400">—</span>
   );
 }
 
-const SMS_STATUS: Record<SmsStatus, { label: string; tone: BadgeTone }> = {
-  PENDING: { label: "অপেক্ষমাণ", tone: "yellow" },
-  PROCESSING: { label: "পাঠানো হচ্ছে", tone: "blue" },
-  SENT: { label: "পাঠানো হয়েছে", tone: "green" },
-  FAILED: { label: "ব্যর্থ", tone: "red" },
+const SMS_STATUS: Record<SmsStatus, BadgeTone> = {
+  PENDING: "yellow",
+  PROCESSING: "blue",
+  SENT: "green",
+  FAILED: "red",
 };
 
 export function SmsStatusBadge({ status }: { status: SmsStatus | null | undefined }) {
-  const cfg = status ? SMS_STATUS[status] : undefined;
-  return cfg ? (
-    <Badge tone={cfg.tone}>{cfg.label}</Badge>
+  const t = useText(attendanceDeviceText).smsStatus;
+  const tone = status ? SMS_STATUS[status] : undefined;
+  return status && tone ? (
+    <Badge tone={tone}>{t[status]}</Badge>
   ) : (
     <span className="text-slate-400">—</span>
   );
@@ -87,6 +92,7 @@ export function DeviceStatusStrip({
   loading: boolean;
   error: boolean;
 }) {
+  const t = useText(attendanceDeviceText).strip;
   if (loading && devices.length === 0) {
     return <div className="h-14 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
   }
@@ -94,7 +100,7 @@ export function DeviceStatusStrip({
   if (devices.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-        {error ? "ডিভাইসের অবস্থা লোড করা যায়নি" : "কোনো ডিভাইস যোগ করা হয়নি"}
+        {error ? t.loadFailed : t.none}
       </div>
     );
   }
@@ -125,7 +131,7 @@ export function DeviceStatusStrip({
                 <DeviceStatusBadge status={d.status} inactive={!d.is_active} />
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                সর্বশেষ যোগাযোগ: <TimeAgo value={d.last_seen_at} now={now} />
+                {t.lastContact} <TimeAgo value={d.last_seen_at} now={now} />
               </p>
             </div>
           </div>
@@ -133,7 +139,7 @@ export function DeviceStatusStrip({
       })}
       {error && (
         <span className="self-center text-xs text-amber-600 dark:text-amber-400">
-          রিফ্রেশ ব্যর্থ - পুরনো তথ্য দেখানো হচ্ছে
+          {t.refreshFailed}
         </span>
       )}
     </div>

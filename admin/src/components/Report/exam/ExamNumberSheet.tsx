@@ -1,4 +1,7 @@
-import { cellValue, formatReportValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printValue } from "../printFormat";
+import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
 import { ReportColumn } from "../../../features/reports/types";
 
 type ExamNumberSheetProps = {
@@ -22,7 +25,7 @@ type SubjectMark = {
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   for (const key of keys) {
     const current = row?.[key];
-    if (current !== null && current !== undefined && current !== "") return formatReportValue(current, key);
+    if (current !== null && current !== undefined && current !== "") return printValue(current, key);
   }
   return fallback;
 };
@@ -49,6 +52,9 @@ const ExamNumberSheet = ({
   isFirstPage = true,
   isLastPage = true,
 }: ExamNumberSheetProps) => {
+  const t = usePrintText(reportText);
+  const isMadrasa = useIsMadrasa();
+  const classCaption = `${isMadrasa ? t.jamat : t.classTerm}${t.colon}`;
   const headerMap = new Map(columns.map((c) => [c.key, c.header]));
   const label = (key: string, fallback: string) => headerMap.get(key) || fallback;
 
@@ -56,13 +62,13 @@ const ExamNumberSheet = ({
   const examName = value(firstRow, ["exam_name"], "........................");
   const examYear = value(firstRow, ["exam_year", "academic_year"], "........................");
   const className =
-    selectedClassName || value(firstRow, ["class_name", "class_name_bn"], "সকল শ্রেণি");
+    selectedClassName || value(firstRow, ["class_name", "class_name_bn"], t.allClasses);
 
   const subjectMap = new Map<string, string>();
   rows.forEach((row) => {
     parseSubjects(row).forEach((subject, index) => {
       const key = String(subject.book_id ?? subject.subject_name ?? index);
-      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || `বিষয় ${toBanglaDigits(index + 1)}`);
+      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || t.subjectN(toBanglaDigits(index + 1)));
     });
   });
   const subjects = Array.from(subjectMap.entries());
@@ -71,12 +77,12 @@ const ExamNumberSheet = ({
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
       <div className="student-report-heading report-block-heading mb-3 text-center">
-        <h1 className="student-report-title text-xl font-bold">পরীক্ষার নম্বরপত্র</h1>
+        <h1 className="student-report-title text-xl font-bold">{t.title.examNumberSheet}</h1>
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
           {examName} - {examYear}
         </p>
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          জামাতঃ {className}
+          {classCaption} {className}
         </p>
       </div>
       )}
@@ -87,9 +93,9 @@ const ExamNumberSheet = ({
         {isFirstPage && (
         <thead>
           <tr>
-            <th className="w-10 border border-black px-0.5 py-2 text-base">{label("roll", "রোল")}</th>
-            <th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", "রেজিঃ")}</th>
-            <th className="w-28 border border-black px-1 py-2 text-base">{label("student_name", "শিক্ষার্থীর নাম")}</th>
+            <th className="w-10 border border-black px-0.5 py-2 text-base">{label("roll", t.col.roll)}</th>
+            <th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", t.col.regAbbr)}</th>
+            <th className="w-28 border border-black px-1 py-2 text-base">{label("student_name", t.col.studentName)}</th>
             {subjects.map(([key, subjectLabel]) => (
               <th key={key} className="border border-black px-0.5 py-2 text-base leading-tight">
                 {subjectLabel}
@@ -101,12 +107,12 @@ const ExamNumberSheet = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
-              <td className="h-8 border border-black px-0.5 text-base">{cellValue(row, "roll")}</td>
+              <td className="h-8 border border-black px-0.5 text-base">{printCell(row, "roll")}</td>
               <td className="h-8 border border-black px-0.5 text-base">
-                {cellValue(row, "registration_no")}
+                {printCell(row, "registration_no")}
               </td>
               <td className="h-8 border border-black px-1 text-start text-base font-semibold">
-                {cellValue(row, "student_name")}
+                {printCell(row, "student_name")}
               </td>
               {subjects.map(([key]) => (
                 // Blank on purpose - the examiner writes the mark by hand
@@ -121,7 +127,7 @@ const ExamNumberSheet = ({
       {isLastPage && (
       <div className="exam-report-signature report-block-signature flex justify-end">
         <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-          পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর
+          {t.sign.examController}
         </div>
       </div>
       )}

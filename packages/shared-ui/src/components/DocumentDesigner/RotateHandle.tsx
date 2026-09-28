@@ -1,4 +1,6 @@
 import { useRef } from "react";
+import { useText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 export interface RotateHandleProps {
   /** Returns the current on-screen rect of the layer box this handle
@@ -16,6 +18,7 @@ export interface RotateHandleProps {
  * DocumentLayer.rotation's documented convention in types.ts).
  */
 const RotateHandle = ({ getRect, onRotate }: RotateHandleProps) => {
+  const t = useText(designerText);
   const dragging = useRef(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -49,7 +52,7 @@ const RotateHandle = ({ getRect, onRotate }: RotateHandleProps) => {
   return (
     <div
       role="button"
-      aria-label="Rotate layer"
+      aria-label={t.rotateLayer}
       onPointerDown={handlePointerDown}
       style={{
         position: "absolute",

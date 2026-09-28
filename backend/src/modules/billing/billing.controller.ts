@@ -4,6 +4,7 @@ import { ApiResponse } from "../../shared/responses";
 import { BadRequestError, TenantNotFoundInRequestError } from "../../shared/errors";
 import { billingService } from "./billing.service";
 import { isBillingChannel } from "./billing.types";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -13,7 +14,7 @@ const getMadrasaId = (req: Request): number => {
 
 const getChannelParam = (value: unknown) => {
   const channel = String(value || "").toUpperCase();
-  if (!isBillingChannel(channel)) throw new BadRequestError("channel must be SMS or EMAIL");
+  if (!isBillingChannel(channel)) throw new BadRequestError(t({ bn: "channel অবশ্যই SMS অথবা EMAIL হতে হবে", en: "channel must be SMS or EMAIL" }));
   return channel;
 };
 
@@ -54,7 +55,7 @@ export const getUsage = asyncHandler(async (req: Request, res: Response) => {
 
 export const createPurchaseRequest = asyncHandler(async (req: Request, res: Response) => {
   const data = await billingService.createPurchaseRequest(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.success(res, { message: "আপনার অনুরোধ পাঠানো হয়েছে - Super Admin approve করলে credit যোগ হবে", data });
+  return ApiResponse.success(res, { message: t({ bn: "আপনার অনুরোধ পাঠানো হয়েছে - সুপার অ্যাডমিন অনুমোদন করলে ক্রেডিট যোগ হবে", en: "Your request has been sent - credit will be added once Super Admin approves it", ar: "تم إرسال طلبك - ستتم إضافة الرصيد بعد موافقة المشرف العام" }), data });
 });
 
 export const getMyPurchaseRequests = asyncHandler(async (req: Request, res: Response) => {

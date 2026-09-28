@@ -3,6 +3,8 @@ import { ImageUp, Loader2, Pencil, X } from "lucide-react";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import { commonText, getText, localizeDigits, getLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { settingsUiText } from "./settingsUi.text";
 
 type Props = {
   label: string;
@@ -81,6 +83,8 @@ export default function BrandImageBox({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const t = useText(settingsUiText);
+  const c = useText(commonText);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,13 +92,15 @@ export default function BrandImageBox({
 
     const allowedTypes = ["image/png", "image/jpeg"];
     if (!allowedTypes.includes(file.type)) {
-      useToastStore.getState().show("শুধু PNG, JPG বা JPEG ছবি আপলোড করা যাবে", "error");
+      useToastStore.getState().show(getText(settingsUiText).onlyPngJpg, "error");
       return;
     }
 
     if (file.size > (resizeTo ? RESIZED_MAX_SIZE : MAX_SIZE)) {
       useToastStore.getState().show(
-        `ছবির সাইজ ${resizeTo ? RESIZED_MAX_SIZE / (1024 * 1024) : MAX_SIZE / (1024 * 1024)}MB এর কম হতে হবে`,
+        getText(settingsUiText).maxImageSize(
+          localizeDigits(resizeTo ? RESIZED_MAX_SIZE / (1024 * 1024) : MAX_SIZE / (1024 * 1024), getLang()),
+        ),
         "error"
       );
       return;
@@ -135,7 +141,7 @@ export default function BrandImageBox({
     e.target.value = "";
   };
 
-  const ratioLabel = ratioLabelProp ?? (shape === "wide" ? "অনুপাত ১৬:৯" : "অনুপাত ১:১");
+  const ratioLabel = ratioLabelProp ?? (shape === "wide" ? t.ratioWide : t.ratioSquare);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
@@ -162,7 +168,7 @@ export default function BrandImageBox({
         {!value && (
           <span className="flex flex-col items-center gap-1 px-2 text-center text-xs text-gray-400 dark:text-slate-500">
             <ImageUp size={22} className="text-gray-300 transition group-hover:text-blue-400 dark:text-slate-600 dark:group-hover:text-blue-400" />
-            <span>ছবি আপলোড করুন</span>
+            <span>{t.uploadImage}</span>
             <span className="text-[10px] text-gray-300 dark:text-slate-600">{ratioLabel}</span>
           </span>
         )}
@@ -174,7 +180,7 @@ export default function BrandImageBox({
             </span>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
               <Pencil size={16} />
-              <span className="text-xs font-medium">পরিবর্তন করুন</span>
+              <span className="text-xs font-medium">{t.change}</span>
             </div>
             <button
               type="button"
@@ -183,7 +189,7 @@ export default function BrandImageBox({
                 onRemove();
               }}
               className="absolute end-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-100 shadow transition hover:bg-red-50 dark:bg-slate-800/90 dark:hover:bg-red-950/40 sm:opacity-0 sm:group-hover:opacity-100"
-              title="মুছুন"
+              title={c.delete}
             >
               <X size={14} />
             </button>
@@ -193,7 +199,7 @@ export default function BrandImageBox({
         {uploading && (
           <span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/50 text-xs text-white">
             <Loader2 size={14} className="animate-spin" />
-            আপলোড হচ্ছে...
+            {t.uploading}
           </span>
         )}
       </div>

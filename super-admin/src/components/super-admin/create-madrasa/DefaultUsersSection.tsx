@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { createMadrasaText } from "./createMadrasa.text";
 
 type DefaultUser = {
   role: "muhtamim" | "talimat" | "accountant";
@@ -16,6 +18,7 @@ type Props = {
 };
 
 export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, errors }: Props) {
+  const t = useText(createMadrasaText);
   const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean>>({});
 
   const toggleVisible = (role: string) =>
@@ -33,15 +36,15 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
   };
 
   const roleLabel = (role: string) => {
-    if (role === "muhtamim") return "মুহতামিম";
-    if (role === "talimat") return "তালিমাত";
-    if (role === "accountant") return "অ্যাকাউন্টেন্ট";
+    if (role === "muhtamim") return t.roleHead;
+    if (role === "talimat") return t.roleTalimat;
+    if (role === "accountant") return t.roleAccountant;
     return role;
   };
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold dark:text-slate-100">ডিফল্ট ইউজার (মুহতামিম)</h3>
+      <h3 className="text-lg font-semibold dark:text-slate-100">{t.defaultUserTitle}</h3>
 
       {defaultUsers.map((user, index) => (
         <div key={user.role} className="border rounded-lg p-4 space-y-3 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
@@ -50,7 +53,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
 
             {/* Muhtamim always enabled */}
             {user.role === "muhtamim" ? (
-              <span className="text-green-600 text-sm font-medium dark:text-green-400">Required</span>
+              <span className="text-green-600 text-sm font-medium dark:text-green-400">{t.required}</span>
             ) : (
               <ToggleSwitch
                 checked={user.enabled}
@@ -62,7 +65,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
           <div>
             <input
               type="text"
-              placeholder="নাম"
+              placeholder={t.name}
               autoComplete="off"
               value={user.name}
               disabled={!user.enabled}
@@ -78,7 +81,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
           <div>
             <input
               type="email"
-              placeholder="Email"
+              placeholder={t.email}
               autoComplete="off"
               value={user.email}
               disabled={!user.enabled}
@@ -95,7 +98,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
             <div className="relative">
               <input
                 type={visibleRoles[user.role] ? "text" : "password"}
-                placeholder="Password"
+                placeholder={t.password}
                 autoComplete="new-password"
                 value={user.password}
                 disabled={!user.enabled}
@@ -108,7 +111,7 @@ export default function DefaultUsersSection({ defaultUsers, setDefaultUsers, err
                 onClick={() => toggleVisible(user.role)}
                 disabled={!user.enabled}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
-                aria-label={visibleRoles[user.role] ? "Hide password" : "Show password"}
+                aria-label={visibleRoles[user.role] ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {visibleRoles[user.role] ? <EyeOff size={18} /> : <Eye size={18} />}

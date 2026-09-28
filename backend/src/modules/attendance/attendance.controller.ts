@@ -3,6 +3,7 @@ import { asyncHandler } from "../../shared/utils/async-handler.util";
 import { ApiResponse } from "../../shared/responses";
 import { TenantNotFoundInRequestError } from "../../shared/errors";
 import { attendanceService } from "./attendance.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -13,7 +14,7 @@ const getMadrasaId = (req: Request): number => {
 export const bulkMarkAttendance = asyncHandler(async (req: Request, res: Response) => {
   const count = await attendanceService.bulkMark(getMadrasaId(req), req.user?.id, req.body);
   return ApiResponse.success(res, {
-    message: "Attendance saved successfully",
+    message: t({ bn: "হাজিরা সংরক্ষণ করা হয়েছে", en: "Attendance saved successfully", ar: "تم حفظ الحضور بنجاح" }),
     extra: { savedCount: count },
   });
 });

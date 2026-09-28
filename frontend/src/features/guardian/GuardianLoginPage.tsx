@@ -10,8 +10,11 @@ import TenantBlockedScreen, {
 } from "@madrasha/shared-ui/src/components/ui/TenantBlockedScreen";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useTenantSlug } from "../../utils/useTenantSlug";
+import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+import { guardianText } from "./guardian.text";
 
 export default function GuardianLoginPage() {
+  const t = useText(guardianText);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -65,25 +68,30 @@ export default function GuardianLoginPage() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow">
-        {!tenantBlock && <h2 className="text-xl font-bold">অভিভাবক লগইন</h2>}
+        {!tenantBlock && (
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xl font-bold">{t.loginTitle}</h2>
+            <LanguageSwitcher />
+          </div>
+        )}
 
         {tenantBlock && (
           <TenantBlockedScreen
             status={tenantBlock.status}
             message={tenantBlock.message}
             onBack={() => setTenantBlock(null)}
-            backLabel="আবার চেষ্টা করুন"
+            backLabel={t.tryAgain}
           />
         )}
 
         {!tenantBlock && (
           <>
             <p className="text-xs text-gray-500">
-              মাদরাসা: <b>{madrasaSlug || "demo-madrasa"}</b>
+              {t.institutionLabel} <b>{madrasaSlug || "demo-madrasa"}</b>
             </p>
 
             <Input
-              placeholder="মোবাইল নম্বর"
+              placeholder={t.mobileNumber}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
@@ -91,7 +99,7 @@ export default function GuardianLoginPage() {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="পাসওয়ার্ড"
+                placeholder={t.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pe-10"
@@ -100,7 +108,7 @@ export default function GuardianLoginPage() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute inset-y-0 end-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -108,11 +116,11 @@ export default function GuardianLoginPage() {
             </div>
 
             <p className="text-xs text-slate-500">
-              প্রথমবার লগইন করছেন? ডিফল্ট পাসওয়ার্ড আপনার মোবাইল নম্বরের শেষ ৪ ডিজিট।
+              {t.firstLoginHint}
             </p>
 
             <Button onClick={handleLogin} disabled={loading} className="w-full">
-              {loading ? "লগইন হচ্ছে..." : "লগইন"}
+              {loading ? t.loggingIn : t.login}
             </Button>
           </>
         )}

@@ -9,20 +9,31 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
+import { commonText, formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { talimatSettingsText } from "./talimatSettings.text";
 
 /** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
  * already sorted by sortOrder and are re-spliced locally on drag), so it
  * always matches what reports/dropdowns elsewhere show. */
-const SerialBadge = ({ index }: { index: number }) => (
-  <span
-    aria-label={`ক্রম ${(index + 1).toLocaleString("bn-BD")}`}
-    className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1 text-[11px] font-semibold tabular-nums text-gray-500 dark:bg-slate-800 dark:text-slate-400"
-  >
-    {(index + 1).toLocaleString("bn-BD")}
-  </span>
-);
+const SerialBadge = ({ index }: { index: number }) => {
+  const t = useText(talimatSettingsText);
+  const lang = useLang();
+  const n = formatNumber(index + 1, lang);
+  return (
+    <span
+      aria-label={t.serialN(n)}
+      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1 text-[11px] font-semibold tabular-nums text-gray-500 dark:bg-slate-800 dark:text-slate-400"
+    >
+      {n}
+    </span>
+  );
+};
 
 export default function ClassBookSettingsPage() {
+  const t = useText(talimatSettingsText);
+  const cm = useText(commonText);
+  const lang = useLang();
+  const num = (v: number | string) => formatNumber(v, lang);
   const [divisions, setDivisions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
@@ -80,9 +91,9 @@ export default function ClassBookSettingsPage() {
 
   const removeDivision = (id: number) => {
     useConfirmStore.getState().show({
-      title: "বিভাগ ডিলিট করুন",
-      message: "বিভাগটি ট্রাশে পাঠাতে চান? পরে ট্রাশ থেকে ফিরিয়ে আনা যাবে।",
-      confirmText: "ডিলিট করুন",
+      title: t.deleteDivisionTitle,
+      message: t.deleteDivisionMessage,
+      confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
         await api.delete(`/madrasa-divisions/${id}`);
@@ -131,7 +142,7 @@ export default function ClassBookSettingsPage() {
         division_ids: orderedDivisions.map((d) => d.division_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
       loadDivisions();
     } finally {
       setSavingDivisionOrder(false);
@@ -208,9 +219,9 @@ export default function ClassBookSettingsPage() {
 
   const removeClass = (id: number) => {
     useConfirmStore.getState().show({
-      title: "শ্রেণি ডিলিট করুন",
-      message: "শ্রেণিটি ডিলিট করতে চান?",
-      confirmText: "ডিলিট করুন",
+      title: t.deleteClassTitle,
+      message: t.deleteClassMessage,
+      confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
         await api.delete(`/madrasa-classes/${id}`);
@@ -260,7 +271,7 @@ export default function ClassBookSettingsPage() {
         class_ids: orderedClasses.map((c) => c.class_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
       loadClasses();
     } finally {
       setSavingClassOrder(false);
@@ -304,9 +315,9 @@ export default function ClassBookSettingsPage() {
 
   const removeBook = (book: any) => {
     useConfirmStore.getState().show({
-      title: "কিতাব ডিলিট করুন",
-      message: `“${book.book_name_bn}” কিতাবটি ট্রাশে পাঠাতে চান? এর নম্বরসমূহ সংরক্ষিত থাকবে, ট্রাশ থেকে ফিরিয়ে আনা যাবে।`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteBookTitle,
+      message: t.deleteBookMessage(book.book_name_bn),
+      confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
         await api.delete(`/madrasa-books/${book.book_id}`);
@@ -339,7 +350,7 @@ export default function ClassBookSettingsPage() {
     if (fullMarksChanged) {
       fullMarks = Number(fullMarksTrimmed);
       if (!fullMarksTrimmed || !Number.isFinite(fullMarks) || fullMarks <= 0) {
-        useToastStore.getState().push("error", "পূর্ণমান সঠিক সংখ্যা হতে হবে");
+        useToastStore.getState().push("error", getText(talimatSettingsText).fullMarksInvalid);
         return;
       }
       payload.full_marks = fullMarks;
@@ -355,7 +366,7 @@ export default function ClassBookSettingsPage() {
         if (!Number.isFinite(passMark) || passMark < 0 || passMark > maxAllowed) {
           useToastStore
             .getState()
-            .push("error", "পাস মার্ক ০ থেকে পূর্ণমানের মধ্যে হতে হবে");
+            .push("error", getText(talimatSettingsText).passMarkInvalid);
           return;
         }
         payload.pass_mark = passMark;
@@ -402,7 +413,7 @@ export default function ClassBookSettingsPage() {
         book_ids: orderedBooks.map((b) => b.book_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || "ক্রম সংরক্ষণ করা যায়নি");
+      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
       loadBooks();
     } finally {
       setSavingOrder(false);
@@ -449,10 +460,10 @@ export default function ClassBookSettingsPage() {
         class_id: Number(classId),
         book_ids: next,
       });
-      useToastStore.getState().push("success", res.data?.message || "মিয়ারি কিতাব সংরক্ষণ হয়েছে");
+      useToastStore.getState().push("success", res.data?.message || getText(talimatSettingsText).miyariSaved);
     } catch (err: any) {
       setMiyariBookIds(previous);
-      useToastStore.getState().push("error", err?.response?.data?.message || "সংরক্ষণ করা যায়নি");
+      useToastStore.getState().push("error", err?.response?.data?.message || getText(commonText).saveFailed);
     } finally {
       setSavingMiyari(false);
     }
@@ -463,12 +474,12 @@ export default function ClassBookSettingsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="মাদরাসা শ্রেণি ও কিতাব ব্যবস্থাপনা"
-        subtitle="বিভাগ ও শ্রেণি বেছে নিয়ে কিতাব সাজান। কিতাবের ✎ চাপলে পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন পাওয়া যাবে। টেনে (drag) যেকোনো কলামের ক্রম সাজানো যায়।"
+        title={t.classBookTitle}
+        subtitle={t.classBookSubtitle}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-      <SectionCard title="বিভাগ" badge={`${divisions.length}টি`}>
+      <SectionCard title={t.divisions} badge={t.countN(num(divisions.length))}>
         <div className="flex flex-col gap-1.5">
           {divisions.map((division, index) => {
             const isActiveDivision = divisionId === String(division.division_id);
@@ -499,14 +510,14 @@ export default function ClassBookSettingsPage() {
                     />
                     <button
                       onClick={saveDivisionEdit}
-                      aria-label="সংরক্ষণ করুন"
+                      aria-label={cm.save}
                       className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                     >
                       <Check size={14} />
                     </button>
                     <button
                       onClick={() => setEditingDivisionId(null)}
-                      aria-label="বাতিল"
+                      aria-label={cm.cancel}
                       className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
                       <X size={14} />
@@ -521,7 +532,7 @@ export default function ClassBookSettingsPage() {
                       onPointerCancel={handleDivisionHandlePointerEnd}
                       className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                       style={{ touchAction: "none" }}
-                      aria-label="বিভাগ সরান"
+                      aria-label={t.moveDivision}
                     >
                       <GripVertical size={14} />
                     </span>
@@ -540,14 +551,14 @@ export default function ClassBookSettingsPage() {
                         setEditingDivisionName(division.division_name_bn);
                         setEditingDivisionOriginalName(division.division_name_bn);
                       }}
-                      aria-label="বিভাগ এডিট করুন"
+                      aria-label={t.editDivision}
                       className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeDivision(division.division_id)}
-                      aria-label="বিভাগ ডিলিট করুন"
+                      aria-label={t.deleteDivisionTitle}
                       className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={14} />
@@ -560,7 +571,7 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="শ্রেণি" badge={`${classes.length}টি`}>
+      <SectionCard title={t.classes} badge={t.countN(num(classes.length))}>
         <div className="flex flex-col gap-1.5">
           {!showClassInput ? (
               <button
@@ -568,7 +579,7 @@ export default function ClassBookSettingsPage() {
                 className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
               >
                 <Plus size={15} />
-                শ্রেণি যোগ করুন
+                {t.addClass}
               </button>
             ) : (
               <div className="flex w-full gap-2">
@@ -576,7 +587,7 @@ export default function ClassBookSettingsPage() {
                   value={className}
                   onChange={(event) => setClassName(event.target.value)}
                   className="w-full min-w-0"
-                  placeholder="শ্রেণির নাম"
+                  placeholder={t.className}
                   autoFocus
                 />
                 <Button onClick={addClass} className="shrink-0 px-3">
@@ -613,14 +624,14 @@ export default function ClassBookSettingsPage() {
                     />
                     <button
                       onClick={saveClassEdit}
-                      aria-label="সংরক্ষণ করুন"
+                      aria-label={cm.save}
                       className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                     >
                       <Check size={14} />
                     </button>
                     <button
                       onClick={() => setEditingClassId(null)}
-                      aria-label="বাতিল"
+                      aria-label={cm.cancel}
                       className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
                       <X size={14} />
@@ -635,7 +646,7 @@ export default function ClassBookSettingsPage() {
                       onPointerCancel={handleClassHandlePointerEnd}
                       className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                       style={{ touchAction: "none" }}
-                      aria-label="শ্রেণি সরান"
+                      aria-label={t.moveClass}
                     >
                       <GripVertical size={14} />
                     </span>
@@ -654,14 +665,14 @@ export default function ClassBookSettingsPage() {
                         setEditingClassName(classItem.class_name_bn);
                         setEditingClassOriginalName(classItem.class_name_bn);
                       }}
-                      aria-label="শ্রেণি এডিট করুন"
+                      aria-label={t.editClass}
                       className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => removeClass(classItem.class_id)}
-                      aria-label="শ্রেণি ডিলিট করুন"
+                      aria-label={t.deleteClassTitle}
                       className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                     >
                       <Trash2 size={14} />
@@ -674,7 +685,7 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="কিতাবসমূহ" badge={`${books.length}টি`}>
+      <SectionCard title={t.books} badge={t.countN(num(books.length))}>
         <div className="flex flex-col gap-1.5">
           {!showBookInput ? (
             <button
@@ -682,7 +693,7 @@ export default function ClassBookSettingsPage() {
               className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
             >
               <Plus size={15} />
-              কিতাব যোগ করুন
+              {t.addBook}
             </button>
           ) : (
             <div className="flex w-full gap-2">
@@ -694,7 +705,7 @@ export default function ClassBookSettingsPage() {
                   if (event.key === "Escape") setShowBookInput(false);
                 }}
                 className="w-full min-w-0"
-                placeholder="কিতাবের নাম"
+                placeholder={t.bookName}
                 autoFocus
               />
               <Button onClick={addBook} className="shrink-0 px-3">
@@ -705,12 +716,12 @@ export default function ClassBookSettingsPage() {
 
           {books.length > 0 && (
             <p className="px-1 text-[11px] leading-snug text-gray-400 dark:text-slate-500">
-              মিয়ারি {miyariBookIds.length}টি · পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন বদলাতে ✎ চাপুন
+              {t.miyariSummary(num(miyariBookIds.length))}
             </p>
           )}
 
           {books.length === 0 ? (
-            <EmptyState title="কোনো কিতাব যোগ করা হয়নি" />
+            <EmptyState title={t.noBooks} />
           ) : (
             books.map((book, index) => {
               const isMiyari = miyariBookIds.includes(Number(book.book_id));
@@ -738,19 +749,19 @@ export default function ClassBookSettingsPage() {
                             if (event.key === "Escape") setEditingId(null);
                           }}
                           className="h-8 w-full min-w-0"
-                          placeholder="কিতাবের নাম"
+                          placeholder={t.bookName}
                           autoFocus
                         />
                         <button
                           onClick={saveEdit}
-                          aria-label="সংরক্ষণ করুন"
+                          aria-label={cm.save}
                           className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                         >
                           <Check size={14} />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          aria-label="বাতিল"
+                          aria-label={cm.cancel}
                           className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                         >
                           <X size={14} />
@@ -759,7 +770,7 @@ export default function ClassBookSettingsPage() {
 
                       <div className="grid grid-cols-2 gap-2">
                         <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-                          পূর্ণমান
+                          {t.fullMarks}
                           <Input
                             type="number"
                             min={1}
@@ -773,11 +784,11 @@ export default function ClassBookSettingsPage() {
                           />
                         </label>
                         <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-                          পাস মার্ক
+                          {t.passMark}
                           <Input
                             type="number"
                             min={0}
-                            placeholder="গ্লোবাল"
+                            placeholder={t.global}
                             value={editingPassMark}
                             onChange={(event) => setEditingPassMark(event.target.value)}
                             onKeyDown={(event) => {
@@ -789,7 +800,7 @@ export default function ClassBookSettingsPage() {
                         </label>
                       </div>
                       <p className="-mt-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
-                        পাস মার্ক খালি রাখলে মাদ্রাসার গ্লোবাল ফেল মার্ক প্রযোজ্য হবে
+                        {t.passMarkHint}
                       </p>
 
                       <label
@@ -807,9 +818,9 @@ export default function ClassBookSettingsPage() {
                           className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
                         />
                         <span className="flex flex-col gap-0.5">
-                          <span className="font-semibold text-gray-700 dark:text-slate-200">মিয়ারি কিতাব</span>
+                          <span className="font-semibold text-gray-700 dark:text-slate-200">{t.miyariBook}</span>
                           <span className="leading-snug text-gray-500 dark:text-slate-400">
-                            এতে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। চাপলেই সাথে সাথে সংরক্ষণ হয়।
+                            {t.miyariHint}
                           </span>
                         </span>
                       </label>
@@ -819,7 +830,7 @@ export default function ClassBookSettingsPage() {
                         className="flex touch-manipulation items-center justify-center gap-1.5 rounded-md border border-indigo-200 px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
                       >
                         <SlidersHorizontal size={13} />
-                        নম্বর বিভাজন (লিখিত/এমসিকিউ/...)
+                        {t.markComponents}
                       </button>
                     </div>
                   ) : (
@@ -831,7 +842,7 @@ export default function ClassBookSettingsPage() {
                         onPointerCancel={handleHandlePointerEnd}
                         className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
                         style={{ touchAction: "none" }}
-                        aria-label="কিতাব সরান"
+                        aria-label={t.moveBook}
                       >
                         <GripVertical size={14} />
                       </span>
@@ -844,29 +855,29 @@ export default function ClassBookSettingsPage() {
                           {book.book_name_bn}
                         </span>
                         <span className="flex flex-wrap items-center gap-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
-                          <span>পূর্ণমান {book.full_marks ?? 100}</span>
+                          <span>{t.fullMarksN(num(book.full_marks ?? 100))}</span>
                           {book.pass_mark != null && (
-                            <span className="text-sky-600 dark:text-sky-400" title="এই কিতাবের জন্য আলাদা পাস মার্ক">
-                              · পাস {book.pass_mark}
+                            <span className="text-sky-600 dark:text-sky-400" title={t.ownPassMark}>
+                              {t.passN(num(book.pass_mark))}
                             </span>
                           )}
                           {isMiyari && (
                             <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">
-                              মিয়ারি
+                              {t.miyari}
                             </span>
                           )}
                         </span>
                       </div>
                       <button
                         onClick={() => startEdit(book)}
-                        aria-label="কিতাব এডিট করুন"
+                        aria-label={t.editBook}
                         className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => removeBook(book)}
-                        aria-label="কিতাব ডিলিট করুন"
+                        aria-label={t.deleteBook}
                         className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                       >
                         <Trash2 size={14} />

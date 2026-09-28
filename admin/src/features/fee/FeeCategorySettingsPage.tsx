@@ -12,6 +12,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../components/settings/SectionCard";
 import { ToggleSwitch } from "../../components/settings/ToggleSwitch";
+import { commonText, getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { feeCategoryText } from "./fee.text";
 
 const getErrorMessage = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 
@@ -21,6 +23,8 @@ const normalizeArray = (payload: any): FeeCategoryItem[] => {
 };
 
 const FeeCategorySettingsPage = () => {
+  const t = useText(feeCategoryText);
+  const c = useText(commonText);
   const [categories, setCategories] = useState<FeeCategoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -51,17 +55,17 @@ const FeeCategorySettingsPage = () => {
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) {
-      useToastStore.getState().show("একটা নাম দিন", "error");
+      useToastStore.getState().show(getText(feeCategoryText).enterName, "error");
       return;
     }
     try {
       setCreating(true);
       await feeCategoryApi.create({ name });
-      useToastStore.getState().show("ফি ধরণ যোগ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(feeCategoryText).added, "success");
       setNewName("");
       await loadCategories();
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(feeCategoryText).saveFailed), "error");
     } finally {
       setCreating(false);
     }
@@ -80,17 +84,17 @@ const FeeCategorySettingsPage = () => {
   const saveEdit = async (category: FeeCategoryItem) => {
     const name = editName.trim();
     if (!name) {
-      useToastStore.getState().show("একটা নাম দিন", "error");
+      useToastStore.getState().show(getText(feeCategoryText).enterName, "error");
       return;
     }
     try {
       setSavingEdit(true);
       await feeCategoryApi.update(category.id, { name });
-      useToastStore.getState().show("সংরক্ষণ করা হয়েছে", "success");
+      useToastStore.getState().show(getText(commonText).saved, "success");
       cancelEdit();
       await loadCategories();
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "সংরক্ষণ করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(feeCategoryText).saveFailed), "error");
     } finally {
       setSavingEdit(false);
     }
@@ -103,7 +107,7 @@ const FeeCategorySettingsPage = () => {
         prev.map((c) => (c.id === category.id ? { ...c, isActive: !c.isActive } : c)),
       );
     } catch (err: any) {
-      useToastStore.getState().show(getErrorMessage(err, "আপডেট করতে সমস্যা হয়েছে"), "error");
+      useToastStore.getState().show(getErrorMessage(err, getText(feeCategoryText).updateFailed), "error");
     }
   };
 
@@ -113,9 +117,9 @@ const FeeCategorySettingsPage = () => {
   const handleToggleActive = (category: FeeCategoryItem) => {
     if (category.isActive) {
       useConfirmStore.getState().show({
-        title: "ফি ধরণ বন্ধ করুন",
-        message: `"${category.name}" বন্ধ করলে এই ধরণ ব্যবহার করা সব ফি কাঠামোও (Fee Structure পেজে) বন্ধ হয়ে যাবে - সেগুলো আর কোনো ছাত্রের জন্য বিল হবে না। এগিয়ে যেতে চান?`,
-        confirmText: "বন্ধ করুন",
+        title: t.disableTitle,
+        message: t.disableMessage(category.name),
+        confirmText: t.disableConfirm,
         danger: true,
         onConfirm: () => applyToggleActive(category),
       });
@@ -126,18 +130,18 @@ const FeeCategorySettingsPage = () => {
 
   const handleDelete = (category: FeeCategoryItem) => {
     useConfirmStore.getState().show({
-      title: "ফি ধরণ ডিলিট করুন",
-      message: `"${category.name}" ফি ধরণটি স্থায়ীভাবে মুছে ফেলতে চান? যেসব ফি কাঠামো ইতিমধ্যে এই ধরণ ব্যবহার করছে সেগুলো প্রভাবিত হবে না — সেগুলোতে নামটা শুধু টেক্সট হিসেবে থেকে যাবে।`,
-      confirmText: "ডিলিট করুন",
+      title: t.deleteTitle,
+      message: t.deleteMessage(category.name),
+      confirmText: t.deleteConfirm,
       danger: true,
       onConfirm: async () => {
         try {
           await feeCategoryApi.remove(category.id);
-          useToastStore.getState().show("মুছে ফেলা হয়েছে", "success");
+          useToastStore.getState().show(getText(commonText).deleted, "success");
           setCategories((prev) => prev.filter((c) => c.id !== category.id));
           if (editingId === category.id) cancelEdit();
         } catch (err: any) {
-          useToastStore.getState().show(getErrorMessage(err, "মুছতে সমস্যা হয়েছে"), "error");
+          useToastStore.getState().show(getErrorMessage(err, getText(feeCategoryText).deleteFailed), "error");
         }
       },
     });
@@ -161,7 +165,7 @@ const FeeCategorySettingsPage = () => {
             disabled={savingEdit}
             onClick={() => saveEdit(category)}
             className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 disabled:opacity-60 dark:hover:bg-emerald-950/40"
-            title="সংরক্ষণ করুন"
+            title={c.save}
           >
             <Check size={16} />
           </button>
@@ -170,7 +174,7 @@ const FeeCategorySettingsPage = () => {
             disabled={savingEdit}
             onClick={cancelEdit}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-60 dark:hover:bg-slate-800"
-            title="বাতিল"
+            title={c.cancel}
           >
             <X size={16} />
           </button>
@@ -187,7 +191,7 @@ const FeeCategorySettingsPage = () => {
           <span className="truncate font-medium text-gray-800 dark:text-slate-200">{category.name}</span>
           {!category.isActive && (
             <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-              নিষ্ক্রিয়
+              {c.inactive}
             </span>
           )}
         </div>
@@ -196,13 +200,13 @@ const FeeCategorySettingsPage = () => {
             checked={category.isActive}
             onChange={() => handleToggleActive(category)}
             size="sm"
-            title="বন্ধ করলে এই ধরণের সব ফি কাঠামোও বন্ধ (আর বিল হবে না) হয়ে যাবে"
+            title={t.toggleHint}
           />
           <button
             type="button"
             onClick={() => startEdit(category)}
             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
-            title="সম্পাদনা"
+            title={c.edit}
           >
             <Pencil size={14} />
           </button>
@@ -210,7 +214,7 @@ const FeeCategorySettingsPage = () => {
             type="button"
             onClick={() => handleDelete(category)}
             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-            title="মুছুন"
+            title={c.delete}
           >
             <Trash2 size={14} />
           </button>
@@ -226,27 +230,25 @@ const FeeCategorySettingsPage = () => {
       to="/fee-management"
       className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
     >
-      <ArrowLeft size={15} />
-      ফি সেটাপে ফিরুন
+      <ArrowLeft size={15} className="rtl:rotate-180" />
+      {t.backToSetup}
     </Link>
   );
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
-        title="ফি ধরণ সেটিংস"
-        subtitle={
-          'ফি কাঠামো তৈরি করার সময় যেসব ধরণ (যেমন: ভর্তি ফি, মাসিক বেতন, পরীক্ষার ফি) ব্যবহার করা যায় সেগুলো এখান থেকে যোগ/এডিট/ডিলিট করুন। সব ধরণের ফি মুহতামিম ভর্তি অনুমোদন করার পরই বিল হয় (আবেদন জমা দেওয়ার সময় কোনো বিল হয় না)। মাসিক বেতন-খাবার খরচের মতো মাসিক ফি-তে অনুমোদনের সাথে সাথে শুধু চলতি মাসেরটা বিল হয়, পরের মাসগুলো নিজে থেকেই প্রতি মাসের শুরুতে তৈরি হয়।'
-        }
+        title={t.title}
+        subtitle={t.subtitle}
         actions={backLink}
       />
 
-      <SectionCard title="ফি ধরণসমূহ" hint="নতুন একটি ফি ধরণ যোগ করুন">
+      <SectionCard title={t.sectionTitle} hint={t.sectionHint}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="নতুন ফি ধরণের নাম"
+            placeholder={t.newPlaceholder}
             className="h-9 min-w-[200px] flex-1 text-sm"
           />
           <Button
@@ -256,7 +258,7 @@ const FeeCategorySettingsPage = () => {
             className="h-9 shrink-0 gap-1 px-3 text-sm"
           >
             <Plus size={14} />
-            {creating ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+            {creating ? c.saving : c.add}
           </Button>
         </div>
 
@@ -265,8 +267,8 @@ const FeeCategorySettingsPage = () => {
             <SkeletonList items={4} />
           ) : sortedCategories.length === 0 ? (
             <EmptyState
-              title="এখনো কোনো ফি ধরণ যোগ করা হয়নি"
-              hint="উপরের ফর্ম থেকে প্রথম ফি ধরণটি যোগ করুন।"
+              title={t.emptyTitle}
+              hint={t.emptyHint}
             />
           ) : (
             <div className="space-y-2">{sortedCategories.map((category) => renderCategoryRow(category))}</div>

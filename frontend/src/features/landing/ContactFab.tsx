@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Phone, MessageCircle, X } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { landingText } from "./landing.text";
 
 interface ContactFabProps {
   /** Local number for the "tel:" link, shown as-is (e.g. "01624114405"). */
@@ -15,6 +17,7 @@ interface ContactFabProps {
  * the two contact options with a staggered pop-in.
  */
 export default function ContactFab({ phoneDisplay, phoneIntl }: ContactFabProps) {
+  const t = useText(landingText);
   const [open, setOpen] = useState(false);
 
   return (
@@ -43,7 +46,7 @@ export default function ContactFab({ phoneDisplay, phoneIntl }: ContactFabProps)
           }`}
         >
           <Phone size={18} />
-          কল করুন
+          {t.call}
         </a>
       </div>
 
@@ -57,7 +60,7 @@ export default function ContactFab({ phoneDisplay, phoneIntl }: ContactFabProps)
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "যোগাযোগ অপশন বন্ধ করুন" : "যোগাযোগ করুন"}
+          aria-label={open ? t.closeContactOptions : t.contactUs}
           aria-expanded={open}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition-transform duration-300 hover:scale-105 hover:bg-emerald-700 active:scale-95"
         >

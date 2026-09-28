@@ -32,20 +32,16 @@ import MapPreview from "./MapPreview";
 import NoticeMarquee from "./NoticeMarquee";
 import { resolveTheme, type ThemeTokens } from "./themes";
 import { cldImg } from "../../utils/cloudImage";
-
-const NAV_LABELS: Record<string, string> = {
-  home: "হোম",
-  about: "পরিচিতি",
-  muhtamim: "মুহতামিমের বাণী",
-  sovapoti: "সভাপতির বাণী",
-  admission: "ভর্তি তথ্য",
-  teachers: "শিক্ষকবৃন্দ",
-  committee: "কমিটি",
-  gallery: "গ্যালারি",
-  video: "ভিডিও গ্যালারি",
-  notices: "নোটিশ",
-  contact: "যোগাযোগ",
-};
+import {
+  LanguageSwitcher,
+  formatDate as formatLangDate,
+  localizeDigits,
+  useIsMadrasa,
+  useLang,
+  useText,
+  type Lang,
+} from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 
 /** YouTube লিংক থেকে ভিডিও আইডি বের করে - এম্বেড প্লেয়ার ও থাম্বনেইল দুটোতেই লাগে। */
 // Menu entry. হোম goes to the top of the home page. যোগাযোগ has no section on the home page — it routes to the
@@ -83,27 +79,23 @@ function youtubeEmbedUrl(url?: string | null): string | null {
   return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : null;
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, lang: Lang) {
   if (!value) return "";
-  try {
-    return new Date(value).toLocaleDateString("bn-BD", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return "";
-  }
+  return formatLangDate(value, lang, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
-function dateParts(value?: string | null) {
+function dateParts(value: string | null | undefined, lang: Lang) {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   return {
-    day: d.toLocaleDateString("bn-BD", { day: "numeric" }),
-    month: d.toLocaleDateString("bn-BD", { month: "short" }),
-    year: d.toLocaleDateString("bn-BD", { year: "numeric" }),
+    day: formatLangDate(d, lang, { day: "numeric" }),
+    month: formatLangDate(d, lang, { month: "short" }),
+    year: formatLangDate(d, lang, { year: "numeric" }),
   };
 }
 
@@ -288,6 +280,9 @@ export default function PublicWebsitePage({
   slug: slugProp,
   view = "home",
 }: { slug?: string; view?: "home" | "contact" } = {}) {
+  const t = useText(websiteText);
+  const lang = useLang();
+  const isMadrasa = useIsMadrasa();
   const params = useParams();
   const { pathname, hash } = useLocation();
   const slug = slugProp || params.madrasaSlug || params.slug || getResolvedDomainSlugSync();
@@ -313,7 +308,7 @@ export default function PublicWebsitePage({
         websiteCache.set(slug, res);
         setData(res);
       })
-      .catch((err) => setError(err?.response?.data?.message || "Website unavailable"))
+      .catch((err) => setError(err?.response?.data?.message || t.siteUnavailable))
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -520,7 +515,7 @@ export default function PublicWebsitePage({
 
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 pt-24 text-slate-500">
           <Loader2 size={32} className="animate-spin text-blue-600" />
-          <p className="text-sm font-medium">Website লোড হচ্ছে...</p>
+          <p className="text-sm font-medium">{t.loadingSite}</p>
         </div>
       </div>
     );
@@ -535,7 +530,7 @@ export default function PublicWebsitePage({
           </div>
           <h1 className="mt-4 text-lg font-bold text-slate-900">{error}</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Super Admin অথবা Madrasa Admin website status/settings check করতে পারেন।
+            {t.unavailableHint}
           </p>
         </div>
       </div>
@@ -633,7 +628,7 @@ export default function PublicWebsitePage({
             {madrasa?.logo_url ? (
               <img
                 src={cldImg(madrasa?.logo_url, 200)}
-                alt="Logo"
+                alt={t.logo}
                 className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
               />
             ) : (
@@ -648,7 +643,7 @@ export default function PublicWebsitePage({
               <div className="break-words text-base font-extrabold leading-tight text-slate-900 md:text-lg">
                 {madrasa?.name}
               </div>
-              <div className="text-[11px] font-semibold tracking-wide text-slate-400">Official Website</div>
+              <div className="text-[11px] font-semibold tracking-wide text-slate-400">{t.officialWebsite}</div>
             </div>
           </Link>
 
@@ -667,7 +662,7 @@ export default function PublicWebsitePage({
                       }`}
                       style={active ? { backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel } : undefined}
                     >
-                      {NAV_LABELS[key]}
+                      {t.nav[key]}
                     </NavItem>
                   );
                 })}
@@ -676,21 +671,22 @@ export default function PublicWebsitePage({
           )}
 
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
+            <LanguageSwitcher />
             <Link
               to={guardianLoginUrl}
               className={`${theme.nav === "inline" ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap ${theme.button} border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50`}
               style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
             >
               <LogIn size={15} />
-              অভিভাবক লগইন
+              {t.guardianLogin}
             </Link>
             <Link
               to={admissionUrl}
               className={`inline-flex items-center gap-1.5 whitespace-nowrap ${theme.button} px-4 py-2 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
-              অনলাইনে ভর্তি
-              <ArrowRight size={15} />
+              {t.onlineAdmission}
+              <ArrowRight size={15} className="rtl:rotate-180" />
             </Link>
           </div>
 
@@ -698,7 +694,7 @@ export default function PublicWebsitePage({
             type="button"
             onClick={() => setMenuOpen(true)}
             className="shrink-0 rounded-lg p-2 text-slate-700 lg:hidden"
-            aria-label="Menu"
+            aria-label={t.menu}
           >
             <Menu size={22} />
           </button>
@@ -715,7 +711,7 @@ export default function PublicWebsitePage({
                   className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
                   style={{ color: navFg, opacity: activeId === key ? 1 : 0.78 }}
                 >
-                  {NAV_LABELS[key]}
+                  {t.nav[key]}
                   <span
                     className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
                     style={{ backgroundColor: navUnderline, opacity: activeId === key ? 1 : 0 }}
@@ -749,7 +745,7 @@ export default function PublicWebsitePage({
             {madrasa?.logo_url ? (
               <img
                 src={cldImg(madrasa?.logo_url, 200)}
-                alt="Logo"
+                alt={t.logo}
                 className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
             ) : (
@@ -768,7 +764,7 @@ export default function PublicWebsitePage({
             type="button"
             onClick={() => setMenuOpen(false)}
             className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-            aria-label="Close menu"
+            aria-label={t.closeMenu}
           >
             <X size={20} />
           </button>
@@ -782,7 +778,7 @@ export default function PublicWebsitePage({
               onClick={() => setMenuOpen(false)}
               className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              {NAV_LABELS[key]}
+              {t.nav[key]}
             </NavItem>
           ))}
         </nav>
@@ -794,7 +790,7 @@ export default function PublicWebsitePage({
             className="rounded-xl px-4 py-2.5 text-center text-sm font-bold"
             style={{ backgroundColor: accentSolid, color: onAccent }}
           >
-            অনলাইনে ভর্তি
+            {t.onlineAdmission}
           </Link>
           <Link
             to={guardianLoginUrl}
@@ -802,7 +798,7 @@ export default function PublicWebsitePage({
             className="rounded-xl border px-4 py-2.5 text-center text-sm font-bold"
             style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
           >
-            অভিভাবক লগইন
+            {t.guardianLogin}
           </Link>
           {madrasa?.phone && (
             <a
@@ -813,6 +809,7 @@ export default function PublicWebsitePage({
               {madrasa.phone}
             </a>
           )}
+          <LanguageSwitcher dropUp className="self-center" />
         </div>
       </aside>
 
@@ -831,7 +828,7 @@ export default function PublicWebsitePage({
       <HeroSlider
         slides={settings.show_slider !== 0 ? slides : []}
         fallbackTitle={settings.hero_title || madrasa?.name || ""}
-        fallbackSubtitle={settings.hero_subtitle || madrasa?.address || "Welcome to our madrasa website."}
+        fallbackSubtitle={settings.hero_subtitle || madrasa?.address || t.welcomeFallback}
         accentSolid={accentSolid}
         variant={theme.hero}
         websiteStatus={madrasa?.website_status}
@@ -841,7 +838,7 @@ export default function PublicWebsitePage({
               href="#about"
               className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20`}
             >
-              আমাদের সম্পর্কে জানুন
+              {t.learnAboutUs}
             </a>
           )
         }
@@ -858,7 +855,7 @@ export default function PublicWebsitePage({
                     return (
                       <div key="about" id="about" className="scroll-mt-28">
                         <SectionHeader
-                          eyebrow="পরিচিতি"
+                          eyebrow={t.aboutEyebrow}
                           title={pageMap.about.title}
                           accentSolid={accentSolid}
                           accentLabel={accentLabel}
@@ -886,7 +883,7 @@ export default function PublicWebsitePage({
                               {madrasa?.logo_url ? (
                                 <img
                                   src={cldImg(madrasa.logo_url, 200)}
-                                  alt="Logo"
+                                  alt={t.logo}
                                   className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
                                 />
                               ) : (
@@ -916,8 +913,8 @@ export default function PublicWebsitePage({
                               to={admissionUrl}
                               className={`inline-flex shrink-0 items-center justify-center gap-2 ${theme.button} bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100`}
                             >
-                              ভর্তির তথ্য ও আবেদন
-                              <ArrowRight size={16} />
+                              {t.admissionInfoApply}
+                              <ArrowRight size={16} className="rtl:rotate-180" />
                             </Link>
                           </div>
                         </div>
@@ -929,8 +926,8 @@ export default function PublicWebsitePage({
                     return (
                       <div key="gallery" id="gallery" className="scroll-mt-28">
                         <SectionHeader
-                          eyebrow="আমাদের মুহূর্তগুলো"
-                          title="গ্যালারি"
+                          eyebrow={t.galleryEyebrow}
+                          title={t.galleryTitle}
                           accentSolid={accentSolid}
                           accentLabel={accentLabel}
                           theme={theme}
@@ -946,14 +943,14 @@ export default function PublicWebsitePage({
                               <button
                                 type="button"
                                 key={item.id || item.image_url}
-                                onClick={() => setLightbox({ url: item.image_url, title: item.title || "Gallery" })}
+                                onClick={() => setLightbox({ url: item.image_url, title: item.title || t.galleryFallback })}
                                 className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
                                 style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
-                                aria-label={item.title || "Gallery"}
+                                aria-label={item.title || t.galleryFallback}
                               >
                                 <img
                                   src={cldImg(item.image_url, 600)}
-                                  alt={item.title || "Gallery"}
+                                  alt={item.title || t.galleryFallback}
                                   loading="lazy"
                                   decoding="async"
                                   className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
@@ -968,7 +965,7 @@ export default function PublicWebsitePage({
                           </div>
                         ) : (
                           <p className="mt-8 text-center text-sm text-slate-500">
-                            Gallery section চালু আছে। ছবি upload করলে এখানে দেখা যাবে।
+                            {t.galleryEmpty}
                           </p>
                         )}
                       </div>
@@ -979,8 +976,8 @@ export default function PublicWebsitePage({
                     return (
                       <div key="video" id="video" className="scroll-mt-28">
                         <SectionHeader
-                          eyebrow="আমাদের ভিডিও"
-                          title="ভিডিও গ্যালারি"
+                          eyebrow={t.videoEyebrow}
+                          title={t.videoTitle}
                           accentSolid={accentSolid}
                           accentLabel={accentLabel}
                           theme={theme}
@@ -995,16 +992,16 @@ export default function PublicWebsitePage({
                                 key={item.id || item.video_url}
                                 onClick={() =>
                                   embed
-                                    ? setVideoLightbox({ url: embed, title: item.title || "Video" })
+                                    ? setVideoLightbox({ url: embed, title: item.title || t.videoFallback })
                                     : window.open(item.video_url, "_blank", "noopener,noreferrer")
                                 }
                                 className={`group relative aspect-video overflow-hidden text-start ${theme.media} ${theme.gallery}`}
-                                aria-label={item.title || "Video"}
+                                aria-label={item.title || t.videoFallback}
                               >
                                 {thumb ? (
                                   <img
                                     src={thumb}
-                                    alt={item.title || "Video"}
+                                    alt={item.title || t.videoFallback}
                                     loading="lazy"
                                     decoding="async"
                                     className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
@@ -1036,8 +1033,8 @@ export default function PublicWebsitePage({
                     return (
                       <div key="teachers" id="teachers" className="scroll-mt-28">
                         <SectionHeader
-                          eyebrow="আমাদের শিক্ষকবৃন্দ"
-                          title="শিক্ষকবৃন্দ"
+                          eyebrow={t.teachersEyebrow}
+                          title={t.teachersTitle}
                           accentSolid={accentSolid}
                           accentLabel={accentLabel}
                           theme={theme}
@@ -1047,7 +1044,7 @@ export default function PublicWebsitePage({
                             <PersonCard
                               key={teacher.id}
                               name={teacher.name || teacher.teacher_name}
-                              role={teacher.designation || teacher.subject || "Teacher"}
+                              role={teacher.designation || teacher.subject || t.teacherFallback}
                               accentSolid={accentSolid}
                               accentLabel={accentLabel}
                               onAccent={onAccent}
@@ -1078,12 +1075,12 @@ export default function PublicWebsitePage({
                           >
                             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                               <Bell size={18} style={{ color: accentSolid }} />
-                              <h3 className="text-base font-bold text-slate-900">নোটিশ বোর্ড</h3>
+                              <h3 className="text-base font-bold text-slate-900">{t.noticeBoard}</h3>
                             </div>
                             {notices.length ? (
                               <ul className="mt-3 max-h-[420px] space-y-3 overflow-y-auto pe-1">
                                 {notices.map((notice: any) => {
-                                  const parts = dateParts(notice.published_at);
+                                  const parts = dateParts(notice.published_at, lang);
                                   return (
                                     <li key={notice.id} className="border-b border-slate-50 pb-3 last:border-0 last:pb-0">
                                       <div className="flex items-start justify-between gap-2">
@@ -1095,7 +1092,7 @@ export default function PublicWebsitePage({
                                             className={`${theme.round} shrink-0 px-2 py-0.5 text-[10px] font-bold`}
                                             style={{ backgroundColor: withAlpha(accentSolid, 0.12), color: accentLabel }}
                                           >
-                                            নতুন
+                                            {t.newBadge}
                                           </span>
                                         )}
                                       </div>
@@ -1106,7 +1103,7 @@ export default function PublicWebsitePage({
                                       )}
                                       {parts && (
                                         <p className="mt-1 text-[11px] font-medium text-slate-400">
-                                          {formatDate(notice.published_at)}
+                                          {formatDate(notice.published_at, lang)}
                                         </p>
                                       )}
                                     </li>
@@ -1114,7 +1111,7 @@ export default function PublicWebsitePage({
                                 })}
                               </ul>
                             ) : (
-                              <p className="mt-3 text-xs text-slate-400">এখনো কোনো নোটিশ নেই।</p>
+                              <p className="mt-3 text-xs text-slate-400">{t.noNotices}</p>
                             )}
                           </div>
                         );
@@ -1131,7 +1128,7 @@ export default function PublicWebsitePage({
                               {settings.muhtamim_photo ? (
                                 <img
                                   src={cldImg(settings.muhtamim_photo, 400)}
-                                  alt={settings.muhtamim_name || "Muhtamim"}
+                                  alt={settings.muhtamim_name || t.headMessage}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
                               ) : (
@@ -1144,7 +1141,7 @@ export default function PublicWebsitePage({
                               )}
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-slate-900">
-                                  {settings.muhtamim_name || "মুহতামিম সাহেবের বাণী"}
+                                  {settings.muhtamim_name || t.headMessage}
                                 </p>
                                 {settings.muhtamim_designation && (
                                   <p className="text-xs font-semibold" style={{ color: accentLabel }}>
@@ -1172,7 +1169,7 @@ export default function PublicWebsitePage({
                               {settings.sovapoti_photo ? (
                                 <img
                                   src={cldImg(settings.sovapoti_photo, 400)}
-                                  alt={settings.sovapoti_name || "Sovapoti"}
+                                  alt={settings.sovapoti_name || t.presidentMessage}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
                               ) : (
@@ -1185,7 +1182,7 @@ export default function PublicWebsitePage({
                               )}
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-slate-900">
-                                  {settings.sovapoti_name || "সভাপতি সাহেবের বাণী"}
+                                  {settings.sovapoti_name || t.presidentMessage}
                                 </p>
                                 {settings.sovapoti_designation && (
                                   <p className="text-xs font-semibold" style={{ color: accentLabel }}>
@@ -1209,7 +1206,7 @@ export default function PublicWebsitePage({
                             id="committee"
                             className={`reveal scroll-mt-28 ${theme.card} ${theme.panelSurface} p-5`}
                           >
-                            <h3 className="text-base font-bold text-slate-900">মাদ্রাসা কমিটি</h3>
+                            <h3 className="text-base font-bold text-slate-900">{t.committeeTitle}</h3>
                             <ul className="mt-3 space-y-3">
                               {committee.map((member: any) => (
                                 <li key={member.id} className="flex items-center gap-3">
@@ -1278,7 +1275,7 @@ export default function PublicWebsitePage({
               <div className="relative mx-auto max-w-3xl px-4">
                 <SectionHeader
                   light
-                  eyebrow="ভর্তি"
+                  eyebrow={t.admissionEyebrow}
                   title={pageMap.admission.title}
                   accentSolid={accentSolid}
                   accentLabel={accentLabel}
@@ -1293,15 +1290,15 @@ export default function PublicWebsitePage({
                       to={admissionUrl}
                       className={`inline-flex items-center gap-2 ${theme.button} bg-white px-6 py-3 text-sm font-bold text-slate-900 ${theme.shadowLg} transition hover:bg-slate-100`}
                     >
-                      অনলাইনে ভর্তি ফরম পূরণ করুন
-                      <ArrowRight size={16} />
+                      {t.fillAdmissionForm}
+                      <ArrowRight size={16} className="rtl:rotate-180" />
                     </Link>
                     {settings.show_contact !== 0 && (
                       <Link
                         to={contactUrl}
                         className={`inline-flex items-center gap-2 ${theme.button} border border-white/40 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10`}
                       >
-                        যোগাযোগ করুন
+                        {t.contactUs}
                       </Link>
                     )}
                   </div>
@@ -1328,7 +1325,7 @@ export default function PublicWebsitePage({
                 {madrasa?.logo_url ? (
                   <img
                     src={cldImg(madrasa?.logo_url, 200)}
-                    alt="Logo"
+                    alt={t.logo}
                     className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
                   />
                 ) : (
@@ -1344,7 +1341,7 @@ export default function PublicWebsitePage({
                 </span>
               </div>
               <p className="mt-4 text-sm leading-7 text-slate-400">
-                {settings.hero_subtitle || madrasa?.address || "একটি ইসলামিক শিক্ষা প্রতিষ্ঠান।"}
+                {settings.hero_subtitle || madrasa?.address || (isMadrasa ? t.taglineMadrasa : t.tagline)}
               </p>
 
               {socials.length > 0 && (
@@ -1369,12 +1366,12 @@ export default function PublicWebsitePage({
             {/* Quick links */}
             {navKeys.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-white">প্রয়োজনীয় লিংক</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-white">{t.quickLinks}</h3>
                 <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
                 <nav className="mt-4 flex flex-col gap-2.5 text-sm text-slate-400">
                   {navKeys.map((key) => (
                     <NavItem key={key} sectionKey={key} {...navProps} className="w-fit transition hover:text-white">
-                      {NAV_LABELS[key]}
+                      {t.nav[key]}
                     </NavItem>
                   ))}
                 </nav>
@@ -1383,7 +1380,7 @@ export default function PublicWebsitePage({
 
             {/* Contact */}
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-white">যোগাযোগ</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">{t.contact}</h3>
               <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
               <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
                 {madrasa?.phone && (
@@ -1400,7 +1397,7 @@ export default function PublicWebsitePage({
                     className="flex items-start gap-2.5 transition hover:text-white"
                   >
                     <WhatsAppIcon size={16} />
-                    <span>হোয়াটসঅ্যাপে মেসেজ করুন</span>
+                    <span>{t.messageOnWhatsApp}</span>
                   </a>
                 )}
                 {madrasa?.email && (
@@ -1436,7 +1433,7 @@ export default function PublicWebsitePage({
 
             {/* CTA */}
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-white">অভিভাবক ও ভর্তি</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">{t.guardianAndAdmission}</h3>
               <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
               <div className="mt-4 flex flex-col gap-2.5">
                 <Link
@@ -1444,13 +1441,13 @@ export default function PublicWebsitePage({
                   className={`inline-flex items-center justify-center gap-1.5 ${theme.button} px-4 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-90`}
                   style={{ backgroundColor: accentSolid, color: onAccent }}
                 >
-                  অনলাইনে ভর্তি
+                  {t.onlineAdmission}
                 </Link>
                 <Link
                   to={guardianLoginUrl}
                   className={`inline-flex items-center justify-center gap-1.5 ${theme.button} border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-white/5`}
                 >
-                  অভিভাবক লগইন
+                  {t.guardianLogin}
                 </Link>
               </div>
             </div>
@@ -1460,9 +1457,9 @@ export default function PublicWebsitePage({
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-start">
             <p className="text-xs text-slate-500">
-              &copy; {new Date().getFullYear()} {madrasa?.name}. সর্বস্বত্ব সংরক্ষিত।
+              &copy; {localizeDigits(new Date().getFullYear(), lang)} {madrasa?.name}. {t.allRightsReserved}
             </p>
-            <p className="text-xs text-slate-500">Official Website</p>
+            <p className="text-xs text-slate-500">{t.officialWebsite}</p>
           </div>
         </div>
       </footer>
@@ -1473,7 +1470,7 @@ export default function PublicWebsitePage({
           href="#page-top"
           className="fixed bottom-6 end-6 z-40 flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition hover:opacity-90"
           style={{ backgroundColor: accentSolid, color: onAccent }}
-          aria-label="Back to top"
+          aria-label={t.backToTop}
         >
           <ChevronUp size={20} />
         </a>
@@ -1485,7 +1482,7 @@ export default function PublicWebsitePage({
           href={waLink(madrasa.phone)}
           target="_blank"
           rel="noreferrer"
-          aria-label="WhatsApp এ চ্যাট করুন"
+          aria-label={t.chatOnWhatsApp}
           className="fixed bottom-6 start-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:scale-110"
         >
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366] opacity-75" />
@@ -1503,7 +1500,7 @@ export default function PublicWebsitePage({
             type="button"
             onClick={() => setLightbox(null)}
             className="absolute end-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-            aria-label="Close"
+            aria-label={t.close}
           >
             <X size={22} />
           </button>
@@ -1526,7 +1523,7 @@ export default function PublicWebsitePage({
             type="button"
             onClick={() => setVideoLightbox(null)}
             className="absolute end-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-            aria-label="Close"
+            aria-label={t.close}
           >
             <X size={22} />
           </button>

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ImageOff, Images } from "lucide-react";
 import { CameraCaptureModal, fileToPortraitDataUrl } from "../../components/photo/PhotoPicker";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, getText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import { photoManagerPageText } from "./StudentPhotoManagerPage.text";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -36,6 +37,9 @@ const PAGE_CHUNK = 60;
  * of files named by রেজি. নং / রোল.
  */
 export default function StudentPhotoManagerPage() {
+  const tx = useText(photoManagerPageText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const [photoFilter, setPhotoFilter] = useState<PhotoFilter>("");
   const dir = usePeopleDirectory({ photo: photoFilter });
   const { tab, scoped, searched, loading, tabCanEdit, updatePeople } = dir;
@@ -101,7 +105,7 @@ export default function StudentPhotoManagerPage() {
         logger.error("SAVE PHOTO ERROR:", err);
         patch(previous);
         setStatus(key, "error");
-        useToastStore.getState().show(`${person.name} — ছবি সংরক্ষণ করা যায়নি`, "error");
+        useToastStore.getState().show(getText(photoManagerPageText).saveFailed(person.name), "error");
         return false;
       }
     },
@@ -114,7 +118,7 @@ export default function StudentPhotoManagerPage() {
         await savePhoto(tab, person, await fileToPortraitDataUrl(file));
       } catch (err) {
         logger.error("PHOTO READ ERROR:", err);
-        useToastStore.getState().show("ছবিটি পড়া যায়নি — অন্য একটি ফাইল দিন", "error");
+        useToastStore.getState().show(getText(photoManagerPageText).readFailed, "error");
       }
     },
     [savePhoto, tab],
@@ -123,9 +127,9 @@ export default function StudentPhotoManagerPage() {
   const handleRemove = useCallback(
     (person: PhotoPerson) => {
       useConfirmStore.getState().show({
-        title: "ছবি মুছবেন?",
-        message: `${person.name}-এর ছবি মুছে ফেলা হবে।`,
-        confirmText: "মুছুন",
+        title: getText(photoManagerPageText).removeTitle,
+        message: getText(photoManagerPageText).removeMessage(person.name),
+        confirmText: getText(commonText).delete,
         danger: true,
         onConfirm: async () => {
           await savePhoto(tab, person, null);
@@ -146,9 +150,9 @@ export default function StudentPhotoManagerPage() {
         {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">ছবি আপলোড</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{tx.title}</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              শুধু ছবি যোগ/পরিবর্তন — প্রতিটি ছবি সঙ্গে সঙ্গে সংরক্ষিত হয়।
+              {tx.subtitle}
             </p>
           </div>
           {tabCanEdit && (
@@ -159,16 +163,16 @@ export default function StudentPhotoManagerPage() {
                 disabled={loading || total === 0}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <Images className="h-4 w-4 text-emerald-600" /> একসাথে আপলোড
+                <Images className="h-4 w-4 text-emerald-600" /> {tx.bulkUpload}
               </button>
               <button
                 type="button"
                 onClick={() => setSeriesQueue(missingList)}
                 disabled={loading || missingList.length === 0}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-                title="তালিকায় যাদের ছবি নেই তাদের একে একে ছবি তুলুন"
+                title={tx.seriesHint}
               >
-                <Camera className="h-4 w-4" /> ক্যামেরা সিরিজ মোড
+                <Camera className="h-4 w-4" /> {tx.seriesMode}
               </button>
             </div>
           )}
@@ -176,7 +180,7 @@ export default function StudentPhotoManagerPage() {
 
         <PeopleTabs dir={dir} />
 
-        <ProgressSummary scopeLabel={dir.scopeLabel} total={total} done={withPhoto} doneLabel="ছবি আছে" />
+        <ProgressSummary scopeLabel={dir.scopeLabel} total={total} done={withPhoto} doneLabel={tx.hasPhoto} />
 
         <PeopleFilterBar
           dir={dir}
@@ -185,15 +189,15 @@ export default function StudentPhotoManagerPage() {
               value={photoFilter}
               onChange={setPhotoFilter}
               options={[
-                { value: "", label: "সব", count: total },
-                { value: "missing", label: "ছবি নেই", count: total - withPhoto },
-                { value: "has", label: "ছবি আছে", count: withPhoto },
+                { value: "", label: tx.all, count: total },
+                { value: "missing", label: tx.noPhoto, count: total - withPhoto },
+                { value: "has", label: tx.hasPhoto, count: withPhoto },
               ]}
             />
           }
         />
 
-        <PeopleNotices dir={dir} readOnlyText="ছবি পরিবর্তনের অনুমতি আপনার নেই — শুধু দেখতে পারবেন।" />
+        <PeopleNotices dir={dir} readOnlyText={tx.readOnly} />
 
         {/* Grid */}
         {loading ? (
@@ -212,9 +216,9 @@ export default function StudentPhotoManagerPage() {
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
             <ImageOff className="h-10 w-10 text-slate-300 dark:text-slate-600" />
             <div className="font-semibold text-slate-700 dark:text-slate-200">
-              {photoFilter === "missing" && total > 0 ? "সবার ছবি দেওয়া হয়েছে" : "কাউকে পাওয়া যায়নি"}
+              {photoFilter === "missing" && total > 0 ? tx.allDone : tx.noneFound}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">ফিল্টার বা সার্চ পরিবর্তন করে দেখুন।</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{tx.tryChangingFilter}</p>
           </div>
         ) : (
           <>
@@ -238,10 +242,10 @@ export default function StudentPhotoManagerPage() {
                   onClick={() => setVisibleCount((c) => c + PAGE_CHUNK)}
                   className="h-10 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  আরও দেখান
+                  {tx.showMore}
                 </button>
                 <span className="text-xs text-slate-400">
-                  {toBanglaDigits(visibleCount)} / {toBanglaDigits(filtered.length)} দেখানো হচ্ছে
+                  {tx.showingOf(toBanglaDigits(visibleCount), toBanglaDigits(filtered.length))}
                 </span>
               </div>
             )}
@@ -252,7 +256,7 @@ export default function StudentPhotoManagerPage() {
       <CameraCaptureModal
         open={!!cameraFor}
         onClose={() => setCameraFor(null)}
-        title={cameraFor ? `${cameraFor.name}${cameraFor.roll ? ` · রোল ${toBanglaDigits(cameraFor.roll)}` : ""}` : undefined}
+        title={cameraFor ? `${cameraFor.name}${cameraFor.roll ? tx.rollSuffix(toBanglaDigits(cameraFor.roll)) : ""}` : undefined}
         onCapture={(dataUrl) => {
           if (cameraFor) savePhoto(tab, cameraFor, dataUrl);
         }}

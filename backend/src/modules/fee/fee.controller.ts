@@ -4,6 +4,7 @@ import { ApiResponse } from "../../shared/responses";
 import { BadRequestError, TenantNotFoundInRequestError } from "../../shared/errors";
 import { feeService } from "./fee.service";
 import { examFeeService } from "./exam-fee.service";
+import { t } from "../../shared/i18n";
 
 const getMadrasaId = (req: Request): number => {
   const madrasaId = req.tenant?.madrasa_id;
@@ -31,17 +32,17 @@ export const getFeeStructureExams = asyncHandler(async (req: Request, res: Respo
 
 export const createFeeStructure = asyncHandler(async (req: Request, res: Response) => {
   await feeService.createStructure(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Fee structure created successfully");
+  return ApiResponse.message(res, t({ bn: "ফি কাঠামো তৈরি হয়েছে", en: "Fee structure created successfully", ar: "تم إنشاء هيكل الرسوم بنجاح" }));
 });
 
 export const updateFeeStructure = asyncHandler(async (req: Request, res: Response) => {
   await feeService.updateStructure(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Fee structure updated successfully");
+  return ApiResponse.message(res, t({ bn: "ফি কাঠামো আপডেট হয়েছে", en: "Fee structure updated successfully", ar: "تم تحديث هيكل الرسوم بنجاح" }));
 });
 
 export const deleteFeeStructure = asyncHandler(async (req: Request, res: Response) => {
   await feeService.deleteStructure(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, "Fee structure deleted successfully");
+  return ApiResponse.message(res, t({ bn: "ফি কাঠামো মুছে ফেলা হয়েছে", en: "Fee structure deleted successfully", ar: "تم حذف هيكل الرسوم بنجاح" }));
 });
 
 /* ================= ফি ধরণ ব্যবস্থাপনা (settings CRUD) ================= */
@@ -53,17 +54,17 @@ export const getFeeCategories = asyncHandler(async (req: Request, res: Response)
 
 export const createFeeCategory = asyncHandler(async (req: Request, res: Response) => {
   await feeService.createCategory(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "ফি ধরণ যোগ করা হয়েছে");
+  return ApiResponse.message(res, t({ bn: "ফি ধরণ যোগ করা হয়েছে", en: "Fee type added", ar: "تمت إضافة نوع الرسوم" }));
 });
 
 export const updateFeeCategory = asyncHandler(async (req: Request, res: Response) => {
   await feeService.updateCategory(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "ফি ধরণ আপডেট করা হয়েছে");
+  return ApiResponse.message(res, t({ bn: "ফি ধরণ আপডেট করা হয়েছে", en: "Fee type updated", ar: "تم تحديث نوع الرسوم" }));
 });
 
 export const deleteFeeCategory = asyncHandler(async (req: Request, res: Response) => {
   await feeService.deleteCategory(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, "ফি ধরণ মুছে ফেলা হয়েছে");
+  return ApiResponse.message(res, t({ bn: "ফি ধরণ মুছে ফেলা হয়েছে", en: "Fee type deleted", ar: "تم حذف نوع الرسوم" }));
 });
 
 /* ================= INVOICES ================= */
@@ -90,14 +91,14 @@ export const getInvoiceSummary = asyncHandler(async (req: Request, res: Response
 
 export const clearPendingInvoices = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.clearPendingInvoices(getMadrasaId(req));
-  return ApiResponse.success(res, { message: "তালিকা ক্লিয়ার করা হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "তালিকা ক্লিয়ার করা হয়েছে", en: "List cleared", ar: "تم مسح القائمة" }), data });
 });
 
 export const backfillInvoices = asyncHandler(async (req: Request, res: Response) => {
   const classId = req.body.class_id ? Number(req.body.class_id) : undefined;
   const sessionId = req.body.session_id ? Number(req.body.session_id) : undefined;
   const data = await feeService.backfillInvoicesForAllStudents(getMadrasaId(req), classId, sessionId);
-  return ApiResponse.success(res, { message: "Invoices backfilled successfully", data });
+  return ApiResponse.success(res, { message: t({ bn: "ইনভয়েস ব্যাকফিল সম্পন্ন হয়েছে", en: "Invoices backfilled successfully", ar: "تم استكمال الفواتير بنجاح" }), data });
 });
 
 export const payInvoice = asyncHandler(async (req: Request, res: Response) => {
@@ -107,7 +108,7 @@ export const payInvoice = asyncHandler(async (req: Request, res: Response) => {
     req.user?.id,
     req.body,
   );
-  return ApiResponse.success(res, { message: "Payment recorded successfully", data });
+  return ApiResponse.success(res, { message: t({ bn: "পেমেন্ট সংরক্ষণ করা হয়েছে", en: "Payment recorded successfully", ar: "تم تسجيل الدفعة بنجاح" }), data });
 });
 
 /* ---------- পরীক্ষার ফি একসাথে গ্রহণ ---------- */
@@ -123,7 +124,7 @@ export const getExamFeeCollectSheet = asyncHandler(async (req: Request, res: Res
 
 export const bulkPayExamFee = asyncHandler(async (req: Request, res: Response) => {
   const data = await feeService.bulkPayExamFee(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.success(res, { message: "পরীক্ষার ফি গ্রহণ সম্পন্ন হয়েছে", data });
+  return ApiResponse.success(res, { message: t({ bn: "পরীক্ষার ফি গ্রহণ সম্পন্ন হয়েছে", en: "Exam fee collection completed", ar: "تم تحصيل رسوم الامتحان" }), data });
 });
 
 export const waiveInvoice = asyncHandler(async (req: Request, res: Response) => {
@@ -133,7 +134,7 @@ export const waiveInvoice = asyncHandler(async (req: Request, res: Response) => 
     req.user?.id,
     req.body,
   );
-  return ApiResponse.success(res, { message: "Invoice waived successfully", data });
+  return ApiResponse.success(res, { message: t({ bn: "ইনভয়েস মওকুফ করা হয়েছে", en: "Invoice waived successfully", ar: "تم الإعفاء من الفاتورة بنجاح" }), data });
 });
 
 /* ================= MANUAL PAYMENT METHOD SETUP ================= */
@@ -146,17 +147,17 @@ export const getPaymentMethodSettings = asyncHandler(async (req: Request, res: R
 
 export const createPaymentMethodSetting = asyncHandler(async (req: Request, res: Response) => {
   await feeService.createPaymentMethodSetting(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Payment method added successfully");
+  return ApiResponse.message(res, t({ bn: "পেমেন্ট পদ্ধতি যোগ করা হয়েছে", en: "Payment method added successfully", ar: "تمت إضافة طريقة الدفع بنجاح" }));
 });
 
 export const updatePaymentMethodSetting = asyncHandler(async (req: Request, res: Response) => {
   await feeService.updatePaymentMethodSetting(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, "Payment method updated successfully");
+  return ApiResponse.message(res, t({ bn: "পেমেন্ট পদ্ধতি আপডেট হয়েছে", en: "Payment method updated successfully", ar: "تم تحديث طريقة الدفع بنجاح" }));
 });
 
 export const deletePaymentMethodSetting = asyncHandler(async (req: Request, res: Response) => {
   await feeService.deletePaymentMethodSetting(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, "Payment method deleted successfully");
+  return ApiResponse.message(res, t({ bn: "পেমেন্ট পদ্ধতি মুছে ফেলা হয়েছে", en: "Payment method deleted successfully", ar: "تم حذف طريقة الدفع بنجاح" }));
 });
 
 /* ================= পরীক্ষার ফি (exam × class table) ================= */
@@ -168,12 +169,12 @@ export const getExamFees = asyncHandler(async (req: Request, res: Response) => {
 
 export const setExamFees = asyncHandler(async (req: Request, res: Response) => {
   const data = await examFeeService.setAmounts(getMadrasaId(req), Number(req.params.examId), req.body?.amounts);
-  return ApiResponse.success(res, { data, message: "Exam fee updated successfully" });
+  return ApiResponse.success(res, { data, message: t({ bn: "পরীক্ষার ফি আপডেট হয়েছে", en: "Exam fee updated successfully", ar: "تم تحديث رسوم الامتحان بنجاح" }) });
 });
 
 /** ইহতেমাম's per-exam পরীক্ষার ফি on/off switch (see ExamFeeService.setFeeActive). */
 export const setExamFeeStatus = asyncHandler(async (req: Request, res: Response) => {
-  if (typeof req.body?.is_active !== "boolean") throw new BadRequestError("is_active must be true or false");
+  if (typeof req.body?.is_active !== "boolean") throw new BadRequestError(t({ bn: "is_active অবশ্যই true অথবা false হতে হবে", en: "is_active must be true or false", ar: "يجب أن تكون is_active إما true أو false" }));
   const data = await examFeeService.setFeeActive(getMadrasaId(req), Number(req.params.examId), req.body.is_active);
   return ApiResponse.success(res, {
     data,

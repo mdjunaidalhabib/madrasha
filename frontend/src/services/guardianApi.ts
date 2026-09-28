@@ -1,5 +1,6 @@
 import axios from "axios";
-import { attachLanguageHeader } from "@madrasha/shared-ui/src/i18n";
+import { attachLanguageHeader, commonText, getLang, getText, localizeDigits } from "@madrasha/shared-ui/src/i18n";
+import { appText } from "../app/app.text";
 import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
@@ -73,16 +74,16 @@ guardianApi.interceptors.response.use(
     // instead of a generic message, and never auto-retry a 429.
     if (status === 429) {
       const retrySeconds = Number(err?.response?.headers?.["retry-after"]);
-      const baseMsg = err?.response?.data?.message || "অনেক বেশি অনুরোধ হয়েছে।";
+      const baseMsg = err?.response?.data?.message || getText(appText).tooManyRequests;
       const msg =
         Number.isFinite(retrySeconds) && retrySeconds > 0
-          ? `${baseMsg} অনুগ্রহ করে ${retrySeconds} সেকেন্ড পর আবার চেষ্টা করুন।`
+          ? `${baseMsg} ${getText(appText).retryAfter(localizeDigits(retrySeconds, getLang()))}`
           : baseMsg;
       useToastStore.getState().push("error", msg);
       return Promise.reject(err);
     }
 
-    const msg = err?.response?.data?.message || err?.message || "Something went wrong";
+    const msg = err?.response?.data?.message || err?.message || getText(commonText).somethingWentWrong;
     useToastStore.getState().push("error", msg);
 
     return Promise.reject(err);

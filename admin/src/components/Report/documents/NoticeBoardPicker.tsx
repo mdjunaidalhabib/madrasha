@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Settings2 } from "lucide-react";
 import FilterSelect from "../../common/FilterSelect";
 import { useNoticeBoardReportStore } from "../../../store/noticeBoardReportStore";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { reportUiText } from "../reportUi.text";
 
 type NoticeBoardPickerProps = {
   selectClassName: string;
@@ -15,6 +17,7 @@ const NoticeBoardPicker = ({ selectClassName, iconClassName }: NoticeBoardPicker
   const selectedId = useNoticeBoardReportStore((s) => s.selectedId);
   const setSelectedId = useNoticeBoardReportStore((s) => s.setSelectedId);
   const load = useNoticeBoardReportStore((s) => s.load);
+  const ui = useText(reportUiText);
 
   useEffect(() => {
     void load();
@@ -30,8 +33,8 @@ const NoticeBoardPicker = ({ selectClassName, iconClassName }: NoticeBoardPicker
         selectClassName={selectClassName}
         iconClassName={iconClassName}
       >
-        {notices === null && <option value="">লোড হচ্ছে...</option>}
-        {notices?.length === 0 && <option value="">কোনো নোটিশ নেই</option>}
+        {notices === null && <option value="">{ui.loading}</option>}
+        {notices?.length === 0 && <option value="">{ui.noNotices}</option>}
         {notices?.map((n) => (
           <option key={n.id} value={n.id}>
             {n.title}
@@ -43,7 +46,7 @@ const NoticeBoardPicker = ({ selectClassName, iconClassName }: NoticeBoardPicker
         className="flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2 text-[13px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
       >
         <Settings2 className="h-3 w-3" />
-        নতুন/এডিট/ডিলিট
+        {ui.manageNotices}
       </Link>
     </>
   );

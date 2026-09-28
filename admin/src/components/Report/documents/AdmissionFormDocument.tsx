@@ -1,11 +1,19 @@
+import { useIsMadrasa, usePrintLang, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { admissionFormText } from "./admissionForm.text";
+
+type AdmissionFormLabels = typeof admissionFormText.bn;
+
 type Props = {
   row: Record<string, any>;
   madrasaName?: string;
 };
 
-const genderLabel = (g?: number | null) => (g === 1 ? "ছেলে" : g === 2 ? "মেয়ে" : "-");
-const residencyLabel = (v?: number | null) => (v === 1 ? "আবাসিক" : v === 2 ? "অনাবাসিক" : "-");
-const admissionTypeLabel = (v?: string) => (v === "RE_ADMISSION" ? "পুনঃভর্তি (পুরাতন)" : "নতুন");
+const genderLabel = (t: AdmissionFormLabels, g?: number | null) => (g === 1 ? t.male : g === 2 ? t.female : "-");
+const residencyLabel = (t: AdmissionFormLabels, v?: number | null) =>
+  v === 1 ? t.residential : v === 2 ? t.nonResidential : "-";
+const admissionTypeLabel = (t: AdmissionFormLabels, v?: string) =>
+  v === "RE_ADMISSION" ? t.readmission : t.newAdmission;
 
 const Field = ({ label, value }: { label: string; value?: string | number | null }) => (
   <div className="flex border-b border-slate-200 py-1.5 text-sm">
@@ -23,89 +31,93 @@ const Field = ({ label, value }: { label: string; value?: string | number | null
 const AdmissionFormDocument = ({ row, madrasaName }: Props) => {
   const isApproved = row.admission_status === "APPROVED";
   const isRejected = row.admission_status === "REJECTED";
+  const t = usePrintText(admissionFormText);
+  const r = usePrintText(reportText);
+  const { lang, dir } = usePrintLang();
+  const isMadrasa = useIsMadrasa();
 
   return (
-    <div className="print-page-break rounded-xl border-2 border-slate-800 bg-white p-8">
+    <div lang={lang} dir={dir} className="print-page-break rounded-xl border-2 border-slate-800 bg-white p-8">
       <div className="text-center">
         {madrasaName && <h2 className="text-xl font-bold">{madrasaName}</h2>}
-        <h3 className="mt-1 text-lg font-bold underline">শিক্ষার্থী ভর্তি ফরম</h3>
+        <h3 className="mt-1 text-lg font-bold underline">{r.title.admissionForm}</h3>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-x-8 md:grid-cols-2">
         <div>
-          <h4 className="mb-1 text-xs font-bold uppercase text-slate-400">শিক্ষার্থীর তথ্য</h4>
-          <Field label="নাম" value={row.name_bn} />
-          <Field label="আরবি নাম" value={row.arabic_name} />
-          <Field label="NID/জন্ম নিবন্ধন" value={row.nid} />
-          <Field label="লিঙ্গ" value={genderLabel(row.gender)} />
-          <Field label="জন্ম তারিখ" value={row.dob ? String(row.dob).slice(0, 10) : null} />
-          <Field label="রক্তের গ্রুপ" value={row.blood_group} />
-          <Field label="আবাসিক/অনাবাসিক" value={residencyLabel(row.residency_type)} />
-          <Field label="এতিম" value={row.is_orphan === 1 ? "হ্যাঁ" : "না"} />
-          <Field label="ভর্তির ধরন" value={admissionTypeLabel(row.admission_type)} />
+          <h4 className="mb-1 text-xs font-bold uppercase text-slate-400">{t.studentInfo}</h4>
+          <Field label={t.name} value={row.name_bn} />
+          {isMadrasa && <Field label={t.arabicName} value={row.arabic_name} />}
+          <Field label={t.nid} value={row.nid} />
+          <Field label={t.gender} value={genderLabel(t, row.gender)} />
+          <Field label={t.dob} value={row.dob ? String(row.dob).slice(0, 10) : null} />
+          <Field label={t.bloodGroup} value={row.blood_group} />
+          <Field label={t.residency} value={residencyLabel(t, row.residency_type)} />
+          <Field label={t.orphan} value={row.is_orphan === 1 ? t.yes : t.no} />
+          <Field label={t.admissionType} value={admissionTypeLabel(t, row.admission_type)} />
         </div>
 
         <div>
-          <h4 className="mb-1 text-xs font-bold uppercase text-slate-400">ভর্তির তথ্য</h4>
-          <Field label="শ্রেণি" value={row.current_class} />
-          <Field label="শিক্ষাবর্ষ" value={row.academic_year} />
-          <Field label="রোল নম্বর" value={row.roll} />
-          <Field label="রেজিস্ট্রেশন নম্বর" value={row.registration_no} />
-          <Field label="ভর্তির তারিখ" value={row.admission_date ? String(row.admission_date).slice(0, 10) : null} />
-          <Field label="পূর্ববর্তী প্রতিষ্ঠান" value={row.previous_institution} />
-          <Field label="পূর্বের ফলাফল" value={row.previous_result} />
+          <h4 className="mb-1 text-xs font-bold uppercase text-slate-400">{t.admissionInfo}</h4>
+          <Field label={t.class} value={row.current_class} />
+          <Field label={t.session} value={row.academic_year} />
+          <Field label={t.rollNo} value={row.roll} />
+          <Field label={t.regNo} value={row.registration_no} />
+          <Field label={t.admissionDate} value={row.admission_date ? String(row.admission_date).slice(0, 10) : null} />
+          <Field label={t.previousInstitution} value={row.previous_institution} />
+          <Field label={t.previousResult} value={row.previous_result} />
         </div>
 
         <div>
-          <h4 className="mb-1 mt-4 text-xs font-bold uppercase text-slate-400">অভিভাবকের তথ্য</h4>
-          <Field label="পিতার নাম" value={row.father_name} />
-          <Field label="পিতার NID" value={row.father_nid} />
-          <Field label="পিতার পেশা" value={row.father_occupation} />
-          <Field label="মাতার নাম" value={row.mother_name} />
-          <Field label="মাতার NID" value={row.mother_nid} />
-          <Field label="মাতার পেশা" value={row.mother_occupation} />
-          <Field label="মোবাইল নম্বর" value={row.guardian_phone} />
-          <Field label="বিকল্প মোবাইল নম্বর" value={row.guardian_phone_2} />
+          <h4 className="mb-1 mt-4 text-xs font-bold uppercase text-slate-400">{t.guardianInfo}</h4>
+          <Field label={t.fatherName} value={row.father_name} />
+          <Field label={t.fatherNid} value={row.father_nid} />
+          <Field label={t.fatherOccupation} value={row.father_occupation} />
+          <Field label={t.motherName} value={row.mother_name} />
+          <Field label={t.motherNid} value={row.mother_nid} />
+          <Field label={t.motherOccupation} value={row.mother_occupation} />
+          <Field label={t.mobileNo} value={row.guardian_phone} />
+          <Field label={t.altMobileNo} value={row.guardian_phone_2} />
         </div>
 
         <div>
           {row.alt_guardian_name && (
             <>
               <h4 className="mb-1 mt-4 text-xs font-bold uppercase text-slate-400">
-                বিকল্প অভিভাবক
+                {t.altGuardian}
               </h4>
-              <Field label="নাম" value={row.alt_guardian_name} />
-              <Field label="সম্পর্ক" value={row.alt_guardian_relation} />
-              <Field label="মোবাইল নম্বর" value={row.alt_guardian_phone} />
-              <Field label="ঠিকানা" value={row.alt_guardian_address} />
+              <Field label={t.name} value={row.alt_guardian_name} />
+              <Field label={t.relation} value={row.alt_guardian_relation} />
+              <Field label={t.mobileNo} value={row.alt_guardian_phone} />
+              <Field label={t.address} value={row.alt_guardian_address} />
             </>
           )}
 
-          <h4 className="mb-1 mt-4 text-xs font-bold uppercase text-slate-400">ঠিকানা</h4>
-          <Field label="বিভাগ" value={row.division} />
-          <Field label="জেলা" value={row.district} />
-          <Field label="থানা/উপজেলা" value={row.thana} />
-          <Field label="গ্রাম" value={row.village} />
+          <h4 className="mb-1 mt-4 text-xs font-bold uppercase text-slate-400">{t.address}</h4>
+          <Field label={t.adminDivision} value={row.division} />
+          <Field label={t.district} value={row.district} />
+          <Field label={t.thana} value={row.thana} />
+          <Field label={t.village} value={row.village} />
         </div>
       </div>
 
       <div className="mt-16 flex items-end justify-between text-sm">
         <div>
-          অবস্থা:{" "}
+          {t.statusLabel}{" "}
           <span className="font-bold">
-            {isApproved ? "অনুমোদিত" : isRejected ? "বাতিলকৃত" : "পর্যালোচনাধীন"}
+            {isApproved ? t.approved : isRejected ? t.rejected : t.pending}
           </span>
         </div>
 
         {isApproved ? (
           <div className="text-center">
             <div className="mb-1 h-10 w-48 border-b border-slate-800" />
-            <span className="font-semibold">মুহতামিমের স্বাক্ষর</span>
+            <span className="font-semibold">{r.sign.head}</span>
           </div>
         ) : (
           <div className="text-center text-slate-400">
             <div className="mb-1 h-10 w-48 border-b border-dashed border-slate-300" />
-            <span className="text-xs">অনুমোদনের পূর্বে স্বাক্ষর প্রযোজ্য নয়</span>
+            <span className="text-xs">{t.signatureNotApplicable}</span>
           </div>
         )}
       </div>

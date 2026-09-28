@@ -1,4 +1,5 @@
 import { useToastStore } from "../../store/toastStore";
+import { commonText, useText } from "../../i18n";
 
 const typeStyle: Record<string, string> = {
   success: "bg-green-600",
@@ -8,6 +9,7 @@ const typeStyle: Record<string, string> = {
 
 export default function Toaster() {
   const { toasts, remove } = useToastStore();
+  const c = useText(commonText);
 
   return (
     <div className="fixed end-4 top-4 z-[9999] space-y-2">
@@ -31,7 +33,7 @@ export default function Toaster() {
             <button
               onClick={() => remove(t.id)}
               className="opacity-80 hover:opacity-100"
-              aria-label="Close"
+              aria-label={c.close}
             >
               ✕
             </button>

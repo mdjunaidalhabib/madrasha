@@ -11,7 +11,9 @@ import { getDefaultBuiltinDesign } from "@madrasha/shared-ui/src/components/Docu
 import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import { useBrandingStore } from "../../../store/brandingStore";
-import { DEFAULT_ADMIT_CARD_RULES } from "@madrasha/shared-ui/src/utils/documentTemplates";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
+import { documentDefaultsText } from "./documentDefaults.text";
 import {
   PageGeometryContext,
   usePageContentBoxMm,
@@ -195,7 +197,8 @@ const FitToBox = ({
  * শব্দ/টোকেন সবই অ্যাডমিন-সম্পাদনযোগ্য admit_card_rules টেমপ্লেট থেকে।
  */
 const AdmitCardRulesPage = ({ rows }: AdmitCardRulesPageProps) => {
-  const template = useDocumentTemplate("admit_card_rules", DEFAULT_ADMIT_CARD_RULES);
+  const template = useDocumentTemplate("admit_card_rules", usePrintText(documentDefaultsText).admitCardRules);
+  const t = usePrintText(reportText);
   const geometry = useContext(PageGeometryContext);
   const box = usePageContentBoxMm();
   const sheet = usePageSheetMm();
@@ -233,8 +236,8 @@ const AdmitCardRulesPage = ({ rows }: AdmitCardRulesPageProps) => {
           height={cardHeightPx}
           footer={
             <div className="flex w-full justify-between text-base font-semibold text-black">
-              <span>পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর</span>
-              <span>প্রধান শিক্ষকের স্বাক্ষর</span>
+              <span>{t.sign.examController}</span>
+              <span>{t.sign.head}</span>
             </div>
           }
         >
@@ -242,7 +245,7 @@ const AdmitCardRulesPage = ({ rows }: AdmitCardRulesPageProps) => {
           <div className="[&_*]:!border-transparent [&_*]:!text-black [&_.border-b-2]:!hidden">
             <LetterDocument
               row={row}
-              heading="পরীক্ষার নিয়মাবলী"
+              heading={t.title.examRules}
               headingClassName="mb-3 text-center text-[26px] font-bold text-black"
               bodyClassName="whitespace-pre-line text-xl leading-8 text-black"
               template={template}

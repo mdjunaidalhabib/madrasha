@@ -1,6 +1,8 @@
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import type { FieldBinding } from "./fieldBindings";
+import { commonText, useText } from "../../i18n";
+import { designerText } from "./designer.text";
 
 export interface DemoDataModalProps {
   open: boolean;
@@ -29,12 +31,14 @@ export default function DemoDataModal({
   onReset,
   hasOverrides,
 }: DemoDataModalProps) {
+  const t = useText(designerText);
+  const c = useText(commonText);
   if (!open) return null;
 
   return (
-    <Modal open={open} title="ডেমো ডেটা এডিট করুন" onClose={onClose} maxWidthClassName="max-w-lg">
+    <Modal open={open} title={t.demoDataTitle} onClose={onClose} maxWidthClassName="max-w-lg">
       <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-        এখানে যা বদলাবেন তা শুধু এই ডিজাইনারের প্রিভিউতে দেখাবে — কোনো প্রকৃত তথ্য পরিবর্তিত বা সংরক্ষিত হবে না।
+        {t.demoDataHint}
       </p>
 
       <div className="space-y-3">
@@ -82,10 +86,10 @@ export default function DemoDataModal({
           disabled={!hasOverrides}
           className="text-xs font-medium text-rose-600 underline disabled:cursor-not-allowed disabled:opacity-40 dark:text-rose-400"
         >
-          মূল ডেটায় ফিরিয়ে নিন
+          {t.resetDemo}
         </button>
         <Button type="button" onClick={onClose}>
-          বন্ধ করুন
+          {c.close}
         </Button>
       </div>
     </Modal>

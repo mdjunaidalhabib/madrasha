@@ -25,6 +25,24 @@ import api, { cachedGet } from "../../../services/adminApi";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import {
+  INSTITUTION_TYPES,
+  INSTITUTION_TYPE_LABELS,
+  commonText,
+  formatNumber,
+  getLang,
+  getText,
+  useLang,
+  useText,
+  type InstitutionType,
+  type Lang,
+} from "@madrasha/shared-ui/src/i18n";
+import InstitutionSection, {
+  normalizeDefaultLanguage,
+  type DefaultLanguageValue,
+} from "../../../components/super-admin/create-madrasa/InstitutionSection";
+import { createMadrasaText } from "../../../components/super-admin/create-madrasa/createMadrasa.text";
+import { madrasasText } from "./madrasas.text";
 
 export type Madrasa = {
   id: number;
@@ -41,6 +59,9 @@ export type Madrasa = {
   phone?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  institution_type?: InstitutionType;
+  /** Effective default language (list rows resolve the type default). */
+  default_language?: Lang;
 };
 
 export type Plan = {
@@ -72,12 +93,16 @@ function useDebounce<T>(value: T, delay = 400) {
 }
 
 export default function SuperAdminMadrasasPage() {
+  const t = useText(madrasasText);
+  const c = useText(commonText);
+  const lang = useLang();
   const [items, setItems] = useState<Madrasa[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const [q, setQ] = useState("");
   const dq = useDebounce(q, 350);
+  const [typeFilter, setTypeFilter] = useState<InstitutionType | "">("");
 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -115,10 +140,13 @@ export default function SuperAdminMadrasasPage() {
         q: dq || undefined,
         page,
         limit,
+        institution_type: typeFilter || undefined,
       });
 
-      const rows = Array.isArray(data) ? data : (data.data ?? []);
-      setItems(rows);
+      const rows: Madrasa[] = Array.isArray(data) ? data : (data.data ?? []);
+      // The type filter is also applied here so the list stays correct even
+      // where the API ignores the institution_type query param.
+      setItems(typeFilter ? rows.filter((m) => (m.institution_type ?? "MADRASA") === typeFilter) : rows);
 
       if (!Array.isArray(data) && data.meta?.total != null) {
         setTotal(Number(data.meta.total));
@@ -130,7 +158,7 @@ export default function SuperAdminMadrasasPage() {
     } finally {
       setLoading(false);
     }
-  }, [dq, page, limit]);
+  }, [dq, page, limit, typeFilter]);
 
   useEffect(() => {
     fetchAll();
@@ -139,7 +167,7 @@ export default function SuperAdminMadrasasPage() {
   // Selection is page/search scoped — clear it whenever the visible set changes.
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [dq, page]);
+  }, [dq, page, typeFilter]);
 
   /* ==============================
      FETCH PLANS
@@ -232,10 +260,11 @@ export default function SuperAdminMadrasasPage() {
   ============================== */
 
   const onDelete = (m: Madrasa) => {
+    const tx = getText(madrasasText);
     useConfirmStore.getState().show({
-      title: "Move to Trash",
-      message: `Move "${m.name}" to Trash?`,
-      confirmText: "Move to Trash",
+      title: tx.moveToTrash,
+      message: tx.moveOneToTrash(m.name),
+      confirmText: tx.moveToTrash,
       danger: true,
       onConfirm: async () => {
         setBusyId(m.id);
@@ -265,12 +294,12 @@ export default function SuperAdminMadrasasPage() {
     setCleanBusy(true);
     try {
       await cleanMadrasaData(cleaningTarget.id, payload);
-      useToastStore.getState().show("মাদ্রাসার ডেটা ক্লিন করা হয়েছে", "success");
+      useToastStore.getState().show(getText(madrasasText).cleanSuccess, "success");
       setCleaningTarget(null);
       await fetchAll();
     } catch (err: any) {
       logger.error("Clean madrasa data failed:", err);
-      const msg = err?.response?.data?.message || "ডেটা ক্লিন করতে সমস্যা হয়েছে";
+      const msg = err?.response?.data?.message || getText(madrasasText).cleanFailed;
       useToastStore.getState().show(msg, "error");
     } finally {
       setCleanBusy(false);
@@ -301,10 +330,11 @@ export default function SuperAdminMadrasasPage() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
 
+    const tx = getText(madrasasText);
     useConfirmStore.getState().show({
-      title: "Move to Trash",
-      message: `Move ${ids.length}টি মাদ্রাসা Trash-এ পাঠাবেন?`,
-      confirmText: "Move to Trash",
+      title: tx.moveToTrash,
+      message: tx.moveManyToTrash(formatNumber(ids.length, getLang())),
+      confirmText: tx.moveToTrash,
       danger: true,
       onConfirm: async () => {
         setBulkBusy(true);
@@ -338,21 +368,47 @@ export default function SuperAdminMadrasasPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold dark:text-slate-100">All Madrasas</h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400">Platform-wide madrasa list</p>
+          <h1 className="text-2xl font-bold dark:text-slate-100">{t.title}</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
         </div>
 
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <Link to="/admin/madrasas/trash" className="flex-1 sm:flex-none">
             <Button variant="secondary" className="w-full sm:w-auto">
-              Trash
+              {t.trash}
             </Button>
           </Link>
 
           <Button className="flex-1 sm:flex-none" onClick={() => setOpenCreate(true)}>
-            + Create Madrasa
+            {t.createInstitution}
           </Button>
         </div>
+      </div>
+
+      {/* Institution type filter */}
+      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label={t.filterByType}>
+        {([""] as (InstitutionType | "")[]).concat(INSTITUTION_TYPES).map((type) => {
+          const active = typeFilter === type;
+          return (
+            <button
+              key={type || "all"}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                setTypeFilter(type);
+                setPage(1);
+              }}
+              className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
+                active
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              {type ? INSTITUTION_TYPE_LABELS[type][lang] : t.allTypes}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search + Pagination */}
@@ -379,7 +435,7 @@ export default function SuperAdminMadrasasPage() {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900 dark:bg-indigo-950/40">
           <span className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
-            {selectedIds.size}টি মাদ্রাসা নির্বাচিত
+            {t.selectedCount(formatNumber(selectedIds.size, lang))}
           </span>
           <div className="flex gap-2">
             <Button
@@ -387,16 +443,16 @@ export default function SuperAdminMadrasasPage() {
               onClick={() => setSelectedIds(new Set())}
               disabled={bulkBusy}
             >
-              Clear
+              {c.clear}
             </Button>
             <Button variant="danger" onClick={onBulkDelete} disabled={bulkBusy}>
               {bulkBusy ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Deleting...
+                  {t.deleting}
                 </span>
               ) : (
-                `Move ${selectedIds.size} to Trash`
+                t.moveNToTrash(formatNumber(selectedIds.size, lang))
               )}
             </Button>
           </div>
@@ -476,6 +532,14 @@ function EditMadrasaModal({
   onClose: () => void;
   onSubmit: (payload: Partial<Madrasa> & Record<string, unknown>) => Promise<void>;
 }) {
+  const t = useText(madrasasText);
+  const tc = useText(createMadrasaText);
+  const c = useText(commonText);
+
+  // Institution type + raw default-language override (detail endpoint; "" = type default).
+  const [institutionType, setInstitutionType] = useState<InstitutionType>(madrasa.institution_type ?? "MADRASA");
+  const [defaultLanguage, setDefaultLanguage] = useState<DefaultLanguageValue>("");
+
   const [form, setForm] = useState({
     name: madrasa.name || "",
     slug: madrasa.slug || "",
@@ -516,8 +580,9 @@ function EditMadrasaModal({
   System Setup (same fields as Create Madrasa)
   ========================= */
   type Item = { key: string; label: string };
+  type DivisionItem = Item & { institutionType: InstitutionType };
 
-  const [divisionItems, setDivisionItems] = useState<Item[]>([]);
+  const [allDivisionItems, setAllDivisionItems] = useState<DivisionItem[]>([]);
   const [moduleItems, setModuleItems] = useState<Item[]>([]);
   const [allClasses, setAllClasses] = useState<any[]>([]);
   const [allBooks, setAllBooks] = useState<any[]>([]);
@@ -546,21 +611,25 @@ function EditMadrasaModal({
 
         if (cancelled) return;
 
-        const divData = (divRes.data?.data || []).map((r: any) => ({
+        const divData: DivisionItem[] = (divRes.data?.data || []).map((r: any) => ({
           key: String(r.id),
           label: r.label || r.name,
+          institutionType: (r.institution_type || "MADRASA") as InstitutionType,
         }));
         const modData = (modRes.data?.data || []).map((r: any) => ({
           key: String(r.id),
           label: r.label || r.name,
         }));
 
-        setDivisionItems(divData);
+        setAllDivisionItems(divData);
         setModuleItems(modData);
         setAllClasses(classRes.data?.data || []);
         setAllBooks(bookRes.data?.data || []);
 
         const detail = detailRes?.data || {};
+        const detailType: InstitutionType = detail.institution_type || madrasa.institution_type || "MADRASA";
+        setInstitutionType(detailType);
+        setDefaultLanguage(normalizeDefaultLanguage(detailType, detail.default_language || ""));
         setDivisions((detail.divisions || []).map((id: number) => String(id)));
         setModules((detail.modules || []).map((id: number) => String(id)));
       } catch (err) {
@@ -575,6 +644,21 @@ function EditMadrasaModal({
       cancelled = true;
     };
   }, [madrasa.id]);
+
+  // Only the catalogue divisions of the selected institution type are offered.
+  const divisionItems = useMemo<Item[]>(
+    () => allDivisionItems.filter((d) => d.institutionType === institutionType),
+    [allDivisionItems, institutionType],
+  );
+
+  // Changing the type drops selected divisions (and, via the effects below,
+  // their classes/books) that belong to another type's catalogue.
+  const handleTypeChange = (type: InstitutionType) => {
+    setInstitutionType(type);
+    setDefaultLanguage((prev) => normalizeDefaultLanguage(type, prev));
+    const allowed = new Set(allDivisionItems.filter((d) => d.institutionType === type).map((d) => d.key));
+    setDivisions((prev) => prev.filter((id) => allowed.has(id)));
+  };
 
   // Classes are hidden from the UI (same as Create) — auto-select ALL
   // classes under the selected divisions.
@@ -605,14 +689,14 @@ function EditMadrasaModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:p-6">
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Edit Madrasa</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.editTitle}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            মাদ্রাসার basic info, limit, status, website status এবং plan update করুন।
+            {t.editSubtitle}
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Name</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.name}</label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.name}
@@ -620,7 +704,7 @@ function EditMadrasaModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Slug</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.slug}</label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.slug}
@@ -628,7 +712,7 @@ function EditMadrasaModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Address</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.address}</label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.address || ""}
@@ -636,22 +720,32 @@ function EditMadrasaModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Phone</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.phone}</label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.phone || ""}
               onChange={(e) => update("phone", e.target.value)}
             />
           </div>
+          <div className="md:col-span-2">
+            <InstitutionSection
+              institutionType={institutionType}
+              defaultLanguage={defaultLanguage}
+              onTypeChange={handleTypeChange}
+              onLanguageChange={setDefaultLanguage}
+              labelClassName="mb-1 block text-sm font-semibold dark:text-slate-200"
+              selectClassName="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:col-span-2">
             <div>
-              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Plan</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.plan}</label>
               <select
                 className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={form.plan_id}
                 onChange={(e) => handlePlanChange(e.target.value)}
               >
-                <option value="">No change</option>
+                <option value="">{t.noChange}</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -660,7 +754,7 @@ function EditMadrasaModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Student Limit</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.studentLimit}</label>
               <input
                 type="number"
                 disabled={!!form.plan_id}
@@ -670,7 +764,7 @@ function EditMadrasaModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">User Limit</label>
+              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.userLimit}</label>
               <input
                 type="number"
                 disabled={!!form.plan_id}
@@ -682,7 +776,7 @@ function EditMadrasaModal({
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
-              Plan Start Date
+              {t.planStartDate}
             </label>
             <input
               type="date"
@@ -692,35 +786,35 @@ function EditMadrasaModal({
               onChange={(e) => update("start_date", e.target.value)}
             />
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              অনেক মাদ্রাসা আগে থেকেই সাবস্ক্রিপশন ব্যবহার করছে — প্রকৃত শুরুর তারিখ বসিয়ে দিন, নাহলে আজকের তারিখ ধরা হবে।
+              {t.startDateHint}
             </p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Madrasa Status</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.institutionStatus}</label>
             <select
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.is_active}
               onChange={(e) => update("is_active", Number(e.target.value))}
             >
-              <option value={1}>Active</option>
-              <option value={0}>Inactive</option>
+              <option value={1}>{c.active}</option>
+              <option value={0}>{c.inactive}</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Website Status</label>
+            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.websiteStatus}</label>
             <select
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.website_status}
               onChange={(e) => update("website_status", e.target.value)}
             >
-              <option value="active">Active</option>
-              <option value="limited">Limited</option>
-              <option value="disabled">Disabled</option>
+              <option value="active">{t.websiteActive}</option>
+              <option value="limited">{t.websiteLimited}</option>
+              <option value="disabled">{t.websiteDisabled}</option>
             </select>
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
-              Custom Domain
+              {t.customDomain}
             </label>
             <input
               className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -729,8 +823,7 @@ function EditMadrasaModal({
               onChange={(e) => update("custom_domain", e.target.value)}
             />
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              এই মাদ্রাসার নিজস্ব ডোমেইন (DNS/SSL আলাদাভাবে সেট করতে হবে)। খালি রাখলে
-              slug-path URL-ই ব্যবহার হবে।
+              {t.customDomainHint}
             </p>
           </div>
         </div>
@@ -738,13 +831,16 @@ function EditMadrasaModal({
         {/* System Setup — same as Create Madrasa (Classes/Books stay hidden and auto-derive) */}
         <div className="mt-6 space-y-4">
           {loadingSetup ? (
-            <p className="text-sm text-gray-500 dark:text-slate-400">Loading divisions & modules...</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t.loadingSetup}</p>
           ) : (
             <>
               <DivisionsSection items={divisionItems} divisions={divisions} setDivisions={setDivisions} />
+              {!divisionItems.length && allDivisionItems.length > 0 && (
+                <p className="-mt-2 text-xs text-amber-600 dark:text-amber-400">{tc.noDivisionsForType}</p>
+              )}
 
               <ToggleSection
-                title="Modules"
+                title={tc.modules}
                 items={moduleItems}
                 selected={modules}
                 setSelected={setModules}
@@ -757,12 +853,14 @@ function EditMadrasaModal({
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
+            {c.cancel}
           </Button>
           <Button
             onClick={() =>
               onSubmit({
                 ...form,
+                institution_type: institutionType,
+                default_language: defaultLanguage || null,
                 plan_id: form.plan_id ? Number(form.plan_id) : undefined,
                 start_date: form.plan_id ? form.start_date : undefined,
                 divisions: divisions.map(Number),
@@ -773,7 +871,7 @@ function EditMadrasaModal({
             }
             disabled={busy || loadingSetup}
           >
-            {busy ? "Saving..." : "Save changes"}
+            {busy ? c.saving : t.saveChanges}
           </Button>
         </div>
       </div>

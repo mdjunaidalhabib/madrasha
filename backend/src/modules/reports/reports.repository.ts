@@ -181,7 +181,7 @@ export class ReportsRepository {
       return { rows: Array.isArray(rows) ? rows : [], warning: undefined };
     } catch (error: any) {
       if (isMissingTableOrColumn(error)) {
-        return { rows: [], warning: REPORT_MISSING_TABLE_WARNING };
+        return { rows: [], warning: REPORT_MISSING_TABLE_WARNING() };
       }
       throw error;
     }

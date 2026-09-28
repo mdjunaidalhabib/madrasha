@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, CheckCircle2, FolderUp, Images, Loader2, Upload, X } from "lucide-react";
-import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { useText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import { peopleToolsText } from "./peopleTools.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { fileToPortraitDataUrl } from "../../../components/photo/PhotoPicker";
 import { fileNumberKey, hasPhoto, type CardStatus, type PhotoPerson } from "./photoManager";
@@ -53,6 +54,10 @@ const buildRows = (files: File[], scope: PhotoPerson[], by: MatchBy, previews: s
  * matched to people, previewed for confirmation, then saved one by one.
  */
 export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, scopeLabel, onSave }: Props) {
+  const pt = useText(peopleToolsText);
+  const c = useText(commonText);
+  const lang = useLang();
+  const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -146,9 +151,9 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
             <Images className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">একসাথে অনেক ছবি আপলোড</div>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{pt.bulkTitle}</div>
             <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-              ফাইলের নাম = {matchBy === "reg" ? "রেজিস্ট্রেশন নম্বর" : "রোল নম্বর"} (যেমন 1045.jpg) · পরিসর: {scopeLabel}
+              {pt.fileNameRule(matchBy === "reg" ? pt.registrationNo : pt.rollNo, scopeLabel)}
             </div>
           </div>
           <button
@@ -156,7 +161,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
             onClick={onClose}
             disabled={running}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
-            aria-label="বন্ধ করুন"
+            aria-label={c.close}
           >
             <X className="h-5 w-5" />
           </button>
@@ -166,24 +171,24 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
               <button type="button" className={pill(matchBy === "reg")} onClick={() => setMatchBy("reg")} disabled={running}>
-                রেজি. নং দিয়ে মেলান
+                {pt.matchByReg}
               </button>
               {allowRoll && (
                 <button type="button" className={pill(matchBy === "roll")} onClick={() => setMatchBy("roll")} disabled={running}>
-                  রোল দিয়ে মেলান
+                  {pt.matchByRoll}
                 </button>
               )}
             </div>
             {files.length > 0 && (
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                মোট {toBanglaDigits(files.length)} · মিলেছে{" "}
+                {pt.total} {toBanglaDigits(files.length)} · {pt.matchedLabel}{" "}
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">{toBanglaDigits(matched)}</span> ·
-                মেলেনি <span className="font-semibold text-amber-600">{toBanglaDigits(files.length - matched)}</span>
+                {pt.unmatchedLabel} <span className="font-semibold text-amber-600">{toBanglaDigits(files.length - matched)}</span>
               </div>
             )}
           </div>
           {!allowRoll && (
-            <p className="-mt-2 text-[11px] text-slate-400">রোল দিয়ে মেলাতে ওপরের ফিল্টার থেকে একটি শ্রেণি নির্বাচন করুন।</p>
+            <p className="-mt-2 text-[11px] text-slate-400">{pt.rollNeedsClass}</p>
           )}
 
           <div
@@ -205,8 +210,8 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
             }`}
           >
             <FolderUp className="h-8 w-8 text-emerald-600" />
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">ছবিগুলো এখানে টেনে আনুন বা ক্লিক করে বাছাই করুন</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">একাধিক JPG/PNG · নামের প্রথম সংখ্যাটি দিয়ে মেলানো হবে</div>
+            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{pt.dropHere}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{pt.dropHint}</div>
           </div>
 
           {rows.length > 0 && (
@@ -214,13 +219,13 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
               {rows.map((r, i) => {
                 const person = r.matches.length === 1 ? r.matches[0] : null;
                 const problem = !r.key
-                  ? "নামে কোনো সংখ্যা নেই"
+                  ? pt.noNumber
                   : r.matches.length === 0
-                    ? "কাউকে পাওয়া যায়নি"
+                    ? pt.noneFound
                     : r.matches.length > 1
-                      ? `${toBanglaDigits(r.matches.length)} জন মিলেছে — শ্রেণি নির্বাচন করুন`
+                      ? pt.multiMatched(toBanglaDigits(r.matches.length))
                       : r.duplicate
-                        ? "একই জনের জন্য আগে আরেকটি ফাইল আছে"
+                        ? pt.duplicateFile
                         : null;
                 return (
                   <div key={`${r.file.name}-${i}`} className="flex items-center gap-3 px-3 py-2">
@@ -239,15 +244,15 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
                           {person.name}
                           <span className="ms-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">
                             {person.subtitle}
-                            {person.roll && ` · রোল ${toBanglaDigits(person.roll)}`}
-                            {person.regNo && ` · রেজি. ${toBanglaDigits(person.regNo)}`}
+                            {person.roll && ` · ${pt.roll(toBanglaDigits(person.roll))}`}
+                            {person.regNo && ` · ${pt.reg(toBanglaDigits(person.regNo))}`}
                           </span>
                         </div>
                       ) : (
                         <div className="text-sm font-medium text-amber-600 dark:text-amber-400">{problem}</div>
                       )}
                       {person && !r.duplicate && hasPhoto(person) && !r.status && (
-                        <div className="text-[11px] text-amber-600 dark:text-amber-400">আগের ছবি প্রতিস্থাপন হবে</div>
+                        <div className="text-[11px] text-amber-600 dark:text-amber-400">{pt.willReplace}</div>
                       )}
                     </div>
                     <div className="w-6 shrink-0">
@@ -265,10 +270,10 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {finished
-              ? `সম্পন্ন: ${toBanglaDigits(doneCount)} টি সংরক্ষিত${failCount ? `, ${toBanglaDigits(failCount)} টি ব্যর্থ` : ""}`
+              ? pt.bulkDone(toBanglaDigits(doneCount), failCount ? toBanglaDigits(failCount) : null)
               : running
-                ? `সংরক্ষণ হচ্ছে... ${toBanglaDigits(doneCount + failCount)} / ${toBanglaDigits(selected.length)}`
-                : `${toBanglaDigits(selected.length)} টি ছবি সংরক্ষণের জন্য নির্বাচিত`}
+                ? pt.bulkRunning(toBanglaDigits(doneCount + failCount), toBanglaDigits(selected.length))
+                : pt.bulkSelected(toBanglaDigits(selected.length))}
           </div>
           <div className="flex gap-2">
             {files.length > 0 && !running && (
@@ -281,7 +286,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
                 }}
                 className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
-                খালি করুন
+                {pt.clearAll}
               </button>
             )}
             {finished ? (
@@ -290,7 +295,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
                 onClick={onClose}
                 className="h-9 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                সম্পন্ন
+                {pt.done}
               </button>
             ) : (
               <button
@@ -300,7 +305,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {toBanglaDigits(selected.length)} টি সংরক্ষণ করুন
+                {pt.saveN(toBanglaDigits(selected.length))}
               </button>
             )}
           </div>

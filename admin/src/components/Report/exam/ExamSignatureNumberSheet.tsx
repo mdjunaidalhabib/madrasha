@@ -1,4 +1,6 @@
-import { cellValue, formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell, printValue } from "../printFormat";
+import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../report.text";
 
 type ExamSignatureNumberSheetProps = {
   rows: Record<string, any>[];
@@ -18,7 +20,7 @@ type ExamSignatureNumberSheetProps = {
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   for (const key of keys) {
     const current = row?.[key];
-    if (current !== null && current !== undefined && current !== "") return formatReportValue(current, key);
+    if (current !== null && current !== undefined && current !== "") return printValue(current, key);
   }
   return fallback;
 };
@@ -56,23 +58,26 @@ const ExamSignatureNumberSheet = ({
   hideRegistrationColumn = false,
   hideSignature = false,
 }: ExamSignatureNumberSheetProps) => {
+  const t = usePrintText(reportText);
+  const isMadrasa = useIsMadrasa();
+  const classCaption = `${isMadrasa ? t.jamat : t.classTerm}${t.colon}`;
   const firstRow = rows[0] || {};
   const examName = value(firstRow, ["exam_name"], "........................");
   const examYear = value(firstRow, ["exam_year", "academic_year"], "........................");
   const className =
-    selectedClassName || value(firstRow, ["class_name", "class_name_bn"], "সকল শ্রেণি");
+    selectedClassName || value(firstRow, ["class_name", "class_name_bn"], t.allClasses);
   const subjectName = firstRow.__subject_name || "................";
 
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
       <div className="student-report-heading report-block-heading mb-3 text-center">
-        <h1 className="student-report-title text-xl font-bold">স্বাক্ষর ও নম্বরপত্র</h1>
+        <h1 className="student-report-title text-xl font-bold">{t.title.signatureNumberSheet}</h1>
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
           {examName} - {examYear}
         </p>
         <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          জামাতঃ {className} | বিষয়: {subjectName}
+          {classCaption} {className} | {t.subjectLabel} {subjectName}
         </p>
       </div>
       )}
@@ -106,25 +111,25 @@ const ExamSignatureNumberSheet = ({
         {isFirstPage && (
         <thead>
           <tr>
-            <th className="whitespace-nowrap border border-black px-1 py-2 text-base">রোল</th>
+            <th className="whitespace-nowrap border border-black px-1 py-2 text-base">{t.col.roll}</th>
             {!hideRegistrationColumn && (
-              <th className="border border-black px-1 py-2 text-base">রেজিঃ নম্বর</th>
+              <th className="border border-black px-1 py-2 text-base">{t.col.regNo}</th>
             )}
-            <th className="border border-black px-1 py-2 text-base">শিক্ষার্থীর নাম</th>
-            <th className="border border-black px-1 py-2 text-base">স্বাক্ষর</th>
-            <th className="border border-black px-1 py-2 text-base">নম্বর</th>
+            <th className="border border-black px-1 py-2 text-base">{t.col.studentName}</th>
+            <th className="border border-black px-1 py-2 text-base">{t.col.signature}</th>
+            <th className="border border-black px-1 py-2 text-base">{t.col.marks}</th>
           </tr>
         </thead>
         )}
         <tbody>
           {rows.map((row, index) => (
             <tr key={`exam-sign-num-${startIndex + index}-${row.id || row.student_id || index}`}>
-              <td className="h-9 whitespace-nowrap border border-black px-1 text-base">{cellValue(row, "roll")}</td>
+              <td className="h-9 whitespace-nowrap border border-black px-1 text-base">{printCell(row, "roll")}</td>
               {!hideRegistrationColumn && (
-                <td className="h-9 border border-black px-1 text-base">{cellValue(row, "registration_no")}</td>
+                <td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>
               )}
               <td className="h-9 border border-black px-2 text-start text-base font-semibold">
-                {cellValue(row, "student_name")}
+                {printCell(row, "student_name")}
               </td>
               <td className="h-9 border border-black px-1" />
               <td className="h-9 border border-black px-1" />
@@ -136,7 +141,7 @@ const ExamSignatureNumberSheet = ({
       {isLastPage && !hideSignature && (
       <div className="exam-report-signature report-block-signature mt-8 flex justify-end">
         <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-          পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর
+          {t.sign.examController}
         </div>
       </div>
       )}

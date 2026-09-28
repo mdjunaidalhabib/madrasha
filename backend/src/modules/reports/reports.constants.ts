@@ -1,7 +1,11 @@
-export const REPORT_LOAD_FAILED_MESSAGE = "রিপোর্ট লোড করা যায়নি";
+import { t } from "../../shared/i18n";
+export const REPORT_LOAD_FAILED_MESSAGE = (): string =>
+  t({ bn: "রিপোর্ট লোড করা যায়নি", en: "Failed to load the report", ar: "تعذر تحميل التقرير" });
 export const REPORT_MISSING_TABLE_WARNING =
-  "এই রিপোর্টের জন্য প্রয়োজনীয় database table/column এখনো পাওয়া যায়নি।";
-export const REPORT_TENANT_NOT_FOUND_MESSAGE = "Tenant madrasa not found";
+  (): string =>
+  t({ bn: "এই রিপোর্টের জন্য প্রয়োজনীয় database table/column এখনো পাওয়া যায়নি।", en: "The database table/column this report needs was not found yet.", ar: "لم يتم العثور بعد على جدول/عمود قاعدة البيانات اللازم لهذا التقرير." });
+export const REPORT_TENANT_NOT_FOUND_MESSAGE = (): string =>
+  t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" });
 
 // Prisma wraps the raw Postgres driver error; the SQLSTATE code
 // (42P01 = undefined_table, 42703 = undefined_column) shows up either

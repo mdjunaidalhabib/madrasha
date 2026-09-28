@@ -1,16 +1,21 @@
-import { cellValue, toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
+import { printCell } from "../../printFormat";
+import { usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../../report.text";
 
 type Props = {
   row: Record<string, any>;
   madrasaName: string;
 };
 
-const IdCardArch = ({ row, madrasaName }: Props) => (
+const IdCardArch = ({ row, madrasaName }: Props) => {
+  const t = usePrintText(reportText);
+  return (
   <div className="print-page-break flex h-[85.6mm] w-[54mm] flex-col overflow-hidden rounded-lg border-2 border-[#1e5c3f] bg-[#f3ecd8] p-[1.2mm]">
     <div className="flex flex-1 flex-col overflow-hidden rounded-[4px] border border-[#cdb96f]">
       <div className="shrink-0 bg-[#1e5c3f] px-[3mm] py-[2mm] text-center">
         <p className="truncate text-[11px] font-bold leading-tight text-[#f3ecd8]">
-          {madrasaName || "শিক্ষার্থী পরিচয়পত্র"}
+          {madrasaName || t.title.studentIdCard}
         </p>
         <p className="mt-[0.5mm] text-[6.5px] uppercase tracking-[0.2em] text-[#cdb96f]">
           Student Identity Card
@@ -25,48 +30,49 @@ const IdCardArch = ({ row, madrasaName }: Props) => (
             className="h-full w-full object-cover"
           />
         ) : (
-          "ছবি"
+          t.col.photo
         )}
       </div>
 
       <span className="mx-auto mt-[1.5mm] shrink-0 rounded-full bg-[#e3d9b3] px-[2.5mm] py-[0.3mm] text-[7.5px] font-bold text-[#1e5c3f]">
-        রোল {cellValue(row, "roll")}
+        {t.col.roll} {printCell(row, "roll")}
       </span>
 
       <div className="flex flex-1 flex-col items-center px-[3.5mm] pb-[1mm] pt-[2mm] text-center">
         <h4 className="w-full truncate text-[11.5px] font-bold text-[#1e3a2c]">
-          {cellValue(row, "student_name")}
+          {printCell(row, "student_name")}
         </h4>
 
         <div className="mt-[2mm] flex w-full flex-col gap-[1.4mm]">
           <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cdb96f] pb-[0.8mm] text-[8px] text-[#3c4f42]">
-            <span className="shrink-0 font-bold text-[#6b5a2e]">রেজি. নং</span>
-            <span className="min-w-0 truncate">{cellValue(row, "registration_no")}</span>
+            <span className="shrink-0 font-bold text-[#6b5a2e]">{t.col.regNoShort}</span>
+            <span className="min-w-0 truncate">{printCell(row, "registration_no")}</span>
           </div>
           <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cdb96f] pb-[0.8mm] text-[8px] text-[#3c4f42]">
-            <span className="shrink-0 font-bold text-[#6b5a2e]">শ্রেণি</span>
+            <span className="shrink-0 font-bold text-[#6b5a2e]">{t.col.class}</span>
             <span className="min-w-0 truncate">
-              {cellValue(row, "class_name")}
-              {row.division_name ? ` (${cellValue(row, "division_name")})` : ""}
+              {printCell(row, "class_name")}
+              {row.division_name ? ` (${printCell(row, "division_name")})` : ""}
             </span>
           </div>
           <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cdb96f] pb-[0.8mm] text-[8px] text-[#3c4f42]">
-            <span className="shrink-0 font-bold text-[#6b5a2e]">পিতা</span>
-            <span className="min-w-0 truncate">{cellValue(row, "father_name")}</span>
+            <span className="shrink-0 font-bold text-[#6b5a2e]">{t.col.father}</span>
+            <span className="min-w-0 truncate">{printCell(row, "father_name")}</span>
           </div>
           <div className="flex justify-between gap-[2mm] border-b border-dotted border-[#cdb96f] pb-[0.8mm] text-[8px] text-[#3c4f42]">
-            <span className="shrink-0 font-bold text-[#6b5a2e]">মোবাইল</span>
-            <span className="min-w-0 truncate">{cellValue(row, "guardian_phone")}</span>
+            <span className="shrink-0 font-bold text-[#6b5a2e]">{t.col.mobile}</span>
+            <span className="min-w-0 truncate">{printCell(row, "guardian_phone")}</span>
           </div>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center justify-between px-[3mm] py-[1.5mm] text-[7px] text-[#1e5c3f]">
-        <span>সেশন {toBanglaDigits(cellValue(row, "academic_year"))}</span>
-        <span className="border-t border-[#6b5a2e] pt-[0.4mm] italic">অধ্যক্ষের স্বাক্ষর</span>
+        <span>{t.col.sessionShort} {toBanglaDigits(printCell(row, "academic_year"))}</span>
+        <span className="border-t border-[#6b5a2e] pt-[0.4mm] italic">{t.sign.head}</span>
       </div>
     </div>
   </div>
 );
+};
 
 export default IdCardArch;

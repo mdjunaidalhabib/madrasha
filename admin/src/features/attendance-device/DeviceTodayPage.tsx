@@ -20,11 +20,14 @@ import {
 } from "./components";
 import { useDeviceStatus, useTick, useVisibleInterval } from "./hooks";
 import type { TodayReport } from "./types";
-import { formatDateTime, formatTime, relativeTime, todayIso } from "./utils";
+import { formatDateTime, formatTime, relativeTime, toBnNumber, todayIso } from "./utils";
+import { useText } from "@madrasha/shared-ui/src/i18n";
+import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const REFRESH_MS = 30_000;
 
 export default function DeviceTodayPage() {
+  const t = useText(attendanceDeviceText).today;
   const now = useTick(30_000);
   const { devices, loading: devicesLoading, error: devicesError } = useDeviceStatus(REFRESH_MS);
 
@@ -69,12 +72,12 @@ export default function DeviceTodayPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="আজকের উপস্থিতি (ডিভাইস)"
-        subtitle="K40 ডিভাইসের পাঞ্চ থেকে আসা উপস্থিতি। প্রতি ৩০ সেকেন্ডে নিজে থেকে আপডেট হয়।"
+        title={t.title}
+        subtitle={t.subtitle(toBnNumber(REFRESH_MS / 1000))}
         actions={
           <Button variant="secondary" onClick={load} disabled={loading} className="gap-1.5">
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-            রিফ্রেশ
+            {t.refresh}
           </Button>
         }
       />
@@ -90,7 +93,7 @@ export default function DeviceTodayPage() {
         <StatTile
           size="sm"
           tone="emerald"
-          label="উপস্থিত"
+          label={t.present}
           value={summary?.present ?? 0}
           loading={loading && !report}
           icon={<UserCheck size={18} />}
@@ -98,9 +101,9 @@ export default function DeviceTodayPage() {
         <StatTile
           size="sm"
           tone="amber"
-          label="ম্যাপ হয়নি"
+          label={t.unmapped}
           value={summary?.unmapped ?? 0}
-          subLabel={summary?.unmapped ? "ম্যাপিং পেজে গিয়ে যুক্ত করুন" : undefined}
+          subLabel={summary?.unmapped ? t.unmappedHint : undefined}
           loading={loading && !report}
           icon={<AlertTriangle size={18} />}
           to="/attendance/device-mapping"
@@ -108,7 +111,7 @@ export default function DeviceTodayPage() {
         <StatTile
           size="sm"
           tone="indigo"
-          label="মোট পাঞ্চ"
+          label={t.totalPunches}
           value={summary?.total_punches ?? 0}
           loading={loading && !report}
           icon={<Fingerprint size={18} />}
@@ -116,7 +119,7 @@ export default function DeviceTodayPage() {
         <StatTile
           size="sm"
           tone="slate"
-          label="সর্বশেষ সিঙ্ক"
+          label={t.lastSync}
           value={summary?.last_sync_at ? relativeTime(summary.last_sync_at, now) : "—"}
           subLabel={summary?.last_sync_at ? formatDateTime(summary.last_sync_at) : undefined}
           loading={loading && !report}
@@ -127,7 +130,7 @@ export default function DeviceTodayPage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="sm:w-48">
-            <label className={inputLabelClass}>তারিখ</label>
+            <label className={inputLabelClass}>{t.date}</label>
             <Input
               type="date"
               value={date}
@@ -136,13 +139,13 @@ export default function DeviceTodayPage() {
             />
           </div>
           <div className="sm:w-60">
-            <label className={inputLabelClass}>ডিভাইস</label>
+            <label className={inputLabelClass}>{t.device}</label>
             <select
               className={selectClass}
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
             >
-              <option value="">সব ডিভাইস</option>
+              <option value="">{t.allDevices}</option>
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -152,11 +155,11 @@ export default function DeviceTodayPage() {
           </div>
           {!isToday && (
             <Button variant="ghost" className="text-xs" onClick={() => setDate(todayIso())}>
-              আজকের তারিখে ফিরুন
+              {t.backToToday}
             </Button>
           )}
           <p className="text-xs text-slate-400 sm:ms-auto">
-            {updatedAt ? `সর্বশেষ আপডেট: ${formatTime(new Date(updatedAt).toISOString())}` : ""}
+            {updatedAt ? t.lastUpdate(formatTime(new Date(updatedAt).toISOString())) : ""}
           </p>
         </div>
 
@@ -164,35 +167,35 @@ export default function DeviceTodayPage() {
           <SkeletonList items={6} />
         ) : error && !report ? (
           <ErrorState
-            title="উপস্থিতি লোড করা যায়নি"
-            message="আবার চেষ্টা করুন।"
+            title={t.loadFailed}
+            message={t.tryAgainDot}
             onRetry={load}
-            retryText="আবার চেষ্টা করুন"
+            retryText={t.retry}
           />
         ) : rows.length === 0 ? (
           <EmptyState
-            title={isToday ? "আজ এখনো কোনো পাঞ্চ আসেনি" : "এই তারিখে কোনো উপস্থিতি নেই"}
-            hint="ডিভাইস অনলাইন আছে কিনা এবং শিক্ষার্থীদের ম্যাপিং করা আছে কিনা দেখুন।"
+            title={isToday ? t.noPunchToday : t.noAttendance}
+            hint={t.emptyHint}
           />
         ) : (
           <>
             {error && (
               <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
-                রিফ্রেশ ব্যর্থ হয়েছে - আগের তথ্য দেখানো হচ্ছে।
+                {t.refreshFailed}
               </p>
             )}
             <div className={`overflow-x-auto ${loading ? "opacity-60 transition" : "transition"}`}>
               <table className="w-full min-w-[820px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-start text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    <th className="py-2 pe-3 font-medium">শিক্ষার্থী</th>
-                    <th className="py-2 pe-3 font-medium">আইডি</th>
-                    <th className="py-2 pe-3 font-medium">শ্রেণি</th>
-                    <th className="py-2 pe-3 font-medium">চেক-ইন</th>
-                    <th className="py-2 pe-3 font-medium">ডিভাইস</th>
-                    <th className="py-2 pe-3 font-medium">সিঙ্ক</th>
-                    <th className="py-2 pe-3 font-medium">SMS</th>
-                    <th className="py-2 font-medium">সিঙ্কের সময়</th>
+                    <th className="py-2 pe-3 font-medium">{t.student}</th>
+                    <th className="py-2 pe-3 font-medium">{t.id}</th>
+                    <th className="py-2 pe-3 font-medium">{t.class}</th>
+                    <th className="py-2 pe-3 font-medium">{t.checkIn}</th>
+                    <th className="py-2 pe-3 font-medium">{t.device}</th>
+                    <th className="py-2 pe-3 font-medium">{t.sync}</th>
+                    <th className="py-2 pe-3 font-medium">{t.sms}</th>
+                    <th className="py-2 font-medium">{t.syncTime}</th>
                   </tr>
                 </thead>
                 <tbody>
