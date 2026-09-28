@@ -59,19 +59,19 @@ export class InvalidCustomDomainError extends BadRequestError {
 
 export class UserLimitReachedError extends BadRequestError {
   constructor() {
-    super(t({ bn: "ব্যবহারকারীর সীমা পূর্ণ হয়েছে। প্ল্যান আপগ্রেড করুন বা ব্যবহারকারীর সীমা বাড়ান।", en: "User limit reached. Upgrade the plan or increase the user limit.", ar: "تم الوصول إلى الحد الأقصى للمستخدمين. قم بترقية الخطة أو زيادة حد المستخدمين." }));
+    super(t({ bn: "ব্যবহারকারীর সীমা পূর্ণ হয়েছে। প্ল্যান আপগ্রেড করুন বা ব্যবহারকারীর সীমা বাড়ান।", en: "User limit reached. Upgrade the plan or increase the user limit." }));
   }
 }
 
 export class UserEmailConflictError extends ConflictError {
   constructor() {
-    super(t({ bn: "এই ইমেইল এই প্রতিষ্ঠানের অন্য একজন ব্যবহারকারী ব্যবহার করছেন।", en: "This email is already used by another user in this institution.", ar: "هذا البريد الإلكتروني مستخدم بالفعل من قبل مستخدم آخر في هذه المؤسسة." }));
+    super(t({ bn: "এই ইমেইল এই প্রতিষ্ঠানের অন্য একজন ব্যবহারকারী ব্যবহার করছেন।", en: "This email is already used by another user in this institution." }));
   }
 }
 
 export class InvalidRoleError extends BadRequestError {
   constructor() {
-    super(t({ bn: "এই প্রতিষ্ঠানের জন্য role_id সঠিক নয়", en: "Invalid role_id for this institution", ar: "role_id غير صالح لهذه المؤسسة" }));
+    super(t({ bn: "এই প্রতিষ্ঠানের জন্য role_id সঠিক নয়", en: "Invalid role_id for this institution" }));
   }
 }
 
@@ -89,13 +89,13 @@ export class UserEmailRequiredError extends BadRequestError {
 
 export class UserPasswordTooShortError extends BadRequestError {
   constructor() {
-    super(t({ bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", en: "Password must be at least 6 characters", ar: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل" }));
+    super(t({ bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", en: "Password must be at least 6 characters" }));
   }
 }
 
 export class UserNotFoundError extends NotFoundError {
   constructor() {
-    super(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found", ar: "لم يتم العثور على المستخدم" }));
+    super(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
   }
 }
 
@@ -139,7 +139,7 @@ export class SuperAdminEmailRequiredError extends BadRequestError {
 
 export class SuperAdminPasswordTooShortError extends BadRequestError {
   constructor() {
-    super(t({ bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", en: "Password must be at least 6 characters", ar: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل" }));
+    super(t({ bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", en: "Password must be at least 6 characters" }));
   }
 }
 

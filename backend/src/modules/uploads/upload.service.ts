@@ -48,7 +48,7 @@ export class UploadService {
   }
 
   async deleteImage(_madrasaId: number, dto: DeleteImageRequestDto) {
-    if (!dto.public_id) throw new BadRequestError(t({ bn: "public_id আবশ্যক", en: "public_id is required", ar: "public_id مطلوب" }));
+    if (!dto.public_id) throw new BadRequestError(t({ bn: "public_id আবশ্যক", en: "public_id is required" }));
 
     const credentials = await this.getCredentials();
     if (!credentials) return { deleted: false };

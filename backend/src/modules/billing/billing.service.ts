@@ -89,7 +89,7 @@ export class BillingService {
   }
 
   async previewSms(madrasaId: number, message: string) {
-    if (!message || !message.trim()) throw new BadRequestError(t({ bn: "message আবশ্যক", en: "message is required", ar: "الرسالة مطلوبة" }));
+    if (!message || !message.trim()) throw new BadRequestError(t({ bn: "message আবশ্যক", en: "message is required" }));
     const analysis = analyzeSmsContent(message);
     const { sellingPrice } = await this.resolvePricing(madrasaId, "SMS");
     const sub = await this.repository.findSubscription(madrasaId, "SMS");
@@ -273,15 +273,15 @@ export class BillingService {
 
     const pkg = await this.repository.findPackageById(num(dto.packageId));
     if (!pkg || !pkg.isActive || pkg.channel !== channel) {
-      throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি বা নিষ্ক্রিয়", en: "Package not found or inactive", ar: "الباقة غير موجودة أو غير نشطة" }));
+      throw new NotFoundError(t({ bn: "প্যাকেজ পাওয়া যায়নি বা নিষ্ক্রিয়", en: "Package not found or inactive" }));
     }
     if (pkg.type === "RECHARGE") {
       const sub = await this.repository.findSubscription(madrasaId, channel as BillingChannel);
       if (!sub) {
         throw new BadRequestError(
           channel === "SMS"
-            ? t({ bn: "রিচার্জ করার আগে অন্তত একটি SMS প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one SMS package before recharging", ar: "يجب شراء باقة رسائل قصيرة واحدة على الأقل قبل إعادة الشحن" })
-            : t({ bn: "রিচার্জ করার আগে অন্তত একটি ইমেইল প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one email package before recharging", ar: "يجب شراء باقة بريد إلكتروني واحدة على الأقل قبل إعادة الشحن" }),
+            ? t({ bn: "রিচার্জ করার আগে অন্তত একটি SMS প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one SMS package before recharging" })
+            : t({ bn: "রিচার্জ করার আগে অন্তত একটি ইমেইল প্যাকেজ ক্রয় করতে হবে", en: "You must purchase at least one email package before recharging" }),
         );
       }
     }
@@ -358,7 +358,7 @@ export class BillingService {
       let updated;
 
       if (pkg.type === "RECHARGE") {
-        if (!existing) throw new BadRequestError(t({ bn: "রিচার্জ করার আগে একটি প্যাকেজ ক্রয় করতে হবে", en: "You must purchase a package before recharging", ar: "يجب شراء باقة قبل إعادة الشحن" }));
+        if (!existing) throw new BadRequestError(t({ bn: "রিচার্জ করার আগে একটি প্যাকেজ ক্রয় করতে হবে", en: "You must purchase a package before recharging" }));
         txType = "RECHARGE";
         updated = await tx.messageSubscription.update({
           where: { madrasaId_channel: { madrasaId, channel } },

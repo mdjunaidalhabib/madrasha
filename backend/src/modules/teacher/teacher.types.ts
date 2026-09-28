@@ -3,7 +3,7 @@ import { t } from "../../shared/i18n";
 
 export class TeacherNotFoundError extends NotFoundError {
   constructor() {
-    super(t({ bn: "শিক্ষক পাওয়া যায়নি", en: "Teacher not found", ar: "لم يتم العثور على المعلم" }));
+    super(t({ bn: "শিক্ষক পাওয়া যায়নি", en: "Teacher not found" }));
   }
 }
 

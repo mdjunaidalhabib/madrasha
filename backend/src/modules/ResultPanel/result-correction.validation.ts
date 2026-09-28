@@ -15,7 +15,7 @@ const correctionItemSchema = z.object({
 export const requestCorrectionSchema = z.object({
   params: z.object({ resultMasterId: idSchema }),
   body: correctionItemSchema.extend({
-    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required", ar: "السبب مطلوب" })),
+    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required" })),
   }),
 });
 
@@ -24,7 +24,7 @@ export const requestCorrectionBatchSchema = z.object({
   params: z.object({ resultMasterId: idSchema }),
   body: z.object({
     items: z.array(correctionItemSchema).min(1).max(3000),
-    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required", ar: "السبب مطلوب" })),
+    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required" })),
     apply_now: z.boolean().optional(),
   }),
 });

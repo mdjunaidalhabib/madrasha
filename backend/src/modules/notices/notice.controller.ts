@@ -32,7 +32,7 @@ export const listNotices = async (req: Request, res: Response) => {
 export const createNotice = async (req: Request, res: Response) => {
   try {
     const row = await noticeService.create(getMadrasaId(req), req.user?.id, req.body);
-    res.status(HttpStatus.CREATED).json({ message: t({ bn: "নোটিশ তৈরি হয়েছে", en: "Notice created", ar: "تم إنشاء الإشعار" }), data: row });
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "নোটিশ তৈরি হয়েছে", en: "Notice created" }), data: row });
   } catch (err) {
     respondError(res, err, "createNotice ERROR:", "Failed to create notice");
   }
@@ -41,7 +41,7 @@ export const createNotice = async (req: Request, res: Response) => {
 export const updateNotice = async (req: Request, res: Response) => {
   try {
     await noticeService.update(Number(req.params.id), getMadrasaId(req), req.body);
-    res.json({ message: t({ bn: "নোটিশ আপডেট হয়েছে", en: "Notice updated", ar: "تم تحديث الإشعار" }) });
+    res.json({ message: t({ bn: "নোটিশ আপডেট হয়েছে", en: "Notice updated" }) });
   } catch (err) {
     respondError(res, err, "updateNotice ERROR:", "Failed to update notice");
   }
@@ -50,7 +50,7 @@ export const updateNotice = async (req: Request, res: Response) => {
 export const deleteNotice = async (req: Request, res: Response) => {
   try {
     await noticeService.delete(Number(req.params.id), getMadrasaId(req));
-    res.json({ message: t({ bn: "নোটিশ মুছে ফেলা হয়েছে", en: "Notice deleted", ar: "تم حذف الإشعار" }) });
+    res.json({ message: t({ bn: "নোটিশ মুছে ফেলা হয়েছে", en: "Notice deleted" }) });
   } catch (err) {
     respondError(res, err, "deleteNotice ERROR:", "Failed to delete notice");
   }

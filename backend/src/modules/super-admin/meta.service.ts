@@ -35,7 +35,7 @@ export class MetaService {
 
   async createDivision(dto: CreateDivisionRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     const existing = await this.repository.findDivisionByNameBn(nameBn);
     if (existing) throw new ConflictError(t({ bn: "এই নামে বিভাগ ইতিমধ্যে আছে", en: "A division with this name already exists" }));
@@ -60,7 +60,7 @@ export class MetaService {
 
   async updateDivision(id: number, dto: UpdateDivisionRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     try {
       await this.repository.updateDivision(id, nameBn, parseInstitutionType(dto.institution_type));
@@ -111,8 +111,8 @@ export class MetaService {
   async createClass(dto: CreateClassRequestDto) {
     const divisionId = Number(dto.division_id);
     const nameBn = String(dto.name_bn || "").trim();
-    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     const maxOrder = await this.repository.findMaxClassSortOrder(divisionId);
 
@@ -133,7 +133,7 @@ export class MetaService {
 
   async updateClass(id: number, dto: UpdateClassRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     try {
       await this.repository.updateClass(id, nameBn);
@@ -149,7 +149,7 @@ export class MetaService {
   }
 
   async reorderClasses(divisionId: number, orderedClassIds: number[]) {
-    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required", ar: "division_id مطلوب" }));
+    if (!divisionId) throw new BadRequestError(t({ bn: "division_id আবশ্যক", en: "division_id is required" }));
     const rows = await this.repository.findClassIdsByDivision(divisionId);
     const allIds = rows.map((r) => r.id);
     const sameSet = allIds.length === orderedClassIds.length && allIds.every((id) => orderedClassIds.includes(id));
@@ -193,8 +193,8 @@ export class MetaService {
   async createBook(dto: CreateBookRequestDto) {
     const classId = Number(dto.class_id);
     const nameBn = String(dto.name_bn || "").trim();
-    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     const existing = await this.repository.findBookByNameBn(classId, nameBn);
     if (existing) throw new ConflictError(t({ bn: "এই শ্রেণিতে এই নামে বিষয় ইতিমধ্যে আছে", en: "A subject with this name already exists in this class" }));
@@ -217,7 +217,7 @@ export class MetaService {
   }
 
   async reorderBooks(classId: number, orderedBookIds: number[]) {
-    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required" }));
     const rows = await this.repository.findBookIdsByClass(classId);
     const allIds = rows.map((r) => r.id);
     const sameSet = allIds.length === orderedBookIds.length && allIds.every((id) => orderedBookIds.includes(id));
@@ -228,7 +228,7 @@ export class MetaService {
 
   async updateBook(id: number, dto: UpdateBookRequestDto) {
     const nameBn = String(dto.name_bn || "").trim();
-    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required", ar: "name_bn مطلوب" }));
+    if (!nameBn) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn is required" }));
 
     try {
       await this.repository.updateBook(id, nameBn);

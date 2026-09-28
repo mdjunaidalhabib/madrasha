@@ -53,7 +53,7 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
 
     if (!slug) {
       return res.status(400).json({
-        message: t({ bn: "প্রতিষ্ঠানের slug আবশ্যক। উদাহরণ: /jamia/admin/login", en: "Institution slug required. Example: /jamia/admin/login", ar: "المعرف المختصر للمؤسسة مطلوب. مثال: /jamia/admin/login" }),
+        message: t({ bn: "প্রতিষ্ঠানের slug আবশ্যক। উদাহরণ: /jamia/admin/login", en: "Institution slug required. Example: /jamia/admin/login" }),
       });
     }
 
@@ -63,15 +63,15 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     });
 
     if (!madrasa) {
-      return res.status(410).json({ message: t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found", ar: "لم يتم العثور على المؤسسة" }) });
+      return res.status(410).json({ message: t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }) });
     }
 
     if (madrasa.deletedAt) {
-      return res.status(410).json({ message: t({ bn: "এই প্রতিষ্ঠানটি মুছে ফেলা হয়েছে", en: "This institution has been deleted", ar: "تم حذف هذه المؤسسة" }) });
+      return res.status(410).json({ message: t({ bn: "এই প্রতিষ্ঠানটি মুছে ফেলা হয়েছে", en: "This institution has been deleted" }) });
     }
 
     if (!madrasa.isActive) {
-      return res.status(423).json({ message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended", ar: "هذه المؤسسة معلقة" }) });
+      return res.status(423).json({ message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended" }) });
     }
 
     req.tenant = {
@@ -82,6 +82,6 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     next();
   } catch (err: any) {
     logger.error("Tenant middleware error", err);
-    return res.status(500).json({ message: t({ bn: "প্রতিষ্ঠান শনাক্ত করা যায়নি", en: "Tenant resolution failed", ar: "تعذر تحديد المؤسسة" }) });
+    return res.status(500).json({ message: t({ bn: "প্রতিষ্ঠান শনাক্ত করা যায়নি", en: "Tenant resolution failed" }) });
   }
 };

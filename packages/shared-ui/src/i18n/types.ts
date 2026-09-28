@@ -1,5 +1,5 @@
 /** UI/print languages the system ships translations for. */
-export type Lang = "bn" | "en" | "ar";
+export type Lang = "bn" | "en";
 
 export type InstitutionType = "MADRASA" | "SCHOOL" | "COLLEGE" | "KINDERGARTEN";
 
@@ -16,22 +16,20 @@ export type InstitutionInfo = {
 export const LANGUAGE_LABELS: Record<Lang, string> = {
   bn: "বাংলা",
   en: "English",
-  ar: "العربية",
 };
 
-export const RTL_LANGS: Lang[] = ["ar"];
 
-export const isLang = (value: unknown): value is Lang => value === "bn" || value === "en" || value === "ar";
+export const isLang = (value: unknown): value is Lang => value === "bn" || value === "en";
 
 export const INSTITUTION_TYPES: InstitutionType[] = ["MADRASA", "SCHOOL", "COLLEGE", "KINDERGARTEN"];
 
 export const languagesForInstitution = (type: InstitutionType): Lang[] =>
-  type === "MADRASA" ? ["bn", "en", "ar"] : ["bn", "en"];
+  ["bn", "en"];
 
 export const defaultLanguageForInstitution = (type: InstitutionType): Lang => (type === "MADRASA" ? "bn" : "en");
 
 export const DEFAULT_INSTITUTION: InstitutionInfo = {
   type: "MADRASA",
   default_language: "bn",
-  languages: ["bn", "en", "ar"],
+  languages: ["bn", "en"],
 };

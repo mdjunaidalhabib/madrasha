@@ -21,17 +21,17 @@ export const getClassRoutines = asyncHandler(async (req: Request, res: Response)
 
 export const createClassRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.createClassRoutine(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন যোগ করা হয়েছে", en: "Class routine added successfully", ar: "تمت إضافة جدول الحصص بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন যোগ করা হয়েছে", en: "Class routine added successfully" }));
 });
 
 export const updateClassRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.updateClassRoutine(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন আপডেট হয়েছে", en: "Class routine updated successfully", ar: "تم تحديث جدول الحصص بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন আপডেট হয়েছে", en: "Class routine updated successfully" }));
 });
 
 export const deleteClassRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.deleteClassRoutine(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন মুছে ফেলা হয়েছে", en: "Class routine deleted successfully", ar: "تم حذف جدول الحصص بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "ক্লাস রুটিন মুছে ফেলা হয়েছে", en: "Class routine deleted successfully" }));
 });
 
 /* ================= EXAM ROUTINE ================= */
@@ -45,17 +45,17 @@ export const getExamRoutines = asyncHandler(async (req: Request, res: Response) 
 
 export const createExamRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.createExamRoutine(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন যোগ করা হয়েছে", en: "Exam routine added successfully", ar: "تمت إضافة جدول الامتحان بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন যোগ করা হয়েছে", en: "Exam routine added successfully" }));
 });
 
 export const updateExamRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.updateExamRoutine(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন আপডেট হয়েছে", en: "Exam routine updated successfully", ar: "تم تحديث جدول الامتحان بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন আপডেট হয়েছে", en: "Exam routine updated successfully" }));
 });
 
 export const deleteExamRoutine = asyncHandler(async (req: Request, res: Response) => {
   await routineService.deleteExamRoutine(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন মুছে ফেলা হয়েছে", en: "Exam routine deleted successfully", ar: "تم حذف جدول الامتحان بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার রুটিন মুছে ফেলা হয়েছে", en: "Exam routine deleted successfully" }));
 });
 
 /* ================= OVERVIEW ================= */

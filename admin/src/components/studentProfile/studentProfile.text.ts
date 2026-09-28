@@ -30,18 +30,4 @@ export const studentProfileText = defineText({
     selectDivision: "Select {{division}}",
     scriptHint: { bn: "Write in Bangla only", ar: "Write in Arabic only", en: "Write in English only" },
   },
-  ar: {
-    altGuardianInfo: "بيانات ولي الأمر البديل (غير الوالدين)",
-    addrDivision: "المحافظة",
-    district: "المديرية",
-    thana: "المركز",
-    notAvailable: "غير متوفر",
-    nameBn: "الاسم (بالبنغالية)",
-    registrationNo: "رقم التسجيل",
-    rollAuto: "رقم الجلوس (تلقائي)",
-    studentNid: "هوية {{student}}",
-    selectGender: "اختر الجنس",
-    selectDivision: "اختر {{division}}",
-    scriptHint: { bn: "اكتب بالبنغالية فقط", ar: "اكتب بالعربية فقط", en: "اكتب بالإنجليزية فقط" },
-  },
 });

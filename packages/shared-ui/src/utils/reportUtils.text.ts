@@ -34,19 +34,4 @@ export const reportUtilsText = defineText({
     rank2: "2nd",
     rank3: "3rd",
   },
-  ar: {
-    absentMark: "غ",
-    statuses: {
-      PASS: "ناجح",
-      FAIL: "راسب",
-      PRESENT: "حاضر",
-      ABSENT: "غائب",
-      DRAFT: "مسودة",
-      PUBLISHED: "منشور",
-      INCOMPLETE: "غير مكتمل",
-    },
-    rank1: "الأول",
-    rank2: "الثاني",
-    rank3: "الثالث",
-  },
 });

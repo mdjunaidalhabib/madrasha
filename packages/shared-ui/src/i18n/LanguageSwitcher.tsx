@@ -3,11 +3,11 @@ import { Check, Languages } from "lucide-react";
 import { useLanguageStore } from "./languageStore";
 import { LANGUAGE_LABELS, type Lang } from "./types";
 
-const SHORT: Record<Lang, string> = { bn: "বাং", en: "EN", ar: "ع" };
+const SHORT: Record<Lang, string> = { bn: "বাং", en: "EN"};
 
 /**
  * Topbar language picker - lists only the languages this tenant's institution
- * type offers (madrasa: bn/en/ar, others: bn/en). Hidden when only one.
+ * offers (bn/en). Hidden when only one.
  */
 export default function LanguageSwitcher({
   className = "",
@@ -66,7 +66,6 @@ export default function LanguageSwitcher({
                 role="option"
                 aria-selected={code === lang}
                 lang={code}
-                dir={code === "ar" ? "rtl" : "ltr"}
                 onClick={() => {
                   setLang(code);
                   setOpen(false);

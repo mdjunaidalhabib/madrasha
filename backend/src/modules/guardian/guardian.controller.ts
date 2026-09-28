@@ -31,7 +31,7 @@ export const guardianChangePassword = async (req: Request, res: Response) => {
     const madrasa_id = req.tenant!.madrasa_id;
     const guardianId = req.guardian!.guardianId;
     await guardianService.changePassword(guardianId, madrasa_id, req.body.new_password);
-    res.json({ success: true, message: t({ bn: "পাসওয়ার্ড আপডেট হয়েছে", en: "Password updated successfully", ar: "تم تحديث كلمة المرور بنجاح" }) });
+    res.json({ success: true, message: t({ bn: "পাসওয়ার্ড আপডেট হয়েছে", en: "Password updated successfully" }) });
   } catch (err) {
     respondWithError(res, err, "GUARDIAN CHANGE PASSWORD ERROR:");
   }

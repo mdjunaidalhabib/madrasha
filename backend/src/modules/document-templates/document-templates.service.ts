@@ -42,27 +42,27 @@ const DOCUMENT_TYPES = new Set<DocumentType>([
 
 export function assertDocumentType(value: unknown): DocumentType {
   if (typeof value === "string" && DOCUMENT_TYPES.has(value as DocumentType)) return value as DocumentType;
-  throw new BadRequestError(t({ bn: "ডকুমেন্টের ধরন সঠিক নয় বা দেওয়া হয়নি", en: "Invalid or missing document type", ar: "نوع المستند غير صالح أو مفقود" }));
+  throw new BadRequestError(t({ bn: "ডকুমেন্টের ধরন সঠিক নয় বা দেওয়া হয়নি", en: "Invalid or missing document type" }));
 }
 
 function assertName(name: unknown): string {
   const trimmed = String(name || "").trim();
-  if (!trimmed) throw new BadRequestError(t({ bn: "টেমপ্লেটের নাম আবশ্যক", en: "Template name is required", ar: "اسم القالب مطلوب" }));
-  if (trimmed.length > MAX_TEMPLATE_NAME_LENGTH) throw new BadRequestError(t({ bn: "টেমপ্লেটের নাম অনেক বড়", en: "Template name is too long", ar: "اسم القالب طويل جدًا" }));
+  if (!trimmed) throw new BadRequestError(t({ bn: "টেমপ্লেটের নাম আবশ্যক", en: "Template name is required" }));
+  if (trimmed.length > MAX_TEMPLATE_NAME_LENGTH) throw new BadRequestError(t({ bn: "টেমপ্লেটের নাম অনেক বড়", en: "Template name is too long" }));
   return trimmed;
 }
 
 function assertLayers(layers: unknown): DocumentLayerJson[] {
-  if (!Array.isArray(layers)) throw new BadRequestError(t({ bn: "layers অবশ্যই একটি তালিকা হতে হবে", en: "layers must be an array", ar: "يجب أن تكون layers مصفوفة" }));
-  if (layers.length > MAX_LAYERS_PER_TEMPLATE) throw new BadRequestError(t({ bn: "এই টেমপ্লেটে অনেক বেশি লেয়ার", en: "Too many layers on this template", ar: "عدد الطبقات في هذا القالب كبير جدًا" }));
+  if (!Array.isArray(layers)) throw new BadRequestError(t({ bn: "layers অবশ্যই একটি তালিকা হতে হবে", en: "layers must be an array" }));
+  if (layers.length > MAX_LAYERS_PER_TEMPLATE) throw new BadRequestError(t({ bn: "এই টেমপ্লেটে অনেক বেশি লেয়ার", en: "Too many layers on this template" }));
   for (const layer of layers) {
-    if (!layer || typeof layer !== "object") throw new BadRequestError(t({ bn: "লেয়ারের তথ্য সঠিক নয়", en: "Invalid layer entry", ar: "بيانات الطبقة غير صالحة" }));
+    if (!layer || typeof layer !== "object") throw new BadRequestError(t({ bn: "লেয়ারের তথ্য সঠিক নয়", en: "Invalid layer entry" }));
     const l = layer as Record<string, unknown>;
-    if (typeof l.id !== "string" || !l.id) throw new BadRequestError(t({ bn: "প্রতিটি লেয়ারের একটি id থাকতে হবে", en: "Every layer needs an id", ar: "يجب أن يكون لكل طبقة معرف" }));
-    if (typeof l.type !== "string") throw new BadRequestError(t({ bn: "প্রতিটি লেয়ারের একটি type থাকতে হবে", en: "Every layer needs a type", ar: "يجب أن يكون لكل طبقة نوع" }));
+    if (typeof l.id !== "string" || !l.id) throw new BadRequestError(t({ bn: "প্রতিটি লেয়ারের একটি id থাকতে হবে", en: "Every layer needs an id" }));
+    if (typeof l.type !== "string") throw new BadRequestError(t({ bn: "প্রতিটি লেয়ারের একটি type থাকতে হবে", en: "Every layer needs a type" }));
     for (const key of ["x", "y", "width", "height", "rotation"]) {
       if (typeof l[key] !== "number" || !Number.isFinite(l[key] as number)) {
-        throw new BadRequestError(t({ bn: `লেয়ার "${l.id}"-এর ${key} সঠিক নয়`, en: `Layer "${l.id}" has an invalid ${key}`, ar: `الطبقة "${l.id}" تحتوي على ${key} غير صالح` }));
+        throw new BadRequestError(t({ bn: `লেয়ার "${l.id}"-এর ${key} সঠিক নয়`, en: `Layer "${l.id}" has an invalid ${key}` }));
       }
     }
   }
@@ -155,10 +155,10 @@ export class DocumentTemplateService {
   /** A row this context is allowed to VIEW (not necessarily edit). */
   private async loadReadable(id: number, context: TemplateContext): Promise<DocumentTemplate> {
     const row = await this.repository.findById(id);
-    if (!row) throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+    if (!row) throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
 
     if (context.kind === "super_admin") {
-      if (row.scope !== "SYSTEM") throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+      if (row.scope !== "SYSTEM") throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
       return row;
     }
 
@@ -166,21 +166,21 @@ export class DocumentTemplateService {
     if (row.scope === "SYSTEM" && row.isPublished && row.isActive) return row;
     // Deliberately 404, not 403 - existence of another tenant's private
     // template must not be observable.
-    throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+    throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
   }
 
   /** A row this context is allowed to EDIT (owns outright). */
   private async loadOwned(id: number, context: TemplateContext): Promise<DocumentTemplate> {
     const row = await this.repository.findById(id);
-    if (!row) throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+    if (!row) throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
 
     if (context.kind === "super_admin") {
-      if (row.scope !== "SYSTEM") throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+      if (row.scope !== "SYSTEM") throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
       return row;
     }
 
     if (row.scope === "TENANT" && row.tenantId === context.tenantId) return row;
-    throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found", ar: "لم يتم العثور على القالب" }));
+    throw new NotFoundError(t({ bn: "টেমপ্লেট পাওয়া যায়নি", en: "Template not found" }));
   }
 
   /* ============================================================
@@ -207,7 +207,7 @@ export class DocumentTemplateService {
 
     if (body.sourceTemplateId) {
       const source = await this.loadReadable(body.sourceTemplateId, context);
-      if (body.type && source.type !== body.type) throw new BadRequestError(t({ bn: "উৎস টেমপ্লেটের ধরন মিলছে না", en: "Source template type mismatch", ar: "نوع القالب المصدر غير مطابق" }));
+      if (body.type && source.type !== body.type) throw new BadRequestError(t({ bn: "উৎস টেমপ্লেটের ধরন মিলছে না", en: "Source template type mismatch" }));
       type = source.type;
       const sourceVersionId = source.publishedVersionId ?? source.currentVersionId;
       const sourceVersion = sourceVersionId ? await this.repository.findVersionById(sourceVersionId) : null;
@@ -217,7 +217,7 @@ export class DocumentTemplateService {
       layers = ((sourceVersion?.layers as unknown as DocumentLayerJson[]) ?? []).map((l) => ({ ...l }));
       clonedFromId = source.id;
     } else {
-      if (!body.type) throw new BadRequestError(t({ bn: "type আবশ্যক", en: "type is required", ar: "النوع مطلوب" }));
+      if (!body.type) throw new BadRequestError(t({ bn: "type আবশ্যক", en: "type is required" }));
       type = body.type;
       width = DEFAULT_CANVAS_SIZE_PX[type].width;
       height = DEFAULT_CANVAS_SIZE_PX[type].height;
@@ -266,19 +266,19 @@ export class DocumentTemplateService {
     body: { width?: number; height?: number; background?: CanvasBackgroundJson | null; layers?: DocumentLayerJson[] },
   ): Promise<TemplateDetail> {
     const template = await this.loadOwned(id, context);
-    if (!template.currentVersionId) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version", ar: "لا يوجد إصدار مسودة للقالب" }));
+    if (!template.currentVersionId) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version" }));
 
     const current = await this.repository.findVersionById(template.currentVersionId);
-    if (!current) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version", ar: "لا يوجد إصدار مسودة للقالب" }));
+    if (!current) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version" }));
     const draft = await this.ensureDraftVersion(template.id, current);
 
     const data: Record<string, unknown> = {};
     if (body.width !== undefined) {
-      if (!Number.isFinite(body.width) || body.width <= 0) throw new BadRequestError(t({ bn: "প্রস্থ সঠিক নয়", en: "Invalid width", ar: "العرض غير صالح" }));
+      if (!Number.isFinite(body.width) || body.width <= 0) throw new BadRequestError(t({ bn: "প্রস্থ সঠিক নয়", en: "Invalid width" }));
       data.width = body.width;
     }
     if (body.height !== undefined) {
-      if (!Number.isFinite(body.height) || body.height <= 0) throw new BadRequestError(t({ bn: "উচ্চতা সঠিক নয়", en: "Invalid height", ar: "الارتفاع غير صالح" }));
+      if (!Number.isFinite(body.height) || body.height <= 0) throw new BadRequestError(t({ bn: "উচ্চতা সঠিক নয়", en: "Invalid height" }));
       data.height = body.height;
     }
     if (body.background !== undefined) data.background = body.background;
@@ -347,13 +347,13 @@ export class DocumentTemplateService {
     actor: TemplateActor,
   ): Promise<TemplateDetail> {
     const template = await this.loadOwned(id, context);
-    if (!template.currentVersionId) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version", ar: "لا يوجد إصدار مسودة للقالب" }));
+    if (!template.currentVersionId) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version" }));
 
     const target = await this.repository.findVersionById(versionId);
-    if (!target || target.templateId !== template.id) throw new NotFoundError(t({ bn: "সংস্করণ পাওয়া যায়নি", en: "Version not found", ar: "لم يتم العثور على الإصدار" }));
+    if (!target || target.templateId !== template.id) throw new NotFoundError(t({ bn: "সংস্করণ পাওয়া যায়নি", en: "Version not found" }));
 
     const current = await this.repository.findVersionById(template.currentVersionId);
-    if (!current) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version", ar: "لا يوجد إصدار مسودة للقالب" }));
+    if (!current) throw new ConflictError(t({ bn: "টেমপ্লেটের কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version" }));
     const draft = await this.ensureDraftVersion(template.id, current);
 
     await this.repository.updateVersion(draft.id, {
@@ -375,12 +375,12 @@ export class DocumentTemplateService {
 
   async publish(id: number, context: TemplateContext, actor: TemplateActor): Promise<TemplateDetail> {
     const template = await this.loadOwned(id, context);
-    if (!template.currentVersionId) throw new ConflictError(t({ bn: "প্রকাশ করার মতো কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version to publish", ar: "لا يوجد إصدار مسودة للنشر" }));
+    if (!template.currentVersionId) throw new ConflictError(t({ bn: "প্রকাশ করার মতো কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version to publish" }));
 
     const updated = await this.repository.runTransaction(async (tx) => {
       const draft = await tx.documentTemplateVersion.findUnique({ where: { id: template.currentVersionId! } });
-      if (!draft) throw new ConflictError(t({ bn: "প্রকাশ করার মতো কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version to publish", ar: "لا يوجد إصدار مسودة للنشر" }));
-      if (draft.status === "PUBLISHED") throw new ConflictError(t({ bn: "এই সংস্করণটি ইতিমধ্যে প্রকাশিত", en: "This version is already published", ar: "هذا الإصدار منشور بالفعل" }));
+      if (!draft) throw new ConflictError(t({ bn: "প্রকাশ করার মতো কোনো খসড়া সংস্করণ নেই", en: "Template has no draft version to publish" }));
+      if (draft.status === "PUBLISHED") throw new ConflictError(t({ bn: "এই সংস্করণটি ইতিমধ্যে প্রকাশিত", en: "This version is already published" }));
 
       const now = new Date();
       await this.repository.updateVersionOnTx(tx, draft.id, { status: "PUBLISHED", publishedAt: now });
@@ -436,12 +436,12 @@ export class DocumentTemplateService {
     const template = await this.loadOwned(id, context);
 
     if (template.isSystemDefault) {
-      throw new ConflictError(t({ bn: "মুছে ফেলার আগে এটিকে সিস্টেম ডিফল্ট থেকে সরিয়ে দিন", en: "Unset this as the system default before deleting it", ar: "ألغِ تعيينه كقالب افتراضي للنظام قبل حذفه" }));
+      throw new ConflictError(t({ bn: "মুছে ফেলার আগে এটিকে সিস্টেম ডিফল্ট থেকে সরিয়ে দিন", en: "Unset this as the system default before deleting it" }));
     }
 
     const defaultsUsing = await this.repository.countTenantDefaultsUsingTemplate(id);
     if (defaultsUsing > 0) {
-      throw new ConflictError(t({ bn: "এই টেমপ্লেটটি বর্তমানে একটি প্রতিষ্ঠানের ডিফল্ট, তাই মুছে ফেলা যাবে না", en: "This template is currently set as a tenant default and cannot be deleted", ar: "هذا القالب معيّن حاليًا كقالب افتراضي لمؤسسة ولا يمكن حذفه" }));
+      throw new ConflictError(t({ bn: "এই টেমপ্লেটটি বর্তমানে একটি প্রতিষ্ঠানের ডিফল্ট, তাই মুছে ফেলা যাবে না", en: "This template is currently set as a tenant default and cannot be deleted" }));
     }
 
     await this.repository.deleteById(id);
@@ -450,7 +450,7 @@ export class DocumentTemplateService {
 
   async setSystemDefault(id: number, superAdminId: number): Promise<TemplateDetail> {
     const template = await this.loadOwned(id, { kind: "super_admin" });
-    if (!template.isPublished) throw new BadRequestError(t({ bn: "ডিফল্ট করার আগে টেমপ্লেটটি প্রকাশ করুন", en: "Publish the template before setting it as default", ar: "انشر القالب قبل تعيينه كافتراضي" }));
+    if (!template.isPublished) throw new BadRequestError(t({ bn: "ডিফল্ট করার আগে টেমপ্লেটটি প্রকাশ করুন", en: "Publish the template before setting it as default" }));
 
     const updated = await this.repository.runTransaction(async (tx) => {
       await this.repository.unsetSystemDefaultOnTx(tx, template.type);
@@ -480,10 +480,10 @@ export class DocumentTemplateService {
       tenantDefault = await this.repository.findTenantDefault(tenantId, type);
     }
 
-    if (!tenantDefault) throw new NotFoundError(t({ bn: "এই ডকুমেন্ট ধরনের জন্য কোনো ডিফল্ট টেমপ্লেট নেই", en: "No default template available for this document type", ar: "لا يوجد قالب افتراضي لهذا النوع من المستندات" }));
+    if (!tenantDefault) throw new NotFoundError(t({ bn: "এই ডকুমেন্ট ধরনের জন্য কোনো ডিফল্ট টেমপ্লেট নেই", en: "No default template available for this document type" }));
 
     const row = await this.repository.findById(tenantDefault.templateId);
-    if (!row) throw new NotFoundError(t({ bn: "ডিফল্ট টেমপ্লেটটি আর নেই", en: "Default template no longer exists", ar: "القالب الافتراضي لم يعد موجودًا" }));
+    if (!row) throw new NotFoundError(t({ bn: "ডিফল্ট টেমপ্লেটটি আর নেই", en: "Default template no longer exists" }));
 
     return this.toDetail(row, { kind: "tenant", tenantId });
   }
@@ -497,7 +497,7 @@ export class DocumentTemplateService {
     // Must be something this tenant is actually allowed to use: their own
     // template, or a published system template.
     const row = await this.loadReadable(templateId, { kind: "tenant", tenantId });
-    if (row.type !== type) throw new BadRequestError(t({ bn: "টেমপ্লেটের ধরন মিলছে না", en: "Template type does not match", ar: "نوع القالب غير مطابق" }));
+    if (row.type !== type) throw new BadRequestError(t({ bn: "টেমপ্লেটের ধরন মিলছে না", en: "Template type does not match" }));
 
     await this.repository.upsertTenantDefault(tenantId, type, templateId);
     await this.logActorActivity({ kind: "tenant", tenantId }, actor, "document_template.set_tenant_default", templateId);
@@ -556,7 +556,7 @@ export class DocumentTemplateService {
       : await this.getEffectiveDefault(tenantId, type, ensureMigrated);
 
     const version = detail.published ?? detail.draft;
-    if (!version) throw new ConflictError(t({ bn: "এই টেমপ্লেটের এখনো কোনো প্রকাশিত সংস্করণ নেই", en: "This template has no published version yet", ar: "لا يوجد إصدار منشور لهذا القالب بعد" }));
+    if (!version) throw new ConflictError(t({ bn: "এই টেমপ্লেটের এখনো কোনো প্রকাশিত সংস্করণ নেই", en: "This template has no published version yet" }));
 
     let rows: Record<string, unknown>[];
     if (type === "ID_CARD") {
@@ -593,7 +593,7 @@ export class DocumentTemplateService {
       const result = await this.reports.findStudentMarksheets(tenantId, filters.examId, filters);
       rows = (result as any)?.rows ?? [];
     } else {
-      throw new BadRequestError(t({ bn: `${type}-এর জন্য একসাথে তৈরি এখনো চালু করা হয়নি`, en: `Bulk generation for ${type} is not wired up yet`, ar: `الإنشاء الجماعي لـ ${type} غير متاح بعد` }));
+      throw new BadRequestError(t({ bn: `${type}-এর জন্য একসাথে তৈরি এখনো চালু করা হয়নি`, en: `Bulk generation for ${type} is not wired up yet` }));
     }
 
     return {

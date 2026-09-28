@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { DEFAULT_INSTITUTION, RTL_LANGS, isLang, type InstitutionInfo, type Lang } from "./types";
+import { DEFAULT_INSTITUTION, isLang, type InstitutionInfo, type Lang } from "./types";
 
 /** The user's own explicit pick from the language switcher (per device). */
 const LANG_KEY = "app-language";
@@ -47,7 +47,7 @@ export const applyDocumentLang = (lang: Lang) => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.lang = lang;
-  root.dir = RTL_LANGS.includes(lang) ? "rtl" : "ltr";
+  root.dir = "ltr";
 };
 
 type LanguageState = {

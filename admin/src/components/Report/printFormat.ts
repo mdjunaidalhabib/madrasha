@@ -5,7 +5,7 @@ import { reportText } from "./report.text";
 /**
  * Print-language counterparts of reportUtils' formatReportValue / cellValue /
  * formatMeritRank: backend status codes (PASS/FAIL/ABSENT...) and merit
- * ordinals (১ম/1st/الأول) follow the institution default language instead of
+ * ordinals (১ম/1st) follow the institution default language instead of
  * always printing Bangla. Digits already follow it via toBanglaDigits.
  */
 export const printValue = (value: unknown, key = "") => {

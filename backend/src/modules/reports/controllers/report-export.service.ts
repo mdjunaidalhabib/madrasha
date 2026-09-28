@@ -142,7 +142,7 @@ export class ReportExportService {
   async generatePdf(params: ExportReportPdfParams): Promise<Buffer> {
     if (!config.app.internalAdminUrl) {
       throw new ApiError(
-        t({ bn: "PDF এক্সপোর্ট কনফিগার করা নেই (সার্ভারে INTERNAL_ADMIN_URL ও ADMIN_BASE_URL কোনোটিই সেট করা নেই)", en: "PDF export is not configured (INTERNAL_ADMIN_URL and ADMIN_BASE_URL are both unset on the server)", ar: "تصدير PDF غير مُعد (لم يتم تعيين INTERNAL_ADMIN_URL ولا ADMIN_BASE_URL على الخادم)" }),
+        t({ bn: "PDF এক্সপোর্ট কনফিগার করা নেই (সার্ভারে INTERNAL_ADMIN_URL ও ADMIN_BASE_URL কোনোটিই সেট করা নেই)", en: "PDF export is not configured (INTERNAL_ADMIN_URL and ADMIN_BASE_URL are both unset on the server)" }),
         500,
       );
     }
@@ -163,12 +163,12 @@ export class ReportExportService {
     // report is slow enough to matter.
     const startedAt = Date.now();
     if (this.slots.queued >= MAX_QUEUED_EXPORTS) {
-      throw new ApiError(t({ bn: "সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", en: "The server is very busy right now, please try again shortly", ar: "الخادم مشغول جدًا الآن، يرجى المحاولة بعد قليل" }), 503);
+      throw new ApiError(t({ bn: "সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", en: "The server is very busy right now, please try again shortly" }), 503);
     }
     try {
       await this.slots.acquire(MAX_QUEUE_WAIT_MS);
     } catch {
-      throw new ApiError(t({ bn: "সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", en: "The server is very busy right now, please try again shortly", ar: "الخادم مشغول جدًا الآن، يرجى المحاولة بعد قليل" }), 503);
+      throw new ApiError(t({ bn: "সার্ভার এখন অনেক ব্যস্ত, কিছুক্ষণ পর আবার চেষ্টা করুন", en: "The server is very busy right now, please try again shortly" }), 503);
     }
     const acquiredAt = Date.now();
 

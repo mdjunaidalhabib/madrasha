@@ -55,7 +55,7 @@ export const getUsage = asyncHandler(async (req: Request, res: Response) => {
 
 export const createPurchaseRequest = asyncHandler(async (req: Request, res: Response) => {
   const data = await billingService.createPurchaseRequest(getMadrasaId(req), req.user?.id, req.body);
-  return ApiResponse.success(res, { message: t({ bn: "আপনার অনুরোধ পাঠানো হয়েছে - সুপার অ্যাডমিন অনুমোদন করলে ক্রেডিট যোগ হবে", en: "Your request has been sent - credit will be added once Super Admin approves it", ar: "تم إرسال طلبك - ستتم إضافة الرصيد بعد موافقة المشرف العام" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "আপনার অনুরোধ পাঠানো হয়েছে - সুপার অ্যাডমিন অনুমোদন করলে ক্রেডিট যোগ হবে", en: "Your request has been sent - credit will be added once Super Admin approves it" }), data });
 });
 
 export const getMyPurchaseRequests = asyncHandler(async (req: Request, res: Response) => {

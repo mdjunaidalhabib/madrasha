@@ -7,7 +7,7 @@ multi-institution. Nothing here needs a library - it's typed dictionaries.
 
 | Institution type | Languages   | Default |
 |------------------|-------------|---------|
-| MADRASA          | bn, en, ar  | bn      |
+| MADRASA          | bn, en      | bn      |
 | SCHOOL / COLLEGE / KINDERGARTEN | bn, en | en |
 
 - Super admin can override a tenant's default (`Madrasa.defaultLanguage`).
@@ -58,13 +58,9 @@ export const feeText = defineText({
 `formatDate(d, lang)`, `formatCurrency(v, lang)`, `LOCALE_MAP[lang]`.
 Never hardcode `"bn-BD"` in on-screen UI.
 
-## RTL (Arabic)
+## Arabic
 
-- Use logical Tailwind classes: `ms-/me-/ps-/pe-/start-/end-/text-start/text-end/
-  border-s/border-e/rounded-s/rounded-e` - never `ml-/mr-/pl-/pr-/left-/right-`.
-- Direction-meaning icons (ChevronLeft/Right, ArrowLeft/Right for back/next)
-  get `rtl:rotate-180`.
-- Inline styles: `marginInlineStart`, `paddingInlineEnd`, `insetInlineStart`...
+- Arabic is not a UI language. It exists only as a data script (Arabic name fields via ScriptInput scriptLang="ar").
 
 ## Do NOT translate
 

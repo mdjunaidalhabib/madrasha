@@ -39,7 +39,7 @@ export const updateBranding = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateBranding(madrasa_id, req.user!.id, req.body);
-    res.json({ message: t({ bn: "ব্র্যান্ডিং সংরক্ষণ হয়েছে", en: "Branding saved successfully", ar: "تم حفظ الهوية بنجاح" }) });
+    res.json({ message: t({ bn: "ব্র্যান্ডিং সংরক্ষণ হয়েছে", en: "Branding saved successfully" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -50,7 +50,7 @@ export const deleteBrandingImage = async (req: Request, res: Response) => {
     const madrasa_id = req.tenant!.madrasa_id;
     const field = String(req.params.field || "");
     await settingsService.deleteBrandingImage(madrasa_id, req.user!.id, field);
-    res.json({ message: t({ bn: "সরানো হয়েছে", en: "Removed successfully", ar: "تمت الإزالة بنجاح" }) });
+    res.json({ message: t({ bn: "সরানো হয়েছে", en: "Removed successfully" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -70,7 +70,7 @@ export const updateDocumentTemplates = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateDocumentTemplates(madrasa_id, req.body);
-    res.json({ message: t({ bn: "টেমপ্লেট সেভ হয়েছে", en: "Template saved", ar: "تم حفظ القالب" }) });
+    res.json({ message: t({ bn: "টেমপ্লেট সেভ হয়েছে", en: "Template saved" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -90,7 +90,7 @@ export const updateIdCardBack = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateIdCardBack(madrasa_id, req.body);
-    res.json({ message: t({ bn: "আইডি কার্ডের পিছনের তথ্য সেভ হয়েছে", en: "ID card back-side details saved", ar: "تم حفظ بيانات الوجه الخلفي لبطاقة الهوية" }) });
+    res.json({ message: t({ bn: "আইডি কার্ডের পিছনের তথ্য সেভ হয়েছে", en: "ID card back-side details saved" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -110,7 +110,7 @@ export const updateIdCardDesign = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateIdCardDesign(madrasa_id, req.body);
-    res.json({ message: t({ bn: "আইডি কার্ড ডিজাইন সেভ হয়েছে", en: "ID card design saved", ar: "تم حفظ تصميم بطاقة الهوية" }) });
+    res.json({ message: t({ bn: "আইডি কার্ড ডিজাইন সেভ হয়েছে", en: "ID card design saved" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -130,7 +130,7 @@ export const updateAdmitCardDesign = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateAdmitCardDesign(madrasa_id, req.body);
-    res.json({ message: t({ bn: "প্রবেশপত্র ডিজাইন সেভ হয়েছে", en: "Admit card design saved", ar: "تم حفظ تصميم بطاقة الدخول" }) });
+    res.json({ message: t({ bn: "প্রবেশপত্র ডিজাইন সেভ হয়েছে", en: "Admit card design saved" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -150,7 +150,7 @@ export const updateLetterDesign = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateLetterDesign(madrasa_id, req.body);
-    res.json({ message: t({ bn: "ডিজাইন সেভ হয়েছে", en: "Design saved", ar: "تم حفظ التصميم" }) });
+    res.json({ message: t({ bn: "ডিজাইন সেভ হয়েছে", en: "Design saved" }) });
   } catch (error) {
     respondError(res, error);
   }
@@ -170,7 +170,7 @@ export const updateBookLabelDesign = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     await settingsService.updateBookLabelDesign(madrasa_id, req.body);
-    res.json({ message: t({ bn: "পুরস্কার লেবেল ডিজাইন সেভ হয়েছে", en: "Award label design saved", ar: "تم حفظ تصميم ملصق الجائزة" }) });
+    res.json({ message: t({ bn: "পুরস্কার লেবেল ডিজাইন সেভ হয়েছে", en: "Award label design saved" }) });
   } catch (error) {
     respondError(res, error);
   }

@@ -32,7 +32,7 @@ export default function InstitutionTypeBadge({
   );
 }
 
-/** Tiny language chip ("বাংলা" / "English" / "العربية"). */
+/** Tiny language chip ("বাংলা" / "English"). */
 export function LanguageChip({ lang, className = "" }: { lang?: Lang | null; className?: string }) {
   if (!lang) return null;
   return (

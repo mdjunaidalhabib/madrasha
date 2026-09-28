@@ -33,7 +33,7 @@ const respondWithError = (res: Response, error: unknown, logTag: string) => {
   if ((error as any)?.code === "P2002") {
     return res.status(HttpStatus.CONFLICT).json({
       success: false,
-      message: t({ bn: "এই শ্রেণি ও শিক্ষাবর্ষে রোল নম্বরটি ইতোমধ্যে ব্যবহৃত হয়েছে", en: "This roll number is already used in this class and academic year", ar: "رقم الجلوس هذا مستخدم بالفعل في هذا الصف والعام الدراسي" }),
+      message: t({ bn: "এই শ্রেণি ও শিক্ষাবর্ষে রোল নম্বরটি ইতোমধ্যে ব্যবহৃত হয়েছে", en: "This roll number is already used in this class and academic year" }),
     });
   }
 
@@ -183,7 +183,7 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "একসাথে ভর্তি প্রক্রিয়া সম্পন্ন হয়েছে", en: "Bulk admission processed", ar: "تمت معالجة القبول الجماعي" }),
+      message: t({ bn: "একসাথে ভর্তি প্রক্রিয়া সম্পন্ন হয়েছে", en: "Bulk admission processed" }),
       ...result,
     });
   } catch (error) {
@@ -216,7 +216,7 @@ export const updateStudentsBulk = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "একসাথে আপডেট প্রক্রিয়া সম্পন্ন হয়েছে", en: "Bulk update processed", ar: "تمت معالجة التحديث الجماعي" }),
+      message: t({ bn: "একসাথে আপডেট প্রক্রিয়া সম্পন্ন হয়েছে", en: "Bulk update processed" }),
       ...result,
     });
   } catch (error) {
@@ -238,7 +238,7 @@ export const updateStudent = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "শিক্ষার্থীর তথ্য আপডেট হয়েছে", en: "Student updated successfully", ar: "تم تحديث بيانات الطالب بنجاح" }),
+      message: t({ bn: "শিক্ষার্থীর তথ্য আপডেট হয়েছে", en: "Student updated successfully" }),
       affectedRows,
     });
   } catch (error) {
@@ -256,7 +256,7 @@ export const deleteStudent = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "শিক্ষার্থী মুছে ফেলা হয়েছে", en: "Student deleted successfully", ar: "تم حذف الطالب بنجاح" }),
+      message: t({ bn: "শিক্ষার্থী মুছে ফেলা হয়েছে", en: "Student deleted successfully" }),
       affectedRows,
     });
   } catch (error) {
@@ -275,7 +275,7 @@ export const bulkDeleteStudents = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "নির্বাচিত শিক্ষার্থীদের ট্র্যাশে পাঠানো হয়েছে", en: "Selected students moved to trash", ar: "تم نقل الطلاب المختارين إلى سلة المهملات" }),
+      message: t({ bn: "নির্বাচিত শিক্ষার্থীদের ট্র্যাশে পাঠানো হয়েছে", en: "Selected students moved to trash" }),
       affectedRows,
     });
   } catch (error) {
@@ -345,7 +345,7 @@ export const updateStudentNamesBulk = async (req: Request, res: Response) => {
     const madrasaId = req.tenant?.madrasa_id;
     const data = await studentService.updateNamesBulk(madrasaId, req.body.items || []);
 
-    return res.json({ success: true, message: t({ bn: "শিক্ষার্থীদের নাম আপডেট হয়েছে", en: "Student names updated", ar: "تم تحديث أسماء الطلاب" }), data });
+    return res.json({ success: true, message: t({ bn: "শিক্ষার্থীদের নাম আপডেট হয়েছে", en: "Student names updated" }), data });
   } catch (error) {
     return respondWithError(res, error, "UPDATE STUDENT NAMES ERROR:");
   }
@@ -362,7 +362,7 @@ export const transferStudentSession = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: t({ bn: "শিক্ষার্থীকে নতুন সেশনে স্থানান্তর করা হয়েছে", en: "Student transferred to the new session successfully", ar: "تم نقل الطالب إلى العام الدراسي الجديد بنجاح" }),
+      message: t({ bn: "শিক্ষার্থীকে নতুন সেশনে স্থানান্তর করা হয়েছে", en: "Student transferred to the new session successfully" }),
       data,
     });
   } catch (error) {
@@ -388,7 +388,7 @@ export const approveAdmission = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
     await studentService.approveAdmission(Number(req.params.id), madrasaId, req.user?.id);
-    return res.json({ success: true, message: t({ bn: "ভর্তি অনুমোদিত হয়েছে", en: "Admission approved successfully", ar: "تم اعتماد القبول بنجاح" }) });
+    return res.json({ success: true, message: t({ bn: "ভর্তি অনুমোদিত হয়েছে", en: "Admission approved successfully" }) });
   } catch (error) {
     return respondWithError(res, error, "APPROVE ADMISSION ERROR:");
   }
@@ -403,7 +403,7 @@ export const rejectAdmission = async (req: Request, res: Response) => {
       req.user?.id,
       req.body?.reason,
     );
-    return res.json({ success: true, message: t({ bn: "ভর্তি প্রত্যাখ্যান করা হয়েছে", en: "Admission rejected successfully", ar: "تم رفض القبول بنجاح" }) });
+    return res.json({ success: true, message: t({ bn: "ভর্তি প্রত্যাখ্যান করা হয়েছে", en: "Admission rejected successfully" }) });
   } catch (error) {
     return respondWithError(res, error, "REJECT ADMISSION ERROR:");
   }
@@ -423,7 +423,7 @@ export const permanentlyDeleteRejectedApplication = async (req: Request, res: Re
   try {
     const madrasaId = req.tenant?.madrasa_id;
     await studentService.permanentlyDeleteRejectedApplication(Number(req.params.id), madrasaId);
-    return res.json({ success: true, message: t({ bn: "প্রত্যাখ্যাত আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Rejected application permanently deleted", ar: "تم حذف الطلب المرفوض نهائيًا" }) });
+    return res.json({ success: true, message: t({ bn: "প্রত্যাখ্যাত আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Rejected application permanently deleted" }) });
   } catch (error) {
     return respondWithError(res, error, "PERMANENTLY DELETE REJECTED APPLICATION ERROR:");
   }
@@ -453,7 +453,7 @@ export const setFeeDiscount = async (req: Request, res: Response) => {
       req.body,
       req.user?.id,
     );
-    return res.json({ success: true, message: t({ bn: "ফি হালনাগাদ করা হয়েছে", en: "Fees updated", ar: "تم تحديث الرسوم" }), data });
+    return res.json({ success: true, message: t({ bn: "ফি হালনাগাদ করা হয়েছে", en: "Fees updated" }), data });
   } catch (error) {
     return respondWithError(res, error, "SET STUDENT FEE DISCOUNT ERROR:");
   }

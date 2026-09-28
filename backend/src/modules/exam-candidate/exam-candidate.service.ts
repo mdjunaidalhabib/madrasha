@@ -27,13 +27,13 @@ const MAX_BULK_ITEMS = 200;
 
 const assertBulkSize = (count: number, label: string) => {
   if (count > MAX_BULK_ITEMS) {
-    throw new BadRequestError(t({ bn: `একসাথে সর্বোচ্চ ${MAX_BULK_ITEMS}টি ${label} প্রক্রিয়া করা যায়।`, en: `At most ${MAX_BULK_ITEMS} ${label} can be processed at once.`, ar: `يمكن معالجة ${MAX_BULK_ITEMS} من ${label} كحد أقصى دفعة واحدة.` }));
+    throw new BadRequestError(t({ bn: `একসাথে সর্বোচ্চ ${MAX_BULK_ITEMS}টি ${label} প্রক্রিয়া করা যায়।`, en: `At most ${MAX_BULK_ITEMS} ${label} can be processed at once.` }));
   }
 };
 
 const toId = (value: unknown, label: string): number => {
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(t({ bn: `${label} আবশ্যক`, en: `${label} is required`, ar: `${label} مطلوب` }));
+  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(t({ bn: `${label} আবশ্যক`, en: `${label} is required` }));
   return id;
 };
 
@@ -66,13 +66,13 @@ export class ExamCandidateService {
 
       return { rows, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
     } catch (err) {
-      return friendlyFailure("examCandidate.list error:", err, t({ bn: "পরীক্ষার্থীদের তালিকা লোড করা যায়নি", en: "Failed to load exam candidates", ar: "تعذر تحميل المرشحين للامتحان" }));
+      return friendlyFailure("examCandidate.list error:", err, t({ bn: "পরীক্ষার্থীদের তালিকা লোড করা যায়নি", en: "Failed to load exam candidates" }));
     }
   }
 
   async getById(madrasaId: number, id: number) {
     const candidate = await this.repository.findCandidateById(madrasaId, id);
-    if (!candidate) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found", ar: "لم يتم العثور على المرشح للامتحان" }));
+    if (!candidate) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found" }));
     return candidate;
   }
 
@@ -82,7 +82,7 @@ export class ExamCandidateService {
   async eligibleStudents(madrasaId: number, query: EligibleStudentsQueryDto) {
     const examId = toId(query.exam_id, "exam_id");
     const exam = await this.repository.findExam(madrasaId, examId);
-    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
+    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found" }));
 
     try {
       const students = await this.repository.findEligibleStudentPool(madrasaId, {
@@ -115,7 +115,7 @@ export class ExamCandidateService {
 
       return results;
     } catch (err) {
-      return friendlyFailure("examCandidate.eligibleStudents error:", err, t({ bn: "যোগ্য শিক্ষার্থীদের তালিকা লোড করা যায়নি", en: "Failed to load eligible students", ar: "تعذر تحميل الطلاب المؤهلين" }));
+      return friendlyFailure("examCandidate.eligibleStudents error:", err, t({ bn: "যোগ্য শিক্ষার্থীদের তালিকা লোড করা যায়নি", en: "Failed to load eligible students" }));
     }
   }
 
@@ -277,7 +277,7 @@ export class ExamCandidateService {
     if (dto.candidate_id) {
       candidateId = toId(dto.candidate_id, "candidate_id");
       const candidate = await this.repository.findCandidateById(madrasaId, candidateId);
-      if (!candidate) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found", ar: "لم يتم العثور على المرشح للامتحان" }));
+      if (!candidate) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found" }));
       examId = candidate.examId;
       studentId = candidate.studentId;
     } else {
@@ -304,14 +304,14 @@ export class ExamCandidateService {
 
       return { candidate_id: candidateId ?? null, ...evaluation };
     } catch (err) {
-      return friendlyFailure("examCandidate.checkEligibility error:", err, t({ bn: "যোগ্যতা যাচাই করা যায়নি", en: "Failed to check eligibility", ar: "تعذر التحقق من الأهلية" }));
+      return friendlyFailure("examCandidate.checkEligibility error:", err, t({ bn: "যোগ্যতা যাচাই করা যায়নি", en: "Failed to check eligibility" }));
     }
   }
 
   async bulkCheckEligibility(madrasaId: number, dto: BulkEligibilityCheckRequestDto) {
     const examId = toId(dto.exam_id, "exam_id");
     const exam = await this.repository.findExam(madrasaId, examId);
-    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found", ar: "لم يتم العثور على الامتحان" }));
+    if (!exam) throw new NotFoundError(t({ bn: "পরীক্ষা পাওয়া যায়নি", en: "Exam not found" }));
 
     const candidateIds = dto.candidate_ids?.length ? dto.candidate_ids.map((id) => Number(id)) : undefined;
     if (candidateIds) assertBulkSize(candidateIds.length, "প্রার্থী");
@@ -339,7 +339,7 @@ export class ExamCandidateService {
 
       return { checked: eligible + ineligible, eligible, ineligible };
     } catch (err) {
-      return friendlyFailure("examCandidate.bulkCheckEligibility error:", err, t({ bn: "একসাথে যোগ্যতা যাচাই করা যায়নি", en: "Failed to bulk-check eligibility", ar: "تعذر التحقق الجماعي من الأهلية" }));
+      return friendlyFailure("examCandidate.bulkCheckEligibility error:", err, t({ bn: "একসাথে যোগ্যতা যাচাই করা যায়নি", en: "Failed to bulk-check eligibility" }));
     }
   }
 
@@ -355,7 +355,7 @@ export class ExamCandidateService {
 
   async updateStatus(madrasaId: number, id: number, userId: number | undefined, dto: UpdateCandidateStatusRequestDto) {
     if (!EXAM_CANDIDATE_STATUSES.includes(dto.status as any)) {
-      throw new BadRequestError(t({ bn: `"${dto.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${dto.status}"`, ar: `الحالة "${dto.status}" غير صالحة` }));
+      throw new BadRequestError(t({ bn: `"${dto.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${dto.status}"` }));
     }
     try {
       const result = await this.repository.updateStatus(
@@ -365,25 +365,25 @@ export class ExamCandidateService {
         dto.notes,
         userId,
       );
-      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found", ar: "لم يتم العثور على المرشح للامتحان" }));
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("examCandidate.updateStatus error:", err, t({ bn: "পরীক্ষার্থীর অবস্থা আপডেট করা যায়নি", en: "Failed to update candidate status", ar: "تعذر تحديث حالة المرشح" }));
+      return friendlyFailure("examCandidate.updateStatus error:", err, t({ bn: "পরীক্ষার্থীর অবস্থা আপডেট করা যায়নি", en: "Failed to update candidate status" }));
     }
   }
 
   async bulkUpdateStatus(madrasaId: number, userId: number | undefined, dto: BulkUpdateStatusRequestDto) {
-    if (!Array.isArray(dto.ids) || !dto.ids.length) throw new BadRequestError(t({ bn: "ids একটি খালি নয় এমন তালিকা হতে হবে", en: "ids must be a non-empty array", ar: "يجب أن تكون ids مصفوفة غير فارغة" }));
+    if (!Array.isArray(dto.ids) || !dto.ids.length) throw new BadRequestError(t({ bn: "ids একটি খালি নয় এমন তালিকা হতে হবে", en: "ids must be a non-empty array" }));
     assertBulkSize(dto.ids.length, "প্রার্থী");
     if (!EXAM_CANDIDATE_STATUSES.includes(dto.status as any)) {
-      throw new BadRequestError(t({ bn: `"${dto.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${dto.status}"`, ar: `الحالة "${dto.status}" غير صالحة` }));
+      throw new BadRequestError(t({ bn: `"${dto.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${dto.status}"` }));
     }
     try {
       const ids = dto.ids.map((id) => Number(id));
       const result = await this.repository.bulkUpdateStatus(madrasaId, ids, dto.status as ExamCandidateStatus, userId);
       return { updated: result.count };
     } catch (err) {
-      return friendlyFailure("examCandidate.bulkUpdateStatus error:", err, t({ bn: "একসাথে পরীক্ষার্থীদের অবস্থা আপডেট করা যায়নি", en: "Failed to bulk-update candidate status", ar: "تعذر التحديث الجماعي لحالة المرشحين" }));
+      return friendlyFailure("examCandidate.bulkUpdateStatus error:", err, t({ bn: "একসাথে পরীক্ষার্থীদের অবস্থা আপডেট করা যায়নি", en: "Failed to bulk-update candidate status" }));
     }
   }
 
@@ -392,10 +392,10 @@ export class ExamCandidateService {
   async cancel(madrasaId: number, id: number, userId: number | undefined) {
     try {
       const result = await this.repository.updateStatus(madrasaId, id, ExamCandidateStatus.CANCELLED, undefined, userId);
-      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found", ar: "لم يتم العثور على المرشح للامتحان" }));
+      if (!result.count) throw new NotFoundError(t({ bn: "পরীক্ষার্থী পাওয়া যায়নি", en: "Exam candidate not found" }));
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
-      return friendlyFailure("examCandidate.cancel error:", err, t({ bn: "পরীক্ষার্থী বাতিল করা যায়নি", en: "Failed to cancel candidate", ar: "تعذر إلغاء المرشح" }));
+      return friendlyFailure("examCandidate.cancel error:", err, t({ bn: "পরীক্ষার্থী বাতিল করা যায়নি", en: "Failed to cancel candidate" }));
     }
   }
 }

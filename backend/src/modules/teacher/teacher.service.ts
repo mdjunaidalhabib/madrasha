@@ -188,7 +188,7 @@ export class TeacherService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!Array.isArray(teachers) || !teachers.length) {
-      throw new BadRequestError(t({ bn: "শিক্ষকের তালিকা খালি", en: "Teacher list is empty", ar: "قائمة المعلمين فارغة" }));
+      throw new BadRequestError(t({ bn: "শিক্ষকের তালিকা খালি", en: "Teacher list is empty" }));
     }
 
     return this.repository.runTransaction(async (tx) => {
@@ -255,12 +255,12 @@ export class TeacherService {
     }
 
     if (filtered.division_id !== undefined && !toNumber(filtered.division_id)) {
-      throw new BadRequestError(t({ bn: "একাডেমিক বিভাগ বাধ্যতামূলক", en: "Academic division is required", ar: "القسم الأكاديمي مطلوب" }));
+      throw new BadRequestError(t({ bn: "একাডেমিক বিভাগ বাধ্যতামূলক", en: "Academic division is required" }));
     }
 
     const fields = Object.keys(filtered).filter((key) => TEACHER_FIELD_MAP[key]);
     if (!fields.length) {
-      throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো তথ্য নেই", en: "No data to update", ar: "لا توجد بيانات للتحديث" }));
+      throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো তথ্য নেই", en: "No data to update" }));
     }
 
     const data: Record<string, any> = {};
@@ -303,12 +303,12 @@ export class TeacherService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!Array.isArray(rows) || rows.length === 0) {
-      throw new BadRequestError(t({ bn: "শিক্ষকের তালিকা আবশ্যক", en: "Teacher list is required", ar: "قائمة المعلمين مطلوبة" }));
+      throw new BadRequestError(t({ bn: "শিক্ষকের তালিকা আবশ্যক", en: "Teacher list is required" }));
     }
 
     if (!rows.some((r) => toNumber(r.id) !== null)) {
       throw new BadRequestError(
-        t({ bn: "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন", en: "The id column was not found or all rows are empty — upload a correctly exported file", ar: "لم يتم العثور على عمود id أو جميع الصفوف فارغة — ارفع ملفًا مُصدّرًا بشكل صحيح" }),
+        t({ bn: "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন", en: "The id column was not found or all rows are empty — upload a correctly exported file" }),
       );
     }
 
@@ -455,7 +455,7 @@ export class TeacherService {
             status: "skipped",
             changes: [],
             notes: item.notes,
-            error: t({ bn: "এই আইডির শিক্ষক পাওয়া যায়নি", en: "No teacher found with this ID", ar: "لم يتم العثور على معلم بهذا المعرف" }),
+            error: t({ bn: "এই আইডির শিক্ষক পাওয়া যায়নি", en: "No teacher found with this ID" }),
           });
           continue;
         }
@@ -565,12 +565,12 @@ export class TeacherService {
    * madrasa or nothing is saved. Mirrors StudentService.updateNamesBulk. */
   async updateNamesBulk(madrasaId: number | undefined, items: TeacherNamesItem[]) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required", ar: "items مطلوبة" }));
+    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required" }));
 
     const ids = items.map((i) => Number(i.id));
     const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
     const missing = ids.filter((id) => !found.has(id));
-    if (missing.length) throw new BadRequestError(t({ bn: `শিক্ষক পাওয়া যায়নি: ${missing.join(", ")}`, en: `Teacher(s) not found: ${missing.join(", ")}`, ar: `لم يتم العثور على المعلمين: ${missing.join(", ")}` }));
+    if (missing.length) throw new BadRequestError(t({ bn: `শিক্ষক পাওয়া যায়নি: ${missing.join(", ")}`, en: `Teacher(s) not found: ${missing.join(", ")}` }));
 
     const updates = items.map((item) => {
       const data: Record<string, string | null> = {};
@@ -578,7 +578,7 @@ export class TeacherService {
         const raw = (item as Record<string, unknown>)[key];
         if (raw === undefined) continue;
         const value = typeof raw === "string" ? raw.trim() : null;
-        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required", ar: "الاسم بالبنغالية مطلوب" }));
+        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required" }));
         data[column] = value || null;
       }
       return { id: Number(item.id), data };

@@ -153,7 +153,7 @@ export interface BulkUpdateResult {
 
 export class StudentNotFoundError extends NotFoundError {
   constructor() {
-    super(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
+    super(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found" }));
   }
 }
 
@@ -163,7 +163,7 @@ export class MissingFieldsError extends ApiError {
   public readonly received: unknown;
 
   constructor(missingFields: string[], received: unknown) {
-    super(t({ bn: "আবশ্যক তথ্য দেওয়া হয়নি", en: "Required fields missing", ar: "حقول مطلوبة مفقودة" }), HttpStatus.BAD_REQUEST);
+    super(t({ bn: "আবশ্যক তথ্য দেওয়া হয়নি", en: "Required fields missing" }), HttpStatus.BAD_REQUEST);
     this.missingFields = missingFields;
     this.received = received;
   }

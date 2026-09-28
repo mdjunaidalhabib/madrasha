@@ -11,9 +11,4 @@ export const classPanelText = defineText({
     selected: (n, total) => `${n} / ${total} selected`,
     noBooks: "No {{subject}}s found",
   },
-  ar: {
-    selectBooks: "اختر {{subject}}",
-    selected: (n, total) => `${n} / ${total} مختار`,
-    noBooks: "لم يتم العثور على {{subject}}",
-  },
 });

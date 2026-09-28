@@ -23,15 +23,4 @@ export const pwaText = defineText({
     notNow: "Not now",
     install: "Install",
   },
-  ar: {
-    description: "ثبّت التطبيق بنقرة واحدة — افتحه بسرعة من الشاشة الرئيسية واستخدمه كتطبيق.",
-    dialogLabel: "تثبيت التطبيق",
-    installApp: (name) => `تثبيت تطبيق ${name}`,
-    iosStep1Before: "اضغط على زر",
-    iosStep1After: "المشاركة (Share) في الأسفل",
-    iosStep2: "اختر “Add to Home Screen”",
-    iosStep3: "اضغط “Add” في الأعلى",
-    notNow: "ليس الآن",
-    install: "تثبيت",
-  },
 });

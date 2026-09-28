@@ -7,7 +7,7 @@ import { t } from "../../shared/i18n";
 
 export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
-  if (!madrasaId) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের তথ্য আবশ্যক", en: "Tenant context is required", ar: "بيانات المؤسسة مطلوبة" }));
+  if (!madrasaId) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের তথ্য আবশ্যক", en: "Tenant context is required" }));
 
   const data = await uploadService.uploadImage(madrasaId, req.body);
   return ApiResponse.success(res, {
@@ -18,8 +18,8 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
 
 export const deleteImage = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
-  if (!madrasaId) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের তথ্য আবশ্যক", en: "Tenant context is required", ar: "بيانات المؤسسة مطلوبة" }));
+  if (!madrasaId) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের তথ্য আবশ্যক", en: "Tenant context is required" }));
 
   const data = await uploadService.deleteImage(madrasaId, req.body);
-  return ApiResponse.success(res, { message: t({ bn: "প্রক্রিয়া সম্পন্ন হয়েছে", en: "Processed", ar: "تمت المعالجة" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "প্রক্রিয়া সম্পন্ন হয়েছে", en: "Processed" }), data });
 });

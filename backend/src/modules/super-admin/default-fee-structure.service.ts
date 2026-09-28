@@ -41,10 +41,10 @@ export class DefaultFeeStructureService {
 
   async create(dto: CreateDefaultFeeStructureRequestDto) {
     if (isEmpty(dto.name) || isEmpty(dto.amount) || isEmpty(dto.frequency)) {
-      throw new BadRequestError(t({ bn: "নাম, পরিমাণ ও ফ্রিকোয়েন্সি আবশ্যক", en: "name, amount and frequency are required", ar: "الاسم والمبلغ والتكرار مطلوبة" }));
+      throw new BadRequestError(t({ bn: "নাম, পরিমাণ ও ফ্রিকোয়েন্সি আবশ্যক", en: "name, amount and frequency are required" }));
     }
     if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-      throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
+      throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY" }));
     }
     const amount = toAmount(dto.amount);
 
@@ -63,7 +63,7 @@ export class DefaultFeeStructureService {
 
     const data: Prisma.DefaultFeeStructureUpdateInput = {};
     if (dto.name !== undefined) {
-      if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম খালি রাখা যাবে না", en: "name cannot be empty", ar: "لا يمكن أن يكون الاسم فارغًا" }));
+      if (isEmpty(dto.name)) throw new BadRequestError(t({ bn: "নাম খালি রাখা যাবে না", en: "name cannot be empty" }));
       data.name = String(dto.name).trim();
     }
     if (dto.amount !== undefined) data.amount = toAmount(dto.amount);
@@ -71,11 +71,11 @@ export class DefaultFeeStructureService {
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
     if (dto.frequency !== undefined) {
       if (!FEE_FREQUENCIES.includes(dto.frequency as any)) {
-        throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY", ar: "يجب أن يكون التكرار ONE_TIME أو MONTHLY أو YEARLY" }));
+        throw new BadRequestError(t({ bn: "frequency অবশ্যই ONE_TIME, MONTHLY অথবা YEARLY হতে হবে", en: "frequency must be ONE_TIME, MONTHLY or YEARLY" }));
       }
       data.frequency = dto.frequency as any;
     }
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
 
     await this.repository.update(id, data);
   }

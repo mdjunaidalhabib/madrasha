@@ -32,7 +32,7 @@ export const exportReportPdf = async (req: Request, res: Response) => {
   const user = req.user;
   const slug = req.tenant?.slug;
   if (!user || !slug) {
-    throw new BadRequestError(t({ bn: "ব্যবহারকারী বা প্রতিষ্ঠানের তথ্য পাওয়া যায়নি", en: "Missing user or tenant context", ar: "بيانات المستخدم أو المؤسسة مفقودة" }));
+    throw new BadRequestError(t({ bn: "ব্যবহারকারী বা প্রতিষ্ঠানের তথ্য পাওয়া যায়নি", en: "Missing user or tenant context" }));
   }
 
   const reportsPage = String(req.body?.reports_page || "");
@@ -41,16 +41,16 @@ export const exportReportPdf = async (req: Request, res: Response) => {
   const orientation = String(req.body?.orientation || "portrait");
 
   if (!ALLOWED_REPORTS_PAGES.includes(reportsPage)) {
-    throw new BadRequestError(t({ bn: "reports_page সঠিক নয়", en: "Invalid reports_page", ar: "reports_page غير صالح" }));
+    throw new BadRequestError(t({ bn: "reports_page সঠিক নয়", en: "Invalid reports_page" }));
   }
   if (!reportKey) {
-    throw new BadRequestError(t({ bn: "report_key আবশ্যক", en: "report_key is required", ar: "report_key مطلوب" }));
+    throw new BadRequestError(t({ bn: "report_key আবশ্যক", en: "report_key is required" }));
   }
   if (!ALLOWED_PAPER_SIZES.includes(paperSize)) {
-    throw new BadRequestError(t({ bn: "কাগজের মাপ সঠিক নয়", en: "Invalid paper_size", ar: "حجم الورق غير صالح" }));
+    throw new BadRequestError(t({ bn: "কাগজের মাপ সঠিক নয়", en: "Invalid paper_size" }));
   }
   if (!ALLOWED_ORIENTATIONS.includes(orientation)) {
-    throw new BadRequestError(t({ bn: "পৃষ্ঠার দিক সঠিক নয়", en: "Invalid orientation", ar: "اتجاه الصفحة غير صالح" }));
+    throw new BadRequestError(t({ bn: "পৃষ্ঠার দিক সঠিক নয়", en: "Invalid orientation" }));
   }
 
   const pdfBuffer = await reportExportService.generatePdf({
@@ -83,7 +83,7 @@ export const exportReportPdf = async (req: Request, res: Response) => {
 export const downloadReportPdf = (req: Request, res: Response) => {
   const entry = takePdf(String(req.params.downloadId || ""));
   if (!entry) {
-    throw new NotFoundError(t({ bn: "এই ডাউনলোড লিংকের মেয়াদ শেষ - অনুগ্রহ করে আবার PDF তৈরি করুন", en: "This download link has expired - please generate the PDF again", ar: "انتهت صلاحية رابط التنزيل هذا - يرجى إنشاء ملف PDF مرة أخرى" }));
+    throw new NotFoundError(t({ bn: "এই ডাউনলোড লিংকের মেয়াদ শেষ - অনুগ্রহ করে আবার PDF তৈরি করুন", en: "This download link has expired - please generate the PDF again" }));
   }
 
   // Only a full GET counts - HEAD/probe requests from download managers
@@ -104,7 +104,7 @@ export const downloadReportPdf = (req: Request, res: Response) => {
 export const getReportPdfDownloadStatus = (req: Request, res: Response) => {
   const downloaded = isDownloaded(String(req.params.downloadId || ""));
   if (downloaded === undefined) {
-    throw new NotFoundError(t({ bn: "এই ডাউনলোড লিংকের মেয়াদ শেষ", en: "This download link has expired", ar: "انتهت صلاحية رابط التنزيل هذا" }));
+    throw new NotFoundError(t({ bn: "এই ডাউনলোড লিংকের মেয়াদ শেষ", en: "This download link has expired" }));
   }
   res.json({ downloaded });
 };

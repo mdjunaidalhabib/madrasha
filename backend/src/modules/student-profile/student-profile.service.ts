@@ -29,7 +29,7 @@ const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 export class StudentProfileService {
   async getProfile360(studentId: number, madrasaId: number) {
     const student = await studentRepository.findByIdForTenant(studentId, madrasaId);
-    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found" }));
 
     const to = new Date();
     const from = new Date(to);

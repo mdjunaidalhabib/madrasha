@@ -63,6 +63,7 @@ textarea {
   --font-report-body: "Inter", "Kalpurush Report", "Hind Siliguri", sans-serif;
 }
 
+/* UI ভাষা নয় - শুধু আরবি ডাটা ফিল্ডের (যেমন শিক্ষার্থীর আরবি নাম) জন্য lang="ar" দিলে সঠিক ফন্ট পায়। */
 [lang="ar"] {
   --font-ui-bn: "Noto Naskh Arabic", "Kalpurush", "Hind Siliguri", sans-serif;
   --font-report-heading: "Noto Naskh Arabic", "Kalpurush Report", serif;
@@ -81,11 +82,6 @@ textarea {
    zero specificity so every report-* class rule still wins. */
 :where([lang]:not(html)) {
   font-family: var(--font-ui-bn);
-}
-
-/* Arabic script needs more line height than Bangla/Latin at the same size. */
-:where([lang="ar"]) {
-  line-height: 1.7;
 }
 
 /* Chrome/Edge reserve ~20px inside every <input type="number"> for the

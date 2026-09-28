@@ -22,14 +22,14 @@ export class SuperAdminAuthService {
     }
 
     const admin = await this.repository.findActiveByEmail(dto.email);
-    if (!admin) throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+    if (!admin) throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
 
     if (!admin.passwordHash) {
       throw new ApiError(t({ bn: "সুপার অ্যাডমিন পাসওয়ার্ড কনফিগার করা নেই", en: "Super admin password is not configured" }), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     const valid = await comparePassword(dto.password, admin.passwordHash);
-    if (!valid) throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+    if (!valid) throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
 
     const token = generateToken({ id: admin.id, role: "super_admin" }, SUPER_ADMIN_TOKEN_EXPIRY);
 

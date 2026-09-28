@@ -149,7 +149,7 @@ export class PlatformSettingsService {
 
   async checkSmsBalance(): Promise<BalanceResult> {
     const config = await this.resolveSmsConfig();
-    if (!config) throw new BadRequestError(t({ bn: "SMS গেটওয়ে কনফিগার করা নেই", en: "SMS gateway is not configured", ar: "بوابة الرسائل القصيرة غير مُعدة" }));
+    if (!config) throw new BadRequestError(t({ bn: "SMS গেটওয়ে কনফিগার করা নেই", en: "SMS gateway is not configured" }));
     return smsService.getBalance(config);
   }
 
@@ -208,7 +208,7 @@ export class PlatformSettingsService {
 
   async checkEmailConnection(): Promise<ConnectionCheckResult> {
     const config = await this.resolveEmailConfig();
-    if (!config) throw new BadRequestError(t({ bn: "SMTP কনফিগার করা নেই", en: "SMTP is not configured", ar: "SMTP غير مُعد" }));
+    if (!config) throw new BadRequestError(t({ bn: "SMTP কনফিগার করা নেই", en: "SMTP is not configured" }));
     return emailService.verifyConnection(config);
   }
 }

@@ -14,7 +14,7 @@ const getMadrasaId = (req: Request): number => {
 export const bulkMarkAttendance = asyncHandler(async (req: Request, res: Response) => {
   const count = await attendanceService.bulkMark(getMadrasaId(req), req.user?.id, req.body);
   return ApiResponse.success(res, {
-    message: t({ bn: "হাজিরা সংরক্ষণ করা হয়েছে", en: "Attendance saved successfully", ar: "تم حفظ الحضور بنجاح" }),
+    message: t({ bn: "হাজিরা সংরক্ষণ করা হয়েছে", en: "Attendance saved successfully" }),
     extra: { savedCount: count },
   });
 });

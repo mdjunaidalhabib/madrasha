@@ -44,29 +44,29 @@ export const createTemplate = asyncHandler(async (req: Request, res: Response) =
     description: body.description,
     sourceTemplateId: body.source_template_id ? Number(body.source_template_id) : undefined,
   });
-  return ApiResponse.created(res, toTemplateDetailDto(detail), t({ bn: "টেমপ্লেট তৈরি হয়েছে", en: "Template created", ar: "تم إنشاء القالب" }));
+  return ApiResponse.created(res, toTemplateDetailDto(detail), t({ bn: "টেমপ্লেট তৈরি হয়েছে", en: "Template created" }));
 });
 
 export const cloneTemplate = asyncHandler(async (req: Request, res: Response) => {
   const sourceId = Number(req.params.id);
   const body = req.body || {};
-  if (!body.name) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "name is required", ar: "الاسم مطلوب" }));
+  if (!body.name) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "name is required" }));
   const detail = await documentTemplateService.createTemplate(tenantContext(req), tenantActor(req), {
     name: body.name,
     description: body.description,
     sourceTemplateId: sourceId,
   });
-  return ApiResponse.created(res, toTemplateDetailDto(detail), t({ bn: "টেমপ্লেট কপি করা হয়েছে", en: "Template cloned", ar: "تم نسخ القالب" }));
+  return ApiResponse.created(res, toTemplateDetailDto(detail), t({ bn: "টেমপ্লেট কপি করা হয়েছে", en: "Template cloned" }));
 });
 
 export const saveDraft = asyncHandler(async (req: Request, res: Response) => {
   const detail = await documentTemplateService.saveDraft(Number(req.params.id), tenantContext(req), req.body || {});
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "খসড়া সংরক্ষণ করা হয়েছে", en: "Draft saved", ar: "تم حفظ المسودة" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "খসড়া সংরক্ষণ করা হয়েছে", en: "Draft saved" }) });
 });
 
 export const publishTemplate = asyncHandler(async (req: Request, res: Response) => {
   const detail = await documentTemplateService.publish(Number(req.params.id), tenantContext(req), tenantActor(req));
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট প্রকাশিত হয়েছে", en: "Template published", ar: "تم نشر القالب" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট প্রকাশিত হয়েছে", en: "Template published" }) });
 });
 
 export const updateTemplateMeta = asyncHandler(async (req: Request, res: Response) => {
@@ -76,12 +76,12 @@ export const updateTemplateMeta = asyncHandler(async (req: Request, res: Respons
     description: body.description,
     isActive: body.is_active,
   });
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট আপডেট হয়েছে", en: "Template updated", ar: "تم تحديث القالب" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট আপডেট হয়েছে", en: "Template updated" }) });
 });
 
 export const deleteTemplate = asyncHandler(async (req: Request, res: Response) => {
   await documentTemplateService.deleteTemplate(Number(req.params.id), tenantContext(req), tenantActor(req));
-  return ApiResponse.success(res, { message: t({ bn: "টেমপ্লেট মুছে ফেলা হয়েছে", en: "Template deleted", ar: "تم حذف القالب" }) });
+  return ApiResponse.success(res, { message: t({ bn: "টেমপ্লেট মুছে ফেলা হয়েছে", en: "Template deleted" }) });
 });
 
 export const getEffectiveDefault = asyncHandler(async (req: Request, res: Response) => {
@@ -98,10 +98,10 @@ export const setTenantDefault = asyncHandler(async (req: Request, res: Response)
   const body = req.body || {};
   const type = assertDocumentType(body.type);
   const templateId = Number(body.template_id);
-  if (!templateId) throw new BadRequestError(t({ bn: "template_id আবশ্যক", en: "template_id is required", ar: "template_id مطلوب" }));
+  if (!templateId) throw new BadRequestError(t({ bn: "template_id আবশ্যক", en: "template_id is required" }));
 
   await documentTemplateService.setTenantDefault(tenantContext(req).tenantId, type, templateId, tenantActor(req));
-  return ApiResponse.success(res, { message: t({ bn: "ডিফল্ট টেমপ্লেট আপডেট হয়েছে", en: "Tenant default updated", ar: "تم تحديث القالب الافتراضي" }) });
+  return ApiResponse.success(res, { message: t({ bn: "ডিফল্ট টেমপ্লেট আপডেট হয়েছে", en: "Tenant default updated" }) });
 });
 
 export const getPreviewData = asyncHandler(async (req: Request, res: Response) => {
@@ -122,7 +122,7 @@ export const restoreTemplateVersion = asyncHandler(async (req: Request, res: Res
     tenantContext(req),
     tenantActor(req),
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "সংস্করণটি খসড়ায় ফিরিয়ে আনা হয়েছে", en: "Version restored to draft", ar: "تمت استعادة الإصدار إلى مسودة" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "সংস্করণটি খসড়ায় ফিরিয়ে আনা হয়েছে", en: "Version restored to draft" }) });
 });
 
 export const generateDocuments = asyncHandler(async (req: Request, res: Response) => {

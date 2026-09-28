@@ -25,6 +25,6 @@ export async function assertExamCoversClass(madrasaId: number, examId: number, c
 
   const divisionId = cls?.divisionId ?? null;
   if (divisionId === null || !exam.divisions.some((d) => d.divisionId === divisionId)) {
-    throw new BadRequestError(t({ bn: "এই পরীক্ষাটি নির্বাচিত শ্রেণির বিভাগের জন্য নির্ধারিত নয়", en: "This exam is not scheduled for the selected class's division", ar: "هذا الامتحان غير مخصص لقسم الصف المختار" }));
+    throw new BadRequestError(t({ bn: "এই পরীক্ষাটি নির্বাচিত শ্রেণির বিভাগের জন্য নির্ধারিত নয়", en: "This exam is not scheduled for the selected class's division" }));
   }
 }

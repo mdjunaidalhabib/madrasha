@@ -33,7 +33,7 @@ export class KioskService {
 
   async scanCard(madrasaId: number, cardUid: string): Promise<KioskScanResultDto> {
     const uid = String(cardUid || "").trim();
-    if (!uid) throw new BadRequestError(t({ bn: "card_uid আবশ্যক", en: "card_uid is required", ar: "card_uid مطلوب" }));
+    if (!uid) throw new BadRequestError(t({ bn: "card_uid আবশ্যক", en: "card_uid is required" }));
 
     const student = await this.repository.findStudentByCardUid(madrasaId, uid);
     // roll is always non-null here since the repository query is scoped to
@@ -41,14 +41,14 @@ export class KioskService {
     // object (rather than passing `student` through as-is) because TS
     // doesn't carry a nested-property null-check into the containing
     // object's type for a later call.
-    if (!student || student.roll == null) throw new NotFoundError(t({ bn: "কার্ড শনাক্ত হয়নি", en: "Card not recognized", ar: "لم يتم التعرف على البطاقة" }));
+    if (!student || student.roll == null) throw new NotFoundError(t({ bn: "কার্ড শনাক্ত হয়নি", en: "Card not recognized" }));
 
     return this.markScan(madrasaId, { ...student, roll: student.roll }, "card");
   }
 
   async scanFingerprint(madrasaId: number, fingerprintId: string): Promise<KioskScanResultDto> {
     const fid = String(fingerprintId || "").trim();
-    if (!fid) throw new BadRequestError(t({ bn: "fingerprint_id আবশ্যক", en: "fingerprint_id is required", ar: "fingerprint_id مطلوب" }));
+    if (!fid) throw new BadRequestError(t({ bn: "fingerprint_id আবশ্যক", en: "fingerprint_id is required" }));
 
     const student = await this.repository.findStudentByFingerprintId(madrasaId, fid);
     // roll is always non-null here since the repository query is scoped to
@@ -56,7 +56,7 @@ export class KioskService {
     // object (rather than passing `student` through as-is) because TS
     // doesn't carry a nested-property null-check into the containing
     // object's type for a later call.
-    if (!student || student.roll == null) throw new NotFoundError(t({ bn: "আঙুলের ছাপ শনাক্ত হয়নি", en: "Fingerprint not recognized", ar: "لم يتم التعرف على البصمة" }));
+    if (!student || student.roll == null) throw new NotFoundError(t({ bn: "আঙুলের ছাপ শনাক্ত হয়নি", en: "Fingerprint not recognized" }));
 
     return this.markScan(madrasaId, { ...student, roll: student.roll }, "fingerprint");
   }
@@ -79,7 +79,7 @@ export class KioskService {
 
   async createDevice(madrasaId: number, name: string): Promise<CreateKioskDeviceResultDto> {
     const deviceName = String(name || "").trim();
-    if (!deviceName) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "name is required", ar: "الاسم مطلوب" }));
+    if (!deviceName) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "name is required" }));
 
     const rawKey = crypto.randomBytes(24).toString("hex");
     const apiKeyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
@@ -102,13 +102,13 @@ export class KioskService {
 
   async setDeviceActive(madrasaId: number, id: number, isActive: boolean) {
     const result = await this.repository.setDeviceActive(madrasaId, id, isActive);
-    if (result.count === 0) throw new NotFoundError(t({ bn: "কিয়স্ক ডিভাইস পাওয়া যায়নি", en: "Kiosk device not found", ar: "لم يتم العثور على جهاز الكشك" }));
+    if (result.count === 0) throw new NotFoundError(t({ bn: "কিয়স্ক ডিভাইস পাওয়া যায়নি", en: "Kiosk device not found" }));
     return result.count;
   }
 
   async deleteDevice(madrasaId: number, id: number) {
     const result = await this.repository.deleteDevice(madrasaId, id);
-    if (result.count === 0) throw new NotFoundError(t({ bn: "কিয়স্ক ডিভাইস পাওয়া যায়নি", en: "Kiosk device not found", ar: "لم يتم العثور على جهاز الكشك" }));
+    if (result.count === 0) throw new NotFoundError(t({ bn: "কিয়স্ক ডিভাইস পাওয়া যায়নি", en: "Kiosk device not found" }));
     return result.count;
   }
 
@@ -117,15 +117,15 @@ export class KioskService {
    * translated to a friendly ConflictError here. */
   async assignStudentCard(madrasaId: number, studentId: number, cardUid: unknown) {
     const uid = typeof cardUid === "string" ? cardUid.trim() : "";
-    if (!uid) throw new BadRequestError(t({ bn: "card_uid আবশ্যক", en: "card_uid is required", ar: "card_uid مطلوب" }));
+    if (!uid) throw new BadRequestError(t({ bn: "card_uid আবশ্যক", en: "card_uid is required" }));
 
     try {
       const result = await this.repository.setStudentCardUid(madrasaId, studentId, uid);
-      if (result.count === 0) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
+      if (result.count === 0) throw new NotFoundError(t({ bn: "শিক্ষার্থী পাওয়া যায়নি", en: "Student not found" }));
       return result.count;
     } catch (err) {
       if ((err as any)?.code === "P2002") {
-        throw new ConflictError(t({ bn: "এই কার্ডটি অন্য শিক্ষার্থীর সাথে যুক্ত আছে", en: "This card is linked to another student", ar: "هذه البطاقة مرتبطة بطالب آخر" }));
+        throw new ConflictError(t({ bn: "এই কার্ডটি অন্য শিক্ষার্থীর সাথে যুক্ত আছে", en: "This card is linked to another student" }));
       }
       throw err;
     }

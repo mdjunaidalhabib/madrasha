@@ -27,16 +27,4 @@ export const templateTokenText = defineText({
     registration_no: "Registration No.",
     exam_name: "Exam Name",
   },
-  ar: {
-    student_name: "اسم {{student}}",
-    father_name: "اسم الأب",
-    mother_name: "اسم الأم",
-    division_name: "{{division}}",
-    class_name: "{{class}}",
-    academic_year: "{{session}}",
-    result_summary: "النتيجة",
-    roll: "رقم الجلوس",
-    registration_no: "رقم التسجيل",
-    exam_name: "اسم الاختبار",
-  },
 });

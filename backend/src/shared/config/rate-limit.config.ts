@@ -64,5 +64,5 @@ export const rateLimitConfig = {
   // consistent with every other error response and every other limiter
   // (loginLimiter, passwordResetLimiter, refreshLimiter) in this codebase.
   // Built per request so the text follows the Accept-Language header.
-  message: () => ({ message: t({ bn: "অনেক বেশি অনুরোধ হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many requests. Please try again later.", ar: "طلبات كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
+  message: () => ({ message: t({ bn: "অনেক বেশি অনুরোধ হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many requests. Please try again later." }) }),
 };

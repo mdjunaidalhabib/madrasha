@@ -56,7 +56,7 @@ export const reorderDivisions = async (req: Request, res: Response) => {
   try {
     const ids = (Array.isArray(req.body?.division_ids) ? req.body.division_ids : []).map(Number);
     await metaService.reorderDivisions(ids);
-    res.json({ message: t({ bn: "বিভাগের ক্রম সংরক্ষণ করা হয়েছে", en: "Division order saved", ar: "تم حفظ ترتيب الأقسام" }) });
+    res.json({ message: t({ bn: "বিভাগের ক্রম সংরক্ষণ করা হয়েছে", en: "Division order saved" }) });
   } catch (err) {
     respondError(res, err, "reorderDivisions ERROR:", "Failed to reorder divisions");
   }
@@ -129,7 +129,7 @@ export const reorderClasses = async (req: Request, res: Response) => {
     const divisionId = Number(req.body?.division_id);
     const ids = (Array.isArray(req.body?.class_ids) ? req.body.class_ids : []).map(Number);
     await metaService.reorderClasses(divisionId, ids);
-    res.json({ message: t({ bn: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে", en: "Class order saved", ar: "تم حفظ ترتيب الصفوف" }) });
+    res.json({ message: t({ bn: "শ্রেণির ক্রম সংরক্ষণ করা হয়েছে", en: "Class order saved" }) });
   } catch (err) {
     respondError(res, err, "reorderClasses ERROR:", "Failed to reorder classes");
   }
@@ -180,7 +180,7 @@ export const reorderBooks = async (req: Request, res: Response) => {
     const classId = Number(req.body?.class_id);
     const ids = (Array.isArray(req.body?.book_ids) ? req.body.book_ids : []).map(Number);
     await metaService.reorderBooks(classId, ids);
-    res.json({ message: t({ bn: "বিষয়ের ক্রম সংরক্ষণ করা হয়েছে", en: "Subject order saved", ar: "تم حفظ ترتيب المواد" }) });
+    res.json({ message: t({ bn: "বিষয়ের ক্রম সংরক্ষণ করা হয়েছে", en: "Subject order saved" }) });
   } catch (err) {
     respondError(res, err, "reorderBooks ERROR:", "Failed to reorder books");
   }

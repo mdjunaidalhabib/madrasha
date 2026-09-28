@@ -58,10 +58,10 @@ type MarkLike = {
 const AUDIT_LOG_PER_ROW_LIMIT = 5;
 
 const ALREADY_DECIDED_MESSAGE = (): string =>
-  t({ bn: "এই সংশোধনের অনুরোধ ইতিমধ্যে সিদ্ধান্ত নেওয়া হয়ে গেছে।", en: "A decision has already been made on this correction request.", ar: "تم اتخاذ قرار بشأن طلب التصحيح هذا بالفعل." });
+  t({ bn: "এই সংশোধনের অনুরোধ ইতিমধ্যে সিদ্ধান্ত নেওয়া হয়ে গেছে।", en: "A decision has already been made on this correction request." });
 const DUPLICATE_PENDING_MESSAGE =
   (): string =>
-  t({ bn: "এই একই বিষয়ের জন্য ইতিমধ্যে একটি সংশোধনের অনুরোধ অপেক্ষমাণ (PENDING) আছে — আগেরটি সিদ্ধান্ত না হওয়া পর্যন্ত নতুন অনুরোধ দেওয়া যাবে না।", en: "A correction request for this same item is already PENDING — a new request cannot be made until that one is decided.", ar: "يوجد بالفعل طلب تصحيح معلق (PENDING) للعنصر نفسه — لا يمكن تقديم طلب جديد حتى يتم البت في الطلب السابق." });
+  t({ bn: "এই একই বিষয়ের জন্য ইতিমধ্যে একটি সংশোধনের অনুরোধ অপেক্ষমাণ (PENDING) আছে — আগেরটি সিদ্ধান্ত না হওয়া পর্যন্ত নতুন অনুরোধ দেওয়া যাবে না।", en: "A correction request for this same item is already PENDING — a new request cannot be made until that one is decided." });
 
 interface PreparedCorrection {
   field: string;
@@ -81,14 +81,14 @@ interface PreparedCorrection {
 export class ResultCorrectionService {
   private async assertMaster(madrasaId: number, resultMasterId: number) {
     const master = await resultPanelRepository.findResultMasterById(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
     return master;
   }
 
   private assertCorrectable(status: string) {
     if (status !== "PUBLISHED" && status !== "LOCKED") {
       throw new ConflictError(
-        t({ bn: "ফলাফল প্রকাশিত/লক অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published/locked — if it isn't published yet, edit the marks directly.", ar: "لا يمكن طلب التصحيح إلا عندما تكون النتيجة منشورة/مقفلة — إذا لم تُنشر بعد فعدّل الدرجات مباشرة." }),
+        t({ bn: "ফলাফল প্রকাশিত/লক অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published/locked — if it isn't published yet, edit the marks directly." }),
       );
     }
   }
@@ -115,37 +115,37 @@ export class ResultCorrectionService {
 
     if (MARK_FIELDS.has(field)) {
       if (!studentId || !bookId) {
-        throw new BadRequestError(t({ bn: "mark-স্তরের সংশোধনের জন্য student_id ও book_id আবশ্যক।", en: "student_id and book_id are required for a mark-level correction.", ar: "student_id و book_id مطلوبان لتصحيح على مستوى الدرجة." }));
+        throw new BadRequestError(t({ bn: "mark-স্তরের সংশোধনের জন্য student_id ও book_id আবশ্যক।", en: "student_id and book_id are required for a mark-level correction." }));
       }
       const mark = markCache
         ? (markCache.get(`${studentId}:${bookId}`) ?? null)
         : await prisma.mark.findFirst({ where: { resultMasterId, studentId, bookId } });
-      if (!mark) throw new NotFoundError(t({ bn: "এই শিক্ষার্থী/বিষয়ের নম্বরের কোনো রেকর্ড পাওয়া যায়নি।", en: "No mark record was found for this student/subject.", ar: "لم يتم العثور على سجل درجات لهذا الطالب/المادة." }));
+      if (!mark) throw new NotFoundError(t({ bn: "এই শিক্ষার্থী/বিষয়ের নম্বরের কোনো রেকর্ড পাওয়া যায়নি।", en: "No mark record was found for this student/subject." }));
       oldValue = this.readMarkField(mark, field);
 
       if (field === "mark") {
         const n = Number(newValue);
         if (newValue === null || newValue.trim() === "" || !Number.isFinite(n) || n < 0) {
-          throw new BadRequestError(t({ bn: "নম্বরের মান সঠিক নয়।", en: "The mark value is invalid.", ar: "قيمة الدرجة غير صالحة." }));
+          throw new BadRequestError(t({ bn: "নম্বরের মান সঠিক নয়।", en: "The mark value is invalid." }));
         }
         const fullMark = fullMarkByBookId?.get(bookId);
         if (fullMark !== undefined && n > fullMark) {
-          throw new BadRequestError(t({ bn: `নম্বর পূর্ণমান (${fullMark}) এর বেশি হতে পারে না।`, en: `The mark cannot exceed the full mark (${fullMark}).`, ar: `لا يمكن أن تتجاوز الدرجة الدرجة الكاملة (${fullMark}).` }));
+          throw new BadRequestError(t({ bn: `নম্বর পূর্ণমান (${fullMark}) এর বেশি হতে পারে না।`, en: `The mark cannot exceed the full mark (${fullMark}).` }));
         }
       } else if (BOOLEAN_MARK_FIELDS.has(field) && newValue !== "true" && newValue !== "false") {
-        throw new BadRequestError(t({ bn: `"${field}" এর মান true অথবা false হতে হবে।`, en: `The value of "${field}" must be true or false.`, ar: `يجب أن تكون قيمة "${field}" إما true أو false.` }));
+        throw new BadRequestError(t({ bn: `"${field}" এর মান true অথবা false হতে হবে।`, en: `The value of "${field}" must be true or false.` }));
       }
     } else if (SUMMARY_FIELDS.has(field)) {
       if (!studentId) {
-        throw new BadRequestError(t({ bn: "summary-স্তরের সংশোধনের জন্য student_id আবশ্যক।", en: "student_id is required for a summary-level correction.", ar: "student_id مطلوب لتصحيح على مستوى الملخص." }));
+        throw new BadRequestError(t({ bn: "summary-স্তরের সংশোধনের জন্য student_id আবশ্যক।", en: "student_id is required for a summary-level correction." }));
       }
       const summary = await prisma.resultSummary.findUnique({
         where: { resultMasterId_studentId: { resultMasterId, studentId } },
       });
-      if (!summary) throw new NotFoundError(t({ bn: "এই শিক্ষার্থীর ফলাফল সারাংশ পাওয়া যায়নি।", en: "No result summary was found for this student.", ar: "لم يتم العثور على ملخص نتيجة لهذا الطالب." }));
+      if (!summary) throw new NotFoundError(t({ bn: "এই শিক্ষার্থীর ফলাফল সারাংশ পাওয়া যায়নি।", en: "No result summary was found for this student." }));
       oldValue = this.readSummaryField(summary, field);
     } else {
-      throw new BadRequestError(t({ bn: `"${field}" ক্ষেত্রটি সংশোধনযোগ্য নয়।`, en: `The field "${field}" cannot be corrected.`, ar: `الحقل "${field}" غير قابل للتصحيح.` }));
+      throw new BadRequestError(t({ bn: `"${field}" ক্ষেত্রটি সংশোধনযোগ্য নয়।`, en: `The field "${field}" cannot be corrected.` }));
     }
 
     return { field, studentId, bookId, oldValue, newValue };
@@ -161,7 +161,7 @@ export class ResultCorrectionService {
     this.assertCorrectable(master.status);
 
     const reason = String(body.reason || "").trim();
-    if (!reason) throw new BadRequestError(t({ bn: "সংশোধনের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for the correction is required.", ar: "يجب ذكر سبب التصحيح." }));
+    if (!reason) throw new BadRequestError(t({ bn: "সংশোধনের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for the correction is required." }));
 
     const subjects = await resultPanelRepository.findActiveSubjectsForClass(madrasaId, master.classId);
     const fullMarkByBookId = new Map<number, number>(
@@ -196,7 +196,7 @@ export class ResultCorrectionService {
 
     await this.logRequested(madrasaId, userId, resultMasterId, created.id, prepared, reason);
 
-    return { message: t({ bn: "সংশোধনের অনুরোধ জমা দেওয়া হয়েছে", en: "Correction request submitted", ar: "تم تقديم طلب التصحيح" }), correction_id: created.id };
+    return { message: t({ bn: "সংশোধনের অনুরোধ জমা দেওয়া হয়েছে", en: "Correction request submitted" }), correction_id: created.id };
   }
 
   /** Several changed cells of one report card in a single all-or-nothing
@@ -213,18 +213,18 @@ export class ResultCorrectionService {
     this.assertCorrectable(master.status);
 
     const reason = String(body.reason || "").trim();
-    if (!reason) throw new BadRequestError(t({ bn: "সংশোধনের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for the correction is required.", ar: "يجب ذكر سبب التصحيح." }));
+    if (!reason) throw new BadRequestError(t({ bn: "সংশোধনের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for the correction is required." }));
 
     const items = Array.isArray(body.items) ? body.items : [];
-    if (items.length === 0) throw new BadRequestError(t({ bn: "কোনো সংশোধন দেওয়া হয়নি।", en: "No corrections were provided.", ar: "لم يتم تقديم أي تصحيحات." }));
+    if (items.length === 0) throw new BadRequestError(t({ bn: "কোনো সংশোধন দেওয়া হয়নি।", en: "No corrections were provided." }));
     if (items.length > MAX_BATCH_ITEMS) {
-      throw new BadRequestError(t({ bn: `একবারে সর্বোচ্চ ${MAX_BATCH_ITEMS}টি সংশোধন দেওয়া যাবে।`, en: `At most ${MAX_BATCH_ITEMS} corrections can be submitted at once.`, ar: `يمكن تقديم ${MAX_BATCH_ITEMS} تصحيح كحد أقصى دفعة واحدة.` }));
+      throw new BadRequestError(t({ bn: `একবারে সর্বোচ্চ ${MAX_BATCH_ITEMS}টি সংশোধন দেওয়া যাবে।`, en: `At most ${MAX_BATCH_ITEMS} corrections can be submitted at once.` }));
     }
 
     const seen = new Set<string>();
     for (const item of items) {
       const key = `${item.student_id ?? ""}:${item.book_id ?? ""}:${item.field}`;
-      if (seen.has(key)) throw new BadRequestError(t({ bn: "একই ঘরের একই ক্ষেত্র একাধিকবার দেওয়া হয়েছে।", en: "The same field of the same cell was provided more than once.", ar: "تم تقديم الحقل نفسه للخلية نفسها أكثر من مرة." }));
+      if (seen.has(key)) throw new BadRequestError(t({ bn: "একই ঘরের একই ক্ষেত্র একাধিকবার দেওয়া হয়েছে।", en: "The same field of the same cell was provided more than once." }));
       seen.add(key);
     }
 
@@ -364,19 +364,19 @@ export class ResultCorrectionService {
     approve: boolean,
     decisionNote?: string,
   ) {
-    if (!correctionId) throw new BadRequestError(t({ bn: "correction id আবশ্যক", en: "correction id is required", ar: "معرف التصحيح مطلوب" }));
+    if (!correctionId) throw new BadRequestError(t({ bn: "correction id আবশ্যক", en: "correction id is required" }));
 
     const correction = await prisma.resultCorrection.findFirst({
       where: { id: correctionId, madrasaId },
     });
-    if (!correction) throw new NotFoundError(t({ bn: "সংশোধনের অনুরোধ পাওয়া যায়নি।", en: "Correction request not found.", ar: "لم يتم العثور على طلب التصحيح." }));
+    if (!correction) throw new NotFoundError(t({ bn: "সংশোধনের অনুরোধ পাওয়া যায়নি।", en: "Correction request not found." }));
     if (correction.status !== ("PENDING" as CorrectionStatus)) {
       throw new ConflictError(ALREADY_DECIDED_MESSAGE());
     }
 
     if (correction.requestedBy === userId && !(await hasExamDepartmentAuthority(userId))) {
       throw new ConflictError(
-        t({ bn: "নিজের অনুরোধ করা সংশোধন নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর সিদ্ধান্ত প্রয়োজন।", en: "You cannot approve/reject a correction you requested yourself — a different user must decide.", ar: "لا يمكنك اعتماد/رفض تصحيح طلبته بنفسك — يلزم قرار من مستخدم آخر." }),
+        t({ bn: "নিজের অনুরোধ করা সংশোধন নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর সিদ্ধান্ত প্রয়োজন।", en: "You cannot approve/reject a correction you requested yourself — a different user must decide." }),
       );
     }
 
@@ -403,11 +403,11 @@ export class ResultCorrectionService {
         details: decisionNote?.trim() || null,
       });
 
-      return { message: t({ bn: "সংশোধনের অনুরোধ প্রত্যাখ্যান করা হয়েছে", en: "Correction request rejected", ar: "تم رفض طلب التصحيح" }) };
+      return { message: t({ bn: "সংশোধনের অনুরোধ প্রত্যাখ্যান করা হয়েছে", en: "Correction request rejected" }) };
     }
 
     await this.applyCorrections(madrasaId, userId, [correctionId], decisionNote?.trim() || null);
-    return { message: t({ bn: "সংশোধন প্রয়োগ করা হয়েছে", en: "Correction applied", ar: "تم تطبيق التصحيح" }) };
+    return { message: t({ bn: "সংশোধন প্রয়োগ করা হয়েছে", en: "Correction applied" }) };
   }
 
   /** Approves and applies PENDING corrections of ONE result session.
@@ -435,11 +435,11 @@ export class ResultCorrectionService {
       orderBy: { id: "asc" },
     });
     if (rows.length !== correctionIds.length) {
-      throw new NotFoundError(t({ bn: "সংশোধনের অনুরোধ পাওয়া যায়নি।", en: "Correction request not found.", ar: "لم يتم العثور على طلب التصحيح." }));
+      throw new NotFoundError(t({ bn: "সংশোধনের অনুরোধ পাওয়া যায়নি।", en: "Correction request not found." }));
     }
     const resultMasterId = rows[0].resultMasterId;
     if (rows.some((r) => r.resultMasterId !== resultMasterId)) {
-      throw new BadRequestError(t({ bn: "একসাথে শুধু একটি ফলাফলের সংশোধন প্রয়োগ করা যায়।", en: "Corrections can be applied to only one result at a time.", ar: "يمكن تطبيق تصحيحات نتيجة واحدة فقط في كل مرة." }));
+      throw new BadRequestError(t({ bn: "একসাথে শুধু একটি ফলাফলের সংশোধন প্রয়োগ করা যায়।", en: "Corrections can be applied to only one result at a time." }));
     }
 
     const ids = rows.map((r) => r.id);
@@ -473,7 +473,7 @@ export class ResultCorrectionService {
       for (const row of rows) {
         if (MARK_FIELDS.has(row.field)) {
           if (!row.studentId || !row.bookId) {
-            throw new BadRequestError(t({ bn: "সংশোধন প্রয়োগ করা যায়নি — অসম্পূর্ণ তথ্য।", en: "The correction could not be applied — incomplete data.", ar: "تعذر تطبيق التصحيح — بيانات غير مكتملة." }));
+            throw new BadRequestError(t({ bn: "সংশোধন প্রয়োগ করা যায়নি — অসম্পূর্ণ তথ্য।", en: "The correction could not be applied — incomplete data." }));
           }
           // Several fields of one cell (mark + is_absent + note) merge into
           // a single UPDATE.
@@ -484,7 +484,7 @@ export class ResultCorrectionService {
           appliedMarkField = true;
         } else {
           if (!row.studentId) {
-            throw new BadRequestError(t({ bn: "সংশোধন প্রয়োগ করা যায়নি — অসম্পূর্ণ তথ্য।", en: "The correction could not be applied — incomplete data.", ar: "تعذر تطبيق التصحيح — بيانات غير مكتملة." }));
+            throw new BadRequestError(t({ bn: "সংশোধন প্রয়োগ করা যায়নি — অসম্পূর্ণ তথ্য।", en: "The correction could not be applied — incomplete data." }));
           }
           summaryWrites.push({ studentId: row.studentId, data: this.summaryFieldData(row.field, row.newValue) });
         }
@@ -618,7 +618,7 @@ export class ResultCorrectionService {
     switch (field) {
       case "mark": {
         const n = Number(newValue);
-        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "নম্বরের মান সঠিক নয়।", en: "The mark value is invalid.", ar: "قيمة الدرجة غير صالحة." }));
+        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "নম্বরের মান সঠিক নয়।", en: "The mark value is invalid." }));
         data.mark = n;
         break;
       }
@@ -650,19 +650,19 @@ export class ResultCorrectionService {
         break;
       case "total": {
         const n = Number(newValue);
-        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "total-এর মান সঠিক নয়।", en: "The value of total is invalid.", ar: "قيمة المجموع غير صالحة." }));
+        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "total-এর মান সঠিক নয়।", en: "The value of total is invalid." }));
         data.total = n;
         break;
       }
       case "average": {
         const n = Number(newValue);
-        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "average-এর মান সঠিক নয়।", en: "The value of average is invalid.", ar: "قيمة المتوسط غير صالحة." }));
+        if (!Number.isFinite(n)) throw new BadRequestError(t({ bn: "average-এর মান সঠিক নয়।", en: "The value of average is invalid." }));
         data.average = n;
         break;
       }
       case "status": {
         const allowed = new Set(["PASS", "FAIL", "ABSENT"]);
-        if (newValue && !allowed.has(newValue)) throw new BadRequestError(t({ bn: "status-এর মান সঠিক নয়।", en: "The value of status is invalid.", ar: "قيمة الحالة غير صالحة." }));
+        if (newValue && !allowed.has(newValue)) throw new BadRequestError(t({ bn: "status-এর মান সঠিক নয়।", en: "The value of status is invalid." }));
         data.status = newValue || null;
         break;
       }
@@ -671,7 +671,7 @@ export class ResultCorrectionService {
           data.rankNo = null;
         } else {
           const n = Number(newValue);
-          if (!Number.isInteger(n)) throw new BadRequestError(t({ bn: "rank_no-এর মান সঠিক নয়।", en: "The value of rank_no is invalid.", ar: "قيمة الترتيب غير صالحة." }));
+          if (!Number.isInteger(n)) throw new BadRequestError(t({ bn: "rank_no-এর মান সঠিক নয়।", en: "The value of rank_no is invalid." }));
           data.rankNo = n;
         }
         break;

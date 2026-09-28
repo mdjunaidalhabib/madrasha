@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteText } from "./website.text";
 import { Link } from "react-router-dom";
 import {
   Award,
@@ -204,15 +206,17 @@ function PublishAndSaveActions({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const t = useText(websiteText);
+  const c = useText(commonText);
   return (
     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
       <PublishToggle checked={published} onChange={onPublishedChange} />
       <div className="flex gap-2">
         <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>
-          বাতিল
+          {c.cancel}
         </Button>
         <Button type="button" disabled={saving} onClick={onSave}>
-          {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          {saving ? c.saving : c.save}
         </Button>
       </div>
     </div>
@@ -230,12 +234,14 @@ function PublishAndSubmitAction({
   onPublishedChange: (v: boolean) => void;
   saving: boolean;
 }) {
+  const t = useText(websiteText);
+  const c = useText(commonText);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <PublishToggle checked={published} onChange={onPublishedChange} />
       <Button disabled={saving} type="submit" className="gap-1.5">
         {!saving && <Plus size={15} />}
-        {saving ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+        {saving ? c.saving : c.add}
       </Button>
     </div>
   );
@@ -324,6 +330,7 @@ function WebsiteThemePicker({
   accent: string;
   onSave: (v: WebsiteThemeKey) => Promise<void>;
 }) {
+  const t = useText(websiteText);
   const [pending, setPending] = useState<WebsiteThemeKey | null>(null);
   const selected = pending ?? value;
 
@@ -340,7 +347,7 @@ function WebsiteThemePicker({
   };
 
   return (
-    <div role="radiogroup" aria-label="ওয়েবসাইট থিম" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div role="radiogroup" aria-label={t.websiteTheme} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {websiteThemes.map((theme) => {
         const active = selected === theme.key;
         return (
@@ -372,9 +379,9 @@ function WebsiteThemePicker({
               >
                 {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
               </span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">{theme.name}</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t.themes[theme.key]?.[0] ?? theme.name}</span>
             </div>
-            <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">{theme.description}</p>
+            <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">{t.themes[theme.key]?.[1] ?? theme.description}</p>
           </label>
         );
       })}
@@ -383,6 +390,8 @@ function WebsiteThemePicker({
 }
 
 export default function AdminWebsiteSettingsPage() {
+  const t = useText(websiteText);
+  const c = useText(commonText);
   const user = useAuthStore((s) => s.user);
   const slug = getTenantSlugFromPath();
   const toast = useToastStore((s) => s.show);
@@ -434,7 +443,7 @@ export default function AdminWebsiteSettingsPage() {
   const [savingPage, setSavingPage] = useState(false);
 
   // Existing items in Notices/Gallery/Slider/Committee are edited in place
-  // (pencil icon on the item itself), the same pattern as "পেজ কন্টেন্ট"
+  // (pencil icon on the item itself), the same pattern as t.pageContent
   // above — the top form is only ever for creating a *new* item.
   const [editingNoticeId, setEditingNoticeId] = useState<number | null>(null);
   const [noticeEditDraft, setNoticeEditDraft] = useState<WebsiteNoticePayload | null>(null);
@@ -492,7 +501,7 @@ export default function AdminWebsiteSettingsPage() {
       })
       .catch((err) => {
         logger.error("LOAD WEBSITE SETTINGS ERROR:", err);
-        toast("সেটিংস লোড করতে সমস্যা হয়েছে। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।", "error");
+        toast(t.loadFailed, "error");
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -523,10 +532,10 @@ export default function AdminWebsiteSettingsPage() {
   const saveSettingsField = async (key: keyof WebsiteSettingsPayload, value: string | number) => {
     try {
       await queueSettingsSave({ [key]: value } as Partial<WebsiteSettingsPayload>);
-      toast("সংরক্ষণ হয়েছে।", "success");
+      toast(t.saved, "success");
     } catch (err) {
       logger.error("SAVE WEBSITE SETTINGS FIELD ERROR:", err);
-      toast("সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।", "error");
+      toast(t.saveFailed, "error");
       throw err;
     }
   };
@@ -537,11 +546,11 @@ export default function AdminWebsiteSettingsPage() {
     setSavingToggle(String(key));
     try {
       await queueSettingsSave({ [key]: nextValue } as Partial<WebsiteSettingsPayload>);
-      toast("আপডেট হয়েছে।", "success");
+      toast(t.updated, "success");
     } catch (err) {
       logger.error("SAVE WEBSITE TOGGLE ERROR:", err);
       setForm(formRef.current); // revert to the last known-good server state
-      toast("আপডেট করা যায়নি। আবার চেষ্টা করুন।", "error");
+      toast(t.updateFailed, "error");
     } finally {
       setSavingToggle(null);
     }
@@ -563,12 +572,12 @@ export default function AdminWebsiteSettingsPage() {
     try {
       await saveWebsitePage(pageDraft);
       setPages((prev) => prev.map((p, i) => (i === editingPageIndex ? pageDraft : p)));
-      toast("পেজ সংরক্ষণ হয়েছে।", "success");
+      toast(t.pageSaved, "success");
       setEditingPageIndex(null);
       setPageDraft(null);
     } catch (err) {
       logger.error("SAVE WEBSITE PAGE ERROR:", err);
-      toast("পেজ সংরক্ষণ করা যায়নি।", "error");
+      toast(t.pageSaveFailed, "error");
     } finally {
       setSavingPage(false);
     }
@@ -578,7 +587,7 @@ export default function AdminWebsiteSettingsPage() {
   const submitNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noticeDraft.title?.trim()) {
-      toast("নোটিশের শিরোনাম দিন।", "error");
+      toast(t.enterNoticeTitle, "error");
       return;
     }
     setSavingNotice(true);
@@ -586,10 +595,10 @@ export default function AdminWebsiteSettingsPage() {
       const saved = await saveWebsiteNotice(noticeDraft);
       setNotices((prev) => [saved.data, ...prev]);
       setNoticeDraft(emptyNotice);
-      toast("নোটিশ যোগ করা হয়েছে।", "success");
+      toast(t.noticeAdded, "success");
     } catch (err) {
       logger.error("SAVE NOTICE ERROR:", err);
-      toast("নোটিশ সংরক্ষণ করা যায়নি।", "error");
+      toast(t.noticeSaveFailed, "error");
     } finally {
       setSavingNotice(false);
     }
@@ -608,18 +617,18 @@ export default function AdminWebsiteSettingsPage() {
   const saveNoticeEdit = async () => {
     if (!noticeEditDraft) return;
     if (!noticeEditDraft.title?.trim()) {
-      toast("নোটিশের শিরোনাম দিন।", "error");
+      toast(t.enterNoticeTitle, "error");
       return;
     }
     setSavingNoticeEdit(true);
     try {
       const saved = await saveWebsiteNotice(noticeEditDraft);
       setNotices((prev) => prev.map((n) => (n.id === saved.data.id ? saved.data : n)));
-      toast("নোটিশ আপডেট হয়েছে।", "success");
+      toast(t.noticeUpdated, "success");
       cancelEditNotice();
     } catch (err) {
       logger.error("SAVE NOTICE ERROR:", err);
-      toast("নোটিশ সংরক্ষণ করা যায়নি।", "error");
+      toast(t.noticeSaveFailed, "error");
     } finally {
       setSavingNoticeEdit(false);
     }
@@ -628,19 +637,19 @@ export default function AdminWebsiteSettingsPage() {
   const removeNotice = (notice: WebsiteNoticePayload) => {
     if (!notice.id) return;
     useConfirmStore.getState().show({
-      title: "নোটিশ মুছুন",
-      message: `"${notice.title}" নোটিশটি স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "মুছুন",
+      title: t.deleteNoticeTitle,
+      message: t.deleteNoticeMessage(notice.title),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteWebsiteNotice(notice.id!);
           setNotices((prev) => prev.filter((n) => n.id !== notice.id));
           if (editingNoticeId === notice.id) cancelEditNotice();
-          toast("নোটিশ মুছে ফেলা হয়েছে।", "success");
+          toast(t.noticeDeleted, "success");
         } catch (err) {
           logger.error("DELETE NOTICE ERROR:", err);
-          toast("নোটিশ মুছতে সমস্যা হয়েছে।", "error");
+          toast(t.noticeDeleteFailed, "error");
         }
       },
     });
@@ -650,7 +659,7 @@ export default function AdminWebsiteSettingsPage() {
   const submitVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!videoDraft.video_url?.trim()) {
-      toast("ভিডিও লিংক দিন।", "error");
+      toast(t.enterVideoLink, "error");
       return;
     }
     const chosenPosition = videoDraft.sort_order || videos.length + 1;
@@ -666,10 +675,10 @@ export default function AdminWebsiteSettingsPage() {
       }
       setVideos(nextVideos.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setVideoDraft(emptyVideo);
-      toast("ভিডিও যোগ করা হয়েছে।", "success");
+      toast(t.videoAdded, "success");
     } catch (err) {
       logger.error("SAVE VIDEO ERROR:", err);
-      toast("ভিডিও সংরক্ষণ করা যায়নি।", "error");
+      toast(t.videoSaveFailed, "error");
     } finally {
       setSavingVideo(false);
     }
@@ -689,7 +698,7 @@ export default function AdminWebsiteSettingsPage() {
   const saveVideoEdit = async () => {
     if (!videoEditDraft) return;
     if (!videoEditDraft.video_url?.trim()) {
-      toast("ভিডিও লিংক দিন।", "error");
+      toast(t.enterVideoLink, "error");
       return;
     }
     const desiredPosition = videoEditDraft.sort_order || videos.length;
@@ -708,11 +717,11 @@ export default function AdminWebsiteSettingsPage() {
       }
 
       setVideos(nextVideos.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-      toast("ভিডিও আপডেট হয়েছে।", "success");
+      toast(t.videoUpdated, "success");
       cancelEditVideo();
     } catch (err) {
       logger.error("SAVE VIDEO ERROR:", err);
-      toast("ভিডিও সংরক্ষণ করা যায়নি।", "error");
+      toast(t.videoSaveFailed, "error");
     } finally {
       setSavingVideoEdit(false);
     }
@@ -721,19 +730,19 @@ export default function AdminWebsiteSettingsPage() {
   const removeVideo = (item: WebsiteVideoPayload) => {
     if (!item.id) return;
     useConfirmStore.getState().show({
-      title: "ভিডিও মুছুন",
-      message: `"${item.title || "এই ভিডিওটি"}" স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "মুছুন",
+      title: t.deleteVideoTitle,
+      message: t.deleteItemMessage(item.title || t.thisVideo),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteWebsiteVideo(item.id!);
           setVideos((prev) => prev.filter((v) => v.id !== item.id));
           if (editingVideoId === item.id) cancelEditVideo();
-          toast("ভিডিও মুছে ফেলা হয়েছে।", "success");
+          toast(t.videoDeleted, "success");
         } catch (err) {
           logger.error("DELETE VIDEO ERROR:", err);
-          toast("ভিডিও মুছতে সমস্যা হয়েছে।", "error");
+          toast(t.videoDeleteFailed, "error");
         }
       },
     });
@@ -743,7 +752,7 @@ export default function AdminWebsiteSettingsPage() {
   const submitGallery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!galleryDraft.image_url?.trim()) {
-      toast("ছবি আপলোড করুন।", "error");
+      toast(t.uploadImage, "error");
       return;
     }
     if (isPendingCloudUpload(galleryDraft.image_url)) {
@@ -765,10 +774,10 @@ export default function AdminWebsiteSettingsPage() {
       }
       setGallery(nextGallery.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setGalleryDraft(emptyGallery);
-      toast("গ্যালারিতে ছবি যোগ করা হয়েছে।", "success");
+      toast(t.galleryAdded, "success");
     } catch (err) {
       logger.error("SAVE GALLERY ERROR:", err);
-      toast("ছবি সংরক্ষণ করা যায়নি।", "error");
+      toast(t.imageSaveFailed, "error");
     } finally {
       setSavingGallery(false);
     }
@@ -788,7 +797,7 @@ export default function AdminWebsiteSettingsPage() {
   const saveGalleryEdit = async () => {
     if (!galleryEditDraft) return;
     if (!galleryEditDraft.image_url?.trim()) {
-      toast("ছবি আপলোড করুন।", "error");
+      toast(t.uploadImage, "error");
       return;
     }
     if (isPendingCloudUpload(galleryEditDraft.image_url)) {
@@ -813,11 +822,11 @@ export default function AdminWebsiteSettingsPage() {
       }
 
       setGallery(nextGallery.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-      toast("গ্যালারি ছবি আপডেট হয়েছে।", "success");
+      toast(t.galleryUpdated, "success");
       cancelEditGalleryItem();
     } catch (err) {
       logger.error("SAVE GALLERY ERROR:", err);
-      toast("ছবি সংরক্ষণ করা যায়নি।", "error");
+      toast(t.imageSaveFailed, "error");
     } finally {
       setSavingGalleryEdit(false);
     }
@@ -826,19 +835,19 @@ export default function AdminWebsiteSettingsPage() {
   const removeGalleryItem = (item: WebsiteGalleryPayload) => {
     if (!item.id) return;
     useConfirmStore.getState().show({
-      title: "গ্যালারি ছবি মুছুন",
-      message: `"${item.title || "এই ছবিটি"}" স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "মুছুন",
+      title: t.deleteGalleryTitle,
+      message: t.deleteItemMessage(item.title || t.thisImage),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteWebsiteGalleryItem(item.id!);
           setGallery((prev) => prev.filter((g) => g.id !== item.id));
           if (editingGalleryId === item.id) cancelEditGalleryItem();
-          toast("ছবি মুছে ফেলা হয়েছে।", "success");
+          toast(t.imageDeleted, "success");
         } catch (err) {
           logger.error("DELETE GALLERY ERROR:", err);
-          toast("ছবি মুছতে সমস্যা হয়েছে।", "error");
+          toast(t.imageDeleteFailed, "error");
         }
       },
     });
@@ -848,7 +857,7 @@ export default function AdminWebsiteSettingsPage() {
   const submitSlide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slideDraft.image_url?.trim()) {
-      toast("স্লাইডের ছবি আপলোড করুন।", "error");
+      toast(t.uploadSlideImage, "error");
       return;
     }
     if (isPendingCloudUpload(slideDraft.image_url)) {
@@ -868,10 +877,10 @@ export default function AdminWebsiteSettingsPage() {
       }
       setSlides(nextSlides.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setSlideDraft(emptySlide);
-      toast("স্লাইড যোগ করা হয়েছে।", "success");
+      toast(t.slideAdded, "success");
     } catch (err) {
       logger.error("SAVE SLIDE ERROR:", err);
-      toast("স্লাইড সংরক্ষণ করা যায়নি।", "error");
+      toast(t.slideSaveFailed, "error");
     } finally {
       setSavingSlide(false);
     }
@@ -891,7 +900,7 @@ export default function AdminWebsiteSettingsPage() {
   const saveSlideEdit = async () => {
     if (!slideEditDraft) return;
     if (!slideEditDraft.image_url?.trim()) {
-      toast("স্লাইডের ছবি আপলোড করুন।", "error");
+      toast(t.uploadSlideImage, "error");
       return;
     }
     if (isPendingCloudUpload(slideEditDraft.image_url)) {
@@ -914,11 +923,11 @@ export default function AdminWebsiteSettingsPage() {
       }
 
       setSlides(nextSlides.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-      toast("স্লাইড আপডেট হয়েছে।", "success");
+      toast(t.slideUpdated, "success");
       cancelEditSlide();
     } catch (err) {
       logger.error("SAVE SLIDE ERROR:", err);
-      toast("স্লাইড সংরক্ষণ করা যায়নি।", "error");
+      toast(t.slideSaveFailed, "error");
     } finally {
       setSavingSlideEdit(false);
     }
@@ -927,19 +936,19 @@ export default function AdminWebsiteSettingsPage() {
   const removeSlide = (item: WebsiteSlidePayload) => {
     if (!item.id) return;
     useConfirmStore.getState().show({
-      title: "স্লাইড মুছুন",
-      message: "এই স্লাইডটি স্থায়ীভাবে মুছে ফেলতে চান?",
-      confirmText: "মুছুন",
+      title: t.deleteSlideTitle,
+      message: t.deleteSlideMessage,
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteWebsiteSlide(item.id!);
           setSlides((prev) => prev.filter((s) => s.id !== item.id));
           if (editingSlideId === item.id) cancelEditSlide();
-          toast("স্লাইড মুছে ফেলা হয়েছে।", "success");
+          toast(t.slideDeleted, "success");
         } catch (err) {
           logger.error("DELETE SLIDE ERROR:", err);
-          toast("স্লাইড মুছতে সমস্যা হয়েছে।", "error");
+          toast(t.slideDeleteFailed, "error");
         }
       },
     });
@@ -949,7 +958,7 @@ export default function AdminWebsiteSettingsPage() {
   const submitCommitteeMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!committeeDraft.name?.trim()) {
-      toast("সদস্যের নাম দিন।", "error");
+      toast(t.enterMemberName, "error");
       return;
     }
     if (isPendingCloudUpload(committeeDraft.photo_url)) {
@@ -961,10 +970,10 @@ export default function AdminWebsiteSettingsPage() {
       const saved = await saveWebsiteCommitteeMember(committeeDraft);
       setCommittee((prev) => [saved.data, ...prev]);
       setCommitteeDraft(emptyCommittee);
-      toast("কমিটির সদস্য যোগ করা হয়েছে।", "success");
+      toast(t.memberAdded, "success");
     } catch (err) {
       logger.error("SAVE COMMITTEE ERROR:", err);
-      toast("সংরক্ষণ করা যায়নি।", "error");
+      toast(t.saveFailed, "error");
     } finally {
       setSavingCommittee(false);
     }
@@ -983,7 +992,7 @@ export default function AdminWebsiteSettingsPage() {
   const saveCommitteeEdit = async () => {
     if (!committeeEditDraft) return;
     if (!committeeEditDraft.name?.trim()) {
-      toast("সদস্যের নাম দিন।", "error");
+      toast(t.enterMemberName, "error");
       return;
     }
     if (isPendingCloudUpload(committeeEditDraft.photo_url)) {
@@ -994,11 +1003,11 @@ export default function AdminWebsiteSettingsPage() {
     try {
       const saved = await saveWebsiteCommitteeMember(committeeEditDraft);
       setCommittee((prev) => prev.map((item) => (item.id === saved.data.id ? saved.data : item)));
-      toast("কমিটির সদস্য আপডেট হয়েছে।", "success");
+      toast(t.memberUpdated, "success");
       cancelEditCommitteeMember();
     } catch (err) {
       logger.error("SAVE COMMITTEE ERROR:", err);
-      toast("সংরক্ষণ করা যায়নি।", "error");
+      toast(t.saveFailed, "error");
     } finally {
       setSavingCommitteeEdit(false);
     }
@@ -1007,43 +1016,43 @@ export default function AdminWebsiteSettingsPage() {
   const removeCommitteeMember = (item: WebsiteCommitteeMemberPayload) => {
     if (!item.id) return;
     useConfirmStore.getState().show({
-      title: "কমিটির সদস্য মুছুন",
-      message: `"${item.name}" কে স্থায়ীভাবে মুছে ফেলতে চান?`,
-      confirmText: "মুছুন",
+      title: t.deleteMemberTitle,
+      message: t.deleteMemberMessage(item.name),
+      confirmText: c.delete,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteWebsiteCommitteeMember(item.id!);
           setCommittee((prev) => prev.filter((m) => m.id !== item.id));
           if (editingCommitteeId === item.id) cancelEditCommitteeMember();
-          toast("সদস্য মুছে ফেলা হয়েছে।", "success");
+          toast(t.memberDeleted, "success");
         } catch (err) {
           logger.error("DELETE COMMITTEE ERROR:", err);
-          toast("মুছতে সমস্যা হয়েছে।", "error");
+          toast(t.deleteFailed, "error");
         }
       },
     });
   };
 
   const tabs: Array<{ key: TabKey; label: string; icon: typeof Settings2; badge?: number }> = [
-    { key: "general", label: "সাধারণ সেটিংস", icon: Settings2 },
-    { key: "appearance", label: "থিম ও হিরো ব্যানার", icon: Palette },
-    { key: "notice-bar", label: "নোটিশ বার", icon: Megaphone },
-    { key: "notices", label: "নোটিশ", icon: Bell, badge: notices.length },
-    { key: "gallery", label: "গ্যালারি", icon: Images, badge: gallery.length },
-    { key: "video", label: "ভিডিও গ্যালারি", icon: Video, badge: videos.length },
-    { key: "slider", label: "হিরো স্লাইডার", icon: GalleryHorizontalEnd, badge: slides.length },
-    { key: "muhtamim", label: "মুহতামিমের বাণী", icon: Quote },
-    { key: "sovapoti", label: "সভাপতির বাণী", icon: Award },
-    { key: "committee", label: "মাদ্রাসা কমিটি", icon: Users, badge: committee.length },
-    { key: "social", label: "সোশ্যাল মিডিয়া", icon: Share2 },
-    { key: "pages", label: "পেজ কন্টেন্ট", icon: FileText },
+    { key: "general", label: t.tabs["general"], icon: Settings2 },
+    { key: "appearance", label: t.tabs["appearance"], icon: Palette },
+    { key: "notice-bar", label: t.tabs["notice-bar"], icon: Megaphone },
+    { key: "notices", label: t.tabs["notices"], icon: Bell, badge: notices.length },
+    { key: "gallery", label: t.tabs["gallery"], icon: Images, badge: gallery.length },
+    { key: "video", label: t.tabs["video"], icon: Video, badge: videos.length },
+    { key: "slider", label: t.tabs["slider"], icon: GalleryHorizontalEnd, badge: slides.length },
+    { key: "muhtamim", label: t.tabs["muhtamim"], icon: Quote },
+    { key: "sovapoti", label: t.tabs["sovapoti"], icon: Award },
+    { key: "committee", label: t.tabs["committee"], icon: Users, badge: committee.length },
+    { key: "social", label: t.tabs["social"], icon: Share2 },
+    { key: "pages", label: t.pageContent, icon: FileText },
   ];
 
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
-        <PageHeader title="ওয়েবসাইট সেটিংস" />
+        <PageHeader title={t.title} />
         <SkeletonCard lines={3} />
         <SkeletonCard lines={3} />
       </div>
@@ -1055,7 +1064,7 @@ export default function AdminWebsiteSettingsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-24">
         <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
           <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-            <h2 className="text-base font-bold">সেটিংস মেনু</h2>
+            <h2 className="text-base font-bold">{t.settingsMenu}</h2>
           </div>
           <div className="space-y-1">
             {tabs.map(({ key, label, icon: Icon, badge }) => {
@@ -1099,8 +1108,8 @@ export default function AdminWebsiteSettingsPage() {
 
         <div className="min-w-0 max-w-4xl space-y-6">
       <PageHeader
-        title="ওয়েবসাইট সেটিংস"
-        subtitle="মাদ্রাসার পাবলিক ওয়েবসাইটের নাম, লোগো, ব্যানার, নোটিশ, গ্যালারি ও পেজ কন্টেন্ট এখান থেকে পরিচালনা করুন।"
+        title={t.title}
+        subtitle={t.subtitle}
         actions={
           <a
             href={publicUrl}
@@ -1108,7 +1117,7 @@ export default function AdminWebsiteSettingsPage() {
             rel="noreferrer"
             className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-600/30 active:translate-y-0"
           >
-            ওয়েবসাইট দেখুন
+            {t.viewWebsite}
             <ExternalLink
               size={15}
               className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
@@ -1136,7 +1145,7 @@ export default function AdminWebsiteSettingsPage() {
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-gray-900 dark:text-slate-100">ওয়েবসাইট প্রকাশিত</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-slate-100">{t.websitePublished}</span>
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
                   (form.is_published as number) !== 0
@@ -1144,16 +1153,16 @@ export default function AdminWebsiteSettingsPage() {
                     : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
                 }`}
               >
-                {(form.is_published as number) !== 0 ? "লাইভ আছে" : "বন্ধ আছে"}
+                {(form.is_published as number) !== 0 ? t.live : t.offline}
               </span>
             </div>
             <p className="mt-1 text-xs text-gray-600 dark:text-slate-400">
-              এটি মাস্টার সুইচ — বন্ধ করলে পুরো পাবলিক ওয়েবসাইট (সব ট্যাবের সব সেকশনসহ) সবার কাছে অদৃশ্য হয়ে যাবে।
+              {t.masterSwitchHint}
             </p>
           </div>
         </div>
         {savingToggle === "is_published" ? (
-          <span className="shrink-0 text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
+          <span className="shrink-0 text-xs text-gray-400 dark:text-slate-500">{c.saving}</span>
         ) : (
           <ToggleSwitch
             checked={(form.is_published as number) !== 0}
@@ -1165,15 +1174,15 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "general" && (
         <div className="space-y-6">
           <SectionCard
-            title="সেকশন দৃশ্যমানতা"
-            hint="ক্লিক করলেই সাথে সাথে আপডেট হয়ে যাবে — কোন সেকশনগুলো পাবলিক ওয়েবসাইটে দেখাবে তা নিয়ন্ত্রণ করুন"
+            title={t.sectionVisibility}
+            hint={t.sectionVisibilityHint}
             toggle={{
               checked: isSectionEnabled("website_section_visibility"),
               onChange: (v) => setSectionToggle("website_section_visibility", v),
             }}
           >
             <div className="grid gap-3 md:grid-cols-2">
-              {toggleFields.map(([key, label, hint]) => (
+              {toggleFields.map(([key]) => [key, ...(t.sections[String(key)] ?? ["", ""])] as const).map(([key, label, hint]) => (
                 <div
                   key={String(key)}
                   className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-slate-700"
@@ -1183,7 +1192,7 @@ export default function AdminWebsiteSettingsPage() {
                     <span className="text-xs text-gray-500 dark:text-slate-400">{hint}</span>
                   </span>
                   {savingToggle === String(key) ? (
-                    <span className="text-xs text-gray-400 dark:text-slate-500">সংরক্ষণ হচ্ছে...</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{c.saving}</span>
                   ) : (
                     <ToggleSwitch
                       checked={(form[key] as number) !== 0}
@@ -1200,30 +1209,29 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "appearance" && (
         <div className="space-y-6">
           <SectionCard
-            title="প্রতিষ্ঠান পরিচিতি ও লোগো"
+            title={t.institutionInfoLogo}
             toggle={{
               checked: isSectionEnabled("website_institution_info"),
               onChange: (v) => setSectionToggle("website_institution_info", v),
             }}
           >
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              মাদ্রাসার নাম, ঠিকানা, যোগাযোগ ও লোগো এখন{" "}
-              <span className="font-semibold text-slate-800 dark:text-slate-100">প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস</span>{" "}
-              থেকে স্বয়ংক্রিয়ভাবে নেওয়া হয়, যাতে একই তথ্য ওয়েবসাইট ও আইডি কার্ড/মার্কশিটের মতো সব রিপোর্টে
-              একইরকম দেখায়।
+              {t.brandingNoteBefore}{" "}
+              <span className="font-semibold text-slate-800 dark:text-slate-100">{t.brandingSettings}</span>{" "}
+              {t.brandingNoteAfter}
             </p>
             <Link
               to={`/settings/branding`}
               className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
-              প্রতিষ্ঠান ব্র্যান্ডিং সেটিংসে সম্পাদনা করুন
+              {t.editInBranding}
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </SectionCard>
 
           <SectionCard
-            title="ওয়েবসাইট থিম"
-            hint="নিচের থিম কালার প্রতিটি থিমেই প্রযোজ্য হবে।"
+            title={t.websiteTheme}
+            hint={t.themeHint}
             toggle={{
               checked: isSectionEnabled("website_theme_key"),
               onChange: (v) => setSectionToggle("website_theme_key", v),
@@ -1237,14 +1245,14 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="থিম কালার"
+            title={t.themeColor}
             toggle={{
               checked: isSectionEnabled("website_theme_color"),
               onChange: (v) => setSectionToggle("website_theme_color", v),
             }}
           >
             <InlineTextField
-              label="থিম কালার"
+              label={t.themeColor}
               value={form.theme_color || "#2563eb"}
               type="color"
               onSave={(v) => saveSettingsField("theme_color", v)}
@@ -1252,7 +1260,7 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="হোমপেজ ব্যানার"
+            title={t.homeBanner}
             toggle={{
               checked: isSectionEnabled("website_hero_banner"),
               onChange: (v) => setSectionToggle("website_hero_banner", v),
@@ -1260,13 +1268,13 @@ export default function AdminWebsiteSettingsPage() {
           >
             <div className="space-y-2">
               <InlineTextField
-                label="হিরো শিরোনাম"
+                label={t.heroTitle}
                 value={form.hero_title || ""}
-                placeholder="মাদ্রাসার নাম/স্বাগতম বার্তা"
+                placeholder={t.heroTitlePlaceholder}
                 onSave={(v) => saveSettingsField("hero_title", v)}
               />
               <InlineTextField
-                label="হিরো সাব-টাইটেল"
+                label={t.heroSubtitle}
                 value={form.hero_subtitle || ""}
                 multiline
                 onSave={(v) => saveSettingsField("hero_subtitle", v)}
@@ -1279,24 +1287,24 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "notice-bar" && (
         <div className="space-y-6">
           <SectionCard
-            title="চলমান নোটিশ বার"
-            hint="হোমপেজের একদম উপরে এই লেখাগুলো স্ক্রল হয়ে চলবে। খালি রাখলে বার দেখাবে না।"
+            title={t.noticeBar}
+            hint={t.noticeBarHint}
             toggle={{
               checked: isSectionEnabled("website_notice_bar"),
               onChange: (v) => setSectionToggle("website_notice_bar", v),
             }}
           >
             <InlineListField
-              label="নোটিশ লেখা"
+              label={t.noticeText}
               values={(form.notice_bar_text || "").split("\n").map((v) => v.trim()).filter(Boolean)}
               maxItems={20}
-              placeholder="যেমনঃ আগামী ১৫ই রমজান থেকে ভর্তি কার্যক্রম শুরু হবে।"
+              placeholder={t.noticeTextPlaceholder}
               onSave={(list) => saveSettingsField("notice_bar_text", list.join("\n"))}
             />
 
             <div className="mt-3 max-w-xs rounded-xl border border-gray-100 p-4 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">গতি (স্পিড)</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">{t.speed}</label>
                 <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
                   {form.notice_bar_speed ?? 20}s
                 </span>
@@ -1312,7 +1320,7 @@ export default function AdminWebsiteSettingsPage() {
                 onTouchEnd={(e) => saveSettingsField("notice_bar_speed", Number((e.target as HTMLInputElement).value))}
                 className="mt-2 w-full accent-blue-600"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">কম মান = দ্রুত স্ক্রল, বেশি মান = ধীর স্ক্রল</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t.speedHint}</p>
             </div>
           </SectionCard>
         </div>
@@ -1321,7 +1329,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "muhtamim" && (
         <div className="space-y-6">
           <SectionCard
-            title="মুহতামিম সাহেবের বাণী"
+            title={t.headMessage}
             toggle={{
               checked: isSectionEnabled("website_muhtamim_message"),
               onChange: (v) => setSectionToggle("website_muhtamim_message", v),
@@ -1329,29 +1337,29 @@ export default function AdminWebsiteSettingsPage() {
           >
             <div className="space-y-2">
               <InlineTextField
-                label="নাম"
+                label={c.name}
                 value={form.muhtamim_name || ""}
-                placeholder="মাওলানা মুহাম্মদ ..."
+                placeholder={t.headNamePlaceholder}
                 onSave={(v) => saveSettingsField("muhtamim_name", v)}
               />
               <InlineTextField
-                label="পদবি"
+                label={t.designation}
                 value={form.muhtamim_designation || ""}
-                placeholder="মুহতামিম ও শায়খুল হাদীস"
+                placeholder={t.headDesignationPlaceholder}
                 onSave={(v) => saveSettingsField("muhtamim_designation", v)}
               />
               <InlineImageField
-                label="মুহতামিম সাহেবের ছবি"
+                label={t.headPhoto}
                 value={form.muhtamim_photo}
                 folder="branding"
                 onSave={(v) => saveSettingsField("muhtamim_photo", v)}
               />
               <InlineTextField
-                label="বাণী"
+                label={t.message}
                 value={form.muhtamim_message || ""}
                 multiline
                 rows={6}
-                placeholder="মুহতামিম সাহেবের বাণী লিখুন..."
+                placeholder={t.headMessagePlaceholder}
                 onSave={(v) => saveSettingsField("muhtamim_message", v)}
               />
             </div>
@@ -1362,7 +1370,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "sovapoti" && (
         <div className="space-y-6">
           <SectionCard
-            title="সভাপতি সাহেবের বাণী"
+            title={t.presidentMessage}
             toggle={{
               checked: isSectionEnabled("website_sovapoti_message"),
               onChange: (v) => setSectionToggle("website_sovapoti_message", v),
@@ -1370,29 +1378,29 @@ export default function AdminWebsiteSettingsPage() {
           >
             <div className="space-y-2">
               <InlineTextField
-                label="নাম"
+                label={c.name}
                 value={form.sovapoti_name || ""}
-                placeholder="আলহাজ্ব মুহাম্মদ ..."
+                placeholder={t.presidentNamePlaceholder}
                 onSave={(v) => saveSettingsField("sovapoti_name", v)}
               />
               <InlineTextField
-                label="পদবি"
+                label={t.designation}
                 value={form.sovapoti_designation || ""}
-                placeholder="সভাপতি, মাদ্রাসা পরিচালনা পর্ষদ"
+                placeholder={t.presidentDesignationPlaceholder}
                 onSave={(v) => saveSettingsField("sovapoti_designation", v)}
               />
               <InlineImageField
-                label="সভাপতি সাহেবের ছবি"
+                label={t.presidentPhoto}
                 value={form.sovapoti_photo}
                 folder="branding"
                 onSave={(v) => saveSettingsField("sovapoti_photo", v)}
               />
               <InlineTextField
-                label="বাণী"
+                label={t.message}
                 value={form.sovapoti_message || ""}
                 multiline
                 rows={6}
-                placeholder="সভাপতি সাহেবের বাণী লিখুন..."
+                placeholder={t.presidentMessagePlaceholder}
                 onSave={(v) => saveSettingsField("sovapoti_message", v)}
               />
             </div>
@@ -1403,8 +1411,8 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "social" && (
         <div className="space-y-6">
           <SectionCard
-            title="সোশ্যাল মিডিয়া লিংক"
-            hint="খালি রাখলে সেই আইকনটি পাবলিক ওয়েবসাইটের ফুটার ও WhatsApp বাটনে দেখাবে না।"
+            title={t.socialLinks}
+            hint={t.socialLinksHint}
             toggle={{
               checked: isSectionEnabled("website_social_links"),
               onChange: (v) => setSectionToggle("website_social_links", v),
@@ -1412,25 +1420,25 @@ export default function AdminWebsiteSettingsPage() {
           >
             <div className="space-y-2">
               <InlineTextField
-                label="ফেসবুক পেজ URL"
+                label={t.facebookUrl}
                 value={form.facebook_url || ""}
                 placeholder="https://facebook.com/yourpage"
                 onSave={(v) => saveSettingsField("facebook_url", v)}
               />
               <InlineTextField
-                label="ইউটিউব চ্যানেল URL"
+                label={t.youtubeUrl}
                 value={form.youtube_url || ""}
                 placeholder="https://youtube.com/@yourchannel"
                 onSave={(v) => saveSettingsField("youtube_url", v)}
               />
               <InlineTextField
-                label="ইনস্টাগ্রাম প্রোফাইল URL"
+                label={t.instagramUrl}
                 value={form.instagram_url || ""}
                 placeholder="https://instagram.com/yourprofile"
                 onSave={(v) => saveSettingsField("instagram_url", v)}
               />
               <InlineTextField
-                label="WhatsApp চ্যানেল URL"
+                label={t.whatsappUrl}
                 value={form.whatsapp_channel_url || ""}
                 placeholder="https://whatsapp.com/channel/..."
                 onSave={(v) => saveSettingsField("whatsapp_channel_url", v)}
@@ -1439,11 +1447,11 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="লোকেশন ম্যাপ"
-            hint="Google Maps-এ মাদরাসার লোকেশন খুলে Share → Copy link করে এখানে দিন। ফুটারের যোগাযোগ কলামে ছোট ম্যাপে ক্লিক করলে এই লিংকে যাবে। খালি রাখলে ঠিকানা দিয়ে ম্যাপ খুঁজবে।"
+            title={t.locationMap}
+            hint={t.locationMapHint}
           >
             <InlineTextField
-              label="Google Maps লিংক"
+              label={t.mapsLink}
               value={form.map_url || ""}
               placeholder="https://maps.app.goo.gl/..."
               onSave={(v) => saveSettingsField("map_url", v)}
@@ -1455,8 +1463,8 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "pages" && (
         <div className="space-y-6">
           <SectionCard
-            title="পেজ কন্টেন্ট"
-            hint="আমাদের সম্পর্কে, ভর্তি তথ্য ও যোগাযোগ পেজের লেখা এখান থেকে সম্পাদনা করুন"
+            title={t.pageContent}
+            hint={t.pageContentHint}
             toggle={{
               checked: isSectionEnabled("website_page_content"),
               onChange: (v) => setSectionToggle("website_page_content", v),
@@ -1502,7 +1510,7 @@ export default function AdminWebsiteSettingsPage() {
                           <h3 className="font-semibold text-gray-900 dark:text-slate-100">{page.title}</h3>
                           {page.is_published === 0 && (
                             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                              অপ্রকাশিত
+                              {t.unpublished}
                             </span>
                           )}
                         </div>
@@ -1510,7 +1518,7 @@ export default function AdminWebsiteSettingsPage() {
                           {page.content?.trim() ? (
                             page.content
                           ) : (
-                            <span className="text-gray-400 dark:text-slate-500">কোনো কন্টেন্ট যোগ করা হয়নি</span>
+                            <span className="text-gray-400 dark:text-slate-500">{t.noContent}</span>
                           )}
                         </p>
                       </div>
@@ -1519,7 +1527,7 @@ export default function AdminWebsiteSettingsPage() {
                           type="button"
                           onClick={() => startEditPage(index)}
                           className="shrink-0 rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                          title="সম্পাদনা"
+                          title={c.edit}
                         >
                           <Pencil size={14} />
                         </button>
@@ -1536,7 +1544,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "notices" && (
         <div className="space-y-6">
           <SectionCard
-            title="নতুন নোটিশ যোগ করুন"
+            title={t.addNotice}
             toggle={{
               checked: isSectionEnabled("website_notice_add"),
               onChange: (v) => setSectionToggle("website_notice_add", v),
@@ -1546,14 +1554,14 @@ export default function AdminWebsiteSettingsPage() {
               <Input
                 value={noticeDraft.title || ""}
                 onChange={(e) => setNoticeDraft((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="নোটিশের শিরোনাম"
+                placeholder={t.noticeTitlePlaceholder}
               />
               <textarea
                 className={textAreaClass}
                 rows={3}
                 value={noticeDraft.content || ""}
                 onChange={(e) => setNoticeDraft((prev) => ({ ...prev, content: e.target.value }))}
-                placeholder="নোটিশের বিস্তারিত"
+                placeholder={t.noticeDetailsPlaceholder}
               />
               <PublishAndSubmitAction
                 published={noticeDraft.is_published !== 0}
@@ -1564,8 +1572,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="সব নোটিশ"
-            hint="যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            title={t.allNotices}
+            hint={t.allNoticesHint}
             toggle={{
               checked: isSectionEnabled("website_notice_list"),
               onChange: (v) => setSectionToggle("website_notice_list", v),
@@ -1581,7 +1589,7 @@ export default function AdminWebsiteSettingsPage() {
                         onChange={(e) =>
                           setNoticeEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
                         }
-                        placeholder="নোটিশের শিরোনাম"
+                        placeholder={t.noticeTitlePlaceholder}
                       />
                       <textarea
                         className={`${textAreaClass} mt-3`}
@@ -1590,7 +1598,7 @@ export default function AdminWebsiteSettingsPage() {
                         onChange={(e) =>
                           setNoticeEditDraft((prev) => (prev ? { ...prev, content: e.target.value } : prev))
                         }
-                        placeholder="নোটিশের বিস্তারিত"
+                        placeholder={t.noticeDetailsPlaceholder}
                       />
                       <PublishAndSaveActions
                         published={noticeEditDraft.is_published !== 0}
@@ -1612,7 +1620,7 @@ export default function AdminWebsiteSettingsPage() {
                           <h3 className="font-semibold text-gray-900 dark:text-slate-100">{notice.title}</h3>
                           {notice.is_published === 0 && (
                             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                              খসড়া / অপ্রকাশিত
+                              {t.draftUnpublished}
                             </span>
                           )}
                         </div>
@@ -1625,7 +1633,7 @@ export default function AdminWebsiteSettingsPage() {
                           type="button"
                           onClick={() => startEditNotice(notice)}
                           className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                          title="সম্পাদনা"
+                          title={c.edit}
                         >
                           <Pencil size={14} />
                         </button>
@@ -1633,7 +1641,7 @@ export default function AdminWebsiteSettingsPage() {
                           type="button"
                           onClick={() => removeNotice(notice)}
                           className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                          title="মুছুন"
+                          title={c.delete}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1643,7 +1651,7 @@ export default function AdminWebsiteSettingsPage() {
                 )}
               </div>
             ) : (
-              <EmptyState title="এখনো কোনো নোটিশ যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম নোটিশটি যোগ করুন।" />
+              <EmptyState title={t.noNotices} hint={t.noNoticesHint} />
             )}
           </SectionCard>
         </div>
@@ -1652,7 +1660,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "gallery" && (
         <div className="space-y-6">
           <SectionCard
-            title="নতুন ছবি যোগ করুন"
+            title={t.addImage}
             toggle={{
               checked: isSectionEnabled("website_gallery_add"),
               onChange: (v) => setSectionToggle("website_gallery_add", v),
@@ -1662,7 +1670,7 @@ export default function AdminWebsiteSettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-xs">
                   <BrandImageBox
-                    label="ছবি"
+                    label={c.photo}
                     folder="gallery"
                     value={galleryDraft.image_url}
                     onChange={(url) => setGalleryDraft((prev) => ({ ...prev, image_url: url }))}
@@ -1671,15 +1679,15 @@ export default function AdminWebsiteSettingsPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass}>ছবির শিরোনাম</label>
+                    <label className={fieldLabelClass}>{t.imageTitle}</label>
                     <Input
                       value={galleryDraft.title || ""}
                       onChange={(e) => setGalleryDraft((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="যেমন: বার্ষিক সমাবর্তন ২০২৬"
+                      placeholder={t.imageTitlePlaceholder}
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <label className={fieldLabelClass}>{t.position}</label>
                     <select
                       value={galleryDraft.sort_order || gallery.length + 1}
                       onChange={(e) =>
@@ -1690,7 +1698,7 @@ export default function AdminWebsiteSettingsPage() {
                       {Array.from({ length: gallery.length + 1 }, (_, i) => i + 1).map((pos) => (
                         <option key={pos} value={pos}>
                           {pos}
-                          {pos === gallery.length + 1 ? " (সবার শেষে)" : ""}
+                          {pos === gallery.length + 1 ? t.atEnd : ""}
                         </option>
                       ))}
                     </select>
@@ -1706,8 +1714,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="সব ছবি"
-            hint="যেকোনো ছবির পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            title={t.allImages}
+            hint={t.allImagesHint}
             toggle={{
               checked: isSectionEnabled("website_gallery_list"),
               onChange: (v) => setSectionToggle("website_gallery_list", v),
@@ -1720,7 +1728,7 @@ export default function AdminWebsiteSettingsPage() {
                     <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <div className="max-w-xs">
                         <BrandImageBox
-                          label="ছবি"
+                          label={c.photo}
                           folder="gallery"
                           value={galleryEditDraft.image_url}
                           onChange={(url) =>
@@ -1732,7 +1740,7 @@ export default function AdminWebsiteSettingsPage() {
                         />
                       </div>
                       <div className="mt-3">
-                        <label className={fieldLabelClass}>ছবির শিরোনাম</label>
+                        <label className={fieldLabelClass}>{t.imageTitle}</label>
                         <Input
                           value={galleryEditDraft.title || ""}
                           onChange={(e) =>
@@ -1741,7 +1749,7 @@ export default function AdminWebsiteSettingsPage() {
                         />
                       </div>
                       <div className="mt-3">
-                        <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                        <label className={fieldLabelClass}>{t.position}</label>
                         <select
                           value={galleryEditDraft.sort_order || gallery.length}
                           onChange={(e) =>
@@ -1780,15 +1788,15 @@ export default function AdminWebsiteSettingsPage() {
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || "গ্যালারি ছবি"}</p>
-                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
+                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || t.galleryImage}</p>
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{t.unpublished}</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditGalleryItem(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                            title="সম্পাদনা"
+                            title={c.edit}
                           >
                             <Pencil size={14} />
                           </button>
@@ -1796,7 +1804,7 @@ export default function AdminWebsiteSettingsPage() {
                             type="button"
                             onClick={() => removeGalleryItem(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                            title="মুছুন"
+                            title={c.delete}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1807,7 +1815,7 @@ export default function AdminWebsiteSettingsPage() {
                 )}
               </div>
             ) : (
-              <EmptyState title="এখনো কোনো গ্যালারি ছবি যোগ করা হয়নি" hint="উপরের ফর্ম থেকে প্রথম ছবিটি যোগ করুন।" />
+              <EmptyState title={t.noGallery} hint={t.noGalleryHint} />
             )}
           </SectionCard>
         </div>
@@ -1816,8 +1824,8 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "video" && (
         <div className="space-y-6">
           <SectionCard
-            title="নতুন ভিডিও যোগ করুন"
-            hint="ইউটিউব ভিডিওর লিংক পেস্ট করুন (যেমন: https://youtube.com/watch?v=... বা https://youtu.be/...)"
+            title={t.addVideo}
+            hint={t.addVideoHint}
             toggle={{
               checked: isSectionEnabled("website_video_add"),
               onChange: (v) => setSectionToggle("website_video_add", v),
@@ -1826,7 +1834,7 @@ export default function AdminWebsiteSettingsPage() {
             <form onSubmit={submitVideo} className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={fieldLabelClass}>ভিডিও লিংক</label>
+                  <label className={fieldLabelClass}>{t.videoLink}</label>
                   <Input
                     value={videoDraft.video_url || ""}
                     onChange={(e) => setVideoDraft((prev) => ({ ...prev, video_url: e.target.value }))}
@@ -1835,15 +1843,15 @@ export default function AdminWebsiteSettingsPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass}>ভিডিওর শিরোনাম</label>
+                    <label className={fieldLabelClass}>{t.videoTitle}</label>
                     <Input
                       value={videoDraft.title || ""}
                       onChange={(e) => setVideoDraft((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="যেমন: বার্ষিক মাহফিল ২০২৬"
+                      placeholder={t.videoTitlePlaceholder}
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <label className={fieldLabelClass}>{t.position}</label>
                     <select
                       value={videoDraft.sort_order || videos.length + 1}
                       onChange={(e) =>
@@ -1854,7 +1862,7 @@ export default function AdminWebsiteSettingsPage() {
                       {Array.from({ length: videos.length + 1 }, (_, i) => i + 1).map((pos) => (
                         <option key={pos} value={pos}>
                           {pos}
-                          {pos === videos.length + 1 ? " (সবার শেষে)" : ""}
+                          {pos === videos.length + 1 ? t.atEnd : ""}
                         </option>
                       ))}
                     </select>
@@ -1870,8 +1878,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="সব ভিডিও"
-            hint="যেকোনো ভিডিওর পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            title={t.allVideos}
+            hint={t.allVideosHint}
             toggle={{
               checked: isSectionEnabled("website_video_list"),
               onChange: (v) => setSectionToggle("website_video_list", v),
@@ -1883,7 +1891,7 @@ export default function AdminWebsiteSettingsPage() {
                   editingVideoId === item.id && videoEditDraft ? (
                     <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <div>
-                        <label className={fieldLabelClass}>ভিডিও লিংক</label>
+                        <label className={fieldLabelClass}>{t.videoLink}</label>
                         <Input
                           value={videoEditDraft.video_url || ""}
                           onChange={(e) =>
@@ -1892,7 +1900,7 @@ export default function AdminWebsiteSettingsPage() {
                         />
                       </div>
                       <div className="mt-3">
-                        <label className={fieldLabelClass}>ভিডিওর শিরোনাম</label>
+                        <label className={fieldLabelClass}>{t.videoTitle}</label>
                         <Input
                           value={videoEditDraft.title || ""}
                           onChange={(e) =>
@@ -1901,7 +1909,7 @@ export default function AdminWebsiteSettingsPage() {
                         />
                       </div>
                       <div className="mt-3">
-                        <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                        <label className={fieldLabelClass}>{t.position}</label>
                         <select
                           value={videoEditDraft.sort_order || videos.length}
                           onChange={(e) =>
@@ -1946,15 +1954,15 @@ export default function AdminWebsiteSettingsPage() {
                       )}
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || "ভিডিও"}</p>
-                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
+                          <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.title || t.video}</p>
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{t.unpublished}</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditVideo(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                            title="সম্পাদনা"
+                            title={c.edit}
                           >
                             <Pencil size={14} />
                           </button>
@@ -1962,7 +1970,7 @@ export default function AdminWebsiteSettingsPage() {
                             type="button"
                             onClick={() => removeVideo(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                            title="মুছুন"
+                            title={c.delete}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1973,7 +1981,7 @@ export default function AdminWebsiteSettingsPage() {
                 )}
               </div>
             ) : (
-              <EmptyState title="এখনো কোনো ভিডিও যোগ করা হয়নি" hint="উপরের ফর্ম থেকে ইউটিউব লিংক যোগ করুন।" />
+              <EmptyState title={t.noVideos} hint={t.noVideosHint} />
             )}
           </SectionCard>
         </div>
@@ -1982,7 +1990,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "slider" && (
         <div className="space-y-6">
           <SectionCard
-            title="নতুন স্লাইড যোগ করুন"
+            title={t.addSlide}
             toggle={{
               checked: isSectionEnabled("website_slider_add"),
               onChange: (v) => setSectionToggle("website_slider_add", v),
@@ -1992,9 +2000,9 @@ export default function AdminWebsiteSettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-xs">
                   <BrandImageBox
-                    label="স্লাইড ছবি"
-                    hint="সাইজ: 2100 × 900px (২১:৯) — অন্য সাইজ দিলেও মাঝখান থেকে কেটে স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
-                    ratioLabel="অনুপাত ২১:৯"
+                    label={t.slideImage}
+                    hint={t.slideImageHint}
+                    ratioLabel={t.ratio219}
                     folder="gallery"
                     shape="wide"
                     resizeTo={{ width: 2100, height: 900 }}
@@ -2005,16 +2013,16 @@ export default function AdminWebsiteSettingsPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass}>লিংক (ঐচ্ছিক)</label>
+                    <label className={fieldLabelClass}>{t.linkOptional}</label>
                     <Input
                       value={slideDraft.button_link || ""}
-                      placeholder="https://... অথবা /admission"
+                      placeholder={t.linkPlaceholder}
                       onChange={(e) => setSlideDraft((prev) => ({ ...prev, button_link: e.target.value }))}
                     />
-                    <p className={slideLinkHintClass}>দিলে স্লাইডে ক্লিক করলে এই লিংকে চলে যাবে।</p>
+                    <p className={slideLinkHintClass}>{t.slideLinkHint}</p>
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                    <label className={fieldLabelClass}>{t.position}</label>
                     <select
                       value={slideDraft.sort_order || slides.length + 1}
                       onChange={(e) =>
@@ -2025,7 +2033,7 @@ export default function AdminWebsiteSettingsPage() {
                       {Array.from({ length: slides.length + 1 }, (_, i) => i + 1).map((pos) => (
                         <option key={pos} value={pos}>
                           {pos}
-                          {pos === slides.length + 1 ? " (সবার শেষে)" : ""}
+                          {pos === slides.length + 1 ? t.atEnd : ""}
                         </option>
                       ))}
                     </select>
@@ -2041,8 +2049,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="সব স্লাইড"
-            hint="যেকোনো স্লাইডের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            title={t.allSlides}
+            hint={t.allSlidesHint}
             toggle={{
               checked: isSectionEnabled("website_slider_list"),
               onChange: (v) => setSectionToggle("website_slider_list", v),
@@ -2055,9 +2063,9 @@ export default function AdminWebsiteSettingsPage() {
                     <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
                       <div className="max-w-xs">
                         <BrandImageBox
-                          label="স্লাইড ছবি"
-                          hint="সাইজ: 2100 × 900px (২১:৯) — অন্য সাইজ দিলেও মাঝখান থেকে কেটে স্বয়ংক্রিয়ভাবে এই সাইজে রূপান্তরিত হয়ে JPG আকারে সংরক্ষণ হবে।"
-                          ratioLabel="অনুপাত ২১:৯"
+                          label={t.slideImage}
+                          hint={t.slideImageHint}
+                          ratioLabel={t.ratio219}
                           folder="gallery"
                           shape="wide"
                           resizeTo={{ width: 2100, height: 900 }}
@@ -2072,18 +2080,18 @@ export default function AdminWebsiteSettingsPage() {
                       </div>
                       <div className="mt-3 space-y-3">
                         <div>
-                          <label className={fieldLabelClass}>লিংক (ঐচ্ছিক)</label>
+                          <label className={fieldLabelClass}>{t.linkOptional}</label>
                           <Input
                             value={slideEditDraft.button_link || ""}
-                            placeholder="https://... অথবা /admission"
+                            placeholder={t.linkPlaceholder}
                             onChange={(e) =>
                               setSlideEditDraft((prev) => (prev ? { ...prev, button_link: e.target.value } : prev))
                             }
                           />
-                          <p className={slideLinkHintClass}>দিলে স্লাইডে ক্লিক করলে এই লিংকে চলে যাবে।</p>
+                          <p className={slideLinkHintClass}>{t.slideLinkHint}</p>
                         </div>
                         <div>
-                          <label className={fieldLabelClass}>ক্রম (অবস্থান)</label>
+                          <label className={fieldLabelClass}>{t.position}</label>
                           <select
                             value={slideEditDraft.sort_order || slides.length}
                             onChange={(e) =>
@@ -2125,16 +2133,16 @@ export default function AdminWebsiteSettingsPage() {
                         <div className="min-w-0">
                           <p className="flex items-center gap-1 truncate text-sm font-medium text-gray-700 dark:text-slate-300">
                             <Link2 size={13} className="shrink-0 text-gray-400 dark:text-slate-500" />
-                            <span className="truncate">{item.button_link || "লিংক নেই"}</span>
+                            <span className="truncate">{item.button_link || t.noLink}</span>
                           </p>
-                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
+                          {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{t.unpublished}</p>}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditSlide(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                            title="সম্পাদনা"
+                            title={c.edit}
                           >
                             <Pencil size={14} />
                           </button>
@@ -2142,7 +2150,7 @@ export default function AdminWebsiteSettingsPage() {
                             type="button"
                             onClick={() => removeSlide(item)}
                             className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                            title="মুছুন"
+                            title={c.delete}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -2153,7 +2161,7 @@ export default function AdminWebsiteSettingsPage() {
                 )}
               </div>
             ) : (
-              <EmptyState title="এখনো কোনো স্লাইড যোগ করা হয়নি" hint="স্লাইড যোগ করলে হোমপেজে স্লাইডার হিসেবে দেখা যাবে।" />
+              <EmptyState title={t.noSlides} hint={t.noSlidesHint} />
             )}
           </SectionCard>
         </div>
@@ -2162,7 +2170,7 @@ export default function AdminWebsiteSettingsPage() {
       {tab === "committee" && (
         <div className="space-y-6">
           <SectionCard
-            title="নতুন সদস্য যোগ করুন"
+            title={t.addMember}
             toggle={{
               checked: isSectionEnabled("website_committee_add"),
               onChange: (v) => setSectionToggle("website_committee_add", v),
@@ -2172,7 +2180,7 @@ export default function AdminWebsiteSettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="max-w-[9rem]">
                   <BrandImageBox
-                    label="ছবি"
+                    label={c.photo}
                     folder="gallery"
                     value={committeeDraft.photo_url}
                     onChange={(url) => setCommitteeDraft((prev) => ({ ...prev, photo_url: url }))}
@@ -2181,24 +2189,24 @@ export default function AdminWebsiteSettingsPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass}>নাম</label>
+                    <label className={fieldLabelClass}>{c.name}</label>
                     <Input
                       value={committeeDraft.name || ""}
                       onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>পদবি</label>
+                    <label className={fieldLabelClass}>{t.designation}</label>
                     <Input
                       value={committeeDraft.designation || ""}
                       onChange={(e) =>
                         setCommitteeDraft((prev) => ({ ...prev, designation: e.target.value }))
                       }
-                      placeholder="যেমন: সভাপতি"
+                      placeholder={t.designationPlaceholder}
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass}>ফোন (ঐচ্ছিক)</label>
+                    <label className={fieldLabelClass}>{t.phoneOptional}</label>
                     <Input
                       value={committeeDraft.phone || ""}
                       onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, phone: e.target.value }))}
@@ -2215,8 +2223,8 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
 
           <SectionCard
-            title="কমিটির সদস্যরা"
-            hint="যেকোনো সদস্যের পেন্সিল আইকনে ক্লিক করলে সেটি এডিট করা যাবে"
+            title={t.members}
+            hint={t.membersHint}
             toggle={{
               checked: isSectionEnabled("website_committee_list"),
               onChange: (v) => setSectionToggle("website_committee_list", v),
@@ -2233,7 +2241,7 @@ export default function AdminWebsiteSettingsPage() {
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="max-w-[9rem]">
                           <BrandImageBox
-                            label="ছবি"
+                            label={c.photo}
                             folder="gallery"
                             value={committeeEditDraft.photo_url}
                             onChange={(url) =>
@@ -2246,7 +2254,7 @@ export default function AdminWebsiteSettingsPage() {
                         </div>
                         <div className="space-y-3">
                           <div>
-                            <label className={fieldLabelClass}>নাম</label>
+                            <label className={fieldLabelClass}>{c.name}</label>
                             <Input
                               value={committeeEditDraft.name || ""}
                               onChange={(e) =>
@@ -2255,7 +2263,7 @@ export default function AdminWebsiteSettingsPage() {
                             />
                           </div>
                           <div>
-                            <label className={fieldLabelClass}>পদবি</label>
+                            <label className={fieldLabelClass}>{t.designation}</label>
                             <Input
                               value={committeeEditDraft.designation || ""}
                               onChange={(e) =>
@@ -2263,11 +2271,11 @@ export default function AdminWebsiteSettingsPage() {
                                   prev ? { ...prev, designation: e.target.value } : prev,
                                 )
                               }
-                              placeholder="যেমন: সভাপতি"
+                              placeholder={t.designationPlaceholder}
                             />
                           </div>
                           <div>
-                            <label className={fieldLabelClass}>ফোন (ঐচ্ছিক)</label>
+                            <label className={fieldLabelClass}>{t.phoneOptional}</label>
                             <Input
                               value={committeeEditDraft.phone || ""}
                               onChange={(e) =>
@@ -2306,14 +2314,14 @@ export default function AdminWebsiteSettingsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-gray-900 dark:text-slate-100">{item.name}</p>
                         <p className="truncate text-xs text-gray-500 dark:text-slate-400">{item.designation}</p>
-                        {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">অপ্রকাশিত</p>}
+                        {item.is_published === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{t.unpublished}</p>}
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
                           onClick={() => startEditCommitteeMember(item)}
                           className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
-                          title="সম্পাদনা"
+                          title={c.edit}
                         >
                           <Pencil size={14} />
                         </button>
@@ -2321,7 +2329,7 @@ export default function AdminWebsiteSettingsPage() {
                           type="button"
                           onClick={() => removeCommitteeMember(item)}
                           className="rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                          title="মুছুন"
+                          title={c.delete}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -2331,7 +2339,7 @@ export default function AdminWebsiteSettingsPage() {
                 )}
               </div>
             ) : (
-              <EmptyState title="এখনো কোনো কমিটির সদস্য যোগ করা হয়নি" hint="কমিটির সদস্য যোগ করলে পাবলিক ওয়েবসাইটে দেখা যাবে।" />
+              <EmptyState title={t.noMembers} hint={t.noMembersHint} />
             )}
           </SectionCard>
         </div>

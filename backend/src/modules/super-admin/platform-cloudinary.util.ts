@@ -14,7 +14,7 @@ export async function getPlatformCloudinaryCredentials() {
   const credentials = await platformSettingsService.resolveCredentials();
   if (!credentials) {
     throw new BadRequestError(
-      t({ bn: "প্ল্যাটফর্মের Cloudinary অ্যাকাউন্ট কনফিগার করা নেই। সুপার অ্যাডমিন → সেটিংসে গিয়ে Cloudinary Cloud Name, API Key ও API Secret যোগ করুন।", en: "Platform Cloudinary account is not configured. Go to Super Admin → Settings and add your Cloudinary Cloud Name, API Key and API Secret.", ar: "حساب Cloudinary للمنصة غير مُعد. انتقل إلى المشرف العام ← الإعدادات وأضف Cloud Name و API Key و API Secret." }),
+      t({ bn: "প্ল্যাটফর্মের Cloudinary অ্যাকাউন্ট কনফিগার করা নেই। সুপার অ্যাডমিন → সেটিংসে গিয়ে Cloudinary Cloud Name, API Key ও API Secret যোগ করুন।", en: "Platform Cloudinary account is not configured. Go to Super Admin → Settings and add your Cloudinary Cloud Name, API Key and API Secret." }),
     );
   }
   return credentials;

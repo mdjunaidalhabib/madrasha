@@ -35,7 +35,7 @@ export const requirePermission = (permission: string) => {
       const roleId = req.user?.role_id;
 
       if (!req.user || !roleId) {
-        return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized", ar: "غير مصرح" }) });
+        return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized" }) });
       }
 
       const role = await getUserRole(req);
@@ -49,7 +49,7 @@ export const requirePermission = (permission: string) => {
       const perms = await getRolePermissions(Number(roleId));
 
       if (!perms.includes(permission)) {
-        return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রয়োজনীয় পারমিশন নেই", en: "Forbidden: missing permission", ar: "ممنوع: صلاحية مفقودة" }) });
+        return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রয়োজনীয় পারমিশন নেই", en: "Forbidden: missing permission" }) });
       }
 
       return next();
@@ -65,7 +65,7 @@ export const requireAnyPermission = (...permissions: string[]) => {
       const roleId = req.user?.role_id;
 
       if (!req.user || !roleId) {
-        return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized", ar: "غير مصرح" }) });
+        return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized" }) });
       }
 
       const role = await getUserRole(req);
@@ -83,7 +83,7 @@ export const requireAnyPermission = (...permissions: string[]) => {
       const hasPermission = permissions.some((permission) => perms.includes(permission));
 
       if (!hasPermission) {
-        return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রয়োজনীয় পারমিশন নেই", en: "Forbidden: missing permission", ar: "ممنوع: صلاحية مفقودة" }) });
+        return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রয়োজনীয় পারমিশন নেই", en: "Forbidden: missing permission" }) });
       }
 
       return next();
@@ -96,14 +96,14 @@ export const requireAnyPermission = (...permissions: string[]) => {
 export const requireTenantOwnership = (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized", ar: "غير مصرح" }) });
+      return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized" }) });
     }
 
     const userMadrasaId = Number(req.user.madrasa_id);
     const tenantMadrasaId = Number(req.tenant?.madrasa_id);
 
     if (!tenantMadrasaId || !userMadrasaId || userMadrasaId !== tenantMadrasaId) {
-      return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রতিষ্ঠানে প্রবেশাধিকার সঠিক নয়", en: "Forbidden: invalid institution access", ar: "ممنوع: وصول غير صالح إلى المؤسسة" }) });
+      return res.status(403).json({ message: t({ bn: "অনুমতি নেই: প্রতিষ্ঠানে প্রবেশাধিকার সঠিক নয়", en: "Forbidden: invalid institution access" }) });
     }
 
     return next();

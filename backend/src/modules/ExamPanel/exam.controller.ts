@@ -22,25 +22,25 @@ export const getExams = asyncHandler(async (req: Request, res: Response) => {
 
 export const createExam = asyncHandler(async (req: Request, res: Response) => {
   await examService.createExam(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "পরীক্ষা তৈরি হয়েছে", en: "Exam created successfully", ar: "تم إنشاء الامتحان بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষা তৈরি হয়েছে", en: "Exam created successfully" }));
 });
 
 export const updateExam = asyncHandler(async (req: Request, res: Response) => {
   // Switching a dormant exam on also activates its fee - those counts come back as data.
   const data = await examService.updateExam(Number(req.params.id), getMadrasaId(req), req.body);
   return data
-    ? ApiResponse.success(res, { data, message: t({ bn: "পরীক্ষা আপডেট হয়েছে", en: "Exam updated successfully", ar: "تم تحديث الامتحان بنجاح" }) })
-    : ApiResponse.message(res, t({ bn: "পরীক্ষা আপডেট হয়েছে", en: "Exam updated successfully", ar: "تم تحديث الامتحان بنجاح" }));
+    ? ApiResponse.success(res, { data, message: t({ bn: "পরীক্ষা আপডেট হয়েছে", en: "Exam updated successfully" }) })
+    : ApiResponse.message(res, t({ bn: "পরীক্ষা আপডেট হয়েছে", en: "Exam updated successfully" }));
 });
 
 export const deleteExam = asyncHandler(async (req: Request, res: Response) => {
   await examService.deleteExam(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "পরীক্ষা মুছে ফেলা হয়েছে", en: "Exam deleted successfully", ar: "تم حذف الامتحان بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষা মুছে ফেলা হয়েছে", en: "Exam deleted successfully" }));
 });
 
 export const reorderExams = asyncHandler(async (req: Request, res: Response) => {
   await examService.reorderExams(getMadrasaId(req), req.body?.ids);
-  return ApiResponse.message(res, t({ bn: "পরীক্ষার ক্রম আপডেট হয়েছে", en: "Exam order updated successfully", ar: "تم تحديث ترتيب الامتحانات بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "পরীক্ষার ক্রম আপডেট হয়েছে", en: "Exam order updated successfully" }));
 });
 
 /* ================= GENERAL GRADES ================= */
@@ -52,17 +52,17 @@ export const getGeneralGrades = asyncHandler(async (req: Request, res: Response)
 
 export const saveGeneralGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.saveGeneralGrade(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড যোগ করা হয়েছে", en: "General grade added successfully", ar: "تمت إضافة التقدير العام بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড যোগ করা হয়েছে", en: "General grade added successfully" }));
 });
 
 export const updateGeneralGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.updateGeneralGrade(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড আপডেট হয়েছে", en: "General grade updated successfully", ar: "تم تحديث التقدير العام بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড আপডেট হয়েছে", en: "General grade updated successfully" }));
 });
 
 export const deleteGeneralGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.deleteGeneralGrade(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড মুছে ফেলা হয়েছে", en: "General grade deleted successfully", ar: "تم حذف التقدير العام بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "সাধারণ গ্রেড মুছে ফেলা হয়েছে", en: "General grade deleted successfully" }));
 });
 
 /* ================= MADRASA GRADES ================= */
@@ -74,17 +74,17 @@ export const getMadrasaGrades = asyncHandler(async (req: Request, res: Response)
 
 export const saveMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.saveMadrasaGrade(getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড যোগ করা হয়েছে", en: "Madrasa grade added successfully", ar: "تمت إضافة تقدير المدرسة الدينية بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড যোগ করা হয়েছে", en: "Madrasa grade added successfully" }));
 });
 
 export const updateMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.updateMadrasaGrade(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড আপডেট হয়েছে", en: "Madrasa grade updated successfully", ar: "تم تحديث تقدير المدرسة الدينية بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড আপডেট হয়েছে", en: "Madrasa grade updated successfully" }));
 });
 
 export const deleteMadrasaGrade = asyncHandler(async (req: Request, res: Response) => {
   await examService.deleteMadrasaGrade(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড মুছে ফেলা হয়েছে", en: "Madrasa grade deleted successfully", ar: "تم حذف تقدير المدرسة الدينية بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "মাদ্রাসা গ্রেড মুছে ফেলা হয়েছে", en: "Madrasa grade deleted successfully" }));
 });
 
 /* ================= SETTINGS ================= */
@@ -111,7 +111,7 @@ export const updateDivisionFailMark = asyncHandler(async (req: Request, res: Res
     req.body,
   );
   return ApiResponse.success(res, {
-    message: t({ bn: "বিভাগের ফেল মার্ক আপডেট হয়েছে", en: "Division fail mark updated successfully", ar: "تم تحديث درجة الرسوب للقسم بنجاح" }),
+    message: t({ bn: "বিভাগের ফেল মার্ক আপডেট হয়েছে", en: "Division fail mark updated successfully" }),
     extra: result,
   });
 });
@@ -119,7 +119,7 @@ export const updateDivisionFailMark = asyncHandler(async (req: Request, res: Res
 export const updateFailMark = asyncHandler(async (req: Request, res: Response) => {
   const result = await examService.updateFailMark(getMadrasaId(req), req.body);
   return ApiResponse.success(res, {
-    message: t({ bn: "ফেল মার্ক আপডেট হয়েছে", en: "Fail mark updated successfully", ar: "تم تحديث درجة الرسوب بنجاح" }),
+    message: t({ bn: "ফেল মার্ক আপডেট হয়েছে", en: "Fail mark updated successfully" }),
     extra: result,
   });
 });

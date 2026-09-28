@@ -464,7 +464,7 @@ export class AccountService {
     const numericIds = [...new Set((body.ids || []).map(Number))].filter(
       (id) => Number.isInteger(id) && id > 0,
     );
-    if (numericIds.length === 0) throw new BadRequestError(t({ bn: "মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি", en: "No entries selected for deletion", ar: "لم يتم تحديد أي قيود للحذف" }));
+    if (numericIds.length === 0) throw new BadRequestError(t({ bn: "মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি", en: "No entries selected for deletion" }));
 
     const result = await this.repository.softDeleteMany(numericIds, madrasaId);
 
@@ -476,7 +476,7 @@ export class AccountService {
       details: `${result.count} টি এন্ট্রি একসাথে মুছে ফেলা হয়েছে`,
     });
 
-    return { message: t({ bn: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, en: `${result.count} entries deleted`, ar: `تم حذف ${result.count} من القيود` }), count: result.count };
+    return { message: t({ bn: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, en: `${result.count} entries deleted` }), count: result.count };
   }
 }
 

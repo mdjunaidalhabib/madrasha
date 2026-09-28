@@ -23,16 +23,16 @@ export class ResultWorkflowService {
   constructor(private readonly repository: ResultWorkflowRepository = resultWorkflowRepository) {}
 
   private async assertMaster(madrasaId: number, resultMasterId: number) {
-    if (!resultMasterId) throw new BadRequestError(t({ bn: "result_master_id আবশ্যক", en: "result_master_id is required", ar: "result_master_id مطلوب" }));
+    if (!resultMasterId) throw new BadRequestError(t({ bn: "result_master_id আবশ্যক", en: "result_master_id is required" }));
     const master = await this.repository.findResultMaster(resultMasterId, madrasaId);
-    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found", ar: "لم يتم العثور على جلسة النتيجة" }));
+    if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
     return master;
   }
 
   private async assertActiveBook(madrasaId: number, classId: number, bookId: number) {
     const subjects = await resultPanelRepository.findActiveSubjectsForClass(madrasaId, classId);
     const active = subjects.some((s) => s.book && s.book.id === bookId);
-    if (!active) throw new BadRequestError(t({ bn: "এই বিষয়টি এই শ্রেণির জন্য সক্রিয় নয়।", en: "This subject is not active for this class.", ar: "هذه المادة غير نشطة لهذا الصف." }));
+    if (!active) throw new BadRequestError(t({ bn: "এই বিষয়টি এই শ্রেণির জন্য সক্রিয় নয়।", en: "This subject is not active for this class." }));
   }
 
   /** Re-derives ResultMaster.status from the current MarkSubmission states
@@ -122,13 +122,13 @@ export class ResultWorkflowService {
   }
 
   async submitBook(madrasaId: number, userId: number, resultMasterId: number, bookId: number) {
-    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required", ar: "book_id مطلوب" }));
+    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required" }));
     const master = await this.assertMaster(madrasaId, resultMasterId);
     await this.assertActiveBook(madrasaId, master.classId, bookId);
 
     const existing = await this.repository.findMarkSubmission(resultMasterId, bookId);
     if (existing && (existing.status === "SUBMITTED" || existing.status === "VERIFIED")) {
-      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর ইতিমধ্যে জমা দেওয়া হয়েছে।", en: "Marks for this subject have already been submitted.", ar: "تم تقديم درجات هذه المادة بالفعل." }));
+      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর ইতিমধ্যে জমা দেওয়া হয়েছে।", en: "Marks for this subject have already been submitted." }));
     }
 
     const missing = await this.repository.findStudentsMissingMarkForBook(
@@ -143,16 +143,15 @@ export class ResultWorkflowService {
         .slice(0, 3)
         .map(
           (s) =>
-            `${s.nameBn || `${t({ bn: "শিক্ষার্থী", en: "Student", ar: "الطالب" })} ${s.id}`}${s.roll ? ` (${t({ bn: "রোল", en: "roll", ar: "رقم الجلوس" })} ${toBanglaDigits(s.roll)})` : ""}`,
+            `${s.nameBn || `${t({ bn: "শিক্ষার্থী", en: "Student" })} ${s.id}`}${s.roll ? ` (${t({ bn: "রোল", en: "roll" })} ${toBanglaDigits(s.roll)})` : ""}`,
         )
         .join(", ");
       const more =
-        missing.length > 3 ? t({ bn: ` সহ আরও ${toBanglaDigits(missing.length - 3)} জন`, en: ` and ${missing.length - 3} more`, ar: ` و${missing.length - 3} آخرين` }) : "";
+        missing.length > 3 ? t({ bn: ` সহ আরও ${toBanglaDigits(missing.length - 3)} জন`, en: ` and ${missing.length - 3} more` }) : "";
       throw new BadRequestError(
         t({
           bn: `${toBanglaDigits(missing.length)} জন শিক্ষার্থীর এই বিষয়ের নম্বর এখনও দেওয়া হয়নি — ${examples}${more}। জমা দেওয়ার আগে সবার নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) দিন।`,
           en: `${missing.length} student(s) still have no marks for this subject — ${examples}${more}. Enter marks (or an absent/exempt/withheld mark) for everyone before submitting.`,
-          ar: `لا يزال ${missing.length} طالب بلا درجات في هذه المادة — ${examples}${more}. أدخل درجات الجميع (أو علامة غياب/إعفاء/حجب) قبل التقديم.`,
         }),
       );
     }
@@ -169,7 +168,7 @@ export class ResultWorkflowService {
       details: JSON.stringify({ book_id: bookId }),
     });
 
-    return { message: t({ bn: "নম্বর জমা দেওয়া হয়েছে", en: "Marks submitted", ar: "تم تقديم الدرجات" }), result_master_id: resultMasterId, book_id: bookId };
+    return { message: t({ bn: "নম্বর জমা দেওয়া হয়েছে", en: "Marks submitted" }), result_master_id: resultMasterId, book_id: bookId };
   }
 
   async verifyBook(
@@ -179,17 +178,17 @@ export class ResultWorkflowService {
     bookId: number,
     comment?: string,
   ) {
-    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required", ar: "book_id مطلوب" }));
+    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required" }));
     const master = await this.assertMaster(madrasaId, resultMasterId);
 
     const submission = await this.repository.findMarkSubmission(resultMasterId, bookId);
     if (!submission || submission.status !== "SUBMITTED") {
-      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর এখনও জমা দেওয়া হয়নি — যাচাই করার আগে জমা দিতে হবে।", en: "Marks for this subject have not been submitted yet — they must be submitted before verification.", ar: "لم يتم تقديم درجات هذه المادة بعد — يجب تقديمها قبل التحقق." }));
+      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর এখনও জমা দেওয়া হয়নি — যাচাই করার আগে জমা দিতে হবে।", en: "Marks for this subject have not been submitted yet — they must be submitted before verification." }));
     }
 
     if (submission.submittedBy === userId && !(await hasExamDepartmentAuthority(userId))) {
       throw new ConflictError(
-        t({ bn: "নিজের জমা করা নম্বর নিজে যাচাই করা যাবে না — ভিন্ন ব্যবহারকারীর মাধ্যমে যাচাই করাতে হবে।", en: "You cannot verify marks you submitted yourself — a different user must verify them.", ar: "لا يمكنك التحقق من درجات قدمتها بنفسك — يجب أن يتحقق منها مستخدم آخر." }),
+        t({ bn: "নিজের জমা করা নম্বর নিজে যাচাই করা যাবে না — ভিন্ন ব্যবহারকারীর মাধ্যমে যাচাই করাতে হবে।", en: "You cannot verify marks you submitted yourself — a different user must verify them." }),
       );
     }
 
@@ -205,7 +204,7 @@ export class ResultWorkflowService {
       details: JSON.stringify({ book_id: bookId, comment: comment?.trim() || null }),
     });
 
-    return { message: t({ bn: "নম্বর যাচাই সম্পন্ন হয়েছে", en: "Marks verified", ar: "تم التحقق من الدرجات" }), result_master_id: resultMasterId, book_id: bookId };
+    return { message: t({ bn: "নম্বর যাচাই সম্পন্ন হয়েছে", en: "Marks verified" }), result_master_id: resultMasterId, book_id: bookId };
   }
 
   async rejectBook(
@@ -215,16 +214,16 @@ export class ResultWorkflowService {
     bookId: number,
     reason: string,
   ) {
-    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required", ar: "book_id مطلوب" }));
+    if (!bookId) throw new BadRequestError(t({ bn: "book_id আবশ্যক", en: "book_id is required" }));
     if (!reason || !reason.trim()) {
-      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for rejection is required.", ar: "يجب ذكر سبب الرفض." }));
+      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ উল্লেখ করা আবশ্যক।", en: "A reason for rejection is required." }));
     }
 
     const master = await this.assertMaster(madrasaId, resultMasterId);
 
     const submission = await this.repository.findMarkSubmission(resultMasterId, bookId);
     if (!submission || (submission.status !== "SUBMITTED" && submission.status !== "VERIFIED")) {
-      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর জমা/যাচাই অবস্থায় নেই — প্রত্যাখ্যান করা যাবে না।", en: "Marks for this subject are not in submitted/verified state — they cannot be rejected.", ar: "درجات هذه المادة ليست في حالة التقديم/التحقق — لا يمكن رفضها." }));
+      throw new ConflictError(t({ bn: "এই বিষয়ের নম্বর জমা/যাচাই অবস্থায় নেই — প্রত্যাখ্যান করা যাবে না।", en: "Marks for this subject are not in submitted/verified state — they cannot be rejected." }));
     }
 
     const trimmedReason = reason.trim();
@@ -241,7 +240,7 @@ export class ResultWorkflowService {
     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, [master.status], data);
     if (!ok) {
       throw new ConflictError(
-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
       );
     }
 
@@ -254,7 +253,7 @@ export class ResultWorkflowService {
       details: JSON.stringify({ book_id: bookId, reason: trimmedReason }),
     });
 
-    return { message: t({ bn: "নম্বর প্রত্যাখ্যান করা হয়েছে", en: "Marks rejected", ar: "تم رفض الدرجات" }), result_master_id: resultMasterId, book_id: bookId };
+    return { message: t({ bn: "নম্বর প্রত্যাখ্যান করা হয়েছে", en: "Marks rejected" }), result_master_id: resultMasterId, book_id: bookId };
   }
 
   /** Result-level verification pass - a read-mostly sanity re-check of the
@@ -270,7 +269,7 @@ export class ResultWorkflowService {
 
     if (master.status !== "PROCESSING" && master.status !== "RESULT_VERIFIED") {
       throw new ConflictError(
-        t({ bn: "ফলাফল প্রসেস (PROCESSING) অবস্থায় থাকলেই কেবল ফলাফল যাচাই করা যায়।", en: "A result can be verified only while it is in PROCESSING state.", ar: "لا يمكن التحقق من النتيجة إلا عندما تكون في حالة المعالجة (PROCESSING)." }),
+        t({ bn: "ফলাফল প্রসেস (PROCESSING) অবস্থায় থাকলেই কেবল ফলাফল যাচাই করা যায়।", en: "A result can be verified only while it is in PROCESSING state." }),
       );
     }
 
@@ -403,7 +402,7 @@ export class ResultWorkflowService {
       );
       if (!ok) {
         throw new ConflictError(
-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
+          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
         );
       }
 
@@ -444,7 +443,7 @@ export class ResultWorkflowService {
 
     if (master.status !== "RESULT_VERIFIED") {
       throw new ConflictError(
-        t({ bn: "ফলাফল যাচাই (RESULT_VERIFIED) সম্পন্ন না হলে অনুমোদন/প্রত্যাখ্যান করা যাবে না।", en: "A result cannot be approved/rejected until it is verified (RESULT_VERIFIED).", ar: "لا يمكن اعتماد/رفض النتيجة قبل التحقق منها (RESULT_VERIFIED)." }),
+        t({ bn: "ফলাফল যাচাই (RESULT_VERIFIED) সম্পন্ন না হলে অনুমোদন/প্রত্যাখ্যান করা যাবে না।", en: "A result cannot be approved/rejected until it is verified (RESULT_VERIFIED)." }),
       );
     }
 
@@ -461,7 +460,7 @@ export class ResultWorkflowService {
       !(await hasFullResultAuthority(userId))
     ) {
       throw new ConflictError(
-        t({ bn: "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।", en: "You cannot approve/reject a result you verified yourself — a different user must approve it.", ar: "لا يمكنك اعتماد/رفض نتيجة تحققت منها بنفسك — يلزم اعتماد من مستخدم آخر." }),
+        t({ bn: "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।", en: "You cannot approve/reject a result you verified yourself — a different user must approve it." }),
       );
     }
 
@@ -479,7 +478,7 @@ export class ResultWorkflowService {
       );
       if (!ok) {
         throw new ConflictError(
-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
+          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
         );
       }
 
@@ -492,11 +491,11 @@ export class ResultWorkflowService {
         details: JSON.stringify({ remarks: remarks || null }),
       });
 
-      return { message: t({ bn: "ফলাফল অনুমোদিত হয়েছে", en: "Result approved", ar: "تم اعتماد النتيجة" }), result_master_id: resultMasterId };
+      return { message: t({ bn: "ফলাফল অনুমোদিত হয়েছে", en: "Result approved" }), result_master_id: resultMasterId };
     }
 
     if (!remarks || !remarks.trim()) {
-      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।", en: "A reason for rejection (remarks) is required.", ar: "يجب ذكر سبب الرفض (الملاحظات)." }));
+      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।", en: "A reason for rejection (remarks) is required." }));
     }
 
     const rejectOk = await this.repository.updateResultMasterStatus(
@@ -512,7 +511,7 @@ export class ResultWorkflowService {
     );
     if (!rejectOk) {
       throw new ConflictError(
-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
       );
     }
 
@@ -525,14 +524,14 @@ export class ResultWorkflowService {
       details: JSON.stringify({ reason: remarks.trim() }),
     });
 
-    return { message: t({ bn: "ফলাফল প্রত্যাখ্যান করা হয়েছে", en: "Result rejected", ar: "تم رفض النتيجة" }), result_master_id: resultMasterId };
+    return { message: t({ bn: "ফলাফল প্রত্যাখ্যান করা হয়েছে", en: "Result rejected" }), result_master_id: resultMasterId };
   }
 
   async lock(madrasaId: number, userId: number, resultMasterId: number) {
     const master = await this.assertMaster(madrasaId, resultMasterId);
 
     if (master.status !== "PUBLISHED") {
-      throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।", en: "A result cannot be locked until it is PUBLISHED.", ar: "لا يمكن قفل النتيجة قبل نشرها (PUBLISHED)." }));
+      throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।", en: "A result cannot be locked until it is PUBLISHED." }));
     }
 
     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
@@ -542,7 +541,7 @@ export class ResultWorkflowService {
     });
     if (!ok) {
       throw new ConflictError(
-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again.", ar: "قام شخص آخر بتغيير حالة هذه النتيجة بالفعل — حدّث الصفحة وحاول مرة أخرى." }),
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
       );
     }
 
@@ -554,7 +553,7 @@ export class ResultWorkflowService {
       entity_id: resultMasterId,
     });
 
-    return { message: t({ bn: "ফলাফল লক করা হয়েছে", en: "Result locked", ar: "تم قفل النتيجة" }), result_master_id: resultMasterId };
+    return { message: t({ bn: "ফলাফল লক করা হয়েছে", en: "Result locked" }), result_master_id: resultMasterId };
   }
 }
 

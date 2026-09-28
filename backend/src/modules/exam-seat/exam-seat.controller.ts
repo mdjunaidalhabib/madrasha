@@ -13,24 +13,24 @@ const getMadrasaId = (req: Request): number => {
 
 export const getSeatAllocations = asyncHandler(async (req: Request, res: Response) => {
   const examRoutineId = Number(req.query.exam_routine_id);
-  if (!examRoutineId) throw new BadRequestError(t({ bn: "exam_routine_id আবশ্যক", en: "exam_routine_id is required", ar: "exam_routine_id مطلوب" }));
+  if (!examRoutineId) throw new BadRequestError(t({ bn: "exam_routine_id আবশ্যক", en: "exam_routine_id is required" }));
   const data = await examSeatService.listByRoutine(getMadrasaId(req), examRoutineId);
   res.json({ success: true, data });
 });
 
 export const autoAllocateSeats = asyncHandler(async (req: Request, res: Response) => {
   const data = await examSeatService.autoAllocate(getMadrasaId(req), req.body);
-  res.json({ success: true, message: t({ bn: "আসন বরাদ্দ সম্পন্ন হয়েছে", en: "Seats allocated successfully", ar: "تم توزيع المقاعد بنجاح" }), data });
+  res.json({ success: true, message: t({ bn: "আসন বরাদ্দ সম্পন্ন হয়েছে", en: "Seats allocated successfully" }), data });
 });
 
 export const manualAdjustSeat = asyncHandler(async (req: Request, res: Response) => {
   await examSeatService.manualAdjust(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "আসন আপডেট হয়েছে", en: "Seat updated successfully", ar: "تم تحديث المقعد بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "আসন আপডেট হয়েছে", en: "Seat updated successfully" }));
 });
 
 export const clearSeatAllocations = asyncHandler(async (req: Request, res: Response) => {
   const examRoutineId = Number(req.body.exam_routine_id);
-  if (!examRoutineId) throw new BadRequestError(t({ bn: "exam_routine_id আবশ্যক", en: "exam_routine_id is required", ar: "exam_routine_id مطلوب" }));
+  if (!examRoutineId) throw new BadRequestError(t({ bn: "exam_routine_id আবশ্যক", en: "exam_routine_id is required" }));
   await examSeatService.clearByRoutine(getMadrasaId(req), examRoutineId);
-  return ApiResponse.message(res, t({ bn: "আসন বরাদ্দ মুছে ফেলা হয়েছে", en: "Seat allocations cleared successfully", ar: "تم مسح توزيع المقاعد بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "আসন বরাদ্দ মুছে ফেলা হয়েছে", en: "Seat allocations cleared successfully" }));
 });

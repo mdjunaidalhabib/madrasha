@@ -6,7 +6,7 @@ import { t } from "../../shared/i18n";
 export const createResult = asyncHandler(async (req: Request, res: Response) => {
   const madrasa_id = req.tenant!.madrasa_id;
   await talimatService.createResult(madrasa_id, req.body);
-  res.json({ message: t({ bn: "ফলাফল সংরক্ষণ হয়েছে", en: "Result saved", ar: "تم حفظ النتيجة" }) });
+  res.json({ message: t({ bn: "ফলাফল সংরক্ষণ হয়েছে", en: "Result saved" }) });
 });
 
 export const getMarksheet = asyncHandler(async (req: Request, res: Response) => {

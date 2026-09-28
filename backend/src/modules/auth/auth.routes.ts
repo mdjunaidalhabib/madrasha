@@ -45,7 +45,7 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // A function so the text follows the request language (Accept-Language).
-  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later.", ar: "محاولات تسجيل دخول كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
+  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later." }) }),
 });
 
 router.post("/login", loginLimiter, tenantMiddleware, validate(loginSchema), login);
@@ -60,7 +60,7 @@ const passwordResetLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later.", ar: "محاولات كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
+  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later." }) }),
 });
 
 router.post(
@@ -85,7 +85,7 @@ const refreshLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later.", ar: "محاولات كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
+  message: () => ({ message: t({ bn: "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many attempts. Please try again later." }) }),
 });
 
 router.post(

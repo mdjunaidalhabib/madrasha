@@ -94,7 +94,7 @@ export class EligibilityService {
     if (dto.min_attendance_percent !== undefined) {
       const pct = Number(dto.min_attendance_percent);
       if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
-        throw new BadRequestError(t({ bn: "min_attendance_percent অবশ্যই 0 থেকে 100 এর মধ্যে হতে হবে", en: "min_attendance_percent must be between 0 and 100", ar: "يجب أن تكون min_attendance_percent بين 0 و 100" }));
+        throw new BadRequestError(t({ bn: "min_attendance_percent অবশ্যই 0 থেকে 100 এর মধ্যে হতে হবে", en: "min_attendance_percent must be between 0 and 100" }));
       }
       writes.push([ELIGIBILITY_SETTING_KEYS.MIN_ATTENDANCE_PERCENT, String(pct)]);
     }

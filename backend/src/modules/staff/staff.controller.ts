@@ -10,7 +10,7 @@ export const createStaff = asyncHandler(async (req: Request, res: Response) => {
   const id = await staffService.createStaff(req.body, madrasaId);
 
   return ApiResponse.success(res, {
-    message: t({ bn: "স্টাফ তৈরি হয়েছে", en: "Staff created successfully", ar: "تم إنشاء الموظف بنجاح" }),
+    message: t({ bn: "স্টাফ তৈরি হয়েছে", en: "Staff created successfully" }),
     statusCode: HttpStatus.CREATED,
     extra: { id },
   });
@@ -39,7 +39,7 @@ export const updateStaff = asyncHandler(async (req: Request, res: Response) => {
   const affectedRows = await staffService.updateStaff(Number(req.params.id), madrasaId, req.body);
 
   return ApiResponse.success(res, {
-    message: t({ bn: "স্টাফ আপডেট হয়েছে", en: "Staff updated successfully", ar: "تم تحديث الموظف بنجاح" }),
+    message: t({ bn: "স্টাফ আপডেট হয়েছে", en: "Staff updated successfully" }),
     extra: { affectedRows },
   });
 });
@@ -49,7 +49,7 @@ export const deleteStaff = asyncHandler(async (req: Request, res: Response) => {
   const affectedRows = await staffService.deleteStaff(Number(req.params.id), madrasaId);
 
   return ApiResponse.success(res, {
-    message: t({ bn: "স্টাফ মুছে ফেলা হয়েছে", en: "Staff deleted", ar: "تم حذف الموظف" }),
+    message: t({ bn: "স্টাফ মুছে ফেলা হয়েছে", en: "Staff deleted" }),
     extra: { affectedRows },
   });
 });
@@ -58,5 +58,5 @@ export const deleteStaff = asyncHandler(async (req: Request, res: Response) => {
 export const updateStaffNamesBulk = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const data = await staffService.updateNamesBulk(madrasaId, req.body.items || []);
-  return ApiResponse.success(res, { message: t({ bn: "স্টাফদের নাম আপডেট হয়েছে", en: "Staff names updated", ar: "تم تحديث أسماء الموظفين" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "স্টাফদের নাম আপডেট হয়েছে", en: "Staff names updated" }), data });
 });

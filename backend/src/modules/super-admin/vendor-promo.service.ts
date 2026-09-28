@@ -82,7 +82,7 @@ export class VendorPromoService {
     if (dto.portfolio_url !== undefined) data.portfolioUrl = dto.portfolio_url.trim() || null;
     if (dto.address !== undefined) data.address = dto.address.trim() || null;
 
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
     await this.repository.upsertConfig(data);
   }
 
@@ -173,7 +173,7 @@ export class VendorPromoService {
     if (dto.icon_key !== undefined) data.iconKey = dto.icon_key?.trim() || "Sparkles";
     if (dto.is_current !== undefined) data.isCurrent = Boolean(dto.is_current);
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
 
     await this.repository.updateService(id, data);
   }

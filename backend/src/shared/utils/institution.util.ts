@@ -1,13 +1,13 @@
 import type { InstitutionType } from "@prisma/client";
 
 /** UI/print languages the system ships translations for. */
-export type AppLanguage = "bn" | "en" | "ar";
+export type AppLanguage = "bn" | "en";
 
 export const INSTITUTION_TYPES: InstitutionType[] = ["MADRASA", "SCHOOL", "COLLEGE", "KINDERGARTEN"];
 
-/** Madrasas get Arabic as a third language; every other type is bn/en only. */
+/** Every institution type offers Bangla + English. */
 export function languagesForInstitution(type: InstitutionType): AppLanguage[] {
-  return type === "MADRASA" ? ["bn", "en", "ar"] : ["bn", "en"];
+  return ["bn", "en"];
 }
 
 /** A madrasa defaults to Bangla, every other institution type to English -
@@ -35,7 +35,7 @@ export function parseInstitutionType(value: unknown): InstitutionType | undefine
  * by returning undefined so the caller can leave the column untouched. */
 export function parseLanguage(value: unknown): AppLanguage | null | undefined {
   if (value === null || value === "") return null;
-  return value === "bn" || value === "en" || value === "ar" ? value : undefined;
+  return value === "bn" || value === "en" ? value : undefined;
 }
 
 /** The `institution` block every tenant-facing bootstrap response carries

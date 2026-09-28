@@ -66,7 +66,7 @@ const assertRollIsServerManaged = (body: Record<string, any>, rowLabel?: string)
   if (hasRollValue || manualOverrideRequested) {
     const prefix = rowLabel ? `${rowLabel}: ` : "";
     throw new BadRequestError(
-      t({ bn: `${prefix}রোল নম্বর ম্যানুয়ালি দেওয়া যাবে না। শ্রেণি ও শিক্ষাবর্ষ অনুযায়ী সিস্টেম স্বয়ংক্রিয়ভাবে রোল তৈরি করবে`, en: `${prefix}Roll numbers cannot be entered manually. The system generates them automatically by class and academic year`, ar: `${prefix}لا يمكن إدخال رقم الجلوس يدويًا. سيُنشئه النظام تلقائيًا حسب الصف والعام الدراسي` }),
+      t({ bn: `${prefix}রোল নম্বর ম্যানুয়ালি দেওয়া যাবে না। শ্রেণি ও শিক্ষাবর্ষ অনুযায়ী সিস্টেম স্বয়ংক্রিয়ভাবে রোল তৈরি করবে`, en: `${prefix}Roll numbers cannot be entered manually. The system generates them automatically by class and academic year` }),
     );
   }
 };
@@ -143,7 +143,7 @@ export class StudentService {
     const sessionId = toNumber(body.session_id);
     if (sessionId) {
       const session = await this.repository.findSessionForTenant(madrasaId, sessionId);
-      if (!session) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found", ar: "لم يتم العثور على العام الدراسي المختار" }));
+      if (!session) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found" }));
       return session;
     }
     const academicYear = clean(body.academic_year) as string | null;
@@ -151,7 +151,7 @@ export class StudentService {
       const session = await this.repository.findSessionByNameForTenant(madrasaId, academicYear, divisionId);
       if (session) return session;
     }
-    throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required", ar: "session_id مطلوب" }));
+    throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required" }));
   }
 
   private async resolveSessionOnTx(
@@ -163,7 +163,7 @@ export class StudentService {
     const sessionId = toNumber(body.session_id);
     if (sessionId) {
       const session = await this.repository.findSessionForTenantOnTx(tx, madrasaId, sessionId);
-      if (!session) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found", ar: "لم يتم العثور على العام الدراسي المختار" }));
+      if (!session) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found" }));
       return session;
     }
     const academicYear = clean(body.academic_year) as string | null;
@@ -176,7 +176,7 @@ export class StudentService {
       );
       if (session) return session;
     }
-    throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required", ar: "session_id مطلوب" }));
+    throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required" }));
   }
 
   async listStudents(
@@ -242,7 +242,7 @@ export class StudentService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!body || Object.keys(body).length === 0) {
-      throw new BadRequestError(t({ bn: "অনুরোধের বডি খালি", en: "Empty request body (Check express.json())", ar: "محتوى الطلب فارغ" }));
+      throw new BadRequestError(t({ bn: "অনুরোধের বডি খালি", en: "Empty request body (Check express.json())" }));
     }
 
     const missing = validateRequiredFields(body);
@@ -251,12 +251,12 @@ export class StudentService {
     }
 
     if (body.dob && !isValidDate(body.dob)) {
-      throw new BadRequestError(t({ bn: "জন্মতারিখ সঠিক নয়", en: "Invalid DOB", ar: "تاريخ الميلاد غير صالح" }));
+      throw new BadRequestError(t({ bn: "জন্মতারিখ সঠিক নয়", en: "Invalid DOB" }));
     }
 
     assertRollIsServerManaged(body);
     const classId = toNumber(body.class_id);
-    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required" }));
 
     // division_id is a required admission field (see STUDENT_REQUIRED_FIELDS,
     // already validated above) - resolving the academic_year name within the
@@ -387,7 +387,7 @@ export class StudentService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!Array.isArray(students) || students.length === 0) {
-      throw new BadRequestError(t({ bn: "শিক্ষার্থীদের তালিকা আবশ্যক", en: "Students array is required", ar: "قائمة الطلاب مطلوبة" }));
+      throw new BadRequestError(t({ bn: "শিক্ষার্থীদের তালিকা আবশ্যক", en: "Students array is required" }));
     }
 
     const prepared: { student: StudentAdmissionRequestDto; classId: number; academicYear: string; sessionId: number }[] =
@@ -397,17 +397,17 @@ export class StudentService {
       const missing = validateRequiredFields(student);
       if (missing.length > 0) {
         throw new BadRequestError(
-          t({ bn: `সারি ${index + 1}: আবশ্যক তথ্য নেই - ${missing.join(", ")}`, en: `Row ${index + 1}: Required fields missing - ${missing.join(", ")}`, ar: `الصف ${index + 1}: حقول مطلوبة مفقودة - ${missing.join(", ")}` }),
+          t({ bn: `সারি ${index + 1}: আবশ্যক তথ্য নেই - ${missing.join(", ")}`, en: `Row ${index + 1}: Required fields missing - ${missing.join(", ")}` }),
         );
       }
       if (student.dob && !isValidDate(student.dob)) {
-        throw new BadRequestError(t({ bn: `সারি ${index + 1}: জন্মতারিখ সঠিক নয়`, en: `Row ${index + 1}: Invalid DOB`, ar: `الصف ${index + 1}: تاريخ الميلاد غير صالح` }));
+        throw new BadRequestError(t({ bn: `সারি ${index + 1}: জন্মতারিখ সঠিক নয়`, en: `Row ${index + 1}: Invalid DOB` }));
       }
 
       assertRollIsServerManaged(student, `Row ${index + 1}`);
 
       const classId = toNumber(student.class_id);
-      if (!classId) throw new BadRequestError(t({ bn: `সারি ${index + 1}: class_id আবশ্যক`, en: `Row ${index + 1}: class_id is required`, ar: `الصف ${index + 1}: class_id مطلوب` }));
+      if (!classId) throw new BadRequestError(t({ bn: `সারি ${index + 1}: class_id আবশ্যক`, en: `Row ${index + 1}: class_id is required` }));
 
       // division_id is required per-row here too (validated above via
       // validateRequiredFields) - same reasoning as admitStudent.
@@ -625,12 +625,12 @@ export class StudentService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (!Array.isArray(rows) || rows.length === 0) {
-      throw new BadRequestError(t({ bn: "শিক্ষার্থীদের তালিকা আবশ্যক", en: "Students array is required", ar: "قائمة الطلاب مطلوبة" }));
+      throw new BadRequestError(t({ bn: "শিক্ষার্থীদের তালিকা আবশ্যক", en: "Students array is required" }));
     }
 
     if (!rows.some((r) => toNumber(r.id) !== null)) {
       throw new BadRequestError(
-        t({ bn: "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন", en: "The id column was not found or all rows are empty — upload a correctly exported file", ar: "لم يتم العثور على عمود id أو جميع الصفوف فارغة — ارفع ملفًا مُصدّرًا بشكل صحيح" }),
+        t({ bn: "id কলাম পাওয়া যায়নি বা সব সারি খালি — সঠিক এক্সপোর্ট করা ফাইল আপলোড করুন", en: "The id column was not found or all rows are empty — upload a correctly exported file" }),
       );
     }
 
@@ -743,7 +743,7 @@ export class StudentService {
             status: "skipped",
             changes: [],
             notes: item.notes,
-            error: t({ bn: "এই আইডির শিক্ষার্থী পাওয়া যায়নি", en: "No student found with this ID", ar: "لم يتم العثور على طالب بهذا المعرف" }),
+            error: t({ bn: "এই আইডির শিক্ষার্থী পাওয়া যায়নি", en: "No student found with this ID" }),
           });
           continue;
         }
@@ -832,7 +832,7 @@ export class StudentService {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     if (body.dob && !isValidDate(body.dob)) {
-      throw new BadRequestError(t({ bn: "জন্মতারিখ সঠিক নয়", en: "Invalid DOB", ar: "تاريخ الميلاد غير صالح" }));
+      throw new BadRequestError(t({ bn: "জন্মতারিখ সঠিক নয়", en: "Invalid DOB" }));
     }
 
     assertRollIsServerManaged(body);
@@ -909,7 +909,7 @@ export class StudentService {
       }
 
       if (!Object.keys(data).length) {
-        throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+        throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
       }
 
       const result = await this.repository.updateManyForTenantOnTx(tx, id, madrasaId, data);
@@ -957,7 +957,7 @@ export class StudentService {
     academicYear: string | undefined,
   ): Promise<number> {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required", ar: "class_id مطلوب" }));
+    if (!classId) throw new BadRequestError(t({ bn: "class_id আবশ্যক", en: "class_id is required" }));
 
     const year = academicYear || String(new Date().getFullYear());
     return this.repository.getNextAvailableRoll(madrasaId, classId, year);
@@ -1033,7 +1033,7 @@ export class StudentService {
   /** Bulk soft delete — moves many students to Trash at once (Student List bulk action). */
   async bulkDeleteStudents(madrasaId: number | undefined, ids: number[]) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!ids.length) throw new BadRequestError(t({ bn: "ids আবশ্যক", en: "ids is required", ar: "المعرفات مطلوبة" }));
+    if (!ids.length) throw new BadRequestError(t({ bn: "ids আবশ্যক", en: "ids is required" }));
 
     const result = await this.repository.softDeleteManyByIds(madrasaId, ids);
     return result.count;
@@ -1075,12 +1075,12 @@ export class StudentService {
    * belong to this madrasa or nothing is saved. */
   async updateNamesBulk(madrasaId: number | undefined, items: StudentNamesItem[]) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required", ar: "items مطلوبة" }));
+    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required" }));
 
     const ids = items.map((i) => Number(i.id));
     const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
     const missing = ids.filter((id) => !found.has(id));
-    if (missing.length) throw new BadRequestError(t({ bn: `শিক্ষার্থী পাওয়া যায়নি: ${missing.join(", ")}`, en: `Student(s) not found: ${missing.join(", ")}`, ar: `لم يتم العثور على الطلاب: ${missing.join(", ")}` }));
+    if (missing.length) throw new BadRequestError(t({ bn: `শিক্ষার্থী পাওয়া যায়নি: ${missing.join(", ")}`, en: `Student(s) not found: ${missing.join(", ")}` }));
 
     const updates = items.map((item) => {
       const data: Record<string, string | null> = {};
@@ -1088,7 +1088,7 @@ export class StudentService {
         const raw = (item as Record<string, unknown>)[key];
         if (raw === undefined) continue;
         const value = typeof raw === "string" ? raw.trim() : null;
-        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required", ar: "الاسم بالبنغالية مطلوب" }));
+        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required" }));
         data[column] = value || null;
       }
       return { id: Number(item.id), data };
@@ -1173,7 +1173,7 @@ export class StudentService {
     const existing = await this.repository.findByIdForTenant(id, madrasaId);
     if (!existing) throw new StudentNotFoundError();
     if (existing.admissionStatus === "APPROVED") {
-      throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে অনুমোদিত", en: "This admission is already approved", ar: "هذا القبول معتمد بالفعل" }));
+      throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে অনুমোদিত", en: "This admission is already approved" }));
     }
 
     const { roll: assignedRoll, registrationNo: assignedRegistrationNo } = await this.repository.runTransaction(async (tx) => {
@@ -1183,7 +1183,7 @@ export class StudentService {
       const locked = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
       if (!locked) throw new StudentNotFoundError();
       if (locked.admissionStatus === "APPROVED") {
-        throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে অনুমোদিত", en: "This admission is already approved", ar: "هذا القبول معتمد بالفعل" }));
+        throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে অনুমোদিত", en: "This admission is already approved" }));
       }
 
       let roll = locked.roll;
@@ -1273,12 +1273,12 @@ export class StudentService {
     reason: string | undefined,
   ) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!reason || !reason.trim()) throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ আবশ্যক", en: "Rejection reason is required", ar: "سبب الرفض مطلوب" }));
+    if (!reason || !reason.trim()) throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ আবশ্যক", en: "Rejection reason is required" }));
 
     const existing = await this.repository.findByIdForTenant(id, madrasaId);
     if (!existing) throw new StudentNotFoundError();
     if (existing.admissionStatus === "REJECTED") {
-      throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে প্রত্যাখ্যাত", en: "This admission is already rejected", ar: "هذا القبول مرفوض بالفعل" }));
+      throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে প্রত্যাখ্যাত", en: "This admission is already rejected" }));
     }
 
     const result = await this.repository.updateManyForTenant(id, madrasaId, {
@@ -1325,7 +1325,7 @@ export class StudentService {
   ) {
     if (!madrasaId) throw new TenantNotResolvedError();
     const targetSessionId = toNumber(dto.session_id);
-    if (!targetSessionId) throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required", ar: "session_id مطلوب" }));
+    if (!targetSessionId) throw new BadRequestError(t({ bn: "session_id আবশ্যক", en: "session_id is required" }));
 
     const result = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
@@ -1333,10 +1333,10 @@ export class StudentService {
       if (!existing) throw new StudentNotFoundError();
 
       const targetSession = await this.repository.findSessionForTenantOnTx(tx, madrasaId, targetSessionId);
-      if (!targetSession) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found", ar: "لم يتم العثور على العام الدراسي المختار" }));
-      if (!targetSession.isActive) throw new BadRequestError(t({ bn: "নিষ্ক্রিয় সেশনে স্থানান্তর করা যাবে না", en: "Cannot transfer into an inactive session", ar: "لا يمكن النقل إلى عام دراسي غير نشط" }));
+      if (!targetSession) throw new BadRequestError(t({ bn: "নির্বাচিত সেশন পাওয়া যায়নি", en: "Selected session not found" }));
+      if (!targetSession.isActive) throw new BadRequestError(t({ bn: "নিষ্ক্রিয় সেশনে স্থানান্তর করা যাবে না", en: "Cannot transfer into an inactive session" }));
       if (existing.sessionId === targetSessionId) {
-        throw new BadRequestError(t({ bn: "শিক্ষার্থী ইতিমধ্যে এই সেশনে আছে", en: "Student is already in this session", ar: "الطالب موجود بالفعل في هذا العام الدراسي" }));
+        throw new BadRequestError(t({ bn: "শিক্ষার্থী ইতিমধ্যে এই সেশনে আছে", en: "Student is already in this session" }));
       }
 
       await this.repository.lockRollScopeOnTx(tx, madrasaId, existing.classId, targetSession.name);
@@ -1348,7 +1348,7 @@ export class StudentService {
           where: { madrasaId, classId: existing.classId, sessionId: targetSessionId, roll: requestedRoll },
           select: { id: true },
         });
-        if (rollTaken) throw new BadRequestError(t({ bn: `লক্ষ্য সেশনে রোল ${requestedRoll} ইতিমধ্যে ব্যবহৃত`, en: `Roll ${requestedRoll} is already taken in the target session`, ar: `رقم الجلوس ${requestedRoll} مستخدم بالفعل في العام الدراسي المستهدف` }));
+        if (rollTaken) throw new BadRequestError(t({ bn: `লক্ষ্য সেশনে রোল ${requestedRoll} ইতিমধ্যে ব্যবহৃত`, en: `Roll ${requestedRoll} is already taken in the target session` }));
         newRoll = requestedRoll;
       } else {
         newRoll = await this.repository.getNextAvailableRollOnTx(

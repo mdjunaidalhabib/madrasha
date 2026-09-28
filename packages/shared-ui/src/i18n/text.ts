@@ -4,31 +4,28 @@ import type { InstitutionType, Lang } from "./types";
 
 /**
  * A translation dictionary: the same shape in every language. Write the
- * Bangla text first - its shape becomes the type that `en`/`ar` must match,
+ * Bangla text first - its shape becomes the type that `en` must match,
  * so a missing key in either is a compile error.
  *
  *   const text = defineText({
  *     bn: { title: "{{student}} তালিকা", total: (n: string) => `মোট ${n} জন` },
  *     en: { title: "{{student}} List",   total: (n) => `Total ${n}` },
- *     ar: { title: "قائمة {{student}}",   total: (n) => `المجموع ${n}` },
  *   });
  *   const t = useText(text);  // t.title, t.total("5")
  *
  * String values (and function return values) may contain `{{term}}`
  * placeholders from terms.ts - replaced for the tenant's institution type.
  */
-export type Dict<T> = { bn: T; en: T; ar: T };
+export type Dict<T> = { bn: T; en: T };
 
-export function defineText<T>(dict: { bn: T; en: NoInfer<T>; ar: NoInfer<T> }): Dict<T> {
+export function defineText<T>(dict: { bn: T; en: NoInfer<T> }): Dict<T> {
   return dict;
 }
 
-/** For bn/en-only surfaces (the super-admin panel) - Arabic mirrors English. */
-export function defineBilingualText<T>(dict: { bn: T; en: NoInfer<T> }): Dict<T> {
-  return { bn: dict.bn, en: dict.en, ar: dict.en };
-}
+/** Alias of defineText (kept for the super-admin dictionaries). */
+export const defineBilingualText = defineText;
 
-const isPlainObject =(value: unknown): value is Record<string, unknown> =>
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype;
 
 function localize<T>(value: T, terms: Terms): T {
@@ -95,9 +92,9 @@ export function useLang(): Lang {
   return useLanguageStore((s) => s.lang);
 }
 
-export function usePrintLang(): { lang: Lang; dir: "rtl" | "ltr" } {
+export function usePrintLang(): { lang: Lang; dir: "ltr" } {
   const lang = useLanguageStore((s) => s.institution.default_language);
-  return { lang, dir: lang === "ar" ? "rtl" : "ltr" };
+  return { lang, dir: "ltr" };
 }
 
 export function useInstitutionType(): InstitutionType {

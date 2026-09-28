@@ -10,12 +10,12 @@ export const subscriptionCheck = asyncHandler(
       where: { madrasaId: madrasa_id, isActive: 1 },
       select: { endDate: true },
     });
-    if (!subscription) return res.status(403).json({ message: t({ bn: "কোনো সক্রিয় সাবস্ক্রিপশন নেই", en: "No active subscription", ar: "لا يوجد اشتراك نشط" }) });
+    if (!subscription) return res.status(403).json({ message: t({ bn: "কোনো সক্রিয় সাবস্ক্রিপশন নেই", en: "No active subscription" }) });
 
     const today = new Date();
     const expiry = subscription.endDate ? new Date(subscription.endDate) : null;
     if (expiry && today > expiry)
-      return res.status(403).json({ message: t({ bn: "সাবস্ক্রিপশনের মেয়াদ শেষ। অনুগ্রহ করে আপগ্রেড করুন।", en: "Subscription expired. Please upgrade.", ar: "انتهى الاشتراك. يرجى الترقية." }) });
+      return res.status(403).json({ message: t({ bn: "সাবস্ক্রিপশনের মেয়াদ শেষ। অনুগ্রহ করে আপগ্রেড করুন।", en: "Subscription expired. Please upgrade." }) });
 
     _next();
   },

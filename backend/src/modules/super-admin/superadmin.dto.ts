@@ -17,7 +17,7 @@ export interface CreateMadrasaRequestDto {
   books?: unknown;
   /** MADRASA (default) | SCHOOL | COLLEGE | KINDERGARTEN. */
   institution_type?: string;
-  /** "bn" | "en" | "ar"; null/"" = the institution type default. */
+  /** "bn" | "en"; null/"" = the institution type default. */
   default_language?: string | null;
   default_users?: Array<{ role: string; name?: string; email: string; password: string }>;
 }

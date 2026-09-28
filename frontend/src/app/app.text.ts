@@ -19,12 +19,4 @@ export const appText = defineText({
     tooManyRequests: "Too many requests.",
     retryAfter: (seconds) => `Please try again after ${seconds} seconds.`,
   },
-  ar: {
-    appName: "{{institution}}",
-    pwaDescription: (name) => `${name} — الموقع وبوابة أولياء الأمور`,
-    notFound: "الصفحة التي تبحث عنها غير موجودة أو أن الرابط غير صحيح.",
-    pageNotFound: "الصفحة غير موجودة",
-    tooManyRequests: "طلبات كثيرة جدًا.",
-    retryAfter: (seconds) => `يرجى المحاولة مرة أخرى بعد ${seconds} ثانية.`,
-  },
 });

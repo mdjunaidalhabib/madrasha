@@ -32,7 +32,7 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
 
   await userService.deleteUser(madrasa_id, req.user!.id, id);
 
-  res.json({ message: t({ bn: "মুছে ফেলা হয়েছে", en: "Deleted", ar: "تم الحذف" }) });
+  res.json({ message: t({ bn: "মুছে ফেলা হয়েছে", en: "Deleted" }) });
 });
 
 export const updateUser = asyncHandler(async (req: Request, res: Response) => {
@@ -41,7 +41,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 
   await userService.updateUser(madrasa_id, req.user!.id, id, req.body);
 
-  res.json({ message: t({ bn: "আপডেট হয়েছে", en: "Updated", ar: "تم التحديث" }) });
+  res.json({ message: t({ bn: "আপডেট হয়েছে", en: "Updated" }) });
 });
 
 export const resetUserPassword = asyncHandler(async (req: Request, res: Response) => {
@@ -50,7 +50,7 @@ export const resetUserPassword = asyncHandler(async (req: Request, res: Response
 
   await userService.adminResetPassword(madrasa_id, req.user!.id, id, req.body);
 
-  res.json({ message: t({ bn: "পাসওয়ার্ড রিসেট হয়েছে", en: "Password reset", ar: "تمت إعادة تعيين كلمة المرور" }) });
+  res.json({ message: t({ bn: "পাসওয়ার্ড রিসেট হয়েছে", en: "Password reset" }) });
 });
 
 export const unlockUserAccount = asyncHandler(async (req: Request, res: Response) => {
@@ -59,5 +59,5 @@ export const unlockUserAccount = asyncHandler(async (req: Request, res: Response
 
   await userService.adminUnlockAccount(madrasa_id, req.user!.id, id);
 
-  res.json({ message: t({ bn: "অ্যাকাউন্ট আনলক করা হয়েছে", en: "Account unlocked", ar: "تم فتح قفل الحساب" }) });
+  res.json({ message: t({ bn: "অ্যাকাউন্ট আনলক করা হয়েছে", en: "Account unlocked" }) });
 });

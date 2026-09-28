@@ -25,25 +25,25 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
 
 export const createSession = asyncHandler(async (req: Request, res: Response) => {
   const data = await sessionService.create(getMadrasaId(req), req.body);
-  return ApiResponse.success(res, { message: t({ bn: "সেশন তৈরি হয়েছে", en: "Session created successfully", ar: "تم إنشاء الجلسة بنجاح" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "সেশন তৈরি হয়েছে", en: "Session created successfully" }), data });
 });
 
 export const updateSession = asyncHandler(async (req: Request, res: Response) => {
   await sessionService.update(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "সেশন আপডেট হয়েছে", en: "Session updated successfully", ar: "تم تحديث العام الدراسي بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "সেশন আপডেট হয়েছে", en: "Session updated successfully" }));
 });
 
 export const setCurrentSession = asyncHandler(async (req: Request, res: Response) => {
   await sessionService.setCurrent(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "চলতি সেশন আপডেট হয়েছে", en: "Current session updated successfully", ar: "تم تحديث العام الدراسي الحالي بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "চলতি সেশন আপডেট হয়েছে", en: "Current session updated successfully" }));
 });
 
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
   await sessionService.delete(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "সেশন মুছে ফেলা হয়েছে", en: "Session deleted successfully", ar: "تم حذف العام الدراسي بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "সেশন মুছে ফেলা হয়েছে", en: "Session deleted successfully" }));
 });
 
 export const deleteUnusedFeeStructures = asyncHandler(async (req: Request, res: Response) => {
   const count = await sessionService.deleteUnusedFeeStructures(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.success(res, { message: t({ bn: "ফি কাঠামোগুলো মুছে ফেলা হয়েছে", en: "Fee structures deleted", ar: "تم حذف هياكل الرسوم" }), data: { count } });
+  return ApiResponse.success(res, { message: t({ bn: "ফি কাঠামোগুলো মুছে ফেলা হয়েছে", en: "Fee structures deleted" }), data: { count } });
 });

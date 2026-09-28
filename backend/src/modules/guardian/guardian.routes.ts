@@ -30,7 +30,7 @@ const loginLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later.", ar: "محاولات تسجيل دخول كثيرة جدًا. يرجى المحاولة لاحقًا." }) }),
+  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later." }) }),
 });
 
 router.post("/login", loginLimiter, tenantMiddleware, validate(guardianLoginSchema), guardianLogin);

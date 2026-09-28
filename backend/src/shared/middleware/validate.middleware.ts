@@ -12,7 +12,7 @@ export const validate = (schema: AnyZodObject): RequestHandler => {
       if (error instanceof ZodError) {
         return res.status(422).json({
           success: false,
-          message: t({ bn: "তথ্য যাচাই ব্যর্থ হয়েছে", en: "Validation failed", ar: "فشل التحقق من البيانات" }),
+          message: t({ bn: "তথ্য যাচাই ব্যর্থ হয়েছে", en: "Validation failed" }),
           errors: localizeZodFlatten(error.flatten()),
         });
       }

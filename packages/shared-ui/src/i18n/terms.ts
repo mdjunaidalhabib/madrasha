@@ -56,18 +56,6 @@ const MADRASA: Record<Lang, Terms> = {
     teacher: "Teacher",
     session: "Session",
   },
-  ar: {
-    institution: "المدرسة",
-    head: "المهتمم",
-    academic: "التعليمات",
-    admin: "الاهتمام",
-    subject: "الكتاب",
-    division: "المرحلة",
-    class: "الصف",
-    student: "الطالب",
-    teacher: "الأستاذ",
-    session: "العام الدراسي",
-  },
 };
 
 const generic = (institution: Record<Lang, string>, head: Record<Lang, string>): Record<Lang, Terms> => ({
@@ -95,41 +83,29 @@ const generic = (institution: Record<Lang, string>, head: Record<Lang, string>):
     teacher: "Teacher",
     session: "Academic Year",
   },
-  ar: {
-    institution: institution.ar,
-    head: head.ar,
-    academic: "الشؤون الأكاديمية",
-    admin: "الإدارة",
-    subject: "المادة",
-    division: "المرحلة",
-    class: "الصف",
-    student: "الطالب",
-    teacher: "المعلم",
-    session: "العام الدراسي",
-  },
 });
 
 export const TERMS: Record<InstitutionType, Record<Lang, Terms>> = {
   MADRASA,
   SCHOOL: generic(
-    { bn: "বিদ্যালয়", en: "School", ar: "المدرسة" },
-    { bn: "প্রধান শিক্ষক", en: "Head Teacher", ar: "مدير المدرسة" },
+    { bn: "বিদ্যালয়", en: "School"},
+    { bn: "প্রধান শিক্ষক", en: "Head Teacher"},
   ),
   COLLEGE: generic(
-    { bn: "কলেজ", en: "College", ar: "الكلية" },
-    { bn: "অধ্যক্ষ", en: "Principal", ar: "عميد الكلية" },
+    { bn: "কলেজ", en: "College"},
+    { bn: "অধ্যক্ষ", en: "Principal"},
   ),
   KINDERGARTEN: generic(
-    { bn: "কিন্ডারগার্টেন", en: "Kindergarten", ar: "الروضة" },
-    { bn: "প্রধান শিক্ষক", en: "Head Teacher", ar: "المديرة" },
+    { bn: "কিন্ডারগার্টেন", en: "Kindergarten"},
+    { bn: "প্রধান শিক্ষক", en: "Head Teacher"},
   ),
 };
 
 export const INSTITUTION_TYPE_LABELS: Record<InstitutionType, Record<Lang, string>> = {
-  MADRASA: { bn: "মাদ্রাসা", en: "Madrasa", ar: "مدرسة دينية" },
-  SCHOOL: { bn: "স্কুল", en: "School", ar: "مدرسة" },
-  COLLEGE: { bn: "কলেজ", en: "College", ar: "كلية" },
-  KINDERGARTEN: { bn: "কিন্ডারগার্টেন", en: "Kindergarten", ar: "روضة أطفال" },
+  MADRASA: { bn: "মাদ্রাসা", en: "Madrasa"},
+  SCHOOL: { bn: "স্কুল", en: "School"},
+  COLLEGE: { bn: "কলেজ", en: "College"},
+  KINDERGARTEN: { bn: "কিন্ডারগার্টেন", en: "Kindergarten"},
 };
 
 const PLACEHOLDER = /\{\{(\w+)\}\}/g;

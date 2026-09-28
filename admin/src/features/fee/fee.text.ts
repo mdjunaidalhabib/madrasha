@@ -16,13 +16,6 @@ export const invoiceStatusText = defineText({
     OVERDUE: "Overdue",
     WAIVED: "Waived",
   },
-  ar: {
-    UNPAID: "غير مدفوع",
-    PARTIALLY_PAID: "مدفوع جزئيًا",
-    PAID: "مدفوع",
-    OVERDUE: "متأخر",
-    WAIVED: "معفى",
-  },
 });
 
 export const feeDashboardText = defineText({
@@ -60,23 +53,6 @@ export const feeDashboardText = defineText({
     statusTitle: "Invoice Status",
     byCount: "By count",
   },
-  ar: {
-    totalInvoiced: "إجمالي الفواتير",
-    totalCollected: "إجمالي المحصَّل",
-    totalDue: "إجمالي المستحق",
-    overdue: "متأخرات",
-    invoiceCount: (n) => `${n} فاتورة`,
-    quickActions: "إجراءات سريعة",
-    collectFee: "تحصيل الرسوم",
-    admissionFeePending: "رسوم قبول معلّقة",
-    overdueFees: "الرسوم المتأخرة",
-    feeSetup: "إعداد الرسوم",
-    trendTitle: "اتجاه تحصيل الرسوم",
-    last12Months: "آخر 12 شهرًا",
-    collected: "المحصَّل",
-    statusTitle: "حالة الفواتير",
-    byCount: "حسب العدد",
-  },
 });
 
 /** Printed invoice - institution default language. */
@@ -113,28 +89,11 @@ export const invoicePrintText = defineText({
     guardianSignature: "Guardian's signature",
     authoritySignature: "Authorized signature",
   },
-  ar: {
-    invoice: "فاتورة",
-    roll: "رقم الجلوس",
-    invoiceNo: "رقم الفاتورة",
-    dueDate: "تاريخ الاستحقاق",
-    student: "{{student}}",
-    description: "البيان",
-    totalAmount: "المبلغ الإجمالي",
-    paid: "المدفوع",
-    waived: "المعفى",
-    status: "الحالة",
-    remaining: (amount) => `المتبقي ${amount}`,
-    fullyPaid: "مدفوع بالكامل",
-    guardianSignature: "توقيع ولي الأمر",
-    authoritySignature: "توقيع المسؤول",
-  },
 });
 
 export const invoicePreviewText = defineText({
   bn: { title: "ইনভয়েস প্রিন্ট প্রিভিউ", printNow: "প্রিন্ট করুন" },
   en: { title: "Invoice Print Preview", printNow: "Print" },
-  ar: { title: "معاينة طباعة الفاتورة", printNow: "طباعة" },
 });
 
 export const overdueText = defineText({
@@ -173,24 +132,6 @@ export const overdueText = defineText({
     prev: "Previous",
     next: "Next",
     page: (p, total) => `Page ${p} / ${total}`,
-  },
-  ar: {
-    title: "الرسوم المتأخرة",
-    subtitle: "جميع مستحقات كل {{student}} في مكان واحد — إجمالي المستحق",
-    searchPlaceholder: "ابحث بالاسم أو رقم الجلوس أو رقم التسجيل أو {{class}}...",
-    noDues: "لا توجد مستحقات — جميع الرسوم مدفوعة",
-    noResults: "لا توجد نتائج لهذا البحث",
-    roll: "رقم الجلوس",
-    reg: "التسجيل",
-    dueCount: (n) => `${n} رسوم مستحقة`,
-    oldestDue: "أقدم تاريخ استحقاق",
-    collect: "تحصيل الرسوم",
-    dueDateLabel: "تاريخ الاستحقاق",
-    showing: (from, to, total) => `عرض ${from}–${to} من ${total}`,
-    perPage: (n) => `${n} في الصفحة`,
-    prev: "السابق",
-    next: "التالي",
-    page: (p, total) => `الصفحة ${p} / ${total}`,
   },
 });
 
@@ -244,31 +185,6 @@ export const feeCategoryText = defineText({
     newPlaceholder: "New fee type name",
     emptyTitle: "No fee types added yet",
     emptyHint: "Add the first fee type using the form above.",
-  },
-  ar: {
-    enterName: "أدخل اسمًا",
-    added: "تمت إضافة نوع الرسوم",
-    saveFailed: "تعذّر الحفظ",
-    updateFailed: "تعذّر التحديث",
-    deleteFailed: "تعذّر الحذف",
-    disableTitle: "تعطيل نوع الرسوم",
-    disableMessage: (name) =>
-      `تعطيل "${name}" يعطّل أيضًا جميع هياكل الرسوم التي تستخدم هذا النوع (في صفحة هيكل الرسوم) - ولن تُفوتَر بعد ذلك لأي {{student}}. هل تريد المتابعة؟`,
-    disableConfirm: "تعطيل",
-    deleteTitle: "حذف نوع الرسوم",
-    deleteMessage: (name) =>
-      `هل تريد حذف نوع الرسوم "${name}" نهائيًا؟ لن تتأثر هياكل الرسوم التي تستخدمه — سيبقى الاسم فيها نصًا فقط.`,
-    deleteConfirm: "حذف",
-    toggleHint: "التعطيل يعطّل جميع هياكل الرسوم من هذا النوع (لا فوترة بعد ذلك)",
-    backToSetup: "العودة إلى إعداد الرسوم",
-    title: "إعدادات أنواع الرسوم",
-    subtitle:
-      "أضف أو عدّل أو احذف الأنواع (مثل رسوم القبول، الرسوم الشهرية، رسوم الامتحان) المستخدمة عند إنشاء هياكل الرسوم. لا تُفوتَر أي رسوم إلا بعد موافقة {{head}} على القبول (لا فوترة عند تقديم الطلب). في الرسوم الشهرية كالرسوم الدراسية والطعام يُفوتَر الشهر الحالي فقط عند الموافقة، وتُنشأ الأشهر التالية تلقائيًا في بداية كل شهر.",
-    sectionTitle: "أنواع الرسوم",
-    sectionHint: "أضف نوع رسوم جديدًا",
-    newPlaceholder: "اسم نوع الرسوم الجديد",
-    emptyTitle: "لم تُضف أي أنواع رسوم بعد",
-    emptyHint: "أضف أول نوع رسوم من النموذج أعلاه.",
   },
 });
 
@@ -344,41 +260,5 @@ export const paymentMethodText = defineText({
     allHint: "Click the pencil icon of any method to edit it",
     emptyTitle: "No payment methods added yet",
     emptyHint: "Add the first payment method using the form above.",
-  },
-  ar: {
-    types: {
-      CASH: "نقدًا",
-      BKASH: "بيكاش",
-      NAGAD: "نقد (Nagad)",
-      BANK: "بنك",
-      OTHER: "أخرى",
-    },
-    type: "النوع",
-    label: "التسمية (مثل: بيكاش - شخصي)",
-    accountNumber: "الحساب/الرقم",
-    accountNumberPlaceholder: "017XXXXXXXX / رقم الحساب",
-    accountName: "اسم صاحب الحساب",
-    bankName: "اسم البنك",
-    branch: "الفرع",
-    instructions: "تعليمات (اختياري)",
-    instructionsPlaceholder: "مثال: أرسل المبلغ ثم أبلغ المكتب برقم المعاملة",
-    enterLabel: "أدخل اسمًا/تسمية (مثل: بيكاش - شخصي)",
-    added: "تمت إضافة طريقة الدفع",
-    updated: "تم تحديث طريقة الدفع",
-    saveFailed: "تعذّر الحفظ",
-    updateFailed: "تعذّر التحديث",
-    deleteFailed: "تعذّر الحذف",
-    deleteTitle: "حذف طريقة الدفع",
-    deleteMessage: (label) => `هل تريد حذف طريقة الدفع "${label}" نهائيًا؟`,
-    deleteConfirm: "حذف",
-    deleted: "تم حذف طريقة الدفع",
-    title: "إعداد طرق الدفع",
-    subtitle:
-      "قنوات الدفع اليدوية المضافة هنا (رقم بيكاش، حساب بنكي، نقدًا) يمكن اختيارها عند تسجيل دفعات الرسوم. لا توجد بوابة دفع أو دفع تلقائي — النظام يدوي بالكامل.",
-    addTitle: "إضافة طريقة دفع جديدة",
-    allTitle: "جميع طرق الدفع",
-    allHint: "انقر على أيقونة القلم لأي طريقة لتعديلها",
-    emptyTitle: "لم تُضف أي طرق دفع بعد",
-    emptyHint: "أضف أول طريقة دفع من النموذج أعلاه.",
   },
 });

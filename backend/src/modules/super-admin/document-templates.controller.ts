@@ -49,7 +49,7 @@ export const saveSystemDraft = asyncHandler(async (req: Request, res: Response) 
     SUPER_ADMIN_CONTEXT,
     req.body || {},
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "খসড়া সংরক্ষণ করা হয়েছে", en: "Draft saved", ar: "تم حفظ المسودة" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "খসড়া সংরক্ষণ করা হয়েছে", en: "Draft saved" }) });
 });
 
 export const publishSystemTemplate = asyncHandler(async (req: Request, res: Response) => {
@@ -58,7 +58,7 @@ export const publishSystemTemplate = asyncHandler(async (req: Request, res: Resp
     SUPER_ADMIN_CONTEXT,
     superAdminActor(req),
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট প্রকাশিত হয়েছে", en: "Template published", ar: "تم نشر القالب" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট প্রকাশিত হয়েছে", en: "Template published" }) });
 });
 
 export const updateSystemTemplateMeta = asyncHandler(async (req: Request, res: Response) => {
@@ -69,12 +69,12 @@ export const updateSystemTemplateMeta = asyncHandler(async (req: Request, res: R
     superAdminActor(req),
     { name: body.name, description: body.description, isActive: body.is_active },
   );
-  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট আপডেট হয়েছে", en: "Template updated", ar: "تم تحديث القالب" }) });
+  return ApiResponse.success(res, { data: toTemplateDetailDto(detail), message: t({ bn: "টেমপ্লেট আপডেট হয়েছে", en: "Template updated" }) });
 });
 
 export const deleteSystemTemplate = asyncHandler(async (req: Request, res: Response) => {
   await documentTemplateService.deleteTemplate(Number(req.params.id), SUPER_ADMIN_CONTEXT, superAdminActor(req));
-  return ApiResponse.success(res, { message: t({ bn: "টেমপ্লেট মুছে ফেলা হয়েছে", en: "Template deleted", ar: "تم حذف القالب" }) });
+  return ApiResponse.success(res, { message: t({ bn: "টেমপ্লেট মুছে ফেলা হয়েছে", en: "Template deleted" }) });
 });
 
 export const setSystemDefaultTemplate = asyncHandler(async (req: Request, res: Response) => {

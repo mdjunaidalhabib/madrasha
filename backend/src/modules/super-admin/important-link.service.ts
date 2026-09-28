@@ -58,7 +58,7 @@ export class ImportantLinkService {
       data.url = String(dto.url).trim();
     }
     if (dto.is_active !== undefined) data.isActive = Boolean(dto.is_active);
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
 
     await this.repository.update(id, data);
   }

@@ -7,14 +7,14 @@ import { vmsg } from "../../shared/validators/messages";
 const deviceCode = z
   .string()
   .trim()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, vmsg({ bn: "device_id-এ অক্ষর, সংখ্যা, _ . - থাকতে পারে (সর্বোচ্চ ৬৪)", en: "device_id may contain letters, digits, _ . - (max 64)", ar: "يمكن أن يحتوي device_id على حروف وأرقام و _ . - (بحد أقصى 64)" }));
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, vmsg({ bn: "device_id-এ অক্ষর, সংখ্যা, _ . - থাকতে পারে (সর্বোচ্চ ৬৪)", en: "device_id may contain letters, digits, _ . - (max 64)" }));
 
 const hostOrIp = z
   .string()
   .trim()
   .min(1)
   .max(100)
-  .regex(/^[A-Za-z0-9.:-]+$/, vmsg({ bn: "ip অবশ্যই একটি IPv4/IPv6 ঠিকানা বা হোস্টনেম হতে হবে", en: "ip must be an IPv4/IPv6 address or hostname", ar: "يجب أن يكون ip عنوان IPv4/IPv6 أو اسم مضيف" }));
+  .regex(/^[A-Za-z0-9.:-]+$/, vmsg({ bn: "ip অবশ্যই একটি IPv4/IPv6 ঠিকানা বা হোস্টনেম হতে হবে", en: "ip must be an IPv4/IPv6 address or hostname" }));
 
 const port = z.coerce.number().int().min(1).max(65535);
 const pollInterval = z.coerce.number().int().min(MIN_POLL_INTERVAL_SEC).max(MAX_POLL_INTERVAL_SEC);
@@ -48,7 +48,7 @@ export const setMappingSchema = z.object({
   device_user_id: z
     .union([z.string(), z.number()])
     .transform((v) => String(v).trim())
-    .pipe(z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/, vmsg({ bn: "device_user_id-এ অক্ষর, সংখ্যা, _ - থাকতে পারে", en: "device_user_id may contain letters, digits, _ -", ar: "يمكن أن يحتوي device_user_id على حروف وأرقام و _ -" }))),
+    .pipe(z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/, vmsg({ bn: "device_user_id-এ অক্ষর, সংখ্যা, _ - থাকতে পারে", en: "device_user_id may contain letters, digits, _ -" }))),
 });
 export type SetMappingDto = z.infer<typeof setMappingSchema>;
 

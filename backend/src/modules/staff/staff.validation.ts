@@ -16,7 +16,7 @@ export const staffNamesBulkSchema = z.object({
         z
           .object({
             id: z.coerce.number().int().positive(),
-            name_bn: z.string().trim().min(1, vmsg({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required", ar: "الاسم بالبنغالية مطلوب" })).max(200).optional(),
+            name_bn: z.string().trim().min(1, vmsg({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required" })).max(200).optional(),
             name_ar: nameField,
             name_en: nameField,
           })
@@ -24,6 +24,6 @@ export const staffNamesBulkSchema = z.object({
       )
       .min(1)
       .max(500)
-      .refine((items) => new Set(items.map((i) => i.id)).size === items.length, vmsg({ bn: "একই id একাধিকবার আছে", en: "Duplicate id", ar: "معرف مكرر" })),
+      .refine((items) => new Set(items.map((i) => i.id)).size === items.length, vmsg({ bn: "একই id একাধিকবার আছে", en: "Duplicate id" })),
   }),
 });

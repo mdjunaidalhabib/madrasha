@@ -17,7 +17,7 @@ export const verifyBookSchema = z.object({
 export const rejectBookSchema = z.object({
   params: z.object({ resultMasterId: idSchema, bookId: idSchema }),
   body: z.object({
-    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required", ar: "السبب مطلوب" })),
+    reason: z.string().trim().min(1, vmsg({ bn: "কারণ আবশ্যক", en: "reason is required" })),
   }),
 });
 

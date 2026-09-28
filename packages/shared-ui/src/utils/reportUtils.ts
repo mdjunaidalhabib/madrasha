@@ -22,8 +22,8 @@ export const getAbsentMarkLabel = (forPrint = false) =>
 /** Status code -> printed label, in the print language. */
 const reportTextFor = (code: string): string | undefined => getPrintText(reportUtilsText).statuses[code];
 
-/** Digits in the PRINT language (the institution default - bn: ০১২, en: 012,
- * ar: ٠١٢). Historically Bangla-only, hence the name; every report/document
+/** Digits in the PRINT language (the institution default - bn: ০১২, en: 012).
+ * Historically Bangla-only, hence the name; every report/document
  * call site now follows the institution language automatically. For on-screen
  * (non-print) UI use localizeDigits(value, lang) with the user UI language. */
 export const toBanglaDigits = (value: string | number) => localizeDigits(value, getPrintLang());

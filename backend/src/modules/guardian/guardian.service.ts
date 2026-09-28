@@ -71,12 +71,12 @@ export class GuardianService {
   async login(phone: string, password: string, madrasaId: number): Promise<GuardianLoginResult> {
     const guardian = await this.repository.findActiveByPhone(madrasaId, cleanPhone(phone));
     if (!guardian) {
-      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
     }
 
     if (guardian.lockedUntil && guardian.lockedUntil.getTime() > Date.now()) {
       const minutesLeft = Math.ceil((guardian.lockedUntil.getTime() - Date.now()) / 60000);
-      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).`, ar: `محاولات فاشلة كثيرة جدًا. حاول مرة أخرى بعد ${minutesLeft} دقيقة.` }));
+      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).` }));
     }
 
     const validPassword = await comparePassword(password, guardian.passwordHash);
@@ -88,10 +88,10 @@ export class GuardianService {
 
       if (lockedUntil) {
         throw new BadRequestError(
-          t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। অ্যাকাউন্টটি ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে।`, en: `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.`, ar: `محاولات فاشلة كثيرة جدًا. تم قفل الحساب لمدة ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} دقيقة.` }),
+          t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। অ্যাকাউন্টটি ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে।`, en: `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.` }),
         );
       }
-      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
     }
 
     await this.repository.recordSuccessfulLogin(guardian.id);
@@ -114,7 +114,7 @@ export class GuardianService {
 
   async changePassword(guardianId: number, madrasaId: number, newPassword: string): Promise<void> {
     const guardian = await this.repository.findByIdForTenant(guardianId, madrasaId);
-    if (!guardian) throw new NotFoundError(t({ bn: "অভিভাবক অ্যাকাউন্ট পাওয়া যায়নি", en: "Guardian account not found", ar: "لم يتم العثور على حساب ولي الأمر" }));
+    if (!guardian) throw new NotFoundError(t({ bn: "অভিভাবক অ্যাকাউন্ট পাওয়া যায়নি", en: "Guardian account not found" }));
 
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updatePassword(guardian.id, passwordHash);
@@ -124,7 +124,7 @@ export class GuardianService {
 
   private async assertOwnsStudent(guardianId: number, studentId: number): Promise<void> {
     const link = await this.repository.findOwnership(guardianId, studentId);
-    if (!link) throw new ForbiddenError(t({ bn: "এই শিক্ষার্থীর তথ্য দেখার অনুমতি আপনার নেই", en: "You do not have access to this student's records", ar: "ليس لديك صلاحية الوصول إلى سجلات هذا الطالب" }));
+    if (!link) throw new ForbiddenError(t({ bn: "এই শিক্ষার্থীর তথ্য দেখার অনুমতি আপনার নেই", en: "You do not have access to this student's records" }));
   }
 
   /* ================= DATA ================= */
@@ -188,7 +188,7 @@ export class GuardianService {
     await this.assertOwnsStudent(guardianId, studentId);
 
     const detail = await this.repository.findResultSummaryDetail(madrasaId, studentId, resultMasterId);
-    if (!detail) throw new NotFoundError(t({ bn: "প্রকাশিত ফলাফল পাওয়া যায়নি", en: "Published result not found", ar: "لم يتم العثور على النتيجة المنشورة" }));
+    if (!detail) throw new NotFoundError(t({ bn: "প্রকাশিত ফলাফল পাওয়া যায়নি", en: "Published result not found" }));
 
     const [marks, subjects] = await Promise.all([
       this.repository.findMarksForResult(resultMasterId, studentId),

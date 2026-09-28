@@ -13,7 +13,7 @@ const getMadrasaId = (req: Request): number => {
 
 export const generatePayroll = asyncHandler(async (req: Request, res: Response) => {
   const data = await payrollService.generate(getMadrasaId(req), req.body);
-  return ApiResponse.success(res, { message: t({ bn: "বেতন তালিকা তৈরি হয়েছে", en: "Payroll generated successfully", ar: "تم إنشاء كشف الرواتب بنجاح" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "বেতন তালিকা তৈরি হয়েছে", en: "Payroll generated successfully" }), data });
 });
 
 export const getPayroll = asyncHandler(async (req: Request, res: Response) => {
@@ -28,5 +28,5 @@ export const markPayrollPaid = asyncHandler(async (req: Request, res: Response) 
     req.user?.id,
     req.body,
   );
-  return ApiResponse.success(res, { message: t({ bn: "বেতন পরিশোধিত হিসেবে চিহ্নিত হয়েছে", en: "Payroll marked as paid successfully", ar: "تم تسجيل الراتب كمدفوع بنجاح" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "বেতন পরিশোধিত হিসেবে চিহ্নিত হয়েছে", en: "Payroll marked as paid successfully" }), data });
 });

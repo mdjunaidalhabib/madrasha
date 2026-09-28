@@ -23,15 +23,15 @@ export const getPermissionCatalog = asyncHandler(async (req: Request, res: Respo
 
 export const createRole = asyncHandler(async (req: Request, res: Response) => {
   const data = await roleService.createRole(getMadrasaId(req), req.body);
-  return ApiResponse.success(res, { message: t({ bn: "রোল তৈরি হয়েছে", en: "Role created successfully", ar: "تم إنشاء الدور بنجاح" }), data });
+  return ApiResponse.success(res, { message: t({ bn: "রোল তৈরি হয়েছে", en: "Role created successfully" }), data });
 });
 
 export const updateRole = asyncHandler(async (req: Request, res: Response) => {
   await roleService.updateRole(Number(req.params.id), getMadrasaId(req), req.body);
-  return ApiResponse.message(res, t({ bn: "রোল আপডেট হয়েছে", en: "Role updated successfully", ar: "تم تحديث الدور بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "রোল আপডেট হয়েছে", en: "Role updated successfully" }));
 });
 
 export const deleteRole = asyncHandler(async (req: Request, res: Response) => {
   await roleService.deleteRole(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "রোল মুছে ফেলা হয়েছে", en: "Role deleted successfully", ar: "تم حذف الدور بنجاح" }));
+  return ApiResponse.message(res, t({ bn: "রোল মুছে ফেলা হয়েছে", en: "Role deleted successfully" }));
 });

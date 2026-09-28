@@ -14,18 +14,18 @@ export const kioskDeviceAuth = async (req: Request, res: Response, next: NextFun
   try {
     const rawKey = req.headers["x-kiosk-key"];
     if (!rawKey || typeof rawKey !== "string") {
-      return res.status(401).json({ message: t({ bn: "কিয়স্ক কী আবশ্যক", en: "Kiosk key required", ar: "مفتاح الكشك مطلوب" }) });
+      return res.status(401).json({ message: t({ bn: "কিয়স্ক কী আবশ্যক", en: "Kiosk key required" }) });
     }
 
     const madrasaId = req.tenant?.madrasa_id;
     if (!madrasaId) {
-      return res.status(400).json({ message: t({ bn: "টেন্যান্টে প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found in tenant", ar: "لم يتم العثور على المؤسسة" }) });
+      return res.status(400).json({ message: t({ bn: "টেন্যান্টে প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found in tenant" }) });
     }
 
     const apiKeyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
     const device = await kioskRepository.findActiveDeviceByKeyHash(Number(madrasaId), apiKeyHash);
     if (!device) {
-      return res.status(401).json({ message: t({ bn: "কিয়স্ক ডিভাইসটি সঠিক নয় বা নিষ্ক্রিয়", en: "Invalid or inactive kiosk device", ar: "جهاز الكشك غير صالح أو غير نشط" }) });
+      return res.status(401).json({ message: t({ bn: "কিয়স্ক ডিভাইসটি সঠিক নয় বা নিষ্ক্রিয়", en: "Invalid or inactive kiosk device" }) });
     }
 
     req.kioskDevice = { id: device.id, name: device.name };
@@ -34,6 +34,6 @@ export const kioskDeviceAuth = async (req: Request, res: Response, next: NextFun
     next();
   } catch (err) {
     logger.error("Kiosk device auth error", err);
-    return res.status(500).json({ message: t({ bn: "কিয়স্ক যাচাই ব্যর্থ হয়েছে", en: "Kiosk authentication failed", ar: "فشل التحقق من الكشك" }) });
+    return res.status(500).json({ message: t({ bn: "কিয়স্ক যাচাই ব্যর্থ হয়েছে", en: "Kiosk authentication failed" }) });
   }
 };

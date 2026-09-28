@@ -5,7 +5,7 @@ import { t } from "../i18n";
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized", ar: "غير مصرح" }) });
+  if (!header) return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized" }) });
 
   const token = header.split(" ")[1];
   try {
@@ -15,7 +15,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     // accepted by tenant-admin routes, including ones that only have
     // tenantMiddleware+authMiddleware (no rbacMiddleware) such as GET /dashboard.
     if (decoded?.type === "guardian") {
-      return res.status(401).json({ message: t({ bn: "টোকেন সঠিক নয়", en: "Invalid token", ar: "الرمز غير صالح" }) });
+      return res.status(401).json({ message: t({ bn: "টোকেন সঠিক নয়", en: "Invalid token" }) });
     }
 
     // If this route already resolved a tenant from the URL's slug
@@ -25,12 +25,12 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     // created) madrasa, or the original madrasa no longer exists, this
     // token must be rejected rather than silently trusted.
     if (req.tenant && decoded?.madrasa_id !== req.tenant.madrasa_id) {
-      return res.status(401).json({ message: t({ bn: "এই প্রতিষ্ঠানের জন্য সেশনটি আর বৈধ নয়", en: "Session no longer valid for this institution", ar: "الجلسة لم تعد صالحة لهذه المؤسسة" }) });
+      return res.status(401).json({ message: t({ bn: "এই প্রতিষ্ঠানের জন্য সেশনটি আর বৈধ নয়", en: "Session no longer valid for this institution" }) });
     }
 
     req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ message: t({ bn: "টোকেন সঠিক নয়", en: "Invalid token", ar: "الرمز غير صالح" }) });
+    return res.status(401).json({ message: t({ bn: "টোকেন সঠিক নয়", en: "Invalid token" }) });
   }
 };

@@ -41,12 +41,12 @@ export class AuthService {
   }: LoginCredentials): Promise<LoginResult> {
     const user = await this.repository.findActiveUserByEmail(email, madrasaId);
     if (!user) {
-      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
     }
 
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).`, ar: `محاولات فاشلة كثيرة جدًا. حاول مرة أخرى بعد ${minutesLeft} دقيقة.` }));
+      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).` }));
     }
 
     const [role, validPassword] = await Promise.all([
@@ -64,10 +64,10 @@ export class AuthService {
       if (lockedUntil) {
         logger.warn(`Account locked after ${attempts} failed logins`, { userId: user.id });
         throw new BadRequestError(
-          t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। অ্যাকাউন্টটি ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে।`, en: `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.`, ar: `محاولات فاشلة كثيرة جدًا. تم قفل الحساب لمدة ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} دقيقة.` }),
+          t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। অ্যাকাউন্টটি ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে।`, en: `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.` }),
         );
       }
-      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials", ar: "بيانات الدخول غير صحيحة" }));
+      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
     }
 
     await this.repository.recordSuccessfulLogin(user.id);
@@ -146,18 +146,18 @@ export class AuthService {
     const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
     const tokenRow = await this.repository.findValidRefreshToken(tokenHash);
     if (!tokenRow || tokenRow.madrasaId !== madrasaId) {
-      throw new BadRequestError(t({ bn: "রিফ্রেশ টোকেন সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "Invalid or expired refresh token", ar: "رمز التحديث غير صالح أو منتهي الصلاحية" }));
+      throw new BadRequestError(t({ bn: "রিফ্রেশ টোকেন সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "Invalid or expired refresh token" }));
     }
 
     const user = await this.repository.findActiveUserForRefresh(tokenRow.userId, madrasaId);
     if (!user) {
       await this.repository.revokeRefreshToken(tokenHash);
-      throw new BadRequestError(t({ bn: "রিফ্রেশ টোকেন সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "Invalid or expired refresh token", ar: "رمز التحديث غير صالح أو منتهي الصلاحية" }));
+      throw new BadRequestError(t({ bn: "রিফ্রেশ টোকেন সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "Invalid or expired refresh token" }));
     }
 
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       await this.repository.revokeRefreshToken(tokenHash);
-      throw new BadRequestError(t({ bn: "অ্যাকাউন্টটি লক করা আছে", en: "Account is locked", ar: "الحساب مقفل" }));
+      throw new BadRequestError(t({ bn: "অ্যাকাউন্টটি লক করা আছে", en: "Account is locked" }));
     }
 
     await this.repository.revokeRefreshToken(tokenHash);
@@ -200,7 +200,7 @@ export class AuthService {
    * scoped to `userId` so a user can only revoke their own sessions. */
   async revokeSession(userId: number, sessionId: number): Promise<void> {
     const result = await this.repository.revokeRefreshTokenById(sessionId, userId);
-    if (!result.count) throw new NotFoundError(t({ bn: "সেশন পাওয়া যায়নি", en: "Session not found", ar: "لم يتم العثور على الجلسة" }));
+    if (!result.count) throw new NotFoundError(t({ bn: "সেশন পাওয়া যায়নি", en: "Session not found" }));
   }
 
   /** Lists this user's still-valid sessions (for the "logout from all
@@ -228,12 +228,12 @@ export class AuthService {
   async unlockScreen({ userId, madrasaId, password }: UnlockCredentials): Promise<void> {
     const user = await this.repository.findActiveUserById(userId, madrasaId);
     if (!user) {
-      throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found", ar: "لم يتم العثور على المستخدم" }));
+      throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
     }
 
     const validPassword = await comparePassword(password, user.passwordHash);
     if (!validPassword) {
-      throw new BadRequestError(t({ bn: "পাসওয়ার্ড সঠিক নয়", en: "Invalid password", ar: "كلمة المرور غير صحيحة" }));
+      throw new BadRequestError(t({ bn: "পাসওয়ার্ড সঠিক নয়", en: "Invalid password" }));
     }
   }
 
@@ -326,7 +326,7 @@ export class AuthService {
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const resetToken = await this.repository.findValidResetToken(tokenHash);
     if (!resetToken || resetToken.madrasaId !== madrasaId) {
-      throw new BadRequestError(t({ bn: "এই রিসেট লিংকটি সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "This reset link is invalid or has expired", ar: "رابط إعادة التعيين هذا غير صالح أو منتهي الصلاحية" }));
+      throw new BadRequestError(t({ bn: "এই রিসেট লিংকটি সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "This reset link is invalid or has expired" }));
     }
 
     const passwordHash = await hashPassword(newPassword);
@@ -347,7 +347,7 @@ export class AuthService {
    * already-logged-in user after they explicitly log out and back in. */
   async getMe(userId: number, madrasaId: number): Promise<MyProfile> {
     const user = await this.repository.findMyProfile(userId, madrasaId);
-    if (!user) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found", ar: "لم يتم العثور على المستخدم" }));
+    if (!user) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
 
     const roleKey = normalizeRoleKey(user.role?.keyName || user.role?.nameBn);
     const [permissions, modules, madrasa] = await Promise.all([
@@ -373,16 +373,16 @@ export class AuthService {
   async updateMe(userId: number, madrasaId: number, dto: UpdateMyProfileInput): Promise<void> {
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) {
-      if (!dto.name.trim()) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "Name is required", ar: "الاسم مطلوب" }));
+      if (!dto.name.trim()) throw new BadRequestError(t({ bn: "নাম আবশ্যক", en: "Name is required" }));
       data.name = dto.name.trim();
     }
     if (dto.mobile !== undefined) data.mobile = dto.mobile.trim() || null;
     if (dto.photo_url !== undefined) data.photoUrl = dto.photo_url.trim() || null;
 
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update", ar: "لا توجد بيانات صالحة للتحديث" }));
+    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
 
     const result = await this.repository.updateMyProfile(userId, madrasaId, data as any);
-    if (!result.count) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found", ar: "لم يتم العثور على المستخدم" }));
+    if (!result.count) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
   }
 
   /** Re-confirms the CURRENT user's own password without changing anything
@@ -394,7 +394,7 @@ export class AuthService {
   async verifyMyPassword(userId: number, madrasaId: number, password: string): Promise<void> {
     const user = await this.repository.findPasswordHashById(userId, madrasaId);
     if (!user || !(await comparePassword(password, user.passwordHash))) {
-      throw new BadRequestError(t({ bn: "পাসওয়ার্ড সঠিক নয়।", en: "Incorrect password.", ar: "كلمة المرور غير صحيحة." }));
+      throw new BadRequestError(t({ bn: "পাসওয়ার্ড সঠিক নয়।", en: "Incorrect password." }));
     }
   }
 
@@ -405,10 +405,10 @@ export class AuthService {
     newPassword: string,
   ): Promise<void> {
     const user = await this.repository.findPasswordHashById(userId, madrasaId);
-    if (!user) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found", ar: "لم يتم العثور على المستخدم" }));
+    if (!user) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
 
     const validPassword = await comparePassword(currentPassword, user.passwordHash);
-    if (!validPassword) throw new BadRequestError(t({ bn: "বর্তমান পাসওয়ার্ড সঠিক নয়", en: "Current password is incorrect", ar: "كلمة المرور الحالية غير صحيحة" }));
+    if (!validPassword) throw new BadRequestError(t({ bn: "বর্তমান পাসওয়ার্ড সঠিক নয়", en: "Current password is incorrect" }));
 
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updateUserPasswordHash(userId, passwordHash);
