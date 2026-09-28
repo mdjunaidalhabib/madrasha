@@ -100,6 +100,9 @@ export const resultsText = defineText({
     correctionReasonRequired: "সংশোধনের কারণ (আবশ্যক)",
     passwordConfirmTitle: "পাসওয়ার্ড দিয়ে নিশ্চিত করুন",
     passwordConfirmMessage: "নম্বর রিসেট চূড়ান্ত করতে আপনার নিজের পাসওয়ার্ড দিন।",
+    cellsCorrectionApplied: (n: string) => `${n}টি ঘরের সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে`,
+    bothPermsInfo:
+      "ℹ️ আপনার এন্ট্রি ও যাচাই উভয় অনুমতি থাকায় \"সংরক্ষণ ও প্রসেস করুন\" চাপলেই সব {{subject}}ের জমা, যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই। জমা/যাচাই হয়ে যাওয়া কোনো {{subject}}েও ইচ্ছেমতো নম্বর সম্পাদনা করতে পারবেন — সংশোধনের পর সেই {{subject}} স্বয়ংক্রিয়ভাবে আবার \"খসড়া\" হয়ে যাবে, পরের বার \"সংরক্ষণ ও প্রসেস করুন\" চাপলে ফের জমা/যাচাই হয়ে যাবে।",
   },
   en: {
     noMarksChanged: "No marks were changed",
@@ -196,5 +199,8 @@ export const resultsText = defineText({
     correctionReasonRequired: "Reason for correction (required)",
     passwordConfirmTitle: "Confirm with password",
     passwordConfirmMessage: "Enter your own password to finalise the marks reset.",
+    cellsCorrectionApplied: (n) => `Correction applied to ${n} cells — totals, grades and merit positions updated`,
+    bothPermsInfo:
+      "ℹ️ You have both entry and verify permissions, so pressing \"Save & Process\" submits, verifies and processes every {{subject}} at once — no separate submit/verify needed. You can still edit marks of any submitted/verified {{subject}}; after an edit it becomes \"draft\" again and is re-submitted/verified the next time you press \"Save & Process\".",
   },
 });

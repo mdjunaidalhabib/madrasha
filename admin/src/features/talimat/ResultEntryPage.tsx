@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { resultsText } from "./results.text";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
@@ -59,10 +61,12 @@ const extractArray = (res: any) => {
 
 // The dedicated "Number Entry" page — lives on its own route so it never
 // shares screen space with the preview/summary. Reached either from the
-// Preview page's "নাম্বার এন্ট্রি" button (with exam/class preset via query
+// Preview page's t.marksEntry button (with exam/class preset via query
 // params) or directly, in which case the teacher picks division/exam/class
-// here. "প্রিভিউ দেখুন" always sends them back to the Preview page.
+// here. t.viewPreview always sends them back to the Preview page.
 export default function ResultEntryPage() {
+  const t = useText(resultsText);
+  const c = useText(commonText);
   const push = useToastStore((state) => state.push);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -164,9 +168,9 @@ export default function ResultEntryPage() {
     students.every((s) => books.every((b) => marks?.[s.id]?.[b.book_id] != null));
 
   const saveDisabledReason = !allMarksEntered
-    ? "সব শিক্ষার্থীর সব বিষয়ের নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) এখনও দেওয়া হয়নি"
+    ? t.notAllEntered
     : !hasUnprocessedChanges
-      ? "কোনো নতুন পরিবর্তন নেই — আগের এন্ট্রি ইতিমধ্যে সংরক্ষণ ও প্রসেস করা হয়েছে"
+      ? t.noNewChanges
       : undefined;
 
   useEffect(() => {
@@ -180,7 +184,7 @@ export default function ResultEntryPage() {
         setExams(extractArray(e.data));
       } catch (err) {
         logger.error("Init load error:", err);
-        push("error", "বিভাগ / পরীক্ষা লোড ব্যর্থ হয়েছে");
+        push("error", t.filtersLoadFailed);
       }
     };
     init();
@@ -477,15 +481,15 @@ export default function ResultEntryPage() {
 
     if (correction.clearedCells > 0) {
       setCorrectionReasonOpen(false);
-      return push("error", "প্রকাশিত ফলাফলে কোনো নম্বর মুছে ফাঁকা রাখা যায় না — নম্বর অথবা \"-\" (অনুপস্থিত) দিন");
+      return push("error", t.publishedNoClear);
     }
     if (correction.newCells > 0) {
       setCorrectionReasonOpen(false);
-      return push("error", "যে ঘরে আগে কোনো নম্বর ছিল না, প্রকাশিত ফলাফলে সেখানে নতুন নম্বর যোগ করা যায় না");
+      return push("error", t.publishedNoAdd);
     }
     if (correction.items.length === 0) {
       setCorrectionReasonOpen(false);
-      return push("error", "কোনো নম্বর বদলানো হয়নি");
+      return push("error", t.noMarksChanged);
     }
 
     setCorrectionSaving(true);
@@ -504,13 +508,13 @@ export default function ResultEntryPage() {
       push(
         "success",
         res.data?.applied
-          ? `${correction.changedCells}টি ঘরের সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে`
-          : "সংশোধনের অনুরোধ জমা হয়েছে — অনুমোদনের অপেক্ষায়",
+          ? t.cellsCorrectionApplied(toBanglaDigits(correction.changedCells))
+          : t.correctionRequested,
       );
       goToPreview();
     } catch (err: any) {
       logger.error("Submit correction error:", err);
-      push("error", err?.response?.data?.message || "সংশোধন জমা দেওয়া যায়নি");
+      push("error", err?.response?.data?.message || t.correctionFailed);
     } finally {
       setCorrectionSaving(false);
     }
@@ -527,10 +531,10 @@ export default function ResultEntryPage() {
     const payload = buildMarksPayload();
 
     if (!examId || !classId) {
-      return push("error", "পরীক্ষা ও শ্রেণি নির্বাচন করুন");
+      return push("error", t.pickExamClass);
     }
     if (payload.length === 0 && !resultMasterId) {
-      return push("error", "কোনো নম্বর দেওয়া হয়নি!");
+      return push("error", t.noMarksGiven);
     }
 
     setLoading(true);
@@ -565,11 +569,11 @@ export default function ResultEntryPage() {
       });
 
       lastProcessedSnapshotRef.current = marksSnapshot;
-      push("success", "সংরক্ষণ ও প্রসেস সফল হয়েছে");
+      push("success", t.savedProcessed);
       goToPreview();
     } catch (err: any) {
       logger.error("Save marks error:", err);
-      push("error", err?.response?.data?.message || "নম্বর সংরক্ষণ করা যায়নি");
+      push("error", err?.response?.data?.message || t.marksSaveFailed);
     } finally {
       setLoading(false);
     }
@@ -580,17 +584,17 @@ export default function ResultEntryPage() {
   // there is surfaced verbatim via toast rather than duplicated client-side.
   const handleSubmitBook = async (bookId: number) => {
     if (!resultMasterId) {
-      return push("error", "প্রথমে অন্তত একটি নম্বর দিয়ে সংরক্ষণ করুন");
+      return push("error", t.saveFirst);
     }
 
     setSubmittingBookId(bookId);
     try {
       const res = await api.post(`/results/${resultMasterId}/books/${bookId}/submit`, {});
-      push("success", res.data?.message || "বিষয়টি জমা দেয়া হয়েছে");
+      push("success", res.data?.message || t.subjectSubmitted);
       await loadSubmissions(resultMasterId);
     } catch (err: any) {
       logger.error("Submit book error:", err);
-      push("error", err?.response?.data?.message || "বিষয়টি জমা দেয়া যায়নি");
+      push("error", err?.response?.data?.message || t.subjectSubmitFailed);
     } finally {
       setSubmittingBookId(null);
     }
@@ -600,11 +604,11 @@ export default function ResultEntryPage() {
     if (!resultMasterId) return;
     try {
       await api.post(`/results/${resultMasterId}/books/${bookId}/verify`, {});
-      push("success", "বিষয়টি যাচাই করা হয়েছে");
+      push("success", t.subjectVerified);
       await loadSubmissions(resultMasterId);
     } catch (err: any) {
       logger.error("Verify book error:", err);
-      push("error", err?.response?.data?.message || "যাচাই করা যায়নি");
+      push("error", err?.response?.data?.message || t.verifyFailed);
     }
   };
 
@@ -613,12 +617,12 @@ export default function ResultEntryPage() {
     setRejectingBook(true);
     try {
       await api.post(`/results/${resultMasterId}/books/${rejectBookId}/reject`, { reason });
-      push("success", "বিষয়টি বাতিল করা হয়েছে");
+      push("success", t.subjectRejected);
       await loadSubmissions(resultMasterId);
       setRejectBookId(null);
     } catch (err: any) {
       logger.error("Reject book error:", err);
-      push("error", err?.response?.data?.message || "বাতিল করা যায়নি");
+      push("error", err?.response?.data?.message || t.subjectRejectFailed);
     } finally {
       setRejectingBook(false);
     }
@@ -632,16 +636,15 @@ export default function ResultEntryPage() {
   // clears.
   const handleReset = () => {
     useConfirmStore.getState().show({
-      title: "নম্বর রিসেট (১/২)",
-      message: "এই ক্লাসের সব শিক্ষার্থীর সব বিষয়ের দেওয়া নম্বর মুছে যাবে। এগিয়ে যেতে চান?",
-      confirmText: "এগিয়ে যান",
+      title: t.resetTitle,
+      message: t.resetMessage,
+      confirmText: t.proceed,
       onConfirm: () => {
         useConfirmStore.getState().show({
-          title: "শেষবারের মতো নিশ্চিত করুন (২/২)",
+          title: t.finalConfirm,
           message:
-            "আপনি কি সত্যিই নিশ্চিত? এই মুহূর্তে দেওয়া সব নম্বর স্থায়ীভাবে মুছে যাবে — ফিরিয়ে আনার কোনো উপায় নেই। " +
-            "নিশ্চিত করতে পরের ধাপে আপনার পাসওয়ার্ড দিতে হবে।",
-          confirmText: "হ্যাঁ, এগিয়ে যান",
+            t.resetFinalMessage,
+          confirmText: t.resetFinalConfirm,
           danger: true,
           onConfirm: () => {
             setResetPasswordError(null);
@@ -677,9 +680,9 @@ export default function ResultEntryPage() {
       await api.post("/auth/verify-password", { password });
       setResetPasswordOpen(false);
       performReset();
-      push("success", "সব নম্বর রিসেট করা হয়েছে");
+      push("success", t.resetDone);
     } catch (err: any) {
-      setResetPasswordError(err?.response?.data?.message || "পাসওয়ার্ড সঠিক নয়।");
+      setResetPasswordError(err?.response?.data?.message || t.wrongPassword);
     } finally {
       setResetVerifying(false);
     }
@@ -688,14 +691,14 @@ export default function ResultEntryPage() {
   return (
     <div className="p-3 sm:p-6 space-y-6 bg-gray-50 dark:bg-slate-950 min-h-screen">
       <div className="flex flex-wrap gap-3 justify-between items-center bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl shadow">
-        <h1 className="text-lg sm:text-2xl font-bold dark:text-slate-100">✍️ নাম্বার এন্ট্রি</h1>
+        <h1 className="text-lg sm:text-2xl font-bold dark:text-slate-100">✍️ {t.marksEntry}</h1>
 
         <div className="flex w-full sm:w-auto flex-wrap gap-2">
           <button
             onClick={goToPreview}
             className="flex-1 sm:flex-none bg-gray-600 text-white px-5 py-2 rounded"
           >
-            👁 প্রিভিউ দেখুন
+            👁 {t.viewPreview}
           </button>
         </div>
       </div>
@@ -716,14 +719,14 @@ export default function ResultEntryPage() {
         <div className="text-amber-800 text-sm font-medium bg-amber-50 border border-amber-200 px-3 py-2 rounded dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/50">
           {canCorrect
             ? canApplyCorrectionDirectly
-              ? "📝 এই ফলাফল প্রকাশিত — পুরো ক্লাসের নম্বর একসাথে সংশোধন করতে পারবেন। নিচে \"সংশোধন প্রয়োগ করুন\" চাপলে কারণসহ শুধু বদলানো ঘরগুলো এখনই প্রয়োগ হবে এবং মোট, গ্রেড ও মেধাক্রম নতুন করে হিসাব হবে (সব অডিট লগে থাকবে)।"
-              : "📝 এই ফলাফল প্রকাশিত — পুরো ক্লাসের নম্বর একসাথে বদলাতে পারবেন। নিচে \"অনুরোধ পাঠান\" চাপলে বদলানো ঘরগুলো সংশোধনের অনুরোধ হিসেবে জমা হবে; অনুমোদনের পর ফলাফলে প্রয়োগ হবে।"
-            : "🔒 এই ফলাফল প্রকাশিত — নম্বর সংশোধনের অনুমতি আপনার নেই, তাই শুধু দেখতে পারবেন।"}
+              ? t.publishedCanApply
+              : t.publishedCanRequest
+            : t.publishedReadOnly}
         </div>
       ) : (
         editMode && (
           <div className="text-yellow-700 text-sm font-medium bg-yellow-50 border border-yellow-200 px-3 py-2 rounded dark:text-yellow-400 dark:bg-yellow-950/30 dark:border-yellow-900/50">
-            ✏️ পূর্বের রেজাল্ট পাওয়া গেছে — আপনি নম্বর আপডেট করতে পারবেন
+            {t.existingFound}
           </div>
         )
       )}
@@ -755,10 +758,7 @@ export default function ResultEntryPage() {
 
           {isSingleActorWorkflow && !isPublished && (
             <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
-              ℹ️ আপনার এন্ট্রি ও যাচাই উভয় অনুমতি থাকায় "সংরক্ষণ ও প্রসেস করুন" চাপলেই সব বিষয়ের জমা,
-              যাচাই ও প্রসেস একসাথে সম্পন্ন হবে — আলাদাভাবে জমা/যাচাই করার প্রয়োজন নেই। জমা/যাচাই হয়ে যাওয়া
-              কোনো বিষয়েও ইচ্ছেমতো নম্বর সম্পাদনা করতে পারবেন — সংশোধনের পর সেই বিষয় স্বয়ংক্রিয়ভাবে আবার
-              "খসড়া" হয়ে যাবে, পরের বার "সংরক্ষণ ও প্রসেস করুন" চাপলে ফের জমা/যাচাই হয়ে যাবে।
+              {t.bothPermsInfo}
             </p>
           )}
 
@@ -777,28 +777,28 @@ export default function ResultEntryPage() {
                     disabled={loading || !canCorrect || !correction || correction.items.length === 0}
                     title={
                       !canCorrect
-                        ? "সংশোধনের অনুমতি নেই"
+                        ? t.noCorrectPermission
                         : correction && correction.items.length === 0
-                          ? "কোনো নম্বর বদলানো হয়নি"
+                          ? t.noMarksChanged
                           : undefined
                     }
                     className="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
                   >
-                    {canApplyCorrectionDirectly ? "📝 সংশোধন প্রয়োগ করুন" : "📝 সংশোধনের অনুরোধ পাঠান"}
+                    {canApplyCorrectionDirectly ? `📝 ${t.applyCorrection}` : `📝 ${t.sendCorrectionRequest}`}
                   </button>
                   <button
                     onClick={() => loadExistingMarks()}
                     disabled={loading || !correction || correction.changedCells === 0}
                     className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
-                    ↩ বদল বাতিল
+                    {t.discardChanges}
                   </button>
                   <span className="text-sm text-gray-600 dark:text-slate-400">
                     {correction && correction.changedCells > 0
-                      ? `${toBanglaDigits(correction.changedCells)}টি ঘরের নম্বর বদলানো হয়েছে`
-                      : "এখনো কোনো নম্বর বদলানো হয়নি"}
+                      ? t.cellsChanged(toBanglaDigits(correction.changedCells))
+                      : t.noCellsChanged}
                     {correction && correction.clearedCells > 0
-                      ? ` · ⚠ ${toBanglaDigits(correction.clearedCells)}টি ঘর ফাঁকা (ফাঁকা রাখা যাবে না)`
+                      ? t.cellsCleared(toBanglaDigits(correction.clearedCells))
                       : ""}
                   </span>
                 </div>
@@ -815,16 +815,16 @@ export default function ResultEntryPage() {
         </>
       ) : (
         <div className="bg-white dark:bg-slate-900 shadow-md rounded-xl p-6 text-center text-gray-500 dark:text-slate-400">
-          নাম্বার এন্ট্রি শুরু করতে উপরে থেকে বিভাগ, পরীক্ষা এবং ক্লাস নির্বাচন করুন।
+          {t.pickToStart}
         </div>
       )}
 
       <ReasonPromptModal
         open={rejectBookId != null}
-        title="বিষয়ের নম্বর বাতিল করুন"
-        message="এই বিষয়ের জমাকৃত নম্বর বাতিল করা হবে, শিক্ষক আবার সংশোধন করে জমা দিতে পারবেন।"
-        label="বাতিলের কারণ"
-        confirmText="বাতিল করুন"
+        title={t.rejectSubjectTitle}
+        message={t.rejectSubjectMessage}
+        label={t.rejectSubjectReason}
+        confirmText={t.rejectSubjectConfirm}
         loading={rejectingBook}
         onCancel={() => setRejectBookId(null)}
         onConfirm={handleConfirmRejectBook}
@@ -832,14 +832,14 @@ export default function ResultEntryPage() {
 
       <ReasonPromptModal
         open={correctionReasonOpen}
-        title="সংশোধনের কারণ"
+        title={t.correctionReason}
         message={
           canApplyCorrectionDirectly
-            ? `${correction ? toBanglaDigits(correction.changedCells) : ""}টি ঘরের সংশোধন এখনই প্রয়োগ হবে। কারণ অডিট লগে সংরক্ষিত থাকবে।`
-            : "সংশোধনের অনুরোধ অনুমোদনকারীর কাছে যাবে; কারণসহ সবকিছু সংরক্ষিত থাকবে।"
+            ? t.correctionApplyNow(correction ? toBanglaDigits(correction.changedCells) : "")
+            : t.correctionGoesToApprover
         }
-        label="সংশোধনের কারণ (আবশ্যক)"
-        confirmText={canApplyCorrectionDirectly ? "সংশোধন প্রয়োগ করুন" : "অনুরোধ পাঠান"}
+        label={t.correctionReasonRequired}
+        confirmText={canApplyCorrectionDirectly ? t.applyCorrection : t.sendRequest}
         confirmVariant="primary"
         loading={correctionSaving}
         onCancel={() => setCorrectionReasonOpen(false)}
@@ -848,8 +848,8 @@ export default function ResultEntryPage() {
 
       <PasswordPromptModal
         open={resetPasswordOpen}
-        title="পাসওয়ার্ড দিয়ে নিশ্চিত করুন"
-        message="নম্বর রিসেট চূড়ান্ত করতে আপনার নিজের পাসওয়ার্ড দিন।"
+        title={t.passwordConfirmTitle}
+        message={t.passwordConfirmMessage}
         loading={resetVerifying}
         error={resetPasswordError}
         onCancel={() => {
