@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatCurrency, getLang, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { dashboardText } from "./dashboard.text";
 import { Link } from "react-router-dom";
 import {
   CartesianGrid,
@@ -45,7 +47,7 @@ import { useAuthStore } from "../../store/authStore";
 import { getPublicSiteUrl } from "../../utils/publicSiteUrl";
 import VendorPromoCard from "../vendor/VendorPromoCard";
 
-const money = (value: number | string) => `৳ ${Number(value || 0).toLocaleString("bn-BD")}`;
+const money = (value: number | string) => formatCurrency(value || 0, getLang());
 
 type IncomeExpensePoint = { period: string; total_income: number; total_expense: number };
 type AttendancePoint = { period: string; percentage: number };
@@ -65,6 +67,8 @@ const GENDER_COLORS = ["#3b82f6", "#f43f5e"];
 const CHANNEL_COLORS = ["#0ea5e9", "#f59e0b"];
 
 export default function DashboardPage() {
+  const t = useText(dashboardText);
+  const lang = useLang();
   const [data, setData] = useState<any>(null);
   const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(true);
@@ -131,94 +135,94 @@ export default function DashboardPage() {
     ? []
     : [
         {
-          label: "মোট ছাত্র",
+          label: t.totalStudents,
           value: data.students,
           tone: "blue" as const,
           icon: <Users className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "ছাত্র (ছেলে)",
+          label: t.maleStudents,
           value: data.studentsByGender?.male ?? 0,
           tone: "blue" as const,
           icon: <User className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "ছাত্রী (মেয়ে)",
+          label: t.femaleStudents,
           value: data.studentsByGender?.female ?? 0,
           tone: "rose" as const,
           icon: <UserRound className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "মোট শিক্ষক",
+          label: t.totalTeachers,
           value: data.teachers,
           tone: "indigo" as const,
           icon: <GraduationCap className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "মোট আয়",
+          label: t.totalIncome,
           value: data.income,
           tone: "emerald" as const,
           variant: "currency" as const,
           icon: <TrendingUp className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "মোট ব্যয়",
+          label: t.totalExpense,
           value: data.expense,
           tone: "rose" as const,
           variant: "currency" as const,
           icon: <TrendingDown className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "বর্তমান ব্যালেন্স",
+          label: t.currentBalance,
           value: data.balance,
           tone: "slate" as const,
           variant: "currency" as const,
           icon: <Scale className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "আজকের আয়/ব্যয়",
+          label: t.todayIncomeExpense,
           value: data.todayIncome,
           tone: "amber" as const,
           variant: "currency" as const,
-          subLabel: `ব্যয়: ${money(data.todayExpense)}`,
+          subLabel: t.expenseSub(money(data.todayExpense)),
           icon: <CalendarClock className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "অনলাইন আয়",
+          label: t.onlineIncome,
           value: onlineTotal.income,
           tone: "blue" as const,
           variant: "currency" as const,
-          subLabel: `মোট আয়ের ${onlineIncomePct}%`,
+          subLabel: t.ofTotalIncome(localizeDigits(onlineIncomePct, lang)),
           icon: <Wifi className="h-5 w-5" strokeWidth={1.75} />,
         },
         {
-          label: "অফলাইন আয় (নগদ)",
+          label: t.offlineIncome,
           value: offlineTotal.income,
           tone: "amber" as const,
           variant: "currency" as const,
-          subLabel: `মোট আয়ের ${offlineIncomePct}%`,
+          subLabel: t.ofTotalIncome(localizeDigits(offlineIncomePct, lang)),
           icon: <Banknote className="h-5 w-5" strokeWidth={1.75} />,
         },
       ];
 
   const fundData = (data?.fundBalances || [])
     .map((fund: any) => ({
-      fund: fund.fund || "নির্ধারিত নয়",
+      fund: fund.fund || t.unassigned,
       balance: Number(fund.balance) || 0,
     }))
     .filter((fund: any) => fund.balance > 0);
 
   const genderData = data
     ? [
-        { name: "ছেলে", value: data.studentsByGender?.male ?? 0 },
-        { name: "মেয়ে", value: data.studentsByGender?.female ?? 0 },
+        { name: t.boys, value: data.studentsByGender?.male ?? 0 },
+        { name: t.girls, value: data.studentsByGender?.female ?? 0 },
       ].filter((g) => g.value > 0)
     : [];
 
   const channelData = data
     ? [
-        { channel: "অনলাইন", income: onlineTotal.income, expense: onlineTotal.expense },
-        { channel: "অফলাইন", income: offlineTotal.income, expense: offlineTotal.expense },
+        { channel: t.online, income: onlineTotal.income, expense: onlineTotal.expense },
+        { channel: t.offline, income: offlineTotal.income, expense: offlineTotal.expense },
       ]
     : [];
 
@@ -230,8 +234,8 @@ export default function DashboardPage() {
   const quickActions = (
     <Card>
       <CardHeader
-        title="দ্রুত কাজ"
-        subtitle="প্রায়ই ব্যবহৃত কাজ"
+        title={t.quickActions}
+        subtitle={t.quickActionsSub}
         nowrap
         actions={
           <a
@@ -241,7 +245,7 @@ export default function DashboardPage() {
             className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-sky-600/20 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-600/30"
           >
             <ExternalLink size={13} />
-            ওয়েবসাইট দেখুন
+            {t.viewWebsite}
           </a>
         }
       />
@@ -251,21 +255,21 @@ export default function DashboardPage() {
           to={`/accounts/income`}
         >
           <Wallet className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-          আয় এন্ট্রি
+          {t.incomeEntry}
         </Link>
         <Link
           className="flex items-center gap-3 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-500 hover:shadow-md"
           to={`/accounts/expense`}
         >
           <ReceiptText className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-          ব্যয় এন্ট্রি
+          {t.expenseEntry}
         </Link>
         <Link
           className="flex items-center gap-3 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-md"
           to={`/students/new`}
         >
           <UserPlus className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-          নতুন ভর্তি
+          {t.newAdmission}
         </Link>
       </div>
     </Card>
@@ -291,17 +295,17 @@ export default function DashboardPage() {
             ) : (
               <>
                 <StatTile
-                  label="আজকের হাজিরা %"
+                  label={t.todayAttendance}
                   value={data.attendanceToday.percentage}
                   variant="percentage"
                   tone="emerald"
-                  subLabel={`${data.attendanceToday.total} জনের হাজিরা নেওয়া হয়েছে`}
+                  subLabel={t.attendanceTaken(localizeDigits(data.attendanceToday.total, lang))}
                   to={`/attendance/mark`}
                   size="sm"
                   icon={<CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />}
                 />
                 <StatTile
-                  label="অনুমোদনের অপেক্ষায় ভর্তি"
+                  label={t.pendingAdmissions}
                   value={data.pendingAdmissionsCount}
                   tone="amber"
                   to={`/students/admissions/pending`}
@@ -309,17 +313,17 @@ export default function DashboardPage() {
                   icon={<Hourglass className="h-5 w-5" strokeWidth={1.75} />}
                 />
                 <StatTile
-                  label="বকেয়া ফি"
+                  label={t.overdueFees}
                   value={data.overdueFees.totalDue}
                   variant="currency"
                   tone="rose"
-                  subLabel={`${data.overdueFees.studentCount} জন শিক্ষার্থীর বকেয়া`}
+                  subLabel={t.overdueStudents(localizeDigits(data.overdueFees.studentCount, lang))}
                   to={`/fee/overdue-fee`}
                   size="sm"
                   icon={<AlertTriangle className="h-5 w-5" strokeWidth={1.75} />}
                 />
                 <StatTile
-                  label="আসন্ন পরীক্ষা"
+                  label={t.upcomingExams}
                   value={data.upcomingExams.length}
                   tone="indigo"
                   to={`/routine`}
@@ -333,10 +337,10 @@ export default function DashboardPage() {
           <div className="xl:hidden">{quickActions}</div>
 
           <Card>
-            <CardHeader title="আসন্ন পরীক্ষা" subtitle="রুটিন অনুযায়ী আসন্ন পরীক্ষাসমূহ" />
+            <CardHeader title={t.upcomingExams} subtitle={t.upcomingExamsSub} />
             {!loading && upcomingExams.length === 0 && (
               <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                আসন্ন কোনো পরীক্ষা নেই
+                {t.noUpcomingExams}
               </p>
             )}
             {/* One column, in routine order (date → time → শ্রেণি, see
@@ -370,8 +374,8 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <ChartCard
-              title="আয় ও ব্যয়ের প্রবণতা"
-              subtitle="গত ১২ মাস"
+              title={t.incomeExpenseTrend}
+              subtitle={t.last12Months}
               loading={trendsLoading}
               empty={!trendsLoading && !trends?.incomeExpense?.length}
               height="h-48"
@@ -398,7 +402,7 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="total_income"
-                    name="আয়"
+                    name={t.income}
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={false}
@@ -406,7 +410,7 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="total_expense"
-                    name="ব্যয়"
+                    name={t.expense}
                     stroke="#f43f5e"
                     strokeWidth={2}
                     dot={false}
@@ -416,8 +420,8 @@ export default function DashboardPage() {
             </ChartCard>
 
             <ChartCard
-              title="উপস্থিতির হার"
-              subtitle="ছাত্রদের মাসিক গড় উপস্থিতি"
+              title={t.attendanceRate}
+              subtitle={t.attendanceRateSub}
               loading={trendsLoading}
               empty={!trendsLoading && !trends?.attendance?.length}
               height="h-48"
@@ -442,7 +446,7 @@ export default function DashboardPage() {
                   />
                   <Bar
                     dataKey="percentage"
-                    name="উপস্থিতি %"
+                    name={t.attendancePct}
                     fill="#6366f1"
                     radius={[6, 6, 0, 0]}
                   />
@@ -453,8 +457,8 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 xl:grid-cols-3">
             <ChartCard
-              title="ফান্ডভিত্তিক বণ্টন"
-              subtitle="মোট ব্যালেন্সের অনুপাত"
+              title={t.fundDistribution}
+              subtitle={t.fundDistributionSub}
               loading={loading}
               empty={!loading && fundData.length === 0}
               height="h-48"
@@ -494,13 +498,13 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader
-                title="ফান্ড ব্যালেন্স"
+                title={t.fundBalance}
                 actions={
                   <Link
                     className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
                     to={`/accounts/report`}
                   >
-                    রিপোর্ট দেখুন
+                    {t.viewReport}
                   </Link>
                 }
               />
@@ -511,7 +515,7 @@ export default function DashboardPage() {
                     className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800"
                   >
                     <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {fund.fund || "নির্ধারিত নয়"}
+                      {fund.fund || t.unassigned}
                     </span>
                     <span className="font-bold text-slate-900 dark:text-slate-100">
                       {money(fund.balance)}
@@ -522,8 +526,8 @@ export default function DashboardPage() {
             </Card>
 
             <ChartCard
-              title="ছাত্র-ছাত্রী অনুপাত"
-              subtitle="লিঙ্গভিত্তিক বণ্টন"
+              title={t.genderRatio}
+              subtitle={t.genderRatioSub}
               loading={loading}
               empty={!loading && genderData.length === 0}
               height="h-48"
@@ -564,8 +568,8 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <ChartCard
-              title="অনলাইন বনাম অফলাইন আয়-ব্যয়"
-              subtitle="পেমেন্ট মাধ্যম অনুযায়ী হিসাব"
+              title={t.onlineVsOffline}
+              subtitle={t.onlineVsOfflineSub}
               loading={loading}
               empty={!loading && channelData.every((c) => c.income === 0 && c.expense === 0)}
               height="h-48"
@@ -586,15 +590,15 @@ export default function DashboardPage() {
                     labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
                   />
                   <Legend wrapperStyle={{ fontSize: 13 }} />
-                  <Bar dataKey="income" name="আয়" fill="#10b981" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="expense" name="ব্যয়" fill="#f43f5e" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="income" name={t.income} fill="#10b981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="expense" name={t.expense} fill="#f43f5e" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
             <ChartCard
-              title="লেনদেনের মাধ্যম"
-              subtitle="মোট লেনদেনের ভাগ (আয় + ব্যয়)"
+              title={t.paymentMethods}
+              subtitle={t.paymentMethodsSub}
               loading={loading}
               empty={!loading && channelShareData.length === 0}
               height="h-48"
@@ -638,11 +642,11 @@ export default function DashboardPage() {
           <div className="hidden xl:block">{quickActions}</div>
 
           <Card>
-            <CardHeader title="গুরুত্বপূর্ণ লিংক" subtitle="বোর্ড ও কর্তৃপক্ষ" />
+            <CardHeader title={t.importantLinks} subtitle={t.importantLinksSub} />
             <div className="space-y-2">
               {(data?.importantLinks || []).length === 0 && !loading && (
                 <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                  কোনো লিংক যোগ করা হয়নি
+                  {t.noLinks}
                 </p>
               )}
               {(data?.importantLinks || []).map((link: any) => (
@@ -677,20 +681,20 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader
-              title="সাম্প্রতিক লেনদেন"
+              title={t.recentTransactions}
               actions={
                 <Link
                   className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
                   to={`/accounts/transactions`}
                 >
-                  সব দেখুন
+                  {t.viewAll}
                 </Link>
               }
             />
             <div className="space-y-2">
               {!loading && (data?.recentTransactions || []).length === 0 && (
                 <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                  কোনো লেনদেন নেই
+                  {t.noTransactions}
                 </p>
               )}
               {(data?.recentTransactions || []).slice(0, 5).map((tx: any) => (
@@ -723,21 +727,21 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader
-              title="বকেয়া ফি তালিকা"
-              subtitle={!loading ? `মোট ${money(data?.overdueFees?.totalDue || 0)}` : undefined}
+              title={t.overdueList}
+              subtitle={!loading ? t.totalAmount(money(data?.overdueFees?.totalDue || 0)) : undefined}
               actions={
                 <Link
                   className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
                   to={`/fee/overdue-fee`}
                 >
-                  সব দেখুন
+                  {t.viewAll}
                 </Link>
               }
             />
             <div className="space-y-2">
               {!loading && (data?.overdueFees?.list || []).length === 0 && (
                 <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                  কোনো বকেয়া নেই
+                  {t.noOverdue}
                 </p>
               )}
               {(data?.overdueFees?.list || []).map((item: any) => (
@@ -751,7 +755,7 @@ export default function DashboardPage() {
                       {item.studentName}
                     </p>
                     <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                      {item.invoiceCount} টি বকেয়া ফি
+                      {t.overdueInvoices(localizeDigits(item.invoiceCount, lang))}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-rose-600 dark:text-rose-400">

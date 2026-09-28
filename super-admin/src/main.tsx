@@ -11,9 +11,9 @@ import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
-// Super admin manages every institution type - its own panel is bilingual
-// (bn/en), Bangla by default.
-useLanguageStore.getState().setInstitution({ type: "MADRASA", default_language: "bn", languages: ["bn", "en"] });
+// Super admin manages every institution type - its own panel is Bangla-only
+// (no language switcher).
+useLanguageStore.getState().setInstitution({ type: "MADRASA", default_language: "bn", languages: ["bn"] });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
