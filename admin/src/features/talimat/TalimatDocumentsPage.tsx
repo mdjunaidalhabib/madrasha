@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { talimatDocumentsText } from "./talimatDocuments.text";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -257,6 +259,8 @@ const PRESET_LABELS: { key: "classic" | "minimal" | "arch"; label: string }[] = 
 ];
 
 export default function TalimatDocumentsPage() {
+  const tx = useText(talimatDocumentsText);
+  const c = useText(commonText);
   const templates = useDocumentTemplateStore((s) => s.templates);
   const fetchTemplates = useDocumentTemplateStore((s) => s.fetchTemplates);
   const setTemplates = useDocumentTemplateStore((s) => s.setTemplates);
@@ -379,10 +383,10 @@ export default function TalimatDocumentsPage() {
       await saveDocumentTemplates(payload);
       setTemplates({ ...(templates || {}), ...payload });
       setMessage(
-        "সেভ হয়েছে। এখন থেকে প্রকৃত শিক্ষার্থীর ডকুমেন্ট প্রিন্ট করার সময় এই লেখা দেখাবে।",
+        tx.textSaved,
       );
     } catch {
-      setError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
+      setError(tx.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -399,11 +403,11 @@ export default function TalimatDocumentsPage() {
     setError2("");
 
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setError2("শুধু PNG বা JPG ছবি আপলোড করা যাবে");
+      setError2(tx.onlyPngJpg);
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError2("ছবির সাইজ ২MB এর কম হতে হবে");
+      setError2(tx.maxSize);
       return;
     }
 
@@ -444,9 +448,9 @@ export default function TalimatDocumentsPage() {
             ? payload.id_card_background_image
             : idCardDesign?.id_card_background_image ?? null,
       });
-      setDesignMessage("ডিজাইন সেভ হয়েছে। এখন থেকে আইডি কার্ড প্রিন্টে এই ডিজাইন দেখাবে।");
+      setDesignMessage(tx.idDesignSaved);
     } catch {
-      setDesignError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
+      setDesignError(tx.saveFailed);
     } finally {
       setDesignSaving(false);
     }
@@ -484,9 +488,9 @@ export default function TalimatDocumentsPage() {
             ? payload.admit_card_background_image
             : admitCardDesign?.admit_card_background_image ?? null,
       });
-      setAdmitDesignMessage("ডিজাইন সেভ হয়েছে। এখন থেকে প্রবেশপত্র প্রিন্টে এই ডিজাইন দেখাবে।");
+      setAdmitDesignMessage(tx.admitDesignSaved);
     } catch {
-      setAdmitDesignError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
+      setAdmitDesignError(tx.saveFailed);
     } finally {
       setAdmitDesignSaving(false);
     }
@@ -524,10 +528,10 @@ export default function TalimatDocumentsPage() {
             : letterDesign?.letter_background_image ?? null,
       });
       setLetterDesignMessage(
-        "ডিজাইন সেভ হয়েছে। এখন থেকে সনদ, প্রত্যয়ন পত্র ও ছাড়পত্র — তিনটাতেই এই ডিজাইন দেখাবে।",
+        tx.letterDesignSaved,
       );
     } catch {
-      setLetterDesignError("সেভ করা যায়নি। আবার চেষ্টা করুন।");
+      setLetterDesignError(tx.saveFailed);
     } finally {
       setLetterDesignSaving(false);
     }
@@ -547,8 +551,8 @@ export default function TalimatDocumentsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="ডকুমেন্ট টেমপ্লেট"
-          subtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেলের লেখা ও ডিজাইন এখান থেকে সাজান"
+          title={tx.pageTitle}
+          subtitle={tx.pageSubtitle}
         />
 
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
@@ -559,8 +563,8 @@ export default function TalimatDocumentsPage() {
               onClick={() => setActiveKey(item.key)}
               className={`rounded-2xl border p-4 text-start transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
             >
-              <span className="block font-bold">{item.title}</span>
-              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>
+              <span className="block font-bold">{tx.docs[item.key]?.title ?? item.title}</span>
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{tx.docs[item.key]?.subtitle ?? item.subtitle}</span>
             </button>
           ))}
         </div>
@@ -568,7 +572,7 @@ export default function TalimatDocumentsPage() {
         {isIdCardBack ? (
           <IdCardBackSettingsForm />
         ) : (
-          <TenantDocumentTemplateLibrary type={newEngineType!} title={active.title} />
+          <TenantDocumentTemplateLibrary type={newEngineType!} title={tx.docs[active.key]?.title ?? active.title} />
         )}
       </div>
     );
@@ -624,8 +628,8 @@ export default function TalimatDocumentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="ডকুমেন্ট টেমপ্লেট"
-        subtitle="আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও পুরস্কার বই-লেবেলের লেখা ও ডিজাইন এখান থেকে সাজান"
+        title={tx.pageTitle}
+        subtitle={tx.pageSubtitle}
       />
 
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
@@ -636,23 +640,19 @@ export default function TalimatDocumentsPage() {
             onClick={() => setActiveKey(item.key)}
             className={`rounded-2xl border p-4 text-start transition ${activeKey === item.key ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800"}`}
           >
-            <span className="block font-bold">{item.title}</span>
-            <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</span>
+            <span className="block font-bold">{tx.docs[item.key]?.title ?? item.title}</span>
+            <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{tx.docs[item.key]?.subtitle ?? item.subtitle}</span>
           </button>
         ))}
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-        নাম, পিতা, রেজিস্ট্রেশন নম্বর, রোল, শ্রেণি, বিভাগ, সেশন, পরীক্ষার নাম — এই তথ্যগুলো সবসময়
-        শিক্ষার্থীর প্রকৃত তথ্য থেকে স্বয়ংক্রিয়ভাবে বসবে, এখানে হাতে লিখে পরিবর্তন করা যাবে না।
-        নিচে শুধু চারপাশের লেখা (বাক্য/নিয়ম-কানুন) এডিট করা যাবে, আর সেভ করলে সেটি প্রকৃত প্রিন্টেও
-        দেখাবে।
+        {tx.autoFieldsNote}
       </div>
 
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
-        দেয়ালে টানানোর কাস্টম নোটিশ এখন এখানে নয় — পাশের{" "}
-        <span className="font-semibold">"নোটিশ বোর্ড"</span> ট্যাব থেকে লিখুন। সেখানে একাধিক নোটিশ
-        আলাদাভাবে সেভ করে রাখা যায় এবং প্রয়োজনমতো যেকোনোটি বেছে প্রিন্ট করা যায়।
+        {tx.noticeMovedBefore}{" "}
+        <span className="font-semibold">{tx.noticeBoardTab}</span> {tx.noticeMovedAfter}
       </div>
 
       {designMessage && (
@@ -676,14 +676,14 @@ export default function TalimatDocumentsPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{active.title} — টেমপ্লেট এডিট</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.docs[active.key]?.title ?? active.title} — {tx.templateEdit}</h2>
 
           <div className="mt-3">
             <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              এই ডকুমেন্টে যেসব তথ্য স্বয়ংক্রিয়ভাবে বসে:
+              {tx.autoFieldsLabel}
             </p>
             <div className="flex flex-wrap gap-2">
-              {active.dataFields.map((label) => (
+              {(tx.docs[active.key]?.fields ?? active.dataFields).map((label) => (
                 <span
                   key={label}
                   className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
@@ -696,7 +696,7 @@ export default function TalimatDocumentsPage() {
 
           {active.key === "id-card" && (
             <div className="mt-5 space-y-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">{tx.chooseDesign}</p>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {ID_CARD_PRESETS.map((preset) => (
@@ -715,7 +715,7 @@ export default function TalimatDocumentsPage() {
                       )}
                       {preset.key === "arch" && <IdCardArch row={PREVIEW_ROW} madrasaName={madrasaName} />}
                     </IdCardThumb>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.designs[preset.key] ?? preset.label}</span>
                   </button>
                 ))}
 
@@ -735,17 +735,17 @@ export default function TalimatDocumentsPage() {
                       style={{ width: `${54 * CARD_THUMB_SCALE}mm`, height: `${85.6 * CARD_THUMB_SCALE}mm` }}
                       className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
-                      নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
+                      {tx.uploadOwnBg}
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.custom}</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
                       className="font-medium text-blue-600 underline"
                     >
-                      {customBg ? "পরিবর্তন" : "আপলোড"}
+                      {customBg ? tx.change : tx.upload}
                     </button>
                     {customBg && (
                       <button
@@ -753,7 +753,7 @@ export default function TalimatDocumentsPage() {
                         onClick={handleRemoveBackground}
                         className="font-medium text-red-500 underline"
                       >
-                        মুছুন
+                        {c.delete}
                       </button>
                     )}
                   </div>
@@ -768,19 +768,18 @@ export default function TalimatDocumentsPage() {
               </div>
 
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                কাস্টম ডিজাইনে তুমি নিজের বানানো ব্যাকগ্রাউন্ড ছবি (Canva/Photoshop-এ ডিজাইন করা)
-                আপলোড করলে তার উপর শিক্ষার্থীর ছবি, নাম, রোল ইত্যাদি স্বয়ংক্রিয়ভাবে বসে যাবে।
+                {tx.customDesignHint}
               </p>
 
               <Button disabled={designSaving} onClick={handleSaveIdCardDesign}>
-                {designSaving ? "সেভ হচ্ছে..." : "ডিজাইন সেভ করুন"}
+                {designSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>
           )}
 
           {isAdmitCard && (
             <div className="mt-5 space-y-4 border-b pb-6">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">{tx.chooseDesign}</p>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {PRESET_LABELS.map((preset) => (
@@ -801,7 +800,7 @@ export default function TalimatDocumentsPage() {
                         <AdmitCardArch row={PREVIEW_ROW} madrasaName={madrasaName} rulesTemplate={admitRulesTemplate} />
                       )}
                     </AdmitThumb>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.designs[preset.key] ?? preset.label}</span>
                   </button>
                 ))}
 
@@ -821,17 +820,17 @@ export default function TalimatDocumentsPage() {
                       style={{ width: ADMIT_THUMB_BASE * ADMIT_THUMB_SCALE, height: 150 }}
                       className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
-                      নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
+                      {tx.uploadOwnBg}
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.custom}</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
                       onClick={() => admitFileRef.current?.click()}
                       className="font-medium text-blue-600 underline"
                     >
-                      {admitCustomBg ? "পরিবর্তন" : "আপলোড"}
+                      {admitCustomBg ? tx.change : tx.upload}
                     </button>
                     {admitCustomBg && (
                       <button
@@ -839,7 +838,7 @@ export default function TalimatDocumentsPage() {
                         onClick={handleRemoveAdmitBackground}
                         className="font-medium text-red-500 underline"
                       >
-                        মুছুন
+                        {c.delete}
                       </button>
                     )}
                   </div>
@@ -854,7 +853,7 @@ export default function TalimatDocumentsPage() {
               </div>
 
               <Button disabled={admitDesignSaving} onClick={handleSaveAdmitCardDesign}>
-                {admitDesignSaving ? "সেভ হচ্ছে..." : "ডিজাইন সেভ করুন"}
+                {admitDesignSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>
           )}
@@ -862,9 +861,9 @@ export default function TalimatDocumentsPage() {
           {isLetterDoc && (
             <div className="mt-5 space-y-4 border-b pb-6">
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">ডিজাইন বেছে নিন</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">{tx.chooseDesign}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  এই ডিজাইন সনদ, প্রত্যয়ন পত্র ও ছাড়পত্র — তিনটাতেই একসাথে প্রযোজ্য হবে।
+                  {tx.letterDesignNote}
                 </p>
               </div>
 
@@ -888,7 +887,7 @@ export default function TalimatDocumentsPage() {
                         design={preset.key}
                       />
                     </LetterThumb>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{preset.label}</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.designs[preset.key] ?? preset.label}</span>
                   </button>
                 ))}
 
@@ -918,17 +917,17 @@ export default function TalimatDocumentsPage() {
                       style={{ width: LETTER_THUMB_BASE * LETTER_THUMB_SCALE, height: 220 }}
                       className="flex items-center justify-center rounded border-2 border-dashed border-slate-300 bg-slate-50 px-2 text-center text-[9px] text-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"
                     >
-                      নিজের ব্যাকগ্রাউন্ড ছবি আপলোড করুন
+                      {tx.uploadOwnBg}
                     </button>
                   )}
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">কাস্টম</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{tx.custom}</span>
                   <div className="flex gap-2 text-[10px]">
                     <button
                       type="button"
                       onClick={() => letterFileRef.current?.click()}
                       className="font-medium text-blue-600 underline"
                     >
-                      {letterCustomBg ? "পরিবর্তন" : "আপলোড"}
+                      {letterCustomBg ? tx.change : tx.upload}
                     </button>
                     {letterCustomBg && (
                       <button
@@ -936,7 +935,7 @@ export default function TalimatDocumentsPage() {
                         onClick={handleRemoveLetterBackground}
                         className="font-medium text-red-500 underline"
                       >
-                        মুছুন
+                        {c.delete}
                       </button>
                     )}
                   </div>
@@ -951,7 +950,7 @@ export default function TalimatDocumentsPage() {
               </div>
 
               <Button disabled={letterDesignSaving} onClick={handleSaveLetterDesign}>
-                {letterDesignSaving ? "সেভ হচ্ছে..." : "ডিজাইন সেভ করুন"}
+                {letterDesignSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>
           )}
@@ -960,7 +959,7 @@ export default function TalimatDocumentsPage() {
             <div className="mt-5 space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  লেখার মধ্যে যোগ করুন (এগুলো নিজে থেকে সঠিক তথ্য দিয়ে পূরণ হবে)
+                  {tx.insertIntoText}
                 </label>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(active.tokens || []).map((t) => (
@@ -987,21 +986,21 @@ export default function TalimatDocumentsPage() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button disabled={saving} onClick={handleSave}>
-                  {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+                  {saving ? tx.saving : tx.save}
                 </Button>
                 <button
                   type="button"
                   onClick={resetToDefault}
                   className="text-xs font-medium text-gray-500 underline hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  ডিফল্ট লেখায় ফিরিয়ে নিন
+                  {tx.resetToDefault}
                 </button>
               </div>
             </div>
           ) : (
             active.key !== "id-card" && (
               <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                এই ডকুমেন্টে এডিট করার মতো কোনো বাক্য নেই — এটি শুধু শিক্ষার্থীর তথ্য দেখায়।
+                {tx.nothingToEdit}
               </div>
             )
           )}
@@ -1009,7 +1008,7 @@ export default function TalimatDocumentsPage() {
 
         <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            প্রিভিউ (নমুনা তথ্য দিয়ে)
+            {tx.previewSample}
           </p>
 
           {active.key === "id-card" && (
