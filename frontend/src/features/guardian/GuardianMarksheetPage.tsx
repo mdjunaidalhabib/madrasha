@@ -7,7 +7,7 @@ import { useTenantSlug } from "../../utils/useTenantSlug";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { formatDate, localizeDigits, usePrintLang, usePrintText, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { formatDate, localizeDigits, usePrintLang, usePrintText, useText, type Lang, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "./guardian.text";
 
 const formatDob = (value: unknown, lang: Lang) => {
@@ -18,6 +18,8 @@ const formatDob = (value: unknown, lang: Lang) => {
 };
 
 export default function GuardianMarksheetPage() {
+  // মুমতাজ-ধরনের ফলাফল বিভাগ শুধু মাদ্রাসার মার্কশিটে।
+  const isMadrasa = useIsMadrasa();
   const t = useText(guardianText);
   // The marksheet body is a printable document - it follows the institution
   // default language, whoever views/prints it.
@@ -136,9 +138,11 @@ export default function GuardianMarksheetPage() {
           <p>
             <b>{p.fatherName}</b> {data.fatherName || "—"}
           </p>
-          <p>
+          {isMadrasa && (
+            <p>
             <b>{p.resultDivision}</b> {data.madrasaGrade || "—"}
           </p>
+          )}
           <p>
             <b>{p.grade}</b> {data.generalGrade || "—"}
           </p>

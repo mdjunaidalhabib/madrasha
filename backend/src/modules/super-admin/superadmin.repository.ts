@@ -527,14 +527,17 @@ export class SuperAdminRepository {
    * attach fee structures into - creates "the current calendar year"
    * (Jan 1 - Dec 31), marked current, exactly mirroring what
    * prisma/backfill-sessions.ts does for pre-existing madrasas. */
-  createDefaultSessionOnTx(tx: TransactionClient, madrasaId: number, year: string) {
-    const yearNum = Number(year);
+  /** startMonth 0 = January (calendar year), 6 = July (July-June year, named
+   * "2026-2027"; before July the running year is the previous one). */
+  createDefaultSessionOnTx(tx: TransactionClient, madrasaId: number, year: string, startMonth = 0) {
+    let yearNum = Number(year);
+    if (startMonth > 0 && new Date().getUTCMonth() < startMonth) yearNum -= 1;
     return tx.session.create({
       data: {
         madrasaId,
-        name: year,
-        startDate: new Date(Date.UTC(yearNum, 0, 1)),
-        endDate: new Date(Date.UTC(yearNum, 11, 31)),
+        name: startMonth > 0 ? `${yearNum}-${yearNum + 1}` : String(yearNum),
+        startDate: new Date(Date.UTC(yearNum, startMonth, 1)),
+        endDate: new Date(Date.UTC(startMonth > 0 ? yearNum + 1 : yearNum, startMonth > 0 ? startMonth : 12, 0)),
         isActive: true,
       },
     });

@@ -182,6 +182,7 @@ export class SuperAdminService {
     const bookIds = cleanNumberArray(dto.books);
     const default_users = dto.default_users || [];
 
+    const institutionType = parseInstitutionType(dto.institution_type) ?? "MADRASA";
     const baseSlug = slugify(dto.slug || dto.name);
     const finalSlug = await this.makeUniqueSlug(baseSlug);
 
@@ -193,7 +194,7 @@ export class SuperAdminService {
         slug: finalSlug,
         studentLimit: Number(dto.student_limit) || DEFAULT_STUDENT_LIMIT,
         userLimit: Number(dto.user_limit) || DEFAULT_USER_LIMIT,
-        institutionType: parseInstitutionType(dto.institution_type) ?? "MADRASA",
+        institutionType,
         defaultLanguage: parseLanguage(dto.default_language) ?? null,
         isActive: 1,
       });
@@ -278,7 +279,10 @@ export class SuperAdminService {
         currentYear,
       );
       await this.repository.createDefaultGeneralGradesOnTx(tx, madrasaId, defaultGeneralGrades);
-      await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
+      // মুমতাজ-ধরনের madrasa grade শুধু মাদ্রাসার জন্য; স্কুল/কলেজ/কিন্ডারগার্টেন কেবল general grade পায়।
+      if (institutionType === "MADRASA") {
+        await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
+      }
       await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
 
       // Which just-created Exam.id(s) every পরীক্ষার ফি structure below should
@@ -295,7 +299,14 @@ export class SuperAdminService {
          Every madrasa needs at least one Session before students can be
          admitted or fee structures attached - seed "the current calendar
          year" and mark it current. */
-      const defaultSession = await this.repository.createDefaultSessionOnTx(tx, madrasaId, currentYear);
+      // Colleges run a July-June academic year ("2026-2027"); everyone else a
+      // calendar year.
+      const defaultSession = await this.repository.createDefaultSessionOnTx(
+        tx,
+        madrasaId,
+        currentYear,
+        institutionType === "COLLEGE" ? 6 : 0,
+      );
 
       /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
          Optional, unlike the templates above - an empty set never blocks
