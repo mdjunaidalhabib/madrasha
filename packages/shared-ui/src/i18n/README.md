@@ -25,11 +25,10 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 export const feeText = defineText({
   bn: { title: "ফি আদায়", paid: (n: string) => `${n} জন পরিশোধ করেছে` },
   en: { title: "Fee Collection", paid: (n) => `${n} paid` },
-  ar: { title: "تحصيل الرسوم", paid: (n) => `دفع ${n}` },
 });
 ```
 
-   Bangla defines the shape; a missing `en`/`ar` key is a **type error**.
+   Bangla defines the shape; a missing `en` key is a **type error**.
    Super-admin (bn/en only) uses `defineBilingualText({ bn, en })`.
 
 2. In components: `const t = useText(feeText);` → `{t.title}`.
@@ -73,7 +72,7 @@ Never hardcode `"bn-BD"` in on-screen UI.
 
 ```ts
 import { t } from "../../shared/i18n";
-throw new NotFoundError(t({ bn: "ছাত্র পাওয়া যায়নি", en: "Student not found", ar: "لم يتم العثور على الطالب" }));
+throw new NotFoundError(t({ bn: "ছাত্র পাওয়া যায়নি", en: "Student not found" }));
 ```
 
 SMS and anything printed use the institution default language:
