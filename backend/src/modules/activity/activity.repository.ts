@@ -21,9 +21,10 @@ export class ActivityRepository {
 
     const [rows, totalRows] = await Promise.all([
       prisma.$queryRaw<ActivityLogRow[]>`
-        SELECT a.*, u.name
+        SELECT a.*, u.name, r.name_bn AS role_name
         FROM activity_logs a
         LEFT JOIN users u ON u.id = a.user_id
+        LEFT JOIN roles r ON r.id = u.role_id
         WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to}
         ORDER BY a.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
@@ -36,6 +37,14 @@ export class ActivityRepository {
     ]);
 
     return { rows, total: Number(totalRows[0]?.count ?? 0) };
+  }
+
+  findUserNames(madrasaId: number, ids: number[]) {
+    return prisma.user.findMany({ where: { madrasaId, id: { in: ids } }, select: { id: true, name: true } });
+  }
+
+  findMadrasaName(madrasaId: number) {
+    return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { name: true } });
   }
 
   purgeOlderThan(cutoff: Date) {

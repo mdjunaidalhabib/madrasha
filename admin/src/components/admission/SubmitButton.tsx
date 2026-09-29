@@ -13,7 +13,7 @@ const SubmitButton: React.FC<Props> = ({ loading = false, isReAdmission = false 
       <button
         type="submit"
         disabled={loading}
-        className={`flex items-center gap-2 text-white font-semibold px-8 py-3 rounded-lg shadow-md transition
+        className={`flex items-center gap-2 text-white font-normal px-8 py-3 rounded-lg shadow-md transition
         ${isReAdmission ? "bg-amber-600" : "bg-blue-600"}
         ${loading ? "opacity-70 cursor-not-allowed" : isReAdmission ? "hover:bg-amber-700" : "hover:bg-blue-700"}`}
       >

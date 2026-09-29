@@ -179,7 +179,7 @@ export const createStudentsBulk = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
     const students = Array.isArray(req.body?.students) ? req.body.students : [];
-    const result = await studentService.admitStudentsBulk(students, madrasaId);
+    const result = await studentService.admitStudentsBulk(students, madrasaId, req.user?.id);
 
     return res.json({
       success: true,
@@ -409,6 +409,26 @@ export const rejectAdmission = async (req: Request, res: Response) => {
   }
 };
 
+export const approveAdmissionsBulk = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.approveAdmissionsBulk(madrasaId, req.user?.id, req.body?.ids || []);
+    return res.json({ success: true, message: t({ bn: "নির্বাচিত ভর্তি অনুমোদিত হয়েছে", en: "Selected admissions approved" }), data });
+  } catch (error) {
+    return respondWithError(res, error, "BULK APPROVE ADMISSION ERROR:");
+  }
+};
+
+export const rejectAdmissionsBulk = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.rejectAdmissionsBulk(madrasaId, req.user?.id, req.body?.ids || [], req.body?.reason);
+    return res.json({ success: true, message: t({ bn: "নির্বাচিত ভর্তির আবেদন বাতিল হয়েছে", en: "Selected admissions rejected" }), data });
+  } catch (error) {
+    return respondWithError(res, error, "BULK REJECT ADMISSION ERROR:");
+  }
+};
+
 export const getRejectedAdmissions = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;
@@ -426,6 +446,16 @@ export const permanentlyDeleteRejectedApplication = async (req: Request, res: Re
     return res.json({ success: true, message: t({ bn: "প্রত্যাখ্যাত আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Rejected application permanently deleted" }) });
   } catch (error) {
     return respondWithError(res, error, "PERMANENTLY DELETE REJECTED APPLICATION ERROR:");
+  }
+};
+
+export const permanentlyDeleteRejectedApplicationsBulk = async (req: Request, res: Response) => {
+  try {
+    const madrasaId = req.tenant?.madrasa_id;
+    const data = await studentService.permanentlyDeleteRejectedApplicationsBulk(madrasaId, req.body?.ids || []);
+    return res.json({ success: true, message: t({ bn: "নির্বাচিত প্রত্যাখ্যাত আবেদন মুছে ফেলা হয়েছে", en: "Selected rejected applications deleted" }), data });
+  } catch (error) {
+    return respondWithError(res, error, "BULK DELETE REJECTED APPLICATIONS ERROR:");
   }
 };
 

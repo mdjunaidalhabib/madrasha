@@ -296,40 +296,8 @@ const AdmissionPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.nid]);
 
-  // Show the next roll as a preview, but let the backend assign the final
-  // value transaction-safely at submit time. This field is display-only;
-  // users cannot submit or override a roll number manually.
-  useEffect(() => {
-    const classId = formData.currentClass;
-    const year = formData.academicYear;
-
-    if (!classId || !year) {
-      setFormData((prev) => ({ ...prev, roll: "" }));
-      return;
-    }
-
-    let cancelled = false;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await cachedGet("/students/next-roll", {
-          params: { class_id: classId, academic_year: year },
-        });
-        const suggested = res?.data?.data;
-
-        if (!cancelled && suggested) {
-          setFormData((prev) => ({ ...prev, roll: String(suggested) }));
-        }
-      } catch (err) {
-        logger.error("Next roll suggestion error:", err);
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [formData.currentClass, formData.academicYear]);
+  // ভর্তির সময় কোনো রোল দেখানো/দেওয়া হয় না - মুহতামিম অনুমোদন করলে তবেই
+  // সার্ভার রোল বরাদ্দ করে (backend approveAdmission)।
 
   const handleStartNewAdmission = () => {
     setFormData(initialState);
@@ -720,7 +688,7 @@ const AdmissionPage = () => {
         <button
           type="button"
           onClick={() => setBulkModalOpen(true)}
-          className="self-end sm:self-auto sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap"
+          className="self-end sm:self-auto sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-normal whitespace-nowrap"
         >
           {t.bulkUpload}
         </button>

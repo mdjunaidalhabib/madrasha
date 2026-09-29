@@ -6,6 +6,7 @@ import { studentRepository } from "../students/student.repository";
 import { notificationService } from "../notifications/notification.service";
 import { accountService } from "../accounts/account.service";
 import { logActivity } from "../../shared/utils/activity.util";
+import { describeStudentsByClass } from "../../shared/utils/activityDetails";
 import { autoRegisterOnInvoicePaid } from "../exam-candidate/exam-candidate.hooks";
 import {
   BulkExamFeePaymentRequestDto,
@@ -948,7 +949,7 @@ export class FeeService {
     madrasaId: number,
     receivedById: number | undefined,
     dto: RecordPaymentRequestDto,
-    options: { notifyGuardian?: boolean } = {},
+    options: { notifyGuardian?: boolean; skipActivityLog?: boolean } = {},
   ) {
     if (isEmpty(dto.amount) || isEmpty(dto.method)) {
       throw new BadRequestError(t({ bn: "টাকার পরিমাণ ও পেমেন্ট পদ্ধতি দিন", en: "Enter the amount and payment method" }));
@@ -1081,7 +1082,8 @@ export class FeeService {
           due: result.dueAmount,
         });
       }
-      if (student) {
+      // A bulk collection writes one summary row itself (bulkPayExamFee).
+      if (student && !options.skipActivityLog) {
         // Hand-logged (not the generic body-field auto-logger - see
         // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
         // details column carries the paying student's id/name/class instead
@@ -1253,7 +1255,7 @@ export class FeeService {
             note: dto.note,
             paid_at: dto.paid_at,
           },
-          { notifyGuardian: dto.notify_guardian === true },
+          { notifyGuardian: dto.notify_guardian === true, skipActivityLog: true },
         );
         succeeded.push({ invoice_id: invoiceId, student_id: inv.studentId, amount: due, payment_id: result.paymentId });
       } catch (err) {
@@ -1280,7 +1282,19 @@ export class FeeService {
           action: "CREATE",
           entity: "invoices/exam-fee/bulk-pay",
           entity_id: exam.id,
-          details: `পরীক্ষার ফি একসাথে গ্রহণ: ${exam.name} — ${cls.nameBn || "অজানা"}, ${succeeded.length} জন, মোট ${totalCollected} টাকা`,
+          details: await describeStudentsByClass(
+            madrasaId,
+            succeeded.map((s) => s.student_id),
+            `পরীক্ষার ফি একসাথে গ্রহণ: ${exam.name} — ${cls.nameBn || "অজানা"}, ${succeeded.length} জন, মোট ${totalCollected} টাকা` +
+              (failed.length ? ` (ব্যর্থ: ${failed.length} জন)` : ""),
+            new Map(succeeded.map((s) => [s.student_id, `${s.amount} টাকা`])),
+          ).then((text) =>
+            [
+              text,
+              ...(failed.length ? [`• ব্যর্থ — ${failed.length} জন`] : []),
+              ...failed.map((f, i) => `    ${i + 1}. ${f.name_bn ?? `ইনভয়েস #${f.invoice_id}`}: ${f.reason}`),
+            ].join("\n"),
+          ),
         });
       } catch (err) {
         logger.error("bulkPayExamFee activity log failed:", err);

@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
   Check,
   GraduationCap,
   GripVertical,
@@ -28,10 +26,8 @@ type ExamItem = {
   id: string | number;
   name: string;
   isActive: boolean;
-  examType?: string | null;
   startDate?: string | null;
   endDate?: string | null;
-  description?: string | null;
   /** Whether a পরীক্ষার ফি FeeStructure is linked to this exam - see
    * backend ExamRepository.findExams. Drives the "পরীক্ষা বন্ধ করলে ফি-ও বন্ধ হবে" confirmation
    * when switching the exam off. */
@@ -75,11 +71,10 @@ export default function ExamList({
   const [divisionIds, setDivisionIds] = useState<number[]>([]);
   /** List filter: "" = সব পরীক্ষা, otherwise a division id. */
   const [filterDivision, setFilterDivision] = useState("");
-  const [examType, setExamType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [description, setDescription] = useState("");
-  const [showAddDetails, setShowAddDetails] = useState(false);
+  /** শুরুতে শুধু "পরীক্ষা যুক্ত করুন" বাটন - চাপলে পুরো ফর্ম খোলে। */
+  const [showAddForm, setShowAddForm] = useState(false);
   const [adding, setAdding] = useState(false);
 
   // Local, optimistically-reorderable copy of the list, so dragging feels
@@ -92,16 +87,22 @@ export default function ExamList({
 
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editExamType, setEditExamType] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
-  const [editDescription, setEditDescription] = useState("");
   const [editDivisionIds, setEditDivisionIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setItems(exams);
   }, [exams]);
+
+  const closeAddForm = () => {
+    setName("");
+    setDivisionIds([]);
+    setStartDate("");
+    setEndDate("");
+    setShowAddForm(false);
+  };
 
   const addExam = async () => {
     if (!name.trim()) {
@@ -112,19 +113,11 @@ export default function ExamList({
       setAdding(true);
       await api.post("/exams", {
         name: name.trim(),
-        exam_type: examType.trim() || undefined,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
-        description: description.trim() || undefined,
         division_ids: divisionIds,
       });
-      setName("");
-      setDivisionIds([]);
-      setExamType("");
-      setStartDate("");
-      setEndDate("");
-      setDescription("");
-      setShowAddDetails(false);
+      closeAddForm();
       reload();
     } catch (err: any) {
       useToastStore
@@ -190,20 +183,16 @@ export default function ExamList({
   const startEdit = (exam: ExamItem) => {
     setEditingId(exam.id);
     setEditName(exam.name);
-    setEditExamType(exam.examType || "");
     setEditStartDate(toDateInputValue(exam.startDate));
     setEditEndDate(toDateInputValue(exam.endDate));
-    setEditDescription(exam.description || "");
     setEditDivisionIds(exam.division_ids ?? []);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
-    setEditExamType("");
     setEditStartDate("");
     setEditEndDate("");
-    setEditDescription("");
     setEditDivisionIds([]);
   };
 
@@ -216,10 +205,8 @@ export default function ExamList({
       setSaving(true);
       await api.put(`/exams/${id}`, {
         name: editName.trim(),
-        exam_type: editExamType.trim() || undefined,
         start_date: editStartDate || undefined,
         end_date: editEndDate || undefined,
-        description: editDescription.trim() || undefined,
         division_ids: editDivisionIds,
       });
       useToastStore.getState().show(getText(examPanelText).examUpdated, "success");
@@ -293,73 +280,65 @@ export default function ExamList({
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.exams}</h2>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
+      {!showAddForm ? (
+        <Button onClick={() => setShowAddForm(true)} className="gap-1.5">
+          <Plus size={16} />
+          {t.addExamButton}
+        </Button>
+      ) : (
+        <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900 dark:bg-blue-950/20">
           <Input
+            autoFocus
             placeholder={t.examNamePlaceholder}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !adding) addExam();
+              if (e.key === "Escape" && !adding) closeAddForm();
             }}
           />
-          <Button onClick={addExam} disabled={adding} className="shrink-0 gap-1.5">
-            <Plus size={16} />
-            {adding ? t.adding : c.add}
-          </Button>
-        </div>
 
-        {divisions.length > 0 && (
-          <DivisionScopePicker
-            divisions={divisions}
-            value={divisionIds}
-            onChange={setDivisionIds}
-            disabled={adding}
-          />
-        )}
-
-        <button
-          type="button"
-          onClick={() => setShowAddDetails((v) => !v)}
-          className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          {showAddDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          {showAddDetails ? t.hideDetails : t.addDetails}
-        </button>
-
-        {showAddDetails && (
-          <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-800/60">
-            <Input
-              placeholder={t.examTypePlaceholder}
-              value={examType}
-              onChange={(e) => setExamType(e.target.value)}
-            />
-            <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+              <span>{t.startDate}</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className={dateInputClass}
-                title={t.startDate}
               />
+            </label>
+            <label className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+              <span>{t.endDate}</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className={dateInputClass}
-                title={t.endDate}
               />
-            </div>
-            <textarea
-              placeholder={t.descriptionOptional}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:col-span-2"
-            />
+            </label>
           </div>
-        )}
-      </div>
+
+          {divisions.length > 0 && (
+            <DivisionScopePicker
+              divisions={divisions}
+              value={divisionIds}
+              onChange={setDivisionIds}
+              disabled={adding}
+            />
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={closeAddForm} disabled={adding}>
+              {t.cancelAction}
+            </Button>
+            <Button onClick={addExam} disabled={adding} className="gap-1.5">
+              <Plus size={16} />
+              {adding ? t.adding : t.addSubmit}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {loading && items.length === 0 ? (
         <div className="space-y-2">
@@ -403,11 +382,6 @@ export default function ExamList({
             </div>
           )}
 
-          {canReorder && (
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              {t.dragHint}
-            </p>
-          )}
 
           {visibleItems.length === 0 && (
             <EmptyState
@@ -491,42 +465,33 @@ export default function ExamList({
                         </span>
 
                         <div>
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">
+                          <p className="font-normal text-slate-800 dark:text-slate-100">
                             {e.name}
                           </p>
                           {divisions.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {scopedDivisions.length === 0 ? (
-                                <Badge tone="slate">{t.allDivisions}</Badge>
+                                <Badge tone="slate" className="!font-normal">{t.allDivisions}</Badge>
                               ) : (
                                 scopedDivisions.map((d) => (
-                                  <Badge key={d.division_id} tone="blue">
+                                  <Badge key={d.division_id} tone="blue" className="!font-normal">
                                     {d.division_name_bn}
                                   </Badge>
                                 ))
                               )}
                             </div>
                           )}
-                          {(e.examType || e.startDate || e.endDate || e.description) && (
+                          {(e.startDate || e.endDate) && (
                             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                              {[
-                                e.examType,
-                                e.startDate || e.endDate
-                                  ? `${formatDateBn(e.startDate, lang)}${e.endDate ? ` – ${formatDateBn(e.endDate, lang)}` : ""}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" • ")}
-                              {e.description ? (
-                                <span className="block truncate">{e.description}</span>
-                              ) : null}
+                              {formatDateBn(e.startDate, lang)}
+                              {e.endDate ? ` – ${formatDateBn(e.endDate, lang)}` : ""}
                             </p>
                           )}
                         </div>
                       </div>
 
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        <Badge tone={e.isActive ? "green" : "slate"}>
+                        <Badge tone={e.isActive ? "green" : "slate"} className="!font-normal">
                           {e.isActive ? c.active : c.inactive}
                         </Badge>
                         <ToggleSwitch
@@ -565,35 +530,25 @@ export default function ExamList({
                 )}
 
                 {isEditing && (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <Input
-                      placeholder={t.examTypePlaceholder}
-                      value={editExamType}
-                      onChange={(ev) => setEditExamType(ev.target.value)}
-                    />
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                      <span>{t.startDate}</span>
                       <input
                         type="date"
                         value={editStartDate}
                         onChange={(ev) => setEditStartDate(ev.target.value)}
                         className={dateInputClass}
-                        title={t.startDate}
                       />
+                    </label>
+                    <label className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                      <span>{t.endDate}</span>
                       <input
                         type="date"
                         value={editEndDate}
                         onChange={(ev) => setEditEndDate(ev.target.value)}
                         className={dateInputClass}
-                        title={t.endDate}
                       />
-                    </div>
-                    <textarea
-                      placeholder={t.descriptionOptional}
-                      value={editDescription}
-                      onChange={(ev) => setEditDescription(ev.target.value)}
-                      rows={2}
-                      className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:col-span-2"
-                    />
+                    </label>
                   </div>
                 )}
               </div>

@@ -293,6 +293,26 @@ async function main() {
     (id) => prisma.defaultSetting.delete({ where: { id } }),
   );
 
+  /* ============== IMPORTANT LINKS ==============
+     Super Admin has a CRUD UI for these (ড্যাশবোর্ডের গুরুত্বপূর্ণ লিংক), so -
+     like the catalog - only insert what's missing (matched by URL); never
+     overwrite or delete what an admin edited/added. */
+  const importantLinks = [
+    { label: "বেফাকুল মাদারিসিল আরাবিয়া বাংলাদেশ", subLabel: "বেফাক", url: "https://befaqbd.org" },
+    {
+      label: "আল-হাইআতুল উলয়া লিল-জামিআতিল কওমিয়া বাংলাদেশ",
+      subLabel: "হাইআ",
+      url: "https://alhaiatululya.com",
+    },
+  ];
+  for (const [index, link] of importantLinks.entries()) {
+    await createIfMissing(
+      `important link "${link.subLabel}"`,
+      () => prisma.importantLink.findFirst({ where: { url: link.url } }),
+      () => prisma.importantLink.create({ data: { ...link, sortOrder: index + 1, isActive: true } }),
+    );
+  }
+
   /* ============== PLANS ============== */
   const plans = [
     { name: "Basic", studentLimit: 100, userLimit: 5, durationDays: 365, price: 2000 },

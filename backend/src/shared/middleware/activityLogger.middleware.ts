@@ -4,6 +4,7 @@ import { logger } from "../logger/logger";
 import { prisma } from "../database/prisma";
 import { ActivitySnapshot, buildSnapshotDetails, findSnapshotLoader, studentHeadline } from "../utils/activityDetails";
 import { tenantClassNameSelect, tenantClassName } from "../utils/tenant-name.util";
+import { findBulkDescriber } from "../utils/activityBulkDetails";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -28,11 +29,16 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "invoices/pay",
   "invoices/waive",
   // পরীক্ষার ফি একসাথে গ্রহণ - FeeService.bulkPayExamFee writes one summary
-  // row itself (plus recordPayment's per-invoice "invoices/pay" rows).
+  // row itself, class-wise (the per-invoice "invoices/pay" rows are skipped).
   "invoices/exam-fee/bulk-pay",
   "students/admission",
+  // StudentService.admitStudentsBulk logs one class-wise row for the upload.
+  "students/admission/bulk",
   "students/approve",
   "students/reject",
+  // StudentService.reviewAdmissionsBulk logs one class-wise row per batch.
+  "students/admission/approve-bulk",
+  "students/admission/reject-bulk",
   // StudentController.updateStudentsBulk logs the result itself - every
   // updated student with its field-by-field changes.
   "students/bulk-update",
@@ -143,6 +149,29 @@ async function deriveDetails(
   return entityId !== null ? `আইডি: ${entityId}` : null;
 }
 
+// DELETE on these only soft-deletes (moves to ট্র্যাশ) - see each repository.
+const SOFT_DELETE_ENTITIES = new Set(["students", "teachers", "exams"]);
+
+/** A plain "what was done" line for delete/trash actions, so the details say
+ * whether the record went to trash, was wiped for good, or came back -
+ * the record summary alone doesn't tell them apart. */
+function actionNote(method: string, entity: string): string | null {
+  if (entity.startsWith("trash/") && entity.endsWith("/restore")) return "কাজ: ট্র্যাশ থেকে পুনরুদ্ধার করা হয়েছে";
+  if (method !== "DELETE") return null;
+  if (SOFT_DELETE_ENTITIES.has(entity)) return "কাজ: ট্র্যাশে সরানো হয়েছে — চাইলে ট্র্যাশ থেকে পুনরুদ্ধার করা যাবে";
+  if (entity.startsWith("trash/")) return "কাজ: ট্র্যাশ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে — আর ফেরত আনা যাবে না";
+  if (entity === "students/rejected-application") return "কাজ: বাতিল হওয়া ভর্তি আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে";
+  return null;
+}
+
+/** Puts the note right under the headline (first line) of the details. */
+function withActionNote(details: string | null, note: string | null): string | null {
+  if (!note) return details;
+  if (!details) return note;
+  const [headline, ...rest] = details.split("\n");
+  return [headline, note, ...rest].join("\n");
+}
+
 // Snapshot of the record (see utils/activityDetails.ts) so the log can say
 // "field: old → new" instead of a bare id. Taken before the handler runs, when
 // the request isn't tenant-resolved yet - so the lookup is by id alone and the
@@ -173,7 +202,24 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
   const { entity, entityId } = deriveEntity(req.originalUrl);
   if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return next();
 
+  const bulk = findBulkDescriber(entity);
   const beforePromise = loadSnapshot(entity, entityId);
+  const bulkBeforePromise: Promise<unknown> = bulk?.before
+    ? bulk.before(req.body).catch((error) => {
+        logger.error("Activity log bulk snapshot failed", error);
+        return null;
+      })
+    : Promise.resolve(null);
+
+  // Bulk describers read the handler's reply (counts, per-row preview).
+  let responseBody: unknown = null;
+  if (bulk) {
+    const originalJson = res.json.bind(res);
+    res.json = (payload: unknown) => {
+      responseBody = payload;
+      return originalJson(payload);
+    };
+  }
 
   res.on("finish", () => {
     if (res.statusCode < 200 || res.statusCode >= 300) return;
@@ -185,9 +231,22 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
     (async () => {
       const own = (s: ActivitySnapshot | null) => (s && s.madrasaId === madrasaId ? s : null);
       const before = own(await beforePromise);
-      const after = req.method === "DELETE" ? null : own(await loadSnapshot(entity, entityId));
-      const details =
-        buildSnapshotDetails(before, after) ?? (await deriveDetails(req.body, entity, entityId, madrasaId));
+      // Restore only flips deletedAt, so a before/after diff would read "no
+      // change" - log the restored record's summary instead, like a delete.
+      const after =
+        req.method === "DELETE" || entity.endsWith("/restore") ? null : own(await loadSnapshot(entity, entityId));
+      const bulkDetails = bulk
+        ? await bulk
+            .describe({ madrasaId, body: req.body, response: responseBody, before: await bulkBeforePromise })
+            .catch((error) => {
+              logger.error("Activity log bulk details failed", error);
+              return null;
+            })
+        : null;
+      const details = withActionNote(
+        bulkDetails ?? buildSnapshotDetails(before, after) ?? (await deriveDetails(req.body, entity, entityId, madrasaId)),
+        actionNote(req.method, entity),
+      );
 
       await logActivity({
         madrasa_id: madrasaId,
@@ -200,7 +259,7 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
     })().catch((error) => logger.error("Auto activity log failed", error));
   });
 
-  // Hold the handler until the "before" snapshot is read - otherwise the
+  // Hold the handler until the "before" snapshots are read - otherwise the
   // update could land first and the diff would show no change.
-  beforePromise.finally(() => next());
+  Promise.allSettled([beforePromise, bulkBeforePromise]).finally(() => next());
 };

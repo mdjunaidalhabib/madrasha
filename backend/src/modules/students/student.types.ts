@@ -123,8 +123,9 @@ export interface BulkAdmissionRow {
   name: string;
   previousAcademicYear: string | null;
   academicYear: string;
-  roll: number;
-  registrationNo: number;
+  /** Always null for a new applicant - assigned on Muhtamim approval. */
+  roll: number | null;
+  registrationNo: number | null;
   changes: Array<{ field: string; old: unknown; new: unknown }>;
 }
 

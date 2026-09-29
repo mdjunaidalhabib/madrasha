@@ -215,6 +215,46 @@ const RejectedAdmissionsPage = () => {
     });
   };
 
+  // Same endpoint as the pending page's bulk approve - the backend treats a
+  // REJECTED row as a re-approval and logs it as one (see reviewAdmissionsBulk).
+  const handleBulkApprove = (students: RejectedStudent[]) => {
+    if (students.length === 0) return;
+    useConfirmStore.getState().show({
+      title: t.reapproveTitle,
+      message: t.reapproveBulkMessage(localizeDigits(students.length, lang)),
+      confirmText: t.approveConfirm,
+      onConfirm: async () => {
+        setBulkBusy(true);
+        try {
+          let done = new Set<number>();
+          try {
+            const res = await admissionApi.approveBulk(students.map((student) => Number(student.id)));
+            done = new Set((res.data?.data?.succeeded ?? []).map(Number));
+          } catch (err) {
+            logger.error("Bulk re-approve rejected applications failed:", err);
+          }
+          const succeededIds = students.filter((student) => done.has(Number(student.id))).map((student) => student.id);
+          const failedCount = students.length - succeededIds.length;
+          if (succeededIds.length > 0) {
+            removeRows(succeededIds);
+            refreshSidebarCounts();
+          }
+          if (failedCount === 0) {
+            useToastStore.getState().show(t.reapproved, "success");
+          } else if (succeededIds.length === 0) {
+            useToastStore.getState().show(t.approveFailed, "error");
+          } else {
+            useToastStore
+              .getState()
+              .show(t.reapprovePartial(localizeDigits(succeededIds.length, lang), localizeDigits(failedCount, lang)), "error");
+          }
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
+
   const handlePermanentDelete = (student: RejectedStudent) => {
     useConfirmStore.getState().show({
       title: t.deleteForeverTitle,
@@ -247,13 +287,16 @@ const RejectedAdmissionsPage = () => {
       onConfirm: async () => {
         setBulkBusy(true);
         try {
-          const results = await Promise.allSettled(
-            students.map((student) => admissionApi.permanentlyDeleteRejected(Number(student.id))),
-          );
-          const succeededIds = students
-            .filter((_, i) => results[i].status === "fulfilled")
-            .map((student) => student.id);
-          const failedCount = results.length - succeededIds.length;
+          // One request (and one activity-log row) for the whole selection.
+          let done = new Set<number>();
+          try {
+            const res = await admissionApi.permanentlyDeleteRejectedBulk(students.map((student) => Number(student.id)));
+            done = new Set((res.data?.data?.succeeded ?? []).map(Number));
+          } catch (err) {
+            logger.error("Bulk delete rejected applications failed:", err);
+          }
+          const succeededIds = students.filter((student) => done.has(Number(student.id))).map((student) => student.id);
+          const failedCount = students.length - succeededIds.length;
           if (succeededIds.length > 0) removeRows(succeededIds);
           if (failedCount === 0) {
             useToastStore.getState().show(t.deleted, "success");
@@ -299,14 +342,24 @@ const RejectedAdmissionsPage = () => {
             <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
               {t.selectedN(localizeDigits(selectedIds.size, lang))}
             </span>
-            <button
-              type="button"
-              disabled={bulkBusy}
-              onClick={() => handleBulkDelete(filteredRows.filter((row) => selectedIds.has(row.id)))}
-              className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
-            >
-              {t.deleteSelectedForever}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => handleBulkApprove(filteredRows.filter((row) => selectedIds.has(row.id)))}
+                className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
+              >
+                {t.reapproveSelected}
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => handleBulkDelete(filteredRows.filter((row) => selectedIds.has(row.id)))}
+                className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {t.deleteSelectedForever}
+              </button>
+            </div>
           </div>
         )}
 
@@ -324,6 +377,15 @@ const RejectedAdmissionsPage = () => {
             <>
               {/* Mobile cards */}
               <div className="flex flex-col gap-3 sm:hidden">
+                <label className="flex items-center gap-2 px-1 text-sm text-gray-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id))}
+                    onChange={() => toggleSelectAll(filteredRows.map((row) => row.id))}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  {t.selectAllShort}
+                </label>
                 {filteredRows.map((student) => (
                   <div
                     key={student.id}

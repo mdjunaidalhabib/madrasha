@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../database/prisma", () => ({ prisma: {} }));
+const prismaMock = vi.hoisted(() => ({
+  student: { findMany: vi.fn() },
+  class: { findMany: vi.fn() },
+  madrasaClass: { findMany: vi.fn() },
+}));
+vi.mock("../../database/prisma", () => ({ prisma: prismaMock }));
 
-import { buildSnapshotDetails, findSnapshotLoader } from "../activityDetails";
+import { buildSnapshotDetails, describeStudentsByClass, findSnapshotLoader } from "../activityDetails";
 
 const snap = (fields: Record<string, string>) => ({ madrasaId: 1, title: "পরীক্ষা: বার্ষিক (2026)", fields });
 
@@ -40,5 +45,37 @@ describe("findSnapshotLoader", () => {
     expect(findSnapshotLoader("fee-structures/exam-fees/status")).toBeTypeOf("function");
     expect(findSnapshotLoader("students/expel")).toBe(findSnapshotLoader("students"));
     expect(findSnapshotLoader("classes")).toBeNull();
+  });
+});
+
+describe("describeStudentsByClass", () => {
+  it("groups students under their class in the madrasa's class order", async () => {
+    prismaMock.student.findMany.mockResolvedValue([
+      { id: 1, nameBn: "আব্দুল্লাহ", roll: null, registrationNo: null, classId: 20 },
+      { id: 2, nameBn: "উমর", roll: 3, registrationNo: 501, classId: 10 },
+      { id: 3, nameBn: "আলী", roll: null, registrationNo: null, classId: 20 },
+    ]);
+    prismaMock.class.findMany.mockResolvedValue([
+      { id: 10, nameBn: "নাহবেমীর", name: null, madrasaClasses: [] },
+      { id: 20, nameBn: "মিজান", name: null, madrasaClasses: [{ nameBn: "মিজান (নতুন)" }] },
+    ]);
+    // Class 20 is ordered before class 10 in this madrasa.
+    prismaMock.madrasaClass.findMany.mockResolvedValue([
+      { classId: 20, sortOrder: 1 },
+      { classId: 10, sortOrder: 2 },
+    ]);
+
+    const text = await describeStudentsByClass(7, [1, 2, 3], "মোট ৩ জন", new Map([[1, "নতুন"]]));
+
+    expect(text).toBe(
+      [
+        "মোট ৩ জন",
+        "• শ্রেণি: মিজান (নতুন) — 2 জন",
+        "    1. আব্দুল্লাহ (নতুন)",
+        "    2. আলী",
+        "• শ্রেণি: নাহবেমীর — 1 জন",
+        "    1. উমর (রোল: 3, রেজি: 501)",
+      ].join("\n"),
+    );
   });
 });

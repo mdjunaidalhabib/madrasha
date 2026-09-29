@@ -24,6 +24,7 @@ import { feeService } from "../fee/fee.service";
 import { notificationService } from "../notifications/notification.service";
 import { logger } from "../../shared/logger/logger";
 import { logActivity } from "../../shared/utils/activity.util";
+import { describeStudentsByClass } from "../../shared/utils/activityDetails";
 import { t } from "../../shared/i18n";
 
 /** API key -> Prisma column for every name the নাম (৩ ভাষা) page may edit. */
@@ -383,6 +384,7 @@ export class StudentService {
   async admitStudentsBulk(
     students: StudentAdmissionRequestDto[],
     madrasaId: number | undefined,
+    createdById?: number,
   ): Promise<BulkAdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -453,30 +455,9 @@ export class StudentService {
         existingByNid.set(nid, await this.repository.findByNidOnTx(tx, madrasaId, nid));
       }
 
-      const rollScopes = [
-        ...new Map(
-          prepared.map((row) => [
-            `${row.classId}:${row.academicYear}`,
-            { classId: row.classId, academicYear: row.academicYear },
-          ]),
-        ).values(),
-      ].sort((a, b) => a.classId - b.classId || a.academicYear.localeCompare(b.academicYear));
-
-      for (const scope of rollScopes) {
-        await this.repository.lockRollScopeOnTx(tx, madrasaId, scope.classId, scope.academicYear);
-      }
-      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-
       let inserted = 0;
       let updated = 0;
       const preview: BulkAdmissionRow[] = [];
-      // Each number comes from the row's class block (see
-      // registration-no.allocator.ts). The batch allocator reads each class
-      // once and counts up in memory - per-row queries made a 40+ row upload
-      // outlive the transaction timeout on a remote DB.
-      const registrationNos = this.repository.createRegistrationNoBatchOnTx(tx, madrasaId);
-      const nextRegistrationNo = (scopeClassId: number) => registrationNos.next(scopeClassId);
-      const rollCounters = new Map<string, number>();
 
       for (let index = 0; index < prepared.length; index++) {
         const { student, classId, academicYear, sessionId } = prepared[index];
@@ -486,38 +467,23 @@ export class StudentService {
         data.sessionId = sessionId;
         data.academicYear = academicYear;
         data.admissionType = existing ? "RE_ADMISSION" : "NEW";
+        // Same as admitStudent: every bulk row lands PENDING too and waits on
+        // a Muhtamim. Roll, registration number, guardian, invoices and the
+        // admission SMS all happen in approveAdmission, never here.
+        data.admissionStatus = "PENDING";
 
-        if (
+        data.roll =
           existing &&
           existing.classId === classId &&
           existing.academicYear === academicYear &&
           existing.roll
-        ) {
-          data.roll = existing.roll;
-        } else {
-          const key = `${classId}:${academicYear}`;
-          if (!rollCounters.has(key)) {
-            rollCounters.set(
-              key,
-              await this.repository.getMaxRollOnTx(tx, madrasaId, classId, academicYear),
-            );
-          }
-          const nextRoll = rollCounters.get(key)! + 1;
-          rollCounters.set(key, nextRoll);
-          data.roll = nextRoll;
-        }
+            ? existing.roll
+            : null;
 
-        // A NID matched here to a still-PENDING web/admin admission has no
-        // registration number yet (see admitStudent) - bulk admission has
-        // no PENDING state of its own, so backfill one now (and approve the
-        // record) instead of leaving it permanently null and stuck PENDING.
-        if (existing && !existing.registrationNo) {
-          data.registrationNo = await nextRegistrationNo(classId);
-          data.admissionStatus = "APPROVED";
-        } else if (existing && existing.classId !== classId) {
-          // Moving into another class - the old class's number doesn't
-          // carry over; take the next one in the new class.
-          data.registrationNo = await nextRegistrationNo(classId);
+        // Moving into another class - the old class's number doesn't carry
+        // over; the new class's block hands one out on approval.
+        if (existing && existing.classId !== classId) {
+          data.registrationNo = null;
         }
 
         if (existing) {
@@ -539,8 +505,8 @@ export class StudentService {
             name: data.nameBn,
             previousAcademicYear: existing.academicYear ?? null,
             academicYear: data.academicYear,
-            roll: data.roll!,
-            registrationNo: data.registrationNo ?? existing.registrationNo!,
+            roll: data.roll,
+            registrationNo: "registrationNo" in data ? null : existing.registrationNo ?? null,
             changes,
           });
 
@@ -550,7 +516,7 @@ export class StudentService {
         } else {
           const created = await this.repository.createOnTx(tx, {
             ...data,
-            registrationNo: await nextRegistrationNo(classId),
+            registrationNo: null,
           } as Prisma.StudentUncheckedCreateInput);
           inserted++;
           preview.push({
@@ -561,8 +527,8 @@ export class StudentService {
             name: data.nameBn,
             previousAcademicYear: null,
             academicYear: data.academicYear,
-            roll: data.roll!,
-            registrationNo: created.registrationNo!,
+            roll: null,
+            registrationNo: null,
             changes: [],
           });
 
@@ -572,38 +538,33 @@ export class StudentService {
         }
       }
 
-      await registrationNos.flush();
       return { inserted, updated, preview };
     }, BULK_ADMISSION_TX_OPTIONS);
 
-    // Outside the transaction, same reasoning as admitStudent(). One
-    // guardian-provisioning failure must not affect (or roll back) the
-    // student rows this bulk admission already committed - log and continue.
-    // Looked up once, not per-row - see FeeService.getAdmissionCategoryNames
-    // for why this replaces the old hardcoded ["ADMISSION"] filter.
-    const admissionFeeTypes = await feeService.getAdmissionCategoryNames(madrasaId);
-    for (const row of result.preview) {
-      const source = students[row.row - 1];
-      if (!source) continue;
-      await guardianService.ensureGuardianForStudent(
-        madrasaId,
-        row.id,
-        source.guardian_phone,
-        source.father_name || source.mother_name,
-      );
-
-      try {
-        await feeService.autoGenerateInvoicesForStudent(
-          madrasaId,
-          row.id,
-          prepared[row.row - 1].classId,
-          prepared[row.row - 1].sessionId,
-          source.admission_date ? new Date(source.admission_date) : new Date(),
-          admissionFeeTypes,
+    // One activity row for the whole upload - every applicant listed
+    // class-wise (the route is self-logged - see SELF_LOGGED_ENTITY_PATHS).
+    // Non-fatal: the admissions already committed above.
+    try {
+      if (result.preview.length) {
+        const notes = new Map(
+          result.preview.map((row) => [row.id, row.action === "update" ? "পুনঃভর্তি" : "নতুন"] as const),
         );
-      } catch (err) {
-        logger.error("AUTO-GENERATE INVOICES ON BULK ADMISSION ERROR:", err);
+        const reAdmitted = result.preview.filter((row) => row.action === "update").length;
+        const headline =
+          `মোট ${result.preview.length} জন শিক্ষার্থীর ভর্তি আবেদন জমা দেওয়া হয়েছে` +
+          ` (নতুন: ${result.preview.length - reAdmitted}, পুনঃভর্তি: ${reAdmitted})` +
+          ` — অবস্থা: পেন্ডিং, মুহতামিমের অনুমোদনের অপেক্ষায়`;
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: createdById ?? null,
+          action: "CREATE",
+          entity: "students/admission/bulk",
+          entity_id: null,
+          details: await describeStudentsByClass(madrasaId, [...notes.keys()], headline, notes),
+        });
       }
+    } catch (err) {
+      logger.error("Activity log for bulk admission failed:", err);
     }
 
     return result;
@@ -1156,6 +1117,27 @@ export class StudentService {
     return result.count;
   }
 
+  /** Permanently deletes many rejected applications; one that fails doesn't
+   * stop the rest. Logged as one row by the activity logger's bulk
+   * describer ("students/admission/rejected-bulk"). */
+  async permanentlyDeleteRejectedApplicationsBulk(madrasaId: number | undefined, rawIds: number[]) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const ids = [...new Set((rawIds || []).map(Number))].filter((id) => Number.isInteger(id) && id > 0);
+    if (!ids.length) throw new BadRequestError(t({ bn: "ids আবশ্যক", en: "ids is required" }));
+
+    const succeeded: number[] = [];
+    const failed: { id: number; message: string }[] = [];
+    for (const id of ids) {
+      try {
+        await this.permanentlyDeleteRejectedApplication(id, madrasaId);
+        succeeded.push(id);
+      } catch (err) {
+        failed.push({ id, message: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return { succeeded, failed };
+  }
+
   /** Approves a pending admission. Nothing is allocated for it at
    * submission time anymore (see admitStudent) - approval is what actually
    * turns the applicant into a real enrolled student: a roll and a
@@ -1167,7 +1149,12 @@ export class StudentService {
    * বিভাগ collects the fee afterward (through the "ভর্তি ফি পেন্ডিং" page,
    * unaffected by admission approval status - see fee.repository.ts's
    * findPendingInvoices). */
-  async approveAdmission(id: number, madrasaId: number | undefined, reviewerId: number | undefined) {
+  async approveAdmission(
+    id: number,
+    madrasaId: number | undefined,
+    reviewerId: number | undefined,
+    options: { skipActivityLog?: boolean } = {},
+  ) {
     if (!madrasaId) throw new TenantNotResolvedError();
 
     const existing = await this.repository.findByIdForTenant(id, madrasaId);
@@ -1175,6 +1162,10 @@ export class StudentService {
     if (existing.admissionStatus === "APPROVED") {
       throw new BadRequestError(t({ bn: "এই ভর্তি ইতিমধ্যে অনুমোদিত", en: "This admission is already approved" }));
     }
+    // বাতিল হওয়া আবেদন → পুনরায় অনুমোদন (RejectedAdmissionsPage) goes through
+    // this same path; the log must say so, since the reason is cleared below.
+    const reapproved = existing.admissionStatus === "REJECTED";
+    const previousRejectionReason = existing.rejectionReason;
 
     const { roll: assignedRoll, registrationNo: assignedRegistrationNo } = await this.repository.runTransaction(async (tx) => {
       // Re-check inside the lock in case another request approved/changed
@@ -1250,18 +1241,29 @@ export class StudentService {
     // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) since this
     // route has no request body to derive details from - it's just a bare
     // PATCH by id. Non-fatal - the approval already committed above.
-    try {
+    // The bulk path (approveAdmissionsBulk) writes one row for the batch instead.
+    if (!options.skipActivityLog) try {
+      const who = `নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"}`;
+      const numbers = `(রোল: ${assignedRoll}, রেজিস্ট্রেশন নম্বর: ${assignedRegistrationNo})`;
       await logActivity({
         madrasa_id: madrasaId,
         user_id: reviewerId ?? null,
         action: "UPDATE",
-        entity: "students/approve",
+        entity: reapproved ? "students/reapprove" : "students/approve",
         entity_id: id,
-        details: `নাম: ${existing.nameBn}, শ্রেণি: ${(existing as any).classRef?.nameBn || "অজানা"} — মুহতামিম কর্তৃক ভর্তি অনুমোদন করা হয়েছে (রোল: ${assignedRoll}, রেজিস্ট্রেশন নম্বর: ${assignedRegistrationNo})`,
+        details: reapproved
+          ? [
+              `${who} — মুহতামিম কর্তৃক বাতিল হওয়া ভর্তি আবেদন পুনরায় অনুমোদন করা হয়েছে ${numbers}`,
+              "কাজ: আগে বাতিল করা ভর্তি আবেদন পুনরায় অনুমোদন করা হয়েছে",
+              ...(previousRejectionReason ? [`আগের বাতিলের কারণ: ${previousRejectionReason}`] : []),
+            ].join("\n")
+          : `${who} — মুহতামিম কর্তৃক ভর্তি অনুমোদন করা হয়েছে ${numbers}`,
       });
     } catch (err) {
       logger.error("Activity log for admission approval failed:", err);
     }
+
+    return { reapproved };
   }
 
   /** Rejects a pending admission with a reason, keeping the record (rather
@@ -1271,6 +1273,7 @@ export class StudentService {
     madrasaId: number | undefined,
     reviewerId: number | undefined,
     reason: string | undefined,
+    options: { skipActivityLog?: boolean } = {},
   ) {
     if (!madrasaId) throw new TenantNotResolvedError();
     if (!reason || !reason.trim()) throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ আবশ্যক", en: "Rejection reason is required" }));
@@ -1293,7 +1296,8 @@ export class StudentService {
     // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
     // details column carries the student's id/name/class and the rejection
     // reason. Non-fatal - the rejection already committed above.
-    try {
+    // The bulk path (rejectAdmissionsBulk) writes one row for the batch instead.
+    if (!options.skipActivityLog) try {
       await logActivity({
         madrasa_id: madrasaId,
         user_id: reviewerId ?? null,
@@ -1305,6 +1309,112 @@ export class StudentService {
     } catch (err) {
       logger.error("Activity log for admission rejection failed:", err);
     }
+  }
+
+  /** Approves/rejects many pending admissions (বাছাই করে অনুমোদন/বাতিল).
+   * Each one goes through the single-student path - so every roll/reg
+   * number, invoice and SMS is exactly as if done one by one - and one that
+   * fails doesn't stop the rest. The activity log gets ONE row for the whole
+   * batch, applicants listed class-wise (like bulk admission). */
+  async approveAdmissionsBulk(madrasaId: number | undefined, reviewerId: number | undefined, ids: number[]) {
+    return this.reviewAdmissionsBulk(madrasaId, reviewerId, ids, "approve");
+  }
+
+  async rejectAdmissionsBulk(
+    madrasaId: number | undefined,
+    reviewerId: number | undefined,
+    ids: number[],
+    reason: string | undefined,
+  ) {
+    if (!reason || !reason.trim()) throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ আবশ্যক", en: "Rejection reason is required" }));
+    return this.reviewAdmissionsBulk(madrasaId, reviewerId, ids, "reject", reason.trim());
+  }
+
+  private async reviewAdmissionsBulk(
+    madrasaId: number | undefined,
+    reviewerId: number | undefined,
+    rawIds: number[],
+    mode: "approve" | "reject",
+    reason?: string,
+  ) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const ids = [...new Set((rawIds || []).map(Number))].filter((id) => Number.isInteger(id) && id > 0);
+    if (!ids.length) throw new BadRequestError(t({ bn: "ids আবশ্যক", en: "ids is required" }));
+
+    const succeeded: number[] = [];
+    const reapprovedIds: number[] = [];
+    const failed: { id: number; message: string }[] = [];
+    // Sequential on purpose: approvals allocate roll/registration numbers
+    // under row locks, and parallel batches only fight over them.
+    for (const id of ids) {
+      try {
+        if (mode === "approve") {
+          const { reapproved } = await this.approveAdmission(id, madrasaId, reviewerId, { skipActivityLog: true });
+          if (reapproved) reapprovedIds.push(id);
+        } else await this.rejectAdmission(id, madrasaId, reviewerId, reason, { skipActivityLog: true });
+        succeeded.push(id);
+      } catch (err) {
+        failed.push({ id, message: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    if (succeeded.length) {
+      try {
+        // Whole batch came from বাতিল হওয়া আবেদন → its own log title/headline;
+        // a mixed batch keeps the plain one and lists the re-approved below.
+        const allReapproved = mode === "approve" && reapprovedIds.length === succeeded.length;
+        const headline =
+          allReapproved
+            ? `মুহতামিম কর্তৃক মোট ${succeeded.length}টি বাতিল হওয়া ভর্তি আবেদন একসাথে পুনরায় অনুমোদন করা হয়েছে`
+            : mode === "approve"
+            ? `মুহতামিম কর্তৃক মোট ${succeeded.length} জন শিক্ষার্থীর ভর্তি একসাথে অনুমোদন করা হয়েছে`
+            : `মুহতামিম কর্তৃক মোট ${succeeded.length} জন শিক্ষার্থীর ভর্তির আবেদন একসাথে বাতিল করা হয়েছে, কারণ: ${reason}`;
+        const failedNames = failed.length
+          ? new Map((await this.repository.findNamesForTenant(madrasaId, failed.map((f) => f.id))).map((s) => [s.id, s.nameBn]))
+          : new Map<number, string>();
+        const text = await describeStudentsByClass(
+          madrasaId,
+          succeeded,
+          failed.length ? `${headline} (ব্যর্থ: ${failed.length} জন)` : headline,
+        );
+        const reapprovedNames = reapprovedIds.length && !allReapproved
+          ? (await this.repository.findNamesForTenant(madrasaId, reapprovedIds)).map((s) => s.nameBn)
+          : [];
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: reviewerId ?? null,
+          action: "UPDATE",
+          entity: allReapproved
+            ? "students/admission/reapprove-bulk"
+            : mode === "approve"
+              ? "students/admission/approve-bulk"
+              : "students/admission/reject-bulk",
+          entity_id: null,
+          details: [
+            // কাজ: line sits right under the headline, like actionNote() in the auto-logger.
+            ...(allReapproved
+              ? [
+                  text.split("\n")[0],
+                  "কাজ: আগে বাতিল করা ভর্তি আবেদন পুনরায় অনুমোদন করা হয়েছে",
+                  ...text.split("\n").slice(1),
+                ]
+              : [text]),
+            ...(reapprovedNames.length
+              ? [
+                  `• এর মধ্যে আগে বাতিল হওয়া আবেদন পুনরায় অনুমোদন — ${reapprovedNames.length} জন`,
+                  ...reapprovedNames.map((name, i) => `    ${i + 1}. ${name}`),
+                ]
+              : []),
+            ...(failed.length ? [`• ব্যর্থ — ${failed.length} জন`] : []),
+            ...failed.map((f, i) => `    ${i + 1}. ${failedNames.get(f.id) ?? `আইডি ${f.id}`}: ${f.message}`),
+          ].join("\n"),
+        });
+      } catch (err) {
+        logger.error(`Activity log for bulk admission ${mode} failed:`, err);
+      }
+    }
+
+    return { succeeded, failed };
   }
 
   /* ================= SESSION TRANSFER ================= */

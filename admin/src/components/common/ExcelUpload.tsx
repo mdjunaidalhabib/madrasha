@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { FileSpreadsheet, Upload } from "lucide-react";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
@@ -8,6 +10,8 @@ interface ExcelUploadProps<T> {
   buttonText?: string;
   disabled?: boolean;
   requiredColumns?: string[];
+  /** Slim single dropzone (no outer card / big icon) for tight modals. */
+  compact?: boolean;
 }
 
 const ExcelUpload = <T,>({
@@ -15,20 +19,32 @@ const ExcelUpload = <T,>({
   buttonText,
   disabled = false,
   requiredColumns = [],
+  compact = false,
 }: ExcelUploadProps<T>) => {
   const t = useText(commonUiText);
+  const [dragging, setDragging] = useState(false);
   const cleanHeaderKey = (key: string) => key.replace("*", "").trim();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = "";
+    if (file) processFile(file);
+  };
 
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    if (disabled) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const processFile = (file: File) => {
     const isValidFile =
       file.name.endsWith(".xlsx") || file.name.endsWith(".xls") || file.name.endsWith(".csv");
 
     if (!isValidFile) {
       useToastStore.getState().show("Only .xlsx, .xls, or .csv file allowed", "error");
-      e.target.value = "";
       return;
     }
 
@@ -83,7 +99,6 @@ const ExcelUpload = <T,>({
         if (!cleanedRows.length) return useToastStore.getState().show(getText(commonUiText).noStudentData, "error");
 
         onDataUpload(cleanedRows);
-        e.target.value = "";
       } catch (error) {
         logger.error("EXCEL UPLOAD ERROR:", error);
         useToastStore.getState().show("Invalid Excel file", "error");
@@ -94,6 +109,55 @@ const ExcelUpload = <T,>({
 
     reader.readAsArrayBuffer(file);
   };
+
+  if (compact) {
+    return (
+      <div>
+        <label
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!disabled) setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${
+            dragging
+              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+              : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-blue-500"
+          } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+        >
+          <FileSpreadsheet className="h-8 w-8 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-normal text-white shadow-sm transition hover:bg-blue-700">
+            <Upload className="h-4 w-4" />
+            {buttonText ?? t.uploadExcel}
+          </span>
+          <span className="hidden text-xs text-slate-500 dark:text-slate-400 sm:inline">{t.orDropHere}</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">{t.supportedFiles}</span>
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
+            disabled={disabled}
+            className="hidden"
+          />
+        </label>
+
+        {requiredColumns.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t.requiredColumns}:</span>
+            {requiredColumns.map((column) => (
+              <span
+                key={column}
+                className="rounded-md bg-red-50 px-2 py-0.5 font-mono text-[11px] text-red-700 dark:bg-red-950/40 dark:text-red-400"
+              >
+                {column}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">

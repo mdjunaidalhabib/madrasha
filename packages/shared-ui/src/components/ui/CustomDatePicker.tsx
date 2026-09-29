@@ -101,7 +101,7 @@ const CustomDatePicker: React.FC<Props> = ({
             >
               <div>
                 <p className="text-xs text-gray-500 dark:text-slate-400">{t.day}</p>
-                <p className="text-sm font-semibold">{num(selectedDay)}</p>
+                <p className="text-sm font-normal">{num(selectedDay)}</p>
               </div>
               <ChevronDown
                 size={18}
@@ -141,7 +141,7 @@ const CustomDatePicker: React.FC<Props> = ({
             >
               <div>
                 <p className="text-xs text-gray-500 dark:text-slate-400">{t.month}</p>
-                <p className="text-sm font-semibold">
+                <p className="text-sm font-normal">
                   {months[selectedMonth - 1]}
                 </p>
               </div>
@@ -181,7 +181,7 @@ const CustomDatePicker: React.FC<Props> = ({
             >
               <div>
                 <p className="text-xs text-gray-500 dark:text-slate-400">{t.year}</p>
-                <p className="text-sm font-semibold">{num(selectedYear)}</p>
+                <p className="text-sm font-normal">{num(selectedYear)}</p>
               </div>
               <ChevronDown
                 size={18}

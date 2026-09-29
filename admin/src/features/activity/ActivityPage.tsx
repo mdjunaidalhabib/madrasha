@@ -9,6 +9,7 @@ import { formatDateTime, formatNumber, useLang, useText } from "@madrasha/shared
 import {
   type ActivityLogText,
   activityText,
+  formatJsonDetails,
   QUICK_DAY_OPTIONS,
   translateActivityAction,
   translateEntityName,
@@ -26,6 +27,7 @@ type ActivityRow = {
   details: string | null;
   created_at: string;
   name: string | null;
+  role_name: string | null;
 };
 
 type FilterMode = "days" | "custom";
@@ -40,20 +42,24 @@ const COLLAPSED_LINES = 4;
 function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
   const lang = useLang();
   const [expanded, setExpanded] = useState(false);
-  const [headline, ...lines] = text.split("\n").filter((line) => line.trim());
+  // JSON details (super-admin / result workflow) have no headline - just
+  // translated "label: value" lines.
+  const json = formatJsonDetails(text, lang, t);
+  const [headline, ...lines] = json ? ["", ...json] : text.split("\n").filter((line) => line.trim());
   const hidden = lines.length - COLLAPSED_LINES;
   const visible = expanded || hidden <= 0 ? lines : lines.slice(0, COLLAPSED_LINES);
 
   return (
     <div className="min-w-[260px] max-w-[640px]">
-      <div className="font-medium text-slate-800 dark:text-slate-100">{headline}</div>
+      {headline && <div className="font-medium text-slate-800 dark:text-slate-100">{headline}</div>}
       {visible.length > 0 && (
-        <ul className="mt-1 space-y-0.5 text-[13px] text-slate-600 dark:text-slate-400">
+        <ul className="mt-1 space-y-0.5 first:mt-0 text-[13px] text-slate-600 dark:text-slate-400">
           {visible.map((raw, i) => {
-            // Leading spaces = a sub-line of the previous line (bulk update).
-            const nested = /^\s/.test(raw);
+            // Every 4 leading spaces = one nesting level under the line above
+            // (bulk logs: class → student → that student's changes).
+            const depth = Math.min(2, Math.floor((raw.length - raw.trimStart().length) / 4));
             const line = raw.trim();
-            const itemClass = nested ? "ps-4" : undefined;
+            const itemClass = depth === 2 ? "ps-8" : depth === 1 ? "ps-4" : undefined;
             const arrow = line.indexOf(" → ");
             if (arrow === -1 || line.indexOf(" → ", arrow + 1) !== -1) {
               return (
@@ -216,7 +222,10 @@ export default function ActivityPage() {
             <tbody className="text-sm dark:text-slate-300">
               {rows.map((r) => (
                 <tr key={r.id} className="border-t dark:border-slate-700">
-                  <td className="px-4 py-3">{r.name || t.systemUser}</td>
+                  {/* Role, not the person's name; the name stays in the hover title. */}
+                  <td className="px-4 py-3" title={r.name ?? undefined}>
+                    {r.role_name || r.name || t.systemUser}
+                  </td>
                   <td className="px-4 py-3">{translateActivityAction(r.entity, r.action, t)}</td>
                   <td className="px-4 py-3">{translateEntityName(r.entity, t)}</td>
                   <td className="px-4 py-3 align-top">

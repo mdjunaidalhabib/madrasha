@@ -45,6 +45,7 @@ export const commonUiText = defineText({
     requiredColumns: "আবশ্যক টেমপ্লেট কলাম",
     requiredColumnsHint: "টেমপ্লেটে এই কলামগুলো লাল রঙে ও * চিহ্নসহ থাকবে",
     required: "আবশ্যক",
+    orDropHere: "অথবা ফাইলটি এখানে টেনে এনে ছাড়ুন",
     // ProfileQuickNav
     noName: "নাম নেই",
     clearSearch: "সার্চ মুছুন",
@@ -98,6 +99,7 @@ export const commonUiText = defineText({
     requiredColumns: "Required Template Columns",
     requiredColumnsHint: "These columns are shown in red with a * mark in the template",
     required: "Required",
+    orDropHere: "or drag and drop the file here",
     noName: "No name",
     clearSearch: "Clear search",
     nothingFound: "Nothing found",

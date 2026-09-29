@@ -504,7 +504,7 @@ const FeeInvoicesPage = () => {
             <button
               type="button"
               onClick={() => setBulkExamFeeOpen(true)}
-              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:h-11"
+              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-normal text-white shadow-sm transition hover:bg-emerald-700 sm:h-11"
             >
               <Users size={16} />
               {t.bulkExamFee}

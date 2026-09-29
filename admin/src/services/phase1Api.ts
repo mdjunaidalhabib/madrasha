@@ -14,8 +14,15 @@ export const admissionApi = {
   approve: (studentId: number) => api.patch(`/students/${studentId}/approve`),
   reject: (studentId: number, reason: string) =>
     api.patch(`/students/${studentId}/reject`, { reason }),
+  // Bulk review: one request (and one activity-log row) for the whole
+  // selection; data = { succeeded: number[], failed: { id, message }[] }.
+  approveBulk: (studentIds: number[]) => api.patch(`/students/admission/approve-bulk`, { ids: studentIds }),
+  rejectBulk: (studentIds: number[], reason: string) =>
+    api.patch(`/students/admission/reject-bulk`, { ids: studentIds, reason }),
   listRejected: () => cachedGet("/students/admission/rejected", undefined, 0),
   permanentlyDeleteRejected: (studentId: number) => api.delete(`/students/${studentId}/rejected-application`),
+  permanentlyDeleteRejectedBulk: (studentIds: number[]) =>
+    api.delete(`/students/admission/rejected-bulk`, { data: { ids: studentIds } }),
 };
 
 /* ================= ATTENDANCE ================= */

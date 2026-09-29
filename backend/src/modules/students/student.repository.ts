@@ -256,6 +256,13 @@ export class StudentRepository {
   }
 
   /** Which of `ids` actually belong to this madrasa (and aren't in Trash). */
+  findNamesForTenant(madrasaId: number, ids: number[]) {
+    return prisma.student.findMany({
+      where: { madrasaId, id: { in: ids } },
+      select: { id: true, nameBn: true },
+    });
+  }
+
   findIdsForTenant(madrasaId: number, ids: number[]) {
     return prisma.student.findMany({
       where: { madrasaId, id: { in: ids }, deletedAt: null },

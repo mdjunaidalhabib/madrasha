@@ -39,6 +39,15 @@ export class AccountRepository {
   /** Scoped to `madrasaId` (unlike softDelete, which trusts a single row
    * already fetched via findForTenant) since a bulk request only carries
    * raw ids - this is the tenant check for the whole batch in one query. */
+  /** The live entries among `ids` - read before a bulk delete so the
+   * activity log can list what was removed. */
+  findManyForTenant(ids: number[], madrasaId: number) {
+    return prisma.account.findMany({
+      where: { id: { in: ids }, madrasaId, deletedAt: null },
+      orderBy: [{ entryDate: "asc" }, { id: "asc" }],
+    });
+  }
+
   softDeleteMany(ids: number[], madrasaId: number) {
     return prisma.account.updateMany({
       where: { id: { in: ids }, madrasaId, deletedAt: null },

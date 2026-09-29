@@ -1,6 +1,6 @@
 import { activityRepository, ActivityRepository } from "./activity.repository";
 import { ACTIVITY_LOG_DEFAULT_DAYS, ACTIVITY_LOG_DEFAULT_LIMIT, ACTIVITY_LOG_MAX_LIMIT } from "./activity.constants";
-import { ActivityLogListResult, ActivityLogQuery } from "./activity.types";
+import { ActivityLogListResult, ActivityLogQuery, ActivityLogRow } from "./activity.types";
 
 function parseDate(value?: string): Date | undefined {
   if (!value) return undefined;
@@ -39,7 +39,45 @@ export class ActivityService {
     );
 
     const { rows, total } = await this.repository.findByMadrasa({ madrasaId, from, to, page, limit });
-    return { rows, total, page, limit };
+    return { rows: await this.withNames(madrasaId, rows), total, page, limit };
+  }
+
+  /**
+   * Super-admin user actions log `{"user_id": 10, ...}` - a bare id means
+   * nothing to the reader. Swap it for the user's name and add the madrasa
+   * name. An id whose user no longer exists (deleted) is left as the id.
+   */
+  private async withNames(madrasaId: number, rows: ActivityLogRow[]): Promise<ActivityLogRow[]> {
+    const parsed = rows.map((row) => {
+      if (row.entity !== "user" || !row.details?.trim().startsWith("{")) return null;
+      try {
+        const data = JSON.parse(row.details);
+        return data && typeof data === "object" && Number(data.user_id) ? (data as Record<string, unknown>) : null;
+      } catch {
+        return null;
+      }
+    });
+    const userIds = [...new Set(parsed.filter(Boolean).map((d) => Number(d!.user_id)))];
+    if (!userIds.length) return rows;
+
+    const [users, madrasa] = await Promise.all([
+      this.repository.findUserNames(madrasaId, userIds),
+      this.repository.findMadrasaName(madrasaId),
+    ]);
+    const names = new Map(users.map((u) => [u.id, u.name]));
+
+    return rows.map((row, i) => {
+      const data = parsed[i];
+      if (!data) return row;
+      const { user_id, ...rest } = data;
+      const userName = names.get(Number(user_id));
+      const details = {
+        ...(userName ? { user_name: userName } : { user_id }),
+        ...(madrasa?.name ? { madrasa_name: madrasa.name } : {}),
+        ...rest,
+      };
+      return { ...row, details: JSON.stringify(details) };
+    });
   }
 }
 

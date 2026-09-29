@@ -14,6 +14,12 @@ vi.mock("../../accounts/account.service", () => ({
   },
 }));
 vi.mock("../../../shared/utils/activity.util", () => ({ logActivity: vi.fn(async () => undefined) }));
+vi.mock("../../../shared/utils/activityDetails", () => ({
+  // Echo the inputs so the test can see what the class-wise list was built from.
+  describeStudentsByClass: vi.fn(async (_m: number, ids: number[], headline: string, notes: Map<number, string>) =>
+    [headline, ...ids.map((id) => `    ${id}: ${notes.get(id)}`)].join("\n"),
+  ),
+}));
 vi.mock("../../exam-candidate/exam-candidate.hooks", () => ({
   autoRegisterOnInvoicePaid: vi.fn(async () => undefined),
 }));
@@ -138,10 +144,18 @@ describe("FeeService.bulkPayExamFee", () => {
     expect(repository.runTransaction).toHaveBeenCalledTimes(3); // deduped: 2 only once
     // Guardian SMS is off unless asked for.
     expect(notificationService.triggerEvent).not.toHaveBeenCalled();
-    // Two per-invoice logs + one summary row.
-    expect(vi.mocked(logActivity).mock.calls.at(-1)?.[0]).toMatchObject({
+    // Exactly one row for the whole collection - no per-invoice "invoices/pay" rows.
+    const calls = vi.mocked(logActivity).mock.calls.map((c) => c[0]);
+    expect(calls.filter((c) => c.entity === "invoices/pay")).toHaveLength(0);
+    expect(calls.at(-1)).toMatchObject({
       entity: "invoices/exam-fee/bulk-pay",
-      details: "পরীক্ষার ফি একসাথে গ্রহণ: বার্ষিক পরীক্ষা — মিজান, 2 জন, মোট 600 টাকা",
+      details: [
+        "পরীক্ষার ফি একসাথে গ্রহণ: বার্ষিক পরীক্ষা — মিজান, 2 জন, মোট 600 টাকা (ব্যর্থ: 1 জন)",
+        "    1001: 300 টাকা",
+        "    1003: 300 টাকা",
+        "• ব্যর্থ — 1 জন",
+        "    1. ছাত্র 2: পেমেন্ট রেকর্ড করা যায়নি",
+      ].join("\n"),
     });
   });
 

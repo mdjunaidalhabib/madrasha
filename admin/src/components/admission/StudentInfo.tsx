@@ -403,24 +403,6 @@ const StudentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors
 
         <div className="flex flex-col">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.rollNo}</label>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              {t.auto}
-            </span>
-          </div>
-
-          <input
-            type="text"
-            value={formData.roll || ""}
-            placeholder={t.rollPlaceholder}
-            readOnly
-            aria-readonly="true"
-            className={`${inputClass("roll")} cursor-not-allowed bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300`}
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <div className="mb-1 flex items-center justify-between gap-2">
             <label className="text-sm font-medium text-gray-600 dark:text-slate-400">{t.admissionType}</label>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
               {t.auto}

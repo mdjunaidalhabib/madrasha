@@ -1,5 +1,5 @@
 import { prisma } from "../database/prisma";
-import { tenantClassNameSelect, tenantDivisionNameSelect, tenantClassName, tenantDivisionName } from "./tenant-name.util";
+import { tenantClassNameSelect, tenantDivisionNameSelect, tenantClassName, tenantDivisionName, linkName } from "./tenant-name.util";
 
 /**
  * Human-readable "what exactly changed" text for the activity log.
@@ -226,6 +226,56 @@ export const describeStudentBulkUpdate = async (madrasaId: number, result: {
   return lines.join("\n");
 };
 
+/**
+ * One log row for many students at once (bulk admission, bulk trash): the
+ * headline, then one "• <class> — N জন" line per class in the madrasa's own
+ * class order, each followed by its students (indented = nested in the admin
+ * UI). Reads soft-deleted rows too, so it works after a move to trash.
+ * `notes` adds a per-student suffix, e.g. "নতুন" / "পুনঃভর্তি"; `subLines`
+ * adds lines under a student (e.g. that student's name changes).
+ */
+export const describeStudentsByClass = async (
+  madrasaId: number,
+  ids: number[],
+  headline: string,
+  notes?: Map<number, string>,
+  subLines?: Map<number, string[]>,
+) => {
+  const students = await prisma.student.findMany({
+    where: { madrasaId, id: { in: [...new Set(ids)] } },
+    select: { id: true, nameBn: true, roll: true, registrationNo: true, classId: true },
+    orderBy: [{ roll: "asc" }, { id: "asc" }],
+  });
+  const classIds = [...new Set(students.map((s) => s.classId))];
+  const [names, order] = await Promise.all([
+    loadAcademicNames(madrasaId, classIds, []),
+    prisma.madrasaClass.findMany({
+      where: { madrasaId, classId: { in: classIds } },
+      select: { classId: true, sortOrder: true },
+    }),
+  ]);
+  const sortOf = new Map(order.map((o) => [o.classId, o.sortOrder]));
+  const sortedClassIds = [...classIds].sort(
+    (a, b) => (sortOf.get(a) ?? Number.MAX_SAFE_INTEGER) - (sortOf.get(b) ?? Number.MAX_SAFE_INTEGER) || a - b,
+  );
+
+  const lines = [headline];
+  for (const classId of sortedClassIds) {
+    const inClass = students.filter((s) => s.classId === classId);
+    lines.push(`• শ্রেণি: ${names.classes.get(classId) ?? EMPTY} — ${inClass.length} জন`);
+    inClass.forEach((s, i) => {
+      const extra = [
+        s.roll != null ? `রোল: ${s.roll}` : null,
+        s.registrationNo != null ? `রেজি: ${s.registrationNo}` : null,
+        notes?.get(s.id) ?? null,
+      ].filter(Boolean);
+      lines.push(`    ${i + 1}. ${s.nameBn}${extra.length ? ` (${extra.join(", ")})` : ""}`);
+      for (const sub of subLines?.get(s.id) ?? []) lines.push(`        ${sub}`);
+    });
+  }
+  return lines.join("\n");
+};
+
 /* ================= EXAM ================= */
 
 const loadExam: SnapshotLoader = async (id) => {
@@ -355,9 +405,86 @@ const loadFeeCategory: SnapshotLoader = async (id) => {
   };
 };
 
+/* ================= TRASH (restore / permanent delete) ================= */
+// Trash routes take the trashed row's own id (link-row id for division/
+// class/book) - these read it regardless of deletedAt.
+
+const loadTeacher: SnapshotLoader = async (id) => {
+  const teacher = await prisma.teacher.findUnique({
+    where: { id },
+    select: { madrasaId: true, nameBn: true, designation: true, phone: true },
+  });
+  if (!teacher) return null;
+  return {
+    madrasaId: teacher.madrasaId,
+    title: `নাম: ${teacher.nameBn}`,
+    fields: { পদবি: formatValue(teacher.designation), মোবাইল: formatValue(teacher.phone) },
+  };
+};
+
+const loadMadrasaDivision: SnapshotLoader = async (id) => {
+  const link = await prisma.madrasaDivision.findUnique({
+    where: { id },
+    select: { madrasaId: true, nameBn: true, division: { select: { nameBn: true, name: true } } },
+  });
+  if (!link) return null;
+  return { madrasaId: link.madrasaId, title: `বিভাগ: ${linkName(link, link.division) ?? EMPTY}`, fields: {} };
+};
+
+const loadMadrasaClass: SnapshotLoader = async (id) => {
+  const link = await prisma.madrasaClass.findUnique({
+    where: { id },
+    select: { madrasaId: true, nameBn: true, class: { select: { nameBn: true, name: true } } },
+  });
+  if (!link) return null;
+  return { madrasaId: link.madrasaId, title: `শ্রেণি: ${linkName(link, link.class) ?? EMPTY}`, fields: {} };
+};
+
+const loadMadrasaBook: SnapshotLoader = async (id) => {
+  const link = await prisma.madrasaBook.findUnique({
+    where: { id },
+    select: { madrasaId: true, book: { select: { nameBn: true, name: true, classId: true } } },
+  });
+  if (!link) return null;
+  const names = await loadAcademicNames(link.madrasaId, [link.book.classId], []);
+  return {
+    madrasaId: link.madrasaId,
+    title: `কিতাব: ${link.book.nameBn || link.book.name || EMPTY}`,
+    fields: { শ্রেণি: names.classes.get(link.book.classId) ?? EMPTY },
+  };
+};
+
+const loadResultMaster: SnapshotLoader = async (id) => {
+  const master = await prisma.resultMaster.findUnique({
+    where: { id },
+    select: { madrasaId: true, classId: true, exam: { select: { name: true, year: true } } },
+  });
+  if (!master) return null;
+  const names = await loadAcademicNames(master.madrasaId, [master.classId], []);
+  return {
+    madrasaId: master.madrasaId,
+    title: `ফলাফল: ${master.exam?.name ?? EMPTY}${master.exam?.year ? ` (${master.exam.year})` : ""}`,
+    fields: { শ্রেণি: names.classes.get(master.classId) ?? EMPTY },
+  };
+};
+
 /* ================= REGISTRY ================= */
 
 const LOADERS_BY_ENTITY: Record<string, SnapshotLoader> = {
+  "trash/students": loadStudent,
+  "trash/students/restore": loadStudent,
+  "trash/teachers": loadTeacher,
+  "trash/teachers/restore": loadTeacher,
+  "trash/exams": loadExam,
+  "trash/exams/restore": loadExam,
+  "trash/divisions": loadMadrasaDivision,
+  "trash/divisions/restore": loadMadrasaDivision,
+  "trash/classes": loadMadrasaClass,
+  "trash/classes/restore": loadMadrasaClass,
+  "trash/books": loadMadrasaBook,
+  "trash/books/restore": loadMadrasaBook,
+  "trash/results": loadResultMaster,
+  "trash/results/restore": loadResultMaster,
   exams: loadExam,
   "fee-structures": loadFeeStructure,
   "fee-structures/exam-fees": loadExamFee,

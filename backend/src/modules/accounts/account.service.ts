@@ -466,14 +466,33 @@ export class AccountService {
     );
     if (numericIds.length === 0) throw new BadRequestError(t({ bn: "মুছে ফেলার জন্য কোনো এন্ট্রি নির্বাচন করা হয়নি", en: "No entries selected for deletion" }));
 
+    const entries = await this.repository.findManyForTenant(numericIds, madrasaId);
     const result = await this.repository.softDeleteMany(numericIds, madrasaId);
 
+    // One row for the whole selection: income and expense listed separately,
+    // each entry with its party, amount, fund and category.
+    const describe = (type: "income" | "expense", label: string, party: string) => {
+      const rows = entries.filter((e) => e.type === type);
+      if (!rows.length) return [];
+      const total = rows.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      return [
+        `• ${label} — ${rows.length} টি, মোট ${total} টাকা`,
+        ...rows.map(
+          (e, i) =>
+            `    ${i + 1}. ${party}: ${(type === "income" ? e.donorName : e.receiverName) || "অজানা"}, পরিমাণ: ${Number(e.amount || 0)} টাকা, ফান্ড: ${e.fund || "অজানা"}, খাত: ${e.category || "অজানা"}${e.entryDate ? `, তারিখ: ${e.entryDate.toISOString().slice(0, 10)}` : ""}`,
+        ),
+      ];
+    };
     await logActivity({
       madrasa_id: madrasaId,
       user_id: userId,
       action: "DELETE",
       entity: "ACCOUNT",
-      details: `${result.count} টি এন্ট্রি একসাথে মুছে ফেলা হয়েছে`,
+      details: [
+        `${result.count} টি এন্ট্রি একসাথে মুছে ফেলা হয়েছে`,
+        ...describe("income", "আয়", "দাতা"),
+        ...describe("expense", "ব্যয়", "গ্রহীতা"),
+      ].join("\n"),
     });
 
     return { message: t({ bn: `${result.count} টি এন্ট্রি মুছে ফেলা হয়েছে`, en: `${result.count} entries deleted` }), count: result.count };

@@ -111,6 +111,11 @@ export const admissionReviewText = defineText({
     reapproveMessage: (name: string) =>
       `"${name}" পুনরায় অনুমোদন করা হবে — একজন সক্রিয় {{student}} হিসেবে রোল/রেজিস্ট্রেশন বসবে এবং ফি বিল হবে।`,
     reapproved: "ভর্তি পুনরায় অনুমোদন করা হয়েছে",
+    reapproveBulkMessage: (n: string) =>
+      `নির্বাচিত ${n}টি আবেদন পুনরায় অনুমোদন করা হবে — প্রত্যেকে সক্রিয় {{student}} হিসেবে রোল/রেজিস্ট্রেশন পাবে এবং ফি বিল হবে।`,
+    reapproveSelected: "নির্বাচিতগুলো পুনরায় অনুমোদন",
+    reapprovePartial: (ok: string, failed: string) => `${ok}টি পুনরায় অনুমোদন হয়েছে, ${failed}টি ব্যর্থ হয়েছে`,
+    selectAllShort: "সব নির্বাচন",
     deleteForeverTitle: "স্থায়ীভাবে মুছে ফেলবেন?",
     deleteForeverMessage: (name: string) => `"${name}" আবেদনটি স্থায়ীভাবে মুছে যাবে। এটি আর ফিরিয়ে আনা যাবে না।`,
     deleteForeverBulk: (n: string) => `নির্বাচিত ${n}টি আবেদন স্থায়ীভাবে মুছে যাবে। এটি আর ফিরিয়ে আনা যাবে না।`,
@@ -239,6 +244,11 @@ export const admissionReviewText = defineText({
     reapproveMessage: (name) =>
       `"${name}" will be re-approved — a roll/registration will be assigned as an active {{student}} and fees will be billed.`,
     reapproved: "Admission re-approved",
+    reapproveBulkMessage: (n) =>
+      `${n} selected application(s) will be re-approved — each gets a roll/registration as an active {{student}} and fees will be billed.`,
+    reapproveSelected: "Re-approve Selected",
+    reapprovePartial: (ok, failed) => `${ok} re-approved, ${failed} failed`,
+    selectAllShort: "Select all",
     deleteForeverTitle: "Delete permanently?",
     deleteForeverMessage: (name) => `The application "${name}" will be permanently deleted. This cannot be undone.`,
     deleteForeverBulk: (n) => `${n} selected application(s) will be permanently deleted. This cannot be undone.`,

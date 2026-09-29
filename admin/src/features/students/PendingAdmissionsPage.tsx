@@ -290,6 +290,18 @@ const PendingAdmissionsPage = () => {
     }
   };
 
+  /** Row ids the bulk endpoint reports as done; a failed request = none. */
+  const succeededOf = async (students: PendingStudent[], request: Promise<any>) => {
+    try {
+      const res = await request;
+      const done = new Set<number>((res.data?.data?.succeeded ?? []).map(Number));
+      return students.filter((student) => done.has(Number(student.id))).map((student) => student.id);
+    } catch (err) {
+      logger.error("Bulk admission review failed:", err);
+      return [];
+    }
+  };
+
   const handleBulkApprove = (students: PendingStudent[]) => {
     if (students.length === 0) return;
     useConfirmStore.getState().show({
@@ -299,13 +311,11 @@ const PendingAdmissionsPage = () => {
       onConfirm: async () => {
         setBulkBusy(true);
         try {
-          const results = await Promise.allSettled(
-            students.map((student) => admissionApi.approve(Number(student.id))),
+          const succeededIds = await succeededOf(
+            students,
+            admissionApi.approveBulk(students.map((student) => Number(student.id))),
           );
-          const succeededIds = students
-            .filter((_, i) => results[i].status === "fulfilled")
-            .map((student) => student.id);
-          const failedCount = results.length - succeededIds.length;
+          const failedCount = students.length - succeededIds.length;
           if (succeededIds.length > 0) {
             removeRows(succeededIds);
             refreshSidebarCounts();
@@ -349,13 +359,22 @@ const PendingAdmissionsPage = () => {
       if (isBulk) setBulkBusy(true);
       else setBusyId(rejectTargets[0].id);
 
-      const results = await Promise.allSettled(
-        rejectTargets.map((student) => admissionApi.reject(Number(student.id), rejectReason.trim())),
-      );
-      const succeededIds = rejectTargets
-        .filter((_, i) => results[i].status === "fulfilled")
-        .map((student) => student.id);
-      const failedCount = results.length - succeededIds.length;
+      // A single reject keeps its own request so its exact error can be shown.
+      const results = isBulk
+        ? []
+        : await Promise.allSettled([admissionApi.reject(Number(rejectTargets[0].id), rejectReason.trim())]);
+      const succeededIds = isBulk
+        ? await succeededOf(
+            rejectTargets,
+            admissionApi.rejectBulk(
+              rejectTargets.map((student) => Number(student.id)),
+              rejectReason.trim(),
+            ),
+          )
+        : results[0].status === "fulfilled"
+          ? [rejectTargets[0].id]
+          : [];
+      const failedCount = rejectTargets.length - succeededIds.length;
 
       if (succeededIds.length > 0) {
         removeRows(succeededIds);

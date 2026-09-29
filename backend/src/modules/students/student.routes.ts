@@ -13,8 +13,11 @@ import {
   getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
+  approveAdmissionsBulk,
+  rejectAdmissionsBulk,
   getRejectedAdmissions,
   permanentlyDeleteRejectedApplication,
+  permanentlyDeleteRejectedApplicationsBulk,
   getFeePreview,
   setFeeDiscount,
   bulkDeleteStudents,
@@ -122,6 +125,21 @@ router.get(
   rbacMiddleware("students.approve_admission"),
   getPendingAdmissions,
 );
+// বাছাই করে একসাথে অনুমোদন/বাতিল - one activity row for the batch.
+router.patch(
+  "/admission/approve-bulk",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  approveAdmissionsBulk,
+);
+router.patch(
+  "/admission/reject-bulk",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  rejectAdmissionsBulk,
+);
 router.patch(
   "/:id/approve",
   tenantMiddleware,
@@ -142,6 +160,13 @@ router.get(
   authMiddleware,
   rbacMiddleware("students.approve_admission"),
   getRejectedAdmissions,
+);
+router.delete(
+  "/admission/rejected-bulk",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("students.approve_admission"),
+  permanentlyDeleteRejectedApplicationsBulk,
 );
 router.delete(
   "/:id/rejected-application",

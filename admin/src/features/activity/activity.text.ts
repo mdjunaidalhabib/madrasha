@@ -1,4 +1,4 @@
-import { defineText, getText } from "@madrasha/shared-ui/src/i18n";
+import { defineText, formatNumber, getText, localizeDigits, type Lang } from "@madrasha/shared-ui/src/i18n";
 
 // Activity-log UI text + the dictionaries that turn a raw {entity, action}
 // log row into a readable sentence. Values may use {{term}} placeholders
@@ -178,8 +178,33 @@ const SPECIAL_LABEL_ROWS: SpecialRow[] = [
   { key: "students/bulk-update|CREATE", bn: "একাধিক {{student}}র তথ্য একসাথে হালনাগাদ করা হয়েছে", en: "{{student}}s bulk updated" },
   { key: "students/approve|UPDATE", bn: "{{student}}র ভর্তি অনুমোদন করা হয়েছে", en: "{{student}} admission approved" },
   { key: "students/reject|UPDATE", bn: "{{student}}র ভর্তি বাতিল করা হয়েছে", en: "{{student}} admission rejected" },
+  {
+    key: "students/reapprove|UPDATE",
+    bn: "বাতিল হওয়া ভর্তি আবেদন পুনরায় অনুমোদন করা হয়েছে",
+    en: "Rejected admission re-approved",
+  },
   { key: "students/expel|UPDATE", bn: "{{student}}কে বহিষ্কার করা হয়েছে", en: "{{student}} expelled" },
   { key: "students/transfer-session|UPDATE", bn: "{{student}}কে নতুন {{session}}ে স্থানান্তর করা হয়েছে", en: "{{student}} transferred to new {{session}}" },
+  { key: "students|DELETE", bn: "{{student}} ট্র্যাশে সরানো হয়েছে", en: "{{student}} moved to trash" },
+  { key: "teachers|DELETE", bn: "{{teacher}} ট্র্যাশে সরানো হয়েছে", en: "{{teacher}} moved to trash" },
+  { key: "exams|DELETE", bn: "পরীক্ষা ট্র্যাশে সরানো হয়েছে", en: "Exam moved to trash" },
+  {
+    key: "students/rejected-application|DELETE",
+    bn: "বাতিল হওয়া ভর্তি আবেদন মুছে ফেলা হয়েছে",
+    en: "Rejected admission application deleted",
+  },
+  { key: "students/admission/approve-bulk|UPDATE", bn: "একাধিক {{student}}র ভর্তি একসাথে অনুমোদন করা হয়েছে", en: "{{student}} admissions bulk approved" },
+  { key: "students/admission/reject-bulk|UPDATE", bn: "একাধিক {{student}}র ভর্তি একসাথে বাতিল করা হয়েছে", en: "{{student}} admissions bulk rejected" },
+  {
+    key: "students/admission/reapprove-bulk|UPDATE",
+    bn: "একাধিক বাতিল হওয়া ভর্তি আবেদন একসাথে পুনরায় অনুমোদন করা হয়েছে",
+    en: "Rejected admissions bulk re-approved",
+  },
+  { key: "students/admission/rejected-bulk|DELETE", bn: "একাধিক বাতিল হওয়া ভর্তি আবেদন মুছে ফেলা হয়েছে", en: "Rejected applications bulk deleted" },
+  { key: "students/names|UPDATE", bn: "একাধিক {{student}}র নাম একসাথে হালনাগাদ করা হয়েছে", en: "{{student}} names bulk updated" },
+  { key: "exam-attendance/bulk|CREATE", bn: "পরীক্ষার হাজিরা একসাথে দেওয়া হয়েছে", en: "Exam attendance bulk marked" },
+  { key: "invoices/exam-fee/bulk-pay|CREATE", bn: "পরীক্ষার ফি একসাথে গ্রহণ করা হয়েছে", en: "Exam fees collected in bulk" },
+  { key: "account|DELETE", bn: "আয়-ব্যয়ের একাধিক এন্ট্রি একসাথে মুছে ফেলা হয়েছে", en: "Income/expense entries bulk deleted" },
   { key: "students/bulk|DELETE", bn: "একাধিক {{student}} ট্র্যাশে সরানো হয়েছে", en: "{{student}}s moved to trash in bulk" },
 
   // Teachers
@@ -257,6 +282,8 @@ const SPECIAL_LABEL_ROWS: SpecialRow[] = [
   { key: "madrasa|SUPER_ADMIN_MADRASA_DATA_CLEANED", bn: "{{institution}}র ডেটা ক্লিন করা হয়েছে (সুপার এডমিন)", en: "{{institution}} data cleaned (super admin)" },
   { key: "user|SUPER_ADMIN_USER_CREATED", bn: "নতুন ইউজার তৈরি করা হয়েছে (সুপার এডমিন)", en: "User created (super admin)" },
   { key: "user|SUPER_ADMIN_USER_DELETED", bn: "ইউজার মুছে ফেলা হয়েছে (সুপার এডমিন)", en: "User deleted (super admin)" },
+  { key: "user|SUPER_ADMIN_USER_CREDENTIALS_RESET", bn: "ইউজারের লগইন তথ্য হালনাগাদ করা হয়েছে (সুপার এডমিন)", en: "User login details updated (super admin)" },
+  { key: "user|SUPER_ADMIN_USER_ROLE_STATUS_UPDATED", bn: "ইউজারের রোল/স্ট্যাটাস পরিবর্তন করা হয়েছে (সুপার এডমিন)", en: "User role/status changed (super admin)" },
 
   // Per-division fail mark (POST /fail-mark/divisions/:divisionId - the numeric
   // id is stripped by the backend, so the entity is "fail-mark/divisions"; the
@@ -269,6 +296,115 @@ const SPECIAL_LABEL_ROWS: SpecialRow[] = [
 
 const specialFor = (lang: "bn" | "en") =>
   Object.fromEntries(SPECIAL_LABEL_ROWS.map((row) => [row.key, row[lang]])) as Record<string, string>;
+
+// ---------------------------------------------------------------------------
+// Structured (JSON) details. Some backend paths - mostly super-admin and the
+// result workflow - log `details` as a JSON object instead of readable text.
+// These dictionaries turn that object into "label: value" lines so the log
+// never shows raw keys like {"user_id":10,"name_changed":true}.
+
+
+const DETAIL_LABELS: Record<Lang, Record<string, string>> = {
+  bn: {
+    name: "নাম",
+    email: "ইমেইল",
+    password: "পাসওয়ার্ড",
+    slug: "স্লাগ",
+    user_id: "ইউজার আইডি",
+    user_name: "ইউজার",
+    madrasa_name: "{{institution}}",
+    role_id: "রোল আইডি",
+    is_active: "অবস্থা",
+    website_status: "ওয়েবসাইটের অবস্থা",
+    plan_id: "প্ল্যান আইডি",
+    mode: "ধরন",
+    superAdminId: "সুপার এডমিন আইডি",
+    result_master_id: "ফলাফল আইডি",
+    exam_id: "পরীক্ষা আইডি",
+    class_id: "{{class}} আইডি",
+    book_id: "{{subject}} আইডি",
+    student_id: "{{student}} আইডি",
+    field: "ঘর",
+    old_value: "আগের মান",
+    new_value: "নতুন মান",
+    reason: "কারণ",
+    comment: "মন্তব্য",
+    remarks: "মন্তব্য",
+    count: "সংখ্যা",
+    components: "নম্বর বিভাজন",
+    component: "অংশ",
+    full_mark: "পূর্ণ নম্বর",
+    previous_status: "আগের অবস্থা",
+    changed_students: "পরিবর্তিত {{student}}",
+    total_students: "মোট {{student}}",
+    passCount: "পাস",
+    failCount: "ফেল",
+    absentCount: "অনুপস্থিত",
+    withheldCount: "স্থগিত",
+  },
+  en: {
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    slug: "Slug",
+    user_id: "User ID",
+    user_name: "User",
+    madrasa_name: "{{institution}}",
+    role_id: "Role ID",
+    is_active: "Status",
+    website_status: "Website status",
+    plan_id: "Plan ID",
+    mode: "Mode",
+    superAdminId: "Super admin ID",
+    result_master_id: "Result ID",
+    exam_id: "Exam ID",
+    class_id: "{{class}} ID",
+    book_id: "{{subject}} ID",
+    student_id: "{{student}} ID",
+    field: "Field",
+    old_value: "Old value",
+    new_value: "New value",
+    reason: "Reason",
+    comment: "Comment",
+    remarks: "Remarks",
+    count: "Count",
+    components: "Mark components",
+    component: "Component",
+    full_mark: "Full mark",
+    previous_status: "Previous status",
+    changed_students: "{{student}}s changed",
+    total_students: "Total {{student}}s",
+    passCount: "Passed",
+    failCount: "Failed",
+    absentCount: "Absent",
+    withheldCount: "Withheld",
+  },
+};
+
+// Known enum-ish string values, looked up case-insensitively.
+const DETAIL_VALUES: Record<Lang, Record<string, string>> = {
+  bn: {
+    active: "সক্রিয়",
+    limited: "সীমিত",
+    disabled: "বন্ধ",
+    operational: "শুধু কার্যক্রমের ডেটা",
+    full: "সম্পূর্ণ",
+    draft: "খসড়া",
+    processed: "প্রসেসকৃত",
+    published: "প্রকাশিত",
+    locked: "লক করা",
+    approved: "অনুমোদিত",
+    verified: "যাচাইকৃত",
+  },
+  en: {
+    operational: "Operational data only",
+  },
+};
+
+const DETAIL_TEXT: Record<Lang, { yes: string; no: string; active: string; inactive: string; changed: string }> = {
+  bn: { yes: "হ্যাঁ", no: "না", active: "সক্রিয়", inactive: "নিষ্ক্রিয়", changed: "পরিবর্তিত" },
+  en: { yes: "Yes", no: "No", active: "Active", inactive: "Inactive", changed: "Changed" },
+};
 
 type Verbs = Record<string, (noun: string) => string>;
 
@@ -306,6 +442,9 @@ export const activityText = defineText({
       DELETE: (n) => `${n} মুছে ফেলা হয়েছে`,
     } as Verbs,
     special: specialFor("bn"),
+    detailLabels: DETAIL_LABELS.bn,
+    detailValues: DETAIL_VALUES.bn,
+    detailWords: DETAIL_TEXT.bn,
   },
   en: {
     title: "Activity Log",
@@ -340,6 +479,9 @@ export const activityText = defineText({
       DELETE: (n) => `${n} deleted`,
     },
     special: specialFor("en"),
+    detailLabels: DETAIL_LABELS.en,
+    detailValues: DETAIL_VALUES.en as Record<string, string>,
+    detailWords: DETAIL_TEXT.en,
   },
 });
 
@@ -374,4 +516,52 @@ export function translateEntityName(entity: string, t: ActivityLogText = getText
   const normEntity = (entity || "").toLowerCase();
   const baseEntity = normEntity.split("/")[0];
   return t.entities[baseEntity] ?? humanize(normEntity);
+}
+
+/** Returns readable lines for a JSON-object `details` string, or null when
+ * the text isn't JSON (plain-text details are rendered as they are). */
+export function formatJsonDetails(text: string, lang: Lang, t: ActivityLogText = getText(activityText)): string[] | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{")) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+
+  const words = t.detailWords;
+  const labelOf = (key: string) => t.detailLabels[key] ?? humanize(key);
+
+  const valueOf = (key: string, value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "";
+    if (key === "is_active") return Number(value) ? words.active : words.inactive;
+    if (typeof value === "boolean") return value ? words.yes : words.no;
+    if (typeof value === "number") return /_id$|Id$/.test(key) ? localizeDigits(value, lang) : formatNumber(value, lang);
+    if (Array.isArray(value)) return value.map((v) => valueOf(key, v)).filter(Boolean).join(", ");
+    if (typeof value === "object") {
+      return Object.entries(value as Record<string, unknown>)
+        .map(([k, v]) => valueOf(k, v))
+        .filter(Boolean)
+        .join(" – ");
+    }
+    const str = String(value);
+    return t.detailValues[str.toLowerCase()] ?? str;
+  };
+
+  const lines: string[] = [];
+  const changed: string[] = [];
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    // "<field>_changed": true flags collapse into one "Changed: name, email" line.
+    const flag = key.match(/^(.+)_changed$/);
+    if (flag) {
+      if (value) changed.push(labelOf(flag[1]));
+      continue;
+    }
+    const shown = valueOf(key, value);
+    if (shown) lines.push(`${labelOf(key)}: ${shown}`);
+  }
+  if (changed.length) lines.push(`${words.changed}: ${changed.join(", ")}`);
+  return lines;
 }
