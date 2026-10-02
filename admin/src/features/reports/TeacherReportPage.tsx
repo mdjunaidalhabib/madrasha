@@ -38,12 +38,9 @@ const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
 ];
 
 const TeacherReportPage = ({ printMode }: { printMode?: boolean }) => {
-  const { reports, printReports, t } = useLocalizedReports(buildReports);
+  const { reports, printReports } = useLocalizedReports(buildReports);
   return (
     <ReportShell
-      pageTitle={t.page.teacherTitle}
-      pageSubtitle={t.page.teacherSubtitle}
-      accentTitle="Teacher Reports"
       reports={reports}
       printReports={printReports}
       reportsPageKey="teacher"

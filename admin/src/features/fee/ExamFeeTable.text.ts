@@ -32,8 +32,6 @@ export const examFeeTableText = defineText({
     title: "পরীক্ষার ফি",
     summary: (exams: string, active: string) => `${exams}টি পরীক্ষা · ${active}টির ফি চালু`,
     manageLink: "পরীক্ষা ও {{division}} ব্যবস্থাপনা",
-    intro:
-      "পরীক্ষার {{division}}ের {{class}}গুলো নিজে থেকেই আসে। প্রতিটি পরীক্ষার ফি এখান থেকে আলাদাভাবে চালু/বন্ধ করুন — চালু করলে সব {{student}}র ইনভয়েস তৈরি হয় ও অভিভাবকদের এসএমএস যায়। {{academic}} পরীক্ষা বন্ধ করলে তার ফি-ও বন্ধ হয়ে যায়, আবার চালু হলে এখান থেকে ফি চালু করতে হয়।",
     noExams: "এখনো কোনো পরীক্ষা তৈরি করা হয়নি — পরীক্ষা তৈরি করলে এখানে তার ফি নির্ধারণ করা যাবে।",
     classesSet: (set: string, total: string) => ` · ${set}/${total} {{class}}র ফি নির্ধারিত`,
     editFee: (name: string) => `"${name}" এর ফি সম্পাদনা করুন`,
@@ -91,8 +89,6 @@ export const examFeeTableText = defineText({
     title: "Exam Fees",
     summary: (exams, active) => `${exams} exams · fee on for ${active}`,
     manageLink: "Manage exams & {{division}}s",
-    intro:
-      "The {{class}}es of each exam's {{division}}s appear automatically. Turn each exam's fee on or off here — turning it on creates invoices for every {{student}} and texts guardians. When {{academic}} turns an exam off its fee turns off too; after it is back on, re-enable the fee here.",
     noExams: "No exams created yet — once an exam is created you can set its fee here.",
     classesSet: (set, total) => ` · fee set for ${set}/${total} {{class}}es`,
     editFee: (name) => `Edit fees for "${name}"`,

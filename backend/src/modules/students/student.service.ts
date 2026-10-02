@@ -1338,7 +1338,11 @@ export class StudentService {
     reason?: string,
   ) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    const ids = [...new Set((rawIds || []).map(Number))].filter((id) => Number.isInteger(id) && id > 0);
+    // Ascending id = application order. The pending list is shown newest-first,
+    // so without this the latest applicant got the first roll/registration no.
+    const ids = [...new Set((rawIds || []).map(Number))]
+      .filter((id) => Number.isInteger(id) && id > 0)
+      .sort((a, b) => a - b);
     if (!ids.length) throw new BadRequestError(t({ bn: "ids আবশ্যক", en: "ids is required" }));
 
     const succeeded: number[] = [];

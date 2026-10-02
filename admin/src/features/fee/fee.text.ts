@@ -153,8 +153,6 @@ export const feeCategoryText = defineText({
     toggleHint: "বন্ধ করলে এই ধরণের সব ফি কাঠামোও বন্ধ (আর বিল হবে না) হয়ে যাবে",
     backToSetup: "ফি সেটাপে ফিরুন",
     title: "ফি ধরণ সেটিংস",
-    subtitle:
-      "ফি কাঠামো তৈরি করার সময় যেসব ধরণ (যেমন: ভর্তি ফি, মাসিক বেতন, পরীক্ষার ফি) ব্যবহার করা যায় সেগুলো এখান থেকে যোগ/এডিট/ডিলিট করুন। সব ধরণের ফি {{head}} ভর্তি অনুমোদন করার পরই বিল হয় (আবেদন জমা দেওয়ার সময় কোনো বিল হয় না)। মাসিক বেতন-খাবার খরচের মতো মাসিক ফি-তে অনুমোদনের সাথে সাথে শুধু চলতি মাসেরটা বিল হয়, পরের মাসগুলো নিজে থেকেই প্রতি মাসের শুরুতে তৈরি হয়।",
     sectionTitle: "ফি ধরণসমূহ",
     sectionHint: "নতুন একটি ফি ধরণ যোগ করুন",
     newPlaceholder: "নতুন ফি ধরণের নাম",
@@ -178,8 +176,6 @@ export const feeCategoryText = defineText({
     toggleHint: "Disabling also disables all fee structures of this type (no more billing)",
     backToSetup: "Back to Fee Setup",
     title: "Fee Type Settings",
-    subtitle:
-      "Add, edit or delete the types (e.g. admission fee, monthly tuition, exam fee) used when creating fee structures. All fees are billed only after the {{head}} approves the admission (nothing is billed when the application is submitted). For monthly fees such as tuition or meals, only the current month is billed on approval; later months are generated automatically at the start of each month.",
     sectionTitle: "Fee Types",
     sectionHint: "Add a new fee type",
     newPlaceholder: "New fee type name",

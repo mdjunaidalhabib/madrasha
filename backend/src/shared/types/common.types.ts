@@ -8,6 +8,9 @@ export interface AuthenticatedUser {
   /** Absent on tenant-admin tokens. Guardian tokens set this to "guardian"
    * so auth.middleware can reject them even on routes without rbacMiddleware. */
   type?: string;
+  /** Login session (refresh-token row) id - authMiddleware rejects the
+   * token as soon as that session is logged out. */
+  sid?: number;
 }
 
 /** Decoded JWT payload attached to `req.guardian` by guardianAuth.middleware. */

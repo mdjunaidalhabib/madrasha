@@ -23,7 +23,12 @@ export type UpdateMyProfilePayload = {
 export type ActiveSession = {
   id: number;
   device_info: string | null;
+  ip_address: string | null;
+  city: string | null;
+  /** ISO 3166 alpha-2, e.g. "BD". */
+  country: string | null;
   created_at: string;
+  last_active_at: string | null;
   expires_at: string;
   is_current: boolean;
 };

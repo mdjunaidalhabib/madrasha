@@ -74,6 +74,16 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
   "settings/branding/report_watermark",
   "settings/branding/report_header_image",
   "settings/branding/report_footer_image",
+  // AuthService.updateMe/changeMyPassword log the name "old → new" /
+  // password change themselves.
+  "auth/me",
+  "auth/change-password",
+  // Login/logout history is logged by AuthService itself as "security"
+  // events (device, location, IP) - see modules/auth/auth.activity.ts.
+  "auth/login",
+  "auth/logout",
+  "auth/logout-all",
+  "auth/sessions",
 ]);
 
 function deriveEntity(originalUrl: string): { entity: string; entityId: number | null } {

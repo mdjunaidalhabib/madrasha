@@ -308,7 +308,13 @@ export default function PublicWebsitePage({
         websiteCache.set(slug, res);
         setData(res);
       })
-      .catch((err) => setError(err?.response?.data?.message || t.siteUnavailable))
+      .catch((err) => {
+        // A suspended/disabled site must not keep showing the copy cached
+        // earlier in this tab.
+        websiteCache.delete(slug);
+        setData(null);
+        setError(err?.response?.data?.message || t.siteUnavailable);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 

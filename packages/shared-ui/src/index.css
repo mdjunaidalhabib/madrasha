@@ -84,6 +84,29 @@ textarea {
   font-family: var(--font-ui-bn);
 }
 
+/* Semibold বাংলা UI: Kalpurush-এর শুধু Regular ফাইল, আর reportFontFace.ts-এ
+   synthetic bold বন্ধ - তাই মোটা লেখায় পাতলা একটা text-stroke দিয়ে
+   মাঝারি (semibold) ভাব আনা হয়। Inter/Arabic-এর আসল 600 face আছে বলে
+   en/ar-এ লাগে না; রিপোর্ট/প্রিন্ট পেজ নিজের ফন্ট-নিয়মে চলে, তাই বাদ। */
+html:not([lang="en"]):not([lang="ar"])
+  :is([class*="font-semibold"], [class*="font-bold"], [class*="font-extrabold"], [class*="font-black"], b, strong, th):not(
+    .print-page-preview,
+    .print-page-preview *
+  ) {
+  -webkit-text-stroke: 0.02em currentColor;
+}
+
+html:not([lang="en"]):not([lang="ar"])
+  :is([class*="font-normal"], [class*="font-medium"], [class*="font-light"], [class*="font-thin"]) {
+  -webkit-text-stroke: 0;
+}
+
+b,
+th,
+strong {
+  font-weight: 600;
+}
+
 /* Chrome/Edge reserve ~20px inside every <input type="number"> for the
    native up/down spin buttons. In the narrow marks/amount/limit fields used
    across the app (e.g. w-14/w-20), that steals room from the digits

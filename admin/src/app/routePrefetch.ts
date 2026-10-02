@@ -49,6 +49,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   settings: () => import("../features/admin/settings/SettingsLayout"),
   "settings/profile": () => import("../features/admin/settings/ProfileSettingsPage"),
   "settings/branding": () => import("../features/admin/settings/BrandingSettingsPage"),
+  "settings/report-design": () => import("../features/admin/settings/BrandingSettingsPage"),
   "settings/plan": () => import("../features/admin/settings/PlanSettingsPage"),
   "settings/website": () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
   "settings/payment-methods": () => import("../features/fee/PaymentMethodSettingsPage"),

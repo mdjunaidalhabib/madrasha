@@ -228,12 +228,13 @@ export default function CleanMadrasaModal({
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
+        <div className="mt-5 flex gap-2 sm:justify-end">
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={busy}>
             {c.cancel}
           </Button>
           <Button
             variant="danger"
+            className="flex-1 sm:flex-none"
             disabled={!canSubmit}
             onClick={() => onConfirm({ mode, confirm_name: confirmName.trim(), password })}
           >

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+import { invalidateSessionCache } from "../../shared/auth/sessionStatus";
 
 export class AuthRepository {
   findActiveUserByEmail(email: string, madrasaId: number) {
@@ -138,8 +139,38 @@ export class AuthRepository {
     tokenHash: string;
     expiresAt: Date;
     deviceInfo?: string | null;
+    deviceId?: string | null;
+    ipAddress?: string | null;
+    city?: string | null;
+    country?: string | null;
   }) {
-    return prisma.refreshToken.create({ data });
+    return prisma.refreshToken.create({ data: { ...data, lastActiveAt: new Date() } });
+  }
+
+  /** Refresh-token rotation done in place: the same session row gets a new
+   * hash, so the session id (and its login time) stays stable for the whole
+   * life of the login while the old raw token stops working. Matching on the
+   * old hash makes a concurrent/replayed rotation fail (count 0). */
+  rotateRefreshToken(
+    id: number,
+    oldTokenHash: string,
+    data: {
+      tokenHash: string;
+      expiresAt: Date;
+      deviceInfo?: string | null;
+      ipAddress?: string | null;
+      city?: string | null;
+      country?: string | null;
+    },
+  ) {
+    return prisma.refreshToken.updateMany({
+      where: { id, tokenHash: oldTokenHash, revokedAt: null },
+      data: { ...data, lastActiveAt: new Date() },
+    });
+  }
+
+  findRefreshTokenById(id: number, userId: number) {
+    return prisma.refreshToken.findFirst({ where: { id, userId, revokedAt: null } });
   }
 
   findValidRefreshToken(tokenHash: string) {
@@ -155,7 +186,17 @@ export class AuthRepository {
   findActiveRefreshTokensForUser(userId: number) {
     return prisma.refreshToken.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { id: true, tokenHash: true, deviceInfo: true, createdAt: true, expiresAt: true },
+      select: {
+        id: true,
+        tokenHash: true,
+        deviceInfo: true,
+        ipAddress: true,
+        city: true,
+        country: true,
+        createdAt: true,
+        lastActiveAt: true,
+        expiresAt: true,
+      },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -178,6 +219,7 @@ export class AuthRepository {
   }
 
   revokeRefreshToken(tokenHash: string) {
+    invalidateSessionCache();
     return prisma.refreshToken.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -188,6 +230,7 @@ export class AuthRepository {
    * refresh token for this user, so no session can silently refresh past
    * its current access token's expiry anymore. */
   revokeAllRefreshTokensForUser(userId: number) {
+    invalidateSessionCache();
     return prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -197,8 +240,19 @@ export class AuthRepository {
   /** Same as above but leaves one token (the caller's own current session)
    * alone - "logout from OTHER devices". */
   revokeAllRefreshTokensForUserExcept(userId: number, exceptTokenHash: string) {
+    invalidateSessionCache();
     return prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null, tokenHash: { not: exceptTokenHash } },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /** Same, but keeps one session by row id - a password change logs out
+   * every OTHER device while the one that made the change stays signed in. */
+  revokeAllRefreshTokensForUserExceptId(userId: number, exceptId: number) {
+    invalidateSessionCache();
+    return prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null, id: { not: exceptId } },
       data: { revokedAt: new Date() },
     });
   }
@@ -207,8 +261,29 @@ export class AuthRepository {
    * user can only ever revoke their own sessions, never guess another
    * user's session id. */
   revokeRefreshTokenById(id: number, userId: number) {
+    invalidateSessionCache();
     return prisma.refreshToken.updateMany({
       where: { id, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /** A device keeps at most one active session - called right before a
+   * fresh login issues a new token, so re-logging in on the same device
+   * replaces its old session instead of piling up another row. Rows from
+   * before device ids existed (deviceId null) are matched by the same
+   * User-Agent instead. */
+  revokeRefreshTokensForDevice(userId: number, deviceId: string, deviceInfo?: string | null) {
+    invalidateSessionCache();
+    return prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        OR: [
+          { deviceId },
+          ...(deviceInfo ? [{ deviceId: null, deviceInfo }] : []),
+        ],
+      },
       data: { revokedAt: new Date() },
     });
   }

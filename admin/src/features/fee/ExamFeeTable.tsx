@@ -333,7 +333,7 @@ export default function ExamFeeTable() {
 
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClipboardList size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
           <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{t.title}</h2>
@@ -351,9 +351,6 @@ export default function ExamFeeTable() {
           {t.manageLink}
         </Link>
       </div>
-      <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
-        {t.intro}
-      </p>
 
       {loading && !data ? (
         <div className="space-y-4">

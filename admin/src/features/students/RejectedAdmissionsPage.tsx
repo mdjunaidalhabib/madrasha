@@ -444,7 +444,7 @@ const RejectedAdmissionsPage = () => {
 
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-start text-sm">
+                <table className="min-w-full text-center text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="px-3 py-2 w-8">
@@ -460,7 +460,7 @@ const RejectedAdmissionsPage = () => {
                       <th className="px-3 py-2">{t.colPhone}</th>
                       <th className="px-3 py-2">{t.colClass}</th>
                       <th className="px-3 py-2">{t.rejectReasonCol}</th>
-                      <th className="px-3 py-2 text-end">{t.colActions}</th>
+                      <th className="px-3 py-2">{t.colActions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -484,7 +484,7 @@ const RejectedAdmissionsPage = () => {
                           {student.rejection_reason || t.noReason}
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-center gap-2">
                             <button
                               type="button"
                               onClick={() => openDetail(student)}

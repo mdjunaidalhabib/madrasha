@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { ActivityLogRow } from "./activity.types";
 
@@ -15,9 +16,11 @@ export class ActivityRepository {
     to: Date;
     page: number;
     limit: number;
+    entity?: string;
   }): Promise<{ rows: ActivityLogRow[]; total: number }> {
-    const { madrasaId, from, to, page, limit } = params;
+    const { madrasaId, from, to, page, limit, entity } = params;
     const offset = (page - 1) * limit;
+    const entityFilter = entity ? Prisma.sql`AND a.entity = ${entity}` : Prisma.empty;
 
     const [rows, totalRows] = await Promise.all([
       prisma.$queryRaw<ActivityLogRow[]>`
@@ -25,14 +28,14 @@ export class ActivityRepository {
         FROM activity_logs a
         LEFT JOIN users u ON u.id = a.user_id
         LEFT JOIN roles r ON r.id = u.role_id
-        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to}
+        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter}
         ORDER BY a.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count
         FROM activity_logs a
-        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to}
+        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter}
       `,
     ]);
 
@@ -41,10 +44,6 @@ export class ActivityRepository {
 
   findUserNames(madrasaId: number, ids: number[]) {
     return prisma.user.findMany({ where: { madrasaId, id: { in: ids } }, select: { id: true, name: true } });
-  }
-
-  findMadrasaName(madrasaId: number) {
-    return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { name: true } });
   }
 
   purgeOlderThan(cutoff: Date) {

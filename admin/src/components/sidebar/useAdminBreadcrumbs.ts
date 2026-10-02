@@ -27,6 +27,7 @@ const FALLBACK_LABELS: { test: RegExp; labels: CrumbKey[] }[] = [
   { test: /^talimat\/settings\/documents\/[^/]+\/[^/]+\/edit$/, labels: ["documentDesigner"] },
   { test: /^unauthorized$/, labels: ["unauthorized"] },
   { test: /^settings\/branding$/, labels: ["settings", "branding"] },
+  { test: /^settings\/report-design$/, labels: ["settings", "reportDesign"] },
   { test: /^settings\/payment-methods$/, labels: ["settings", "paymentMethods"] },
   { test: /^settings\/users$/, labels: ["settings", "staffManagement"] },
   { test: /^settings\/roles$/, labels: ["settings", "rolesPermissions"] },

@@ -625,6 +625,18 @@ export class SuperAdminRepository {
     return tx.activityLog.create({ data });
   }
 
+  findMadrasaNameSlug(id: number) {
+    return prisma.madrasa.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        slug: true,
+        websiteStatus: true,
+        subscriptions: { where: { isActive: 1 }, take: 1, select: { planId: true, plan: { select: { name: true } } } },
+      },
+    });
+  }
+
   updateMadrasaFieldsOnTx(tx: TransactionClient, id: number, data: Prisma.MadrasaUpdateInput) {
     return tx.madrasa.updateMany({ where: { id, deletedAt: null }, data });
   }

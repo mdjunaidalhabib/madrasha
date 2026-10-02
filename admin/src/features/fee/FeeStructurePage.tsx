@@ -52,6 +52,12 @@ const FREQUENCIES: FeeFrequency[] = ["ONE_TIME", "MONTHLY", "YEARLY"];
 // ExamFeeService) - so this category is hidden from the form's picklist.
 const EXAM_FEE_TYPE_NAME = "পরীক্ষার ফি";
 
+// Create-form field styles - one grid of equal-width fields instead of a
+// flex-wrap row whose auto widths broke unevenly on laptop screens.
+const FIELD_LABEL = "mb-1.5 block text-xs font-medium text-gray-600 dark:text-slate-400";
+const FIELD_INPUT =
+  "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-blue-500 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500";
+
 // পেজের নিজস্ব সাইড মেনু - সেটিংস পেজের (SettingsLayout.tsx) মতো একই স্টাইল।
 // "link" থাকা আইটেম অন্য পেজে যায়, বাকিগুলো ?tab= দিয়ে এই পেজেরই অংশ বদলায়।
 type FeeSetupTab = "general" | "exam";
@@ -544,18 +550,15 @@ const FeeStructurePage = () => {
                   <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
                     {t.createTitle} {classId ? t.forSelectedClass : t.forAllClasses}
                   </h2>
-                  <p className="mb-3 -mt-1 text-xs text-gray-500 dark:text-slate-400">
-                    {t.createHint}
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <label className={FIELD_LABEL}>
                         {t.feeType} <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={structureForm.fee_type}
                         onChange={(e) => setStructureForm((p) => ({ ...p, fee_type: e.target.value as FeeType }))}
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className={FIELD_INPUT}
                       >
                         <option value="">{c.select}</option>
                         {categories
@@ -567,14 +570,14 @@ const FeeStructurePage = () => {
                           ))}
                       </select>
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <div>
+                      <label className={FIELD_LABEL}>
                         {t.frequencyLabel}
                       </label>
                       <select
                         value={structureForm.frequency}
                         onChange={(e) => setStructureForm((p) => ({ ...p, frequency: e.target.value as FeeFrequency }))}
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className={FIELD_INPUT}
                       >
                         {FREQUENCIES.map((f) => (
                           <option key={f} value={f}>
@@ -583,8 +586,8 @@ const FeeStructurePage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <div>
+                      <label className={FIELD_LABEL}>
                         {t.amountTaka} <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -595,11 +598,11 @@ const FeeStructurePage = () => {
                         onChange={(e) =>
                           setStructureForm((p) => ({ ...p, amount: normalizeBanglaDigits(e.target.value) }))
                         }
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-32"
+                        className={FIELD_INPUT}
                       />
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.division}</label>
+                    <div>
+                      <label className={FIELD_LABEL}>{t.division}</label>
                       <select
                         value={division}
                         onChange={(event) => {
@@ -607,7 +610,7 @@ const FeeStructurePage = () => {
                           setDivision(value);
                           loadClasses(value);
                         }}
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className={FIELD_INPUT}
                       >
                         <option value="">{t.generalAllDivisions}</option>
                         {divisions.map((d) => (
@@ -617,13 +620,13 @@ const FeeStructurePage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">{t.classLabel}</label>
+                    <div>
+                      <label className={FIELD_LABEL}>{t.classLabel}</label>
                       <select
                         value={classId}
                         onChange={(event) => setClassId(event.target.value)}
                         disabled={!division || classLoading}
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
+                        className={FIELD_INPUT}
                       >
                         <option value="">{classLoading ? c.loading : t.generalAllClasses}</option>
                         {classes.map((c) => (
@@ -633,14 +636,14 @@ const FeeStructurePage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <div>
+                      <label className={FIELD_LABEL}>
                         {t.session} <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={structureForm.session_id}
                         onChange={(e) => setStructureForm((p) => ({ ...p, session_id: e.target.value }))}
-                        className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className={FIELD_INPUT}
                       >
                         <option value="">{t.selectSession}</option>
                         {sessions.map((s) => (
@@ -651,11 +654,13 @@ const FeeStructurePage = () => {
                         ))}
                       </select>
                     </div>
+                  </div>
+                  <div className="mt-4 flex justify-end border-t border-gray-100 pt-3 dark:border-slate-800">
                     <button
                       type="button"
                       disabled={saving || !isCreateFormValid}
                       onClick={handleCreateStructure}
-                      className="h-9 w-full rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                      className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[140px]"
                     >
                       {saving ? t.creating : c.create}
                     </button>

@@ -34,7 +34,6 @@ import {
   type SocialLinkItem,
 } from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
-import { MarksheetControlsPanel } from "../../../components/Report/student/MarksheetSignatureControls";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
 import { brandingText } from "./branding.text";
@@ -124,8 +123,14 @@ function ColorPickerRow({
   );
 }
 
-export default function BrandingSettingsPage() {
+// One page, two settings-menu entries: "branding" keeps the institution's
+// identity (name/contact/social/logo); "report" holds everything that only
+// affects printed reports (background, header/footer, watermark).
+export default function BrandingSettingsPage({ section = "branding" }: { section?: "branding" | "report" }) {
   const t = useText(brandingText);
+  const isReport = section === "report";
+  const pageTitle = isReport ? t.reportTitle : t.title;
+  const pageSubtitle = isReport ? t.reportSubtitle : t.subtitle;
   const branding = useBrandingStore((s) => s.branding);
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const setBranding = useBrandingStore((s) => s.setBranding);
@@ -310,7 +315,7 @@ export default function BrandingSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title={t.title} />
+        <PageHeader title={pageTitle} />
         <SkeletonCard lines={2} />
         <SkeletonCard lines={2} />
       </div>
@@ -320,9 +325,12 @@ export default function BrandingSettingsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title={t.title}
-        subtitle={t.subtitle}
+        title={pageTitle}
+        subtitle={pageSubtitle}
       />
+
+      {!isReport && (
+        <>
 
       <SectionCard
         title={t.basicInfo}
@@ -366,24 +374,29 @@ export default function BrandingSettingsPage() {
         <InlineSocialLinksField values={socialLinks} onSave={(v) => patchBranding({ social_links: v })} />
       </SectionCard>
 
-      <SectionCard title={t.logoAndBackground}>
-        <div className="space-y-2">
-          <InlineImageField
-            label={t.logo}
-            hint={t.logoHint}
-            value={logo}
-            folder="branding"
-            onSave={(v) => saveImageField("report_logo", v)}
-          />
-          <InlineImageField
-            label={t.background}
-            hint={t.backgroundHint}
-            value={background}
-            folder="branding"
-            shape="wide"
-            onSave={(v) => saveImageField("report_banner", v)}
-          />
-        </div>
+      <SectionCard title={t.logo}>
+        <InlineImageField
+          label={t.logo}
+          hint={t.logoHint}
+          value={logo}
+          folder="branding"
+          onSave={(v) => saveImageField("report_logo", v)}
+        />
+      </SectionCard>
+        </>
+      )}
+
+      {isReport && (
+        <>
+      <SectionCard title={t.background}>
+        <InlineImageField
+          label={t.background}
+          hint={t.backgroundHint}
+          value={background}
+          folder="branding"
+          shape="wide"
+          onSave={(v) => saveImageField("report_banner", v)}
+        />
       </SectionCard>
 
       <SectionCard
@@ -782,13 +795,8 @@ export default function BrandingSettingsPage() {
           )}
         </div>
       </SectionCard>
-
-      <SectionCard
-        title={t.marksheetFields}
-        hint={t.marksheetFieldsHint}
-      >
-        <MarksheetControlsPanel />
-      </SectionCard>
+        </>
+      )}
     </div>
   );
 }

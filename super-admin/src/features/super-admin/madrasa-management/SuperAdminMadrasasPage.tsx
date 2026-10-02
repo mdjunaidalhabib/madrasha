@@ -367,8 +367,8 @@ export default function SuperAdminMadrasasPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold dark:text-slate-100">{t.title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold dark:text-slate-100 sm:text-2xl">{t.title}</h1>
           <p className="text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
         </div>
 
@@ -386,7 +386,11 @@ export default function SuperAdminMadrasasPage() {
       </div>
 
       {/* Institution type filter */}
-      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label={t.filterByType}>
+      <div
+        className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+        role="tablist"
+        aria-label={t.filterByType}
+      >
         {([""] as (InstitutionType | "")[]).concat(INSTITUTION_TYPES).map((type) => {
           const active = typeFilter === type;
           return (
@@ -399,7 +403,7 @@ export default function SuperAdminMadrasasPage() {
                 setTypeFilter(type);
                 setPage(1);
               }}
-              className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-sm font-medium transition ${
                 active
                   ? "border-emerald-600 bg-emerald-600 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -437,15 +441,16 @@ export default function SuperAdminMadrasasPage() {
           <span className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
             {t.selectedCount(formatNumber(selectedIds.size, lang))}
           </span>
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <Button
               variant="secondary"
+              className="flex-1 sm:flex-none"
               onClick={() => setSelectedIds(new Set())}
               disabled={bulkBusy}
             >
               {c.clear}
             </Button>
-            <Button variant="danger" onClick={onBulkDelete} disabled={bulkBusy}>
+            <Button variant="danger" className="flex-1 sm:flex-none" onClick={onBulkDelete} disabled={bulkBusy}>
               {bulkBusy ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -686,8 +691,8 @@ function EditMadrasaModal({
   }, [classes, allBooks]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
+      <div className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:max-h-[90vh] sm:p-6">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.editTitle}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -851,11 +856,12 @@ function EditMadrasaModal({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
+        <div className="mt-6 flex gap-2 sm:justify-end">
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={busy}>
             {c.cancel}
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             onClick={() =>
               onSubmit({
                 ...form,

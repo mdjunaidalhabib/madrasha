@@ -349,8 +349,8 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="relative bg-white w-full max-w-2xl rounded-xl shadow-xl p-6 space-y-6 max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:text-slate-100">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="relative bg-white w-full max-w-2xl rounded-xl shadow-xl p-4 sm:p-6 space-y-6 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:text-slate-100">
         <BasicInfoSection
           data={form}
           errors={errors}
@@ -402,12 +402,12 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           errors={errors}
         />
 
-        <div className="flex justify-end gap-3 pt-4">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
+        <div className="flex gap-3 pt-4 sm:justify-end">
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={saving}>
             {c.cancel}
           </Button>
 
-          <Button onClick={handleSubmit} disabled={saving}>
+          <Button className="flex-1 sm:flex-none" onClick={handleSubmit} disabled={saving}>
             {saving ? t.creating : c.create}
           </Button>
         </div>

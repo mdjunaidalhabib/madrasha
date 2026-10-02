@@ -40,7 +40,23 @@ export default function MadrasasTable({
   const t = useText(superAdminText);
   const c = useText(commonText);
   const lang = useLang();
-  const websiteLabel = (status?: string) => t.websiteStatus[status || "active"] || status || "active";
+  // The public site is served only while the institution itself is active
+  // (website.service rejects suspended tenants), so the badge shows the
+  // effective state rather than the raw website_status setting.
+  const renderWebsiteBadge = (m: Madrasa) => {
+    const status = m.is_active ? m.website_status || "active" : "disabled";
+    const tone =
+      status === "disabled"
+        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+        : status === "limited"
+          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+          : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
+    return (
+      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${tone}`}>
+        {m.is_active ? t.websiteStatus[status] || status : t.websiteOffSuspended}
+      </span>
+    );
+  };
   const allSelected = items.length > 0 && items.every((m) => selectedIds.has(m.id));
   // While a bulk selection is active, single-row actions don't make sense
   // alongside it — lock them so the row's only usable control is its checkbox.
@@ -67,32 +83,25 @@ export default function MadrasasTable({
       <span>{m.plan_name || "-"}</span>
     );
 
-  const renderActions = (m: Madrasa) => {
+  // `compact` = desktop table cell (small buttons); otherwise = card footer.
+  // Both use a 2-col grid with the last button spanning the full row.
+  const renderActions = (m: Madrasa, compact = false) => {
     const locked = busyId === m.id || selectionMode;
+    const btn = compact ? "w-full whitespace-nowrap px-2.5 py-1.5 text-xs" : "w-full px-3";
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => onEdit(m)}
-          disabled={locked}
-          className="flex-1 sm:flex-none"
-        >
+      <div className={`grid grid-cols-2 gap-2 ${compact ? "min-w-[210px]" : ""}`}>
+        <Button variant="secondary" onClick={() => onEdit(m)} disabled={locked} className={btn}>
           {c.edit}
         </Button>
         <Button
           variant={m.is_active ? "danger" : "primary"}
           onClick={() => onToggleActive(m)}
           disabled={locked}
-          className="flex-1 sm:flex-none"
+          className={btn}
         >
           {busyId === m.id ? "..." : m.is_active ? t.suspend : t.activate}
         </Button>
-        <Button
-          variant="danger"
-          onClick={() => onDelete(m)}
-          disabled={locked}
-          className="flex-1 sm:flex-none"
-        >
+        <Button variant="danger" onClick={() => onDelete(m)} disabled={locked} className={btn}>
           {t.trash}
         </Button>
         <Button
@@ -100,7 +109,7 @@ export default function MadrasasTable({
           onClick={() => onClean(m)}
           disabled={locked}
           title={t.cleanDataTitle}
-          className="flex-1 sm:flex-none"
+          className={btn}
         >
           {t.cleanData}
         </Button>
@@ -108,7 +117,7 @@ export default function MadrasasTable({
           variant="secondary"
           onClick={() => navigate(`/madrasas/${m.id}/staff`)}
           disabled={locked}
-          className="flex-1 sm:flex-none"
+          className={`${btn} col-span-2`}
         >
           {t.staffPermissions}
         </Button>
@@ -118,17 +127,25 @@ export default function MadrasasTable({
 
   return (
     <div className="bg-white rounded shadow dark:bg-slate-900">
-      {/* Mobile / tablet: card list (hidden on md+) */}
-      <div className="divide-y dark:divide-slate-800 md:hidden">
+      {/* Mobile / tablet / small laptop: card grid (hidden on xl+) */}
+      <div className="xl:hidden">
         {loading ? (
           <SkeletonList items={4} className="p-4" />
         ) : !items.length ? (
           <div className="p-4 text-gray-500 dark:text-slate-400">{t.noInstitutions}</div>
         ) : (
-          items.map((m) => (
-            <div key={m.id} className="space-y-3 p-4">
+          <div className="grid gap-3 p-3 sm:p-4 md:grid-cols-2">
+            {items.map((m) => (
+            <div
+              key={m.id}
+              className={`flex flex-col gap-3 rounded-lg border p-4 dark:border-slate-800 ${
+                selectedIds.has(m.id)
+                  ? "border-indigo-300 bg-indigo-50/40 dark:border-indigo-800 dark:bg-indigo-950/20"
+                  : ""
+              }`}
+            >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <input
                     type="checkbox"
                     className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-slate-600"
@@ -136,9 +153,11 @@ export default function MadrasasTable({
                     onChange={() => onToggleOne(m.id)}
                     aria-label={t.selectRow(m.name)}
                   />
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-slate-100">{m.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">{m.slug}</div>
+                  <div className="min-w-0">
+                    <div className="break-words font-semibold text-gray-900 dark:text-slate-100">{m.name}</div>
+                    <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
+                      /{m.slug}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       <InstitutionTypeBadge type={m.institution_type} />
                       <LanguageChip lang={m.default_language} />
@@ -160,9 +179,7 @@ export default function MadrasasTable({
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.colWebsite}</div>
-                  <span className="mt-0.5 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold capitalize text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-                    {websiteLabel(m.website_status)}
-                  </span>
+                  <div className="mt-0.5">{renderWebsiteBadge(m)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.colStudentLimit}</div>
@@ -178,21 +195,22 @@ export default function MadrasasTable({
                 </div>
               </div>
 
-              {renderActions(m)}
+              <div className="mt-auto">{renderActions(m)}</div>
             </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Desktop: table (hidden below md) */}
-      <div className="hidden overflow-x-auto md:block">
+      {/* Wide desktop: table (hidden below xl) */}
+      <div className="hidden overflow-x-auto xl:block">
         {loading ? (
-          <SkeletonTable rows={6} columns={10} />
+          <SkeletonTable rows={6} columns={9} />
         ) : (
-          <table className="min-w-[1250px] w-full text-sm">
+          <table className="w-full text-sm">
             <thead className="bg-gray-100 dark:bg-slate-800">
               <tr>
-                <th className="w-10 p-3 text-start dark:text-slate-200">
+                <th className="w-10 p-3 text-center dark:text-slate-200">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
@@ -201,21 +219,20 @@ export default function MadrasasTable({
                     aria-label={t.selectAll}
                   />
                 </th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colName}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colSlug}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colType}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colWebsite}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colPlan}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colStudentLimit}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colUserLimit}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colStatus}</th>
-                <th className="p-3 text-start dark:text-slate-200">{t.colActions}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colName}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colType}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colWebsite}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colPlan}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colStudentLimit}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colUserLimit}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colStatus}</th>
+                <th className="p-3 text-center dark:text-slate-200">{t.colActions}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((m) => (
                 <tr key={m.id} className="border-t dark:border-slate-800">
-                  <td className="p-3">
+                  <td className="p-3 text-center">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
@@ -224,35 +241,41 @@ export default function MadrasasTable({
                       aria-label={t.selectRow(m.name)}
                     />
                   </td>
-                  <td className="p-3 font-medium dark:text-slate-100">{m.name}</td>
-                  <td className="p-3 text-gray-700 dark:text-slate-300">{m.slug}</td>
-                  <td className="p-3">
-                    <div className="flex flex-col items-start gap-1">
+                  {/* Slug sits under the name (one line, ellipsis + tooltip) instead of
+                      its own column, which got squeezed and broke mid-word. */}
+                  <td className="p-3 text-start">
+                    <div className="min-w-[180px] max-w-[280px]">
+                      <div className="break-words font-medium dark:text-slate-100">{m.name}</div>
+                      <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
+                        /{m.slug}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex flex-col items-center gap-1">
                       <InstitutionTypeBadge type={m.institution_type} />
                       <LanguageChip lang={m.default_language} />
                     </div>
                   </td>
-                  <td className="p-3">
-                    <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold capitalize text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
-                      {websiteLabel(m.website_status)}
-                    </span>
+                  <td className="p-3 text-center">
+                    {renderWebsiteBadge(m)}
                   </td>
-                  <td className="p-3">{renderPlanControl(m)}</td>
-                  <td className="p-3 dark:text-slate-200">{formatNumber(m.student_limit, lang)}</td>
-                  <td className="p-3 dark:text-slate-200">{formatNumber(m.user_limit, lang)}</td>
-                  <td className="p-3">
+                  <td className="p-3 text-center">{renderPlanControl(m)}</td>
+                  <td className="p-3 text-center dark:text-slate-200">{formatNumber(m.student_limit, lang)}</td>
+                  <td className="p-3 text-center dark:text-slate-200">{formatNumber(m.user_limit, lang)}</td>
+                  <td className="p-3 text-center">
                     {m.is_active ? (
                       <span className="text-green-600 font-semibold dark:text-green-400">{c.active}</span>
                     ) : (
                       <span className="text-red-600 font-semibold dark:text-red-400">{c.inactive}</span>
                     )}
                   </td>
-                  <td className="p-3">{renderActions(m)}</td>
+                  <td className="p-3 text-center">{renderActions(m, true)}</td>
                 </tr>
               ))}
               {!items.length && (
                 <tr>
-                  <td className="p-4 text-gray-500 dark:text-slate-400" colSpan={10}>
+                  <td className="p-4 text-gray-500 dark:text-slate-400" colSpan={9}>
                     {t.noInstitutions}
                   </td>
                 </tr>

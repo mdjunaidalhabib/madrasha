@@ -24,7 +24,7 @@ export class UserRepository {
   findByIdForTenant(id: number, madrasaId: number) {
     return prisma.user.findFirst({
       where: { id, madrasaId },
-      select: { id: true, role: { select: { keyName: true } } },
+      select: { id: true, name: true, email: true, role: { select: { keyName: true } } },
     });
   }
 

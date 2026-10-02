@@ -310,6 +310,122 @@ function fillAdmitCardFields(stored: unknown): AdmitCardFieldItem[] {
   return cleaned;
 }
 
+// ---- Activity-log diff helpers for updateBranding (Bangla, human-readable) ----
+
+const POSITION_LABELS_BN: Record<string, string> = { left: "বামে", center: "মাঝে", right: "ডানে" };
+const BRANDING_IMAGE_LABELS_BN: Record<string, string> = {
+  report_logo: "লোগো",
+  report_banner: "ব্যানার",
+  report_watermark: "ওয়াটারমার্ক",
+  report_header_image: "কাস্টম হেডার ছবি",
+  report_footer_image: "কাস্টম ফুটার ছবি",
+};
+const PRINT_MODE_LABELS_BN:Record<string, string> = { normal: "সাধারণ", letterhead: "লেটারহেড (প্রি-প্রিন্টেড কাগজ)" };
+
+const BRAND_LAYOUT_LABELS_BN: Record<keyof BrandLayoutData, { label: string; unit?: string }> = {
+  name_font_size: { label: "প্রতিষ্ঠানের নামের ফন্ট সাইজ", unit: "px" },
+  name_color: { label: "প্রতিষ্ঠানের নামের রং" },
+  address_font_size: { label: "ঠিকানার ফন্ট সাইজ", unit: "px" },
+  address_color: { label: "ঠিকানার রং" },
+  logo_size: { label: "লোগোর সাইজ", unit: "px" },
+  logo_position: { label: "লোগোর অবস্থান" },
+  logo_offset_x: { label: "লোগো আনুভূমিক সরানো (ডান+/বাম−)", unit: "px" },
+  logo_offset_y: { label: "লোগো উল্লম্ব সরানো (নিচে+/উপরে−)", unit: "px" },
+  header_height: { label: "হেডারের উচ্চতা", unit: "mm" },
+  footer_text: { label: "ফুটারের লেখা" },
+  footer_font_size: { label: "ফুটারের ফন্ট সাইজ", unit: "px" },
+  footer_color: { label: "ফুটারের রং" },
+  footer_height: { label: "ফুটারের উচ্চতা", unit: "mm" },
+};
+
+const MARKSHEET_FIELD_LABELS_BN: Record<string, string> = {
+  roll: "রোল নম্বর",
+  registration_no: "রেজিস্ট্রেশন নম্বর",
+  date_of_birth: "জন্ম তারিখ",
+  student_name: "শিক্ষার্থীর নাম",
+  father_name: "পিতার নাম",
+  madrasa_grade: "ফলাফল বিভাগ",
+  general_grade: "গ্রেড",
+  status: "ফলাফল",
+  rank_no: "মেধাস্থান",
+  sig_teacher: "শ্রেণি শিক্ষকের স্বাক্ষর",
+  sig_principal: "মুহতামিমের স্বাক্ষর",
+};
+
+const ADMIT_CARD_FIELD_LABELS_BN: Record<string, string> = {
+  student_name: "পরীক্ষার্থীর নাম",
+  father_name: "পিতার নাম",
+  class_name: "শ্রেণি",
+  roll: "রোল নম্বর",
+  registration_no: "রেজিস্ট্রেশন নম্বর",
+  academic_year: "শিক্ষাবর্ষ",
+};
+
+function formatBrandLayoutValue(key: keyof BrandLayoutData, value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    if (key === "header_height") return "স্বয়ংক্রিয়";
+    if (key === "footer_text") return "বন্ধ";
+    return "—";
+  }
+  if (key === "logo_position") return POSITION_LABELS_BN[String(value)] ?? String(value);
+  if (key === "footer_text") return `"${value}"`;
+  const unit = BRAND_LAYOUT_LABELS_BN[key].unit;
+  return unit ? `${value}${unit}` : String(value);
+}
+
+/** One line per brand-layout knob whose value actually changed. */
+function diffBrandLayout(before: BrandLayoutData, after: BrandLayoutData): string[] {
+  const lines: string[] = [];
+  for (const key of Object.keys(BRAND_LAYOUT_LABELS_BN) as (keyof BrandLayoutData)[]) {
+    const a = before[key];
+    const b = after[key];
+    const same =
+      typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
+    if (same) continue;
+    lines.push(
+      `${BRAND_LAYOUT_LABELS_BN[key].label}: ${formatBrandLayoutValue(key, a)} → ${formatBrandLayoutValue(key, b)}`,
+    );
+  }
+  return lines;
+}
+
+/** Visibility, signature-position and order changes between two field lists. */
+function diffFieldList(
+  title: string,
+  labels: Record<string, string>,
+  before: MarksheetFieldItem[],
+  after: MarksheetFieldItem[],
+): string[] {
+  const lines: string[] = [];
+  const label = (key: string) => labels[key] ?? key;
+  const beforeMap = new Map(before.map((f) => [f.key, f]));
+
+  const shown: string[] = [];
+  const hidden: string[] = [];
+  for (const item of after) {
+    const prev = beforeMap.get(item.key);
+    if (!prev) continue;
+    if (prev.visible !== item.visible) (item.visible ? shown : hidden).push(label(item.key));
+    if (item.key.startsWith("sig_") && (prev.position ?? null) !== (item.position ?? null)) {
+      const fmt = (p?: string) => (p ? POSITION_LABELS_BN[p] ?? p : "ডিফল্ট");
+      lines.push(`${title} — ${label(item.key)}-এর অবস্থান: ${fmt(prev.position)} → ${fmt(item.position)}`);
+    }
+  }
+  if (shown.length) lines.push(`${title} — দেখানো হবে: ${shown.join(", ")}`);
+  if (hidden.length) lines.push(`${title} — লুকানো হয়েছে: ${hidden.join(", ")}`);
+
+  // Order only matters among the info fields (sig_* aren't part of the grid).
+  const order = (list: MarksheetFieldItem[]) => list.filter((f) => !f.key.startsWith("sig_")).map((f) => f.key);
+  const beforeOrder = order(before);
+  const afterOrder = order(after);
+  if (beforeOrder.join(",") !== afterOrder.join(",")) {
+    lines.push(
+      `${title} — ক্রম পরিবর্তন: ${beforeOrder.map(label).join(" › ")} → ${afterOrder.map(label).join(" › ")}`,
+    );
+  }
+  return lines;
+}
+
 function isValidDesignKey(value: unknown): value is (typeof DOCUMENT_DESIGNS)[number] {
   return typeof value === "string" && (DOCUMENT_DESIGNS as readonly string[]).includes(value);
 }
@@ -533,12 +649,12 @@ export class SettingsService {
     // compare each provided field against.
     const current = await this.repository.findBranding(madrasaId);
 
+    const existingLayout: BrandLayoutData = {
+      ...BRAND_LAYOUT_DEFAULTS,
+      ...((current?.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
+    };
     let mergedBrandLayout: BrandLayoutData | undefined;
     if (report_brand_layout !== undefined) {
-      const existingLayout: BrandLayoutData = {
-        ...BRAND_LAYOUT_DEFAULTS,
-        ...((current?.reportBrandLayout as Partial<BrandLayoutData> | null) || {}),
-      };
       mergedBrandLayout = mergeBrandLayoutPatch(existingLayout, report_brand_layout);
     }
 
@@ -568,16 +684,11 @@ export class SettingsService {
       const after = fmt(cleanedSocialLinks);
       if (before !== after) changes.push(`সোশ্যাল লিংক: ${before} → ${after}`);
     }
-    const imageLabels: Record<string, string> = {
-      report_logo: "লোগো",
-      report_banner: "ব্যানার",
-      report_watermark: "ওয়াটারমার্ক",
-      report_header_image: "কাস্টম হেডার ছবি",
-      report_footer_image: "কাস্টম ফুটার ছবি",
-    };
-    for (const [key, label] of Object.entries(imageLabels)) {
+    for (const [key, label] of Object.entries(BRANDING_IMAGE_LABELS_BN)) {
       const value = (body as Record<string, unknown>)[key];
-      if (value !== undefined && value !== null) changes.push(`${label} পরিবর্তন করা হয়েছে`);
+      if (value === undefined || value === null) continue;
+      const hadBefore = !!(current as Record<string, unknown> | null)?.[BRANDING_IMAGE_FIELDS[key]];
+      changes.push(`${label}: ${hadBefore ? "নতুন ছবি দিয়ে পরিবর্তন করা হয়েছে" : "নতুন ছবি যোগ করা হয়েছে"}`);
     }
     if (opacity !== undefined && current && opacity !== Number(current.reportWatermarkOpacity)) {
       changes.push(`ওয়াটারমার্কের স্বচ্ছতা: ${current.reportWatermarkOpacity} → ${opacity}`);
@@ -592,11 +703,34 @@ export class SettingsService {
       );
     }
     if (report_print_mode !== undefined && current && report_print_mode !== current.reportPrintMode) {
-      changes.push(`প্রিন্ট মোড: ${current.reportPrintMode || DEFAULT_REPORT_PRINT_MODE} → ${report_print_mode}`);
+      const fmtMode = (m: string) => PRINT_MODE_LABELS_BN[m] ?? m;
+      changes.push(
+        `প্রিন্ট মোড: ${fmtMode(current.reportPrintMode || DEFAULT_REPORT_PRINT_MODE)} → ${fmtMode(report_print_mode)}`,
+      );
     }
-    if (mergedBrandLayout !== undefined) changes.push("রিপোর্ট লেআউট (ফন্ট/রঙ/অবস্থান) আপডেট করা হয়েছে");
-    if (sanitizedMarksheetFields !== undefined) changes.push("মার্কশিট তথ্য ফিল্ড আপডেট করা হয়েছে");
-    if (sanitizedAdmitCardFields !== undefined) changes.push("প্রবেশপত্র তথ্য ফিল্ড আপডেট করা হয়েছে");
+    if (mergedBrandLayout !== undefined) {
+      changes.push(...diffBrandLayout(existingLayout, mergedBrandLayout).map((l) => `রিপোর্ট লেআউট — ${l}`));
+    }
+    if (sanitizedMarksheetFields !== undefined && current) {
+      changes.push(
+        ...diffFieldList(
+          "মার্কশিট",
+          MARKSHEET_FIELD_LABELS_BN,
+          fillMarksheetFields(current.marksheetFieldLayout),
+          sanitizedMarksheetFields,
+        ),
+      );
+    }
+    if (sanitizedAdmitCardFields !== undefined && current) {
+      changes.push(
+        ...diffFieldList(
+          "প্রবেশপত্র",
+          ADMIT_CARD_FIELD_LABELS_BN,
+          fillAdmitCardFields(current.admitCardFieldLayout),
+          sanitizedAdmitCardFields,
+        ),
+      );
+    }
 
     await this.repository.updateBranding(madrasaId, {
       // COALESCE(NULLIF(?, ''), name): only overwrite if a non-empty name given
@@ -661,7 +795,7 @@ export class SettingsService {
       user_id: userId,
       action: "DELETE",
       entity: "settings/branding",
-      details: `ব্র্যান্ডিং সেটিংসের ছবি মুছে ফেলা হয়েছে — ফিল্ড: ${field}`,
+      details: `ব্র্যান্ডিং সেটিংসের ছবি মুছে ফেলা হয়েছে — ${BRANDING_IMAGE_LABELS_BN[field] ?? field}`,
     });
   }
 

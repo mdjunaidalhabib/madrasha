@@ -4,7 +4,7 @@ import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import TableSkeleton from "@madrasha/shared-ui/src/components/ui/TableSkeleton";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import DateRangePicker from "./DateRangePicker";
 import { formatDateTime, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import {
   type ActivityLogText,
@@ -16,7 +16,7 @@ import {
 } from "./activity.text";
 
 const RETENTION_DAYS = 90;
-const DEFAULT_DAYS = 30;
+const DEFAULT_DAYS = 3;
 
 type ActivityRow = {
   id: number;
@@ -33,6 +33,10 @@ type ActivityRow = {
 type FilterMode = "days" | "custom";
 
 const COLLAPSED_LINES = 4;
+
+// Super-admin rows carry no acting tenant user (user_id is null) - name the
+// actor instead of showing the generic "System".
+const isSuperAdminAction = (action: string) => action.startsWith("SUPER_ADMIN_") || action === "MADRASA_CREATED";
 
 /**
  * Backend details are multi-line: a headline (whose record it was), then one
@@ -107,10 +111,10 @@ export default function ActivityPage() {
 
   const [mode, setMode] = useState<FilterMode>("days");
   const [days, setDays] = useState(DEFAULT_DAYS);
-  const [fromInput, setFromInput] = useState("");
-  const [toInput, setToInput] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
+  // "security" = only login/logout/failed-login rows.
+  const [category, setCategory] = useState<"" | "security">("");
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -119,8 +123,8 @@ export default function ActivityPage() {
     try {
       const params =
         mode === "custom"
-          ? { from: appliedFrom || undefined, to: appliedTo || undefined, page, limit }
-          : { days, page, limit };
+          ? { from: appliedFrom || undefined, to: appliedTo || undefined, page, limit, entity: category || undefined }
+          : { days, page, limit, entity: category || undefined };
       const res = await cachedGet("/activity", { params });
       setRows(res.data.rows ?? []);
       setTotal(res.data.total ?? 0);
@@ -132,7 +136,7 @@ export default function ActivityPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, days, appliedFrom, appliedTo, page]);
+  }, [mode, days, appliedFrom, appliedTo, page, category]);
 
   const selectDays = (n: number) => {
     setMode("days");
@@ -140,18 +144,22 @@ export default function ActivityPage() {
     setPage(1);
   };
 
-  const applyCustomRange = () => {
+  const applyCustomRange = (from: string, to: string) => {
     setMode("custom");
-    setAppliedFrom(fromInput);
-    setAppliedTo(toInput);
+    setAppliedFrom(from);
+    setAppliedTo(to);
+    setPage(1);
+  };
+
+  const selectCategory = (value: "" | "security") => {
+    setCategory(value);
     setPage(1);
   };
 
   const resetFilters = () => {
+    setCategory("");
     setMode("days");
     setDays(DEFAULT_DAYS);
-    setFromInput("");
-    setToInput("");
     setAppliedFrom("");
     setAppliedTo("");
     setPage(1);
@@ -163,13 +171,35 @@ export default function ActivityPage() {
 
       <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div>
-          <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.quickRangeLabel}</div>
+          <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.categoryLabel}</div>
           <div className="flex flex-wrap gap-2">
+            {([
+              ["", t.categoryAll],
+              ["security", t.categorySecurity],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value || "all"}
+                onClick={() => selectCategory(value)}
+                className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                  category === value
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.quickRangeLabel}</div>
+          <div className="flex flex-wrap items-center gap-2">
             {QUICK_DAY_OPTIONS.map((n) => (
               <button
                 key={n}
                 onClick={() => selectDays(n)}
-                className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                className={`h-9 rounded-full px-3.5 text-sm font-medium transition ${
                   mode === "days" && days === n
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
@@ -178,26 +208,17 @@ export default function ActivityPage() {
                 {t.dayOption(formatNumber(n, lang))}
               </button>
             ))}
+            <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block dark:bg-slate-700" aria-hidden />
+            <DateRangePicker
+              from={appliedFrom}
+              to={appliedTo}
+              active={mode === "custom"}
+              retentionDays={RETENTION_DAYS}
+              onApply={applyCustomRange}
+              onClear={resetFilters}
+            />
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.customRangeLabel}</div>
-          <div>
-            <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">{t.fromLabel}</label>
-            <Input type="date" className="h-10 w-40" value={fromInput} onChange={(e) => setFromInput(e.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">{t.toLabel}</label>
-            <Input type="date" className="h-10 w-40" value={toInput} onChange={(e) => setToInput(e.target.value)} />
-          </div>
-          <Button variant="primary" onClick={applyCustomRange} disabled={!fromInput && !toInput}>
-            {t.applyLabel}
-          </Button>
-          <Button variant="secondary" onClick={resetFilters}>
-            {t.clearLabel}
-          </Button>
-          <div className="ms-auto text-xs text-slate-400 dark:text-slate-500">
+          <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
             {t.retentionNote(formatNumber(RETENTION_DAYS, lang))}
           </div>
         </div>
@@ -224,11 +245,11 @@ export default function ActivityPage() {
                 <tr key={r.id} className="border-t dark:border-slate-700">
                   {/* Role, not the person's name; the name stays in the hover title. */}
                   <td className="px-4 py-3" title={r.name ?? undefined}>
-                    {r.role_name || r.name || t.systemUser}
+                    {r.role_name || r.name || (isSuperAdminAction(r.action) ? t.superAdminUser : t.systemUser)}
                   </td>
                   <td className="px-4 py-3">{translateActivityAction(r.entity, r.action, t)}</td>
                   <td className="px-4 py-3">{translateEntityName(r.entity, t)}</td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="px-4 py-3">
                     {r.details ? <ActivityDetails text={r.details} t={t} /> : t.noDetails}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">

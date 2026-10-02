@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, KeyRound, Laptop, LogOut, ShieldOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LogOut, MapPin, Monitor, ShieldOff, Smartphone, Tablet, type LucideIcon } from "lucide-react";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
@@ -29,30 +29,60 @@ import { commonText, formatDateTime, getText, useLang, useText, type Lang } from
 import { profileText } from "./settingsPages.text";
 import { servicesText } from "../../../services/services.text";
 
-/** Turns a raw User-Agent string into a short, human-readable label - e.g.
- * "Chrome, Windows" - good enough for telling devices apart in the
- * logout-all modal without pulling in a full UA-parsing dependency. */
-function describeDevice(userAgent: string | null): string {
-  if (!userAgent) return getText(profileText).unknownDevice;
+type DeviceKind = "phone" | "tablet" | "desktop";
 
-  const browser =
-    (/Edg\//.test(userAgent) && "Edge") ||
-    (/OPR\//.test(userAgent) && "Opera") ||
-    (/Chrome\//.test(userAgent) && "Chrome") ||
-    (/CriOS\//.test(userAgent) && "Chrome") ||
-    (/Firefox\//.test(userAgent) && "Firefox") ||
-    (/Safari\//.test(userAgent) && "Safari") ||
-    getText(profileText).browser;
+const DEVICE_ICONS: Record<DeviceKind, LucideIcon> = {
+  phone: Smartphone,
+  tablet: Tablet,
+  desktop: Monitor,
+};
 
-  const os =
-    (/Windows/.test(userAgent) && "Windows") ||
-    (/Android/.test(userAgent) && "Android") ||
-    (/iPhone|iPad|iPod/.test(userAgent) && "iOS") ||
-    (/Mac OS X/.test(userAgent) && "macOS") ||
-    (/Linux/.test(userAgent) && "Linux") ||
-    "";
+/** Turns a raw User-Agent string into a device label - e.g. "Windows
+ * computer", "iPhone", "Android phone (SM-A515F)". Only the device is
+ * shown (never the browser), which is what users recognise when deciding
+ * which session to end. No full UA-parsing dependency needed. */
+function describeDevice(userAgent: string | null): { label: string; kind: DeviceKind } {
+  const t = getText(profileText);
+  if (!userAgent) return { label: t.unknownDevice, kind: "desktop" };
 
-  return os ? `${browser}, ${os}` : browser;
+  if (/iPad/.test(userAgent)) return { label: "iPad", kind: "tablet" };
+  if (/iPhone|iPod/.test(userAgent)) return { label: "iPhone", kind: "phone" };
+
+  if (/Android/.test(userAgent)) {
+    const kind: DeviceKind = /Mobile/.test(userAgent) ? "phone" : "tablet";
+    // Model sits after the Android version, e.g. "Android 13; SM-A515F Build/..".
+    // Modern Chrome reduces it to "K", which carries no information.
+    const model = userAgent.match(/Android[^;)]*;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?[;)]/)?.[1]?.trim();
+    const base = kind === "phone" ? t.androidPhone : t.androidTablet;
+    return { label: model && model !== "K" ? `${base} (${model})` : base, kind };
+  }
+
+  if (/CrOS/.test(userAgent)) return { label: "Chromebook", kind: "desktop" };
+  if (/Windows/.test(userAgent)) return { label: t.windowsComputer, kind: "desktop" };
+  if (/Macintosh|Mac OS X/.test(userAgent)) return { label: "Mac", kind: "desktop" };
+  if (/Linux/.test(userAgent)) return { label: t.linuxComputer, kind: "desktop" };
+
+  return { label: t.unknownDevice, kind: "desktop" };
+}
+
+/** "Dhaka, Bangladesh · 103.4.145.2" - country name localised via Intl. */
+/** Loopback / LAN addresses (::1, 127.x, 192.168.x, ...) have no public
+ * location - e.g. the backend running on the same machine or office network. */
+const PRIVATE_IP = /^(::1$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|f[cd][0-9a-f]{2}:|fe80:)/i;
+
+function describeLocation(session: ActiveSession, lang: Lang): string {
+  if (session.ip_address && PRIVATE_IP.test(session.ip_address)) return getText(profileText).localNetwork;
+
+  let country = session.country || "";
+  if (country) {
+    try {
+      country = new Intl.DisplayNames([lang === "bn" ? "bn" : "en"], { type: "region" }).of(country) || country;
+    } catch {
+      // keep the raw code
+    }
+  }
+  const place = [session.city, country].filter(Boolean).join(", ");
+  return [place, session.ip_address].filter(Boolean).join(" · ");
 }
 
 function formatSessionDate(value: string, lang: Lang): string {
@@ -232,6 +262,7 @@ export default function ProfileSettingsPage() {
       closeLogoutModal();
       if (keepCurrent) {
         useToastStore.getState().show(t.loggedOutOthers, "success");
+        setSessions((prev) => prev.filter((s) => s.is_current));
         loadSessions();
         return;
       }
@@ -400,23 +431,49 @@ export default function ProfileSettingsPage() {
             <p className="text-sm text-gray-500 dark:text-slate-400">{t.noSessions}</p>
           ) : (
             <ul className="space-y-2">
-              {sessions.map((session) => (
+              {sessions.map((session) => {
+                const device = describeDevice(session.device_info);
+                const DeviceIcon = DEVICE_ICONS[device.kind];
+                return (
                 <li
                   key={session.id}
-                  className="flex items-start gap-3 rounded-xl border border-gray-100 px-3 py-2.5 dark:border-slate-800"
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                    session.is_current
+                      ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                      : "border-gray-100 dark:border-slate-800"
+                  }`}
                 >
-                  <Laptop size={16} className="mt-0.5 shrink-0 text-gray-400 dark:text-slate-500" />
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                      session.is_current
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                        : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
+                    }`}
+                  >
+                    <DeviceIcon size={18} />
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {describeDevice(session.device_info)}
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900 dark:text-slate-100">
+                      <span className="truncate">{device.label}</span>
                       {session.is_current && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-normal text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
                           {t.thisDevice}
                         </span>
                       )}
                     </p>
+                    {describeLocation(session, lang) && (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-600 dark:text-slate-300">
+                        <MapPin size={12} className="shrink-0 text-gray-400 dark:text-slate-500" />
+                        <span className="truncate">{describeLocation(session, lang)}</span>
+                      </p>
+                    )}
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
                       {t.loginAt(formatSessionDate(session.created_at, lang))}
+                      {session.is_current ? (
+                        <> · <span className="text-emerald-600 dark:text-emerald-400">{t.activeNow}</span></>
+                      ) : session.last_active_at ? (
+                        <> · {t.lastActive(formatSessionDate(session.last_active_at, lang))}</>
+                      ) : null}
                     </p>
                   </div>
                   <button
@@ -428,7 +485,8 @@ export default function ProfileSettingsPage() {
                     {c.logout}
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
 
@@ -454,9 +512,6 @@ export default function ProfileSettingsPage() {
             </Button>
           </div>
 
-          <p className="text-xs text-gray-400 dark:text-slate-500">
-            {t.takesUpTo15}
-          </p>
         </div>
       </SectionCard>
 

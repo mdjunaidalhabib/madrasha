@@ -10,7 +10,10 @@ export const brandingText = defineText({
       "নাম-ঠিকানার সাইজ/রঙ, লোগোর সাইজ-অবস্থান, হেডারের জায়গা এবং ফুটার — এই সেকশনের সব সেটিং ডিফল্ট মানে ফিরে যাবে। এগিয়ে যেতে চান?",
     title: "প্রতিষ্ঠান ব্র্যান্ডিং সেটিংস",
     subtitle:
-      "প্রতিষ্ঠানের নাম, ঠিকানা, মোবাইল নম্বর, ইমেইল, লোগো ও ওয়াটারমার্ক দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।",
+      "প্রতিষ্ঠানের নাম, ঠিকানা, মোবাইল নম্বর, ইমেইল, সোশ্যাল লিংক ও লোগো দিন — এগুলো সব রিপোর্ট পেজে (আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি) স্বয়ংক্রিয়ভাবে দেখাবে।",
+    reportTitle: "রিপোর্ট ডিজাইন সেটিংস",
+    reportSubtitle:
+      "রিপোর্টের ব্যাকগ্রাউন্ড, হেডার-ফুটার, ওয়াটারমার্ক ও প্রিন্ট মোড — আইডি কার্ড, মার্কশিট, উপস্থিতি, আয়-ব্যয় ইত্যাদি সব রিপোর্টে প্রযোজ্য।",
     basicInfo: "মূল তথ্য",
     basicInfoHint: "যেকোনো তথ্যের পাশের পেন্সিল আইকনে ক্লিক করলে শুধু সেই ফিল্ডটি এডিট করা যাবে",
     institutionName: "প্রতিষ্ঠানের নাম",
@@ -86,9 +89,6 @@ export const brandingText = defineText({
     footerRatio: "১০:১ (১৬০০×১৬০px)",
     pressPaperNoUpload:
       "প্রেস পেপার মোডে হেডার/ফুটার ছবি আপলোডের দরকার নেই — যেহেতু এটা প্রিন্ট হবেই না। আগে আপলোড করা ছবি থাকলেও সেটা মুছে যাবে না, শুধু এই মোডে থাকা অবস্থায় প্রিন্ট হবে না।",
-    marksheetFields: "মার্কশিট তথ্য ফিল্ড",
-    marksheetFieldsHint:
-      "মার্কশিটে যেসব তথ্য (রোল, রেজিস্ট্রেশন নম্বর, নাম ইত্যাদি) দেখানো হয় — কোনটা দেখাবেন আর কোন ক্রমে দেখাবেন তা এখান থেকে ঠিক করুন",
   },
   en: {
     saved: "Saved.",
@@ -99,7 +99,10 @@ export const brandingText = defineText({
       "Name/address size and color, logo size and position, header space and footer — every setting in this section will return to its default. Continue?",
     title: "Institution Branding Settings",
     subtitle:
-      "Enter the {{institution}}'s name, address, mobile number, email, logo and watermark — they appear automatically on every report page (ID cards, marksheets, attendance, income-expense, etc.).",
+      "Enter the {{institution}}'s name, address, mobile number, email, social links and logo — they appear automatically on every report page (ID cards, marksheets, attendance, income-expense, etc.).",
+    reportTitle: "Report Design Settings",
+    reportSubtitle:
+      "Report background, header & footer, watermark and print mode — applies to every report (ID cards, marksheets, attendance, income-expense, etc.).",
     basicInfo: "Basic information",
     basicInfoHint: "Click the pencil icon next to any field to edit only that field",
     institutionName: "{{institution}} name",
@@ -175,8 +178,5 @@ export const brandingText = defineText({
     footerRatio: "10:1 (1600×160px)",
     pressPaperNoUpload:
       "Header/footer images are not needed in press paper mode since they are never printed. Previously uploaded images are kept, they just won't print while this mode is on.",
-    marksheetFields: "Marksheet info fields",
-    marksheetFieldsHint:
-      "Choose which details (roll, registration number, name, etc.) appear on the marksheet and in what order",
   },
 });

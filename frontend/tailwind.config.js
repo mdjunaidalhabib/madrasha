@@ -17,6 +17,12 @@ export default {
           700: "#4338ca",
         },
       },
+      // সাইটের সব bold আসলে semibold - পুরো bold দেখতে ভারী লাগে।
+      fontWeight: {
+        bold: "600",
+        extrabold: "600",
+        black: "600",
+      },
       borderRadius: {
         card: "1rem",
       },

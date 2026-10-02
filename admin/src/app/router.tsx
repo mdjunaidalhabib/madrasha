@@ -557,6 +557,16 @@ const madrasaAdminChildren = [
         ),
       },
       {
+        path: "report-design",
+        element: (
+          <ModuleGuard module="settings">
+            <PermissionGuard permission="settings.manage">
+              {withSuspense(<BrandingSettingsPage section="report" />)}
+            </PermissionGuard>
+          </ModuleGuard>
+        ),
+      },
+      {
         path: "payment-methods",
         element: (
           <ModuleGuard module="settings">{withSuspense(<PaymentMethodSettingsPage />)}</ModuleGuard>

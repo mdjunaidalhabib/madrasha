@@ -38,14 +38,22 @@ export class ActivityService {
       ACTIVITY_LOG_MAX_LIMIT,
     );
 
-    const { rows, total } = await this.repository.findByMadrasa({ madrasaId, from, to, page, limit });
+    const { rows, total } = await this.repository.findByMadrasa({
+      madrasaId,
+      from,
+      to,
+      page,
+      limit,
+      entity: query.entity,
+    });
     return { rows: await this.withNames(madrasaId, rows), total, page, limit };
   }
 
   /**
    * Super-admin user actions log `{"user_id": 10, ...}` - a bare id means
-   * nothing to the reader. Swap it for the user's name and add the madrasa
-   * name. An id whose user no longer exists (deleted) is left as the id.
+   * nothing to the reader. Swap it for the user's name (the madrasa's own
+   * name is left out - this is already that madrasa's log). An id whose
+   * user no longer exists (deleted) is left as the id.
    */
   private async withNames(madrasaId: number, rows: ActivityLogRow[]): Promise<ActivityLogRow[]> {
     const parsed = rows.map((row) => {
@@ -60,20 +68,19 @@ export class ActivityService {
     const userIds = [...new Set(parsed.filter(Boolean).map((d) => Number(d!.user_id)))];
     if (!userIds.length) return rows;
 
-    const [users, madrasa] = await Promise.all([
-      this.repository.findUserNames(madrasaId, userIds),
-      this.repository.findMadrasaName(madrasaId),
-    ]);
+    const users = await this.repository.findUserNames(madrasaId, userIds);
     const names = new Map(users.map((u) => [u.id, u.name]));
 
     return rows.map((row, i) => {
       const data = parsed[i];
       if (!data) return row;
       const { user_id, ...rest } = data;
+      // A logged name change ({ from, to }) already says whose account it
+      // was - a separate "ইউজার: <new name>" line would just repeat it.
+      const nameChange = rest.name && typeof rest.name === "object";
       const userName = names.get(Number(user_id));
       const details = {
-        ...(userName ? { user_name: userName } : { user_id }),
-        ...(madrasa?.name ? { madrasa_name: madrasa.name } : {}),
+        ...(nameChange ? {} : userName ? { user_name: userName } : { user_id }),
         ...rest,
       };
       return { ...row, details: JSON.stringify(details) };

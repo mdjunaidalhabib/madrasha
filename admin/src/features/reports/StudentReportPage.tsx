@@ -45,12 +45,9 @@ const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
 // আইডি কার্ড, প্রবেশপত্র, সনদ, প্রত্যয়ন পত্র, ছাড়পত্র ও মার্কশিট এখন "ডকুমেন্ট সমূহ" পেজে
 // (reports/documents) সরিয়ে নেওয়া হয়েছে।
 const StudentReportPage = ({ printMode }: { printMode?: boolean }) => {
-  const { reports, printReports, t } = useLocalizedReports(buildReports);
+  const { reports, printReports } = useLocalizedReports(buildReports);
   return (
     <ReportShell
-      pageTitle={t.page.studentTitle}
-      pageSubtitle={t.page.studentSubtitle}
-      accentTitle="Student Reports"
       reports={reports}
       printReports={printReports}
       reportsPageKey="student"

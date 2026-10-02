@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt.util";
 import { AuthenticatedUser } from "../types/common.types";
+import { isSessionActive } from "../auth/sessionStatus";
 import { t } from "../i18n";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ message: t({ bn: "অনুমতি নেই", en: "Unauthorized" }) });
 
@@ -26,6 +27,15 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     // token must be rejected rather than silently trusted.
     if (req.tenant && decoded?.madrasa_id !== req.tenant.madrasa_id) {
       return res.status(401).json({ message: t({ bn: "এই প্রতিষ্ঠানের জন্য সেশনটি আর বৈধ নয়", en: "Session no longer valid for this institution" }) });
+    }
+
+    // Like Facebook/Gmail: once a device is logged out (from the device
+    // list, "log out other devices" or a password change) its access token
+    // stops working on the next request instead of lingering until expiry.
+    // Tokens issued before session ids existed carry no sid and are let
+    // through until they expire on their own.
+    if (typeof decoded?.sid === "number" && !(await isSessionActive(decoded.sid))) {
+      return res.status(401).json({ message: t({ bn: "এই ডিভাইস থেকে লগআউট করা হয়েছে", en: "This device has been logged out" }) });
     }
 
     req.user = decoded;

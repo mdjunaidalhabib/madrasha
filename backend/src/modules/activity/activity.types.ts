@@ -24,6 +24,8 @@ export interface ActivityLogQuery {
   to?: string;
   page?: number;
   limit?: number;
+  /** Only rows of this entity, e.g. "security" (login/logout history). */
+  entity?: string;
 }
 
 export interface ActivityLogListResult {

@@ -84,6 +84,11 @@ const resolvePlanStartDate = (value?: string): Date => {
   return new Date(parsed.toDateString());
 };
 
+/** A `{ from, to }` pair for the activity log when a field actually changed
+ * (the tenant's log renders it as "নাম: পুরনো → নতুন"), else undefined. */
+const changeOf = (from: string | null | undefined, to: string | null | undefined) =>
+  to && to !== from ? { from: from ?? "", to } : undefined;
+
 export class SuperAdminService {
   constructor(private readonly repository: SuperAdminRepository = superAdminRepository) {}
 
@@ -567,6 +572,12 @@ export class SuperAdminService {
     const classIds = dto.classes !== undefined ? cleanNumberArray(dto.classes) : null;
     const bookIds = dto.books !== undefined ? cleanNumberArray(dto.books) : null;
 
+    // Current values, so the log can show "old → new" for what changed.
+    const before = await this.repository.findMadrasaNameSlug(id);
+    const beforePlan = before?.subscriptions[0];
+    let newPlanId: number | null = null;
+    let newPlanName: string | null = null;
+
     await this.repository.runTransaction(async (tx) => {
       await this.repository.updateMadrasaFieldsOnTx(tx, id, {
         ...(dto.name ? { name: dto.name } : {}),
@@ -585,6 +596,8 @@ export class SuperAdminService {
       if (dto.plan_id) {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
         if (!plan) throw new InvalidPlanError();
+        newPlanId = plan.id;
+        newPlanName = plan.name;
 
         await this.repository.deactivateSubscriptionsOnTx(tx, id);
 
@@ -618,10 +631,12 @@ export class SuperAdminService {
         entity: "madrasa",
         entityId: id,
         details: JSON.stringify({
-          name: dto.name,
-          slug: dto.slug,
-          website_status: dto.website_status,
-          plan_id: dto.plan_id,
+          name: changeOf(before?.name, dto.name),
+          slug: changeOf(before?.slug, dto.slug),
+          // The edit form re-sends status/plan on every save - log them only
+          // when they actually changed, so unchanged values don't show up.
+          website_status: changeOf(before?.websiteStatus, dto.website_status),
+          plan: newPlanName && newPlanId !== beforePlan?.planId ? { from: beforePlan?.plan?.name ?? "", to: newPlanName } : undefined,
         }),
       });
     });
@@ -864,8 +879,9 @@ export class SuperAdminService {
       entityId: userId,
       details: JSON.stringify({
         user_id: userId,
-        name_changed: !!name,
-        email_changed: !!email,
+        name: changeOf(user.name, name),
+        email: changeOf(user.email, email),
+        // Never the password itself - only that it was changed.
         password_changed: !!password,
       }),
     });

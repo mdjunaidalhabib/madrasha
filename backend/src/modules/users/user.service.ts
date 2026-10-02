@@ -126,7 +126,10 @@ export class UserService {
       action: "UPDATE",
       entity: USER_ACTIVITY_ENTITY,
       entity_id: id,
-      details: `ইউজার আইডি ${id} হালনাগাদ করা হয়েছে`,
+      details: [
+        `ইউজার: ${existing.name ?? `আইডি ${id}`} হালনাগাদ করা হয়েছে`,
+        ...(data.name !== undefined && data.name !== existing.name ? [`নাম: ${existing.name ?? "—"} → ${data.name}`] : []),
+      ].join("\n"),
     });
   }
 
@@ -162,7 +165,10 @@ export class UserService {
       action: "UPDATE",
       entity: USER_ACTIVITY_ENTITY,
       entity_id: id,
-      details: `অ্যাডমিন কর্তৃক ইউজার আইডি ${id}-এর পাসওয়ার্ড রিসেট করা হয়েছে`,
+      details: [
+        `ইউজার: ${existing.name ?? `আইডি ${id}`}${existing.email ? ` (${existing.email})` : ""}`,
+        "অ্যাডমিন কর্তৃক পাসওয়ার্ড রিসেট করা হয়েছে",
+      ].join("\n"),
     });
   }
 

@@ -33,6 +33,7 @@ export const superAdminText = defineBilingualText({
     colStatus: "স্ট্যাটাস",
     colActions: "অ্যাকশন",
     websiteStatus: { active: "সক্রিয়", limited: "সীমিত", disabled: "বন্ধ" } as Record<string, string>,
+    websiteOffSuspended: "বন্ধ (প্রতিষ্ঠান স্থগিত)",
 
     // CleanMadrasaModal
     cleanTitle: (name: string) => `"${name}" এর ডেটা ক্লিন করুন`,
@@ -97,6 +98,7 @@ export const superAdminText = defineBilingualText({
     colStatus: "Status",
     colActions: "Actions",
     websiteStatus: { active: "Active", limited: "Limited", disabled: "Disabled" },
+    websiteOffSuspended: "Off (institution suspended)",
 
     cleanTitle: (name) => `Clean data of "${name}"`,
     cleanIrreversible: "This cannot be undone - deleted data can never be recovered.",

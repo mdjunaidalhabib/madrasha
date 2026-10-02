@@ -30,8 +30,9 @@ const REPORT_FONT_FACE_CSS = `
 }
 
 /* পুরো ওয়েবসাইটের UI ফন্ট (--font-ui-bn)। একই ফাইল (ব্রাউজারে একবারই নামে),
-   কিন্তু আলাদা family: শুধু 400 weight ঘোষণা করা, তাই font-semibold/bold-এ
-   ব্রাউজার নিজে মোটা করে দেয় - UI-র heading/বাটন বোল্ড দেখায়। রিপোর্টের
+   কিন্তু আলাদা family। 400-900 ঘোষণা করা যাতে ব্রাউজার নিজে synthetic bold
+   না বানায় (ওটা খুব মোটা আর খারাপ দেখাত) - তার বদলে index.css-এর
+   "semibold" নিয়ম হালকা text-stroke দিয়ে মাঝারি মোটা করে। রিপোর্টের
    "Kalpurush Report" (400-700, synthetic bold বন্ধ) এতে বদলায় না।
    font-display: block - swap দিলে লোডের সময় আগে সাধারণ (fallback) ফন্ট দেখিয়ে
    পরে হঠাৎ Kalpurush-এ লাফ দিত, যা প্রফেশনাল দেখায় না। index.html-এ preload
@@ -40,7 +41,7 @@ const REPORT_FONT_FACE_CSS = `
 @font-face {
   font-family: "Kalpurush";
   src: url("/fonts/Kalpurush.ttf") format("truetype");
-  font-weight: 400;
+  font-weight: 400 900;
   font-style: normal;
   font-display: block;
 }

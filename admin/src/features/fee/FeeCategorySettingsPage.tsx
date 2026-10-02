@@ -239,7 +239,6 @@ const FeeCategorySettingsPage = () => {
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title={t.title}
-        subtitle={t.subtitle}
         actions={backLink}
       />
 

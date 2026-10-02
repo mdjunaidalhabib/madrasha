@@ -5,6 +5,14 @@ import { NotFoundError, BadRequestError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { env } from "../../shared/config/env";
 import { buildInstitutionInfo } from "../../shared/utils/institution.util";
+import { lookupIpLocation } from "../../shared/utils/geoip.util";
+import {
+  SECURITY_ACTIONS,
+  SessionClient,
+  deviceLines,
+  logSecurityEvent,
+  userLine,
+} from "./auth.activity";
 import { emailService } from "../../shared/notifications/email.service";
 import { authRepository, AuthRepository } from "./auth.repository";
 import {
@@ -24,6 +32,8 @@ import {
   ACCOUNT_LOCKOUT_DURATION_MS,
 } from "./auth.constants";
 import { t } from "../../shared/i18n";
+import { logActivity } from "../../shared/utils/activity.util";
+import { USER_ACTIVITY_ENTITY } from "../users/user.constants";
 
 const normalizeRoleKey = (value?: string | null) =>
   String(value || "")
@@ -38,9 +48,24 @@ export class AuthService {
     password,
     madrasaId,
     deviceInfo,
+    deviceId,
+    ipAddress,
   }: LoginCredentials): Promise<LoginResult> {
     const user = await this.repository.findActiveUserByEmail(email, madrasaId);
+    // Location for the security log of a failed attempt (a successful login
+    // gets it from issueRefreshToken below).
+    const failedClient = async (): Promise<SessionClient> => ({
+      deviceInfo,
+      ipAddress,
+      ...(await lookupIpLocation(ipAddress)),
+    });
     if (!user) {
+      await logSecurityEvent({
+        madrasaId,
+        userId: null,
+        action: SECURITY_ACTIONS.LOGIN_FAILED,
+        lines: [`ইমেইল: ${email}`, "কারণ: এই ইমেইলে কোনো সক্রিয় অ্যাকাউন্ট নেই", ...deviceLines(await failedClient())],
+      });
       throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
     }
 
@@ -61,6 +86,19 @@ export class AuthService {
           : null;
       await this.repository.recordFailedLogin(user.id, attempts, lockedUntil);
 
+      await logSecurityEvent({
+        madrasaId,
+        userId: user.id,
+        action: lockedUntil ? SECURITY_ACTIONS.ACCOUNT_LOCKED : SECURITY_ACTIONS.LOGIN_FAILED,
+        lines: [
+          userLine(user),
+          lockedUntil
+            ? `কারণ: পরপর ${attempts} বার ভুল পাসওয়ার্ড — অ্যাকাউন্ট ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে`
+            : `কারণ: ভুল পাসওয়ার্ড (${attempts}/${MAX_FAILED_LOGIN_ATTEMPTS} বার)`,
+          ...deviceLines(await failedClient()),
+        ],
+      });
+
       if (lockedUntil) {
         logger.warn(`Account locked after ${attempts} failed logins`, { userId: user.id });
         throw new BadRequestError(
@@ -79,13 +117,28 @@ export class AuthService {
       this.repository.findMadrasaName(user.madrasaId),
     ]);
 
+    if (deviceId) {
+      await this.repository.revokeRefreshTokensForDevice(user.id, deviceId, deviceInfo);
+    }
+    const session = await this.issueRefreshToken(user.id, user.madrasaId, {
+      deviceInfo,
+      deviceId,
+      ipAddress,
+    });
+    const refreshToken = session.rawToken;
+    await logSecurityEvent({
+      madrasaId: user.madrasaId,
+      userId: user.id,
+      action: SECURITY_ACTIONS.LOGIN,
+      lines: [userLine(user), ...deviceLines({ deviceInfo, ipAddress, ...session.location })],
+    });
     const token = generateToken({
       id: user.id,
       madrasa_id: user.madrasaId,
       role_id: user.roleId,
       role: roleKey,
+      sid: session.id,
     });
-    const refreshToken = await this.issueRefreshToken(user.id, user.madrasaId, deviceInfo);
 
     return {
       token,
@@ -115,33 +168,42 @@ export class AuthService {
   private async issueRefreshToken(
     userId: number,
     madrasaId: number,
-    deviceInfo?: string | null,
-  ): Promise<string> {
+    client: { deviceInfo?: string | null; deviceId?: string | null; ipAddress?: string | null },
+  ): Promise<{ id: number; rawToken: string; location: { city: string | null; country: string | null } }> {
+    const { rawToken, tokenHash, expiresAt } = this.newRefreshTokenValues();
+    const location = await lookupIpLocation(client.ipAddress);
+
+    const row = await this.repository.createRefreshToken({
+      madrasaId,
+      userId,
+      tokenHash,
+      expiresAt,
+      deviceInfo: client.deviceInfo,
+      deviceId: client.deviceId,
+      ipAddress: client.ipAddress,
+      ...location,
+    });
+
+    return { id: row.id, rawToken, location };
+  }
+
+  private newRefreshTokenValues() {
     const rawToken = crypto.randomBytes(40).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const expiresAt = new Date(
       Date.now() + env.refreshTokenExpiresInDays * 24 * 60 * 60 * 1000,
     );
-
-    await this.repository.createRefreshToken({
-      madrasaId,
-      userId,
-      tokenHash,
-      expiresAt,
-      deviceInfo,
-    });
-
-    return rawToken;
+    return { rawToken, tokenHash, expiresAt };
   }
 
-  /** Verifies a refresh token and rotates it: the old one is revoked and a
-   * new one issued alongside the new access token ("refresh token
-   * rotation") - so a stolen-and-reused-once token can't be replayed
+  /** Verifies a refresh token and rotates it: the session row gets a new
+   * token and the old one stops working ("refresh token rotation") - so a stolen-and-reused-once token can't be replayed
    * indefinitely in parallel with the legitimate session. */
   async refreshAccessToken(
     rawRefreshToken: string,
     madrasaId: number,
     deviceInfo?: string | null,
+    ipAddress?: string | null,
   ): Promise<RefreshTokenResult> {
     const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
     const tokenRow = await this.repository.findValidRefreshToken(tokenHash);
@@ -160,8 +222,22 @@ export class AuthService {
       throw new BadRequestError(t({ bn: "অ্যাকাউন্টটি লক করা আছে", en: "Account is locked" }));
     }
 
-    await this.repository.revokeRefreshToken(tokenHash);
-    const refreshToken = await this.issueRefreshToken(user.id, madrasaId, deviceInfo);
+    const next = this.newRefreshTokenValues();
+    const location =
+      ipAddress && ipAddress !== tokenRow.ipAddress
+        ? await lookupIpLocation(ipAddress)
+        : { city: tokenRow.city, country: tokenRow.country };
+    const rotated = await this.repository.rotateRefreshToken(tokenRow.id, tokenHash, {
+      tokenHash: next.tokenHash,
+      expiresAt: next.expiresAt,
+      deviceInfo: deviceInfo ?? tokenRow.deviceInfo,
+      ipAddress: ipAddress ?? tokenRow.ipAddress,
+      ...location,
+    });
+    if (!rotated.count) {
+      throw new BadRequestError(t({ bn: "রিফ্রেশ টোকেন সঠিক নয় বা মেয়াদোত্তীর্ণ", en: "Invalid or expired refresh token" }));
+    }
+    const refreshToken = next.rawToken;
 
     const roleKey = normalizeRoleKey(user.role?.keyName || user.role?.nameBn);
     const token = generateToken({
@@ -169,6 +245,7 @@ export class AuthService {
       madrasa_id: madrasaId,
       role_id: user.roleId,
       role: roleKey,
+      sid: tokenRow.id,
     });
 
     return { token, refreshToken };
@@ -177,30 +254,90 @@ export class AuthService {
   /** Logs out a single session/device - revokes just this refresh token. */
   async logout(rawRefreshToken: string): Promise<void> {
     const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+    const row = await this.repository.findValidRefreshToken(tokenHash);
     await this.repository.revokeRefreshToken(tokenHash);
+    if (row) {
+      await logSecurityEvent({
+        madrasaId: row.madrasaId,
+        userId: row.userId,
+        action: SECURITY_ACTIONS.LOGOUT,
+        lines: [
+          userLine(await this.repository.findMyProfile(row.userId, row.madrasaId)),
+          ...deviceLines(row),
+        ],
+      });
+    }
+  }
+
+  /** "From: <device> · <place>" line for an action done on the device list. */
+  private async actorDeviceLines(client: SessionClient): Promise<string[]> {
+    const location = client.city || client.country ? {} : await lookupIpLocation(client.ipAddress);
+    return deviceLines({ ...client, ...location }).map((line) =>
+      line.startsWith("ডিভাইস: ") ? `যে ডিভাইস থেকে করা হয়েছে: ${line.slice(8)}` : line,
+    );
   }
 
   /** "Logout from all devices" - revokes every refresh token this user has.
    * When `exceptRawRefreshToken` (this browser's own cookie) is passed, that
    * one session is left alone instead - "logout from OTHER devices", the
    * user stays signed in here. */
-  async logoutAllDevices(userId: number, exceptRawRefreshToken?: string): Promise<void> {
+  async logoutAllDevices(
+    userId: number,
+    madrasaId: number,
+    client: SessionClient,
+    exceptRawRefreshToken?: string,
+  ): Promise<void> {
+    let result: { count: number };
     if (exceptRawRefreshToken) {
       const exceptTokenHash = crypto
         .createHash("sha256")
         .update(exceptRawRefreshToken)
         .digest("hex");
-      await this.repository.revokeAllRefreshTokensForUserExcept(userId, exceptTokenHash);
-      return;
+      result = await this.repository.revokeAllRefreshTokensForUserExcept(userId, exceptTokenHash);
+    } else {
+      result = await this.repository.revokeAllRefreshTokensForUser(userId);
     }
-    await this.repository.revokeAllRefreshTokensForUser(userId);
+
+    await logSecurityEvent({
+      madrasaId,
+      userId,
+      action: exceptRawRefreshToken ? SECURITY_ACTIONS.LOGOUT_OTHERS : SECURITY_ACTIONS.LOGOUT_ALL,
+      lines: [
+        userLine(await this.repository.findMyProfile(userId, madrasaId)),
+        `লগআউট হওয়া ডিভাইস: ${result.count} টি`,
+        ...(await this.actorDeviceLines(client)),
+      ],
+    });
   }
 
   /** Revokes exactly one session (e.g. clicked from the device list) -
    * scoped to `userId` so a user can only revoke their own sessions. */
-  async revokeSession(userId: number, sessionId: number): Promise<void> {
+  async revokeSession(
+    userId: number,
+    madrasaId: number,
+    sessionId: number,
+    client: SessionClient,
+  ): Promise<void> {
+    const row = await this.repository.findRefreshTokenById(sessionId, userId);
     const result = await this.repository.revokeRefreshTokenById(sessionId, userId);
-    if (!result.count) throw new NotFoundError(t({ bn: "সেশন পাওয়া যায়নি", en: "Session not found" }));
+    if (!row || !result.count) throw new NotFoundError(t({ bn: "সেশন পাওয়া যায়নি", en: "Session not found" }));
+
+    const user = await this.repository.findMyProfile(userId, madrasaId);
+    const isOwnDevice = Boolean(client.deviceId && row.deviceId === client.deviceId);
+    await logSecurityEvent({
+      madrasaId,
+      userId,
+      action: isOwnDevice ? SECURITY_ACTIONS.LOGOUT : SECURITY_ACTIONS.LOGOUT_DEVICE,
+      lines: isOwnDevice
+        ? [userLine(user), ...deviceLines(row)]
+        : [
+            userLine(user),
+            ...deviceLines(row).map((line) =>
+              line.startsWith("ডিভাইস: ") ? `লগআউট করা ডিভাইস: ${line.slice(8)}` : line,
+            ),
+            ...(await this.actorDeviceLines(client)),
+          ],
+    });
   }
 
   /** Lists this user's still-valid sessions (for the "logout from all
@@ -219,7 +356,11 @@ export class AuthService {
     return rows.map((row) => ({
       id: row.id,
       device_info: row.deviceInfo,
+      ip_address: row.ipAddress,
+      city: row.city,
+      country: row.country,
       created_at: row.createdAt,
+      last_active_at: row.lastActiveAt,
       expires_at: row.expiresAt,
       is_current: currentTokenHash !== null && row.tokenHash === currentTokenHash,
     }));
@@ -336,6 +477,19 @@ export class AuthService {
     // (that's why a reset was needed) - kill every refresh token so a
     // leaked old session can't keep silently refreshing past this point.
     await this.repository.revokeAllRefreshTokensForUser(resetToken.userId);
+
+    const user = await this.repository.findMyProfile(resetToken.userId, madrasaId);
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: resetToken.userId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: resetToken.userId,
+      details: [
+        `ইউজার: ${user?.name ?? `আইডি ${resetToken.userId}`}${user?.email ? ` (${user.email})` : ""}`,
+        "ইমেইলের রিসেট লিংক দিয়ে পাসওয়ার্ড পরিবর্তন করা হয়েছে",
+      ].join("\n"),
+    });
   }
 
   /* ================= MY PROFILE ================= */
@@ -381,8 +535,23 @@ export class AuthService {
 
     if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "আপডেট করার মতো কোনো সঠিক তথ্য নেই", en: "No valid data to update" }));
 
+    const before = await this.repository.findMyProfile(userId, madrasaId);
     const result = await this.repository.updateMyProfile(userId, madrasaId, data as any);
     if (!result.count) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: userId,
+      details: [
+        `নিজের প্রোফাইল হালনাগাদ: ${before?.name ?? `আইডি ${userId}`}`,
+        ...(data.name !== undefined && data.name !== before?.name ? [`নাম: ${before?.name ?? "—"} → ${data.name}`] : []),
+        ...(data.mobile !== undefined && data.mobile !== before?.mobile ? [`মোবাইল: ${before?.mobile ?? "—"} → ${data.mobile ?? "—"}`] : []),
+        ...(data.photoUrl !== undefined && data.photoUrl !== before?.photoUrl ? ["ছবি পরিবর্তন করা হয়েছে"] : []),
+      ].join("\n"),
+    });
   }
 
   /** Re-confirms the CURRENT user's own password without changing anything
@@ -403,6 +572,7 @@ export class AuthService {
     madrasaId: number,
     currentPassword: string,
     newPassword: string,
+    currentSessionId?: number,
   ): Promise<void> {
     const user = await this.repository.findPasswordHashById(userId, madrasaId);
     if (!user) throw new NotFoundError(t({ bn: "ব্যবহারকারী পাওয়া যায়নি", en: "User not found" }));
@@ -413,8 +583,23 @@ export class AuthService {
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updateUserPasswordHash(userId, passwordHash);
     // Same reasoning as resetPassword(): a fresh password should invalidate
-    // any session that might have been riding on the old one.
-    await this.repository.revokeAllRefreshTokensForUser(userId);
+    // any session that might have been riding on the old one - except the
+    // device making the change, which stays signed in (as Gmail does).
+    const revoked = currentSessionId
+      ? await this.repository.revokeAllRefreshTokensForUserExceptId(userId, currentSessionId)
+      : await this.repository.revokeAllRefreshTokensForUser(userId);
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UPDATE",
+      entity: USER_ACTIVITY_ENTITY,
+      entity_id: userId,
+      details: [
+        "নিজের পাসওয়ার্ড পরিবর্তন করা হয়েছে",
+        ...(revoked.count ? [`অন্য ডিভাইস লগআউট করা হয়েছে: ${revoked.count} টি`] : []),
+      ].join("\n"),
+    });
   }
 }
 

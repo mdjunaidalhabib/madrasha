@@ -3,6 +3,7 @@ import {
   Settings2,
   UserCog,
   Paintbrush,
+  FileText,
   CreditCard,
   Users,
   ShieldCheck,
@@ -22,7 +23,7 @@ import { sidebarText } from "../../../components/sidebar/sidebar.text";
 // reach, via its own `disabled` flag from sidebar.service.ts).
 const SETTINGS_NAV_ITEMS: {
   key: string;
-  label: "profileSettings" | "branding" | "paymentMethods" | "staffManagement" | "rolesPermissions" | "plan" | "trash" | "about";
+  label: "profileSettings" | "branding" | "reportDesign" | "paymentMethods" | "staffManagement" | "rolesPermissions" | "plan" | "trash" | "about";
   icon: typeof Settings2;
   module?: string;
   permission?: string;
@@ -31,6 +32,7 @@ const SETTINGS_NAV_ITEMS: {
 }[] = [
   { key: "profile", label: "profileSettings", icon: UserCog },
   { key: "branding", label: "branding", icon: Paintbrush, module: "settings", permission: "settings.manage" },
+  { key: "report-design", label: "reportDesign", icon: FileText, module: "settings", permission: "settings.manage" },
   { key: "payment-methods", label: "paymentMethods", icon: CreditCard, module: "settings" },
   { key: "users", label: "staffManagement", icon: Users, module: "settings", permission: "users.read" },
   { key: "roles", label: "rolesPermissions", icon: ShieldCheck, module: "settings", permission: "roles.manage" },

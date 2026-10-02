@@ -1,9 +1,11 @@
+import crypto from "crypto";
 import { Request, Response } from "express";
 import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { env } from "../../shared/config/env";
 import { authService } from "./auth.service";
 import { t } from "../../shared/i18n";
+import { normalizeIp } from "../../shared/utils/geoip.util";
 
 /* =========================================================
    REFRESH TOKEN COOKIE (httpOnly - invisible to frontend JS,
@@ -26,6 +28,35 @@ const setRefreshTokenCookie = (res: Response, rawToken: string) => {
   });
 };
 
+/* Long-lived per-device id. Unlike the refresh token it survives logout,
+   so logging in again on the same device replaces that device's session
+   instead of adding another entry to the device list. */
+const DEVICE_ID_COOKIE_NAME = "device_id";
+const DEVICE_ID_MAX_AGE_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+
+const getOrCreateDeviceId = (req: Request, res: Response): string => {
+  const existing = req.cookies?.[DEVICE_ID_COOKIE_NAME];
+  const deviceId =
+    typeof existing === "string" && /^[a-f0-9]{32}$/.test(existing)
+      ? existing
+      : crypto.randomBytes(16).toString("hex");
+  res.cookie(DEVICE_ID_COOKIE_NAME, deviceId, {
+    httpOnly: true,
+    secure: env.nodeEnv === "production",
+    sameSite: env.nodeEnv === "production" ? "none" : "lax",
+    path: REFRESH_TOKEN_COOKIE_PATH,
+    maxAge: DEVICE_ID_MAX_AGE_MS,
+  });
+  return deviceId;
+};
+
+/** The device making a request - for "done from" lines in the security log. */
+const requestClient = (req: Request) => ({
+  deviceInfo: req.get("user-agent") || null,
+  deviceId: typeof req.cookies?.[DEVICE_ID_COOKIE_NAME] === "string" ? req.cookies[DEVICE_ID_COOKIE_NAME] : null,
+  ipAddress: normalizeIp(req.ip),
+});
+
 const clearRefreshTokenCookie = (res: Response) => {
   res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: REFRESH_TOKEN_COOKIE_PATH });
 };
@@ -43,12 +74,15 @@ export const login = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const madrasa_id = req.tenant!.madrasa_id;
     const deviceInfo = req.get("user-agent") || null;
+    const deviceId = getOrCreateDeviceId(req, res);
 
     const result = await authService.login({
       email,
       password,
       madrasaId: madrasa_id,
       deviceInfo,
+      deviceId,
+      ipAddress: normalizeIp(req.ip),
     });
 
     setRefreshTokenCookie(res, result.refreshToken);
@@ -74,7 +108,12 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     }
     const deviceInfo = req.get("user-agent") || null;
 
-    const result = await authService.refreshAccessToken(rawRefreshToken, madrasa_id, deviceInfo);
+    const result = await authService.refreshAccessToken(
+      rawRefreshToken,
+      madrasa_id,
+      deviceInfo,
+      normalizeIp(req.ip),
+    );
 
     setRefreshTokenCookie(res, result.refreshToken);
     res.json(result);
@@ -111,7 +150,12 @@ export const logoutAllDevices = async (req: Request, res: Response) => {
     const keepCurrent = req.body?.keep_current === true;
     const rawRefreshToken = keepCurrent ? getRawRefreshToken(req) : undefined;
 
-    await authService.logoutAllDevices(req.user!.id, rawRefreshToken);
+    await authService.logoutAllDevices(
+      req.user!.id,
+      req.tenant!.madrasa_id,
+      requestClient(req),
+      rawRefreshToken,
+    );
 
     if (keepCurrent) {
       res.json({ message: t({ bn: "অন্যান্য ডিভাইস থেকে লগআউট হয়েছে", en: "Logged out from other devices" }) });
@@ -134,8 +178,8 @@ export const logoutAllDevices = async (req: Request, res: Response) => {
 export const revokeSession = async (req: Request, res: Response) => {
   try {
     const sessionId = Number(req.params.id);
-    await authService.revokeSession(req.user!.id, sessionId);
-    res.json({ message: t({ bn: "সেশন লগআউট করা হয়েছে", en: "Session logged out" }) });
+    await authService.revokeSession(req.user!.id, req.tenant!.madrasa_id, sessionId, requestClient(req));
+    res.json({ message: t({ bn: "ডিভাইসটি লগআউট করা হয়েছে", en: "Device logged out" }) });
   } catch (err) {
     if (err instanceof ApiError) {
       res.status(err.statusCode).json({ message: err.message });
@@ -279,6 +323,7 @@ export const changeMyPassword = async (req: Request, res: Response) => {
       req.tenant!.madrasa_id,
       current_password,
       new_password,
+      req.user!.sid,
     );
     res.json({ message: t({ bn: "পাসওয়ার্ড পরিবর্তন হয়েছে", en: "Password changed" }) });
   } catch (err) {

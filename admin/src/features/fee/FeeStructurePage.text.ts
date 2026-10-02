@@ -32,8 +32,6 @@ export const feeStructureText = defineText({
     createTitle: "নতুন ফি কাঠামো তৈরি করুন",
     forSelectedClass: "(নির্বাচিত {{class}}র জন্য)",
     forAllClasses: "(সব {{class}}র জন্য)",
-    createHint:
-      "তৈরি করার সাথে সাথেই যোগ্য বিদ্যমান {{student}}দের জন্য অটোমেটিক ইনভয়েস তৈরি হয়ে যাবে — এডিট করলে বা নিষ্ক্রিয় থেকে আবার সক্রিয় করলেও একইভাবে হয়ে যায়, আলাদা কিছু চালাতে হয় না। পরীক্ষার ফি এখানে নয় — পাশের \"পরীক্ষার ফি\" মেনুতে প্রতিটি পরীক্ষার {{division}} অনুযায়ী {{class}}গুলো নিজে থেকেই আসে।",
     feeType: "ফি ধরণ",
     frequencyLabel: "ফ্রিকোয়েন্সি",
     amountTaka: "পরিমাণ (৳)",
@@ -88,8 +86,6 @@ export const feeStructureText = defineText({
     createTitle: "Create a New Fee Structure",
     forSelectedClass: "(for the selected {{class}})",
     forAllClasses: "(for all {{class}}es)",
-    createHint:
-      "Invoices for eligible existing {{student}}s are created as soon as you save — the same happens on edit or when re-enabling, nothing else to run. Exam fees are not set here — under the \"Exam Fees\" menu each exam's {{class}}es appear automatically from its {{division}}s.",
     feeType: "Fee type",
     frequencyLabel: "Frequency",
     amountTaka: "Amount (৳)",

@@ -5,6 +5,10 @@ export interface LoginCredentials {
   madrasaId: number;
   /** Best-effort label (User-Agent header) stored on the issued refresh token. */
   deviceInfo?: string | null;
+  /** Stable per-device id (cookie) - a device keeps at most one session. */
+  deviceId?: string | null;
+  /** Client IP - stored on the session for the device list. */
+  ipAddress?: string | null;
 }
 
 export interface UnlockCredentials {
@@ -47,7 +51,11 @@ export interface RefreshTokenResult {
 export interface ActiveSession {
   id: number;
   device_info: string | null;
+  ip_address: string | null;
+  city: string | null;
+  country: string | null;
   created_at: Date;
+  last_active_at: Date | null;
   expires_at: Date;
   is_current: boolean;
 }

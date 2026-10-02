@@ -30,19 +30,21 @@ export default function SearchPaginationBar({
   const c = useText(commonText);
   const lang = useLang();
   return (
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder={t.searchByNameSlug}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <Button variant="secondary" onClick={clear}>
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex w-full items-center gap-2 lg:max-w-md">
+        <div className="min-w-0 flex-1">
+          <Input
+            placeholder={t.searchByNameSlug}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <Button variant="secondary" onClick={clear} className="shrink-0">
           {c.clear}
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm lg:justify-end">
         <span className="text-gray-600 dark:text-slate-400">
           {t.pageOf} <b>{formatNumber(page, lang)}</b> / <b>{formatNumber(totalPages, lang)}</b>
           {total ? (
@@ -52,12 +54,14 @@ export default function SearchPaginationBar({
             </span>
           ) : null}
         </span>
-        <Button variant="secondary" disabled={disablePrev} onClick={prev}>
-          {t.prev}
-        </Button>
-        <Button variant="secondary" disabled={disableNext} onClick={next}>
-          {t.next}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" disabled={disablePrev} onClick={prev}>
+            {t.prev}
+          </Button>
+          <Button variant="secondary" disabled={disableNext} onClick={next}>
+            {t.next}
+          </Button>
+        </div>
       </div>
     </div>
   );
