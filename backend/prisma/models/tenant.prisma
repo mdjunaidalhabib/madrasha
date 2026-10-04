@@ -214,10 +214,12 @@ model Madrasa {
   documentTemplates            DocumentTemplate[]
   tenantDocumentDefaults       TenantDocumentDefault[]
   printableNotices             PrintableNotice[]
-  kioskDevices                 KioskDevice[]
   attendanceDevices            AttendanceDevice[]
   attendanceDeviceUserMaps     AttendanceDeviceUserMap[]
   attendanceDeviceLogs         AttendanceDeviceLog[]
+  attendanceDeviceEnrollments  AttendanceDeviceEnrollment[]
+  attendanceDeviceSettings     AttendanceDeviceSettings?
+  attendanceHolidays           AttendanceHoliday[]
   smsQueue                     SmsQueue[]
   libraryBookCategories        LibraryBookCategory[]
   libraryBooks                 LibraryBook[]

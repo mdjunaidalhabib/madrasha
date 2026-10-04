@@ -11,6 +11,7 @@ import {
   startRefreshTokenPurgeScheduler,
   startCurrentMonthInvoiceScheduler,
   startSmsQueueWorker,
+  startAttendanceDeviceJobs,
 } from "./bootstrap";
 
 async function start() {
@@ -28,6 +29,7 @@ async function start() {
   startRefreshTokenPurgeScheduler();
   startCurrentMonthInvoiceScheduler();
   startSmsQueueWorker();
+  startAttendanceDeviceJobs();
 }
 
 start();

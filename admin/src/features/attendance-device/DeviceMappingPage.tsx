@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Link2, RefreshCw, Search, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CreditCard, IdCard, Link2, RefreshCw, Search, X } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
@@ -9,6 +10,7 @@ import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import ErrorState from "@madrasha/shared-ui/src/components/ui/ErrorState";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import SectionCard from "../../components/settings/SectionCard";
 import { attendanceDeviceApi, getApiErrorMessage } from "../../services/attendanceDeviceApi";
 
@@ -16,7 +18,7 @@ import { selectClass } from "./components";
 import { useClassOptions, useTick } from "./hooks";
 import type { StudentMapping, UnmappedDeviceUser } from "./types";
 import { formatDateTime, relativeTime, toBnNumber } from "./utils";
-import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const PAGE_SIZE = 20;
@@ -35,7 +37,9 @@ const mappedValue = (m: StudentMapping) =>
 
 export default function DeviceMappingPage() {
   const t = useText(attendanceDeviceText).mapping;
+  const lang = useLang();
   const classes = useClassOptions();
+  const [assigning, setAssigning] = useState(false);
   const now = useTick(30_000);
 
   const [searchInput, setSearchInput] = useState("");
@@ -176,6 +180,37 @@ export default function DeviceMappingPage() {
     }
   };
 
+  /* ---------- auto PINs ---------- */
+
+  const autoAssign = () => {
+    const tx = getText(attendanceDeviceText).mapping;
+    const scope = (classId && classes.find((c) => String(c.id) === classId)?.name) || tx.allStudentsScope;
+    useConfirmStore.getState().show({
+      title: tx.autoAssignTitle,
+      message: tx.autoAssignMessage(scope),
+      confirmText: tx.autoAssignConfirm,
+      onConfirm: async () => {
+        setAssigning(true);
+        try {
+          const res = await attendanceDeviceApi.assignPins({
+            attendee_type: "STUDENT",
+            class_id: classId ? Number(classId) : undefined,
+          });
+          const created = Number(res?.created ?? 0);
+          useToastStore
+            .getState()
+            .show(created > 0 ? tx.autoAssignDone(localizeDigits(created, lang)) : tx.autoAssignNone, "success");
+          void loadStudents();
+          void loadUnmapped();
+        } catch {
+          // interceptor toast
+        } finally {
+          setAssigning(false);
+        }
+      },
+    });
+  };
+
   /* ---------- render ---------- */
 
   return (
@@ -183,6 +218,21 @@ export default function DeviceMappingPage() {
       <PageHeader
         title={t.title}
         subtitle={t.subtitle}
+        actions={
+          <>
+            <Link
+              to="/attendance/device-cards"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <CreditCard size={15} />
+              {t.cardsLink}
+            </Link>
+            <Button onClick={autoAssign} disabled={assigning} className="gap-1.5" title={t.autoAssignHint}>
+              <IdCard size={15} className={assigning ? "animate-pulse" : ""} />
+              {t.autoAssign}
+            </Button>
+          </>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -237,12 +287,13 @@ export default function DeviceMappingPage() {
           ) : (
             <div className={loading ? "opacity-60 transition" : "transition"}>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] text-sm">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-start text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="py-2 pe-3 font-medium">{t.student}</th>
                       <th className="py-2 pe-3 font-medium">{t.class}</th>
-                      <th className="py-2 font-medium">{t.k40UserId}</th>
+                      <th className="py-2 pe-3 font-medium">{t.k40UserId}</th>
+                      <th className="py-2 font-medium">{t.card}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -270,7 +321,7 @@ export default function DeviceMappingPage() {
                           <td className="py-2.5 pe-3 text-slate-700 dark:text-slate-300">
                             {row.class_name || "—"}
                           </td>
-                          <td className="py-2.5">
+                          <td className="py-2.5 pe-3">
                             <div className="flex items-center gap-1.5">
                               <Input
                                 value={value}
@@ -310,6 +361,9 @@ export default function DeviceMappingPage() {
                                 {err}
                               </p>
                             )}
+                          </td>
+                          <td className="py-2.5 font-mono text-xs text-slate-600 dark:text-slate-300">
+                            {row.card_number ? localizeDigits(row.card_number, lang) : "—"}
                           </td>
                         </tr>
                       );

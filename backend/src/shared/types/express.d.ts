@@ -7,7 +7,6 @@ declare global {
       user?: AuthenticatedUser;
       tenant?: TenantContext;
       guardian?: AuthenticatedGuardian;
-      kioskDevice?: { id: number; name: string };
       /** Set by attendanceDeviceConnectorAuth for /attendance-devices/connector/* requests. */
       attendanceDevice?: import("@prisma/client").AttendanceDevice;
     }

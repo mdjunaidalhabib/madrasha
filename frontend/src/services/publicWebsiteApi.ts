@@ -5,7 +5,7 @@ import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 // Deliberately its own bare axios instance rather than reusing the admin
-// app's authenticated client (see guardianApi.ts/attendanceKioskApi.ts for
+// app's authenticated client (see guardianApi.ts for
 // the same pattern) - these routes are hit by anonymous website visitors,
 // so no Authorization header or 401-triggered logout/redirect belongs here.
 const publicApi = axios.create({ baseURL: API_BASE_URL, timeout: 20_000 });

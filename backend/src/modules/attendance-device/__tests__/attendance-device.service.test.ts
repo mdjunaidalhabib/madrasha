@@ -122,7 +122,7 @@ describe("heartbeat + connector config", () => {
     await service.requestTest(10, created.id);
     const device = db.attendanceDevice[0] as any;
 
-    const cfgBefore = ingest.getConnectorConfig(device);
+    const cfgBefore = await ingest.getConnectorConfig(device);
     expect(cfgBefore.test_requested).toBe(true);
     expect(cfgBefore.comm_password).toBe("9999");
 
@@ -143,7 +143,7 @@ describe("heartbeat + connector config", () => {
       lastTestMessage: "connection timed out",
       connectorVersion: "1.2.0",
     });
-    expect(ingest.getConnectorConfig(db.attendanceDevice[0] as any).test_requested).toBe(false);
+    expect((await ingest.getConnectorConfig(db.attendanceDevice[0] as any)).test_requested).toBe(false);
   });
 
   it("an online heartbeat stamps last_device_contact_at and clears the last error", async () => {

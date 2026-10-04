@@ -20,7 +20,7 @@ import { DEFAULT_NOTIFICATION_TEMPLATES } from "../../notifications/notification
 import { AttendanceDeviceIngestService } from "../attendance-device-ingest.service";
 import { db, resetDb } from "./fake-prisma";
 
-// 2026-09-20 11:00 Dhaka
+// 2026-09-20 (Sunday) 11:00 Dhaka. Weekly off days only apply once configured.
 const NOW = new Date("2026-09-20T05:00:00.000Z");
 const service = new AttendanceDeviceIngestService(undefined, () => NOW);
 
@@ -293,7 +293,7 @@ describe("ingest: SMS enqueue", () => {
     seedStudent();
     seedMap();
     enableSms();
-    await ingest([ev({ timestamp: "2026-09-18T08:15:00+06:00" })]);
+    await ingest([ev({ timestamp: "2026-09-17T08:15:00+06:00" })]);
     expect(db.attendance).toHaveLength(1);
     expect(db.smsQueue).toHaveLength(0);
   });
@@ -337,7 +337,7 @@ describe("reprocess unmapped logs", () => {
     seedStudent();
     enableSms();
     await ingest([
-      ev({ event_id: "old", timestamp: "2026-09-18T08:00:00+06:00" }),
+      ev({ event_id: "old", timestamp: "2026-09-17T08:00:00+06:00" }),
       ev({ event_id: "today", timestamp: "2026-09-20T08:15:00+06:00" }),
     ]);
     expect(db.attendance).toHaveLength(0);
@@ -345,7 +345,7 @@ describe("reprocess unmapped logs", () => {
     seedMap();
     const totals = await service.reprocessUnmapped(10, "101", 501);
     expect(totals).toEqual({ logs: 2, attendance_marked: 2, sms_enqueued: 1 });
-    expect(db.attendance.map((a) => a.date.toISOString().slice(0, 10)).sort()).toEqual(["2026-09-18", "2026-09-20"]);
+    expect(db.attendance.map((a) => a.date.toISOString().slice(0, 10)).sort()).toEqual(["2026-09-17", "2026-09-20"]);
     expect(db.attendanceDeviceLog.every((l) => l.studentId === 501)).toBe(true);
     expect(db.smsQueue).toHaveLength(1);
     expect(db.smsQueue[0].dedupeKey).toBe("attn:10:501:2026-09-20:present");

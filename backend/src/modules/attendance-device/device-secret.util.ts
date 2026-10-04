@@ -36,7 +36,7 @@ export const decryptDeviceSecret = (payload: string): string => {
 /** Raw connector key; shown to the admin exactly once. */
 export const generateDeviceKey = (): string => `adk_${crypto.randomBytes(32).toString("hex")}`;
 
-/** SHA-256 hex of a raw connector key (same scheme as the kiosk device key). */
+/** SHA-256 hex of a raw connector key. */
 export const hashDeviceKey = (rawKey: string): string => crypto.createHash("sha256").update(rawKey).digest("hex");
 
 /** 01712345678 -> 017****78 (for logs and API responses; never log full numbers). */

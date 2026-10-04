@@ -25,10 +25,11 @@ const AdmissionPage = lazy(() => import("../features/students/AdmissionPage"));
 const PendingAdmissionsPage = lazy(() => import("../features/students/PendingAdmissionsPage"));
 const RejectedAdmissionsPage = lazy(() => import("../features/students/RejectedAdmissionsPage"));
 const AttendanceMarkPage = lazy(() => import("../features/attendance/AttendanceMarkPage"));
-const AttendanceKioskDevicesPage = lazy(() => import("../features/attendance/AttendanceKioskDevicesPage"));
 const AttendanceDevicesPage = lazy(() => import("../features/attendance-device/AttendanceDevicesPage"));
 const DeviceMappingPage = lazy(() => import("../features/attendance-device/DeviceMappingPage"));
 const DeviceTodayPage = lazy(() => import("../features/attendance-device/DeviceTodayPage"));
+const DeviceCardsPage = lazy(() => import("../features/attendance-device/DeviceCardsPage"));
+const DeviceSettingsPage = lazy(() => import("../features/attendance-device/DeviceSettingsPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const StudentPhotoManagerPage = lazy(() => import("../features/students/StudentPhotoManagerPage"));
@@ -381,10 +382,6 @@ const madrasaAdminChildren = [
     element: <ModuleGuard module="attendance">{withSuspense(<AttendanceMarkPage />)}</ModuleGuard>,
   },
   {
-    path: "attendance/kiosk-devices",
-    element: <ModuleGuard module="attendance">{withSuspense(<AttendanceKioskDevicesPage />)}</ModuleGuard>,
-  },
-  {
     path: "attendance/devices",
     element: (
       <ModuleGuard module="attendance">
@@ -410,6 +407,26 @@ const madrasaAdminChildren = [
       <ModuleGuard module="attendance">
         <PermissionGuard permission={["attendance_device.view", "attendance_device.manage"]}>
           {withSuspense(<DeviceTodayPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/device-cards",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission="attendance_device.manage">
+          {withSuspense(<DeviceCardsPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/device-settings",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission="attendance_device.manage">
+          {withSuspense(<DeviceSettingsPage />)}
         </PermissionGuard>
       </ModuleGuard>
     ),
@@ -674,8 +691,8 @@ export const router = createBrowserRouter([
   { path: "/admin/login", element: <Navigate to="/login" replace /> },
   { path: "/admin/*", element: <Navigate to="/dashboard" replace /> },
 
-  // The public madrasa website, admission form, guardian portal, and
-  // attendance kiosk now live in the separate "frontend" app (its own
+  // The public madrasa website, admission form, and guardian portal
+  // now live in the separate "frontend" app (its own
   // domain) - see frontend/src/app/router.tsx. Only the staff-only print
   // routes below still live here, since they're rendered by the backend's
   // authenticated headless-browser PDF export, not visited by the public.

@@ -64,6 +64,7 @@ model Staff {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  attendanceDeviceMaps AttendanceDeviceUserMap[]
 
   @@unique([madrasaId, email], map: "uniq_staff_email")
   @@unique([madrasaId, registrationNo], map: "uniq_staff_registration_no")

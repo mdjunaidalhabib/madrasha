@@ -47,6 +47,18 @@ export interface AppConfig {
   connectTimeoutMs: number;
   commandTimeoutMs: number;
   httpTimeoutMs: number;
+  /** user record layout written to the K40: 'auto' = what the device's user list uses (empty device -> 72) */
+  userRecordSize: 'auto' | 72 | 28;
+  /** realtime event codes (header session field) that carry a card number. UNVERIFIED on a real K40: see watch-events */
+  cardEventCodes: number[];
+  /** write/delete device users from the cloud list (GET /users) and allow card enrollment. false = never write users */
+  userSyncEnabled: boolean;
+  /** long-poll wait for GET /commands (0..25 s); the HTTP timeout of that call is this + 10 s */
+  commandsWaitSec: number;
+  /** during an enrollment, how often the device user list is re-read to catch a card enrolled via the K40 menu */
+  enrollmentUserPollMs: number;
+  /** clock auto-sync: the device clock is corrected when |drift| exceeds this (and the cloud says auto_time_sync) */
+  clockSyncThresholdSec: number;
   /** poll interval used while the K40 is unreachable is derived from retry backoff */
   configDir: string;
 }
@@ -72,6 +84,12 @@ export const DEFAULTS = {
   connectTimeoutMs: 10000,
   commandTimeoutMs: 15000,
   httpTimeoutMs: 20000,
+  userRecordSize: 'auto' as const,
+  cardEventCodes: [1024, 2048],
+  userSyncEnabled: true,
+  commandsWaitSec: 15,
+  enrollmentUserPollMs: 4000,
+  clockSyncThresholdSec: 60,
 };
 
 export function defaultConfigPath(): string {
@@ -122,6 +140,23 @@ function num(v: unknown, def: number, name: string, min = 0): number {
 function validateOffset(o: string): string {
   if (!/^[+-]\d{2}:\d{2}$/.test(o)) throw new Error('deviceTimezoneOffset must look like "+06:00"');
   return o;
+}
+
+function parseUserRecordSize(v: unknown): AppConfig['userRecordSize'] {
+  if (v === undefined || v === null || v === '' || v === 'auto') return 'auto';
+  const n = Number(v);
+  if (n === 72 || n === 28) return n;
+  throw new Error('config.userRecordSize must be "auto", 72 or 28');
+}
+
+function parseCardEventCodes(v: unknown): number[] {
+  if (v === undefined || v === null) return [...DEFAULTS.cardEventCodes];
+  if (!Array.isArray(v) || v.length === 0) throw new Error('config.cardEventCodes must be a non-empty array of numbers (e.g. [1024, 2048])');
+  return v.map((x) => {
+    const n = Number(x);
+    if (!Number.isInteger(n) || n < 0 || n > 0xffff) throw new Error('config.cardEventCodes entries must be integers 0..65535');
+    return n;
+  });
 }
 
 /** Build a validated AppConfig from raw JSON-ish input (also used by tests). Secrets are passed in already resolved. */
@@ -178,6 +213,12 @@ export function buildConfig(
     connectTimeoutMs: num(raw.connectTimeoutMs, DEFAULTS.connectTimeoutMs, 'connectTimeoutMs', 10),
     commandTimeoutMs: num(raw.commandTimeoutMs, DEFAULTS.commandTimeoutMs, 'commandTimeoutMs', 10),
     httpTimeoutMs: num(raw.httpTimeoutMs, DEFAULTS.httpTimeoutMs, 'httpTimeoutMs', 10),
+    userRecordSize: parseUserRecordSize(raw.userRecordSize),
+    cardEventCodes: parseCardEventCodes(raw.cardEventCodes),
+    userSyncEnabled: raw.userSyncEnabled !== false,
+    commandsWaitSec: Math.min(25, num(raw.commandsWaitSec, DEFAULTS.commandsWaitSec, 'commandsWaitSec', 0)),
+    enrollmentUserPollMs: num(raw.enrollmentUserPollMs, DEFAULTS.enrollmentUserPollMs, 'enrollmentUserPollMs', 100),
+    clockSyncThresholdSec: num(raw.clockSyncThresholdSec, DEFAULTS.clockSyncThresholdSec, 'clockSyncThresholdSec', 5),
     configDir: baseDir,
   };
   if (cfg.device?.commKey !== undefined && !Number.isFinite(cfg.device.commKey)) throw new Error('config.device.commKey must be numeric');

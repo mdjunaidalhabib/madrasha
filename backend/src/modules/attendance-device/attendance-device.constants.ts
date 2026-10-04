@@ -30,3 +30,38 @@ export const ADMIN_PERMISSIONS = {
 
 export const MAX_REPROCESS_LOGS = 5000;
 export const MAX_TODAY_LOGS = 20000;
+
+/* ================= v2: people / cards / enrollment / rules ================= */
+
+export const PERSON_TYPES = ["STUDENT", "TEACHER", "STAFF"] as const;
+export type PersonType = (typeof PERSON_TYPES)[number];
+
+/** Short ASCII prefix used for a K40 user name when the person has no usable English name. */
+export const PERSON_NAME_PREFIX: Record<PersonType, string> = { STUDENT: "ST", TEACHER: "TR", STAFF: "SF" };
+/** K40 user name field is 24 bytes. */
+export const DEVICE_USER_NAME_MAX = 24;
+
+/** Enrollment ("tap the card") session lifetime. */
+export const ENROLLMENT_TTL_SEC = 120;
+/** GET /connector/commands long-poll bounds. */
+export const COMMANDS_DEFAULT_WAIT_SEC = 20;
+export const COMMANDS_MAX_WAIT_SEC = 25;
+export const COMMANDS_RECHECK_MS = 1000;
+
+/** A punch is a check-out only if it is at least this long after the check-in. */
+export const CHECKOUT_MIN_GAP_MS = 30 * 60 * 1000;
+
+/** SMS rule names (dedupe key suffix). */
+export const ATTENDANCE_SMS_RULES = { present: "present", checkout: "checkout", absent: "absent" } as const;
+
+/** Attendance.source for rows created by the auto-absent job. */
+export const AUTO_ABSENT_SOURCE = "auto";
+/** SmsQueue.source for the device offline alert. */
+export const DEVICE_ALERT_SMS_SOURCE = "device_alert";
+
+/** Background job cadence. */
+export const AUTO_ABSENT_INTERVAL_MS = 5 * 60 * 1000;
+export const OFFLINE_ALERT_INTERVAL_MS = 2 * 60 * 1000;
+export const JOBS_INITIAL_DELAY_MS = 45 * 1000;
+
+export const MAX_PEOPLE_PAGE_LIMIT = 500;

@@ -823,8 +823,7 @@ async function main() {
         sortOrder: 3,
       },
     ],
-    // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
-    // gate kiosk and its device management) lives in its own module instead
+    // Everything attendance-related (manual bulk-mark + biometric devices) lives in its own module instead
     // of being a students sub-feature, so it gets its own top-level sidebar
     // entry.
     attendance: [
@@ -839,12 +838,6 @@ async function main() {
         name: "Attendance",
         nameBn: "উপস্থিতি নিন",
         sortOrder: 2,
-      },
-      {
-        keyName: "kiosk_devices",
-        name: "Kiosk Devices",
-        nameBn: "কিওস্ক ডিভাইস",
-        sortOrder: 3,
       },
       {
         keyName: "attendance_devices",
@@ -863,6 +856,18 @@ async function main() {
         name: "Today's Device Attendance",
         nameBn: "আজকের উপস্থিতি (ডিভাইস)",
         sortOrder: 6,
+      },
+      {
+        keyName: "attendance_device_cards",
+        name: "Card Enrollment",
+        nameBn: "কার্ড এনরোলমেন্ট",
+        sortOrder: 7,
+      },
+      {
+        keyName: "attendance_device_settings",
+        name: "Device Settings",
+        nameBn: "ডিভাইস সেটিংস",
+        sortOrder: 8,
       },
     ],
     communication: [
@@ -933,7 +938,6 @@ async function main() {
 
     { keyName: "attendance.read", name: "উপস্থিতি দেখুন" },
     { keyName: "attendance.mark", name: "উপস্থিতি নিন" },
-    { keyName: "kiosk.manage", name: "কিওস্ক ডিভাইস ব্যবস্থাপনা" },
     { keyName: "attendance_device.manage", name: "বায়োমেট্রিক ডিভাইস ব্যবস্থাপনা" },
     { keyName: "attendance_device.view", name: "বায়োমেট্রিক ডিভাইস ও উপস্থিতি দেখুন" },
 

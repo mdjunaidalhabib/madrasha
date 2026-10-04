@@ -1,8 +1,8 @@
-// The public madrasa website, admission form, guardian portal, and
-// attendance kiosk moved out of this app into the separate "frontend" app
+// The public madrasa website, admission form, and guardian portal
+// moved out of this app into the separate "frontend" app
 // (its own domain) - see ARCHITECTURE.md. Links this app builds to those
 // pages (dashboard's "view public website" card, the website builder's
-// preview link, the kiosk device setup page) must point at that app's
+// preview link) must point at that app's
 // origin, not this app's own window.location.origin.
 //
 // Named VITE_PUBLIC_SITE_URL (not VITE_FRONTEND_*) on purpose - the backend
@@ -16,8 +16,4 @@ const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefi
 // that one extra hop for links built here.
 export function getPublicSiteUrl(slug: string, customDomain?: string | null) {
   return customDomain ? `https://${customDomain}` : `${PUBLIC_SITE_URL}/${slug}`;
-}
-
-export function getPublicSiteKioskUrl(slug: string, customDomain?: string | null) {
-  return customDomain ? `https://${customDomain}/kiosk` : `${PUBLIC_SITE_URL}/${slug}/kiosk`;
 }

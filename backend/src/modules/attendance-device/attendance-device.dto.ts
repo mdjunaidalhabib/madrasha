@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { MAX_INGEST_EVENTS, MAX_POLL_INTERVAL_SEC, MIN_POLL_INTERVAL_SEC } from "./attendance-device.constants";
+import {
+  COMMANDS_DEFAULT_WAIT_SEC,
+  COMMANDS_MAX_WAIT_SEC,
+  MAX_INGEST_EVENTS,
+  MAX_PEOPLE_PAGE_LIMIT,
+  MAX_POLL_INTERVAL_SEC,
+  MIN_POLL_INTERVAL_SEC,
+  PERSON_TYPES,
+} from "./attendance-device.constants";
+import { HHMM_RE, PIN_MODES, toAsciiDigits } from "./attendance-device-rules";
 import { vmsg } from "../../shared/validators/messages";
 
 /* ================= shared field schemas ================= */
@@ -64,7 +73,107 @@ export type ListMappingsQuery = z.infer<typeof listMappingsQuerySchema>;
 export const todayQuerySchema = z.object({
   date: z.string().trim().optional(),
   device_id: z.coerce.number().int().positive().optional(),
+  attendee_type: z.enum(PERSON_TYPES).default("STUDENT"),
 });
+export type TodayQuery = z.infer<typeof todayQuerySchema>;
+
+/* ================= admin: settings / holidays ================= */
+
+const hhmm = z
+  .string()
+  .trim()
+  .regex(HHMM_RE, vmsg({ bn: "সময় অবশ্যই HH:mm (২৪ ঘণ্টা) ফরম্যাটে হতে হবে", en: "time must be HH:mm (24h)" }));
+
+export const updateSettingsSchema = z
+  .object({
+    late_enabled: z.boolean(),
+    student_start_time: hhmm,
+    teacher_start_time: hhmm,
+    late_grace_minutes: z.coerce.number().int().min(0).max(180),
+    auto_absent_enabled: z.boolean(),
+    absent_cutoff_time: hhmm,
+    checkout_enabled: z.boolean(),
+    checkout_after_time: hhmm,
+    weekly_off_days: z
+      .array(z.coerce.number().int().min(0).max(6))
+      .max(7)
+      .refine((days) => new Set(days).size === days.length, vmsg({ bn: "সাপ্তাহিক ছুটির দিন একবারই দিন", en: "weekly_off_days must be unique" })),
+    offline_alert_enabled: z.boolean(),
+    offline_alert_minutes: z.coerce.number().int().min(5).max(1440),
+    alert_phone: z
+      .string()
+      .trim()
+      .max(20)
+      .regex(/^\+?[0-9]{6,19}$|^$/, vmsg({ bn: "সতর্কতার ফোন নম্বর সঠিক নয়", en: "alert_phone is invalid" }))
+      .nullable(),
+    auto_time_sync: z.boolean(),
+    pin_mode: z.enum(PIN_MODES),
+    pin_start: z.coerce.number().int().min(1).max(99_999_999),
+  })
+  .partial();
+export type UpdateSettingsDto = z.infer<typeof updateSettingsSchema>;
+
+const dateString = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, vmsg({ bn: "তারিখ অবশ্যই YYYY-MM-DD ফরম্যাটে হতে হবে", en: "date must be YYYY-MM-DD" }));
+
+export const holidaysQuerySchema = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional() });
+export const createHolidaySchema = z.object({ date: dateString, title: z.string().trim().min(1).max(150) });
+export type CreateHolidayDto = z.infer<typeof createHolidaySchema>;
+
+/* ================= admin: people / cards / enrollment ================= */
+
+const personType = z.enum(PERSON_TYPES);
+const cardNumberInput = z
+  .union([z.string(), z.number()])
+  // Bangla digits -> ASCII, same normalisation as the connector "captured" path.
+  .transform((v) => toAsciiDigits(String(v)).trim())
+  .pipe(
+    z
+      .string()
+      .regex(/^[0-9]{1,20}$/, vmsg({ bn: "কার্ড নম্বরে শুধু ১-২০টি অঙ্ক থাকতে পারে", en: "card_number must be 1-20 digits" }))
+      .refine((v) => /[1-9]/.test(v), vmsg({ bn: "কার্ড নম্বর ০ হতে পারে না", en: "card_number cannot be 0" })),
+  );
+
+export const peopleQuerySchema = z.object({
+  attendee_type: personType.default("STUDENT"),
+  class_id: z.coerce.number().int().positive().optional(),
+  search: z.string().trim().max(100).optional(),
+  has_card: z.enum(["true", "false"]).optional(),
+  attendee_id: z.coerce.number().int().positive().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(MAX_PEOPLE_PAGE_LIMIT).default(50),
+});
+export type PeopleQuery = z.infer<typeof peopleQuerySchema>;
+
+export const assignPinsSchema = z.object({
+  attendee_type: personType,
+  class_id: z.coerce.number().int().positive().optional().nullable(),
+});
+export type AssignPinsDto = z.infer<typeof assignPinsSchema>;
+
+export const convertPinsSchema = z.object({ attendee_type: personType.optional().nullable() });
+export type ConvertPinsDto = z.infer<typeof convertPinsSchema>;
+
+export const setCardSchema = z.object({
+  attendee_type: personType,
+  attendee_id: z.coerce.number().int().positive(),
+  card_number: cardNumberInput,
+});
+export type SetCardDto = z.infer<typeof setCardSchema>;
+
+export const personParamsSchema = z.object({
+  attendeeType: z.string().trim().toUpperCase().pipe(personType),
+  attendeeId: z.coerce.number().int().positive(),
+});
+
+export const createEnrollmentSchema = z.object({
+  attendee_type: personType,
+  attendee_id: z.coerce.number().int().positive(),
+  device_id: z.coerce.number().int().positive().optional().nullable(),
+});
+export type CreateEnrollmentDto = z.infer<typeof createEnrollmentSchema>;
 
 export const smsStatusQuerySchema = z.object({ date: z.string().trim().optional() });
 
@@ -85,8 +194,27 @@ export const heartbeatSchema = z.object({
   error: z.string().max(2000).nullable().optional(),
   test_result: z.object({ ok: z.boolean(), message: z.string().max(2000).nullable().optional() }).optional(),
   connector_version: z.string().max(32).nullable().optional(),
+  clock_drift_sec: z.coerce.number().int().min(-2_000_000_000).max(2_000_000_000).nullable().optional(),
+  users_synced_version: z.string().max(64).nullable().optional(),
+  user_sync_error: z.string().max(2000).nullable().optional(),
+  device_user_count: z.coerce.number().int().min(0).max(10_000_000).nullable().optional(),
 });
 export type HeartbeatDto = z.infer<typeof heartbeatSchema>;
+
+export const commandsQuerySchema = z.object({
+  device_id: deviceCode.optional(),
+  institution_id: institutionId,
+  wait: z.coerce.number().int().min(0).max(COMMANDS_MAX_WAIT_SEC).default(COMMANDS_DEFAULT_WAIT_SEC),
+});
+
+export const enrollmentReportSchema = z.object({
+  device_id: deviceCode.optional(),
+  institution_id: institutionId,
+  status: z.enum(["waiting", "captured", "failed", "expired"]),
+  card_number: z.union([z.string().max(40), z.number()]).nullable().optional(),
+  message: z.string().max(2000).nullable().optional(),
+});
+export type EnrollmentReportDto = z.infer<typeof enrollmentReportSchema>;
 
 /** Envelope only - each event is validated individually so one bad event is
  * reported as 'rejected' instead of failing the whole batch. */

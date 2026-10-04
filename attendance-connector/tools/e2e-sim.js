@@ -4,7 +4,8 @@
  * End-to-end simulation (no hardware, no real cloud):
  *   fake K40 (comm key + 40-byte records) -> Connector -> fake cloud
  * Scenario: normal sync -> cloud goes down while punches keep arriving -> connector restarts (PC reboot) while
- * still offline -> cloud returns (first reply is lost on purpose) -> verify everything arrived exactly once.
+ * still offline -> cloud returns (first reply is lost on purpose) -> verify everything arrived exactly once
+ * -> cloud user list synced to the K40 -> card enrollment by a realtime card swipe.
  *
  * Run: npm run e2e     (needs `npm run build` first; the npm script does it)
  */
@@ -61,6 +62,9 @@ async function main() {
       httpTimeoutMs: 2000,
       connectTimeoutMs: 1000,
       commandTimeoutMs: 2000,
+      // a users_version change is only noticed when the /commands long-poll returns: keep it short in the sim
+      commandsWaitSec: 2,
+      enrollmentUserPollMs: 1000,
     },
     dir,
     cloud.deviceKey,
@@ -114,7 +118,11 @@ async function main() {
   say('PHASE 4: CLOUD BACK. The first ingest reply is deliberately lost (cloud stores, connector never hears)');
   cloud.dropNextResponses(1);
   cloud.setMode('up');
-  await waitFor(() => conn.queue.counts().synced >= 10 && conn.queue.counts().pending === 0, 10000, 'all synced');
+  // wait for in-flight batches too: pending === 0 alone is true while the last batch is still 'syncing'
+  await waitFor(() => {
+    const c = conn.queue.counts();
+    return c.pending === 0 && c.syncing === 0 && cloud.events.size === k40.punches.length;
+  }, 10000, 'all synced');
   const total = k40.punches.length;
   const ids = cloud.acceptedEvents.map((e) => e.event_id);
   say(`K40 holds ${total} punches; cloud stored ${cloud.events.size}; cloud saw ${cloud.received.length} event copies in ${cloud.stats.ingestCalls} ingest calls`);
@@ -139,6 +147,31 @@ async function main() {
   check('device log never cleared', k40.stats.clearCalls === 0 && k40.punches.length === total);
   check('device re-enabled after every session', k40.disabled === false && k40.stats.checksumErrors === 0);
 
+  // ---- phase 7: cloud user list -> K40 (user sync), then card enrollment by realtime swipe
+  say('PHASE 7: admin assigns PINs in the panel -> connector writes the people to the K40');
+  cloud.setUsers([
+    { pin: '10001', name: 'Abdul Karim', card: null, attendee_type: 'STUDENT' },
+    { pin: '10002', name: 'Fatema Akter', card: '7001', attendee_type: 'STUDENT' },
+    { pin: '20001', name: 'Hafez Rahman', card: null, attendee_type: 'TEACHER' },
+  ]);
+  const v = cloud.usersVersion;
+  await waitFor(() => cloud.heartbeats.some((h) => h.users_synced_version === v), 10000, 'user sync reported');
+  const hbSync = cloud.heartbeats.find((h) => h.users_synced_version === v);
+  say(`user sync reported: device_user_count=${hbSync.device_user_count}, error=${hbSync.user_sync_error}`);
+  check('phase 7: cloud users written to the K40', ['10001', '10002', '20001'].every((p) => k40.users.has(p)) && k40.users.get('10002').card === 7001);
+  check('phase 7: manually created K40 users untouched', ['1001', '1002', '1003', '1004', '1005'].every((p) => k40.users.has(p)));
+
+  say('PHASE 8: admin clicks "enroll card" for a new student; the student taps the card on the K40');
+  const en = cloud.createEnrollment({ pin: '10003', name: 'Nusrat Jahan' });
+  await waitFor(() => cloud.enrollments.get(en.id).status === 'waiting', 10000, 'enrollment waiting');
+  say(`connector wrote user 10003 and waits for a card (device listeners: ${k40.eventListeners})`);
+  k40.swipeCard(88442211);
+  await waitFor(() => cloud.enrollments.get(en.id).status === 'completed', 6000, 'enrollment completed');
+  await waitFor(() => k40.users.get('10003') && k40.users.get('10003').card === 88442211, 4000, 'card on device');
+  check('phase 8: card captured by realtime swipe and linked in the cloud', cloud.enrollments.get(en.id).card_number === '88442211');
+  check('phase 8: card written to the K40 user, realtime events unregistered', k40.users.get('10003').card === 88442211 && k40.eventListeners === 0);
+  check('phase 8: device re-enabled, no checksum errors', k40.disabled === false && k40.stats.checksumErrors === 0);
+
   await conn.stop();
 
   // ---- report
@@ -154,6 +187,7 @@ async function main() {
   console.log(`K40 sessions / auth ok        : ${k40.stats.connections} / ${k40.stats.authOk}`);
   console.log(`K40 checksum errors           : ${k40.stats.checksumErrors}`);
   console.log(`K40 CLEAR_ATTLOG calls        : ${k40.stats.clearCalls}`);
+  console.log(`K40 user writes / deletes     : ${k40.stats.userWrites} / ${k40.stats.userDeletes}   realtime events sent/acked: ${k40.stats.eventsSent}/${k40.stats.eventAcks}`);
   console.log('checks:');
   for (const c of checks) console.log(`  [${c.ok ? 'PASS' : 'FAIL'}] ${c.name}${c.detail ? ' - ' + c.detail : ''}`);
   const failed = checks.filter((c) => !c.ok).length;

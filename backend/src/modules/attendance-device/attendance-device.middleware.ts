@@ -80,10 +80,11 @@ export const connectorFailedAuthLimiter = rateLimit({
 const deviceKeyOrIp = (req: Request) =>
   req.attendanceDevice ? `device:${req.attendanceDevice.id}` : (req.ip ?? "unknown");
 
-/** Per-device budget for config/heartbeat polling (default poll every 30s). */
+/** Per-device budget for config/heartbeat/users polling, the commands long-poll
+ * and enrollment progress reports (default poll every 30s). */
 export const connectorPollLimiter = rateLimit({
   windowMs: 60_000,
-  max: 60,
+  max: 120,
   keyGenerator: deviceKeyOrIp,
   standardHeaders: true,
   legacyHeaders: false,

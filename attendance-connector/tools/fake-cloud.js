@@ -5,12 +5,16 @@
  *   GET  /api/attendance-devices/connector/config
  *   POST /api/attendance-devices/connector/heartbeat
  *   POST /api/attendance-devices/connector/ingest      (in-memory dedupe by event_id)
+ *   GET  /api/attendance-devices/connector/users       (desired device users + sha256 version)
+ *   GET  /api/attendance-devices/connector/commands?wait=N  (long-poll: pending enrollment of this device)
+ *   POST /api/attendance-devices/connector/enrollments/:id  (waiting / captured / failed / expired)
  * Headers required: x-device-key, X-Madrasa-Slug.
  *
  * Toggle behaviour with setMode('up'|'down'|'error503'|'unauth'|'ratelimit'), dropNextResponses(n)
  * (process the ingest, then kill the connection before answering = "crash between send and ack").
  */
 const http = require('node:http');
+const crypto = require('node:crypto');
 
 const BASE = '/api/attendance-devices/connector';
 
@@ -39,6 +43,54 @@ class FakeCloud {
     this.ingestBatches = [];
     this.received = []; // every event sent, in arrival order (including duplicates)
     this.server = null;
+    // ---- v1.1: users, enrollments, clock
+    this.users = []; // [{pin, name, card, attendee_type}] sorted by pin
+    this.autoTimeSync = o.autoTimeSync !== false;
+    this.enrollments = new Map(); // id -> {id, device_user_id, name, card_number, attendee_type, expiresAt, status, message}
+    this.enrollmentReports = []; // every POST /enrollments/:id body (+ id)
+    this.nextEnrollmentId = 1;
+    this.stats.usersCalls = 0;
+    this.stats.commandsCalls = 0;
+    this.commandsEnabled = o.commandsEnabled !== false; // false = behave like an old backend (404)
+  }
+
+  /** replace the desired user list ({pin, name, card?, attendee_type?, prev_pin?}) */
+  setUsers(list) {
+    this.users = list
+      .map((u) => ({
+        pin: String(u.pin),
+        name: u.name,
+        card: u.card == null ? null : String(u.card),
+        attendee_type: u.attendee_type || 'STUDENT',
+        prev_pin: u.prev_pin == null ? null : String(u.prev_pin), // v2.1: previous PIN after a PIN conversion
+      }))
+      .sort((a, b) => Number(a.pin) - Number(b.pin) || a.pin.localeCompare(b.pin));
+  }
+
+  get usersVersion() {
+    return crypto.createHash('sha256').update(JSON.stringify(this.users)).digest('hex');
+  }
+
+  /** what the admin "enroll card" button does: ensure the person is in the user list, create a PENDING enrollment */
+  createEnrollment({ pin, name = 'Student ' + pin, card = null, attendeeType = 'STUDENT', ttlSec = 120 }) {
+    pin = String(pin);
+    if (!this.users.some((u) => u.pin === pin)) this.setUsers([...this.users, { pin, name, card: null, attendee_type: attendeeType }]);
+    for (const e of this.enrollments.values()) if (e.status === 'pending' || e.status === 'waiting') e.status = 'cancelled';
+    const id = this.nextEnrollmentId++;
+    const e = { id, device_user_id: pin, name, card_number: card, attendee_type: attendeeType, expiresAt: Date.now() + ttlSec * 1000, status: 'pending', message: null };
+    this.enrollments.set(id, e);
+    return e;
+  }
+
+  cancelEnrollment(id) {
+    const e = this.enrollments.get(id);
+    if (e && (e.status === 'pending' || e.status === 'waiting')) e.status = 'cancelled';
+    return e;
+  }
+
+  _expireLazily() {
+    const now = Date.now();
+    for (const e of this.enrollments.values()) if ((e.status === 'pending' || e.status === 'waiting') && e.expiresAt <= now) e.status = 'expired';
   }
 
   setMode(m) {
@@ -108,7 +160,22 @@ class FakeCloud {
     const url = req.url.split('?')[0];
     if (req.method === 'GET' && url === BASE + '/config') {
       this.stats.configCalls++;
-      return this._ok(res, { ...this.config, test_requested: this.testRequested, server_time: new Date().toISOString() });
+      return this._ok(res, {
+        ...this.config,
+        test_requested: this.testRequested,
+        server_time: new Date().toISOString(),
+        users_version: this.usersVersion,
+        auto_time_sync: this.autoTimeSync,
+      });
+    }
+    if (req.method === 'GET' && url === BASE + '/users') {
+      this.stats.usersCalls++;
+      return this._ok(res, { version: this.usersVersion, users: this.users });
+    }
+    if (req.method === 'GET' && url === BASE + '/commands') {
+      if (!this.commandsEnabled) return this._json(res, 404, { success: false, message: 'not found' });
+      this.stats.commandsCalls++;
+      return this._commands(req, res);
     }
     const body = raw ? JSON.parse(raw) : {};
     if (req.method === 'POST' && url === BASE + '/heartbeat') {
@@ -118,7 +185,68 @@ class FakeCloud {
       return this._ok(res, { received: true });
     }
     if (req.method === 'POST' && url === BASE + '/ingest') return this._ingest(req, res, body);
+    const m = /^\/api\/attendance-devices\/connector\/enrollments\/(\d+)$/.exec(url);
+    if (req.method === 'POST' && m) return this._enrollmentReport(res, Number(m[1]), body);
     this._json(res, 404, { success: false, message: 'not found' });
+  }
+
+  _commands(req, res) {
+    const q = new URL(req.url, 'http://x').searchParams;
+    const wait = Math.max(0, Math.min(25, Number(q.get('wait') ?? 20)));
+    const until = Date.now() + wait * 1000;
+    let closed = false;
+    res.on('close', () => (closed = true));
+    const tick = () => {
+      if (closed) return;
+      this._expireLazily();
+      const e = [...this.enrollments.values()].find((x) => x.status === 'pending');
+      if (e || Date.now() >= until || this.mode !== 'up') {
+        return this._ok(res, {
+          enrollment: e
+            ? { id: e.id, device_user_id: e.device_user_id, name: e.name, card_number: e.card_number, attendee_type: e.attendee_type, expires_at: new Date(e.expiresAt).toISOString() }
+            : null,
+          users_version: this.usersVersion,
+          server_time: new Date().toISOString(),
+        });
+      }
+      setTimeout(tick, 25);
+    };
+    tick();
+  }
+
+  _enrollmentReport(res, id, body) {
+    this.enrollmentReports.push({ id, ...body });
+    const e = this.enrollments.get(id);
+    if (!e || body.device_id !== this.deviceId) return this._json(res, 404, { success: false, message: 'enrollment not found' });
+    const st = body.status;
+    if (!['waiting', 'captured', 'failed', 'expired'].includes(st)) return this._json(res, 400, { success: false, message: 'bad status' });
+    if (st === 'failed' || st === 'expired') {
+      if (e.status === 'pending' || e.status === 'waiting') {
+        e.status = st;
+        e.message = body.message || null;
+      }
+      return this._ok(res, { ok: true, status: e.status });
+    }
+    if (e.status !== 'pending' && e.status !== 'waiting') return this._ok(res, { ok: false, status: e.status });
+    if (st === 'waiting') {
+      e.status = 'waiting';
+      e.message = body.message || null;
+      return this._ok(res, { ok: true, status: 'waiting' });
+    }
+    // captured
+    const card = String(body.card_number || '').replace(/^0+/, '');
+    if (!/^[0-9]{1,20}$/.test(String(body.card_number || '')) || !card) return this._json(res, 400, { success: false, message: 'invalid card_number' });
+    const other = this.users.find((u) => u.card === card && u.pin !== e.device_user_id);
+    if (other) {
+      e.status = 'failed';
+      e.message = `card already used by ${other.name}`;
+      return this._ok(res, { ok: false, status: 'failed', message: e.message });
+    }
+    this.setUsers(this.users.map((u) => (u.pin === e.device_user_id ? { ...u, card } : u)));
+    e.status = 'completed';
+    e.card_number = card;
+    const u = this.users.find((x) => x.pin === e.device_user_id);
+    return this._ok(res, { ok: true, status: 'completed', user: { pin: u.pin, name: u.name, card: u.card } });
   }
 
   _ingest(req, res, body) {

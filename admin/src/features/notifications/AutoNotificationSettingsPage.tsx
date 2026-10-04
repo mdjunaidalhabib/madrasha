@@ -42,6 +42,16 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
   ATTENDANCE_PRESENT: {
     title: "ডিভাইসে উপস্থিতির পর",
     hint: "K40 ডিভাইসে শিক্ষার্থীর আঙুলের ছাপ নেওয়ার পর উপস্থিতি সার্ভারে সেভ হলে অভিভাবককে দিনে একবার SMS যাবে (ডিফল্টভাবে বন্ধ)",
+    placeholders: "{name} {class} {roll} {status} {time} {date}",
+  },
+  ATTENDANCE_ABSENT: {
+    title: "অনুপস্থিত হলে",
+    hint: "নির্ধারিত সময়ের মধ্যে ডিভাইসে পাঞ্চ না করলে শিক্ষার্থীকে স্বয়ংক্রিয়ভাবে অনুপস্থিত ধরা হয় এবং অভিভাবককে SMS যায় (ডিফল্টভাবে বন্ধ)",
+    placeholders: "{name} {class} {roll} {date}",
+  },
+  ATTENDANCE_CHECKOUT: {
+    title: "ডিভাইসে চেক-আউটের পর",
+    hint: "ছুটির পর শিক্ষার্থী ডিভাইসে পাঞ্চ করে বের হলে অভিভাবককে দিনে একবার SMS যায় (ডিফল্টভাবে বন্ধ)",
     placeholders: "{name} {class} {roll} {time} {date}",
   },
 };

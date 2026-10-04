@@ -32,7 +32,15 @@ export const notificationsText = defineText({
       },
       ATTENDANCE_PRESENT: {
         title: "ডিভাইসে উপস্থিতির পর",
-        hint: "K40 ডিভাইসে শিক্ষার্থীর আঙুলের ছাপ নেওয়ার পর উপস্থিতি সার্ভারে সেভ হলে অভিভাবককে দিনে একবার SMS যাবে (ডিফল্টভাবে বন্ধ)",
+        hint: "K40 ডিভাইসে শিক্ষার্থীর কার্ড/আঙুলের ছাপ নেওয়ার পর উপস্থিতি সার্ভারে সেভ হলে অভিভাবককে দিনে একবার SMS যাবে ({status} = উপস্থিত / দেরিতে উপস্থিত; ডিফল্টভাবে বন্ধ)",
+      },
+      ATTENDANCE_ABSENT: {
+        title: "অনুপস্থিত হলে",
+        hint: "ডিভাইস সেটিংসে ঠিক করা সময়ের মধ্যে পাঞ্চ না করলে শিক্ষার্থীকে স্বয়ংক্রিয়ভাবে অনুপস্থিত ধরা হয় এবং অভিভাবককে SMS যায় (ডিফল্টভাবে বন্ধ)",
+      },
+      ATTENDANCE_CHECKOUT: {
+        title: "ডিভাইসে চেক-আউটের পর",
+        hint: "ছুটির পর শিক্ষার্থী ডিভাইসে পাঞ্চ করে বের হলে অভিভাবককে দিনে একবার SMS যায় (ডিফল্টভাবে বন্ধ)",
       },
     } as Record<string, EventLabel>,
     saveFailed: "সেভ করতে সমস্যা হয়েছে",
@@ -121,7 +129,15 @@ export const notificationsText = defineText({
       EXAM_FEE_ACTIVATED: { title: "After exam fee is activated", hint: "When an exam fee is activated, the related students' guardians get an SMS automatically" },
       ATTENDANCE_PRESENT: {
         title: "After device attendance",
-        hint: "After a fingerprint on the K40 device is saved as attendance, the guardian gets one SMS per day (off by default)",
+        hint: "After a card/fingerprint on the K40 device is saved as attendance, the guardian gets one SMS per day ({status} = present / late; off by default)",
+      },
+      ATTENDANCE_ABSENT: {
+        title: "When absent",
+        hint: "If a student doesn't punch on the device by the cut-off time set in device settings, they are marked absent automatically and the guardian gets an SMS (off by default)",
+      },
+      ATTENDANCE_CHECKOUT: {
+        title: "After device check-out",
+        hint: "When a student punches out on the device after school, the guardian gets one SMS per day (off by default)",
       },
     },
     saveFailed: "Could not save",

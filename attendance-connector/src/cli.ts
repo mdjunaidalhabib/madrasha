@@ -3,12 +3,22 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { defaultConfigPath, loadConfig, validateApiBaseUrl, type AppConfig } from './config';
-import { Connector, deviceDriftSec, friendlyDeviceError, punchesToEvents, readDevicePunches, testDevice } from './connector';
-import { CONNECTOR_VERSION } from './cloud';
+import {
+  Connector,
+  deviceDriftSec,
+  friendlyDeviceError,
+  makeZkClient,
+  punchesToEvents,
+  readDevicePunches,
+  syncDeviceUsers,
+  testDevice,
+} from './connector';
+import { CloudClient, CONNECTOR_VERSION } from './cloud';
 import { Logger, registerSecret } from './logger';
 import { EventQueue, QueueLockedError } from './queue';
 import { dpapiAvailable, writeProtectedFile, type ProtectScope } from './secret';
-import { zkTimeToText } from './protocol';
+import { extractCardFromEvent, REG_EVENT_ALL, zkTimeToText } from './protocol';
+import { deviceLock, loadUserState } from './device-users';
 
 const HELP = `attendance-connector ${CONNECTOR_VERSION}  (K40 -> local queue -> HTTPS cloud)
 
@@ -21,6 +31,11 @@ Commands:
   fetch-once [--dry-run]  read punches once; --dry-run prints them without touching the queue
   status                  queue counts (pending/syncing/synced/failed), last sync, last K40 contact
   retry-failed            move 'failed' events back to 'pending' (stop the service first)
+  watch-events [--seconds N]
+                          subscribe to K40 realtime events and print each one (code, hex data, card);
+                          swipe a card to verify card capture / find the right cardEventCodes (default 60 s)
+  sync-users [--dry-run]  write the cloud's user list to the K40 once; --dry-run only prints the plan
+                          (without --dry-run the service must be stopped)
   version | help
 
 Options:
@@ -298,6 +313,129 @@ function cmdRetryFailed(cfg: AppConfig): number {
   }
 }
 
+function argValue(args: string[], name: string): string | undefined {
+  const i = args.indexOf(name);
+  return i === -1 ? undefined : args[i + 1];
+}
+
+/** Technician tool: print every realtime event the K40 pushes (card swipes, verifications, ...). */
+async function cmdWatchEvents(cfg: AppConfig, args: string[]): Promise<number> {
+  const seconds = Number(argValue(args, '--seconds') ?? 60);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    console.error('--seconds must be a positive number');
+    return 1;
+  }
+  const log = makeLogger(cfg, true);
+  const conn = new Connector(cfg, log, { queue: undefined });
+  const s = await conn.resolveSettings();
+  if (!s) {
+    console.error('No K40 IP known: set "device.ip" in config.json or make the cloud config available.');
+    return 1;
+  }
+  let stop = false;
+  const onSig = () => {
+    stop = true;
+  };
+  process.on('SIGINT', onSig);
+  try {
+    return await deviceLock.run(async () => {
+      const client = makeZkClient(cfg, s, log);
+      let registered = false;
+      try {
+        await client.connect();
+        await client.regEvent(REG_EVENT_ALL);
+        registered = true;
+        console.log(`Listening for realtime events from ${s.ip}:${s.port} for ${seconds}s (Ctrl+C to stop).`);
+        console.log(`Swipe a card / punch now. Card event codes in config: [${cfg.cardEventCodes.join(', ')}]`);
+        const end = Date.now() + seconds * 1000;
+        let n = 0;
+        while (!stop && Date.now() < end) {
+          const ev = await client.waitForEvent(Math.min(500, end - Date.now()));
+          if (!ev) continue;
+          n++;
+          const card = extractCardFromEvent(ev, cfg.cardEventCodes);
+          const anyU32 = ev.data.length >= 4 ? ev.data.readUInt32LE(0) : undefined;
+          console.log(
+            `${new Date(ev.receivedAt).toISOString()}  code=${ev.code}  len=${ev.data.length}  hex=${ev.data.toString('hex') || '-'}` +
+              `  card=${card ?? '-'}${!card && anyU32 ? `  (u32 of first 4 bytes: ${anyU32})` : ''}`,
+          );
+        }
+        console.log(`${n} event(s) received.`);
+        if (n === 0) console.log('No events: check that the firmware supports realtime events (CMD_REG_EVENT).');
+        return 0;
+      } catch (e) {
+        console.error(`FAILED: ${friendlyDeviceError(e)}`);
+        return 2;
+      } finally {
+        if (registered) await client.regEvent(0).catch(() => undefined);
+        await client.close();
+      }
+    });
+  } finally {
+    process.removeListener('SIGINT', onSig);
+  }
+}
+
+/** One-shot user sync (or its plan with --dry-run). */
+async function cmdSyncUsers(cfg: AppConfig, args: string[]): Promise<number> {
+  const dry = args.includes('--dry-run');
+  const log = makeLogger(cfg, true);
+  let q: EventQueue | undefined;
+  if (!dry) {
+    try {
+      q = EventQueue.open(cfg.localQueuePath); // takes the queue lock: refuses while the service runs
+    } catch (e) {
+      if (e instanceof QueueLockedError) {
+        console.error(`${e.message}. Stop the connector service first (schtasks /End /TN AttendanceConnector), or use --dry-run.`);
+        return 3;
+      }
+      throw e;
+    }
+  }
+  try {
+    const conn = new Connector(cfg, log, { queue: q });
+    const s = await conn.resolveSettings();
+    if (!s) {
+      console.error('No K40 IP known: set "device.ip" in config.json or make the cloud config available.');
+      return 1;
+    }
+    const r = await new CloudClient(cfg).getUsers();
+    if (!r.ok || !r.data) {
+      console.error(`Cloud user list unavailable: ${r.error}`);
+      return 1;
+    }
+    const state = loadUserState(cfg.localQueuePath);
+    const out = await syncDeviceUsers(cfg, s, log, r.data, state, { dryRun: dry });
+    const p = out.plan;
+    console.log(`Cloud: ${r.data.users.length} user(s), version ${r.data.version.slice(0, 12)}...   Device: ${out.deviceUsers.length} user(s), writing ${out.recordSize}-byte records`);
+    console.log(`Managed by this connector (may be deleted when removed in the cloud): ${state.managed.length}`);
+    for (const w of p.create) console.log(`  CREATE  pin=${w.pin}  name="${w.name}"  card=${w.card || '-'}`);
+    for (const w of p.rename) console.log(`  RENAME  pin=${w.fromPin} -> ${w.pin}  uid=${w.uid}  name="${w.name}"  card=${w.card || '-'}  (same uid: fingerprints kept)`);
+    for (const w of p.update) console.log(`  UPDATE  pin=${w.pin}  uid=${w.uid}  name="${w.name}"  card=${w.card || '-'}  (${w.reason})`);
+    for (const d of p.delete) console.log(`  DELETE  pin=${d.pin}  uid=${d.uid}  name="${d.name}"  (created by connector, no longer in cloud)`);
+    for (const k of p.skipped) console.log(`  SKIP    pin=${k.pin}  ${k.reason}`);
+    console.log(`  unchanged: ${p.unchanged}`);
+    const unmanaged = out.deviceUsers.filter((u) => !state.managed.includes(u.userId) && !r.data!.users.some((x) => x.pin === u.userId) && !p.rename.some((w) => w.fromPin === u.userId));
+    if (unmanaged.length) console.log(`  kept (on device, not in cloud, not created by connector - never deleted): ${unmanaged.length}`);
+    if (dry) {
+      console.log('dry-run: nothing written to the device.');
+      return 0;
+    }
+    const res = out.result!;
+    console.log(`Done: created ${res.created}, updated ${res.updated}, renamed ${res.renamed}, deleted ${res.deleted}; device now has ${res.deviceUserCount} user(s).`);
+    if (res.errors.length) {
+      console.error(`Errors (${res.errors.length}):\n  ${res.errors.slice(0, 10).join('\n  ')}`);
+      return 2;
+    }
+    return 0;
+  } catch (e) {
+    console.error(`FAILED: ${friendlyDeviceError(e)}`);
+    return 2;
+  } finally {
+    q?.close();
+  }
+}
+
 /* ------------------------------------------------------------------- main */
 
 async function main(argv: string[]): Promise<number> {
@@ -337,6 +475,10 @@ async function main(argv: string[]): Promise<number> {
       return cmdStatus(cfg);
     case 'retry-failed':
       return cmdRetryFailed(cfg);
+    case 'watch-events':
+      return cmdWatchEvents(cfg, args);
+    case 'sync-users':
+      return cmdSyncUsers(cfg, args);
     default:
       console.error(`Unknown command: ${cmd}\n\n${HELP}`);
       return 1;

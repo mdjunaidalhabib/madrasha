@@ -53,7 +53,9 @@ export type NotificationEventKey =
   | "SALARY_PAYMENT"
   | "RESULT_PUBLISHED"
   | "EXAM_FEE_ACTIVATED"
-  | "ATTENDANCE_PRESENT";
+  | "ATTENDANCE_PRESENT"
+  | "ATTENDANCE_ABSENT"
+  | "ATTENDANCE_CHECKOUT";
 
 export interface NotificationSettingItem {
   eventKey: NotificationEventKey;

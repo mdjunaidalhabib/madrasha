@@ -3,6 +3,7 @@ import { KeyRound, Pencil, Plus, Power, RefreshCw, Trash2, Zap } from "lucide-re
 
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
+import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import ErrorState from "@madrasha/shared-ui/src/components/ui/ErrorState";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -38,6 +39,39 @@ const ts = (value: string | null | undefined) => {
   const t = new Date(value).getTime();
   return Number.isNaN(t) ? 0 : t;
 };
+
+/** Device clock vs connector PC: under a minute counts as in sync (the connector corrects larger drift). */
+function ClockDrift({ seconds }: { seconds: number | null | undefined }) {
+  const lang = useLang();
+  const tx = useText(attendanceDeviceText).devices;
+  if (seconds == null || !Number.isFinite(Number(seconds))) {
+    return <span className="text-gray-400 dark:text-slate-500">{tx.unknown}</span>;
+  }
+  const s = Math.round(Number(seconds));
+  const abs = formatNumber(Math.abs(s), lang);
+  if (Math.abs(s) <= 60) {
+    return (
+      <span className="text-emerald-600 dark:text-emerald-400">
+        {tx.driftOk}
+        {s !== 0 && ` (${s > 0 ? "+" : "−"}${abs})`}
+      </span>
+    );
+  }
+  return (
+    <span className="text-amber-600 dark:text-amber-400">{s > 0 ? tx.driftAhead(abs) : tx.driftBehind(abs)}</span>
+  );
+}
+
+function UserSyncBadge({ device }: { device: AttendanceDevice }) {
+  const tx = useText(attendanceDeviceText).devices;
+  if (device.user_sync_error) return <Badge tone="red">{tx.userSyncError}</Badge>;
+  if (device.users_in_sync) return <Badge tone="green">{tx.userSyncOk}</Badge>;
+  if (device.users_version && device.users_synced_version !== device.users_version) {
+    return <Badge tone="yellow">{tx.userSyncPending}</Badge>;
+  }
+  if (device.users_in_sync === false) return <Badge tone="yellow">{tx.userSyncPending}</Badge>;
+  return <span className="text-gray-400 dark:text-slate-500">{tx.unknown}</span>;
+}
 
 const iconBtn =
   "rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800";
@@ -378,7 +412,38 @@ export default function AttendanceDevicesPage() {
                         <TimeAgo value={device.last_sync_at} now={now} />
                       </dd>
                     </div>
+                    <div>
+                      <dt className="text-gray-400 dark:text-slate-500">{tx.clockDrift}</dt>
+                      <dd className="font-medium text-gray-700 dark:text-slate-200">
+                        <ClockDrift seconds={device.clock_drift_sec} />
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-gray-400 dark:text-slate-500">{tx.userSync}</dt>
+                      <dd className="flex flex-wrap items-center gap-2 font-medium text-gray-700 dark:text-slate-200">
+                        <UserSyncBadge device={device} />
+                        {device.device_user_count != null && (
+                          <span>{tx.deviceUsers(formatNumber(device.device_user_count, lang))}</span>
+                        )}
+                        {device.last_user_sync_at && (
+                          <span className="text-gray-400 dark:text-slate-500">
+                            · <TimeAgo value={device.last_user_sync_at} now={now} />
+                          </span>
+                        )}
+                      </dd>
+                    </div>
                   </dl>
+
+                  {device.user_sync_error && (
+                    <p className="mt-2 break-words rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                      {tx.userSyncErrorMsg(device.user_sync_error)}
+                    </p>
+                  )}
+                  {device.offline_alerted_at && device.status !== "online" && (
+                    <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+                      {tx.offlineAlerted} · <TimeAgo value={device.offline_alerted_at} now={now} />
+                    </p>
+                  )}
 
                   {device.last_error && (
                     <p className="mt-2 break-words rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">

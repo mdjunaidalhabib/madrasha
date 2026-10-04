@@ -8,6 +8,7 @@ import { billingService } from "../modules/billing/billing.service";
 import { authRepository } from "../modules/auth/auth.repository";
 import { feeService } from "../modules/fee/fee.service";
 import { smsQueueService } from "../modules/attendance-device/sms-queue.service";
+import { attendanceDeviceJobsService } from "../modules/attendance-device/attendance-device-jobs.service";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -162,6 +163,17 @@ export const startSmsQueueWorker = (): void => {
 };
 
 /**
+ * Attendance-device background jobs (same setInterval + unref pattern):
+ * auto ABSENT after the madrasa's cutoff time (every 5 min) and the
+ * "device offline" alert SMS (every 2 min). Both only act for madrasas that
+ * enabled them in attendance_device_settings, and both are idempotent, so
+ * several backend instances are safe.
+ */
+export const startAttendanceDeviceJobs = (): void => {
+  attendanceDeviceJobsService.start();
+};
+
+/**
  * Last line of defence against a single stray failure taking the whole
  * server down. Node terminates the process on any unhandled promise
  * rejection / uncaught exception by default - so one dropped network
@@ -188,6 +200,7 @@ export const registerGracefulShutdown = (server: Server): void => {
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully`);
     smsQueueService.stop();
+    attendanceDeviceJobsService.stop();
     server.close(async () => {
       await prisma.$disconnect();
       logger.info("Shutdown complete");

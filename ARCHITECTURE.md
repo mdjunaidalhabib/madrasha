@@ -22,16 +22,16 @@ admin/                Tenant admin dashboard + staff-only print/report views.
                       the public).
 frontend/             The platform's marketing/landing page AND everything a
                       non-staff visitor of a madrasa hits: the public
-                      website, admission form, guardian portal, and
-                      attendance kiosk. Dev port 5183. Root `/` is
+                      website, admission form and guardian portal.
+                      Dev port 5183. Root `/` is
                       hostname-aware (see `src/features/landing/RootRoute.tsx`):
                       on the platform's own domain (`VITE_PLATFORM_ROOT_HOST`)
                       it renders the landing page; on any other hostname
                       (a tenant's connected custom domain) it resolves and
                       renders that tenant's public website instead. Also owns
                       `/:madrasaSlug`, `/m/:madrasaSlug(/admission)`,
-                      `/:madrasaSlug/admission`, `/:madrasaSlug/guardian/*`,
-                      `/:madrasaSlug/kiosk` — path-based access for madrasas
+                      `/:madrasaSlug/admission`, `/:madrasaSlug/guardian/*`
+                      — path-based access for madrasas
                       that haven't connected their own domain yet. Split out
                       of admin so each madrasa's public-facing pages can run
                       on their own custom domain without touching the admin
@@ -58,8 +58,7 @@ same domain depending on hostname, which `frontend/`'s own client-side router
 does more simply.
 
 Two admin-only files build links INTO `frontend/`'s pages (dashboard's "view
-public website" card, the website builder's preview link, and the kiosk
-device setup page's kiosk URL) via `admin/src/utils/publicSiteUrl.ts`, which
+public website" card and the website builder's preview link) via `admin/src/utils/publicSiteUrl.ts`, which
 reads `VITE_PUBLIC_SITE_URL` — this must be set to `frontend/`'s real origin
 in every environment (see `admin/.env`). It's deliberately not named
 `VITE_FRONTEND_*`: the backend's `ADMIN_BASE_URL` / `INTERNAL_ADMIN_URL` env vars point at the
@@ -94,15 +93,15 @@ Once set:
   domain auto-redirects to the custom domain instead (`useCustomDomainRedirect`
   in `frontend/src/utils/`), so the platform URL keeps working as a stable
   link while the custom domain becomes the real one people land on.
-- The guardian portal and attendance kiosk also work on a connected custom
-  domain, at the bare (no-slug) paths `/guardian/*` and `/kiosk` -
+- The guardian portal also works on a connected custom domain, at the
+  bare (no-slug) paths `/guardian/*` -
   `CustomDomainTenantGate` (a pathless layout route in
   `frontend/src/app/router.tsx`) resolves the tenant from the hostname
   before rendering any of them, the same way `RootRoute` does for `/`. Every
   page that needs the tenant slug reads it via `useTenantSlug()`
   (`frontend/src/utils/useTenantSlug.ts`) instead of `useParams()` directly,
   so it works under both the `/:madrasaSlug/...` and bare route trees
-  without caring which one matched. A literal `admission`/`guardian`/`kiosk`
+  without caring which one matched. A literal `admission`/`guardian`
   segment always wins over the dynamic `:madrasaSlug` pattern regardless of
   where each is declared - React Router ranks matches by specificity
   (static segment beats dynamic), not array order - so a madrasa can't

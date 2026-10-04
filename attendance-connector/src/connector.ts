@@ -1,11 +1,46 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AppConfig } from './config';
-import { CloudClient, CONNECTOR_VERSION, type CloudDeviceConfig, type IngestEventPayload, type IngestResult } from './cloud';
+import {
+  CloudClient,
+  CONNECTOR_VERSION,
+  type CloudDeviceConfig,
+  type CloudEnrollment,
+  type CloudUserList,
+  type EnrollmentReply,
+  type EnrollmentReportStatus,
+  type HeartbeatBody,
+  type IngestEventPayload,
+  type IngestResult,
+} from './cloud';
 import { Logger, registerSecret } from './logger';
 import { atomicWriteFile, EventQueue, makeEventId, type QueueEvent } from './queue';
 import { dpapiAvailable, protectSecret, unprotectSecret } from './secret';
-import { ZKClient, ZKError, zkTimeToIso, zkTimeToText, type RawPunch, type ZkTime } from './protocol';
+import {
+  deviceStoredName,
+  extractCardFromEvent,
+  REG_EVENT_ALL,
+  ZKClient,
+  ZKError,
+  zkTimeToIso,
+  zkTimeToText,
+  type DeviceUser,
+  type RawPunch,
+  type ZkTime,
+} from './protocol';
+import {
+  applyUserSync,
+  cardToU32,
+  deviceLock,
+  loadUserState,
+  planUserSync,
+  resolveRecordSize,
+  saveUserState,
+  UidAllocator,
+  type UserSyncPlan,
+  type UserSyncResult,
+  type UserSyncState,
+} from './device-users';
 
 export interface DeviceSettings {
   ip: string;
@@ -59,49 +94,100 @@ export function deviceDriftSec(t: ZkTime, offset: string, now = Date.now()): num
   return Math.round((Date.parse(zkTimeToIso(t, offset)) - now) / 1000);
 }
 
-/** One connect -> read -> close session. Always re-enables the device and closes the session. */
+/** "+06:00" -> 360 */
+export function offsetMinutes(offset: string): number {
+  const m = /^([+-])(\d{2}):(\d{2})$/.exec(offset);
+  if (!m) throw new Error(`bad offset ${offset}`);
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/** Wall-clock time at `offset` for the instant `ms` (what the K40 should display). */
+export function zkTimeInOffset(ms: number, offset: string): ZkTime {
+  const d = new Date(ms + offsetMinutes(offset) * 60_000);
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1,
+    day: d.getUTCDate(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+    second: d.getUTCSeconds(),
+  };
+}
+
+export function makeZkClient(cfg: AppConfig, s: DeviceSettings, log: Logger): ZKClient {
+  return new ZKClient({
+    host: s.ip,
+    port: s.port,
+    commKey: s.commKey,
+    connectTimeoutMs: cfg.connectTimeoutMs,
+    timeoutMs: cfg.commandTimeoutMs,
+    debug: (m) => log.debug(`zk: ${m}`),
+  });
+}
+
+export interface ClockInfo {
+  /** device - PC seconds after any correction (undefined when the time could not be read) */
+  driftSec?: number;
+  /** drift before an automatic correction, when one was made */
+  correctedFromSec?: number;
+}
+
+/**
+ * One connect -> read -> close session (under the device lock). Always re-enables the device and closes the session.
+ * With opts.clock.autoSync the device clock is set to PC time (in deviceTimezoneOffset) when |drift| > threshold.
+ */
 export async function readDevicePunches(
   cfg: AppConfig,
   s: DeviceSettings,
   log: Logger,
-  opts: { disable?: boolean; afterRead?: (client: ZKClient, punches: RawPunch[], truncated: boolean) => Promise<void> } = {},
-): Promise<{ punches: RawPunch[]; recordSize: number; truncated: boolean; deviceTime?: ZkTime }> {
-  const client = new ZKClient({
-    host: s.ip,
-    port: s.port,
-    commKey: s.commKey,
-    connectTimeoutMs: cfg.connectTimeoutMs,
-    timeoutMs: cfg.commandTimeoutMs,
-    debug: (m) => log.debug(`zk: ${m}`),
-  });
-  try {
-    await client.connect();
-    log.info(`k40 connected ${s.ip}:${s.port}`);
-    let deviceTime: ZkTime | undefined;
+  opts: {
+    disable?: boolean;
+    afterRead?: (client: ZKClient, punches: RawPunch[], truncated: boolean) => Promise<void>;
+    clock?: { autoSync: boolean; thresholdSec: number };
+  } = {},
+): Promise<{ punches: RawPunch[]; recordSize: number; truncated: boolean; deviceTime?: ZkTime; clock: ClockInfo }> {
+  return deviceLock.run(async () => {
+    const client = makeZkClient(cfg, s, log);
     try {
-      deviceTime = await client.getTime();
-    } catch (e) {
-      log.debug(`get time failed: ${(e as Error).message}`);
+      await client.connect();
+      log.info(`k40 connected ${s.ip}:${s.port}`);
+      let deviceTime: ZkTime | undefined;
+      const clock: ClockInfo = {};
+      try {
+        deviceTime = await client.getTime();
+        clock.driftSec = deviceDriftSec(deviceTime, cfg.deviceTimezoneOffset);
+      } catch (e) {
+        log.debug(`get time failed: ${(e as Error).message}`);
+      }
+      if (opts.clock?.autoSync && clock.driftSec !== undefined && Math.abs(clock.driftSec) > opts.clock.thresholdSec) {
+        const before = clock.driftSec;
+        try {
+          await client.setTime(zkTimeInOffset(Date.now(), cfg.deviceTimezoneOffset));
+          deviceTime = await client.getTime();
+          clock.driftSec = deviceDriftSec(deviceTime, cfg.deviceTimezoneOffset);
+          clock.correctedFromSec = before;
+          log.warn(`K40 clock was ${before}s off; set to PC time (${cfg.deviceTimezoneOffset}), drift now ${clock.driftSec}s`);
+        } catch (e) {
+          log.warn(`K40 clock is ${before}s off and could not be corrected: ${(e as Error).message}`);
+        }
+      }
+      if (opts.disable) await client.disableDevice();
+      const r = await client.getAttendance(cfg.resolveUserIds);
+      if (opts.afterRead) await opts.afterRead(client, r.punches, r.truncated);
+      return { ...r, deviceTime, clock };
+    } finally {
+      await client.close();
+      log.info('k40 disconnected');
     }
-    if (opts.disable) await client.disableDevice();
-    const r = await client.getAttendance(cfg.resolveUserIds);
-    if (opts.afterRead) await opts.afterRead(client, r.punches, r.truncated);
-    return { ...r, deviceTime };
-  } finally {
-    await client.close();
-    log.info('k40 disconnected');
-  }
+  });
 }
 
 export async function testDevice(cfg: AppConfig, s: DeviceSettings, log: Logger): Promise<{ time: ZkTime; name?: string; users?: number; records?: number }> {
-  const client = new ZKClient({
-    host: s.ip,
-    port: s.port,
-    commKey: s.commKey,
-    connectTimeoutMs: cfg.connectTimeoutMs,
-    timeoutMs: cfg.commandTimeoutMs,
-    debug: (m) => log.debug(`zk: ${m}`),
-  });
+  return deviceLock.run(() => testDeviceUnlocked(cfg, s, log));
+}
+
+async function testDeviceUnlocked(cfg: AppConfig, s: DeviceSettings, log: Logger): Promise<{ time: ZkTime; name?: string; users?: number; records?: number }> {
+  const client = makeZkClient(cfg, s, log);
   try {
     await client.connect();
     const time = await client.getTime();
@@ -135,6 +221,49 @@ export function friendlyDeviceError(e: unknown): string {
     }
   }
   return `K40 error: ${(e as Error)?.message ?? String(e)}`;
+}
+
+/**
+ * One user-sync session (under the device lock): read device users, diff with the cloud list, and (unless dryRun)
+ * write / delete. state is updated and saved to dataDir (managed pins as they change; version only when every
+ * user was written without error).
+ */
+export async function syncDeviceUsers(
+  cfg: AppConfig,
+  s: DeviceSettings,
+  log: Logger,
+  list: CloudUserList,
+  state: UserSyncState,
+  opts: { dryRun?: boolean } = {},
+): Promise<{ plan: UserSyncPlan; deviceUsers: DeviceUser[]; recordSize: 72 | 28; result?: UserSyncResult }> {
+  return deviceLock.run(async () => {
+    const client = makeZkClient(cfg, s, log);
+    try {
+      await client.connect();
+      const deviceUsers = await client.getUsers();
+      if (client.userRecordSize && cfg.userRecordSize !== 'auto' && client.userRecordSize !== cfg.userRecordSize) {
+        log.warn(`config userRecordSize=${cfg.userRecordSize} but the device user list uses ${client.userRecordSize}-byte records`);
+      }
+      const recordSize = resolveRecordSize(cfg.userRecordSize, client.userRecordSize, state.recordSize);
+      const plan = planUserSync(deviceUsers, list.users, state.managed, recordSize);
+      if (opts.dryRun) return { plan, deviceUsers, recordSize };
+      if (client.userRecordSize) state.recordSize = client.userRecordSize;
+      let result: UserSyncResult;
+      try {
+        result = await applyUserSync(client, deviceUsers, plan, recordSize, state);
+      } finally {
+        saveUserState(cfg.localQueuePath, state);
+      }
+      if (result.errors.length === 0) {
+        state.version = list.version;
+        state.syncedAt = new Date().toISOString();
+        saveUserState(cfg.localQueuePath, state);
+      }
+      return { plan, deviceUsers, recordSize, result };
+    } finally {
+      await client.close();
+    }
+  });
 }
 
 /* -------------------------------------------------------------- Connector */
@@ -190,11 +319,23 @@ export class Connector {
   private lastPrune = 0;
   private lastLogged = new Map<string, string>();
   private started = false;
+  /** data/user-sync.json (managed pins + last synced users_version) */
+  userState: UserSyncState;
+  /** last measured device - PC clock difference (s) */
+  private clockDriftSec?: number;
+  /** user sync outcome waiting to be delivered in a heartbeat */
+  private pendingUserReport?: Pick<HeartbeatBody, 'users_synced_version' | 'user_sync_error' | 'device_user_count'>;
+  private userSyncFailures = 0;
+  private nextUserSyncAt = 0;
+  /** enrollment ids already handled (id -> time), so a repeated /commands answer never re-runs one */
+  private handledEnrollments = new Map<string, number>();
+  readonly enrollStats = { started: 0, completed: 0, expired: 0, failed: 0, rejected: 0 };
 
   constructor(readonly cfg: AppConfig, readonly log: Logger, private opts: ConnectorOptions = {}) {
     this.cloud = new CloudClient(cfg);
     registerSecret(cfg.deviceKey);
     if (cfg.device?.commKey !== undefined) this.registerComm(cfg.device.commKey);
+    this.userState = loadUserState(cfg.localQueuePath);
   }
 
   private registerComm(k: number): void {
@@ -216,7 +357,7 @@ export class Connector {
         (li.corruptLines || li.incompleteTail ? `; repaired queue log (corrupt/truncated tail: ${li.corruptLines} line(s))` : ''),
     );
     await this.loadCachedConfig();
-    this.loops = [this.fetchLoop(), this.syncLoop()];
+    this.loops = [this.fetchLoop(), this.syncLoop(), this.commandLoop()];
   }
 
   /** Resolves when stop() completes. */
@@ -446,6 +587,7 @@ export class Connector {
       let cleared = false;
       let preAdded = 0;
       const res = await readDevicePunches(this.cfg, s, this.log, {
+        clock: { autoSync: this.cloudConfig?.auto_time_sync !== false, thresholdSec: this.cfg.clockSyncThresholdSec },
         disable: this.cfg.disableDeviceDuringRead || clearMode,
         afterRead: async (client, punches, truncated) => {
           if (!clearMode || punches.length === 0 || truncated) return;
@@ -495,8 +637,9 @@ export class Connector {
           (cleared ? ', device log cleared' : ''),
       );
       if (res.truncated) this.log.warn('device log read was truncated; partial data queued, device log NOT cleared');
-      if (res.deviceTime) {
-        const drift = deviceDriftSec(res.deviceTime, this.cfg.deviceTimezoneOffset);
+      if (res.clock.driftSec !== undefined) this.clockDriftSec = res.clock.driftSec;
+      if (res.deviceTime && res.clock.driftSec !== undefined) {
+        const drift = res.clock.driftSec;
         if (Math.abs(drift) > 300) {
           this.logChanged('drift', 'warn', `K40 clock differs from this PC by ${drift}s (device ${zkTimeToText(res.deviceTime)}); fix time on the device`);
         } else this.logChanged('drift', 'info', 'K40 clock OK');
@@ -519,9 +662,12 @@ export class Connector {
   async sendHeartbeat(): Promise<void> {
     if (this.authBlocked()) return;
     const test = this.pendingTest;
-    const body = {
+    const userReport = this.pendingUserReport;
+    const body: HeartbeatBody = {
       device_id: this.cfg.deviceId,
       device_status: (this.deviceOnline ? 'online' : 'offline') as 'online' | 'offline',
+      ...(this.clockDriftSec !== undefined ? { clock_drift_sec: this.clockDriftSec } : {}),
+      ...(userReport ?? {}),
       ...(this.lastContactIso ? { last_device_contact_at: this.lastContactIso } : {}),
       ...(!this.deviceOnline && this.lastDeviceError
         ? { error: this.lastDeviceError.slice(0, 200) }
@@ -535,12 +681,324 @@ export class Connector {
     if (r.ok) {
       this.stats.heartbeatsSent++;
       if (test && this.pendingTest === test) this.pendingTest = undefined;
+      if (userReport && this.pendingUserReport === userReport) this.pendingUserReport = undefined;
       this.logChanged('hb', 'info', 'heartbeat ok');
       this.log.debug(`heartbeat sent (${body.device_status})`);
     } else {
       this.stats.heartbeatsFailed++;
       if (r.kind === 'auth') this.blockAuth('heartbeat', r.status, r.error ?? '');
       else this.logChanged('hb', 'warn', `heartbeat failed: ${r.error}`);
+    }
+  }
+
+  /* ---- command loop (cloud -> device: enrollments, user sync) */
+
+  /**
+   * Long-polls GET /commands forever. Runs an enrollment when the cloud hands one out, and a user sync whenever the
+   * cloud's users_version differs from the last version this connector wrote to the device.
+   */
+  private async commandLoop(): Promise<void> {
+    let failures = 0;
+    while (!this.ac.signal.aborted) {
+      try {
+        if (this.authBlocked()) {
+          await this.sleep(Math.min(30_000, this.authBlockedUntil - Date.now()));
+          continue;
+        }
+        const t0 = Date.now();
+        const r = await this.cloud.commands(this.cfg.commandsWaitSec, this.ac.signal);
+        if (this.ac.signal.aborted) break;
+        this.log.debug(
+          `commands poll: ${r.ok ? (r.data?.enrollment ? `enrollment ${r.data.enrollment.id}` : 'nothing') : `error ${r.error}`} after ${Date.now() - t0}ms`,
+        );
+        let desiredVersion = this.cloudConfig?.users_version;
+        let pause = 0;
+        if (r.ok && r.data) {
+          failures = 0;
+          this.lastLogged.delete('cmd');
+          if (r.data.users_version) desiredVersion = r.data.users_version;
+          if (r.data.enrollment) await this.handleEnrollment(r.data.enrollment, r.data.server_time);
+          // guard against a backend that ignores ?wait (or wait=0): never spin faster than once a second
+          else if (Date.now() - t0 < 1000) pause = 1000 - (Date.now() - t0);
+        } else if (r.kind === 'auth') {
+          this.blockAuth('commands', r.status, r.error ?? '');
+          continue;
+        } else if (r.status === 404) {
+          this.logChanged('cmd', 'warn', 'cloud has no /connector/commands endpoint (older backend?): card enrollment unavailable; retrying in 5 min');
+          pause = 300_000;
+        } else {
+          failures++;
+          pause = r.kind === 'rate_limited' && r.retryAfterSec ? r.retryAfterSec * 1000 : this.backoffMs(failures);
+          this.logChanged('cmd', 'warn', `command poll failed: ${r.error}`);
+        }
+        await this.maybeSyncUsers(desiredVersion);
+        if (pause > 0) await this.sleep(pause);
+      } catch (e) {
+        this.log.error(`command loop error (continuing): ${(e as Error).stack ?? e}`);
+        await this.sleep(this.backoffMs(++failures));
+      }
+    }
+  }
+
+  /** Sync device users when the cloud's users_version differs from the synced one (with backoff after failures). */
+  private async maybeSyncUsers(desiredVersion: string | undefined): Promise<void> {
+    if (!this.cfg.userSyncEnabled || !desiredVersion || this.ac.signal.aborted) return;
+    if (desiredVersion === this.userState.version) return;
+    if (Date.now() < this.nextUserSyncAt || this.authBlocked()) return;
+    const settings = this.effectiveSettings();
+    if (!settings) return;
+    try {
+      await this.syncUsers(settings);
+    } catch (e) {
+      this.userSyncFailures++;
+      const wait = this.backoffMs(this.userSyncFailures);
+      this.nextUserSyncAt = Date.now() + wait;
+      const msg = (e instanceof ZKError ? friendlyDeviceError(e) : (e as Error).message).slice(0, 200);
+      this.pendingUserReport = { user_sync_error: msg };
+      this.logChanged('usersync', 'warn', `user sync failed: ${msg}; retry in ${Math.round(wait / 1000)}s`);
+    }
+  }
+
+  /** Fetch GET /users and apply it to the device. Throws on any failure (caller schedules the retry). */
+  async syncUsers(settings: DeviceSettings): Promise<UserSyncResult | undefined> {
+    const r = await this.cloud.getUsers();
+    if (!r.ok || !r.data) {
+      if (r.kind === 'auth') this.blockAuth('user list', r.status, r.error ?? '');
+      throw new Error(`cloud user list unavailable: ${r.error}`);
+    }
+    const out = await syncDeviceUsers(this.cfg, settings, this.log, r.data, this.userState);
+    const res = out.result!;
+    const p = res.plan;
+    if (p.skipped.length) this.log.warn(`user sync skipped: ${p.skipped.map((x) => `${x.pin} (${x.reason})`).join('; ').slice(0, 500)}`);
+    if (res.errors.length) throw new Error(`device refused ${res.errors.length} user write(s): ${res.errors[0]}`);
+    this.userSyncFailures = 0;
+    this.nextUserSyncAt = 0;
+    this.lastLogged.delete('usersync');
+    this.pendingUserReport = { users_synced_version: r.data.version, user_sync_error: null, device_user_count: res.deviceUserCount };
+    this.log.info(
+      `user sync: ${r.data.users.length} desired; created ${res.created}, updated ${res.updated}, renamed ${res.renamed}, deleted ${res.deleted}, unchanged ${p.unchanged}; ` +
+        `${res.deviceUserCount} user(s) on device (${res.recordSize}-byte records)`,
+    );
+    return res;
+  }
+
+  private async reportEnrollment(
+    id: CloudEnrollment['id'],
+    status: EnrollmentReportStatus,
+    extra: { card_number?: string; message?: string } = {},
+    attempts = 1,
+  ): Promise<EnrollmentReply | undefined> {
+    for (let i = 1; i <= attempts; i++) {
+      const r = await this.cloud.reportEnrollment(id, { device_id: this.cfg.deviceId, status, ...extra });
+      if (r.ok && r.data) return r.data;
+      if (r.kind === 'auth') {
+        this.blockAuth('enrollment report', r.status, r.error ?? '');
+        return undefined;
+      }
+      this.log.warn(`enrollment ${id}: reporting '${status}' failed (${r.error})${i < attempts ? ', retrying' : ''}`);
+      if (r.kind === 'client' || i === attempts) return undefined;
+      await new Promise((res) => setTimeout(res, 1000 * i));
+    }
+    return undefined;
+  }
+
+  /** Run one enrollment handed out by GET /commands. Never throws; every outcome is logged. */
+  async handleEnrollment(en: CloudEnrollment, serverTime?: string): Promise<string> {
+    const key = String(en.id);
+    const now = Date.now();
+    for (const [k, t] of this.handledEnrollments) if (now - t > 3600_000) this.handledEnrollments.delete(k);
+    if (this.handledEnrollments.has(key)) return 'already handled';
+    this.handledEnrollments.set(key, now);
+    const outcome = await this.runEnrollment(en, key, now, serverTime);
+    this.log.info(`enrollment ${key}: ${outcome}`);
+    return outcome;
+  }
+
+  private async runEnrollment(en: CloudEnrollment, key: string, now: number, serverTime?: string): Promise<string> {
+    this.enrollStats.started++;
+    const pin = String(en.device_user_id ?? '').trim();
+    if (!this.cfg.userSyncEnabled) {
+      await this.reportEnrollment(en.id, 'failed', { message: 'user writing is disabled on this connector (userSyncEnabled=false)' });
+      this.enrollStats.failed++;
+      return 'failed: disabled';
+    }
+    if (!pin) {
+      await this.reportEnrollment(en.id, 'failed', { message: 'enrollment has no device user id' });
+      this.enrollStats.failed++;
+      return 'failed: no pin';
+    }
+    // time left, measured on the server's clock so a wrong PC clock cannot shorten / extend it
+    const exp = Date.parse(en.expires_at);
+    const srv = serverTime ? Date.parse(serverTime) : NaN;
+    let remaining = Number.isFinite(exp) ? exp - (Number.isFinite(srv) ? srv : now) : 120_000;
+    remaining = Math.min(remaining, 600_000);
+    if (remaining <= 0) {
+      await this.reportEnrollment(en.id, 'expired', { message: 'expired before the connector received it' });
+      this.enrollStats.expired++;
+      return 'expired';
+    }
+    // The command loop starts together with the fetch loop, so the very first /commands answer can arrive before
+    // the first cloud config (which carries the K40 IP) was fetched: fetch it now instead of failing.
+    let settings = this.effectiveSettings();
+    if (!settings) {
+      await this.refreshCloudConfig();
+      settings = this.effectiveSettings();
+    }
+    if (!settings) {
+      await this.reportEnrollment(en.id, 'failed', { message: 'connector does not know the device IP yet' });
+      this.enrollStats.failed++;
+      return 'failed: no device';
+    }
+    const deadline = now + remaining;
+    this.log.info(`enrollment ${key}: device user ${pin} (${en.attendee_type}); waiting up to ${Math.round(remaining / 1000)}s for a card`);
+    const s = settings;
+    try {
+      return await deviceLock.run(() => this.enrollOnDevice(en, pin, s, deadline));
+    } catch (e) {
+      return `failed: ${(e as Error).message}`;
+    }
+  }
+
+  /**
+   * The device record of this pin's prev_pin (from GET /users) when it may be renamed: prev_pin is on the device and
+   * is not itself a desired pin. Cloud error -> undefined (a new record is created, as before v2.1).
+   */
+  private async findPrevPinRecord(pin: string, users: DeviceUser[]): Promise<DeviceUser | undefined> {
+    const r = await this.cloud.getUsers();
+    if (!r.ok || !r.data) {
+      this.log.debug(`prev_pin lookup for ${pin} skipped: ${r.error}`);
+      return undefined;
+    }
+    const prev = r.data.users.find((u) => String(u.pin) === pin)?.prev_pin;
+    if (!prev || String(prev) === pin || r.data.users.some((u) => String(u.pin) === String(prev))) return undefined;
+    return users.find((u) => u.userId === String(prev));
+  }
+
+  /** The device part of an enrollment; runs under the device lock. */
+  private async enrollOnDevice(en: CloudEnrollment, pin: string, s: DeviceSettings, deadline: number): Promise<string> {
+    const key = String(en.id);
+    const client = makeZkClient(this.cfg, s, this.log);
+    let registered = false;
+    try {
+      await client.connect();
+      // 1. make sure the person exists on the device (keep uid/privilege/password; keep device card unless the cloud has one)
+      const users = await client.getUsers();
+      const size = resolveRecordSize(this.cfg.userRecordSize, client.userRecordSize, this.userState.recordSize);
+      if (client.userRecordSize) this.userState.recordSize = client.userRecordSize;
+      const cur = users.find((u) => u.userId === pin);
+      // v2.1: pin missing but the person's previous PIN is on the device -> rename that record in place (same uid,
+      // fingerprints kept) instead of creating a duplicate person
+      const renameFrom = cur ? undefined : await this.findPrevPinRecord(pin, users);
+      const base = cur ?? renameFrom;
+      const wantCard = cardToU32(en.card_number);
+      const name = deviceStoredName(String(en.name ?? ''), size) || pin;
+      const target = {
+        uid: base?.uid ?? new UidAllocator(users).take(),
+        userId: pin,
+        name,
+        privilege: base?.privilege ?? 0,
+        password: base?.password,
+        groupId: base?.groupId,
+        card: wantCard ?? base?.card ?? 0,
+      };
+      if (!cur || cur.name !== name || target.card !== cur.card) {
+        await client.setUser(target, size);
+        await client.refreshData();
+        if (!cur) {
+          this.userState.managed = [...this.userState.managed.filter((p) => p !== renameFrom?.userId), pin];
+          saveUserState(this.cfg.localQueuePath, this.userState);
+        }
+        const what = cur ? 'updated' : renameFrom ? `renamed ${renameFrom.userId} ->` : 'created';
+        this.log.info(`enrollment ${key}: ${what} device user ${pin} (uid ${target.uid})`);
+      }
+      const baselineCard = target.card;
+      // 2. realtime events; if the firmware refuses, the user-list polling below still catches menu enrollment
+      try {
+        await client.regEvent(REG_EVENT_ALL);
+        registered = true;
+      } catch (e) {
+        this.log.warn(`enrollment ${key}: realtime events unavailable (${(e as Error).message}); only K40-menu enrollment will be detected`);
+      }
+      const w = await this.reportEnrollment(en.id, 'waiting', { message: `user ${pin} written to device; waiting for card` });
+      if (w && !w.ok) {
+        this.enrollStats.rejected++;
+        return `stopped by cloud (${w.status})`;
+      }
+      // 3. wait for a card: realtime swipe, or the card appearing on the user via the K40 menu
+      let captured: string | undefined;
+      let via: 'swipe' | 'menu' = 'swipe';
+      let lastPoll = Date.now();
+      while (!this.ac.signal.aborted && Date.now() < deadline) {
+        const slice = Math.max(1, Math.min(1000, deadline - Date.now()));
+        const ev = registered ? await client.waitForEvent(slice) : (await this.sleep(slice), null);
+        if (ev) {
+          const card = extractCardFromEvent(ev, this.cfg.cardEventCodes);
+          this.log.debug(`enrollment ${key}: realtime event code=${ev.code} len=${ev.data.length}${card ? ` card=${card}` : ''}`);
+          if (card) {
+            captured = card;
+            via = 'swipe';
+            break;
+          }
+        }
+        if (Date.now() - lastPoll >= this.cfg.enrollmentUserPollMs && Date.now() < deadline) {
+          lastPoll = Date.now();
+          const u = (await client.getUsers()).find((x) => x.userId === pin);
+          if (u && u.card > 0 && u.card !== baselineCard) {
+            captured = String(u.card);
+            via = 'menu';
+            break;
+          }
+        }
+      }
+      if (!captured) {
+        if (this.ac.signal.aborted) {
+          await this.reportEnrollment(en.id, 'failed', { message: 'connector stopped' });
+          this.enrollStats.failed++;
+          return 'failed: connector stopped';
+        }
+        await this.reportEnrollment(en.id, 'expired', { message: 'no card presented in time' });
+        this.enrollStats.expired++;
+        return 'expired (no card)';
+      }
+      this.log.info(`enrollment ${key}: card ${captured} captured via ${via === 'swipe' ? 'realtime swipe' : 'K40 menu'}`);
+      // 4. tell the cloud; only write the card to the device when the cloud accepted it
+      const r = await this.reportEnrollment(en.id, 'captured', { card_number: captured }, 3);
+      if (r?.ok) {
+        const u32 = cardToU32(captured);
+        if (via === 'swipe') {
+          if (u32 !== undefined) {
+            await client.setUser({ ...target, card: u32 }, size);
+            await client.refreshData();
+          } else this.log.warn(`enrollment ${key}: card ${captured} does not fit the device card field; stored in the cloud only`);
+        }
+        this.enrollStats.completed++;
+        return `completed (card ${captured})`;
+      }
+      // rejected (card used by someone else / cancelled / unreachable): undo a card that was set via the K40 menu
+      if (via === 'menu') {
+        try {
+          await client.setUser({ ...target, card: baselineCard }, size);
+          await client.refreshData();
+        } catch (e) {
+          this.log.warn(`enrollment ${key}: could not revert card on device: ${(e as Error).message}`);
+        }
+      }
+      this.enrollStats.rejected++;
+      return r ? `not completed: ${r.status}${r.message ? ` - ${r.message}` : ''}` : 'not completed: cloud unreachable';
+    } catch (e) {
+      const msg = friendlyDeviceError(e).slice(0, 200);
+      await this.reportEnrollment(en.id, 'failed', { message: msg });
+      this.enrollStats.failed++;
+      return `failed: ${msg}`;
+    } finally {
+      if (registered) {
+        try {
+          await client.regEvent(0);
+        } catch (e) {
+          this.log.debug(`REG_EVENT(0) failed: ${(e as Error).message}`);
+        }
+      }
+      await client.close();
     }
   }
 

@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
-import { MAX_REPROCESS_LOGS, MAX_TODAY_LOGS } from "./attendance-device.constants";
+import { MAX_REPROCESS_LOGS, MAX_TODAY_LOGS, PersonType } from "./attendance-device.constants";
 import { tenantClassNameSelect } from "../../shared/utils/tenant-name.util";
+import { PersonRef, personIdColumns, studentPersonSelect } from "./attendance-device-people.repository";
 
 export type Db = Prisma.TransactionClient;
 
@@ -19,6 +20,9 @@ export const resolveStudentSelect = (madrasaId: number) =>
     admissionStatus: true,
   }) satisfies Prisma.StudentSelect;
 export type ResolvedStudentRow = Prisma.StudentGetPayload<{ select: ReturnType<typeof resolveStudentSelect> }>;
+
+/** failReason values of a log that is still waiting for a (usable) person. */
+export const REPROCESSABLE_FAIL_REASONS = ["student_inactive", "inactive"];
 
 export class AttendanceDeviceRepository {
   /* ================= devices ================= */
@@ -54,17 +58,11 @@ export class AttendanceDeviceRepository {
     return prisma.$transaction(fn, { maxWait: 10_000, timeout: 20_000 });
   }
 
-  findMapsByDeviceUserIds(madrasaId: number, deviceUserIds: string[]) {
-    return prisma.attendanceDeviceUserMap.findMany({
-      where: { madrasaId, deviceUserId: { in: deviceUserIds } },
-      select: { deviceUserId: true, student: { select: resolveStudentSelect(madrasaId) } },
-    });
-  }
-
+  /** Fallback resolution (no map row): Student.fingerprintId == deviceUserId. */
   findStudentsByFingerprintIds(madrasaId: number, fingerprintIds: string[]) {
     return prisma.student.findMany({
       where: { madrasaId, fingerprintId: { in: fingerprintIds } },
-      select: { ...resolveStudentSelect(madrasaId), fingerprintId: true },
+      select: { ...studentPersonSelect(madrasaId), fingerprintId: true },
     });
   }
 
@@ -81,10 +79,10 @@ export class AttendanceDeviceRepository {
     });
   }
 
-  findAttendance(db: Db, madrasaId: number, studentId: number, date: Date) {
+  findAttendance(db: Db, madrasaId: number, attendeeType: PersonType, attendeeId: number, date: Date) {
     return db.attendance.findUnique({
       where: {
-        madrasaId_attendeeType_attendeeId_date: { madrasaId, attendeeType: "STUDENT", attendeeId: studentId, date },
+        madrasaId_attendeeType_attendeeId_date: { madrasaId, attendeeType, attendeeId, date },
       },
     });
   }
@@ -112,22 +110,24 @@ export class AttendanceDeviceRepository {
         madrasaId,
         deviceUserId,
         studentId: null,
+        teacherId: null,
+        staffId: null,
         syncStatus: "SYNCED",
-        OR: [{ failReason: null }, { failReason: "student_inactive" }],
+        OR: [{ failReason: null }, { failReason: { in: REPROCESSABLE_FAIL_REASONS } }],
       },
       orderBy: { punchedAt: "asc" },
       take: MAX_REPROCESS_LOGS,
     });
   }
 
-  linkLogToStudent(db: Db, logId: number, studentId: number, attendanceId: number) {
+  linkLogToPerson(db: Db, logId: number, ref: PersonRef, attendanceId: number | null, failReason: string | null) {
     return db.attendanceDeviceLog.update({
       where: { id: logId },
-      data: { studentId, attendanceId, failReason: null },
+      data: { ...personIdColumns(ref), attendanceId, failReason },
     });
   }
 
-  /* ================= mappings ================= */
+  /* ================= mappings (legacy student endpoints) ================= */
 
   findStudentForMapping(madrasaId: number, studentId: number) {
     return prisma.student.findFirst({
@@ -136,17 +136,19 @@ export class AttendanceDeviceRepository {
     });
   }
 
-  findMapByDeviceUserId(madrasaId: number, deviceUserId: string) {
-    return prisma.attendanceDeviceUserMap.findUnique({
-      where: { madrasaId_deviceUserId: { madrasaId, deviceUserId } },
-      select: { studentId: true, student: { select: { nameBn: true } } },
-    });
-  }
-
+  /** Keeps the row (and its RFID card) when a student is re-mapped to another PIN. */
   replaceMap(madrasaId: number, studentId: number, deviceUserId: string) {
     return prisma.$transaction(async (tx) => {
-      await tx.attendanceDeviceUserMap.deleteMany({ where: { madrasaId, studentId } });
-      return tx.attendanceDeviceUserMap.create({ data: { madrasaId, studentId, deviceUserId } });
+      const existing = await tx.attendanceDeviceUserMap.findFirst({ where: { madrasaId, studentId } });
+      if (existing) {
+        return tx.attendanceDeviceUserMap.update({
+          where: { id: existing.id },
+          data: { deviceUserId, autoAssigned: false, previousDeviceUserId: null },
+        });
+      }
+      return tx.attendanceDeviceUserMap.create({
+        data: { madrasaId, attendeeType: "STUDENT", studentId, deviceUserId, autoAssigned: false },
+      });
     });
   }
 
@@ -188,7 +190,7 @@ export class AttendanceDeviceRepository {
           roll: true,
           classId: true,
           classRef: { select: tenantClassNameSelect(madrasaId) },
-          attendanceDeviceMaps: { select: { deviceUserId: true }, take: 1 },
+          attendanceDeviceMaps: { select: { deviceUserId: true, cardNumber: true }, take: 1 },
         },
         orderBy: [{ classId: "asc" }, { roll: "asc" }, { id: "asc" }],
         skip: (q.page - 1) * q.limit,
@@ -204,7 +206,7 @@ export class AttendanceDeviceRepository {
   groupUnmapped(madrasaId: number) {
     return prisma.attendanceDeviceLog.groupBy({
       by: ["deviceUserId", "deviceId"],
-      where: { madrasaId, studentId: null, syncStatus: "SYNCED", failReason: null },
+      where: { madrasaId, studentId: null, teacherId: null, staffId: null, syncStatus: "SYNCED", failReason: null },
       _count: { _all: true },
       _max: { punchedAt: true },
       _min: { punchedAt: true },
@@ -218,12 +220,26 @@ export class AttendanceDeviceRepository {
     });
   }
 
-  findLogsForRange(madrasaId: number, start: Date, end: Date, deviceId?: number) {
+  /**
+   * Punch logs of a day. `type` narrows to one person type; for STUDENT the
+   * logs that resolved to nobody (unmapped / inactive) are included too, so
+   * the default Today view keeps showing them.
+   */
+  findLogsForRange(madrasaId: number, start: Date, end: Date, deviceId?: number, type?: PersonType) {
+    const typeWhere: Prisma.AttendanceDeviceLogWhereInput =
+      type === "TEACHER"
+        ? { teacherId: { not: null } }
+        : type === "STAFF"
+          ? { staffId: { not: null } }
+          : type === "STUDENT"
+            ? { teacherId: null, staffId: null }
+            : {};
     return prisma.attendanceDeviceLog.findMany({
       where: {
         madrasaId,
         punchedAt: { gte: start, lt: end },
         ...(deviceId ? { deviceId } : {}),
+        ...typeWhere,
       },
       select: {
         id: true,
@@ -231,6 +247,8 @@ export class AttendanceDeviceRepository {
         deviceUserId: true,
         punchedAt: true,
         studentId: true,
+        teacherId: true,
+        staffId: true,
         syncStatus: true,
         receivedAt: true,
         failReason: true,
@@ -250,6 +268,26 @@ export class AttendanceDeviceRepository {
         roll: true,
         classId: true,
         classRef: { select: tenantClassNameSelect(madrasaId) },
+      },
+    });
+  }
+
+  findStaffNamesByIds(madrasaId: number, type: "TEACHER" | "STAFF", ids: number[]) {
+    const delegate = (type === "TEACHER" ? prisma.teacher : prisma.staff) as typeof prisma.teacher;
+    return delegate.findMany({ where: { madrasaId, id: { in: ids } }, select: { id: true, nameBn: true } });
+  }
+
+  findAttendanceForDate(madrasaId: number, date: Date, attendeeType?: PersonType) {
+    return prisma.attendance.findMany({
+      where: { madrasaId, date, ...(attendeeType ? { attendeeType } : {}) },
+      select: {
+        id: true,
+        attendeeType: true,
+        attendeeId: true,
+        status: true,
+        source: true,
+        checkInAt: true,
+        checkOutAt: true,
       },
     });
   }

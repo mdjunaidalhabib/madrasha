@@ -12,6 +12,7 @@ A small, dependency-free Windows service that lives on a PC in the madrasa's LAN
 * Sends a heartbeat (device online/offline, last contact, connection-test result) every cycle.
 * **No SMS logic here.** The cloud sends SMS only after `POST /ingest` returned `accepted` for the event. The connector just delivers punches, exactly once.
 * Never clears the K40's own log unless you explicitly set `clearDeviceLogsAfterSync=true`.
+* **v1.1:** writes the people the cloud assigned PINs to onto the K40 (user sync), links RFID cards when the admin clicks "enroll card" and the person taps the card on the K40 (card enrollment), and keeps the K40 clock correct (clock auto-sync). See [Device users, card enrollment, clock](#device-users-card-enrollment-clock-v11).
 
 Runtime: Node.js >= 18 (tested on 22). Only dev-dependencies: `typescript`, `@types/node`. No native modules, so `npm install` works on Windows without Visual Studio / Python.
 
@@ -29,6 +30,10 @@ There was **no real K40 available** while this was written. What that means:
 | Windows DPAPI key protection | Roundtrip tested on Windows via PowerShell (`test/secret.test.js`). |
 | `install-service.ps1` / `uninstall-service.ps1` / `run.cmd` | Written, **not executed** (needs an elevated session). Review before use. |
 | Graceful SIGINT/SIGTERM handling | Code path exercised through `Connector.stop()` in tests; a real Ctrl+C in a console was not scripted. |
+| **v1.1 user write** (`CMD_USER_WRQ` 72/28-byte records, `CMD_DELETE_USER`, `CMD_REFRESHDATA`) | **Only against `tools/fake-k40.js`.** Record layouts copied from pyzk `set_user` / `delete_user`, byte offsets unit-tested. Not yet seen on a real K40. |
+| **v1.1 realtime card capture** (`CMD_REG_EVENT`, event routing + ACK) | **Only against `tools/fake-k40.js`.** The event code of a card swipe (we assume 1024/2048 = header session field) and the card data layout (u32 LE) are **assumptions** - check them with `connector watch-events`. If realtime events do not work, enrollment still works through the K40 menu fallback (see below). |
+| **v1.1 clock set** (`CMD_SET_TIME`) | **Only against `tools/fake-k40.js`.** |
+| v1.1 cloud endpoints (`/users`, `/commands`, `/enrollments/:id`, new heartbeat fields) | Only against `tools/fake-cloud.js`, written from the shared contract. |
 
 Things most likely to need adjusting on first contact with real hardware (all are isolated in `src/protocol.ts`):
 1. Which reply style the K40 firmware uses for `CMD_DATA_WRRQ` (`ACK_OK`+size, `PREPARE_DATA`, or direct `CMD_DATA`) - all three are implemented, including a "data pushed right after PREPARE_DATA" variant.
@@ -37,6 +42,14 @@ Things most likely to need adjusting on first contact with real hardware (all ar
 4. In the 8-byte format only a numeric internal `uid` is stored; the connector maps it to the user PIN via the device user list (`CMD_USERTEMP_RRQ`). If your device has the PIN in the record (40-byte) nothing else is needed.
 
 **First-day checklist on the real device:** `connector test-device` -> `connector fetch-once --dry-run` (compare 2-3 punches with the K40 screen: user id, time, in/out) -> only then `run`.
+
+**First-day checklist for the v1.1 features** (do it before letting the service write to the device; set `"userSyncEnabled": false` in `config.json` until you are done):
+1. **Backup**: on the K40 (or with the vendor's ZKTime/ZKAccess software) back up the user table to a USB stick first.
+2. `connector watch-events --seconds 60` and swipe 2-3 known cards. Each swipe must print a line such as `code=1024 len=4 hex=15c43400 card=3458069`. Compare `card=` with the number printed on the card / shown on the K40 user screen. If the code is different, put it in `cardEventCodes`; if `card=-` but the hex contains the number in another layout, report it (needs a code change in `extractCardFromEvent`). No events at all = firmware without realtime events: enrollment will use the menu fallback only.
+3. `connector sync-users --dry-run`: prints which users would be CREATED / UPDATED / DELETED and the detected record size (72 or 28). Check that it matches the K40 (on a 28-byte device names are cut to 8 characters). Nothing is written.
+4. Stop the service, `connector sync-users` once, then look at the user list on the K40 screen (PIN, name, card). Punch with one of the new users and check `fetch-once --dry-run`.
+5. `connector test-device` shows the clock drift; after a `run` cycle with `auto_time_sync` on, the drift should be ~0 and the K40 screen shows the PC time.
+6. Then set `userSyncEnabled` back to `true` (or remove it) and start the service. Try one enrollment from the admin panel.
 
 ---
 
@@ -55,9 +68,9 @@ start.bat                # foreground run (Ctrl+C to stop)
 Try everything without hardware:
 
 ```powershell
-npm test                 # 57 tests (protocol, K40 client, queue durability, connector scenarios, redaction, DPAPI)
-npm run e2e              # full scenario: K40 -> connector -> cloud, cloud outage, restart, lost reply, exactly-once check
-node tools/fake-k40.js --port 14370 --commkey 1234 --auto     # simulator with a punch every 5 s
+npm test                 # 76 tests (protocol, K40 client, queue durability, connector scenarios, user sync, enrollment, clock, redaction, DPAPI)
+npm run e2e              # full scenario: K40 -> connector -> cloud, cloud outage, restart, lost reply, exactly-once, user sync, card enrollment
+node tools/fake-k40.js --port 14370 --commkey 1234 --auto     # simulator with a punch every 5 s; type a card number + Enter = card swipe
 # PowerShell: $env:PORT=18080; $env:K40_PORT=14370; node tools/fake-cloud.js   (simulator of the cloud API)
 ```
 
@@ -71,6 +84,8 @@ node tools/fake-k40.js --port 14370 --commkey 1234 --auto     # simulator with a
 | `connector fetch-once [--dry-run]` | Read punches once. `--dry-run` prints them and touches no queue. Without it, punches are queued. |
 | `connector status` | Queue counts (pending / syncing / synced / failed), last sync, last K40 contact, failed events with reasons. Safe while the service runs. |
 | `connector retry-failed` | Move `failed` events back to `pending`. Refuses while the service holds the queue lock. |
+| `connector watch-events [--seconds N]` | Technician tool (default 60 s): subscribes to K40 realtime events (`CMD_REG_EVENT` 0xFFFF) and prints every event: time, code, data length, hex, and the card number extracted with the current `cardEventCodes`. Use it to verify card capture on a real K40. Safe while the service runs (but stop it if the K40 accepts only one TCP session). |
+| `connector sync-users [--dry-run]` | Fetch the cloud user list and write it to the K40 once. `--dry-run` only prints the CREATE / UPDATE / DELETE plan. Without `--dry-run` the service must be stopped (queue lock). |
 | `--config <file>` | Any command: use another config file (same as env `CONNECTOR_CONFIG`). |
 
 (`node dist\cli.js <command>`; `npm link` gives you a `connector` command.)
@@ -89,7 +104,7 @@ Default location: `CONNECTOR_CONFIG` env var, else `config.json` in the working 
 | `deviceId` | required | Public device code (`device_id`). Also part of the event-id hash. |
 | device key | required | Sent as header `x-device-key`. Resolved in this order: env `DEVICE_KEY`, then `deviceKeyFile` (DPAPI protected), then a plaintext `deviceKey` field in config (discouraged - leaves the secret readable on disk; do not use in production). |
 | `deviceKeyFile` | - | Path to the protected key file written by `setup`. |
-| `localQueuePath` | `./data` | Directory: `queue.jsonl` (WAL), `state.json`, `cloud-config.json` (cached cloud config), `queue.lock`. |
+| `localQueuePath` | `./data` | Directory: `queue.jsonl` (WAL), `state.json`, `cloud-config.json` (cached cloud config), `queue.lock`, `user-sync.json` (last synced users version + PINs this connector created; do not delete it, or the connector forgets which users it may remove - it then removes none). |
 | `logDir`, `logLevel`, `logMaxSizeMB`, `logKeep` | `./logs`, `info`, `5`, `5` | Rotating log `connector.log`, `.1` ... `.N`. |
 | `pollIntervalSec` | `30` | K40 poll interval. |
 | `preferCloudSettings` | `true` | If true, `poll_interval_sec` from cloud config overrides `pollIntervalSec`. |
@@ -104,6 +119,12 @@ Default location: `CONNECTOR_CONFIG` env var, else `config.json` in the working 
 | `syncedRetentionDays` | `7` | Synced entries are pruned after N days; their ids stay in a compact dedupe index. |
 | `dedupeRetentionDays` | `400` | Forget dedupe ids of punches older than this. |
 | `connectTimeoutMs`, `commandTimeoutMs`, `httpTimeoutMs` | `10000`, `15000`, `20000` | Every socket / HTTP operation has a timeout. |
+| `userSyncEnabled` | `true` | Write / delete K40 users from the cloud list and allow card enrollment. `false` = the connector never writes users (enrollments are answered `failed`). |
+| `userRecordSize` | `"auto"` | User record layout written to the K40: `"auto"` (= what the device's own user list uses; empty device -> 72), `72` or `28`. Override only if `sync-users --dry-run` detects the wrong one. |
+| `cardEventCodes` | `[1024, 2048]` | Realtime event codes (header session field) that carry a card number. **Assumption** - verify with `watch-events`. |
+| `commandsWaitSec` | `15` | Long-poll wait of `GET /commands` (0..25). HTTP timeout of that call = wait + 10 s. Also the max delay before a changed cloud user list is synced. |
+| `enrollmentUserPollMs` | `4000` | During an enrollment, how often the K40 user list is re-read (menu-enrollment fallback). |
+| `clockSyncThresholdSec` | `60` | The K40 clock is set to PC time when it is off by more than this (only if the cloud's `auto_time_sync` is on). |
 
 ## Cloud contract (as implemented)
 
@@ -119,7 +140,34 @@ Base `/api/attendance-devices/connector`, headers `x-device-key`, `X-Madrasa-Slu
   * Other 4xx on a batch -> the connector isolates the culprit by sending events one at a time; a single event that still gets a 4xx is marked failed.
   * An event with no result in the reply goes back to pending.
 
+v1.1 additions (same headers):
+
+* `GET /config` also returns `users_version` (sha256 of the desired user list) and `auto_time_sync` (default true when absent).
+* `GET /users` -> `{version, users:[{pin, name, card|null, attendee_type}]}`.
+* `GET /commands?wait=15` (long-poll) -> `{enrollment:{id, device_user_id, name, card_number|null, attendee_type, expires_at}|null, users_version, server_time}`. A 404 (older backend) disables enrollment and is retried every 5 min; punch syncing is unaffected.
+* `POST /enrollments/:id` `{device_id, status:'waiting'|'captured'|'failed'|'expired', card_number?, message?}` -> `{ok, status, message?, user?}`. `ok:false` means stop (cancelled, expired, card already used by someone else).
+* `POST /heartbeat` additionally carries `clock_drift_sec` (device - PC, every heartbeat once known) and, once after each user-sync attempt, `users_synced_version` + `user_sync_error:null` + `device_user_count` (success) or `user_sync_error` (failure).
+
 **Event id** = first 32 hex chars of `sha256(deviceId|deviceUserId|timestamp|verifyType|inOut)`. Re-reading the same punch from the K40 always gives the same id, so re-fetching the whole device log every cycle never duplicates anything.
+
+## Device users, card enrollment, clock (v1.1)
+
+All K40 sessions (punch fetch, connection test, user sync, enrollment, CLI tools in the same process) go through one async mutex, so only one TCP session talks to the device at a time. A long-poll loop (`GET /commands`) runs next to the punch loop and the upload loop.
+
+**User sync.** Whenever the cloud's `users_version` differs from the last version written (kept in `data/user-sync.json`), the connector reads `GET /users` and the K40 user list and:
+* creates missing users (uid = highest uid on the device + 1, privilege normal, card = cloud card or none);
+* rewrites a user whose name differs, or whose cloud card is set and differs - **keeping** its uid, privilege, password, group, and its device card when the cloud has no card;
+* deletes **only users this connector created itself** (`managed` list in `data/user-sync.json`) and that are no longer in the cloud list. Users typed in on the K40, or that existed before, are never deleted;
+* **PIN changes keep fingerprints**: when the cloud moves a person to a new PIN (e.g. auto PIN -> registration number, `prev_pin` in `/users`) and only the old PIN is on the K40, that same record (same uid) is rewritten with the new PIN instead of delete + create, so the fingerprint templates (stored per uid) survive. `sync-users --dry-run` lists these as `RENAME`;
+* sends `CMD_REFRESHDATA` after changes; reports the result in the next heartbeat. On error (device offline, refused write) it retries with backoff and reports `user_sync_error`.
+Names are ASCII (the cloud cleans them); on a 28-byte device the K40 stores only 8 characters and the PIN must be numeric. Card numbers above 4294967295 cannot be stored on the device.
+
+**Card enrollment.** When `GET /commands` returns an enrollment, the connector (under the device lock): writes/updates that person on the K40, subscribes to realtime events (`CMD_REG_EVENT` 0xFFFF), reports `waiting`, then until `expires_at` (measured on the server's clock):
+* a realtime event whose code is in `cardEventCodes` -> card captured ("realtime swipe");
+* every `enrollmentUserPollMs` the user list is re-read: if the person suddenly has a (new) card, the admin enrolled it through the K40 menu -> captured ("menu fallback").
+It then reports `captured` with the card. Only if the cloud answers `ok:true` is the card written to the K40 user (a menu-enrolled card that the cloud rejects - e.g. already used by another person, or the enrollment was cancelled - is removed again). No card in time -> `expired`. Device errors -> `failed` with a short reason. Always: `REG_EVENT(0)`, device re-enabled, session closed. While an enrollment runs (max ~2 min) the punch fetch waits for the device lock.
+
+**Clock.** Each punch fetch reads the K40 time. If the cloud's `auto_time_sync` is on (default) and the drift exceeds `clockSyncThresholdSec` (60 s), the connector sends `CMD_SET_TIME` with the PC's current time expressed in `deviceTimezoneOffset`, then re-reads it. The (remaining) drift is reported as `clock_drift_sec`. Keep the PC clock itself right (Windows "Set time automatically").
 
 ## Durable queue
 
@@ -167,6 +215,7 @@ src/protocol.ts    ZK TCP protocol client + parsers        src/queue.ts      dur
 src/connector.ts   poll loop, sync worker, heartbeat       src/cloud.ts      HTTPS client (contract)
 src/config.ts      config + validation                     src/secret.ts     DPAPI via PowerShell
 src/logger.ts      rotating logs + redaction               src/cli.ts        commands
+src/device-users.ts  user-sync plan/apply, device mutex, data/user-sync.json state
 tools/fake-k40.js  K40 simulator      tools/fake-cloud.js  cloud simulator      tools/e2e-sim.js  full scenario
 test/*.test.js     node:test suites (npm test)             run.cmd, start.bat, install-service.ps1, uninstall-service.ps1
 ```
@@ -266,6 +315,19 @@ powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 | `syncedRetentionDays` | 7 | সিঙ্ক হওয়া ইভেন্ট কত দিন ডিস্কে থাকবে |
 | `clearDeviceLogsAfterSync` | false | **ঝুঁকিপূর্ণ**, false রাখুন। মেশিনের লগ নিজে থেকে কখনো মোছা হয় না |
 | `disableDeviceDuringRead` | false | পড়ার সময় মেশিন সাময়িক বন্ধ রাখা (এ সময় punch নেবে না), সাধারণত false |
+| `userSyncEnabled` | true | ক্লাউডের ইউজার (PIN, নাম, কার্ড) মেশিনে লেখা ও কার্ড এনরোলমেন্ট। প্রথম দিন যাচাইয়ের আগে false রাখুন |
+| `userRecordSize` | `"auto"` | মেশিনের ইউজার রেকর্ডের ধরন (72 বা 28), সাধারণত auto |
+| `cardEventCodes` | `[1024, 2048]` | কার্ড ঘষলে মেশিন যে ইভেন্ট কোড পাঠায়; `watch-events` দিয়ে যাচাই করুন |
+| `clockSyncThresholdSec` | 60 | মেশিনের সময় এর বেশি সেকেন্ড ভুল হলে পিসির সময়ে ঠিক করে দেয় (ক্লাউডে auto time sync চালু থাকলে) |
+
+## নতুন (v1.1): ইউজার সিঙ্ক, কার্ড এনরোলমেন্ট, সময় ঠিক করা
+
+* আইডি বদলালে (যেমন অটো আইডি থেকে রেজি. নং) কানেক্টর মেশিনের একই ইউজারের আইডি বদলে দেয়, তাই আঙুলের ছাপ ও কার্ড হারায় না।
+
+* অ্যাডমিন প্যানেলে PIN দেওয়া ছাত্র/শিক্ষক/স্টাফ কানেক্টর নিজে K40-তে লিখে দেয়; হাতে ইউজার আইডি টাইপ করতে হয় না। মেশিনে আগে থেকে থাকা (হাতে তৈরি) ইউজার কখনো মোছা হয় না; শুধু কানেক্টরের নিজের তৈরি ইউজার ক্লাউড থেকে সরালে মোছে (`data\user-sync.json`)।
+* প্যানেলে "কার্ড এনরোল" চাপলে কানেক্টর ঐ ব্যক্তিকে মেশিনে লেখে, তারপর ২ মিনিট অপেক্ষা করে: ব্যক্তি K40-এ কার্ড ঘষলে কার্ড নম্বর ক্লাউডে যায় ও মেশিনেও সেভ হয়। মেশিনের মেনু থেকে কার্ড এনরোল করলেও কানেক্টর ধরে ফেলে।
+* মেশিনের ঘড়ি ৬০ সেকেন্ডের বেশি ভুল হলে কানেক্টর পিসির সময়ে ঠিক করে দেয়।
+* **সতর্কতা:** এগুলো শুধু সিমুলেটরে পরীক্ষিত। আসল মেশিনে প্রথমে মেশিনের ইউজার ব্যাকআপ নিন, তারপর `node dist\cli.js watch-events` চালিয়ে কার্ড ঘষে দেখুন কার্ড নম্বর ঠিক আসছে কিনা, এবং `node dist\cli.js sync-users --dry-run` দিয়ে কী লেখা হবে দেখে নিন (উপরের "First-day checklist for the v1.1 features" দেখুন)।
 
 ## সমস্যা সমাধান
 

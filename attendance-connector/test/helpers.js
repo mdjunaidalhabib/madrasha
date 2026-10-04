@@ -47,6 +47,8 @@ async function makeEnv(o = {}) {
     httpTimeoutMs: 2000,
     connectTimeoutMs: 1000,
     commandTimeoutMs: 2000,
+    commandsWaitSec: 1,
+    enrollmentUserPollMs: 300,
     ...(o.config || {}),
   };
   if (o.localDevice) raw.device = { ip: '127.0.0.1', port: k40Port, commKey: o.commKey || 0 };

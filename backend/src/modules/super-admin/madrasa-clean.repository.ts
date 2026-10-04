@@ -103,15 +103,18 @@ export class MadrasaCleanRepository {
       await tx.libraryBook.deleteMany({ where: { madrasaId: id } });
       await tx.libraryBookCategory.deleteMany({ where: { madrasaId: id } });
 
-      // Staff / teachers / payroll / kiosk hardware
+      // Staff / teachers / payroll
       await tx.payrollRecord.deleteMany({ where: { madrasaId: id } });
       await tx.teacherAssignment.deleteMany({ where: { madrasaId: id } });
       await tx.teacher.deleteMany({ where: { madrasaId: id } });
       await tx.staff.deleteMany({ where: { madrasaId: id } });
-      await tx.kioskDevice.deleteMany({ where: { madrasaId: id } });
-      // Biometric (K40) devices + their punch logs, user maps, SMS queue.
+      // Biometric (K40) devices + their punch logs, user maps, card
+      // enrollments, attendance rules/holidays, SMS queue.
       await tx.attendanceDeviceLog.deleteMany({ where: { madrasaId: id } });
+      await tx.attendanceDeviceEnrollment.deleteMany({ where: { madrasaId: id } });
       await tx.attendanceDeviceUserMap.deleteMany({ where: { madrasaId: id } });
+      await tx.attendanceDeviceSettings.deleteMany({ where: { madrasaId: id } });
+      await tx.attendanceHoliday.deleteMany({ where: { madrasaId: id } });
       await tx.attendanceDevice.deleteMany({ where: { madrasaId: id } });
       await tx.smsQueue.deleteMany({ where: { madrasaId: id } });
 

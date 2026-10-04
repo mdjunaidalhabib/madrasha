@@ -21,7 +21,6 @@ function SiteInstallPrompt() {
     <InstallPrompt
       appName={t.appName}
       storageKey="qms-site:pwa-dismissed-at"
-      hideOnPaths={/\/kiosk(\/|$)/}
     />
   );
 }

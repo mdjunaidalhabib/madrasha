@@ -42,21 +42,29 @@ const makeRepo = (over: Record<string, unknown> = {}) => {
 beforeEach(() => vi.clearAllMocks());
 
 describe("ATTENDANCE_PRESENT event definition", () => {
-  it("is registered with a template and label and is the only default-disabled event", () => {
+  it("is registered with a template and label; the attendance events are the only default-disabled ones", () => {
     expect(NOTIFICATION_EVENTS).toContain("ATTENDANCE_PRESENT");
     expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_PRESENT).toContain("{name}");
+    expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_PRESENT).toContain("{status}");
     expect(NOTIFICATION_EVENT_LABELS.ATTENDANCE_PRESENT).toBe("ডিভাইসে উপস্থিতির পর");
-    expect([...DEFAULT_DISABLED_EVENTS]).toEqual(["ATTENDANCE_PRESENT"]);
+    expect([...DEFAULT_DISABLED_EVENTS]).toEqual(["ATTENDANCE_PRESENT", "ATTENDANCE_ABSENT", "ATTENDANCE_CHECKOUT"]);
+  });
+
+  it("registers ATTENDANCE_ABSENT and ATTENDANCE_CHECKOUT with templates (eventKey fits VarChar(30))", () => {
+    expect(NOTIFICATION_EVENTS).toEqual(expect.arrayContaining(["ATTENDANCE_ABSENT", "ATTENDANCE_CHECKOUT"]));
+    expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_ABSENT).toContain("{date}");
+    expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_CHECKOUT).toContain("{time}");
+    for (const key of NOTIFICATION_EVENTS) expect(key.length).toBeLessThanOrEqual(30);
   });
 });
 
 describe("getSettings", () => {
-  it("shows ATTENDANCE_PRESENT OFF by default and every other event ON (unchanged)", async () => {
+  it("shows the attendance events OFF by default and every other event ON (unchanged)", async () => {
     const { repo } = makeRepo();
     const res = await new NotificationService(repo).getSettings(1);
     const byKey = Object.fromEntries(res.items.map((i) => [i.eventKey, i.isEnabled]));
-    expect(byKey.ATTENDANCE_PRESENT).toBe(false);
-    for (const key of NOTIFICATION_EVENTS.filter((k) => k !== "ATTENDANCE_PRESENT")) {
+    for (const key of DEFAULT_DISABLED_EVENTS) expect(byKey[key]).toBe(false);
+    for (const key of NOTIFICATION_EVENTS.filter((k) => !DEFAULT_DISABLED_EVENTS.includes(k))) {
       expect(byKey[key]).toBe(true);
     }
   });

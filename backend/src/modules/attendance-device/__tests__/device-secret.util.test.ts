@@ -58,7 +58,7 @@ describe("device key hashing", () => {
     expect(h).toMatch(/^[0-9a-f]{64}$/);
     expect(h).toBe(hashDeviceKey(raw));
     expect(h).not.toContain(raw);
-    // same scheme as the kiosk device key (sha256 hex of the raw key)
+    // sha256 hex of the raw key
     expect(hashDeviceKey("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   });
 

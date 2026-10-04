@@ -20,5 +20,14 @@
   "deviceTimezoneOffset": "+06:00",
   "syncedRetentionDays": 7,
   "disableDeviceDuringRead": false,
-  "clearDeviceLogsAfterSync": false
+  "clearDeviceLogsAfterSync": false,
+  "userSyncEnabled": true,
+  "userRecordSize": "auto",
+  "cardEventCodes": [
+    1024,
+    2048
+  ],
+  "commandsWaitSec": 15,
+  "enrollmentUserPollMs": 4000,
+  "clockSyncThresholdSec": 60
 }

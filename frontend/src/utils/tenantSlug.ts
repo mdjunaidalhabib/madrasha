@@ -1,7 +1,7 @@
 import { getResolvedDomainSlugSync } from "../services/domainResolve";
 import { isPlatformRootHost } from "./platformHost";
 
-// "guardian"/"kiosk"/"admission" are also the bare (no-slug) route prefixes
+// "guardian"/"admission" are also the bare (no-slug) route prefixes
 // used on a tenant's custom domain (see CustomDomainTenantGate) - reserved
 // here too so a custom-domain URL's first segment is never mistaken for a
 // slug.
@@ -14,7 +14,6 @@ const RESERVED_ROOT_PATHS = new Set([
   "m",
   "super-admin",
   "guardian",
-  "kiosk",
   "admission",
 ]);
 

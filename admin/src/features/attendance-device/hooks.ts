@@ -89,16 +89,20 @@ export function useDeviceStatus(intervalMs: number) {
   return { devices, setDevices, loading, error, refresh };
 }
 
-export type ClassOption = { id: number; name: string };
+export type ClassOption = { id: number; name: string; divisionId: number | null };
+export type DivisionOption = { id: number; name: string };
 
 const asList = (payload: any): any[] => {
   const data = payload?.data?.data || payload?.data || [];
   return Array.isArray(data) ? data : [];
 };
 
-/** All classes across every division (the API only answers per-division). */
-export function useClassOptions() {
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+/** Divisions + all their classes, in the madrasa's own order (the classes API only answers per-division). */
+export function useClassTree() {
+  const [tree, setTree] = useState<{ divisions: DivisionOption[]; classes: ClassOption[] }>({
+    divisions: [],
+    classes: [],
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -107,18 +111,28 @@ export function useClassOptions() {
         const divisions = asList(await cachedGet("/madrasa-divisions"));
         const lists = await Promise.all(
           divisions.map((d) =>
-            cachedGet(`/madrasa-classes?division_id=${d.division_id}`).then(asList),
+            cachedGet(`/madrasa-classes?division_id=${d.division_id}`)
+              .then(asList)
+              .then((list) => list.map((c) => ({ ...c, division_id: c.division_id ?? d.division_id })))
+              .catch(() => [] as any[]),
           ),
         );
         if (cancelled) return;
-        setClasses(
-          lists
+        setTree({
+          divisions: divisions
+            .filter((d) => d && d.division_id != null)
+            .map((d) => ({ id: Number(d.division_id), name: String(d.division_name_bn ?? d.division_id) })),
+          classes: lists
             .flat()
             .filter((c) => c && c.class_id != null)
-            .map((c) => ({ id: Number(c.class_id), name: String(c.class_name_bn ?? c.class_id) })),
-        );
+            .map((c) => ({
+              id: Number(c.class_id),
+              name: String(c.class_name_bn ?? c.class_id),
+              divisionId: c.division_id == null ? null : Number(c.division_id),
+            })),
+        });
       } catch {
-        if (!cancelled) setClasses([]);
+        if (!cancelled) setTree({ divisions: [], classes: [] });
       }
     })();
     return () => {
@@ -126,5 +140,10 @@ export function useClassOptions() {
     };
   }, []);
 
-  return classes;
+  return tree;
+}
+
+/** All classes across every division. */
+export function useClassOptions() {
+  return useClassTree().classes;
 }

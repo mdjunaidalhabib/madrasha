@@ -10,7 +10,7 @@ interface InstallPromptProps {
   description?: string;
   /** localStorage key that remembers a ✕ click; separate per app. */
   storageKey?: string;
-  /** Routes where the banner must never appear (print/headless pages, kiosk…). */
+  /** Routes where the banner must never appear (print/headless pages…). */
   hideOnPaths?: RegExp;
 }
 

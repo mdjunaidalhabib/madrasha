@@ -63,33 +63,172 @@ model AttendanceDevice {
   lastTestOk      Boolean?  @map("last_test_ok")
   lastTestMessage String?   @map("last_test_message") @db.VarChar(255)
 
+  /// K40 clock minus connector PC clock in seconds (reported each cycle).
+  clockDriftSec      Int?      @map("clock_drift_sec")
+  /// Version (hash) of the cloud user list the connector last wrote to the K40.
+  usersSyncedVersion String?   @map("users_synced_version") @db.VarChar(64)
+  lastUserSyncAt     DateTime? @map("last_user_sync_at") @db.Timestamptz(3)
+  userSyncError      String?   @map("user_sync_error") @db.VarChar(255)
+  /// Number of users stored on the K40 (as last read by the connector).
+  deviceUserCount    Int?      @map("device_user_count")
+  /// Set when the "device offline" alert SMS was queued; cleared once the
+  /// connector reports the device online again (one alert per outage).
+  offlineAlertedAt   DateTime? @map("offline_alerted_at") @db.Timestamptz(3)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa               @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  logs    AttendanceDeviceLog[]
+  madrasa     Madrasa                      @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  logs        AttendanceDeviceLog[]
+  enrollments AttendanceDeviceEnrollment[]
 
   @@unique([madrasaId, deviceCode], map: "uniq_att_device_code")
   @@index([madrasaId], map: "idx_att_devices_madrasa")
   @@map("attendance_devices")
 }
 
-/// Maps a K40 "User ID" to a student. Fallback resolution (no row here):
+/// Maps a K40 "User ID" (PIN) to one person: a student, a teacher or a staff
+/// member - exactly one of studentId/teacherId/staffId is set, matching
+/// attendeeType (DB check constraint). The cloud is the source of truth for
+/// these rows: the connector writes every mapped person (PIN, name, card) to
+/// the K40, so a PIN normally comes from the system (autoAssigned) instead of
+/// being typed by hand. Fallback resolution for students (no row here):
 /// Student.fingerprintId == deviceUserId. Nothing else is guessed.
 model AttendanceDeviceUserMap {
-  id           Int      @id @default(autoincrement())
-  madrasaId    Int      @map("madrasa_id")
-  deviceUserId String   @map("device_user_id") @db.VarChar(64)
-  studentId    Int      @map("student_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  id           Int          @id @default(autoincrement())
+  madrasaId    Int          @map("madrasa_id")
+  deviceUserId String       @map("device_user_id") @db.VarChar(64)
+  attendeeType AttendeeType @default(STUDENT) @map("attendee_type")
+  studentId    Int?         @map("student_id")
+  teacherId    Int?         @map("teacher_id")
+  staffId      Int?         @map("staff_id")
+  /// RFID card number (decimal, as the K40 stores it). Null = no card in the
+  /// cloud; the connector then never touches a card set on the device itself.
+  cardNumber   String?      @map("card_number") @db.VarChar(32)
+  /// true = PIN allocated by the system, false = typed by an admin.
+  autoAssigned Boolean      @default(false) @map("auto_assigned")
+  /// The PIN this person had before a PIN change (e.g. auto -> registration
+  /// no). Punches still arriving under it resolve to this person, and the
+  /// connector renames that K40 user in place so fingerprints survive.
+  previousDeviceUserId String? @map("previous_device_user_id") @db.VarChar(64)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at")
 
-  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  madrasa Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  staff   Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, deviceUserId], map: "uniq_att_device_map_user")
   @@unique([madrasaId, studentId], map: "uniq_att_device_map_student")
+  @@unique([madrasaId, teacherId], map: "uniq_att_device_map_teacher")
+  @@unique([madrasaId, staffId], map: "uniq_att_device_map_staff")
+  @@unique([madrasaId, cardNumber], map: "uniq_att_device_map_card")
   @@map("attendance_device_user_maps")
+}
+
+enum DeviceEnrollmentStatus {
+  /// created by an admin, connector has not picked it up yet
+  PENDING
+  /// connector wrote the user to the K40 and is waiting for the card swipe
+  WAITING
+  COMPLETED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+/// "Tap the card on the machine" enrollment session: an admin opens a person,
+/// the connector of `deviceId` writes the person's PIN to the K40 and waits
+/// for an RFID swipe; the captured card number is saved on the mapping and
+/// pushed to every device. Short-lived (expiresAt, ~2 minutes).
+model AttendanceDeviceEnrollment {
+  id           Int                    @id @default(autoincrement())
+  madrasaId    Int                    @map("madrasa_id")
+  deviceId     Int                    @map("device_id")
+  attendeeType AttendeeType           @map("attendee_type")
+  /// students.id / teachers.id / staff.id depending on attendeeType.
+  attendeeId   Int                    @map("attendee_id")
+  deviceUserId String                 @map("device_user_id") @db.VarChar(64)
+  status       DeviceEnrollmentStatus @default(PENDING)
+  cardNumber   String?                @map("card_number") @db.VarChar(32)
+  /// Short, sanitized progress / failure text shown to the admin.
+  message      String?                @db.VarChar(255)
+  expiresAt    DateTime               @map("expires_at") @db.Timestamptz(3)
+  completedAt  DateTime?              @map("completed_at") @db.Timestamptz(3)
+  createdById  Int?                   @map("created_by")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa          @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  device  AttendanceDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, deviceId, status], map: "idx_att_enroll_device_status")
+  @@map("attendance_device_enrollments")
+}
+
+/// Per-madrasa rules for device attendance (one row; defaults apply when absent).
+/// Times are "HH:mm" in the madrasa's local time (env ATTENDANCE_TIMEZONE).
+model AttendanceDeviceSettings {
+  id        Int @id @default(autoincrement())
+  madrasaId Int @unique @map("madrasa_id")
+
+  /// Late detection: a first punch after start + grace is LATE instead of PRESENT.
+  lateEnabled      Boolean @default(false) @map("late_enabled")
+  studentStartTime String  @default("08:00") @map("student_start_time") @db.VarChar(5)
+  teacherStartTime String  @default("08:00") @map("teacher_start_time") @db.VarChar(5)
+  lateGraceMinutes Int     @default(10) @map("late_grace_minutes")
+
+  /// Auto absent: at absentCutoffTime every mapped person without a row gets ABSENT.
+  autoAbsentEnabled  Boolean   @default(false) @map("auto_absent_enabled")
+  absentCutoffTime   String    @default("10:30") @map("absent_cutoff_time") @db.VarChar(5)
+  /// Local date the auto-absent job last completed (idempotency).
+  lastAutoAbsentDate DateTime? @map("last_auto_absent_date") @db.Date
+
+  /// Check-out: a punch at/after checkoutAfterTime (and >= 30 min after check-in) is a check-out.
+  checkoutEnabled   Boolean @default(false) @map("checkout_enabled")
+  checkoutAfterTime String  @default("12:00") @map("checkout_after_time") @db.VarChar(5)
+
+  /// Weekly days off, JS day numbers (0 = Sunday ... 5 = Friday, 6 = Saturday).
+  weeklyOffDays Int[] @default([5]) @map("weekly_off_days")
+
+  /// SMS to the office when a device stays offline longer than offlineAlertMinutes.
+  offlineAlertEnabled Boolean @default(false) @map("offline_alert_enabled")
+  offlineAlertMinutes Int     @default(15) @map("offline_alert_minutes")
+  /// Recipient of the alert; null = the madrasa's own phone.
+  alertPhone          String? @map("alert_phone") @db.VarChar(20)
+
+  /// The connector corrects the K40 clock when it drifts more than 60 s.
+  autoTimeSync Boolean @default(true) @map("auto_time_sync")
+
+  /// How the system picks PINs: "registration" = student registration no,
+  /// teacher 90000 + registration no, staff 95000 + registration no;
+  /// "auto" = count up from pinStart. A taken PIN falls back to auto.
+  pinMode  String @default("registration") @map("pin_mode") @db.VarChar(16)
+  /// First PIN the system hands out; later ones count up, skipping used PINs.
+  pinStart Int    @default(10001) @map("pin_start")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_device_settings")
+}
+
+/// Holidays (in addition to weeklyOffDays): no device attendance rows, no
+/// attendance SMS and no auto-absent on these local dates.
+model AttendanceHoliday {
+  id        Int      @id @default(autoincrement())
+  madrasaId Int      @map("madrasa_id")
+  date      DateTime @db.Date
+  title     String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, date], map: "uniq_att_holiday_date")
+  @@map("attendance_holidays")
 }
 
 /// Raw punch events received from a connector (idempotent by eventId).
@@ -103,8 +242,11 @@ model AttendanceDeviceLog {
   punchedAt    DateTime            @map("punched_at") @db.Timestamptz(3)
   verifyType   String?             @map("verify_type") @db.VarChar(32)
   inOutState   String?             @map("in_out_state") @db.VarChar(32)
-  /// Null = unmapped (or ineligible student, see failReason).
+  /// The person this punch resolved to. All three null = unmapped (or an
+  /// ineligible person / holiday, see failReason).
   studentId    Int?                @map("student_id")
+  teacherId    Int?                @map("teacher_id")
+  staffId      Int?                @map("staff_id")
   /// Attendance row this punch produced/touched (plain pointer, no FK).
   attendanceId Int?                @map("attendance_id")
   syncStatus   DeviceLogSyncStatus @default(SYNCED) @map("sync_status")

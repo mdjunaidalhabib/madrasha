@@ -25,6 +25,16 @@ export const CMD = {
   ATTLOG_RRQ: 13,
   CLEAR_ATTLOG: 15,
   GET_TIME: 201,
+  /** write one user record (pyzk set_user); data = 72 or 28 byte user record */
+  USER_WRQ: 8,
+  /** delete a user by internal uid (data = u16 uid) */
+  DELETE_USER: 18,
+  /** make the device reload its user table after writes / deletes */
+  REFRESHDATA: 1013,
+  /** data = u32 encoded ZK time */
+  SET_TIME: 202,
+  /** register for realtime events (data = u32 flag mask, 0 = unregister) */
+  REG_EVENT: 500,
   PREPARE_DATA: 1500,
   DATA: 1501,
   FREE_DATA: 1502,
@@ -226,6 +236,100 @@ export interface DeviceUser {
   name: string;
   privilege: number;
   card: number;
+  /** kept so a rewrite of an existing user does not wipe its PIN-pad password (never logged) */
+  password?: string;
+  /** 72-byte format: group string; 28-byte format: group number as string */
+  groupId?: string;
+}
+
+/** Size of one user record on the device: 72 (newer firmwares, string user id) or 28 (older, numeric user id). */
+export type UserRecordSize = 72 | 28;
+
+/** Max bytes the device stores for a user name in each layout. */
+export function userNameMaxBytes(size: UserRecordSize): number {
+  return size === 72 ? 24 : 8;
+}
+
+/** The name as the device will store it (ASCII-safe truncation to the layout's field). */
+export function deviceStoredName(name: string, size: UserRecordSize): string {
+  const b = Buffer.from(name, 'utf8').subarray(0, userNameMaxBytes(size));
+  return cstr(b).trim();
+}
+
+/**
+ * Encode one user record for CMD_USER_WRQ exactly like pyzk set_user:
+ *   72 byte: struct '<HB8s24s4sx7sx24s'  uid, privilege, password, name, card(u32 LE), group, user_id
+ *   28 byte: struct '<HB5s8sIxBHI'       uid, privilege, password, name, card, group(int), 0, int(user_id)
+ */
+export function encodeUserRecord(
+  u: { uid: number; userId: string; name: string; privilege?: number; password?: string; card?: number; groupId?: string },
+  size: UserRecordSize,
+): Buffer {
+  if (!Number.isInteger(u.uid) || u.uid < 1 || u.uid > 0xffff) throw new ZKError('PROTOCOL', `invalid user uid ${u.uid}`);
+  const card = u.card ?? 0;
+  if (!Number.isInteger(card) || card < 0 || card > 0xffffffff) throw new ZKError('PROTOCOL', `card number ${card} does not fit in u32`);
+  const putStr = (buf: Buffer, s: string | undefined, off: number, len: number) => {
+    Buffer.from(s ?? '', 'utf8').subarray(0, len).copy(buf, off);
+  };
+  if (size === 72) {
+    const b = Buffer.alloc(72);
+    b.writeUInt16LE(u.uid, 0);
+    b[2] = (u.privilege ?? 0) & 0xff;
+    putStr(b, u.password, 3, 8);
+    putStr(b, u.name, 11, 24);
+    b.writeUInt32LE(card >>> 0, 35);
+    // byte 39 pad
+    putStr(b, u.groupId, 40, 7);
+    // byte 47 pad
+    if (Buffer.byteLength(u.userId, 'utf8') > 24) throw new ZKError('PROTOCOL', `user id too long for the device: ${u.userId}`);
+    putStr(b, u.userId, 48, 24);
+    return b;
+  }
+  if (!/^\d{1,10}$/.test(u.userId) || Number(u.userId) > 0xffffffff) {
+    throw new ZKError('PROTOCOL', `28-byte user format needs a numeric user id (got "${u.userId}")`);
+  }
+  const b = Buffer.alloc(28);
+  b.writeUInt16LE(u.uid, 0);
+  b[2] = (u.privilege ?? 0) & 0xff;
+  putStr(b, u.password, 3, 5);
+  putStr(b, u.name, 8, 8);
+  b.writeUInt32LE(card >>> 0, 16);
+  // byte 20 pad
+  const g = Number(u.groupId || 0);
+  b[21] = Number.isInteger(g) && g >= 0 && g <= 255 ? g : 0;
+  b.writeUInt16LE(0, 22);
+  b.writeUInt32LE(Number(u.userId) >>> 0, 24);
+  return b;
+}
+
+/* ------------------------------------------------------ realtime events */
+
+export interface ZKEvent {
+  /** event code = the header session_id field of a CMD_REG_EVENT packet (pyzk convention) */
+  code: number;
+  data: Buffer;
+  receivedAt: number;
+}
+
+/** Flag mask used to subscribe to everything (technician tool + enrollment). */
+export const REG_EVENT_ALL = 0xffff;
+
+/**
+ * Card number carried by a realtime event, or undefined when the event is not a card event.
+ * Codes listed in `cardEventCodes` count as card events. Data: if it is ASCII digits (5+ chars, NUL padded)
+ * the digits are the card; otherwise the first 4 bytes are a u32 LE card number. 0 is never a card.
+ * UNVERIFIED on a real K40: run `connector watch-events` and swipe a card to confirm code + layout.
+ */
+export function extractCardFromEvent(ev: { code: number; data: Buffer }, cardEventCodes: readonly number[]): string | undefined {
+  if (!cardEventCodes.includes(ev.code)) return undefined;
+  const text = cstr(ev.data).trim();
+  if (text.length >= 5 && /^[0-9]+$/.test(text) && text.length <= 20) {
+    const s = text.replace(/^0+/, '');
+    return s ? s : undefined;
+  }
+  if (ev.data.length < 4) return undefined;
+  const n = ev.data.readUInt32LE(0);
+  return n > 0 ? String(n) : undefined;
 }
 
 function cstr(b: Buffer): string {
@@ -321,14 +425,26 @@ export function parseAttendance(
   return { recordSize, punches, truncated };
 }
 
+/**
+ * User record size (72 / 28) of a CMD_USERTEMP_RRQ buffer; 0 when the list is empty or the size cannot be inferred.
+ * Prefers the user count reported by CMD_GET_FREE_SIZES.
+ */
+export function detectUserRecordSize(raw: Buffer, usersHint?: number): 0 | UserRecordSize {
+  if (raw.length < 4) return 0;
+  const declared = raw.readUInt32LE(0);
+  if (declared === 0) return 0;
+  let size = 0;
+  if (usersHint && usersHint > 0 && declared % usersHint === 0) size = declared / usersHint;
+  if (size !== 28 && size !== 72) size = declared % 72 === 0 ? 72 : declared % 28 === 0 ? 28 : 0;
+  return size as 0 | UserRecordSize;
+}
+
 export function parseUsers(raw: Buffer, usersHint?: number): DeviceUser[] {
   if (raw.length < 4) return [];
   const declared = raw.readUInt32LE(0);
   const body = raw.subarray(4);
   const total = Math.min(declared, body.length);
-  let size = 0;
-  if (usersHint && usersHint > 0 && declared % usersHint === 0) size = declared / usersHint;
-  if (size !== 28 && size !== 72) size = declared % 72 === 0 ? 72 : declared % 28 === 0 ? 28 : 0;
+  const size = detectUserRecordSize(raw, usersHint);
   if (size === 0) return [];
   const users: DeviceUser[] = [];
   for (let off = 0; off + size <= total; off += size) {
@@ -336,8 +452,10 @@ export function parseUsers(raw: Buffer, usersHint?: number): DeviceUser[] {
       users.push({
         uid: body.readUInt16LE(off),
         privilege: body[off + 2],
+        password: cstr(body.subarray(off + 3, off + 11)),
         name: cstr(body.subarray(off + 11, off + 35)).trim(),
         card: body.readUInt32LE(off + 35),
+        groupId: cstr(body.subarray(off + 40, off + 47)),
         userId: cstr(body.subarray(off + 48, off + 72)),
       });
     } else {
@@ -345,8 +463,10 @@ export function parseUsers(raw: Buffer, usersHint?: number): DeviceUser[] {
       users.push({
         uid: body.readUInt16LE(off),
         privilege: body[off + 2],
+        password: cstr(body.subarray(off + 3, off + 8)),
         name: cstr(body.subarray(off + 8, off + 16)).trim(),
         card: body.readUInt32LE(off + 16),
+        groupId: String(body[off + 21]),
         userId: userNum ? String(userNum) : String(body.readUInt16LE(off)),
       });
     }
@@ -379,12 +499,25 @@ interface Waiter {
   reject: (e: Error) => void;
 }
 
+interface EventWaiter {
+  resolve: (e: ZKEvent | null) => void;
+  reject: (e: Error) => void;
+}
+
+/** realtime events kept while nobody is waiting (oldest dropped beyond this) */
+const MAX_EVENT_BACKLOG = 256;
+
 export class ZKClient {
   private socket?: net.Socket;
   private reader = new PacketReader();
   private queue: ZKPacket[] = [];
   private waiter?: Waiter;
+  /** CMD_REG_EVENT packets pushed by the device, kept apart from command replies */
+  private events: ZKEvent[] = [];
+  private eventWaiter?: EventWaiter;
   private failure?: Error;
+  /** user record size seen in the last getUsers() (undefined = never read or device empty) */
+  userRecordSize?: UserRecordSize;
   private sessionId = 0;
   private replyId = USHRT_MAX - 1; // 65534 like pyzk
   private connected = false;
@@ -457,13 +590,72 @@ export class ZKClient {
 
   private onData(chunk: Buffer): void {
     this.reader.push(chunk);
-    for (let p = this.reader.pop(); p; p = this.reader.pop()) this.queue.push(p);
+    for (let p = this.reader.pop(); p; p = this.reader.pop()) {
+      if (p.command === CMD.REG_EVENT) this.onEvent(p);
+      else this.queue.push(p);
+    }
     this.wake();
+  }
+
+  /**
+   * A realtime event pushed by the device (never a reply to one of our commands). It is ACKed at once like pyzk
+   * __ack_ok: CMD_ACK_OK built with reply id USHRT_MAX-1, WITHOUT touching our own reply counter, so the
+   * request/reply sequence of an in-flight command is not disturbed.
+   */
+  private onEvent(p: ZKPacket): void {
+    const ev: ZKEvent = { code: p.sessionId, data: p.data, receivedAt: Date.now() };
+    this.debug(`realtime event code=${ev.code} len=${ev.data.length}`);
+    const s = this.socket;
+    if (s && !s.destroyed) {
+      const { packet } = buildPacket(CMD.ACK_OK, this.sessionId, USHRT_MAX - 1);
+      s.write(packet, (err) => {
+        if (err) this.debug(`event ACK write failed: ${err.message}`);
+      });
+    }
+    if (this.eventWaiter) {
+      const w = this.eventWaiter;
+      this.eventWaiter = undefined;
+      w.resolve(ev);
+      return;
+    }
+    this.events.push(ev);
+    if (this.events.length > MAX_EVENT_BACKLOG) this.events.shift();
   }
 
   private fail(e: Error): void {
     if (!this.failure) this.failure = e;
     this.wake();
+    if (this.eventWaiter) {
+      const w = this.eventWaiter;
+      this.eventWaiter = undefined;
+      w.reject(e);
+    }
+  }
+
+  /**
+   * Next realtime event (after regEvent()), or null when none arrives within timeoutMs.
+   * Rejects when the connection fails. Only one waiter at a time.
+   */
+  waitForEvent(timeoutMs: number): Promise<ZKEvent | null> {
+    if (this.events.length) return Promise.resolve(this.events.shift()!);
+    if (this.failure) return Promise.reject(this.failure);
+    if (this.eventWaiter) return Promise.reject(new ZKError('PROTOCOL', 'waitForEvent already pending'));
+    return new Promise<ZKEvent | null>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.eventWaiter = undefined;
+        resolve(null);
+      }, Math.max(0, timeoutMs));
+      this.eventWaiter = {
+        resolve: (e) => {
+          clearTimeout(timer);
+          resolve(e);
+        },
+        reject: (e) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      };
+    });
   }
 
   private wake(): void {
@@ -665,7 +857,51 @@ export class ZKClient {
       hint = undefined;
     }
     const raw = await this.readWithBuffer(CMD.USERTEMP_RRQ);
+    const size = detectUserRecordSize(raw, hint);
+    if (size === 0 && raw.length >= 4 && raw.readUInt32LE(0) > 0) {
+      // never guess here: a wrong layout would make us pick colliding uids and overwrite real users
+      throw new ZKError('PROTOCOL', `cannot infer user record size (total=${raw.readUInt32LE(0)}, users=${hint ?? '?'})`);
+    }
+    if (size) this.userRecordSize = size;
     return parseUsers(raw, hint);
+  }
+
+  /**
+   * Create or overwrite one user (CMD_USER_WRQ, record layout as pyzk set_user). The uid decides WHICH record is
+   * written: pass the existing uid to update, a free one (max uid + 1) to create. Call refreshData() afterwards.
+   */
+  async setUser(
+    u: { uid: number; userId: string; name: string; privilege?: number; password?: string; card?: number; groupId?: string },
+    size: UserRecordSize,
+  ): Promise<void> {
+    const rec = encodeUserRecord(u, size);
+    this.expectOk(await this.command(CMD.USER_WRQ, rec), `USER_WRQ uid=${u.uid}`);
+  }
+
+  /** Delete a user by internal uid (pyzk delete_user: data = u16 uid). Call refreshData() afterwards. */
+  async deleteUser(uid: number): Promise<void> {
+    const b = Buffer.alloc(2);
+    b.writeUInt16LE(uid & 0xffff, 0);
+    this.expectOk(await this.command(CMD.DELETE_USER, b), `DELETE_USER uid=${uid}`);
+  }
+
+  /** Make the device apply user table changes. */
+  async refreshData(): Promise<void> {
+    this.expectOk(await this.command(CMD.REFRESHDATA), 'REFRESHDATA');
+  }
+
+  /** Set the device clock (local wall-clock time of the device, no zone). */
+  async setTime(t: ZkTime): Promise<void> {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(encodeTime(t), 0);
+    this.expectOk(await this.command(CMD.SET_TIME, b), 'SET_TIME');
+  }
+
+  /** Subscribe to realtime events (flags mask, REG_EVENT_ALL for everything); 0 unsubscribes. */
+  async regEvent(flags: number): Promise<void> {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(flags >>> 0, 0);
+    this.expectOk(await this.command(CMD.REG_EVENT, b), `REG_EVENT ${flags}`);
   }
 
   /** Read whole attendance log. `resolveUsers` fetches the user list to map the 8 byte format. */
@@ -723,6 +959,11 @@ export class ZKClient {
     if (this.waiter) {
       const w = this.waiter;
       this.waiter = undefined;
+      w.reject(new ZKError('CLOSED', 'client closed'));
+    }
+    if (this.eventWaiter) {
+      const w = this.eventWaiter;
+      this.eventWaiter = undefined;
       w.reject(new ZKError('CLOSED', 'client closed'));
     }
   }

@@ -10,12 +10,29 @@ import {
   connectorPollLimiter,
 } from "./attendance-device.middleware";
 import {
+  assignPins,
+  cancelEnrollment,
+  clearCard,
+  connectorCommands,
+  convertPins,
   connectorConfig,
+  connectorEnrollmentReport,
   connectorHeartbeat,
   connectorIngest,
+  connectorUsers,
   createDevice,
+  createEnrollment,
+  createHoliday,
   deleteDevice,
+  deleteHoliday,
   deleteMapping,
+  deletePersonMap,
+  getEnrollment,
+  getSettings,
+  listHolidays,
+  listPeople,
+  setCard,
+  updateSettings,
   getSmsStatus,
   getToday,
   listDevices,
@@ -33,7 +50,7 @@ import {
  * blanket authMiddleware that would otherwise swallow the connector routes).
  * Fully self-contained: applies its own tenantMiddleware.
  *
- * NOTE: MUHTAMIM/SUPER_ADMIN bypass rbacMiddleware. Like kiosk.manage, these
+ * NOTE: MUHTAMIM/SUPER_ADMIN bypass rbacMiddleware. These
  * permissions deliberately have NO TALIMAT fallback (a leaked device key can
  * mark arbitrary attendance), so other roles need an explicit grant.
  */
@@ -46,6 +63,9 @@ connector.use(connectorFailedAuthLimiter, attendanceDeviceConnectorAuth);
 connector.get("/config", connectorPollLimiter, connectorConfig);
 connector.post("/heartbeat", connectorPollLimiter, connectorHeartbeat);
 connector.post("/ingest", connectorIngestLimiter, connectorIngest);
+connector.get("/users", connectorPollLimiter, connectorUsers);
+connector.get("/commands", connectorPollLimiter, connectorCommands);
+connector.post("/enrollments/:id", connectorPollLimiter, connectorEnrollmentReport);
 router.use("/connector", connector);
 
 /* ================= ADMIN ================= */
@@ -65,6 +85,23 @@ router.get("/mappings", ...canView, listMappings);
 router.put("/mappings", ...canManage, setMapping);
 router.delete("/mappings/:studentId", ...canManage, deleteMapping);
 router.get("/unmapped-users", ...canView, listUnmappedUsers);
+
+router.get("/settings", ...canView, getSettings);
+router.put("/settings", ...canManage, updateSettings);
+router.get("/holidays", ...canView, listHolidays);
+router.post("/holidays", ...canManage, createHoliday);
+router.delete("/holidays/:id", ...canManage, deleteHoliday);
+
+router.get("/people", ...canView, listPeople);
+router.post("/people/assign-pins", ...canManage, assignPins);
+router.post("/people/convert-pins", ...canManage, convertPins);
+router.put("/people/card", ...canManage, setCard);
+router.delete("/people/card/:attendeeType/:attendeeId", ...canManage, clearCard);
+router.delete("/people/map/:attendeeType/:attendeeId", ...canManage, deletePersonMap);
+
+router.post("/enrollments", ...canManage, createEnrollment);
+router.get("/enrollments/:id", ...canView, getEnrollment);
+router.post("/enrollments/:id/cancel", ...canManage, cancelEnrollment);
 
 router.get("/today", ...canView, getToday);
 router.get("/sms-status", ...canView, getSmsStatus);

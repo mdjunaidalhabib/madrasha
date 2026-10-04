@@ -14,6 +14,8 @@ export const NOTIFICATION_EVENTS = [
   "RESULT_PUBLISHED",
   "EXAM_FEE_ACTIVATED",
   "ATTENDANCE_PRESENT",
+  "ATTENDANCE_ABSENT",
+  "ATTENDANCE_CHECKOUT",
 ] as const;
 export type NotificationEventKey = (typeof NOTIFICATION_EVENTS)[number];
 
@@ -24,7 +26,11 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<NotificationEventKey, string
   SALARY_PAYMENT: "{name}-এর {month} মাসের বেতন {amount} টাকা পরিশোধ করা হয়েছে। ধন্যবাদ।",
   RESULT_PUBLISHED: "{name}-এর {class} শ্রেণির {exam} পরীক্ষার ফলাফল প্রকাশিত হয়েছে। অভিভাবক পোর্টালে লগইন করে দেখুন।",
   EXAM_FEE_ACTIVATED: "{exam} এর পরীক্ষার ফি চালু হয়েছে। {name}-এর জন্য পরীক্ষার ফি {amount} টাকা। ধন্যবাদ।",
-  ATTENDANCE_PRESENT: "{name} আজ {time} এ মাদরাসায় উপস্থিত হয়েছে ({date})। ধন্যবাদ।",
+  // {status} = "উপস্থিত" (on time) or "দেরিতে উপস্থিত" (late): the on-time text is
+  // exactly the old default, and saved custom templates without {status} keep working.
+  ATTENDANCE_PRESENT: "{name} আজ {time} এ মাদরাসায় {status} হয়েছে ({date})। ধন্যবাদ।",
+  ATTENDANCE_ABSENT: "{name} আজ ({date}) মাদরাসায় অনুপস্থিত। কারণ জানাতে অফিসে যোগাযোগ করুন।",
+  ATTENDANCE_CHECKOUT: "{name} আজ {time} এ মাদরাসা থেকে বের হয়েছে ({date})।",
 };
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventKey, string> = {
@@ -35,13 +41,20 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventKey, string> = {
   RESULT_PUBLISHED: "পরীক্ষার ফলাফল প্রকাশের পর",
   EXAM_FEE_ACTIVATED: "পরীক্ষার ফি চালু হওয়ার পর",
   ATTENDANCE_PRESENT: "ডিভাইসে উপস্থিতির পর",
+  ATTENDANCE_ABSENT: "স্বয়ংক্রিয় অনুপস্থিতির পর",
+  ATTENDANCE_CHECKOUT: "ডিভাইসে চেক-আউটের পর",
 };
 
 /// Events that stay OFF until a madrasa explicitly enables them (i.e. when no
 /// NotificationSetting row exists). Every other event keeps the original
 /// default-enabled behaviour. A per-student-per-day SMS (ATTENDANCE_PRESENT)
 /// costs real credit, so it must be opt-in.
-export const DEFAULT_DISABLED_EVENTS: readonly NotificationEventKey[] = ["ATTENDANCE_PRESENT"];
+/// The same holds for the auto-absent and check-out SMS.
+export const DEFAULT_DISABLED_EVENTS: readonly NotificationEventKey[] = [
+  "ATTENDANCE_PRESENT",
+  "ATTENDANCE_ABSENT",
+  "ATTENDANCE_CHECKOUT",
+];
 
 export const isEventEnabledByDefault = (eventKey: NotificationEventKey): boolean =>
   !DEFAULT_DISABLED_EVENTS.includes(eventKey);

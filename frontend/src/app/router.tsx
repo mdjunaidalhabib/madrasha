@@ -9,7 +9,6 @@ const RootRoute = lazy(() => import("../features/landing/RootRoute"));
 const CustomDomainTenantGate = lazy(() => import("../features/landing/CustomDomainTenantGate"));
 const PublicWebsitePage = lazy(() => import("../features/website/PublicWebsitePage"));
 const AdmissionApplyPage = lazy(() => import("../features/website/AdmissionApplyPage"));
-const AttendanceKioskPage = lazy(() => import("../features/kiosk/AttendanceKioskPage"));
 
 const GuardianLoginPage = lazy(() => import("../features/guardian/GuardianLoginPage"));
 const GuardianChangePasswordPage = lazy(
@@ -68,14 +67,13 @@ export const router = createBrowserRouter([
 
   { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
   { path: "/:madrasaSlug/contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
-  { path: "/:madrasaSlug/kiosk", element: withSuspense(<AttendanceKioskPage />) },
 
   // Bare (no-slug) equivalents of the routes above, reachable only on a
   // tenant's own connected custom domain - CustomDomainTenantGate resolves
   // which tenant owns the current hostname before any of these render (see
   // ARCHITECTURE.md "Custom domains"). Root "/" itself is handled by
   // RootRoute above since it needs different platform-vs-tenant behavior.
-  // A literal "/admission" or "/kiosk" here always wins over "/:madrasaSlug"
+  // A literal "/admission" or "/contact" here always wins over "/:madrasaSlug"
   // below even though both are single-segment patterns - React Router ranks
   // matches by specificity (static segment > dynamic), not array order -
   // this is placed before it anyway just for readability.
@@ -104,7 +102,6 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "guardian/change-password", element: withSuspense(<GuardianChangePasswordPage />) },
-      { path: "kiosk", element: withSuspense(<AttendanceKioskPage />) },
     ],
   },
 

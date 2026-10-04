@@ -223,12 +223,8 @@ const SPECIAL_LABEL_ROWS: SpecialRow[] = [
   { key: "results/publish|CREATE", bn: "ফলাফল প্রকাশ করা হয়েছে", en: "Result published" },
   { key: "results/apply-roll-by-rank|CREATE", bn: "মেধাক্রম অনুযায়ী রোল নম্বর দেওয়া হয়েছে", en: "Roll numbers applied by rank" },
 
-  // Attendance / Kiosk
+  // Attendance
   { key: "attendance/bulk|CREATE", bn: "একসাথে অনেক {{student}}র হাজিরা দেওয়া হয়েছে", en: "Attendance bulk marked" },
-  { key: "attendance/kiosk/devices|CREATE", bn: "কিয়স্ক ডিভাইস যোগ করা হয়েছে", en: "Kiosk device added" },
-  { key: "attendance/kiosk/devices|UPDATE", bn: "কিয়স্ক ডিভাইস হালনাগাদ করা হয়েছে", en: "Kiosk device updated" },
-  { key: "attendance/kiosk/devices|DELETE", bn: "কিয়স্ক ডিভাইস মুছে ফেলা হয়েছে", en: "Kiosk device deleted" },
-  { key: "attendance/kiosk/students/card|UPDATE", bn: "{{student}}র কার্ড/ফিঙ্গারপ্রিন্ট সংযুক্ত করা হয়েছে", en: "{{student}} card/fingerprint assigned" },
 
   // Library
   { key: "library/categories|CREATE", bn: "লাইব্রেরি ক্যাটাগরি যোগ করা হয়েছে", en: "Library category added" },

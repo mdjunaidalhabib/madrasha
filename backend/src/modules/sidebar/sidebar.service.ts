@@ -64,10 +64,9 @@ export class SidebarService {
       .map((mm) => mm.module)
       .filter((module) => module.keyName !== "admission" && module.keyName !== "activity");
 
-    // "attendance" (উপস্থিতি - manual bulk-mark + the RFID/fingerprint gate
-    // kiosk and its device management) used to be children ("attendance_mark",
-    // "kiosk_devices") of the ছাত্র বিভাগ/শিক্ষার্থী module and is now its own
-    // top-level module. Same reasoning/fallback as "communication" below -
+    // "attendance" (উপস্থিতি - manual bulk-mark + biometric devices) used to
+    // be children ("attendance_mark", "kiosk_devices") of the ছাত্র
+    // বিভাগ/শিক্ষার্থী module and is now its own top-level module. Same reasoning/fallback as "communication" below -
     // surfaces it immediately for any tenant that already had students
     // active, even before the real MadrasaModule backfill/re-seed reaches it.
     if (
@@ -438,20 +437,26 @@ export class SidebarService {
         }
       }
 
-      // Everything attendance-related (manual bulk-mark + the RFID/fingerprint
-      // gate kiosk and its device management) - see the moved-key filter
+      // Everything attendance-related (manual bulk-mark + biometric devices)
+      // - see the moved-key filter
       // under "students" above. Same fallback reasoning as every other
       // block in this file: surfaces these immediately even for a tenant
       // whose "attendance" module row (real or synthesized above) has no
       // feature rows of its own yet.
       if (mod.keyName === "attendance") {
+        // The kiosk feature was removed - filter its already-seeded DB row so
+        // existing installations stop showing it immediately.
+        const kioskIndex = children.findIndex((child) => child.key === "kiosk_devices");
+        if (kioskIndex !== -1) children.splice(kioskIndex, 1);
+
         const fallbackAttendanceChildren: { key: string; label: string; sortOrder: number }[] = [
           { key: "attendance_report", label: "উপস্থিতি রিপোর্ট", sortOrder: 1 },
           { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 2 },
-          { key: "kiosk_devices", label: "কিওস্ক ডিভাইস", sortOrder: 3 },
           { key: "attendance_devices", label: "উপস্থিতি ডিভাইস", sortOrder: 4 },
           { key: "attendance_device_mapping", label: "K40 ইউজার ম্যাপিং", sortOrder: 5 },
           { key: "attendance_device_today", label: "আজকের উপস্থিতি (ডিভাইস)", sortOrder: 6 },
+          { key: "attendance_device_cards", label: "কার্ড এনরোলমেন্ট", sortOrder: 7 },
+          { key: "attendance_device_settings", label: "ডিভাইস সেটিংস", sortOrder: 8 },
         ];
         for (const fallback of fallbackAttendanceChildren) {
           if (!children.some((child) => child.key === fallback.key)) {

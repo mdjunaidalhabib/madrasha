@@ -3,7 +3,7 @@ import { isPlatformRootHost } from "./platformHost";
 import { getText } from "@madrasha/shared-ui/src/i18n";
 import { appText } from "../app/app.text";
 
-const RESERVED = new Set(["", "admin", "api", "assets", "login", "super-admin", "guardian", "kiosk", "admission", "contact"]);
+const RESERVED = new Set(["", "admin", "api", "assets", "login", "super-admin", "guardian", "admission", "contact"]);
 
 /**
  * Where the installed app should open for the madrasa being visited:

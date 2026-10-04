@@ -52,8 +52,9 @@ test('(d) internet down -> events stay pending while K40 fetching continues; up 
     assert.equal(env.cloud.events.size, 0);
     assert.ok(c.stats.ingestFailures >= 1);
     env.cloud.setMode('up');
-    await waitFor(() => env.cloud.events.size === 3 && c.queue.counts().pending === 0, 8000, 'drained after recovery');
-    assert.equal(c.queue.counts().synced, 3);
+    // "pending" is already 0 while the batch is still "syncing" (reply not processed yet) - wait for synced.
+    await waitFor(() => env.cloud.events.size === 3 && c.queue.counts().synced === 3, 8000, 'drained after recovery');
+    assert.equal(c.queue.counts().pending, 0);
   } finally {
     await env.cleanup();
   }
