@@ -31,6 +31,11 @@ const DeviceTodayPage = lazy(() => import("../features/attendance-device/DeviceT
 const DeviceCardsPage = lazy(() => import("../features/attendance-device/DeviceCardsPage"));
 const DeviceSettingsPage = lazy(() => import("../features/attendance-device/DeviceSettingsPage"));
 const AttendanceReportPage = lazy(() => import("../features/attendance/AttendanceReportPage"));
+const AttendancePolicyPage = lazy(() => import("../features/attendance/AttendancePolicyPage"));
+const AttendanceDashboardPage = lazy(() => import("../features/attendance-analytics/AttendanceDashboardPage"));
+const PayrollAttendancePage = lazy(() => import("../features/attendance-analytics/PayrollAttendancePage"));
+const LeaveRequestsPage = lazy(() => import("../features/attendance-leave/LeaveRequestsPage"));
+const SessionAttendancePage = lazy(() => import("../features/attendance-session/SessionAttendancePage"));
 const StudentPromotionPage = lazy(() => import("../features/students/StudentPromotionPage"));
 const StudentPhotoManagerPage = lazy(() => import("../features/students/StudentPhotoManagerPage"));
 const StudentNamesManagerPage = lazy(() => import("../features/students/StudentNamesManagerPage"));
@@ -434,6 +439,54 @@ const madrasaAdminChildren = [
   {
     path: "attendance/report",
     element: <ModuleGuard module="attendance">{withSuspense(<AttendanceReportPage />)}</ModuleGuard>,
+  },
+  {
+    path: "attendance/dashboard",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission="attendance.read">{withSuspense(<AttendanceDashboardPage />)}</PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/leaves",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["attendance.leave", "attendance.read"]}>
+          {withSuspense(<LeaveRequestsPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/sessions",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["attendance.mark", "attendance.session", "attendance.read"]}>
+          {withSuspense(<SessionAttendancePage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/payroll",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["payroll.read", "payroll.manage"]}>
+          {withSuspense(<PayrollAttendancePage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
+  },
+  {
+    path: "attendance/policy",
+    element: (
+      <ModuleGuard module="attendance">
+        <PermissionGuard permission={["attendance.policy", "attendance.read"]}>
+          {withSuspense(<AttendancePolicyPage />)}
+        </PermissionGuard>
+      </ModuleGuard>
+    ),
   },
   {
     path: "students/promotion",

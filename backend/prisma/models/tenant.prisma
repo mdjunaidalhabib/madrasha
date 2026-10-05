@@ -220,6 +220,11 @@ model Madrasa {
   attendanceDeviceEnrollments  AttendanceDeviceEnrollment[]
   attendanceDeviceSettings     AttendanceDeviceSettings?
   attendanceHolidays           AttendanceHoliday[]
+  attendancePolicy             AttendancePolicy?
+  attendanceChanges            AttendanceChange[]
+  leaveRequests                LeaveRequest[]
+  attendanceSessions           AttendanceSession[]
+  sessionAttendances           SessionAttendance[]
   smsQueue                     SmsQueue[]
   libraryBookCategories        LibraryBookCategory[]
   libraryBooks                 LibraryBook[]

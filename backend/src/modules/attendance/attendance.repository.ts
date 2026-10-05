@@ -1,53 +1,30 @@
-import { Prisma } from "@prisma/client";
+import { AttendeeType, Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 
+type Db = Prisma.TransactionClient | typeof prisma;
+
 export class AttendanceRepository {
-  /** Bulk upsert: marking the same class/date twice just overwrites the
-   * previous entries instead of failing on the unique constraint. */
-  async upsertMany(
-    madrasaId: number,
-    rows: Array<{
-      attendeeType: string;
-      attendeeId: number;
-      classId: number | null;
-      date: Date;
-      status: string;
-      remarks: string | null;
-      markedById: number | null;
-    }>,
-  ) {
-    return prisma.$transaction(
-      rows.map((row) =>
-        prisma.attendance.upsert({
-          where: {
-            madrasaId_attendeeType_attendeeId_date: {
-              madrasaId,
-              attendeeType: row.attendeeType as any,
-              attendeeId: row.attendeeId,
-              date: row.date,
-            },
-          },
-          update: {
-            status: row.status as any,
-            remarks: row.remarks,
-            markedById: row.markedById,
-            classId: row.classId,
-            source: "manual",
-          },
-          create: {
-            madrasaId,
-            attendeeType: row.attendeeType as any,
-            attendeeId: row.attendeeId,
-            classId: row.classId,
-            date: row.date,
-            status: row.status as any,
-            remarks: row.remarks,
-            markedById: row.markedById,
-            source: "manual",
-          },
-        }),
-      ),
-    );
+  transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return prisma.$transaction(fn, { timeout: 30_000 });
+  }
+
+  /** Existing rows of the given attendees on one date (inside the marking transaction). */
+  findForDate(db: Db, madrasaId: number, attendeeType: AttendeeType, attendeeIds: number[], date: Date) {
+    return db.attendance.findMany({
+      where: { madrasaId, attendeeType, attendeeId: { in: attendeeIds }, date },
+    });
+  }
+
+  create(db: Db, data: Prisma.AttendanceUncheckedCreateInput) {
+    return db.attendance.create({ data });
+  }
+
+  update(db: Db, id: number, data: Prisma.AttendanceUncheckedUpdateInput) {
+    return db.attendance.update({ where: { id }, data });
+  }
+
+  findById(madrasaId: number, id: number) {
+    return prisma.attendance.findFirst({ where: { id, madrasaId } });
   }
 
   findMany(madrasaId: number, where: Prisma.AttendanceWhereInput) {
@@ -57,25 +34,23 @@ export class AttendanceRepository {
     });
   }
 
-  /** Present/absent/late/leave counts for one attendee over a date range,
-   * used to build the monthly attendance summary/percentage. */
-  async getSummary(
-    madrasaId: number,
-    attendeeType: string,
-    attendeeId: number,
-    from: Date,
-    to: Date,
-  ) {
-    return prisma.attendance.groupBy({
-      by: ["status"],
-      where: {
-        madrasaId,
-        attendeeType: attendeeType as any,
-        attendeeId,
-        date: { gte: from, lte: to },
-      },
-      _count: { _all: true },
+  /** Active students of a class (same filter as the device module's isEligibleStudent). */
+  async activeStudentIdsOfClass(madrasaId: number, classId: number): Promise<number[]> {
+    const rows = await prisma.student.findMany({
+      where: { madrasaId, classId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+      select: { id: true },
+      orderBy: { id: "asc" },
     });
+    return rows.map((r) => r.id);
+  }
+
+  /** Everybody of a type that has at least one attendance row in the madrasa. */
+  async attendeeIdsWithRecords(madrasaId: number, attendeeType: AttendeeType): Promise<number[]> {
+    const rows = await prisma.attendance.groupBy({
+      by: ["attendeeId"],
+      where: { madrasaId, attendeeType },
+    });
+    return rows.map((r) => r.attendeeId).sort((a, b) => a - b);
   }
 }
 

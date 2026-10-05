@@ -61,3 +61,163 @@ model Attendance {
   @@index([madrasaId, attendeeType, attendeeId], map: "idx_attendance_madrasa_attendee")
   @@map("attendances")
 }
+
+// ============================================================
+// ATTENDANCE v3 - policy, audit trail, leave workflow, sessions
+// See src/modules/attendance/ATTENDANCE_V3_API.md for the contract.
+// ============================================================
+
+/// Per-madrasa attendance policy (one row; defaults apply when absent).
+/// The working-day calendar itself (weekly off days + holidays) lives in
+/// AttendanceDeviceSettings.weeklyOffDays / AttendanceHoliday and is shared
+/// by manual marking, reports and the device module.
+model AttendancePolicy {
+  id        Int @id @default(autoincrement())
+  madrasaId Int @unique @map("madrasa_id")
+
+  /// Manual marking/correction is allowed for today and the previous N days;
+  /// older dates need the attendance.edit permission. Future dates never.
+  editWindowDays Int @default(7) @map("edit_window_days")
+
+  /// Every N LATE days count as one ABSENT in the percentage (0 = off).
+  lateToAbsentCount Int @default(0) @map("late_to_absent_count")
+
+  /// How LEAVE days count in the percentage:
+  /// "excluded" = left out of the denominator, "present", "absent".
+  leaveMode String @default("excluded") @map("leave_mode") @db.VarChar(16)
+
+  /// Below this percentage a person shows up in the low-attendance list.
+  lowAttendancePercent Int @default(75) @map("low_attendance_percent")
+
+  /// Guardian SMS + in-app alert after N consecutive absent working days (0 = off).
+  consecutiveAbsentDays Int       @default(0) @map("consecutive_absent_days")
+  /// Local date the consecutive-absence job last completed (idempotency).
+  lastConsecutiveCheck  DateTime? @map("last_consecutive_check") @db.Date
+
+  /// Payroll suggestion: deduct (salary / working days) per absent day.
+  payrollDeductAbsent Boolean @default(true) @map("payroll_deduct_absent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_policies")
+}
+
+/// Append-only audit trail: one row per status change of an attendance row
+/// (manual re-mark, correction, leave approval/cancel).
+/// `attendanceId` is a plain pointer (no FK) so history survives deletes.
+model AttendanceChange {
+  id           Int               @id @default(autoincrement())
+  madrasaId    Int               @map("madrasa_id")
+  attendanceId Int?              @map("attendance_id")
+  attendeeType AttendeeType      @map("attendee_type")
+  attendeeId   Int               @map("attendee_id")
+  date         DateTime          @db.Date
+  oldStatus    AttendanceStatus? @map("old_status")
+  newStatus    AttendanceStatus? @map("new_status")
+  oldSource    String?           @map("old_source") @db.VarChar(20)
+  newSource    String?           @map("new_source") @db.VarChar(20)
+  reason       String?           @db.VarChar(255)
+  /// manual | correction | leave | leave_cancel
+  via          String            @db.VarChar(20)
+  changedById  Int?              @map("changed_by")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, attendeeType, attendeeId, date], map: "idx_att_change_attendee_date")
+  @@index([madrasaId, createdAt], map: "idx_att_change_madrasa_created")
+  @@index([attendanceId], map: "idx_att_change_attendance")
+  @@map("attendance_changes")
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// Leave application for a student/teacher/staff over an inclusive date range.
+/// Approval writes LEAVE attendance rows (source "leave") for every working
+/// day in the range; cancelling an approved request removes the rows it
+/// created that nobody changed since.
+model LeaveRequest {
+  id            Int                @id @default(autoincrement())
+  madrasaId     Int                @map("madrasa_id")
+  attendeeType  AttendeeType       @map("attendee_type")
+  attendeeId    Int                @map("attendee_id")
+  fromDate      DateTime           @map("from_date") @db.Date
+  toDate        DateTime           @map("to_date") @db.Date
+  /// sick | family | travel | other
+  leaveType     String             @default("other") @map("leave_type") @db.VarChar(20)
+  reason        String             @db.VarChar(500)
+  status        LeaveRequestStatus @default(PENDING)
+  /// admin | guardian
+  requestedVia  String             @default("admin") @map("requested_via") @db.VarChar(20)
+  requestedById Int?               @map("requested_by")
+  /// Guardian account id when requestedVia = guardian.
+  guardianId    Int?               @map("guardian_id")
+  reviewedById  Int?               @map("reviewed_by")
+  reviewedAt    DateTime?          @map("reviewed_at") @db.Timestamptz(3)
+  reviewNote    String?            @map("review_note") @db.VarChar(255)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, status], map: "idx_leave_madrasa_status")
+  @@index([madrasaId, attendeeType, attendeeId], map: "idx_leave_attendee")
+  @@index([madrasaId, fromDate, toDate], map: "idx_leave_range")
+  @@map("leave_requests")
+}
+
+/// A named sub-day attendance slot (e.g. morning, evening, night, a prayer)
+/// for students. Daily attendance (Attendance) is untouched; session marks
+/// live in SessionAttendance.
+model AttendanceSession {
+  id              Int      @id @default(autoincrement())
+  madrasaId       Int      @map("madrasa_id")
+  name            String   @db.VarChar(100)
+  /// "HH:mm", informational only.
+  startTime       String?  @map("start_time") @db.VarChar(5)
+  endTime         String?  @map("end_time") @db.VarChar(5)
+  /// true = only residential students (Student.residencyType = 1) are listed.
+  residentialOnly Boolean  @default(false) @map("residential_only")
+  sortOrder       Int      @default(0) @map("sort_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa             @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  records SessionAttendance[]
+
+  @@index([madrasaId], map: "idx_att_session_madrasa")
+  @@map("attendance_sessions")
+}
+
+/// One student's mark in one session on one day. `studentId` is a plain
+/// pointer like Attendance.attendeeId.
+model SessionAttendance {
+  id         Int              @id @default(autoincrement())
+  madrasaId  Int              @map("madrasa_id")
+  sessionId  Int              @map("session_id")
+  studentId  Int              @map("student_id")
+  classId    Int?             @map("class_id")
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  remarks    String?          @db.VarChar(255)
+  markedById Int?             @map("marked_by")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  madrasa Madrasa           @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId, date], map: "uniq_session_attendance")
+  @@index([madrasaId, date], map: "idx_session_att_madrasa_date")
+  @@index([madrasaId, classId, date], map: "idx_session_att_class_date")
+  @@map("session_attendances")
+}

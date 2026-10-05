@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { History, Settings2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
-import { attendanceApi, type AttendanceStatus } from "../../services/phase1Api";
+import {
+  attendanceApi,
+  type AttendanceCalendar,
+  type AttendanceStats,
+  type AttendanceStatus,
+} from "../../services/phase1Api";
+import { AttendanceHistoryModal } from "./AttendanceShared";
+import { localIsoDate } from "./attendanceUtils";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
-import { commonText, formatDate, formatNumber, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import { formatDate, formatNumber, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
 import { attendanceText } from "./attendance.text";
 
 type Division = { division_id: number; division_name_bn: string };
@@ -24,8 +33,8 @@ type AttendanceRecord = {
   status: AttendanceStatus;
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const todayIso = () => localIsoDate();
+const currentMonth = () => localIsoDate().slice(0, 7);
 
 const monthRange = (month: string) => {
   const [year, monthNum] = month.split("-").map(Number);
@@ -50,7 +59,7 @@ const AttendanceReportPage = () => {
   const lang = useLang();
   const tx = useText(attendanceText);
   const t = tx.report;
-  const c = useText(commonText);
+  const navigate = useNavigate();
   const num = (n: number) => formatNumber(n, lang);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -66,9 +75,15 @@ const AttendanceReportPage = () => {
   const [reportLoading, setReportLoading] = useState(false);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
 
-  const [editDate, setEditDate] = useState("");
-  const [editPresentByStudent, setEditPresentByStudent] = useState<Record<string, boolean>>({});
-  const [editSaving, setEditSaving] = useState(false);
+  const [calendar, setCalendar] = useState<AttendanceCalendar | null>(null);
+  const [stats, setStats] = useState<Array<AttendanceStats & { attendee_id: number }>>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsFailed, setStatsFailed] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<{
+    attendeeType: "STUDENT";
+    attendeeId: number;
+    name: string;
+  } | null>(null);
 
   const loadDivisions = useCallback(async () => {
     try {
@@ -119,7 +134,6 @@ const AttendanceReportPage = () => {
   const loadClassesByDivision = async (divisionId: string) => {
     setSelectedClass("");
     setRecords([]);
-    setEditDate("");
 
     if (!divisionId) {
       setClasses([]);
@@ -179,7 +193,6 @@ const AttendanceReportPage = () => {
 
     try {
       setReportLoading(true);
-      setEditDate("");
       const res = await attendanceApi.list({
         from,
         to,
@@ -199,6 +212,90 @@ const AttendanceReportPage = () => {
   useEffect(() => {
     loadReport();
   }, [loadReport]);
+
+  // Working / off days of the month (weekly off + holidays removed).
+  useEffect(() => {
+    if (!month) return;
+    const { from, to } = monthRange(month);
+    let alive = true;
+    attendanceApi
+      .calendar(from, to)
+      .then((cal) => alive && setCalendar(cal))
+      .catch((err) => {
+        logger.error("LOAD ATTENDANCE CALENDAR ERROR:", err);
+        if (alive) setCalendar(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [month]);
+
+  // Per-student working-day stats (the official percentage) for the selected class.
+  useEffect(() => {
+    if (!month || !selectedClass) {
+      setStats([]);
+      return;
+    }
+    const { from, to } = monthRange(month);
+    let alive = true;
+    setStatsLoading(true);
+    setStatsFailed(false);
+    attendanceApi
+      .stats({ attendee_type: "STUDENT", from, to, class_id: Number(selectedClass) })
+      .then((rows) => alive && setStats(rows))
+      .catch((err) => {
+        logger.error("LOAD ATTENDANCE STATS ERROR:", err);
+        if (alive) {
+          setStats([]);
+          setStatsFailed(true);
+        }
+      })
+      .finally(() => alive && setStatsLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [month, selectedClass]);
+
+  const offDayTitle = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of calendar?.off_days || []) map.set(String(d.date).slice(0, 10), d.title || "");
+    return map;
+  }, [calendar]);
+
+  const statsTotals = useMemo(() => {
+    if (stats.length === 0) return null;
+    let unmarked = 0;
+    let latePenalty = 0;
+    let pctSum = 0;
+    let workingDays = 0;
+    for (const row of stats) {
+      unmarked += Number(row.unmarked || 0);
+      latePenalty += Number(row.late_penalty || 0);
+      pctSum += Number(row.percentage || 0);
+      workingDays = Math.max(workingDays, Number(row.working_days || 0));
+    }
+    return {
+      unmarked,
+      latePenalty,
+      workingDays,
+      avgPercentage: Math.round((pctSum / stats.length) * 10) / 10,
+    };
+  }, [stats]);
+
+  const statsRows = useMemo(
+    () =>
+      stats
+        .map((row) => ({ ...row, info: studentNameById.get(String(row.attendee_id)) }))
+        .sort((a, b) => Number(a.info?.roll ?? 0) - Number(b.info?.roll ?? 0)),
+    [stats, studentNameById],
+  );
+
+  const openMarkPage = (date: string) => {
+    const params = new URLSearchParams({ type: "STUDENT", date });
+    if (selectedDivision) params.set("division", selectedDivision);
+    if (selectedClass) params.set("class", selectedClass);
+    navigate(`/attendance/mark?${params.toString()}`);
+  };
 
   // Date -> per-status counts, newest first.
   const dailySummary = useMemo(() => {
@@ -305,70 +402,20 @@ const AttendanceReportPage = () => {
       .slice(0, 5);
   }, [records, studentNameById, studentClassById, classNameById]);
 
-  const openEditForDate = (date: string) => {
-    setEditDate(date);
-    const recordsForDate = records.filter((row) => String(row.date).slice(0, 10) === date);
-    const existingByStudent = new Map(recordsForDate.map((row) => [String(row.attendeeId), row]));
-
-    const next: Record<string, boolean> = {};
-    for (const student of studentsInClass) {
-      const existing = existingByStudent.get(String(student.id));
-      next[String(student.id)] = existing ? existing.status === "PRESENT" : true;
-    }
-    setEditPresentByStudent(next);
-  };
-
-  const toggleEditPresent = (studentId: number | string) => {
-    const key = String(studentId);
-    setEditPresentByStudent((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const editAllChecked = useMemo(() => {
-    const ids = studentsInClass.map((student) => String(student.id));
-    return ids.length > 0 && ids.every((id) => editPresentByStudent[id]);
-  }, [studentsInClass, editPresentByStudent]);
-
-  const toggleEditCheckAll = () => {
-    const ids = studentsInClass.map((student) => String(student.id));
-    const nextValue = !editAllChecked;
-    setEditPresentByStudent((prev) => {
-      const next = { ...prev };
-      for (const id of ids) next[id] = nextValue;
-      return next;
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!selectedClass || !editDate) return;
-    const entries = studentsInClass.map((student) => ({
-      attendee_id: Number(student.id),
-      status: (editPresentByStudent[String(student.id)] ? "PRESENT" : "ABSENT") as AttendanceStatus,
-    }));
-
-    try {
-      setEditSaving(true);
-      await attendanceApi.bulkMark({
-        attendee_type: "STUDENT",
-        date: editDate,
-        class_id: Number(selectedClass),
-        entries,
-      });
-      useToastStore.getState().show(getText(attendanceText).report.updated, "success");
-      setEditDate("");
-      loadReport();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || getText(attendanceText).report.updateFailed;
-      useToastStore.getState().show(msg, "error");
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
         title={t.title}
         subtitle={t.subtitle}
+        actions={
+          <Link
+            to="/attendance/policy"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Settings2 size={15} />
+            {t.policyLink}
+          </Link>
+        }
       />
 
       {/* Filters */}
@@ -422,11 +469,34 @@ const AttendanceReportPage = () => {
       ) : (
         <>
           {/* Dashboard */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile label={t.rate} value={overall.rate} variant="percentage" tone="blue" />
-            <StatTile label={t.totalPresent} value={overall.PRESENT} tone="emerald" />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatTile
+              label={t.rate}
+              value={selectedClass && statsTotals ? statsTotals.avgPercentage : overall.rate}
+              variant="percentage"
+              tone="blue"
+            />
+            <StatTile label={t.totalPresent} value={overall.PRESENT + overall.LATE} tone="emerald" />
             <StatTile label={t.totalAbsent} value={overall.ABSENT} tone="rose" />
-            <StatTile label={t.daysTaken} value={overall.days} subLabel={t.days} tone="indigo" />
+            <StatTile
+              label={t.workingDays}
+              value={calendar ? calendar.working_days.length : statsTotals?.workingDays ?? 0}
+              subLabel={calendar ? t.offDays(num(calendar.off_days.length)) : undefined}
+              tone="indigo"
+            />
+            <StatTile label={t.daysTaken} value={overall.days} subLabel={t.days} tone="slate" size="sm" />
+            <StatTile
+              label={`${tx.common.late} / ${tx.common.leave}`}
+              value={`${num(overall.LATE)} / ${num(overall.LEAVE)}`}
+              tone="amber"
+              size="sm"
+            />
+            {selectedClass && statsTotals && (
+              <>
+                <StatTile label={t.unmarked} value={statsTotals.unmarked} subLabel={t.unmarkedHint} tone="slate" size="sm" />
+                <StatTile label={t.latePenalty} value={statsTotals.latePenalty} subLabel={t.latePenaltyHint} tone="amber" size="sm" />
+              </>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -445,22 +515,31 @@ const AttendanceReportPage = () => {
                         <tr>
                           <th className="px-5 py-2.5 font-medium">{t.date}</th>
                           <th className="px-3 py-2.5 text-center font-medium text-green-700 dark:text-green-400">{tx.common.present}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-amber-700 dark:text-amber-400">{tx.common.late}</th>
                           <th className="px-3 py-2.5 text-center font-medium text-red-700 dark:text-red-400">{tx.common.absent}</th>
+                          <th className="px-3 py-2.5 text-center font-medium text-sky-700 dark:text-sky-400">{tx.common.leave}</th>
                           <th className="px-3 py-2.5"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {dailySummary.map((day) => (
                           <tr key={day.date} className="border-t border-slate-100 dark:border-slate-800">
-                            <td className="px-5 py-2.5 text-slate-700 dark:text-slate-300">{formatBnDate(day.date, lang)}</td>
-                            <td className="px-3 py-2.5 text-center text-green-700 dark:text-green-400">
-                              {num(day.PRESENT + day.LATE)}
+                            <td className="px-5 py-2.5 text-slate-700 dark:text-slate-300">
+                              {formatBnDate(day.date, lang)}
+                              {offDayTitle.has(day.date) && (
+                                <span className="ms-1.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                                  {offDayTitle.get(day.date) || tx.common.leave}
+                                </span>
+                              )}
                             </td>
+                            <td className="px-3 py-2.5 text-center text-green-700 dark:text-green-400">{num(day.PRESENT)}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-700 dark:text-amber-400">{num(day.LATE)}</td>
                             <td className="px-3 py-2.5 text-center text-red-700 dark:text-red-400">{num(day.ABSENT)}</td>
+                            <td className="px-3 py-2.5 text-center text-sky-700 dark:text-sky-400">{num(day.LEAVE)}</td>
                             <td className="px-3 py-2.5 text-end">
                               <button
                                 type="button"
-                                onClick={() => openEditForDate(day.date)}
+                                onClick={() => openMarkPage(day.date)}
                                 className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
                               >
                                 {t.edit}
@@ -479,7 +558,7 @@ const AttendanceReportPage = () => {
                   <input
                     type="date"
                     max={todayIso()}
-                    onChange={(event) => event.target.value && openEditForDate(event.target.value)}
+                    onChange={(event) => event.target.value && openMarkPage(event.target.value)}
                     className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -571,88 +650,87 @@ const AttendanceReportPage = () => {
             </div>
           </div>
 
-          {/* Edit panel */}
-          {editDate && (
-            <div className="rounded-2xl border border-blue-200 bg-white shadow-sm dark:border-blue-900/50 dark:bg-slate-900">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  {t.editTitle(formatBnDate(editDate, lang))}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setEditDate("")}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  {c.close}
-                </button>
+          {/* Student-wise working-day statistics */}
+          {selectedClass && (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.studentWise}</h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.studentWiseHint}</p>
               </div>
-
-              {studentsInClass.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">{tx.common.noStudentsInClass}</div>
+              {statsLoading ? (
+                <div className="p-4">
+                  <SkeletonList items={4} />
+                </div>
+              ) : statsFailed ? (
+                <div className="p-8 text-center text-sm text-rose-600 dark:text-rose-400">{t.statsFailed}</div>
+              ) : statsRows.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-400">{t.noStats}</div>
               ) : (
-                <div className="mx-auto max-w-md p-4 sm:p-5">
-                  <label className="flex cursor-pointer items-center justify-between gap-3 border-b border-gray-200 pb-2 text-sm font-medium text-gray-700 dark:border-slate-700 dark:text-slate-200">
-                    <span>{tx.common.markAllPresent}</span>
-                    <input
-                      type="checkbox"
-                      checked={editAllChecked}
-                      onChange={toggleEditCheckAll}
-                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
-                    />
-                  </label>
-
-                  <div className="divide-y divide-gray-100 dark:divide-slate-800">
-                    {studentsInClass
-                      .slice()
-                      .sort((a, b) => Number(a.roll || 0) - Number(b.roll || 0))
-                      .map((student) => {
-                        const isPresent = editPresentByStudent[String(student.id)] ?? true;
+                <div className="max-h-[520px] overflow-auto">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <tr>
+                        <th className="px-3 py-2.5 text-start font-medium">{t.roll}</th>
+                        <th className="px-3 py-2.5 text-start font-medium">{t.name}</th>
+                        <th className="px-2 py-2.5 text-center font-medium text-green-700 dark:text-green-400">{tx.common.present}</th>
+                        <th className="px-2 py-2.5 text-center font-medium text-amber-700 dark:text-amber-400">{tx.common.late}</th>
+                        <th className="px-2 py-2.5 text-center font-medium text-red-700 dark:text-red-400">{tx.common.absent}</th>
+                        <th className="px-2 py-2.5 text-center font-medium text-sky-700 dark:text-sky-400">{tx.common.leave}</th>
+                        <th className="px-2 py-2.5 text-center font-medium" title={t.unmarkedHint}>{t.unmarked}</th>
+                        <th className="px-2 py-2.5 text-center font-medium" title={t.latePenaltyHint}>{t.latePenalty}</th>
+                        <th className="px-2 py-2.5 text-center font-medium">{t.rateShort}</th>
+                        <th className="px-2 py-2.5"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statsRows.map((row) => {
+                        const pct = Number(row.percentage || 0);
+                        const name = row.info?.name || `#${row.attendee_id}`;
                         return (
-                          <label
-                            key={student.id}
-                            className="flex cursor-pointer items-center justify-between gap-3 py-2.5"
-                          >
-                            <span className="flex min-w-0 items-center gap-3">
-                              <span className="w-10 shrink-0 text-sm font-semibold text-gray-500 dark:text-slate-400">
-                                {student.roll ?? "-"}
-                              </span>
-                              <span
-                                className={`truncate text-sm ${
-                                  isPresent
-                                    ? "text-gray-800 dark:text-slate-200"
-                                    : "text-gray-400 line-through dark:text-slate-500"
-                                }`}
+                          <tr key={row.attendee_id} className="border-t border-slate-100 dark:border-slate-800">
+                            <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{row.info?.roll ?? "-"}</td>
+                            <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{name}</td>
+                            <td className="px-2 py-2 text-center">{num(row.PRESENT)}</td>
+                            <td className="px-2 py-2 text-center">{num(row.LATE)}</td>
+                            <td className="px-2 py-2 text-center">{num(row.ABSENT)}</td>
+                            <td className="px-2 py-2 text-center">{num(row.LEAVE)}</td>
+                            <td className="px-2 py-2 text-center text-slate-500">{num(row.unmarked)}</td>
+                            <td className="px-2 py-2 text-center text-slate-500">{num(row.late_penalty)}</td>
+                            <td
+                              className={`px-2 py-2 text-center font-semibold ${
+                                pct >= 75
+                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  : pct >= 50
+                                    ? "text-amber-700 dark:text-amber-400"
+                                    : "text-rose-700 dark:text-rose-400"
+                              }`}
+                            >
+                              {num(pct)}%
+                            </td>
+                            <td className="px-2 py-2 text-end">
+                              <button
+                                type="button"
+                                title={tx.common.history}
+                                aria-label={tx.common.history}
+                                onClick={() => setHistoryTarget({ attendeeType: "STUDENT", attendeeId: row.attendee_id, name })}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                               >
-                                {student.name_bn || tx.common.noName}
-                              </span>
-                            </span>
-                            <input
-                              type="checkbox"
-                              checked={isPresent}
-                              onChange={() => toggleEditPresent(student.id)}
-                              className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
-                            />
-                          </label>
+                                <History size={14} />
+                              </button>
+                            </td>
+                          </tr>
                         );
                       })}
-                  </div>
-
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      type="button"
-                      disabled={editSaving}
-                      onClick={handleSaveEdit}
-                      className="h-10 w-full rounded-lg bg-blue-600 px-6 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
-                    >
-                      {editSaving ? c.saving : t.saveChanges}
-                    </button>
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           )}
         </>
       )}
+
+      <AttendanceHistoryModal target={historyTarget} onClose={() => setHistoryTarget(null)} />
     </div>
   );
 };

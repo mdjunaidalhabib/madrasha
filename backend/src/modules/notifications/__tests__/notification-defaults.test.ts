@@ -47,13 +47,22 @@ describe("ATTENDANCE_PRESENT event definition", () => {
     expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_PRESENT).toContain("{name}");
     expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_PRESENT).toContain("{status}");
     expect(NOTIFICATION_EVENT_LABELS.ATTENDANCE_PRESENT).toBe("ডিভাইসে উপস্থিতির পর");
-    expect([...DEFAULT_DISABLED_EVENTS]).toEqual(["ATTENDANCE_PRESENT", "ATTENDANCE_ABSENT", "ATTENDANCE_CHECKOUT"]);
+    expect([...DEFAULT_DISABLED_EVENTS]).toEqual([
+      "ATTENDANCE_PRESENT",
+      "ATTENDANCE_ABSENT",
+      "ATTENDANCE_CHECKOUT",
+      "ATTENDANCE_CONSECUTIVE_ABSENT",
+    ]);
   });
 
   it("registers ATTENDANCE_ABSENT and ATTENDANCE_CHECKOUT with templates (eventKey fits VarChar(30))", () => {
     expect(NOTIFICATION_EVENTS).toEqual(expect.arrayContaining(["ATTENDANCE_ABSENT", "ATTENDANCE_CHECKOUT"]));
     expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_ABSENT).toContain("{date}");
     expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_CHECKOUT).toContain("{time}");
+    expect(NOTIFICATION_EVENTS).toContain("ATTENDANCE_CONSECUTIVE_ABSENT");
+    for (const token of ["{name}", "{days}", "{from}", "{date}"]) {
+      expect(DEFAULT_NOTIFICATION_TEMPLATES.ATTENDANCE_CONSECUTIVE_ABSENT).toContain(token);
+    }
     for (const key of NOTIFICATION_EVENTS) expect(key.length).toBeLessThanOrEqual(30);
   });
 });

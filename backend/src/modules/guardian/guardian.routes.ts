@@ -13,6 +13,9 @@ import {
   getChildPromotion,
   getChildProfile360,
   getNotices,
+  getLeaves,
+  createLeave,
+  cancelLeave,
 } from "./guardian.controller";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { guardianAuthMiddleware } from "../../shared/middleware/guardianAuth.middleware";
@@ -63,5 +66,10 @@ router.get("/students/:studentId/library", tenantMiddleware, guardianAuthMiddlew
 router.get("/students/:studentId/promotion", tenantMiddleware, guardianAuthMiddleware, getChildPromotion);
 router.get("/students/:studentId/profile-360", tenantMiddleware, guardianAuthMiddleware, getChildProfile360);
 router.get("/notices", tenantMiddleware, guardianAuthMiddleware, getNotices);
+
+// Leave requests for own children (attendance/ATTENDANCE_V3_API.md section 2).
+router.get("/leaves", tenantMiddleware, guardianAuthMiddleware, getLeaves);
+router.post("/leaves", tenantMiddleware, guardianAuthMiddleware, createLeave);
+router.post("/leaves/:id/cancel", tenantMiddleware, guardianAuthMiddleware, cancelLeave);
 
 export default router;

@@ -16,6 +16,7 @@ export const NOTIFICATION_EVENTS = [
   "ATTENDANCE_PRESENT",
   "ATTENDANCE_ABSENT",
   "ATTENDANCE_CHECKOUT",
+  "ATTENDANCE_CONSECUTIVE_ABSENT",
 ] as const;
 export type NotificationEventKey = (typeof NOTIFICATION_EVENTS)[number];
 
@@ -31,6 +32,9 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<NotificationEventKey, string
   ATTENDANCE_PRESENT: "{name} আজ {time} এ মাদরাসায় {status} হয়েছে ({date})। ধন্যবাদ।",
   ATTENDANCE_ABSENT: "{name} আজ ({date}) মাদরাসায় অনুপস্থিত। কারণ জানাতে অফিসে যোগাযোগ করুন।",
   ATTENDANCE_CHECKOUT: "{name} আজ {time} এ মাদরাসা থেকে বের হয়েছে ({date})।",
+  // Consecutive-absence alert (attendance-leave/attendance-alerts.service.ts):
+  // {days} = streak length, {from} = first absent date of the streak, {date} = today.
+  ATTENDANCE_CONSECUTIVE_ABSENT: "{name} {from} থেকে টানা {days} দিন মাদরাসায় অনুপস্থিত ({date})। অনুগ্রহ করে অফিসে যোগাযোগ করুন।",
 };
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventKey, string> = {
@@ -43,17 +47,19 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventKey, string> = {
   ATTENDANCE_PRESENT: "ডিভাইসে উপস্থিতির পর",
   ATTENDANCE_ABSENT: "স্বয়ংক্রিয় অনুপস্থিতির পর",
   ATTENDANCE_CHECKOUT: "ডিভাইসে চেক-আউটের পর",
+  ATTENDANCE_CONSECUTIVE_ABSENT: "টানা অনুপস্থিত হলে",
 };
 
 /// Events that stay OFF until a madrasa explicitly enables them (i.e. when no
 /// NotificationSetting row exists). Every other event keeps the original
 /// default-enabled behaviour. A per-student-per-day SMS (ATTENDANCE_PRESENT)
 /// costs real credit, so it must be opt-in.
-/// The same holds for the auto-absent and check-out SMS.
+/// The same holds for the auto-absent, check-out and consecutive-absence SMS.
 export const DEFAULT_DISABLED_EVENTS: readonly NotificationEventKey[] = [
   "ATTENDANCE_PRESENT",
   "ATTENDANCE_ABSENT",
   "ATTENDANCE_CHECKOUT",
+  "ATTENDANCE_CONSECUTIVE_ABSENT",
 ];
 
 export const isEventEnabledByDefault = (eventKey: NotificationEventKey): boolean =>

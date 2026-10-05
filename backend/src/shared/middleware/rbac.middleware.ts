@@ -27,6 +27,18 @@ export async function getRolePermissions(roleId: number) {
   return rows.map((r) => r.permission.keyName).filter((k): k is string => Boolean(k));
 }
 
+/**
+ * In-handler permission check (same rules as requirePermission) for logic
+ * that only needs an extra permission in some cases, e.g. overwriting an
+ * existing attendance row needs attendance.edit on top of attendance.mark.
+ */
+export async function userHasPermission(req: Request, permission: string): Promise<boolean> {
+  const roleId = req.user?.role_id;
+  if (!req.user || !roleId) return false;
+  if (roleImpliesPermission(await getUserRole(req), permission)) return true;
+  return (await getRolePermissions(Number(roleId))).includes(permission);
+}
+
 export const rbacMiddleware = (permission: string) => requirePermission(permission);
 
 export const requirePermission = (permission: string) => {

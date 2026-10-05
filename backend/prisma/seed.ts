@@ -869,6 +869,11 @@ async function main() {
         nameBn: "ডিভাইস সেটিংস",
         sortOrder: 8,
       },
+      { keyName: "attendance_dashboard", name: "Dashboard", nameBn: "ড্যাশবোর্ড", sortOrder: 0 },
+      { keyName: "attendance_sessions", name: "Session Attendance", nameBn: "সেশন উপস্থিতি", sortOrder: 3 },
+      { keyName: "attendance_leaves", name: "Leave Requests", nameBn: "ছুটির আবেদন", sortOrder: 3 },
+      { keyName: "attendance_payroll", name: "Attendance & Payroll", nameBn: "উপস্থিতি ও বেতন", sortOrder: 9 },
+      { keyName: "attendance_policy", name: "Attendance Policy", nameBn: "উপস্থিতি নীতি", sortOrder: 10 },
     ],
     communication: [
       { keyName: "single_send", name: "Single Send", nameBn: "একক পাঠান", sortOrder: 1 },
@@ -938,6 +943,10 @@ async function main() {
 
     { keyName: "attendance.read", name: "উপস্থিতি দেখুন" },
     { keyName: "attendance.mark", name: "উপস্থিতি নিন" },
+    { keyName: "attendance.edit", name: "পুরনো/বিদ্যমান উপস্থিতি সংশোধন" },
+    { keyName: "attendance.policy", name: "উপস্থিতি নীতি ও সেটিংস" },
+    { keyName: "attendance.leave", name: "ছুটির আবেদন ব্যবস্থাপনা" },
+    { keyName: "attendance.session", name: "সেশন (আবাসিক) উপস্থিতি ব্যবস্থাপনা" },
     { keyName: "attendance_device.manage", name: "বায়োমেট্রিক ডিভাইস ব্যবস্থাপনা" },
     { keyName: "attendance_device.view", name: "বায়োমেট্রিক ডিভাইস ও উপস্থিতি দেখুন" },
 

@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { ApiError } from "../../shared/errors";
+import { ApiError, ValidationError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { guardianService } from "./guardian.service";
 import { t } from "../../shared/i18n";
+import {
+  guardianCreateLeaveSchema,
+  guardianListLeavesQuerySchema,
+  parseDto,
+} from "../attendance-leave/attendance-leave.dto";
 
 const respondWithError = (res: Response, error: unknown, logTag: string) => {
   if (error instanceof ApiError) {
@@ -154,5 +159,50 @@ export const getNotices = async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (err) {
     respondWithError(res, err, "GUARDIAN NOTICES ERROR:");
+  }
+};
+
+/* ================= LEAVE ================= */
+
+export const getLeaves = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const q = parseDto(guardianListLeavesQuerySchema, req.query);
+    const data = await guardianService.listLeaves(guardianId, madrasa_id, q.student_id);
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN LEAVES ERROR:");
+  }
+};
+
+export const createLeave = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const dto = parseDto(guardianCreateLeaveSchema, req.body);
+    const data = await guardianService.createLeave(guardianId, madrasa_id, dto);
+    res.status(HttpStatus.CREATED).json({
+      success: true,
+      message: t({ bn: "ছুটির আবেদন পাঠানো হয়েছে", en: "Leave request submitted" }),
+      data,
+    });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN CREATE LEAVE ERROR:");
+  }
+};
+
+export const cancelLeave = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = req.tenant!.madrasa_id;
+    const guardianId = req.guardian!.guardianId;
+    const leaveId = Number(req.params.id);
+    if (!Number.isInteger(leaveId) || leaveId <= 0) {
+      throw new ValidationError(t({ bn: "id সঠিক নয়", en: "id is invalid" }));
+    }
+    const data = await guardianService.cancelLeave(guardianId, madrasa_id, leaveId);
+    res.json({ success: true, message: t({ bn: "ছুটির আবেদন বাতিল করা হয়েছে", en: "Leave request cancelled" }), data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN CANCEL LEAVE ERROR:");
   }
 };

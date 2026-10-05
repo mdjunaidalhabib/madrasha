@@ -450,18 +450,23 @@ export class SidebarService {
         if (kioskIndex !== -1) children.splice(kioskIndex, 1);
 
         const fallbackAttendanceChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "attendance_dashboard", label: "ড্যাশবোর্ড", sortOrder: 0 },
           { key: "attendance_report", label: "উপস্থিতি রিপোর্ট", sortOrder: 1 },
           { key: "attendance_mark", label: "উপস্থিতি নিন", sortOrder: 2 },
+          { key: "attendance_sessions", label: "সেশন উপস্থিতি", sortOrder: 2.5 },
+          { key: "attendance_leaves", label: "ছুটির আবেদন", sortOrder: 3 },
           { key: "attendance_devices", label: "উপস্থিতি ডিভাইস", sortOrder: 4 },
           { key: "attendance_device_mapping", label: "K40 ইউজার ম্যাপিং", sortOrder: 5 },
           { key: "attendance_device_today", label: "আজকের উপস্থিতি (ডিভাইস)", sortOrder: 6 },
           { key: "attendance_device_cards", label: "কার্ড এনরোলমেন্ট", sortOrder: 7 },
           { key: "attendance_device_settings", label: "ডিভাইস সেটিংস", sortOrder: 8 },
+          { key: "attendance_payroll", label: "উপস্থিতি ও বেতন", sortOrder: 9 },
+          { key: "attendance_policy", label: "উপস্থিতি নীতি", sortOrder: 10 },
         ];
-        for (const fallback of fallbackAttendanceChildren) {
+        for (const [index, fallback] of fallbackAttendanceChildren.entries()) {
           if (!children.some((child) => child.key === fallback.key)) {
             children.push({
-              id: -(7000 + fallback.sortOrder),
+              id: -(7000 + index),
               key: fallback.key,
               label: fallback.label,
               sort_order: fallback.sortOrder,

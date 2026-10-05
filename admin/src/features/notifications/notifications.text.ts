@@ -42,6 +42,10 @@ export const notificationsText = defineText({
         title: "ডিভাইসে চেক-আউটের পর",
         hint: "ছুটির পর শিক্ষার্থী ডিভাইসে পাঞ্চ করে বের হলে অভিভাবককে দিনে একবার SMS যায় (ডিফল্টভাবে বন্ধ)",
       },
+      ATTENDANCE_CONSECUTIVE_ABSENT: {
+        title: "টানা অনুপস্থিত হলে",
+        hint: "উপস্থিতি নীতিতে ঠিক করা সংখ্যক কর্মদিবস টানা অনুপস্থিত থাকলে অভিভাবককে দিনে একবার SMS যায় ({days} = দিন, {from} = যেদিন থেকে; ডিফল্টভাবে বন্ধ)",
+      },
     } as Record<string, EventLabel>,
     saveFailed: "সেভ করতে সমস্যা হয়েছে",
     messageSaved: "বার্তা সেভ হয়েছে",
@@ -138,6 +142,10 @@ export const notificationsText = defineText({
       ATTENDANCE_CHECKOUT: {
         title: "After device check-out",
         hint: "When a student punches out on the device after school, the guardian gets one SMS per day (off by default)",
+      },
+      ATTENDANCE_CONSECUTIVE_ABSENT: {
+        title: "When absent several days in a row",
+        hint: "When a student is absent for the number of consecutive working days set in the attendance policy, the guardian gets one SMS per day ({days} = days, {from} = since; off by default)",
       },
     },
     saveFailed: "Could not save",

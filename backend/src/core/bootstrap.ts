@@ -9,6 +9,7 @@ import { authRepository } from "../modules/auth/auth.repository";
 import { feeService } from "../modules/fee/fee.service";
 import { smsQueueService } from "../modules/attendance-device/sms-queue.service";
 import { attendanceDeviceJobsService } from "../modules/attendance-device/attendance-device-jobs.service";
+import { attendanceAlertsService } from "../modules/attendance-leave/attendance-alerts.service";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -171,6 +172,9 @@ export const startSmsQueueWorker = (): void => {
  */
 export const startAttendanceDeviceJobs = (): void => {
   attendanceDeviceJobsService.start();
+  // Consecutive-absence guardian alerts (attendance v3); only acts for
+  // madrasas with attendance_policies.consecutive_absent_days >= 2.
+  attendanceAlertsService.start();
 };
 
 /**
@@ -201,6 +205,7 @@ export const registerGracefulShutdown = (server: Server): void => {
     logger.info(`${signal} received, shutting down gracefully`);
     smsQueueService.stop();
     attendanceDeviceJobsService.stop();
+    attendanceAlertsService.stop();
     server.close(async () => {
       await prisma.$disconnect();
       logger.info("Shutdown complete");

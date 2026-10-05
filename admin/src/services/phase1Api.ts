@@ -36,13 +36,150 @@ export interface AttendanceEntry {
   remarks?: string;
 }
 
+/** Where a row came from. `k40` (device) and `leave` (approved leave) are
+ * "protected": bulk marking skips them unless overridden with a reason. */
+export type AttendanceSource = string; // "manual" | "k40" | "auto" | "leave"
+export const PROTECTED_ATTENDANCE_SOURCES: readonly string[] = ["k40", "leave"];
+
+/** Raw attendance row as returned by GET /attendance (camelCase Prisma row). */
+export interface AttendanceRow {
+  id: number;
+  attendeeType: AttendeeType;
+  attendeeId: number;
+  classId?: number | null;
+  date: string;
+  status: AttendanceStatus;
+  source?: AttendanceSource | null;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  remarks?: string | null;
+  markedById?: number | null;
+}
+
+export interface AttendanceBulkPayload {
+  attendee_type: AttendeeType;
+  date: string; // "YYYY-MM-DD"
+  class_id?: number;
+  entries: AttendanceEntry[];
+  /** Required when changing an existing row of a past date or overriding a protected row. */
+  reason?: string;
+  /** Needs `attendance.edit` + reason: also change k40/leave rows. */
+  override_protected?: boolean;
+}
+
+export interface AttendanceBulkResult {
+  savedCount: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  skipped: Array<{ attendee_id: number; source: AttendanceSource }>;
+}
+
+export interface AttendanceStats {
+  PRESENT: number;
+  LATE: number;
+  ABSENT: number;
+  LEAVE: number;
+  working_days: number;
+  /** Taken working days with no row for this person (counted absent). */
+  unmarked: number;
+  /** Absent-equivalents added by the late rule. */
+  late_penalty: number;
+  attended: number;
+  counted_days: number;
+  /** 0..100, one decimal. */
+  percentage: number;
+}
+
+export interface AttendanceSummary extends AttendanceStats {
+  month?: string;
+  from: string;
+  to: string;
+  /** Recorded rows (kept for old callers). */
+  total: number;
+}
+
+export interface AttendanceChangeItem {
+  id: number;
+  attendance_id: number | null;
+  attendee_type: AttendeeType;
+  attendee_id: number;
+  date: string;
+  old_status: AttendanceStatus | null;
+  new_status: AttendanceStatus | null;
+  old_source: AttendanceSource | null;
+  new_source: AttendanceSource | null;
+  reason: string | null;
+  via: string;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  changed_at: string;
+}
+
+export interface AttendanceDayInfo {
+  date: string;
+  today: string;
+  off: boolean;
+  reason: "holiday" | "weekly_off" | null;
+  title: string | null;
+  is_future: boolean;
+  within_window: boolean;
+  can_edit_past: boolean;
+  edit_window_days: number;
+}
+
+export interface AttendanceCalendar {
+  working_days: string[];
+  off_days: Array<{ date: string; reason: string; title: string | null }>;
+}
+
+export type LeaveMode = "excluded" | "present" | "absent";
+
+export interface AttendancePolicy {
+  edit_window_days: number;
+  late_to_absent_count: number;
+  leave_mode: LeaveMode;
+  low_attendance_percent: number;
+  consecutive_absent_days: number;
+  payroll_deduct_absent: boolean;
+}
+
+/** `{ success, data }` -> data (falls back to the body itself). */
+const unwrapData = <T,>(res: { data: any }): T => {
+  const body = res?.data;
+  return (body && typeof body === "object" && "data" in body ? body.data : body) as T;
+};
+
+const unwrapList = <T,>(res: { data: any }): T[] => {
+  const data = unwrapData<T[]>(res);
+  return Array.isArray(data) ? data : [];
+};
+
+/** Bulk response: fields may sit in `data` or at the top level ("extra"). */
+const unwrapBulk = (res: { data: any }): AttendanceBulkResult => {
+  const body = res?.data || {};
+  const merged = { ...body, ...(body.data && typeof body.data === "object" ? body.data : {}) };
+  const created = Number(merged.created ?? 0);
+  const updated = Number(merged.updated ?? 0);
+  return {
+    savedCount: Number(merged.savedCount ?? created + updated),
+    created,
+    updated,
+    unchanged: Number(merged.unchanged ?? 0),
+    skipped: Array.isArray(merged.skipped) ? merged.skipped : [],
+  };
+};
+
 export const attendanceApi = {
-  bulkMark: (payload: {
-    attendee_type: AttendeeType;
-    date: string; // "YYYY-MM-DD"
-    class_id?: number;
-    entries: AttendanceEntry[];
-  }) => api.post("/attendance/bulk", payload),
+  /** Raw axios response (old callers). Prefer `bulk`. */
+  bulkMark: (payload: AttendanceBulkPayload) => api.post("/attendance/bulk", payload),
+
+  /** Bulk mark resolved to the typed v3 result `{ created, updated, unchanged, skipped }`. */
+  bulk: async (payload: AttendanceBulkPayload) => unwrapBulk(await api.post("/attendance/bulk", payload)),
+
+  /** Correct one row (reason required, audited as `correction`). */
+  correct: async (id: number, payload: { status: AttendanceStatus; remarks?: string; reason: string }) =>
+    unwrapData<AttendanceRow>(await api.patch(`/attendance/${id}`, payload)),
 
   list: (params: {
     date?: string;
@@ -53,8 +190,73 @@ export const attendanceApi = {
     attendee_id?: number;
   }) => api.get("/attendance", { params }),
 
-  summary: (params: { attendee_id: number; attendee_type: AttendeeType; month?: string }) =>
-    api.get("/attendance/summary", { params }),
+  /** Typed list rows. */
+  rows: async (params: {
+    date?: string;
+    from?: string;
+    to?: string;
+    class_id?: number;
+    attendee_type?: AttendeeType;
+    attendee_id?: number;
+  }) => unwrapList<AttendanceRow>(await api.get("/attendance", { params })),
+
+  summary: (params: {
+    attendee_id: number;
+    attendee_type: AttendeeType;
+    month?: string;
+    from?: string;
+    to?: string;
+  }) => api.get("/attendance/summary", { params }),
+
+  /** Typed summary with the v3 fields (working_days, unmarked, late_penalty, percentage...). */
+  summaryData: async (params: {
+    attendee_id: number;
+    attendee_type: AttendeeType;
+    month?: string;
+    from?: string;
+    to?: string;
+  }) => unwrapData<AttendanceSummary>(await api.get("/attendance/summary", { params })),
+
+  /** Bulk stats; for STUDENT + class_id every active student of the class. */
+  stats: async (params: {
+    attendee_type: AttendeeType;
+    from: string;
+    to: string;
+    class_id?: number;
+    attendee_ids?: number[];
+  }) => {
+    const { attendee_ids, ...rest } = params;
+    return unwrapList<AttendanceStats & { attendee_id: number }>(
+      await api.get("/attendance/stats", {
+        params: { ...rest, ...(attendee_ids?.length ? { attendee_ids: attendee_ids.join(",") } : {}) },
+      }),
+    );
+  },
+
+  /** Audit trail of one attendee (optionally one date), newest first. */
+  history: async (params: { attendee_type: AttendeeType; attendee_id: number; date?: string }) =>
+    unwrapList<AttendanceChangeItem>(await api.get("/attendance/history", { params })),
+
+  /** Audit trail of one attendance row. */
+  rowHistory: async (id: number) => unwrapList<AttendanceChangeItem>(await api.get(`/attendance/${id}/history`)),
+
+  dayInfo: async (date: string) =>
+    unwrapData<AttendanceDayInfo>(await api.get("/attendance/day-info", { params: { date } })),
+
+  calendar: async (from: string, to: string): Promise<AttendanceCalendar> => {
+    const data = unwrapData<Partial<AttendanceCalendar> | null>(
+      await api.get("/attendance/calendar", { params: { from, to } }),
+    );
+    return {
+      working_days: Array.isArray(data?.working_days) ? data!.working_days! : [],
+      off_days: Array.isArray(data?.off_days) ? data!.off_days! : [],
+    };
+  },
+
+  getPolicy: async () => unwrapData<AttendancePolicy>(await api.get("/attendance/policy")),
+
+  updatePolicy: async (policy: AttendancePolicy) =>
+    unwrapData<AttendancePolicy>(await api.put("/attendance/policy", policy)),
 };
 
 /* ================= CLASS & EXAM ROUTINE ================= */

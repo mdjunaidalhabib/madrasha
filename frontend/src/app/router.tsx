@@ -22,6 +22,7 @@ const GuardianExamRoutinePage = lazy(() => import("../features/guardian/Guardian
 const GuardianFeesPage = lazy(() => import("../features/guardian/GuardianFeesPage"));
 const MyChildProfile = lazy(() => import("../features/guardian/MyChildProfile"));
 const GuardianNoticesPage = lazy(() => import("../features/guardian/GuardianNoticesPage"));
+const GuardianLeavePage = lazy(() => import("../features/guardian/GuardianLeavePage"));
 
 const NotFoundPage = lazy(() => import("../features/common/NotFoundPage"));
 
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "exam-routine", element: withSuspense(<GuardianExamRoutinePage />) },
       { path: "fees", element: withSuspense(<GuardianFeesPage />) },
       { path: "notices", element: withSuspense(<GuardianNoticesPage />) },
+      { path: "leave", element: withSuspense(<GuardianLeavePage />) },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],
   },
@@ -98,6 +100,7 @@ export const router = createBrowserRouter([
           { path: "results", element: withSuspense(<GuardianResultsPage />) },
           { path: "fees", element: withSuspense(<GuardianFeesPage />) },
           { path: "notices", element: withSuspense(<GuardianNoticesPage />) },
+          { path: "leave", element: withSuspense(<GuardianLeavePage />) },
           { path: "*", element: withSuspense(<NotFoundPage />) },
         ],
       },

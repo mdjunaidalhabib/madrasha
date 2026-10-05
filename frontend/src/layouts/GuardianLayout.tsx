@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: "dashboard" },
   { to: "profile" },
   { to: "attendance" },
+  { to: "leave" },
   { to: "results" },
   { to: "exam-routine" },
   { to: "fees" },

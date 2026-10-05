@@ -55,7 +55,8 @@ export type NotificationEventKey =
   | "EXAM_FEE_ACTIVATED"
   | "ATTENDANCE_PRESENT"
   | "ATTENDANCE_ABSENT"
-  | "ATTENDANCE_CHECKOUT";
+  | "ATTENDANCE_CHECKOUT"
+  | "ATTENDANCE_CONSECUTIVE_ABSENT";
 
 export interface NotificationSettingItem {
   eventKey: NotificationEventKey;

@@ -46,6 +46,9 @@ import websiteRoutes from "../modules/public-website/website.routes";
 // 🗓️ Phase 1: Attendance, Routine, Promotion
 import attendanceRoutes from "../modules/attendance/attendance.routes";
 import attendanceDeviceRoutes from "../modules/attendance-device/attendance-device.routes";
+import attendanceSessionRoutes from "../modules/attendance-session/attendance-session.routes";
+import attendanceAnalyticsRoutes from "../modules/attendance-analytics/attendance-analytics.routes";
+import attendanceLeaveRoutes from "../modules/attendance-leave/attendance-leave.routes";
 import routineRoutes from "../modules/routine/routine.routes";
 import promotionRoutes from "../modules/promotion/promotion.routes";
 import sessionRoutes from "../modules/session/session.routes";
@@ -210,6 +213,9 @@ router.use("/sessions", sessionRoutes);
    PHASE 1: ATTENDANCE, ROUTINE, PROMOTION
 ========================= */
 router.use("/attendance", attendanceRoutes);
+router.use("/attendance-sessions", attendanceSessionRoutes);
+router.use("/attendance-analytics", attendanceAnalyticsRoutes);
+router.use("/attendance-leaves", attendanceLeaveRoutes);
 router.use("/", routineRoutes);
 router.use("/promotion", promotionRoutes);
 

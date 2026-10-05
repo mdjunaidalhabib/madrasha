@@ -54,6 +54,11 @@ const EVENT_LABELS: Record<NotificationEventKey, { title: string; hint: string; 
     hint: "ছুটির পর শিক্ষার্থী ডিভাইসে পাঞ্চ করে বের হলে অভিভাবককে দিনে একবার SMS যায় (ডিফল্টভাবে বন্ধ)",
     placeholders: "{name} {class} {roll} {time} {date}",
   },
+  ATTENDANCE_CONSECUTIVE_ABSENT: {
+    title: "টানা অনুপস্থিত হলে",
+    hint: "উপস্থিতি নীতিতে ঠিক করা সংখ্যক কর্মদিবস টানা অনুপস্থিত থাকলে অভিভাবককে দিনে একবার SMS যায় (ডিফল্টভাবে বন্ধ)",
+    placeholders: "{name} {class} {roll} {days} {from} {date}",
+  },
 };
 
 const AutoNotificationSettingsPage = () => {

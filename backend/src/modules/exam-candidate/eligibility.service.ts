@@ -2,7 +2,8 @@ import { EligibilityStatus } from "@prisma/client";
 import { examCandidateRepository, ExamCandidateRepository } from "./exam-candidate.repository";
 import { sessionRepository, SessionRepository } from "../session/session.repository";
 import { feeService, FeeService } from "../fee/fee.service";
-import { attendanceRepository, AttendanceRepository } from "../attendance/attendance.repository";
+import { statsForAttendee } from "../attendance/core/attendance-stats";
+import { todayLocal } from "../attendance/core/attendance-calendar";
 import { ELIGIBILITY_DEFAULTS, ELIGIBILITY_SETTING_KEYS } from "./exam-candidate.constants";
 import { UpdateEligibilitySettingsRequestDto } from "./exam-candidate.dto";
 import { BadRequestError } from "../../shared/errors";
@@ -37,7 +38,7 @@ export class EligibilityService {
     private readonly repository: ExamCandidateRepository = examCandidateRepository,
     private readonly sessions: SessionRepository = sessionRepository,
     private readonly fees: FeeService = feeService,
-    private readonly attendances: AttendanceRepository = attendanceRepository,
+    private readonly attendanceStats: typeof statsForAttendee = statsForAttendee,
   ) {}
 
   async getSettings(madrasaId: number): Promise<EligibilitySettings> {
@@ -162,21 +163,12 @@ export class EligibilityService {
     if (settings.checkAttendance) {
       const session = await this.sessions.findSessionForTenant(student.sessionId, madrasaId);
       if (session) {
-        const from = session.startDate;
-        const to = new Date();
-        const grouped = (await this.attendances.getSummary(madrasaId, "STUDENT", student.id, from, to)) as Array<{
-          status: string;
-          _count: { _all: number };
-        }>;
-        const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
-        let total = 0;
-        for (const row of grouped) {
-          counts[row.status] = row._count._all;
-          total += row._count._all;
-        }
-        if (total > 0) {
-          const presentDays = counts.PRESENT + counts.LATE;
-          const percentage = Math.round((presentDays / total) * 1000) / 10;
+        // Same working-day percentage as the attendance report (attendance-stats.ts);
+        // the range is clipped to today there.
+        const from = session.startDate.toISOString().slice(0, 10);
+        const stats = await this.attendanceStats(madrasaId, "STUDENT", student.id, from, todayLocal());
+        if (stats.counted_days > 0) {
+          const percentage = stats.percentage;
           if (percentage < settings.minAttendancePercent) {
             reasons.push(`উপস্থিতির হার প্রয়োজনীয় মাত্রার কম (${percentage}% < ${settings.minAttendancePercent}%)`);
           }

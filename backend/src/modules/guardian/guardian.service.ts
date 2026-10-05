@@ -3,6 +3,8 @@ import { generateToken } from "../../shared/utils/jwt.util";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { attendanceService } from "../attendance/attendance.service";
+import { attendanceLeaveService, LeaveItem } from "../attendance-leave/attendance-leave.service";
+import type { GuardianCreateLeaveDto } from "../attendance-leave/attendance-leave.dto";
 import { feeService } from "../fee/fee.service";
 import { libraryService } from "../library/library.service";
 import { promotionRepository } from "../promotion/promotion.repository";
@@ -307,6 +309,36 @@ export class GuardianService {
     // per-class notice targeting.
     void guardianId;
     return this.repository.findNotices(madrasaId);
+  }
+
+  /* ================= LEAVE (attendance/ATTENDANCE_V3_API.md section 2) ================= */
+
+  private async ownStudentIds(guardianId: number, madrasaId: number): Promise<number[]> {
+    const rows = await this.repository.findChildrenForGuardian(guardianId, madrasaId);
+    return rows.map(({ student }) => student.id);
+  }
+
+  /** Leave requests of the guardian's own children (optionally one child). */
+  async listLeaves(guardianId: number, madrasaId: number, studentId?: number): Promise<LeaveItem[]> {
+    if (studentId) {
+      await this.assertOwnsStudent(guardianId, studentId);
+      return attendanceLeaveService.listForStudents(madrasaId, [studentId]);
+    }
+    return attendanceLeaveService.listForStudents(madrasaId, await this.ownStudentIds(guardianId, madrasaId));
+  }
+
+  async createLeave(guardianId: number, madrasaId: number, dto: GuardianCreateLeaveDto): Promise<LeaveItem> {
+    await this.assertOwnsStudent(guardianId, dto.student_id);
+    return attendanceLeaveService.createForGuardian(madrasaId, guardianId, dto);
+  }
+
+  async cancelLeave(guardianId: number, madrasaId: number, leaveId: number): Promise<LeaveItem> {
+    return attendanceLeaveService.cancelForGuardian(
+      madrasaId,
+      guardianId,
+      await this.ownStudentIds(guardianId, madrasaId),
+      leaveId,
+    );
   }
 }
 
